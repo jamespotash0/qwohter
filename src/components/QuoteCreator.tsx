@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -291,6 +290,7 @@ const QuoteCreator = ({ user, onLogout }: QuoteCreatorProps) => {
                     data={quoteData.pricing}
                     onUpdate={(data) => updateQuoteData("pricing", data)}
                     onGenerate={generateQuote}
+                    quoteData={quoteData}
                   />
                 )}
               </CardContent>

@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { FileText } from "lucide-react";
 import { useEffect, useState } from "react";
+import jsPDF from 'jspdf';
 
 interface PricingData {
   basePrice: string;
@@ -15,9 +16,10 @@ interface PricingFormProps {
   data: PricingData;
   onUpdate: (data: PricingData) => void;
   onGenerate: () => void;
+  quoteData?: any; // We'll pass the full quote data for PDF generation
 }
 
-const PricingForm = ({ data, onUpdate, onGenerate }: PricingFormProps) => {
+const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps) => {
   const [calculatedTotal, setCalculatedTotal] = useState("");
 
   const handleChange = (field: keyof PricingData, value: string) => {
@@ -38,6 +40,93 @@ const PricingForm = ({ data, onUpdate, onGenerate }: PricingFormProps) => {
       onUpdate({ ...data, total: total.toString() });
     }
   }, [data.basePrice, data.freight]);
+
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(20);
+    doc.text('Contemporary Wall Systems', 20, 30);
+    doc.setFontSize(12);
+    doc.text('Quote Proposal', 20, 40);
+    
+    // Contact Info
+    let yPos = 60;
+    doc.setFontSize(14);
+    doc.text('Contact Information:', 20, yPos);
+    yPos += 10;
+    doc.setFontSize(10);
+    doc.text(`Contact: ${quoteData?.contactInfo?.contactName || ''}`, 20, yPos);
+    yPos += 5;
+    doc.text(`Email: ${quoteData?.contactInfo?.contactEmail || ''}`, 20, yPos);
+    yPos += 5;
+    doc.text(`Phone: ${quoteData?.contactInfo?.phone || ''}`, 20, yPos);
+    yPos += 5;
+    doc.text(`Address: ${quoteData?.contactInfo?.address || ''}`, 20, yPos);
+    
+    // Job Details
+    yPos += 20;
+    doc.setFontSize(14);
+    doc.text('Job Details:', 20, yPos);
+    yPos += 10;
+    doc.setFontSize(10);
+    doc.text(`Date: ${quoteData?.jobDetails?.date || ''}`, 20, yPos);
+    yPos += 5;
+    doc.text(`Proposal Number: ${quoteData?.jobDetails?.proposalNumber || ''}`, 20, yPos);
+    yPos += 5;
+    doc.text(`Job Location: ${quoteData?.jobDetails?.jobLocation || ''}`, 20, yPos);
+    
+    // Support Structure
+    yPos += 20;
+    doc.setFontSize(14);
+    doc.text('Support Structure:', 20, yPos);
+    yPos += 10;
+    doc.setFontSize(10);
+    doc.text(`Mounting Track: ${quoteData?.supportStructure?.mountingTrack || ''}`, 20, yPos);
+    
+    // Delivery Information
+    yPos += 20;
+    doc.setFontSize(14);
+    doc.text('Delivery Information:', 20, yPos);
+    yPos += 10;
+    doc.setFontSize(10);
+    doc.text(`Track Delivery: ${quoteData?.delivery?.trackDeliveryWeeks || ''} weeks`, 20, yPos);
+    yPos += 5;
+    doc.text(`Panel Delivery: ${quoteData?.delivery?.panelDeliveryWeeks || ''} weeks`, 20, yPos);
+    yPos += 5;
+    doc.text(`Track Installation: ${quoteData?.delivery?.trackInstallationDays || ''} days`, 20, yPos);
+    yPos += 5;
+    doc.text(`Panel Installation: ${quoteData?.delivery?.panelInstallationDays || ''} days`, 20, yPos);
+    
+    // Labor Information
+    yPos += 20;
+    doc.setFontSize(14);
+    doc.text('Labor Information:', 20, yPos);
+    yPos += 10;
+    doc.setFontSize(10);
+    doc.text(`Labor Type: ${quoteData?.labor?.laborType || ''}`, 20, yPos);
+    yPos += 5;
+    doc.text(`Wage Rate: ${quoteData?.labor?.wageRate || ''}`, 20, yPos);
+    
+    // Pricing
+    yPos += 20;
+    doc.setFontSize(14);
+    doc.text('Pricing:', 20, yPos);
+    yPos += 10;
+    doc.setFontSize(10);
+    doc.text(`Base Price: $${data.basePrice || '0.00'}`, 20, yPos);
+    yPos += 5;
+    doc.text(`Freight: $${data.freight || '0.00'}`, 20, yPos);
+    yPos += 10;
+    doc.setFontSize(12);
+    doc.text(`Total: ${calculatedTotal || '$0.00'}`, 20, yPos);
+    
+    // Download the PDF
+    doc.save(`quote-${quoteData?.jobDetails?.proposalNumber || 'proposal'}.pdf`);
+    
+    // Call the original onGenerate callback
+    onGenerate();
+  };
 
   return (
     <div>
@@ -99,7 +188,7 @@ const PricingForm = ({ data, onUpdate, onGenerate }: PricingFormProps) => {
         
         <div className="flex justify-end">
           <Button 
-            onClick={onGenerate}
+            onClick={generatePDF}
             className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3"
             size="lg"
           >
