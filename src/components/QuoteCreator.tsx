@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, LogOut, FileText, Plus, Settings, Truck, Clock, Users } from "lucide-react";
+import { Building2, LogOut, FileText, Plus, Settings, Truck, Clock, Users, ArrowLeft } from "lucide-react";
 import ContactInfoForm from "./ContactInfoForm";
 import JobDetailsForm from "./JobDetailsForm";
 import WallSpecificationForm from "./WallSpecificationForm";
@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 interface QuoteCreatorProps {
   user: string;
   onLogout: () => void;
+  quoteName: string;
 }
 
 export interface WallSpecification {
@@ -78,9 +79,10 @@ export interface QuoteData {
   };
 }
 
-const QuoteCreator = ({ user, onLogout }: QuoteCreatorProps) => {
+const QuoteCreator = ({ user, onLogout, quoteName }: QuoteCreatorProps) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("contact");
+  
   const [quoteData, setQuoteData] = useState<QuoteData>({
     contactInfo: {
       contactName: "Ed Machinski",
@@ -165,6 +167,10 @@ const QuoteCreator = ({ user, onLogout }: QuoteCreatorProps) => {
     });
   };
 
+  const handleBackToHome = () => {
+    window.location.reload(); // Simple way to go back to quote selection
+  };
+
   const tabs = [
     { id: "contact", label: "Contact Info", icon: Building2 },
     { id: "job", label: "Job Details", icon: FileText },
@@ -182,10 +188,21 @@ const QuoteCreator = ({ user, onLogout }: QuoteCreatorProps) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
+              <Button
+                variant="ghost"
+                onClick={handleBackToHome}
+                className="mr-4"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
               <Building2 className="w-8 h-8 text-blue-600 mr-3" />
-              <h1 className="text-xl font-bold text-gray-900">
-                Contemporary Wall Systems - Quote Creator
-              </h1>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">
+                  Contemporary Wall Systems
+                </h1>
+                <p className="text-sm text-gray-600">Quote: {quoteName}</p>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">Welcome, {user}</span>
@@ -205,6 +222,7 @@ const QuoteCreator = ({ user, onLogout }: QuoteCreatorProps) => {
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Quote Sections</CardTitle>
+                <p className="text-sm text-gray-600">Complete each section step by step</p>
               </CardHeader>
               <CardContent className="p-2">
                 <nav className="space-y-1">

@@ -16,7 +16,7 @@ interface PricingFormProps {
   data: PricingData;
   onUpdate: (data: PricingData) => void;
   onGenerate: () => void;
-  quoteData?: any; // We'll pass the full quote data for PDF generation
+  quoteData?: any;
 }
 
 const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps) => {
@@ -44,82 +44,161 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
   const generatePDF = () => {
     const doc = new jsPDF();
     
-    // Header
-    doc.setFontSize(20);
-    doc.text('Contemporary Wall Systems', 20, 30);
+    // Header with company name
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text('CONTEMPORARY', 20, 30);
+    doc.text('WALL SYSTEMS', 20, 40);
+    
+    // Contact info in top right
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text('Contact:', 120, 30);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${quoteData?.contactInfo?.contactName || 'Ed Machinski'}`, 145, 30);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text('Address:', 120, 38);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${quoteData?.contactInfo?.address || '567 Commerce St,'}`, 145, 38);
+    doc.text('Franklin Lakes, NJ, 07417', 145, 45);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text('Phone:', 120, 52);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${quoteData?.contactInfo?.phone || '(973) 884-0474'}`, 145, 52);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text('Fax:', 120, 59);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${quoteData?.contactInfo?.fax || '(973) 884-1606'}`, 145, 59);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text('Website:', 120, 66);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${quoteData?.contactInfo?.website || 'contemporarywalls.com'}`, 145, 66);
+    
+    // Billed To section
+    let yPos = 80;
     doc.setFontSize(12);
-    doc.text('Quote Proposal', 20, 40);
+    doc.setFont("helvetica", "bold");
+    doc.text('BILLED TO:', 20, yPos);
     
-    // Contact Info
-    let yPos = 60;
-    doc.setFontSize(14);
-    doc.text('Contact Information:', 20, yPos);
     yPos += 10;
     doc.setFontSize(10);
-    doc.text(`Contact: ${quoteData?.contactInfo?.contactName || ''}`, 20, yPos);
-    yPos += 5;
-    doc.text(`Email: ${quoteData?.contactInfo?.contactEmail || ''}`, 20, yPos);
-    yPos += 5;
-    doc.text(`Phone: ${quoteData?.contactInfo?.phone || ''}`, 20, yPos);
-    yPos += 5;
-    doc.text(`Address: ${quoteData?.contactInfo?.address || ''}`, 20, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${quoteData?.jobDetails?.billedTo?.name || ''}`, 20, yPos);
+    doc.line(20, yPos + 2, 100, yPos + 2);
     
-    // Job Details
-    yPos += 20;
-    doc.setFontSize(14);
-    doc.text('Job Details:', 20, yPos);
     yPos += 10;
-    doc.setFontSize(10);
-    doc.text(`Date: ${quoteData?.jobDetails?.date || ''}`, 20, yPos);
-    yPos += 5;
-    doc.text(`Proposal Number: ${quoteData?.jobDetails?.proposalNumber || ''}`, 20, yPos);
-    yPos += 5;
-    doc.text(`Job Location: ${quoteData?.jobDetails?.jobLocation || ''}`, 20, yPos);
+    doc.text(`${quoteData?.jobDetails?.billedTo?.company || ''}`, 20, yPos);
+    doc.line(20, yPos + 2, 100, yPos + 2);
     
-    // Support Structure
-    yPos += 20;
-    doc.setFontSize(14);
-    doc.text('Support Structure:', 20, yPos);
     yPos += 10;
-    doc.setFontSize(10);
-    doc.text(`Mounting Track: ${quoteData?.supportStructure?.mountingTrack || ''}`, 20, yPos);
+    doc.text(`${quoteData?.jobDetails?.billedTo?.address || ''}`, 20, yPos);
+    doc.line(20, yPos + 2, 100, yPos + 2);
     
-    // Delivery Information
-    yPos += 20;
-    doc.setFontSize(14);
-    doc.text('Delivery Information:', 20, yPos);
-    yPos += 10;
-    doc.setFontSize(10);
-    doc.text(`Track Delivery: ${quoteData?.delivery?.trackDeliveryWeeks || ''} weeks`, 20, yPos);
-    yPos += 5;
-    doc.text(`Panel Delivery: ${quoteData?.delivery?.panelDeliveryWeeks || ''} weeks`, 20, yPos);
-    yPos += 5;
-    doc.text(`Track Installation: ${quoteData?.delivery?.trackInstallationDays || ''} days`, 20, yPos);
-    yPos += 5;
-    doc.text(`Panel Installation: ${quoteData?.delivery?.panelInstallationDays || ''} days`, 20, yPos);
+    // Right side info
+    yPos = 90;
+    doc.setFont("helvetica", "bold");
+    doc.text('Date:', 120, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${quoteData?.jobDetails?.date || ''}`, 160, yPos);
+    doc.line(160, yPos + 2, 190, yPos + 2);
     
-    // Labor Information
-    yPos += 20;
-    doc.setFontSize(14);
-    doc.text('Labor Information:', 20, yPos);
-    yPos += 10;
-    doc.setFontSize(10);
-    doc.text(`Labor Type: ${quoteData?.labor?.laborType || ''}`, 20, yPos);
-    yPos += 5;
-    doc.text(`Wage Rate: ${quoteData?.labor?.wageRate || ''}`, 20, yPos);
+    yPos += 15;
+    doc.setFont("helvetica", "bold");
+    doc.text('Proposal #:', 120, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${quoteData?.jobDetails?.proposalNumber || ''}`, 160, yPos);
+    doc.line(160, yPos + 2, 190, yPos + 2);
     
-    // Pricing
-    yPos += 20;
-    doc.setFontSize(14);
-    doc.text('Pricing:', 20, yPos);
-    yPos += 10;
+    yPos += 15;
+    doc.setFont("helvetica", "bold");
+    doc.text('Job Location:', 120, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${quoteData?.jobDetails?.jobLocation || ''}`, 160, yPos);
+    doc.line(160, yPos + 2, 190, yPos + 2);
+    
+    // Main content
+    yPos = 140;
     doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text('Thank you for considering Contemporary Wall Systems for this project. As discussed, we are', 20, yPos);
+    yPos += 7;
+    doc.text('offering a proposal to furnish, deliver, and install, as noted,', 20, yPos);
+    doc.setFont("helvetica", "bold");
+    doc.text('TEN (10) - Operable Wall', 175, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text('as', 20, yPos + 7);
+    doc.text('specified below, at the above named project.', 20, yPos + 14);
+    
+    yPos += 30;
+    doc.setFont("helvetica", "bold");
+    doc.text('Specifications as follows:', 20, yPos);
+    
+    // Wall specifications table
+    yPos += 15;
+    if (quoteData?.walls && quoteData.walls.length > 0) {
+      quoteData.walls.forEach((wall: any, index: number) => {
+        doc.setFont("helvetica", "bold");
+        doc.text(`Wall ${String.fromCharCode(65 + index)}`, 20, yPos);
+        doc.setFont("helvetica", "normal");
+        doc.text(`${wall.width || ''} W x ${wall.height || ''} H`, 60, yPos);
+        doc.text(`${wall.panelCount || ''} (${wall.quantity || '1'})`, 120, yPos);
+        doc.text(`${wall.panelType || ''}`, 150, yPos);
+        doc.text(`${wall.quantity || '1'} each`, 180, yPos);
+        
+        // Draw lines
+        doc.line(20, yPos + 2, 200, yPos + 2);
+        yPos += 10;
+      });
+    }
+    
+    // Panel details
+    yPos += 10;
+    doc.setFont("helvetica", "bold");
+    doc.text('PANELS:', 20, yPos);
+    yPos += 7;
+    doc.setFont("helvetica", "normal");
+    doc.text('This wall system utilizes the Kwik-Wall', 20, yPos);
+    doc.setFont("helvetica", "bold");
+    doc.text('2000 Series', 120, yPos);
+    doc.text('Model 2030', 160, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text('configured with', 185, yPos);
+    
+    yPos += 7;
+    doc.setFont("helvetica", "bold");
+    doc.text('Hinged Paired Panels', 20, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text('designed for use with a', 90, yPos);
+    doc.setFont("helvetica", "bold");
+    doc.text('Paired Panels Track', 150, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text(', and includes', 185, yPos);
+    
+    yPos += 7;
+    doc.setFont("helvetica", "bold");
+    doc.text('non GL insulated', 20, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text('for enhanced acoustic performance.', 80, yPos);
+    
+    // Pricing section at bottom
+    yPos = 240;
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text('PRICING:', 20, yPos);
+    
+    yPos += 15;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
     doc.text(`Base Price: $${data.basePrice || '0.00'}`, 20, yPos);
-    yPos += 5;
-    doc.text(`Freight: $${data.freight || '0.00'}`, 20, yPos);
+    yPos += 7;
+    doc.text(`Freight + Delivery: $${data.freight || '0.00'}`, 20, yPos);
     yPos += 10;
-    doc.setFontSize(12);
-    doc.text(`Total: ${calculatedTotal || '$0.00'}`, 20, yPos);
+    doc.setFont("helvetica", "bold");
+    doc.text(`TOTAL: ${calculatedTotal || '$0.00'}`, 20, yPos);
     
     // Download the PDF
     doc.save(`quote-${quoteData?.jobDetails?.proposalNumber || 'proposal'}.pdf`);
