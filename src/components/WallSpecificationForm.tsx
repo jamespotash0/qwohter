@@ -62,7 +62,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                   id={`width-${wall.id}`}
                   value={wall.width}
                   onChange={(e) => handleWallChange(wall.id, "width", e.target.value)}
-                  placeholder="32'-4\""
+                  placeholder="32'-4&quot;"
                 />
               </div>
               
@@ -72,7 +72,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                   id={`height-${wall.id}`}
                   value={wall.height}
                   onChange={(e) => handleWallChange(wall.id, "height", e.target.value)}
-                  placeholder="8'-6\""
+                  placeholder="8'-6&quot;"
                 />
               </div>
               
