@@ -1,0 +1,52 @@
+
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+interface SupportStructureData {
+  mountingTrack: string;
+}
+
+interface SupportStructureFormProps {
+  data: SupportStructureData;
+  onUpdate: (data: SupportStructureData) => void;
+}
+
+const SupportStructureForm = ({ data, onUpdate }: SupportStructureFormProps) => {
+  const handleChange = (field: keyof SupportStructureData, value: string) => {
+    onUpdate({ ...data, [field]: value });
+  };
+
+  return (
+    <div>
+      <h2 className="text-xl font-semibold mb-6">Support Structure</h2>
+      <div className="grid grid-cols-1 gap-6">
+        <div className="space-y-2">
+          <Label htmlFor="mountingTrack">Mounting Track</Label>
+          <Select
+            value={data.mountingTrack}
+            onValueChange={(value) => handleChange("mountingTrack", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select mounting track type" />
+            </SelectTrigger>
+            <SelectContent className="bg-white">
+              <SelectItem value="Pre-Drilled Steel Beam">Pre-Drilled Steel Beam</SelectItem>
+              <SelectItem value="Existing Steel Beam">Existing Steel Beam</SelectItem>
+              <SelectItem value="Secured to Concrete">Secured to Concrete</SelectItem>
+              <SelectItem value="Secured to Wood Header">Secured to Wood Header</SelectItem>
+              <SelectItem value="Unispan Truss System">Unispan Truss System</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="mt-4 p-4 bg-gray-50 rounded-md">
+        <p className="text-sm text-gray-600">
+          Doors will be hung from a '{data.mountingTrack}' above, to manufacturer's specs, as supplied by others. 
+          Soffits, if required, as supplied by others.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default SupportStructureForm;
