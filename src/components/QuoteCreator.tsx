@@ -2,11 +2,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, LogOut, FileText, Plus } from "lucide-react";
+import { Building2, LogOut, FileText, Plus, Settings, Truck, Clock, Users } from "lucide-react";
 import ContactInfoForm from "./ContactInfoForm";
 import JobDetailsForm from "./JobDetailsForm";
 import WallSpecificationForm from "./WallSpecificationForm";
 import PricingForm from "./PricingForm";
+import SupportStructureForm from "./SupportStructureForm";
+import DeliveryForm from "./DeliveryForm";
+import LaborForm from "./LaborForm";
 import { useToast } from "@/hooks/use-toast";
 
 interface QuoteCreatorProps {
@@ -22,11 +25,24 @@ export interface WallSpecification {
   panelCount: string;
   panelType: string;
   quantity: string;
+  series: string;
+  model: string;
+  trackType: string;
+  panelThickness: string;
+  designType: string;
+  constructType: string;
+  stcRating: string;
+  trackSystem: string;
+  verticalSealants: string;
+  bottomSeals: string;
+  endPanelType: string;
+  finalSeal: string;
 }
 
 export interface QuoteData {
   contactInfo: {
     contactName: string;
+    contactEmail: string;
     address: string;
     phone: string;
     fax: string;
@@ -43,6 +59,19 @@ export interface QuoteData {
     };
   };
   walls: WallSpecification[];
+  supportStructure: {
+    mountingTrack: string;
+  };
+  delivery: {
+    trackDeliveryWeeks: string;
+    panelDeliveryWeeks: string;
+    trackInstallationDays: string;
+    panelInstallationDays: string;
+  };
+  labor: {
+    laborType: string;
+    wageRate: string;
+  };
   pricing: {
     basePrice: string;
     freight: string;
@@ -56,6 +85,7 @@ const QuoteCreator = ({ user, onLogout }: QuoteCreatorProps) => {
   const [quoteData, setQuoteData] = useState<QuoteData>({
     contactInfo: {
       contactName: "Ed Machinski",
+      contactEmail: "",
       address: "567 Commerce St, Franklin Lakes, NJ, 07417",
       phone: "(973) 884-0474",
       fax: "(973) 884-1606",
@@ -63,7 +93,7 @@ const QuoteCreator = ({ user, onLogout }: QuoteCreatorProps) => {
     },
     jobDetails: {
       date: new Date().toLocaleDateString(),
-      proposalNumber: "",
+      proposalNumber: Math.floor(Math.random() * 90000 + 10000).toString(),
       jobLocation: "",
       billedTo: {
         name: "",
@@ -72,6 +102,19 @@ const QuoteCreator = ({ user, onLogout }: QuoteCreatorProps) => {
       }
     },
     walls: [],
+    supportStructure: {
+      mountingTrack: "Pre-Drilled Steel Beam"
+    },
+    delivery: {
+      trackDeliveryWeeks: "1-2",
+      panelDeliveryWeeks: "3-4",
+      trackInstallationDays: "3-4",
+      panelInstallationDays: "1"
+    },
+    labor: {
+      laborType: "Non-Union",
+      wageRate: "Standard"
+    },
     pricing: {
       basePrice: "",
       freight: "",
@@ -94,7 +137,19 @@ const QuoteCreator = ({ user, onLogout }: QuoteCreatorProps) => {
       height: "",
       panelCount: "",
       panelType: "Continuously Hinged Panels",
-      quantity: "1"
+      quantity: "1",
+      series: "2000",
+      model: "2030",
+      trackType: "Paired Panels Track",
+      panelThickness: "3",
+      designType: "Trimless",
+      constructType: "Acoustical Substrate",
+      stcRating: "56",
+      trackSystem: "Steel Track System",
+      verticalSealants: "Tongue-and-Groove",
+      bottomSeals: "Retractable Seals",
+      endPanelType: "Fixed Wall Jamb",
+      finalSeal: "Bulb Seal"
     };
     
     setQuoteData(prev => ({
@@ -115,6 +170,9 @@ const QuoteCreator = ({ user, onLogout }: QuoteCreatorProps) => {
     { id: "contact", label: "Contact Info", icon: Building2 },
     { id: "job", label: "Job Details", icon: FileText },
     { id: "walls", label: "Wall Specs", icon: Building2 },
+    { id: "support", label: "Support Structure", icon: Settings },
+    { id: "delivery", label: "Delivery", icon: Truck },
+    { id: "labor", label: "Labor", icon: Users },
     { id: "pricing", label: "Pricing", icon: FileText }
   ];
 
@@ -205,6 +263,27 @@ const QuoteCreator = ({ user, onLogout }: QuoteCreatorProps) => {
                       onUpdate={(walls) => updateQuoteData("walls", walls)}
                     />
                   </div>
+                )}
+
+                {activeTab === "support" && (
+                  <SupportStructureForm
+                    data={quoteData.supportStructure}
+                    onUpdate={(data) => updateQuoteData("supportStructure", data)}
+                  />
+                )}
+
+                {activeTab === "delivery" && (
+                  <DeliveryForm
+                    data={quoteData.delivery}
+                    onUpdate={(data) => updateQuoteData("delivery", data)}
+                  />
+                )}
+
+                {activeTab === "labor" && (
+                  <LaborForm
+                    data={quoteData.labor}
+                    onUpdate={(data) => updateQuoteData("labor", data)}
+                  />
                 )}
                 
                 {activeTab === "pricing" && (

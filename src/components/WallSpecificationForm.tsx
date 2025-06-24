@@ -14,9 +14,19 @@ interface WallSpecificationFormProps {
 
 const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) => {
   const handleWallChange = (wallId: string, field: keyof WallSpecification, value: string) => {
-    const updatedWalls = walls.map(wall =>
-      wall.id === wallId ? { ...wall, [field]: value } : wall
-    );
+    const updatedWalls = walls.map(wall => {
+      if (wall.id === wallId) {
+        let updatedWall = { ...wall, [field]: value };
+        
+        // Auto-update panel thickness based on series
+        if (field === "series") {
+          updatedWall.panelThickness = value === "2000" ? "3" : value === "3000" ? "4" : "3";
+        }
+        
+        return updatedWall;
+      }
+      return wall;
+    });
     onUpdate(updatedWalls);
   };
 
@@ -31,6 +41,18 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     "Bi-Fold Panels",
     "Sliding Panels"
   ];
+
+  const seriesOptions = ["2000", "3000"];
+  const modelOptions = ["2030", "3040", "Custom"];
+  const trackTypes = ["Paired Panels Track", "Individual Track", "Bi-Fold Track"];
+  const designTypes = ["Trimless", "Non-Trimless"];
+  const constructTypes = ["Acoustical Substrate", "Standard Substrate", "Fire-Rated"];
+  const stcRatings = ["50", "53", "56", "59"];
+  const trackSystems = ["Steel Track System", "Aluminum Track System"];
+  const verticalSealants = ["Tongue-and-Groove", "Compression Seals", "Magnetic Seals"];
+  const bottomSeals = ["Retractable Seals", "Fixed Seals", "Adjustable Seals"];
+  const endPanelTypes = ["Fixed Wall Jamb", "Movable Jamb", "Pocket Door"];
+  const finalSeals = ["Bulb Seal", "Compression Seal", "Magnetic Seal"];
 
   if (walls.length === 0) {
     return (
@@ -56,6 +78,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Basic Dimensions */}
               <div className="space-y-2">
                 <Label htmlFor={`width-${wall.id}`}>Width</Label>
                 <Input
@@ -87,6 +110,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                 />
               </div>
               
+              {/* Panel Configuration */}
               <div className="space-y-2">
                 <Label htmlFor={`panelType-${wall.id}`}>Panel Type</Label>
                 <Select
@@ -114,6 +138,225 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                   onChange={(e) => handleWallChange(wall.id, "panelCount", e.target.value)}
                   placeholder="3"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`series-${wall.id}`}>Series</Label>
+                <Select
+                  value={wall.series}
+                  onValueChange={(value) => handleWallChange(wall.id, "series", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select series" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {seriesOptions.map((series) => (
+                      <SelectItem key={series} value={series}>
+                        {series}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`model-${wall.id}`}>Model</Label>
+                <Select
+                  value={wall.model}
+                  onValueChange={(value) => handleWallChange(wall.id, "model", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {modelOptions.map((model) => (
+                      <SelectItem key={model} value={model}>
+                        {model}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`trackType-${wall.id}`}>Track Type</Label>
+                <Select
+                  value={wall.trackType}
+                  onValueChange={(value) => handleWallChange(wall.id, "trackType", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select track type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {trackTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`panelThickness-${wall.id}`}>Panel Thickness (inches)</Label>
+                <Input
+                  id={`panelThickness-${wall.id}`}
+                  value={wall.panelThickness}
+                  onChange={(e) => handleWallChange(wall.id, "panelThickness", e.target.value)}
+                  placeholder="3"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`designType-${wall.id}`}>Design Type</Label>
+                <Select
+                  value={wall.designType}
+                  onValueChange={(value) => handleWallChange(wall.id, "designType", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select design type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {designTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`constructType-${wall.id}`}>Construction Type</Label>
+                <Select
+                  value={wall.constructType}
+                  onValueChange={(value) => handleWallChange(wall.id, "constructType", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select construction type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {constructTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`stcRating-${wall.id}`}>STC Rating</Label>
+                <Select
+                  value={wall.stcRating}
+                  onValueChange={(value) => handleWallChange(wall.id, "stcRating", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select STC rating" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {stcRatings.map((rating) => (
+                      <SelectItem key={rating} value={rating}>
+                        {rating}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`trackSystem-${wall.id}`}>Track System</Label>
+                <Select
+                  value={wall.trackSystem}
+                  onValueChange={(value) => handleWallChange(wall.id, "trackSystem", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select track system" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {trackSystems.map((system) => (
+                      <SelectItem key={system} value={system}>
+                        {system}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`verticalSealants-${wall.id}`}>Vertical Sealants</Label>
+                <Select
+                  value={wall.verticalSealants}
+                  onValueChange={(value) => handleWallChange(wall.id, "verticalSealants", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select vertical sealants" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {verticalSealants.map((sealant) => (
+                      <SelectItem key={sealant} value={sealant}>
+                        {sealant}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`bottomSeals-${wall.id}`}>Bottom Seals</Label>
+                <Select
+                  value={wall.bottomSeals}
+                  onValueChange={(value) => handleWallChange(wall.id, "bottomSeals", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select bottom seals" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {bottomSeals.map((seal) => (
+                      <SelectItem key={seal} value={seal}>
+                        {seal}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`endPanelType-${wall.id}`}>End Panel Type</Label>
+                <Select
+                  value={wall.endPanelType}
+                  onValueChange={(value) => handleWallChange(wall.id, "endPanelType", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select end panel type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {endPanelTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor={`finalSeal-${wall.id}`}>Final Seal</Label>
+                <Select
+                  value={wall.finalSeal}
+                  onValueChange={(value) => handleWallChange(wall.id, "finalSeal", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select final seal" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {finalSeals.map((seal) => (
+                      <SelectItem key={seal} value={seal}>
+                        {seal}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </CardContent>
