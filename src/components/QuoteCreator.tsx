@@ -10,6 +10,7 @@ import SupportStructureForm from "./SupportStructureForm";
 import DeliveryLaborForm from "./DeliveryLaborForm";
 import PricingForm from "./PricingForm";
 import { toast } from "sonner";
+import { WallSpecification } from "../types/quote";
 
 interface QuoteCreatorProps {
   user: string;
@@ -42,8 +43,10 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard }: QuoteCre
     }
   });
 
-  const [walls, setWalls] = useState([]);
-  const [supportStructure, setSupportStructure] = useState({});
+  const [walls, setWalls] = useState<WallSpecification[]>([]);
+  const [supportStructure, setSupportStructure] = useState({
+    mountingTrack: ""
+  });
   
   const [deliveryLabor, setDeliveryLabor] = useState({
     delivery: {
@@ -195,7 +198,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard }: QuoteCre
             </TabsContent>
 
             <TabsContent value="walls">
-              <WallSpecificationForm data={walls} onUpdate={setWalls} />
+              <WallSpecificationForm walls={walls} onUpdate={setWalls} />
             </TabsContent>
 
             <TabsContent value="support">
