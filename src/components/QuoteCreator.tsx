@@ -1,20 +1,20 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, LogOut, FileText, Plus, Settings, Truck, Clock, Users, ArrowLeft } from "lucide-react";
+import { Building2, LogOut, FileText, Plus, Settings, Truck, Users, ArrowLeft } from "lucide-react";
 import ContactInfoForm from "./ContactInfoForm";
 import JobDetailsForm from "./JobDetailsForm";
 import WallSpecificationForm from "./WallSpecificationForm";
 import PricingForm from "./PricingForm";
 import SupportStructureForm from "./SupportStructureForm";
-import DeliveryForm from "./DeliveryForm";
-import LaborForm from "./LaborForm";
+import DeliveryLaborForm from "./DeliveryLaborForm";
 import { useToast } from "@/hooks/use-toast";
 
 interface QuoteCreatorProps {
   user: string;
   onLogout: () => void;
   quoteName: string;
+  onBackToDashboard: () => void;
 }
 
 export interface WallSpecification {
@@ -62,15 +62,17 @@ export interface QuoteData {
   supportStructure: {
     mountingTrack: string;
   };
-  delivery: {
-    trackDeliveryWeeks: string;
-    panelDeliveryWeeks: string;
-    trackInstallationDays: string;
-    panelInstallationDays: string;
-  };
-  labor: {
-    laborType: string;
-    wageRate: string;
+  deliveryLabor: {
+    delivery: {
+      trackDeliveryWeeks: string;
+      panelDeliveryWeeks: string;
+      trackInstallationDays: string;
+      panelInstallationDays: string;
+    };
+    labor: {
+      laborType: string;
+      wageRate: string;
+    };
   };
   pricing: {
     basePrice: string;
@@ -79,21 +81,21 @@ export interface QuoteData {
   };
 }
 
-const QuoteCreator = ({ user, onLogout, quoteName }: QuoteCreatorProps) => {
+const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard }: QuoteCreatorProps) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("contact");
   
   const [quoteData, setQuoteData] = useState<QuoteData>({
     contactInfo: {
-      contactName: "Ed Machinski",
+      contactName: "",
       contactEmail: "",
-      address: "567 Commerce St, Franklin Lakes, NJ, 07417",
-      phone: "(973) 884-0474",
-      fax: "(973) 884-1606",
-      website: "contemporarywalls.com"
+      address: "",
+      phone: "",
+      fax: "",
+      website: ""
     },
     jobDetails: {
-      date: new Date().toLocaleDateString(),
+      date: new Date().toISOString().split('T')[0],
       proposalNumber: Math.floor(Math.random() * 90000 + 10000).toString(),
       jobLocation: "",
       billedTo: {
@@ -104,17 +106,19 @@ const QuoteCreator = ({ user, onLogout, quoteName }: QuoteCreatorProps) => {
     },
     walls: [],
     supportStructure: {
-      mountingTrack: "Pre-Drilled Steel Beam"
+      mountingTrack: ""
     },
-    delivery: {
-      trackDeliveryWeeks: "1-2",
-      panelDeliveryWeeks: "3-4",
-      trackInstallationDays: "3-4",
-      panelInstallationDays: "1"
-    },
-    labor: {
-      laborType: "Non-Union",
-      wageRate: "Standard"
+    deliveryLabor: {
+      delivery: {
+        trackDeliveryWeeks: "",
+        panelDeliveryWeeks: "",
+        trackInstallationDays: "",
+        panelInstallationDays: ""
+      },
+      labor: {
+        laborType: "",
+        wageRate: ""
+      }
     },
     pricing: {
       basePrice: "",
@@ -176,8 +180,7 @@ const QuoteCreator = ({ user, onLogout, quoteName }: QuoteCreatorProps) => {
     { id: "job", label: "Job Details", icon: FileText },
     { id: "walls", label: "Wall Specs", icon: Building2 },
     { id: "support", label: "Support Structure", icon: Settings },
-    { id: "delivery", label: "Delivery", icon: Truck },
-    { id: "labor", label: "Labor", icon: Users },
+    { id: "deliveryLabor", label: "Delivery & Labor", icon: Truck },
     { id: "pricing", label: "Pricing", icon: FileText }
   ];
 
@@ -190,11 +193,11 @@ const QuoteCreator = ({ user, onLogout, quoteName }: QuoteCreatorProps) => {
             <div className="flex items-center">
               <Button
                 variant="ghost"
-                onClick={handleBackToHome}
+                onClick={onBackToDashboard}
                 className="mr-4"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
+                Back to Dashboard
               </Button>
               <Building2 className="w-8 h-8 text-blue-600 mr-3" />
               <div>
@@ -289,17 +292,10 @@ const QuoteCreator = ({ user, onLogout, quoteName }: QuoteCreatorProps) => {
                   />
                 )}
 
-                {activeTab === "delivery" && (
-                  <DeliveryForm
-                    data={quoteData.delivery}
-                    onUpdate={(data) => updateQuoteData("delivery", data)}
-                  />
-                )}
-
-                {activeTab === "labor" && (
-                  <LaborForm
-                    data={quoteData.labor}
-                    onUpdate={(data) => updateQuoteData("labor", data)}
+                {activeTab === "deliveryLabor" && (
+                  <DeliveryLaborForm
+                    data={quoteData.deliveryLabor}
+                    onUpdate={(data) => updateQuoteData("deliveryLabor", data)}
                   />
                 )}
                 

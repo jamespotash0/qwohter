@@ -2,6 +2,7 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import MapboxInput from "./MapboxInput";
 
 interface JobDetailsData {
   date: string;
@@ -57,15 +58,13 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
           </div>
         </div>
         
-        <div className="space-y-2">
-          <Label htmlFor="jobLocation">Job Location</Label>
-          <Input
-            id="jobLocation"
-            value={data.jobLocation}
-            onChange={(e) => handleChange("jobLocation", e.target.value)}
-            placeholder="Enter job location"
-          />
-        </div>
+        <MapboxInput
+          label="Job Location"
+          value={data.jobLocation}
+          onChange={(value) => handleChange("jobLocation", value)}
+          placeholder="Enter job location"
+          id="jobLocation"
+        />
         
         <div className="border-t pt-6">
           <h3 className="text-lg font-medium mb-4">Billed To</h3>
@@ -91,13 +90,12 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
             </div>
             
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="billedAddress">Address</Label>
-              <Textarea
-                id="billedAddress"
+              <MapboxInput
+                label="Client Address"
                 value={data.billedTo.address}
-                onChange={(e) => handleBilledToChange("address", e.target.value)}
+                onChange={(value) => handleBilledToChange("address", value)}
                 placeholder="Client address"
-                rows={2}
+                id="billedAddress"
               />
             </div>
           </div>

@@ -24,10 +24,12 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
 
   const contactNames = [
     "Ed Machinski",
-    "John Smith",
-    "Sarah Johnson",
-    "Michael Brown",
-    "Custom"
+    "Stan Potash"
+  ];
+
+  const contactEmails = [
+    "ed@contemporarywalls.com",
+    "stan@contemporarywalls.com"
   ];
 
   return (
@@ -55,13 +57,21 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
 
         <div className="space-y-2">
           <Label htmlFor="contactEmail">Contact Email</Label>
-          <Input
-            id="contactEmail"
-            type="email"
+          <Select
             value={data.contactEmail}
-            onChange={(e) => handleChange("contactEmail", e.target.value)}
-            placeholder="contact@contemporarywalls.com"
-          />
+            onValueChange={(value) => handleChange("contactEmail", value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select contact email" />
+            </SelectTrigger>
+            <SelectContent className="bg-white">
+              {contactEmails.map((email) => (
+                <SelectItem key={email} value={email}>
+                  {email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         
         <div className="space-y-2">
@@ -70,7 +80,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             id="phone"
             value={data.phone}
             onChange={(e) => handleChange("phone", e.target.value)}
-            placeholder="(xxx) xxx-xxxx"
+            placeholder="(973) 884-0474"
           />
         </div>
         
@@ -80,7 +90,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             id="fax"
             value={data.fax}
             onChange={(e) => handleChange("fax", e.target.value)}
-            placeholder="(xxx) xxx-xxxx"
+            placeholder="(973) 884-1606"
           />
         </div>
         
@@ -90,7 +100,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             id="address"
             value={data.address}
             onChange={(e) => handleChange("address", e.target.value)}
-            placeholder="Enter full address"
+            placeholder="567 Commerce St, Franklin Lakes, NJ, 07417"
           />
         </div>
         
@@ -100,7 +110,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             id="website"
             value={data.website}
             onChange={(e) => handleChange("website", e.target.value)}
-            placeholder="company.com"
+            placeholder="www.contemporarywalls.com"
           />
         </div>
       </div>
