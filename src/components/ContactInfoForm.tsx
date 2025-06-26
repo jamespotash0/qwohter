@@ -1,9 +1,8 @@
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEffect } from "react";
-import { User, Mail, MapPin, Phone, Fax, Globe } from "lucide-react";
+import { User, Mail, MapPin, Phone, Printer, Globe } from "lucide-react";
 
 interface ContactInfoData {
   contactName: string;
@@ -139,7 +138,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
         
         <div className="space-y-3">
           <Label htmlFor="fax" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <Fax className="w-4 h-4" />
+            <Printer className="w-4 h-4" />
             Fax *
           </Label>
           <Input
