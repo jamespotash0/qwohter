@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, FileText, Sparkles } from "lucide-react";
 
 interface CreateQuoteDialogProps {
   onCreateQuote: (quoteName: string) => void;
@@ -31,18 +31,27 @@ const CreateQuoteDialog = ({ onCreateQuote }: CreateQuoteDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3" size="lg">
+        <Button className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105" size="lg">
           <Plus className="w-5 h-5 mr-2" />
           Create New Quote
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Create New Quote</DialogTitle>
+      <DialogContent className="sm:max-w-md bg-white/95 backdrop-blur-sm border border-white/80 rounded-2xl shadow-2xl">
+        <DialogHeader className="text-center space-y-3">
+          <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl mx-auto mb-4">
+            <FileText className="w-8 h-8 text-blue-600" />
+          </div>
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+            Create New Quote
+          </DialogTitle>
+          <p className="text-slate-600">Start building your professional quote</p>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="quoteName">Quote Name</Label>
+        <div className="space-y-6 py-6">
+          <div className="space-y-3">
+            <Label htmlFor="quoteName" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              Quote Name
+            </Label>
             <Input
               id="quoteName"
               value={quoteName}
@@ -50,16 +59,21 @@ const CreateQuoteDialog = ({ onCreateQuote }: CreateQuoteDialogProps) => {
               onKeyPress={handleKeyPress}
               placeholder="Enter quote name (e.g., Office Building Project)"
               autoFocus
+              className="h-12 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-200"
             />
           </div>
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>
+          <div className="flex justify-end space-x-3 pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setOpen(false)}
+              className="px-6 py-2 rounded-xl border-slate-200 hover:bg-slate-50 transition-all duration-200"
+            >
               Cancel
             </Button>
             <Button 
               onClick={handleCreate}
               disabled={!quoteName.trim()}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 px-6 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Create Quote
             </Button>
