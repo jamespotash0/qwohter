@@ -38,64 +38,70 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
+            <Label htmlFor="date">Date *</Label>
             <Input
               id="date"
               type="date"
               value={data.date}
               onChange={(e) => handleChange("date", e.target.value)}
+              required
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="proposalNumber">Proposal Number</Label>
+            <Label htmlFor="proposalNumber">Proposal Number *</Label>
             <Input
               id="proposalNumber"
               value={data.proposalNumber}
               onChange={(e) => handleChange("proposalNumber", e.target.value)}
               placeholder="Enter proposal number"
+              required
             />
           </div>
         </div>
         
         <MapboxInput
-          label="Job Location"
+          label="Job Location *"
           value={data.jobLocation}
           onChange={(value) => handleChange("jobLocation", value)}
           placeholder="Enter job location"
           id="jobLocation"
+          required
         />
         
         <div className="border-t pt-6">
           <h3 className="text-lg font-medium mb-4">Billed To</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="billedName">Name</Label>
+              <Label htmlFor="billedName">Name *</Label>
               <Input
                 id="billedName"
                 value={data.billedTo.name}
                 onChange={(e) => handleBilledToChange("name", e.target.value)}
                 placeholder="Client name"
+                required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="billedCompany">Company</Label>
+              <Label htmlFor="billedCompany">Company *</Label>
               <Input
                 id="billedCompany"
                 value={data.billedTo.company}
                 onChange={(e) => handleBilledToChange("company", e.target.value)}
                 placeholder="Company name"
+                required
               />
             </div>
             
             <div className="space-y-2 md:col-span-2">
               <MapboxInput
-                label="Client Address"
+                label="Client Address *"
                 value={data.billedTo.address}
                 onChange={(value) => handleBilledToChange("address", value)}
                 placeholder="Client address"
                 id="billedAddress"
+                required
               />
             </div>
           </div>

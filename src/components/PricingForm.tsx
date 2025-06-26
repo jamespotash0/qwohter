@@ -1,4 +1,3 @@
-
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,8 @@ interface PricingData {
   basePrice: string;
   freight: string;
   total: string;
+  paymentUponDrawings: string;
+  paymentUponTrackInstallation: string;
 }
 
 interface PricingFormProps {
@@ -41,7 +42,20 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
     }
   }, [data.basePrice, data.freight]);
 
+  // Validation function
+  const isFormValid = () => {
+    return data.basePrice && 
+           data.freight && 
+           data.paymentUponDrawings && 
+           data.paymentUponTrackInstallation;
+  };
+
   const generatePDF = () => {
+    if (!isFormValid()) {
+      alert("Please fill in all required fields before generating the PDF.");
+      return;
+    }
+
     const doc = new jsPDF();
     
     // Header with company name
@@ -200,6 +214,31 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
     doc.setFont("helvetica", "bold");
     doc.text(`TOTAL: ${calculatedTotal || '$0.00'}`, 20, yPos);
     
+    // Payment terms
+    yPos += 15;
+    doc.setFont("helvetica", "bold");
+    doc.text('Payment Terms:', 20, yPos);
+    yPos += 7;
+    doc.setFont("helvetica", "normal");
+    doc.text(`${data.paymentUponDrawings}% due upon approval of shop drawings`, 20, yPos);
+    yPos += 7;
+    doc.text(`${data.paymentUponTrackInstallation}% due upon track installation`, 20, yPos);
+    yPos += 7;
+    const remainingPercent = 100 - (parseInt(data.paymentUponDrawings) || 0) - (parseInt(data.paymentUponTrackInstallation) || 0);
+    doc.text(`${remainingPercent}% remaining balance due upon final completion`, 20, yPos);
+    
+    // General Notes
+    yPos += 15;
+    doc.setFont("helvetica", "bold");
+    doc.text('General Notes:', 20, yPos);
+    yPos += 7;
+    doc.setFont("helvetica", "normal");
+    doc.text('• All materials are FOB factory, prepaid, and added to the final invoice', 20, yPos);
+    yPos += 7;
+    doc.text('• Pricing is firm for 60 days from date above', 20, yPos);
+    yPos += 7;
+    doc.text('• 10-year factory warranty provided on all operable wall systems', 20, yPos);
+    
     // Download the PDF
     doc.save(`quote-${quoteData?.jobDetails?.proposalNumber || 'proposal'}.pdf`);
     
@@ -213,7 +252,7 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="basePrice">Base Price ($)</Label>
+            <Label htmlFor="basePrice">Base Price ($) *</Label>
             <Input
               id="basePrice"
               type="number"
@@ -221,11 +260,12 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
               value={data.basePrice}
               onChange={(e) => handleChange("basePrice", e.target.value)}
               placeholder="0.00"
+              required
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="freight">Estimated Freight + Delivery ($)</Label>
+            <Label htmlFor="freight">Estimated Freight + Delivery ($) *</Label>
             <Input
               id="freight"
               type="number"
@@ -233,7 +273,41 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
               value={data.freight}
               onChange={(e) => handleChange("freight", e.target.value)}
               placeholder="0.00"
+              required
             />
+          </div>
+        </div>
+
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-medium mb-4">Payment Terms</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="paymentUponDrawings">Payment % Upon Drawings *</Label>
+              <Input
+                id="paymentUponDrawings"
+                type="number"
+                min="0"
+                max="100"
+                value={data.paymentUponDrawings}
+                onChange={(e) => handleChange("paymentUponDrawings", e.target.value)}
+                placeholder="33"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="paymentUponTrackInstallation">Payment % Upon Track Installation *</Label>
+              <Input
+                id="paymentUponTrackInstallation"
+                type="number"
+                min="0"
+                max="100"
+                value={data.paymentUponTrackInstallation}
+                onChange={(e) => handleChange("paymentUponTrackInstallation", e.target.value)}
+                placeholder="33"
+                required
+              />
+            </div>
           </div>
         </div>
         
@@ -246,30 +320,12 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
           </div>
         </div>
         
-        <div className="border-t pt-6">
-          <h3 className="text-lg font-medium mb-4">Terms & Conditions</h3>
-          <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-700 space-y-2">
-            <p><strong>Payment Terms:</strong></p>
-            <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>33% due upon approval of shop drawings</li>
-              <li>33% due upon track installation</li>
-              <li>Remaining balance due upon final completion</li>
-            </ul>
-            <p className="mt-4"><strong>General Notes:</strong></p>
-            <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>All materials are FOB factory, prepaid, and added to the final invoice</li>
-              <li>Pricing is firm for 60 days from date above</li>
-              <li>10-year factory warranty provided on all operable wall systems</li>
-              <li>STC rating of 56 minimum (Highest Available)</li>
-            </ul>
-          </div>
-        </div>
-        
         <div className="flex justify-end">
           <Button 
             onClick={generatePDF}
             className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3"
             size="lg"
+            disabled={!isFormValid()}
           >
             <FileText className="w-5 h-5 mr-2" />
             Generate Quote PDF

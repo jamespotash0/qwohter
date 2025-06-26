@@ -45,42 +45,46 @@ const DeliveryLaborForm = ({ data, onUpdate }: DeliveryLaborFormProps) => {
         <h3 className="text-lg font-medium mb-4">Delivery Schedule</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="trackDelivery">Track Delivery (Weeks)</Label>
+            <Label htmlFor="trackDelivery">Track Delivery (Weeks) *</Label>
             <Input
               id="trackDelivery"
               value={data.delivery.trackDeliveryWeeks}
               onChange={(e) => handleDeliveryChange("trackDeliveryWeeks", e.target.value)}
-              placeholder="1-2"
+              placeholder="e.g., 1-2 or 3"
+              required
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="panelDelivery">Panel Delivery (Weeks)</Label>
+            <Label htmlFor="panelDelivery">Panel Delivery (Weeks) *</Label>
             <Input
               id="panelDelivery"
               value={data.delivery.panelDeliveryWeeks}
               onChange={(e) => handleDeliveryChange("panelDeliveryWeeks", e.target.value)}
-              placeholder="3-4"
+              placeholder="e.g., 3-4 or 5"
+              required
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="trackInstallation">Track Installation (Days)</Label>
+            <Label htmlFor="trackInstallation">Track Installation (Days) *</Label>
             <Input
               id="trackInstallation"
               value={data.delivery.trackInstallationDays}
               onChange={(e) => handleDeliveryChange("trackInstallationDays", e.target.value)}
-              placeholder="3-4"
+              placeholder="e.g., 3-4 or 2"
+              required
             />
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="panelInstallation">Panel Installation (Days)</Label>
+            <Label htmlFor="panelInstallation">Panel Installation (Days) *</Label>
             <Input
               id="panelInstallation"
               value={data.delivery.panelInstallationDays}
               onChange={(e) => handleDeliveryChange("panelInstallationDays", e.target.value)}
-              placeholder="1"
+              placeholder="e.g., 1 or 2-3"
+              required
             />
           </div>
         </div>
@@ -91,10 +95,11 @@ const DeliveryLaborForm = ({ data, onUpdate }: DeliveryLaborFormProps) => {
         <h3 className="text-lg font-medium mb-4">Labor Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="laborType">Labor Type</Label>
+            <Label htmlFor="laborType">Labor Type *</Label>
             <Select
               value={data.labor.laborType}
               onValueChange={(value) => handleLaborChange("laborType", value)}
+              required
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select labor type" />
@@ -107,18 +112,18 @@ const DeliveryLaborForm = ({ data, onUpdate }: DeliveryLaborFormProps) => {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="wageRate">Wage Rate</Label>
+            <Label htmlFor="wageRate">Wage Rate *</Label>
             <Select
               value={data.labor.wageRate}
               onValueChange={(value) => handleLaborChange("wageRate", value)}
+              required
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select wage rate" />
               </SelectTrigger>
               <SelectContent className="bg-white">
+                <SelectItem value="Prevailing">Prevailing</SelectItem>
                 <SelectItem value="Standard">Standard</SelectItem>
-                <SelectItem value="Premium">Premium</SelectItem>
-                <SelectItem value="Overtime">Overtime</SelectItem>
               </SelectContent>
             </Select>
           </div>

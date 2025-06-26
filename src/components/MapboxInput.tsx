@@ -9,9 +9,10 @@ interface MapboxInputProps {
   onChange: (value: string) => void;
   placeholder: string;
   id: string;
+  required?: boolean;
 }
 
-const MapboxInput = ({ label, value, onChange, placeholder, id }: MapboxInputProps) => {
+const MapboxInput = ({ label, value, onChange, placeholder, id, required = false }: MapboxInputProps) => {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [mapboxToken, setMapboxToken] = useState("");
@@ -72,6 +73,7 @@ const MapboxInput = ({ label, value, onChange, placeholder, id }: MapboxInputPro
         onChange={(e) => handleInputChange(e.target.value)}
         placeholder={placeholder}
         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+        required={required}
       />
       
       {showSuggestions && suggestions.length > 0 && (
