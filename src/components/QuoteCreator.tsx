@@ -17,10 +17,13 @@ interface QuoteCreatorProps {
   onLogout: () => void;
   quoteName: string;
   onBackToDashboard: () => void;
+  onQuoteNameChange?: (newName: string) => void;
 }
 
-const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard }: QuoteCreatorProps) => {
+const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNameChange }: QuoteCreatorProps) => {
   const [activeTab, setActiveTab] = useState("contact");
+  const [editingQuoteName, setEditingQuoteName] = useState(false);
+  const [localQuoteName, setLocalQuoteName] = useState(quoteName);
   
   // Form data states
   const [contactInfo, setContactInfo] = useState({
@@ -164,10 +167,39 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard }: QuoteCre
               </Button>
               <div className="h-8 w-px bg-slate-300"></div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                  {quoteName}
-                </h1>
-                <p className="text-sm text-slate-500 font-medium">Quote Builder</p>
+                {editingQuoteName ? (
+                  <input
+                    type="text"
+                    value={localQuoteName}
+                    onChange={(e) => setLocalQuoteName(e.target.value)}
+                    onBlur={() => {
+                      setEditingQuoteName(false);
+                      if (onQuoteNameChange && localQuoteName.trim()) {
+                        onQuoteNameChange(localQuoteName.trim());
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        setEditingQuoteName(false);
+                        if (onQuoteNameChange && localQuoteName.trim()) {
+                          onQuoteNameChange(localQuoteName.trim());
+                        }
+                      }
+                    }}
+                    className="text-2xl font-bold bg-transparent border-b-2 border-blue-400 focus:outline-none focus:border-blue-600 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent"
+                    autoFocus
+                  />
+                ) : (
+                  <h1 
+                    className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent cursor-pointer hover:opacity-70 transition-opacity"
+                    onClick={() => setEditingQuoteName(true)}
+                  >
+                    {localQuoteName}
+                  </h1>
+                )}
+                <p className="text-sm text-slate-500 font-medium">
+                  Quote Builder {editingQuoteName ? '(Click Enter to save)' : '(Click to edit)'}
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">

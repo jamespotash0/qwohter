@@ -317,13 +317,17 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
               <Label htmlFor="paymentUponDrawings">Payment % Upon Drawings *</Label>
               <Input
                 id="paymentUponDrawings"
-                type="number"
-                min="0"
-                max="100"
+                type="text"
                 value={data.paymentUponDrawings}
-                onChange={(e) => handleChange("paymentUponDrawings", e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^\d]/g, '');
+                  if (parseInt(value) <= 100 || value === '') {
+                    handleChange("paymentUponDrawings", value);
+                  }
+                }}
                 placeholder="33"
                 required
+                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
             
@@ -331,13 +335,17 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
               <Label htmlFor="paymentUponTrackInstallation">Payment % Upon Track Installation *</Label>
               <Input
                 id="paymentUponTrackInstallation"
-                type="number"
-                min="0"
-                max="100"
+                type="text"
                 value={data.paymentUponTrackInstallation}
-                onChange={(e) => handleChange("paymentUponTrackInstallation", e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/[^\d]/g, '');
+                  if (parseInt(value) <= 100 || value === '') {
+                    handleChange("paymentUponTrackInstallation", value);
+                  }
+                }}
                 placeholder="33"
                 required
+                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           </div>

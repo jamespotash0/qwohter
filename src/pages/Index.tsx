@@ -24,6 +24,10 @@ const Index = () => {
     setCurrentQuote(quoteName);
   };
 
+  const handleQuoteNameChange = (newName: string) => {
+    setCurrentQuote(newName);
+  };
+
   const handleBackToDashboard = () => {
     setCurrentQuote("");
   };
@@ -48,6 +52,7 @@ const Index = () => {
       onLogout={handleLogout} 
       quoteName={currentQuote}
       onBackToDashboard={handleBackToDashboard}
+      onQuoteNameChange={handleQuoteNameChange}
     />
   );
 };
