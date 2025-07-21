@@ -218,8 +218,8 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard }: QuoteCre
           </div>
 
           {/* Enhanced Content Container */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/60 overflow-hidden">
-            <div className="p-8 md:p-12">
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/60 overflow-hidden min-h-[600px]">
+            <div className="p-8 md:p-12 h-full">
               <TabsContent value="contact" className="mt-0">
                 <ContactInfoForm data={contactInfo} onUpdate={setContactInfo} />
               </TabsContent>

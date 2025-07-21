@@ -39,12 +39,6 @@ const SupportStructureForm = ({ data, onUpdate }: SupportStructureFormProps) => 
           </Select>
         </div>
       </div>
-      <div className="mt-4 p-4 bg-gray-50 rounded-md">
-        <p className="text-sm text-gray-600">
-          Doors will be hung from a '{data.mountingTrack}' above, to manufacturer's specs, as supplied by others. 
-          Soffits, if required, as supplied by others.
-        </p>
-      </div>
     </div>
   );
 };

@@ -23,8 +23,40 @@ interface PricingFormProps {
 const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps) => {
   const [calculatedTotal, setCalculatedTotal] = useState("");
 
+  // Format number with commas and decimals
+  const formatNumber = (value: string): string => {
+    // Remove all non-numeric characters except decimal point
+    const cleanValue = value.replace(/[^\d.]/g, '');
+    
+    // Handle multiple decimal points
+    const parts = cleanValue.split('.');
+    if (parts.length > 2) {
+      return parts[0] + '.' + parts.slice(1).join('');
+    }
+    
+    // If there's a decimal point, limit to 2 decimal places
+    if (parts.length === 2) {
+      return parts[0] + '.' + parts[1].slice(0, 2);
+    }
+    
+    return cleanValue;
+  };
+
+  const displayNumber = (value: string): string => {
+    if (!value || value === '') return '';
+    
+    const num = parseFloat(value);
+    if (isNaN(num)) return value;
+    
+    return num.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
   const handleChange = (field: keyof PricingData, value: string) => {
-    onUpdate({ ...data, [field]: value });
+    const formattedValue = formatNumber(value);
+    onUpdate({ ...data, [field]: formattedValue });
   };
 
   // Calculate total automatically
@@ -255,12 +287,12 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
             <Label htmlFor="basePrice">Base Price ($) *</Label>
             <Input
               id="basePrice"
-              type="number"
-              step="0.01"
-              value={data.basePrice}
+              type="text"
+              value={displayNumber(data.basePrice)}
               onChange={(e) => handleChange("basePrice", e.target.value)}
               placeholder="0.00"
               required
+              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
           
@@ -268,12 +300,12 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
             <Label htmlFor="freight">Estimated Freight + Delivery ($) *</Label>
             <Input
               id="freight"
-              type="number"
-              step="0.01"
-              value={data.freight}
+              type="text"
+              value={displayNumber(data.freight)}
               onChange={(e) => handleChange("freight", e.target.value)}
               placeholder="0.00"
               required
+              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
         </div>

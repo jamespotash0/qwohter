@@ -56,6 +56,8 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
               onChange={(e) => handleChange("proposalNumber", e.target.value)}
               placeholder="Enter proposal number"
               required
+              readOnly
+              className="bg-gray-50 text-gray-600"
             />
           </div>
         </div>

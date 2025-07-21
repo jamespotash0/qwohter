@@ -131,8 +131,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             onChange={(e) => handleChange("phone", e.target.value)}
             placeholder="(973) 884-0474"
             required
-            readOnly
-            className="h-12 rounded-xl bg-slate-50/80 border-slate-200 text-slate-600"
+            className="h-12 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-200"
           />
         </div>
         
@@ -147,8 +146,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             onChange={(e) => handleChange("fax", e.target.value)}
             placeholder="(973) 884-1606"
             required
-            readOnly
-            className="h-12 rounded-xl bg-slate-50/80 border-slate-200 text-slate-600"
+            className="h-12 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-200"
           />
         </div>
         
@@ -163,8 +161,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             onChange={(e) => handleChange("address", e.target.value)}
             placeholder="567 Commerce St, Franklin Lakes, NJ, 07417"
             required
-            readOnly
-            className="h-12 rounded-xl bg-slate-50/80 border-slate-200 text-slate-600"
+            className="h-12 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-200"
           />
         </div>
         
@@ -179,8 +176,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             onChange={(e) => handleChange("website", e.target.value)}
             placeholder="www.contemporarywalls.com"
             required
-            readOnly
-            className="h-12 rounded-xl bg-slate-50/80 border-slate-200 text-slate-600"
+            className="h-12 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-200"
           />
         </div>
       </div>
