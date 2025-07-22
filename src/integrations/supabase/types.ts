@@ -14,7 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      quotes: {
+        Row: {
+          created_at: string
+          date_last_downloaded: string | null
+          id: string
+          job_details: Json
+          price_details: Json
+          proposal_number: string
+          quote_details: Json
+          status: string
+          updated_at: string
+          user_id: string
+          version: number
+          wall_details: Json
+        }
+        Insert: {
+          created_at?: string
+          date_last_downloaded?: string | null
+          id?: string
+          job_details?: Json
+          price_details?: Json
+          proposal_number: string
+          quote_details?: Json
+          status?: string
+          updated_at?: string
+          user_id: string
+          version?: number
+          wall_details?: Json
+        }
+        Update: {
+          created_at?: string
+          date_last_downloaded?: string | null
+          id?: string
+          job_details?: Json
+          price_details?: Json
+          proposal_number?: string
+          quote_details?: Json
+          status?: string
+          updated_at?: string
+          user_id?: string
+          version?: number
+          wall_details?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

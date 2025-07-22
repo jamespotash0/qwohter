@@ -7,18 +7,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, FileText, Sparkles } from "lucide-react";
 
 interface CreateQuoteDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onCreateQuote: (quoteName: string) => void;
 }
 
-const CreateQuoteDialog = ({ onCreateQuote }: CreateQuoteDialogProps) => {
+const CreateQuoteDialog = ({ open, onOpenChange, onCreateQuote }: CreateQuoteDialogProps) => {
   const [quoteName, setQuoteName] = useState("");
-  const [open, setOpen] = useState(false);
 
   const handleCreate = () => {
     if (quoteName.trim()) {
       onCreateQuote(quoteName.trim());
       setQuoteName("");
-      setOpen(false);
+      onOpenChange(false);
     }
   };
 
@@ -29,7 +30,7 @@ const CreateQuoteDialog = ({ onCreateQuote }: CreateQuoteDialogProps) => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105" size="lg">
           <Plus className="w-5 h-5 mr-2" />
@@ -65,7 +66,7 @@ const CreateQuoteDialog = ({ onCreateQuote }: CreateQuoteDialogProps) => {
           <div className="flex justify-end space-x-3 pt-4">
             <Button 
               variant="outline" 
-              onClick={() => setOpen(false)}
+              onClick={() => onOpenChange(false)}
               className="px-6 py-2 rounded-xl border-slate-200 hover:bg-slate-50 transition-all duration-200"
             >
               Cancel

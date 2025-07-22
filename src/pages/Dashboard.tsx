@@ -1,26 +1,42 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
 import QuoteCreator from "@/components/QuoteCreator";
 import Dashboard from "@/components/Dashboard";
 
 const DashboardPage = () => {
-  const [user, setUser] = useState<string>("");
+  const [user, setUser] = useState<User | null>(null);
   const [currentQuote, setCurrentQuote] = useState<string>("");
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is logged in (you can implement proper auth checking here)
-    const loggedInUser = localStorage.getItem("loggedInUser");
-    if (!loggedInUser) {
-      navigate("/");
-      return;
-    }
-    setUser(loggedInUser);
+    // Check authentication and set up listener
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/auth");
+        return;
+      }
+      setUser(session.user);
+    };
+
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("loggedInUser");
-    navigate("/");
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
   };
 
   const handleEditQuote = (quoteName: string) => {
@@ -36,13 +52,13 @@ const DashboardPage = () => {
   };
 
   if (!user) {
-    return null; // Will redirect to login
+    return null; // Will redirect to auth
   }
 
   if (!currentQuote) {
     return (
       <Dashboard 
-        user={user} 
+        user={user.email || ""} 
         onLogout={handleLogout} 
         onEditQuote={handleEditQuote}
       />
@@ -51,7 +67,7 @@ const DashboardPage = () => {
 
   return (
     <QuoteCreator 
-      user={user} 
+      user={user.email || ""} 
       onLogout={handleLogout} 
       quoteName={currentQuote}
       onBackToDashboard={handleBackToDashboard}

@@ -43,6 +43,7 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
+  const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
   const [quotes, setQuotes] = useState<Quote[]>([
     {
       id: "1",
@@ -153,7 +154,11 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
                 <p className="text-slate-600 mt-1">Plan, prioritize, and accomplish your tasks with ease.</p>
               </div>
               <div className="flex gap-3">
-                <CreateQuoteDialog onCreateQuote={handleCreateQuote} />
+        <CreateQuoteDialog 
+          open={showNewQuoteDialog}
+          onOpenChange={setShowNewQuoteDialog}
+          onCreateQuote={handleCreateQuote} 
+        />
                 {/* <Button variant="outline" className="bg-white">
                   Import Data
                 </Button> */}
