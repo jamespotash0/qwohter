@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2, Plus, Edit, Trash2, DollarSign, FileText, TrendingUp, Calendar, User } from "lucide-react";
 import CreateQuoteDialog from "./CreateQuoteDialog";
 
@@ -51,6 +52,12 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
 
   const handleDeleteQuote = (id: string) => {
     setQuotes(prev => prev.filter(quote => quote.id !== id));
+  };
+
+  const handleStatusChange = (id: string, newStatus: string) => {
+    setQuotes(prev => prev.map(quote => 
+      quote.id === id ? { ...quote, status: newStatus } : quote
+    ));
   };
 
   const totalQuotes = quotes.length;
@@ -172,13 +179,31 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
                       </td>
                       <td className="p-6 font-bold text-emerald-700">${quote.totalCost.toLocaleString()}</td>
                       <td className="p-6">
-                        <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
-                          quote.status === 'Completed' 
-                            ? 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200' 
-                            : 'bg-amber-100 text-amber-800 ring-1 ring-amber-200'
-                        }`}>
-                          {quote.status}
-                        </span>
+                        <Select value={quote.status.toLowerCase()} onValueChange={(value) => handleStatusChange(quote.id, value.charAt(0).toUpperCase() + value.slice(1))}>
+                          <SelectTrigger className="w-32 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white">
+                            <SelectItem value="draft">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                                <span>Draft</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="completed">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                <span>Completed</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="submitted">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                <span>Submitted</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </td>
                       <td className="p-6">
                         <div className="flex space-x-3">

@@ -166,7 +166,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
       {/* Enhanced Header */}
       <div className="bg-white/80 backdrop-blur-md shadow-lg border-b border-slate-200/60 sticky top-0 z-50">
         <div className="w-full max-w-7xl mx-auto px-6">
-          <div className="flex flex-wrap justify-between items-start gap-4 h-auto py-4">
+          <div className="flex justify-between items-center h-16 py-4">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
@@ -176,94 +176,8 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Dashboard
               </Button>
-              <div className="h-8 w-px bg-slate-300"></div>
-              <div className="flex items-center space-x-3">
-                {editingQuoteName ? (
-                  <QuoteNameInput
-                    value={localQuoteName}
-                    maxChars={50}
-                    onChange={(e) => setLocalQuoteName(e.target.value)}
-                    onSave={() => {
-                      setEditingQuoteName(false);
-                      if (onQuoteNameChange && localQuoteName.trim()) {
-                        onQuoteNameChange(localQuoteName.trim());
-                      }
-                    }}
-                  />
-                
-                  // <>
-                  //   <input
-                  //     type="text"
-                  //     value={localQuoteName}
-                  //     onChange={(e) => setLocalQuoteName(e.target.value)}
-                  //     onBlur={() => {
-                  //       setEditingQuoteName(false);
-                  //       if (onQuoteNameChange && localQuoteName.trim()) {
-                  //         onQuoteNameChange(localQuoteName.trim());
-                  //       }
-                  //     }}
-                  //     onKeyDown={(e) => {
-                  //       if (e.key === 'Enter') {
-                  //         setEditingQuoteName(false);
-                  //         if (onQuoteNameChange && localQuoteName.trim()) {
-                  //           onQuoteNameChange(localQuoteName.trim());
-                  //         }
-                  //       }
-                  //     }}
-                  //     className="text-xl sm:text-2xl font-bold bg-transparent border-b-2 border-blue-400 focus:outline-none focus:border-blue-600 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent w-full max-w-md truncate"
-                  //     autoFocus
-                  //   />
-                  //   <span className="text-sm text-slate-500 font-medium whitespace-nowrap">(Click Enter to save)</span>
-                  // </>
-                ) : (
-                  <>
-                    <h1
-                      className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent cursor-pointer hover:opacity-70 transition-opacity"
-                      onClick={() => setEditingQuoteName(true)}
-                    >
-                      {localQuoteName}
-                    </h1>
-                    <span
-                      className="text-sm text-slate-500 font-medium whitespace-nowrap cursor-pointer"
-                      onClick={() => setEditingQuoteName(true)}
-                    >
-                      (Click to edit)
-                    </span>
-                  </>
-                )}
-              </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-slate-600">Quote Status</label>
-                  <Select value={quoteStatus} onValueChange={setQuoteStatus}>
-                    <SelectTrigger className="w-32 h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white">
-                      <SelectItem value="draft">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                          <span>Draft</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="completed">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                          <span>Completed</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="submitted">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                          <span>Submitted</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
               <div className="text-right">
                 <p className="text-sm font-medium text-slate-900">Welcome Back</p>
                 <p className="text-xs text-slate-500">{user}</p>
@@ -275,6 +189,74 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
               >
                 Logout
               </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quote Name Section */}
+      <div className="bg-white/60 backdrop-blur-sm border-b border-slate-200/40">
+        <div className="w-full max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              {editingQuoteName ? (
+                <QuoteNameInput
+                  value={localQuoteName}
+                  maxChars={50}
+                  onChange={(e) => setLocalQuoteName(e.target.value)}
+                  onSave={() => {
+                    setEditingQuoteName(false);
+                    if (onQuoteNameChange && localQuoteName.trim()) {
+                      onQuoteNameChange(localQuoteName.trim());
+                    }
+                  }}
+                />
+              ) : (
+                <>
+                  <h1
+                    className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent cursor-pointer hover:opacity-70 transition-opacity"
+                    onClick={() => setEditingQuoteName(true)}
+                  >
+                    {localQuoteName}
+                  </h1>
+                  <span
+                    className="text-sm text-slate-500 font-medium whitespace-nowrap cursor-pointer"
+                    onClick={() => setEditingQuoteName(true)}
+                  >
+                    (Click to edit)
+                  </span>
+                </>
+              )}
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-600">Quote Status</label>
+                <Select value={quoteStatus} onValueChange={setQuoteStatus}>
+                  <SelectTrigger className="w-36 h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="draft">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                        <span>Draft</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="completed">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                        <span>Completed</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="submitted">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                        <span>Submitted</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </div>
