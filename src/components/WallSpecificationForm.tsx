@@ -70,11 +70,11 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   ];
 
   const seriesOptions = ["2000", "3000"];
-  const modelOptions = ["2030", "3040", "Custom"];
+  const modelOptions = ["2010", "2020","2030", "2050e", "3010", "3020", "3030", "3050e", "2010GL", "2020GL", "2030GL", "3010GL", "3020GL", "3030GL"];
   const trackTypes = ["Paired Panels Track", "Individual Track", "Bi-Fold Track"];
   const designTypes = ["Trimless", "Non-Trimless"];
   const constructTypes = ["Acoustical Substrate", "Standard Substrate", "Fire-Rated"];
-  const stcRatings = ["50", "53", "56", "59"];
+  const stcRatings = ["38", "41", "42", "43", "45", "46", "48", "49", "50", "51", "52", "56"];
   const trackSystems = ["425 Clear Anodized Aluminum", "850 Clear Anodized Aluminum", "850 Steel"];
   const verticalSealants = ["Tongue-and-Groove", "Compression Seals", "Magnetic Seals"];
   const bottomSeals = ["Retractable Seals", "Fixed Seals", "Adjustable Seals"];
