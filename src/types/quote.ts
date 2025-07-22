@@ -2,8 +2,10 @@
 export interface WallSpecification {
   id: string;
   name: string;
-  width: string;
-  height: string;
+  widthFeet: string;
+  widthInches: string;
+  heightFeet: string;
+  heightInches: string;
   quantity: string;
   panelType: string;
   panelCount: string;
