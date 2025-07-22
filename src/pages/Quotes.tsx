@@ -90,16 +90,21 @@ const Quotes = () => {
   };
 
   const downloadPDF = async (quote: Quote) => {
+    if (!quote.quote_details?.quoteName && !quote.project_name) {
+      toast({
+        title: "PDF Download Failed",
+        description: "Quote name is required for PDF generation",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      // Mark as downloaded (will increment version)
-      await markAsDownloaded(quote.id);
-      
       // Import the quote text generator
       const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
       
       // Generate the full quote text with HTML
       const quoteText = generateQuoteText(quote);
-  
       
       // Create PDF with the canvas image
       const doc = new jsPDF({
@@ -119,26 +124,9 @@ const Quotes = () => {
       let yPosition = 50;
       const lineHeight = 14;
 
-      const lines = quoteText.split('\n');
-      
-      // const imgData = canvas.toDataURL('image/png');
-      // const imgWidth = 210;
-      // const pageHeight = 295;
-      // const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      // let heightLeft = imgHeight;
-      
-      // let position = 0;
-      
-      // // Add the image to PDF, splitting across pages if necessary
-      // doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      // heightLeft -= pageHeight;
-      
-      // while (heightLeft >= 0) {
-      //   position = heightLeft - imgHeight;
-      //   doc.addPage();
-      //   doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      //   heightLeft -= pageHeight;
-      // }
+      // Strip HTML tags and split into lines
+      const plainText = quoteText.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+      const lines = plainText.split('\n');
       
       lines.forEach((line, index) => {
         // Check if we need a new page
@@ -148,16 +136,16 @@ const Quotes = () => {
         }
         
         // Handle section headers (make them bold)
-        if (line.match(/^(BILLED TO:|PANELS:|TRACK:|SUPPORT STRUCTURE (HEADER)|GENERAL:|Payment Terms:|General Notes and Terms:|Specifications as follows:|Signed By:|Date:)/)) {
+        if (line.match(/^(Contact:|Address:|Phone:|Fax:|Website:|Date:|Proposal #:|Job Location:|BILLED TO:|PANELS:|TRACK:|SUPPORT STRUCTURE \(HEADER\):|GENERAL:|Payment Terms:|General Notes and Terms:|Specifications as follows:|Signed By:)/)) {
           doc.setFont('times', 'bold');
           doc.setFontSize(12);
         } 
         else if (line.match(/^(ACCEPTANCE OF PROPOSAL:)/)) {
-          doc.setFont('times', 'bold', 'italic');
+          doc.setFont('times', 'bold');
           doc.setFontSize(9);
         }
-        else if (line.match(/^('The above prices, specifications, and conditions are satisfactory and are hereby accepted')/)) {
-          doc.setFont('times', 'normal', 'italic');
+        else if (line.match(/The above prices, specifications, and conditions are satisfactory/)) {
+          doc.setFont('times', 'italic');
           doc.setFontSize(9);
         }
         else {
@@ -166,9 +154,8 @@ const Quotes = () => {
         }
         
         // Handle wall specifications section with wider width and left indent
-        const isWallSpec = line.match(/^Wall [A-Z]/) || 
-                          (index > 0 && lines[index-1].match(/^Specifications as follows:/)) ||
-                          (index > 0 && lines[index-1].match(/^Wall [A-Z]/));
+        const isWallSpec = line.match(/^(Wall [A-Z]|Specifications as follows:)/) || 
+                          (index > 0 && lines[index-1].match(/^(Specifications as follows:|Wall [A-Z])/));
         
         const currentMaxWidth = isWallSpec ? wallSpecWidth - leftIndent : maxWidth;
         const currentX = isWallSpec ? margin + leftIndent : margin;
@@ -196,14 +183,23 @@ const Quotes = () => {
         }
       });
 
-
+      // Use current version (starts at 1) and increment after download
+      const currentVersion = quote.version || 1;
+      const today = new Date();
+      const dateStr = today.toLocaleDateString('en-CA'); // This gives YYYY-MM-DD format in local timezone
+      const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
+      
       doc.setFont('times', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
-      doc.text(`Version: ${quote.version + 1}`, margin, 770);
+      doc.text(`Version: ${currentVersion}`, margin, 770);
       
-      // Save the PDF
-      doc.save(`quote-${quote.proposal_number}-v${quote.version + 1}.pdf`);
+      // Save the PDF with current version, then increment
+      const fileName = `${quoteName}_v${currentVersion}_${dateStr}.pdf`;
+      doc.save(fileName);
+      
+      // Mark as downloaded (will increment version for next download)
+      await markAsDownloaded(quote.id);
       
       toast({
         title: "PDF Downloaded",
@@ -223,7 +219,8 @@ const Quotes = () => {
           format: 'a4'
         });
         
-        const splitText = doc.splitTextToSize(quoteText, 180);
+        const plainText = quoteText.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+        const splitText = doc.splitTextToSize(plainText, 180);
         doc.setFontSize(10);
         let y = 20;
         const lineHeight = 5;
@@ -237,11 +234,20 @@ const Quotes = () => {
           y += lineHeight;
         });
         
+        const currentVersion = quote.version || 1;
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('en-CA');
+        const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
+        
         doc.setFontSize(8);
         doc.setTextColor(128, 128, 128);
-        doc.text(`Version: ${quote.version + 1}`, 15, 290);
+        doc.text(`Version: ${currentVersion}`, 15, 290);
         
-        doc.save(`quote-${quote.proposal_number}-v${quote.version + 1}.pdf`);
+        const fileName = `${quoteName}_v${currentVersion}_${dateStr}.pdf`;
+        doc.save(fileName);
+        
+        // Mark as downloaded (will increment version for next download)
+        await markAsDownloaded(quote.id);
         
         toast({
           title: "PDF Downloaded",
