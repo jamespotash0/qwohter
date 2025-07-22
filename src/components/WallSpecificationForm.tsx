@@ -63,9 +63,9 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           updatedWall.stcRating = "";
         }
         
-        if (field === "panelSkin" || field === "series") {
-          // Auto-calculate STC rating based on series and panel skin
-          updatedWall.stcRating = getSTCRating(updatedWall.series, updatedWall.panelSkin);
+        if (field === "panelSkin" || field === "model") {
+          // Reset STC rating when model or panel skin changes
+          updatedWall.stcRating = "";
         }
         
         if (field === "trackType") {
@@ -139,22 +139,45 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     return [];
   };
 
-  const getSTCRating = (series: string, panelSkin: string): string => {
-    if (!series || !panelSkin) return "";
-    
-    if (series === "2000") {
-      if (panelSkin.includes("Acoustical Substrate")) return "45";
-      if (panelSkin.includes("Steel")) return "38";
-      if (panelSkin.includes("Wood Veneer")) return "40";
-      if (panelSkin.includes("High-Pressure Laminate")) return "42";
-      return "";
-    } else if (series === "3000") {
-      if (panelSkin.includes("Acoustical Substrate")) return "52";
-      if (panelSkin.includes("Steel")) return "46";
-      if (panelSkin.includes("Wood Veneer")) return "48";
-      if (panelSkin.includes("High-Pressure Laminate")) return "50";
-      return "";
+  const getSTCRatingOptions = (model: string, panelSkin: string): string[] => {
+    if (!model || !panelSkin) return [];
+
+    // 2010GL, 2020GL
+    if (["2010GL", "2020GL"].includes(model)) {
+      return ["38"];
     }
+
+    // 3010GL, 3020GL
+    if (["3010GL", "3020GL"].includes(model)) {
+      return ["43", "48"];
+    }
+
+    // 2010, 2020, 2030, 2050e
+    if (["2010", "2020", "2030", "2050e"].includes(model)) {
+      if (panelSkin.includes("Acoustical Substrate")) {
+        return ["42", "45", "49", "50"];
+      }
+      if (panelSkin.includes("Steel")) {
+        return ["49", "51"];
+      }
+    }
+
+    // 3010, 3020, 3030, 3050e
+    if (["3010", "3020", "3030", "3050e"].includes(model)) {
+      if (panelSkin.includes("Steel")) {
+        return ["46", "50", "52", "56"];
+      }
+      if (panelSkin.includes("Acoustical Substrate")) {
+        return ["43", "46", "48", "50"];
+      }
+    }
+
+    return [];
+  };
+
+  const getSTCRating = (series: string, panelSkin: string): string => {
+    // This function is kept for backward compatibility but now returns empty
+    // STC rating should be selected from dropdown options
     return "";
   };
 
@@ -445,13 +468,22 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
 
                     <div className="space-y-2">
                       <Label htmlFor={`stcRating-${wall.id}`} className="text-sm font-medium">STC Rating</Label>
-                      <Input
-                        id={`stcRating-${wall.id}`}
+                      <Select
                         value={wall.stcRating}
-                        placeholder="Auto-calculated"
-                        className="text-center bg-muted"
-                        readOnly
-                      />
+                        onValueChange={(value) => handleWallChange(wall.id, "stcRating", value)}
+                        disabled={!wall.model || !wall.panelSkin}
+                      >
+                        <SelectTrigger className="bg-background">
+                          <SelectValue placeholder="Select STC rating" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border z-50">
+                          {getSTCRatingOptions(wall.model, wall.panelSkin).map((rating) => (
+                            <SelectItem key={rating} value={rating}>
+                              {rating}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
