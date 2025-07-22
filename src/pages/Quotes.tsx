@@ -98,88 +98,100 @@ const Quotes = () => {
       const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
       
       // Generate the full quote text with HTML
-      const quoteHTML = generateQuoteText(quote);
-      
-      // Create a temporary container for HTML rendering
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = quoteHTML;
-      
-      // Apply CSS styles
-      const style = document.createElement('style');
-      style.textContent = `
-        body {
-          font-family: "Times New Roman", serif;
-          font-size: 12pt;
-          line-height: 1.15;
-          max-width: 6.58in;
-          margin: 0 auto;
-        }
-
-        h2.section-header {
-          font-weight: bold;
-          font-size: 12pt;
-          margin-top: 1.5em;
-          margin-bottom: 0.5em;
-        }
-
-        .wall-specifications {
-          line-height: 1.15;
-          max-width: 7.25in;
-          padding-left: 0.5in;
-        }
-        
-        .acceptance-section {
-          font-size: 9pt;
-          font-style: italic;
-        }
-      `;
-      
-      document.head.appendChild(style);
-      document.body.appendChild(tempDiv);
-      
-      // Use html2canvas and jsPDF to render the HTML content
-      const html2canvas = (await import('html2canvas')).default;
-      
-      const canvas = await html2canvas(tempDiv, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff'
-      });
-      
-      // Clean up
-      document.head.removeChild(style);
-      document.body.removeChild(tempDiv);
+      const quoteText = generateQuoteText(quote);
+  
       
       // Create PDF with the canvas image
       const doc = new jsPDF({
         orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
+        unit: 'pt',
+        format: 'letter'
       });
+
+      doc.setFont('Times', 'normal');
+      doc.setFontSize(12);
+      const pageWidth = 612;
+      const margin = 36;
+      const maxWidth = 474;
+      const wallSpecWidth = 522;
+      const leftIndent = 36;
+
+      let yPosition = 50;
+      const lineHeight = 14;
+
+      const lines = quoteText.split('\n');
       
-      const imgData = canvas.toDataURL('image/png');
-      const imgWidth = 210;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
+      // const imgData = canvas.toDataURL('image/png');
+      // const imgWidth = 210;
+      // const pageHeight = 295;
+      // const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      // let heightLeft = imgHeight;
       
-      let position = 0;
+      // let position = 0;
       
-      // Add the image to PDF, splitting across pages if necessary
-      doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      // // Add the image to PDF, splitting across pages if necessary
+      // doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      // heightLeft -= pageHeight;
       
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        doc.addPage();
-        doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
+      // while (heightLeft >= 0) {
+      //   position = heightLeft - imgHeight;
+      //   doc.addPage();
+      //   doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      //   heightLeft -= pageHeight;
+      // }
       
-      // Add version information
+      lines.forEach((line, index) => {
+        // Check if we need a new page
+        if (yPosition > 720) { // Letter height is 792pt, leave margin at bottom
+          doc.addPage();
+          yPosition = 50;
+        }
+        
+        // Handle section headers (make them bold)
+        if (line.match(/^(PANELS:|TRACK:|SUPPORT STRUCTURE|GENERAL:|Payment Terms:|ACCEPTANCE OF PROPOSAL:)/)) {
+          doc.setFont('times', 'bold');
+          doc.setFontSize(12);
+        } else {
+          doc.setFont('times', 'normal');
+          doc.setFontSize(12);
+        }
+        
+        // Handle wall specifications section with wider width and left indent
+        const isWallSpec = line.match(/^Wall [A-Z]/) || 
+                          (index > 0 && lines[index-1].match(/^Specifications as follows:/)) ||
+                          (index > 0 && lines[index-1].match(/^Wall [A-Z]/));
+        
+        const currentMaxWidth = isWallSpec ? wallSpecWidth - leftIndent : maxWidth;
+        const currentX = isWallSpec ? margin + leftIndent : margin;
+        
+        if (line.trim()) {
+          // Split long lines to fit width
+          const splitText = doc.splitTextToSize(line, currentMaxWidth);
+          
+          if (Array.isArray(splitText)) {
+            splitText.forEach((textLine: string) => {
+              if (yPosition > 720) {
+                doc.addPage();
+                yPosition = 50;
+              }
+              doc.text(textLine, currentX, yPosition);
+              yPosition += lineHeight;
+            });
+          } else {
+            doc.text(splitText, currentX, yPosition);
+            yPosition += lineHeight;
+          }
+        } else {
+          // Empty line - add spacing
+          yPosition += lineHeight * 0.5;
+        }
+      });
+
+
+      doc.setFont('times', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
-      doc.text(`Version: ${quote.version + 1}`, 15, 290);
+      doc.text(`Version: ${quote.version + 1}`, margin, 770);
       
       // Save the PDF
       doc.save(`quote-${quote.proposal_number}-v${quote.version + 1}.pdf`);
