@@ -319,7 +319,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
                   <SelectContent className="bg-white">
                     <SelectItem value="Draft">
                       <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                        <div className="w-2 h-2 rounded-full bg-gray-500"></div>
                         <span>Draft</span>
                       </div>
                     </SelectItem>
@@ -329,9 +329,9 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
                         <span>Completed</span>
                       </div>
                     </SelectItem>
-                    <SelectItem value="submitted">
+                    <SelectItem value="Pending">
                       <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                        <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
                         <span>Submitted</span>
                       </div>
                     </SelectItem>
