@@ -1,8 +1,13 @@
 import { useState } from "react";
 import { 
-  FileText, 
+  BarChart3, 
+  Calendar, 
+  Home, 
   Settings, 
+  HelpCircle, 
   LogOut, 
+  Users, 
+  FileText,
   Building2
 } from "lucide-react";
 
@@ -11,6 +16,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -24,39 +30,101 @@ interface AppSidebarProps {
   onLogout: () => void;
 }
 
+const menuItems = [
+  { title: "Dashboard", icon: Home, isActive: true },
+  { title: "Tasks", icon: FileText, badge: "12+" },
+  { title: "Calendar", icon: Calendar },
+  { title: "Analytics", icon: BarChart3 },
+  { title: "Team", icon: Users },
+];
+
+const generalItems = [
+  { title: "Settings", icon: Settings },
+  { title: "Help", icon: HelpCircle },
+];
+
 export function AppSidebar({ user, onLogout }: AppSidebarProps) {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
 
   return (
     <Sidebar className={isCollapsed ? "w-16" : "w-64"} collapsible="icon">
-      <SidebarHeader className="p-6 border-b border-border">
+      <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 bg-primary rounded-xl shadow-lg">
-            <Building2 className="w-6 h-6 text-primary-foreground" />
+          <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg">
+            <Building2 className="w-5 h-5 text-primary-foreground" />
           </div>
           {!isCollapsed && (
-            <div>
-              <h1 className="font-bold text-lg text-foreground">Quote System</h1>
-              <p className="text-xs text-muted-foreground">Manage your quotes</p>
-            </div>
+            <span className="font-bold text-lg text-foreground">Donezo</span>
           )}
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-3 py-4">
-        {/* Main Navigation */}
+      <SidebarContent>
+        {/* Main Menu */}
         <SidebarGroup>
+          <SidebarGroupLabel className="text-xs font-medium text-muted-foreground mb-2">
+            {!isCollapsed ? "MENU" : ""}
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {menuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton 
+                    asChild 
+                    className={`w-full justify-start ${
+                      item.isActive 
+                        ? "bg-primary text-primary-foreground font-medium" 
+                        : "hover:bg-muted"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 cursor-pointer">
+                      <item.icon className="h-4 w-4" />
+                      {!isCollapsed && (
+                        <>
+                          <span className="flex-1">{item.title}</span>
+                          {item.badge && (
+                            <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
+                              {item.badge}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* General Section */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-xs font-medium text-muted-foreground mb-2">
+            {!isCollapsed ? "GENERAL" : ""}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {generalItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild className="w-full justify-start hover:bg-muted">
+                    <div className="flex items-center gap-3 cursor-pointer">
+                      <item.icon className="h-4 w-4" />
+                      {!isCollapsed && <span>{item.title}</span>}
+                    </div>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+              
               <SidebarMenuItem>
                 <SidebarMenuButton 
                   asChild 
-                  className="w-full justify-start bg-primary text-primary-foreground font-medium shadow-sm"
+                  className="w-full justify-start hover:bg-muted text-destructive hover:text-destructive"
+                  onClick={onLogout}
                 >
                   <div className="flex items-center gap-3 cursor-pointer">
-                    <FileText className="h-5 w-5" />
-                    {!isCollapsed && <span>Quotes</span>}
+                    <LogOut className="h-4 w-4" />
+                    {!isCollapsed && <span>Logout</span>}
                   </div>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -65,31 +133,25 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-3 border-t border-border">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild className="w-full justify-start hover:bg-muted">
-              <div className="flex items-center gap-3 cursor-pointer">
-                <Settings className="h-4 w-4" />
-                {!isCollapsed && <span>Settings</span>}
+      {/* Mobile App Download Card */}
+      {!isCollapsed && (
+        <SidebarFooter className="p-4">
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-4 text-white">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                <Building2 className="w-4 h-4" />
               </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          
-          <SidebarMenuItem>
-            <SidebarMenuButton 
-              asChild 
-              className="w-full justify-start hover:bg-muted text-destructive hover:text-destructive"
-              onClick={onLogout}
-            >
-              <div className="flex items-center gap-3 cursor-pointer">
-                <LogOut className="h-4 w-4" />
-                {!isCollapsed && <span>Logout</span>}
+              <div>
+                <h4 className="font-medium text-sm">Download our Mobile App</h4>
+                <p className="text-xs text-white/70">Get easy in another way</p>
               </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
+            </div>
+            <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium py-2 px-3 rounded-lg transition-colors">
+              Download
+            </button>
+          </div>
+        </SidebarFooter>
+      )}
     </Sidebar>
   );
 }
