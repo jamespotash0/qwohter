@@ -171,6 +171,12 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         />
                         <Label className="text-xs text-gray-500 mt-1 block text-center">Inches</Label>
                       </div>
+                    </div>
+                  </div>
+                  {/* Quantity */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Panel Count</Label>
+                    <div className="flex gap-2">
                       <div className="flex-1">
                         <Input
                           value={wall.panelCount}
@@ -178,13 +184,12 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                           placeholder="3"
                           className="text-center"
                         />
-                        <Label className="text-xs text-gray-500 mt-1 block text-center">Panel Count</Label>
+                        {/* <Label className="text-xs text-gray-500 mt-1 block text-center">Panel Count</Label> */}
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-
               {/* Wall Details Section */}
               <div>
                 <h4 className="text-lg font-medium mb-4 text-gray-900">Wall Details</h4>
