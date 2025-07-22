@@ -98,7 +98,7 @@ export const generateQuoteText = (data: QuoteData): string => {
   const wallSystemType = getWallSystemType();
 
   // Support Structure
-  const mountingTrack = data.support_structure?.mountingTrack || 'Pre-Drilled Steel Beam';
+  const mountingTrack = data.support_structure?.mountingTrack || '';
 
   // Delivery & Labor
   const trackDelivery = data.delivery_details?.trackDeliveryWeeks || '';
@@ -132,23 +132,21 @@ ${billedToAddress}
 
 Thank you for considering Contemporary Wall Systems for this project. As discussed, we are offering a proposal to furnish, deliver, and install, as noted, ${wallCount === 1 ? 'ONE (1)' : wallCount === 2 ? 'TWO (2)' : wallCount === 3 ? 'THREE (3)' : wallCount === 4 ? 'FOUR (4)' : `${wallCount}`} ${wallSystemType} as specified below, at the above named project.
 
-Specifications as follows:${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
+Specifications as follows:
+
+${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
   const dimensions = formatDimensions(wall.widthFeet, wall.widthInches, wall.heightFeet, wall.heightInches);
   const panelCount = wall.panelCount || '';
   const panelType = wall.panelType || '';
   const quantity = wall.quantity || '1';
   
   return `
-${wallName} ${dimensions} ${toWords(panelCount).charAt(0).toUpperCase()} (${panelCount}) ${panelType} ${quantity} Each`;}).join('')}
+${wallName}  ${dimensions}  ${toWords(panelCount)} (${panelCount})  ${panelType}  ${quantity} Each`;}).join('')}
 
 PANELS:
-This wall system utilizes the Kwik-Wall ${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || ''}
-configured with ${wallEntries[0]?.[1]?.panelType || ''} designed for use with a ${wallEntries[0]?.[1]?.trackType || ''} Layout, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
+This wall system utilizes the Kwik-Wall ${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || ''} configured with ${wallEntries[0]?.[1]?.panelType || ''} designed for use with a ${wallEntries[0]?.[1]?.trackType || ''} Layout, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
 
-The wall consists of ${getPanelTypeText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelType || ''}, finished in an 
-Unfinished Rift Cut White Oak Veneer finish 
-(as selected from the manufacturer's standard offerings). The wall stands ${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches).split(' x ')[1]} in height, with panel widths varying as needed. Each panel is nominally ${wallEntries[0]?.[1]?.panelThickness || ''}" thick, constructed with a Steel Faced 1/2" gypsum board laminated to an acoustic material. 
-Each panel features a Trimless Design and are suspended from an ${wallEntries[0]?.[1]?.trackSystem || ''} overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through ${wallEntries[0]?.[1]?.verticalSealants || ''} vertical seals that create a continuous interlock, and ${wallEntries[0]?.[1]?.bottomSeals || ''} used with limited pressure mechanism operable bottom seals, set at the time of panel's placement and retract into the panels when in use for virtually effortless movement. End panels will incorporate a ${wallEntries[0]?.[1]?.endPanelType || ''}, which uses a Bulb as a final seal.
+The wall consists of ${getPanelTypeText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelType || ''}, finished in an Unfinished Rift Cut White Oak Veneer finish (as selected from the manufacturer's standard offerings). The wall stands ${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches).split(' x ')[1]} in height, with panel widths varying as needed. Each panel is nominally ${wallEntries[0]?.[1]?.panelThickness || ''}" thick, constructed with a Steel Faced 1/2" gypsum board laminated to an acoustic material. Each panel features a Trimless Design and are suspended from an ${wallEntries[0]?.[1]?.trackSystem || ''} overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through ${wallEntries[0]?.[1]?.verticalSealants || ''} vertical seals that create a continuous interlock, and ${wallEntries[0]?.[1]?.bottomSeals || ''} used with limited pressure mechanism operable bottom seals, set at the time of panel's placement and retract into the panels when in use for virtually effortless movement. End panels will incorporate a ${wallEntries[0]?.[1]?.endPanelType || ''}, which uses a Bulb as a final seal.
 
 TRACK:
 We will be using an ${wallEntries[0]?.[1]?.trackSystem || ''} Track System to suspend the doors from above. This track allows for Bi-Fold of the panels when not in use.
@@ -166,25 +164,23 @@ Total ${total}
 Above Proposal is a Good Faith Estimate, Based on the Information Provided & Subject to Revision Upon Site Visit & Inspection. Pricing is Firm for 60 Days From Date Above
 
 General Notes and Terms:
-All materials are FOB factory, prepaid, and added to the final invoice.
-Electrical, HVAC, and sprinkler system modifications, if required, are the responsibility of others.
-All labor is ${laborType}, performed at ${wageRate} Wage Rates during regular hours (Monday–Friday, 7:00 AM–3:30 PM).
-Delivery includes drop-off to the Roof of the site, if applicable.
-Pricing is exclusive of any applicable taxes, which will be added as required.
-The customer is responsible for obtaining any necessary permits or associated fees.
-Final pricing is subject to site inspection and verification of all dimensions and conditions by our installation team.
-Any additional requirements or unforeseen conditions may be subject to revised pricing or additional charges.
-Panel colors and finishes are available as per the manufacturer's current standard offerings.
-A 10-year factory warranty is provided on all operable wall systems.
+1. All materials are FOB factory, prepaid, and added to the final invoice.
+2. Electrical, HVAC, and sprinkler system modifications, if required, are the responsibility of others.
+3. All labor is ${laborType}, performed at ${wageRate} Wage Rates during regular hours (Monday–Friday, 7:00 AM–3:30 PM).
+4. Delivery includes drop-off to the Roof of the site, if applicable.
+5. Pricing is exclusive of any applicable taxes, which will be added as required.
+6. The customer is responsible for obtaining any necessary permits or associated fees.
+7. Final pricing is subject to site inspection and verification of all dimensions and conditions by our installation team.
+8. Any additional requirements or unforeseen conditions may be subject to revised pricing or additional charges.
+9. Panel colors and finishes are available as per the manufacturer's current standard offerings.
+10. A 10-year factory warranty is provided on all operable wall systems.
 
 Payment Terms:
    -${paymentUponDrawings}% due upon approval of shop drawings
    -${paymentUponTrackInstallation}% due upon track installation
    - Remaining balance due upon final completion
 
-Signed By:
-
-Date: ${date}
+Signed By: __________________________   Date: ${date}
 
 ACCEPTANCE OF PROPOSAL:
 The above prices, specifications, and conditions are satisfactory and are hereby accepted. Any alteration or deviation from above specifications will be executed upon written approval and may/will be subject to additional costs over and above the estimate. All removal of packing material is the customer's responsibility. Electrical and H.V.A.C. installation(s) are not included. Visa, Mastercard and American Express (AMEX) are accepted. Payments by credit card will be charged a processing fee. Pricing subject to applicable sales tax unless otherwise noted. Late payments will be subject to a 1.5% finance charge per month. Cancellations will be subject to a restocking fee.`;

@@ -212,7 +212,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
 
   const addNewWall = () => {
     const wallCount = Object.keys(walls.walls).length;
-    const newWallName = `Wall ${wallCount + 1}`;
+    const newWallName = `Wall ${String.fromCharCode(65 + wallCount)}`;
     const newWall: WallSpecification = {
       wallSystemType: "",
       widthFeet: "",
