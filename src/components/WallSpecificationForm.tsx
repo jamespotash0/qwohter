@@ -95,6 +95,15 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Wall Specifications</h2>
+        <Button
+          onClick={addNewWall}
+          className="bg-primary text-white hover:bg-primary/90"
+        >
+          Add Wall
+        </Button>
+      </div>
       {walls.map((wall, index) => (
         <Card key={wall.id}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">

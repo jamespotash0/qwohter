@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import ContactInfoForm from "./ContactInfoForm";
 import JobDetailsForm from "./JobDetailsForm";
@@ -27,6 +28,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   const [localQuoteName, setLocalQuoteName] = useState(quoteName);
   
   // Form data states
+  const [quoteStatus, setQuoteStatus] = useState("draft");
   const [contactInfo, setContactInfo] = useState({
     contactName: "",
     contactEmail: "",
@@ -101,6 +103,14 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
            deliveryLabor.labor.wageRate;
   };
 
+  const isWallSpecValid = () => {
+    return walls.length > 0;
+  };
+
+  const isSupportStructureValid = () => {
+    return supportStructure.mountingTrack !== "";
+  };
+
   const isPricingValid = () => {
     return pricing.basePrice && 
            pricing.freight && 
@@ -145,8 +155,8 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   const tabs = [
     { id: "contact", label: "Contact Info", isValid: isContactInfoValid() },
     { id: "job", label: "Job Details", isValid: isJobDetailsValid() },
-    { id: "walls", label: "Wall Specs", isValid: true },
-    { id: "support", label: "Support Structure", isValid: true },
+    { id: "walls", label: "Wall Specs", isValid: isWallSpecValid() },
+    { id: "support", label: "Support Structure", isValid: isSupportStructureValid() },
     { id: "delivery", label: "Delivery & Labor", isValid: isDeliveryLaborValid() },
     { id: "pricing", label: "Pricing", isValid: isPricingValid() }
   ];
@@ -224,6 +234,36 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-600">Quote Status</label>
+                  <Select value={quoteStatus} onValueChange={setQuoteStatus}>
+                    <SelectTrigger className="w-32 h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="draft">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                          <span>Draft</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="completed">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                          <span>Completed</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="submitted">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                          <span>Submitted</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <div className="text-right">
                 <p className="text-sm font-medium text-slate-900">Welcome Back</p>
                 <p className="text-xs text-slate-500">{user}</p>
