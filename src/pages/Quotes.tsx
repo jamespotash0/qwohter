@@ -184,8 +184,11 @@ const Quotes = () => {
             <h2 className="text-2xl font-bold">Project Quotes</h2>
             <p className="text-muted-foreground">Manage and track your project quotes</p>
           </div>
-          <Button onClick={() => setShowNewQuoteDialog(true)}>
-            New Quote
+          <Button 
+            onClick={() => setShowNewQuoteDialog(true)}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            + Create new Quote
           </Button>
         </div>
 
