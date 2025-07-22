@@ -70,7 +70,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       case "Individual Panels":
         return ["2000", "3000"];
       case "Hinged-Paired Panels":
-        return ["3000"];
+        return ["2000", "3000"];
       case "Continuously-Hinged Panels":
         return ["2000", "3000"];
       default:
