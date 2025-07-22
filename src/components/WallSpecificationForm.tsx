@@ -24,7 +24,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           updatedWall.series = "";
           updatedWall.model = "";
           updatedWall.panelThickness = "";
-          updatedWall.constructType = "";
+          updatedWall.panelSkin = "";
           updatedWall.stcRating = "";
           updatedWall.trackType = "";
           updatedWall.trackSystem = "";
@@ -39,7 +39,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           updatedWall.series = "";
           updatedWall.model = "";
           updatedWall.panelThickness = "";
-          updatedWall.constructType = "";
+          updatedWall.panelSkin = "";
           updatedWall.stcRating = "";
           updatedWall.trackType = "";
           updatedWall.trackSystem = "";
@@ -50,7 +50,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           updatedWall.panelThickness = value === "2000" ? "3" : value === "3000" ? "4" : "";
           // Reset dependent fields
           updatedWall.model = "";
-          updatedWall.constructType = "";
+          updatedWall.panelSkin = "";
           updatedWall.stcRating = "";
         }
         
@@ -59,13 +59,13 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           updatedWall.trackType = getTrackTypeByModel(value);
           updatedWall.trackSystem = "";
           // Reset dependent fields
-          updatedWall.constructType = "";
+          updatedWall.panelSkin = "";
           updatedWall.stcRating = "";
         }
         
-        if (field === "constructType" || field === "series") {
-          // Auto-calculate STC rating based on series and construction type
-          updatedWall.stcRating = getSTCRating(updatedWall.series, updatedWall.constructType);
+        if (field === "panelSkin" || field === "series") {
+          // Auto-calculate STC rating based on series and panel skin
+          updatedWall.stcRating = getSTCRating(updatedWall.series, updatedWall.panelSkin);
         }
         
         if (field === "trackType") {
@@ -119,30 +119,41 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     return "";
   };
 
-  const getConstructionTypesByModel = (model: string): string[] => {
-    if (model.includes("GL")) {
-      return ["Acoustical Substrate", "Fire-Rated"];
+  const getPanelSkinOptions = (model: string): string[] => {
+    // 3010, 3020, 3030 series
+    if (["3010", "3020", "3030"].includes(model)) {
+      return ["Steel (Standard)", "Acoustical Substrate (Optional)", "Wood Veneer (Optional)", "High-Pressure Laminate/Gypsum (Optional)"];
     }
-    return ["Acoustical Substrate", "Standard Substrate", "Fire-Rated"];
+    // 3050e, 3010GL, 3020GL, 3030GL series  
+    if (["3050e", "3010GL", "3020GL", "3030GL"].includes(model)) {
+      return ["Steel (Standard)", "Acoustical Substrate (Optional)"];
+    }
+    // 2010, 2020, 2030 series
+    if (["2010", "2020", "2030"].includes(model)) {
+      return ["Acoustical Substrate (Standard)", "Steel (Optional)", "Wood Veneer (Optional)", "High-Pressure Laminate (Optional)"];
+    }
+    // 2050e, 2010GL, 2020GL, 2030GL series
+    if (["2050e", "2010GL", "2020GL", "2030GL"].includes(model)) {
+      return ["Acoustical Substrate (Standard)", "Steel (Optional)"];
+    }
+    return [];
   };
 
-  const getSTCRating = (series: string, constructType: string): string => {
-    if (!series || !constructType) return "";
+  const getSTCRating = (series: string, panelSkin: string): string => {
+    if (!series || !panelSkin) return "";
     
     if (series === "2000") {
-      switch (constructType) {
-        case "Acoustical Substrate": return "45";
-        case "Standard Substrate": return "38";
-        case "Fire-Rated": return "42";
-        default: return "";
-      }
+      if (panelSkin.includes("Acoustical Substrate")) return "45";
+      if (panelSkin.includes("Steel")) return "38";
+      if (panelSkin.includes("Wood Veneer")) return "40";
+      if (panelSkin.includes("High-Pressure Laminate")) return "42";
+      return "";
     } else if (series === "3000") {
-      switch (constructType) {
-        case "Acoustical Substrate": return "52";
-        case "Standard Substrate": return "46";
-        case "Fire-Rated": return "48";
-        default: return "";
-      }
+      if (panelSkin.includes("Acoustical Substrate")) return "52";
+      if (panelSkin.includes("Steel")) return "46";
+      if (panelSkin.includes("Wood Veneer")) return "48";
+      if (panelSkin.includes("High-Pressure Laminate")) return "50";
+      return "";
     }
     return "";
   };
@@ -180,7 +191,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       series: "",
       model: "",
       panelThickness: "",
-      constructType: "",
+      panelSkin: "",
       stcRating: "",
       verticalSealants: "",
       bottomSeals: "",
@@ -413,17 +424,17 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor={`constructType-${wall.id}`} className="text-sm font-medium">Construction Type</Label>
+                      <Label htmlFor={`panelSkin-${wall.id}`} className="text-sm font-medium">Panel Skin</Label>
                       <Select
-                        value={wall.constructType}
-                        onValueChange={(value) => handleWallChange(wall.id, "constructType", value)}
+                        value={wall.panelSkin}
+                        onValueChange={(value) => handleWallChange(wall.id, "panelSkin", value)}
                         disabled={!wall.model}
                       >
                         <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select construction type" />
+                          <SelectValue placeholder="Select panel skin" />
                         </SelectTrigger>
                         <SelectContent className="bg-background border z-50">
-                          {getConstructionTypesByModel(wall.model).map((type) => (
+                          {getPanelSkinOptions(wall.model).map((type) => (
                             <SelectItem key={type} value={type}>
                               {type}
                             </SelectItem>

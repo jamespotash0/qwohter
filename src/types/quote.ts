@@ -13,7 +13,7 @@ export interface WallSpecification {
   series: string;
   model: string;
   panelThickness: string;
-  constructType: string;
+  panelSkin: string;
   stcRating: string;
   verticalSealants: string;
   bottomSeals: string;
