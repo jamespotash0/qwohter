@@ -332,7 +332,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
                     <SelectItem value="Pending">
                       <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                        <span>Submitted</span>
+                        <span>Pending</span>
                       </div>
                     </SelectItem>
                   </SelectContent>
