@@ -148,10 +148,19 @@ const Quotes = () => {
         }
         
         // Handle section headers (make them bold)
-        if (line.match(/^(PANELS:|TRACK:|SUPPORT STRUCTURE|GENERAL:|Payment Terms:|ACCEPTANCE OF PROPOSAL:)/)) {
+        if (line.match(/^(BILLED TO:|PANELS:|TRACK:|SUPPORT STRUCTURE (HEADER)|GENERAL:|Payment Terms:|General Notes and Terms:|Specifications as follows:|Signed By:|Date:)/)) {
           doc.setFont('times', 'bold');
           doc.setFontSize(12);
-        } else {
+        } 
+        else if (line.match(/^(ACCEPTANCE OF PROPOSAL:)/)) {
+          doc.setFont('times', 'bold', 'italic');
+          doc.setFontSize(9);
+        }
+        else if (line.match(/^('The above prices, specifications, and conditions are satisfactory and are hereby accepted')/)) {
+          doc.setFont('times', 'normal', 'italic');
+          doc.setFontSize(9);
+        }
+        else {
           doc.setFont('times', 'normal');
           doc.setFontSize(12);
         }
