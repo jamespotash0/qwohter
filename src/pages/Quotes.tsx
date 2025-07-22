@@ -316,7 +316,7 @@ export default function Quotes() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Quote ID</TableHead>
+                <TableHead>Proposal #</TableHead>
                 <TableHead>Client</TableHead>
                 <TableHead>Project</TableHead>
                 <TableHead>Amount</TableHead>
