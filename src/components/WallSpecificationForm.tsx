@@ -146,15 +146,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         />
                         <Label className="text-xs text-gray-500 mt-1 block text-center">Inches</Label>
                       </div>
-                      <div className="flex-1">
-                        <Input
-                          value={wall.panelCount}
-                          onChange={(e) => handleWallChange(wall.id, "panelCount", e.target.value)}
-                          placeholder="3"
-                          className="text-center"
-                        />
-                        <Label className="text-xs text-gray-500 mt-1 block text-center">Panel Count</Label>
-                      </div>
                     </div>
                   </div>
 
@@ -180,7 +171,15 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         />
                         <Label className="text-xs text-gray-500 mt-1 block text-center">Inches</Label>
                       </div>
-                      <div className="flex-1"></div>
+                      <div className="flex-1">
+                        <Input
+                          value={wall.panelCount}
+                          onChange={(e) => handleWallChange(wall.id, "panelCount", e.target.value)}
+                          placeholder="3"
+                          className="text-center"
+                        />
+                        <Label className="text-xs text-gray-500 mt-1 block text-center">Panel Count</Label>
+                      </div>
                     </div>
                   </div>
                 </div>
