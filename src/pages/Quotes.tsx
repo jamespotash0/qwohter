@@ -321,7 +321,6 @@ export default function Quotes() {
                 <TableHead>Project</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Update Status</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -336,19 +335,14 @@ export default function Quotes() {
                     ${quote.amount}
                   </TableCell>
                   <TableCell>
-                    <Badge 
-                      variant="outline" 
-                      className={statusColors[quote.status as keyof typeof statusColors]}
-                    >
-                      {capitalizeStatus(quote.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="bg-background">
-                          Update Status
-                        </Button>
+                        <Badge 
+                          variant="outline" 
+                          className={`cursor-pointer ${statusColors[quote.status as keyof typeof statusColors]}`}
+                        >
+                          {capitalizeStatus(quote.status)}
+                        </Badge>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="center" className="bg-background border shadow-md z-50">
                         <DropdownMenuItem onClick={() => updateQuoteStatus(quote.id, "Completed")}>
