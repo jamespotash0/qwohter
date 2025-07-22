@@ -80,6 +80,16 @@ export default function Quotes() {
     return matchesSearch && matchesStatus;
   });
 
+  // Currency formatting function
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount || 0);
+  };
+
   const updateQuoteStatus = (quoteId: string, newStatus: string) => {
     setQuotes(quotes.map(quote => 
       quote.id === quoteId ? { ...quote, status: newStatus } : quote
@@ -115,7 +125,7 @@ export default function Quotes() {
     doc.text(`Quote ID: ${quote.id}`, 20, 50);
     doc.text(`Client: ${quote.client}`, 20, 65);
     doc.text(`Project: ${quote.project}`, 20, 80);
-    doc.text(`Amount: $${quote.amount.toLocaleString()}`, 20, 95);
+    doc.text(`Amount: ${formatCurrency(quote.amount)}`, 20, 95);
     doc.text(`Status: ${quote.status}`, 20, 110);
     doc.text(`Date: ${quote.date}`, 20, 125);
     doc.text(`Due Date: ${quote.dueDate}`, 20, 140);
@@ -186,7 +196,7 @@ export default function Quotes() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Value</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalValue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalValue)}</div>
             <p className="text-xs text-muted-foreground">
               Combined quote value
             </p>
@@ -283,7 +293,7 @@ export default function Quotes() {
                   <TableCell>{quote.client}</TableCell>
                   <TableCell>{quote.project}</TableCell>
                   <TableCell className="font-semibold">
-                    ${quote.amount.toLocaleString()}
+                    {formatCurrency(quote.amount)}
                   </TableCell>
                   <TableCell>
                     <Badge 
