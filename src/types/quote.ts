@@ -2,6 +2,7 @@
 export interface WallSpecification {
   id: string;
   name: string;
+  wallSystemType: string;
   widthFeet: string;
   widthInches: string;
   heightFeet: string;

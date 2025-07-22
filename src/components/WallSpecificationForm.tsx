@@ -18,6 +18,22 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         let updatedWall = { ...wall, [field]: value };
         
         // Cascading logic
+        if (field === "wallSystemType") {
+          // Reset all dependent fields when wall system type changes
+          updatedWall.panelType = "";
+          updatedWall.series = "";
+          updatedWall.model = "";
+          updatedWall.panelThickness = "";
+          updatedWall.constructType = "";
+          updatedWall.stcRating = "";
+          updatedWall.trackType = "";
+          updatedWall.trackSystem = "";
+          updatedWall.verticalSealants = "";
+          updatedWall.bottomSeals = "";
+          updatedWall.topSeals = "";
+          updatedWall.endPanelType = "";
+        }
+        
         if (field === "panelType") {
           // Reset dependent fields
           updatedWall.series = "";
@@ -153,6 +169,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     const newWall: WallSpecification = {
       id: Date.now().toString(),
       name: `Wall ${walls.length + 1}`,
+      wallSystemType: "",
       widthFeet: "",
       widthInches: "",
       heightFeet: "",
@@ -175,6 +192,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     onUpdate([...walls, newWall]);
   };
 
+  const wallSystemTypes = ["Operable Wall", "Glass Wall", "Accordion Partitions", "Unispan Support", "FlexTact"];
   const panelTypes = ["Individual Panels", "Hinged-Paired Panels", "Continuously-Hinged Panels"];
   const verticalSealants = ["Tongue-and-Groove", "Compression Seals", "Magnetic Seals"];
   const bottomSeals = ["Retractable Seals", "Fixed Seals", "Adjustable Seals"];
@@ -287,23 +305,23 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                 </div>
               </div>
 
-              {/* Wall Details Section */}
+              {/* Wall System Type Section */}
               <div>
-                <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Wall Details</h4>
+                <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Wall System</h4>
                 
-                {/* First Row - Panel Type Selection */}
+                {/* Wall System Type Selection */}
                 <div className="mb-6">
                   <div className="space-y-2">
-                    <Label htmlFor={`panelType-${wall.id}`} className="text-sm font-medium">Panel Type</Label>
+                    <Label htmlFor={`wallSystemType-${wall.id}`} className="text-sm font-medium">Wall System Type</Label>
                     <Select
-                      value={wall.panelType}
-                      onValueChange={(value) => handleWallChange(wall.id, "panelType", value)}
+                      value={wall.wallSystemType}
+                      onValueChange={(value) => handleWallChange(wall.id, "wallSystemType", value)}
                     >
                       <SelectTrigger className="bg-background">
-                        <SelectValue placeholder="Select panel type" />
+                        <SelectValue placeholder="Select wall system type" />
                       </SelectTrigger>
                       <SelectContent className="bg-background border z-50">
-                        {panelTypes.map((type) => (
+                        {wallSystemTypes.map((type) => (
                           <SelectItem key={type} value={type}>
                             {type}
                           </SelectItem>
@@ -312,6 +330,34 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                     </Select>
                   </div>
                 </div>
+              </div>
+
+              {/* Operable Wall Details Section - Only show if Operable Wall is selected */}
+              {wall.wallSystemType === "Operable Wall" && (
+                <div>
+                  <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Operable Wall Details</h4>
+                  
+                  {/* Panel Type Selection */}
+                  <div className="mb-6">
+                    <div className="space-y-2">
+                      <Label htmlFor={`panelType-${wall.id}`} className="text-sm font-medium">Panel Type</Label>
+                      <Select
+                        value={wall.panelType}
+                        onValueChange={(value) => handleWallChange(wall.id, "panelType", value)}
+                      >
+                        <SelectTrigger className="bg-background">
+                          <SelectValue placeholder="Select panel type" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border z-50">
+                          {panelTypes.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
                 {/* Second Row - Series and Model */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -482,62 +528,72 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                     </Select>
                   </div>
                 </div>
-              </div>
 
-              {/* Track Details Section */}
-              <div>
-                <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Track Details</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  <div className="space-y-2">
-                    <Label htmlFor={`trackType-${wall.id}`} className="text-sm font-medium">Track Type</Label>
-                    <Input
-                      id={`trackType-${wall.id}`}
-                      value={wall.trackType}
-                      placeholder="Auto-selected based on panel type"
-                      className="text-center bg-muted"
-                      readOnly
-                    />
+                  {/* Track Details Section */}
+                  <div>
+                    <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Track Details</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      <div className="space-y-2">
+                        <Label htmlFor={`trackType-${wall.id}`} className="text-sm font-medium">Track Type</Label>
+                        <Input
+                          id={`trackType-${wall.id}`}
+                          value={wall.trackType}
+                          placeholder="Auto-selected based on model"
+                          className="text-center bg-muted"
+                          readOnly
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor={`trackSystem-${wall.id}`} className="text-sm font-medium">Track System</Label>
+                        <Select
+                          value={wall.trackSystem}
+                          onValueChange={(value) => handleWallChange(wall.id, "trackSystem", value)}
+                          disabled={!wall.trackType}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select track system" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            {getTrackSystemsByTrackType(wall.trackType).map((system) => (
+                              <SelectItem key={system} value={system}>
+                                {system}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor={`trackSystem-${wall.id}`} className="text-sm font-medium">Track System</Label>
-                    <Select
-                      value={wall.trackSystem}
-                      onValueChange={(value) => handleWallChange(wall.id, "trackSystem", value)}
-                      disabled={!wall.trackType}
-                    >
-                      <SelectTrigger className="bg-background">
-                        <SelectValue placeholder="Select track system" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border z-50">
-                        {getTrackSystemsByTrackType(wall.trackType).map((system) => (
-                          <SelectItem key={system} value={system}>
-                            {system}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  {/* Quantity Section */}
+                  <div>
+                    <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Quantity</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor={`quantity-${wall.id}`} className="text-sm font-medium">Quantity</Label>
+                        <Input
+                          id={`quantity-${wall.id}`}
+                          type="number"
+                          value={wall.quantity}
+                          onChange={(e) => handleWallChange(wall.id, "quantity", e.target.value)}
+                          placeholder="1"
+                          className="text-center"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Quantity Section */}
-              <div>
-                <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Quantity</h4>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor={`quantity-${wall.id}`} className="text-sm font-medium">Quantity</Label>
-                    <Input
-                      id={`quantity-${wall.id}`}
-                      type="number"
-                      value={wall.quantity}
-                      onChange={(e) => handleWallChange(wall.id, "quantity", e.target.value)}
-                      placeholder="1"
-                      className="text-center"
-                    />
-                  </div>
+              {/* Other Wall Systems - Show placeholder */}
+              {wall.wallSystemType && wall.wallSystemType !== "Operable Wall" && (
+                <div className="bg-muted/30 p-6 rounded-lg text-center">
+                  <p className="text-muted-foreground">
+                    {wall.wallSystemType} specifications coming soon.
+                  </p>
                 </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
