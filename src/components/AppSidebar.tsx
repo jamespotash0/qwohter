@@ -89,14 +89,7 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
                       >
                         <item.icon className="h-4 w-4" />
                         {!isCollapsed && (
-                          <>
-                            <span className="flex-1">{item.title}</span>
-                            {item.badge && (
-                              <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
-                                {item.badge}
-                              </span>
-                            )}
-                          </>
+                          <span className="flex-1">{item.title}</span>
                         )}
                       </div>
                     </SidebarMenuButton>

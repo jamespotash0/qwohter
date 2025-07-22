@@ -125,7 +125,7 @@ export default function Quotes() {
     doc.text(`Quote ID: ${quote.id}`, 20, 50);
     doc.text(`Client: ${quote.client}`, 20, 65);
     doc.text(`Project: ${quote.project}`, 20, 80);
-    doc.text(`Amount: ${formatCurrency(quote.amount)}`, 20, 95);
+    doc.text(`Amount: $${quote.amount}`, 20, 95);
     doc.text(`Status: ${capitalizeStatus(quote.status)}`, 20, 110);
     doc.text(`Date: ${quote.date}`, 20, 125);
     
@@ -158,7 +158,7 @@ export default function Quotes() {
     }
   };
 
-  const totalValue = filteredQuotes.reduce((sum, quote) => sum + quote.amount, 0);
+  const totalValue = filteredQuotes.reduce((sum, quote) => sum + parseFloat(quote.amount.replace(/,/g, '')), 0);
 
   // If editing a quote, show the QuoteCreator
   if (editingQuote) {
@@ -332,7 +332,7 @@ export default function Quotes() {
                   <TableCell>{quote.client}</TableCell>
                   <TableCell>{quote.project}</TableCell>
                   <TableCell className="font-semibold">
-                    {formatCurrency(quote.amount)}
+                    ${quote.amount}
                   </TableCell>
                   <TableCell>
                     <Badge 
