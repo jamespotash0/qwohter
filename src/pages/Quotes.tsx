@@ -17,7 +17,7 @@ const initialQuotes = [
     id: "QT-001",
     client: "Acme Construction",
     project: "Office Building Renovation",
-    amount: 45,538.15,
+    amount: '45,538.15',
     status: "Draft",
     date: "2024-01-15"
   },
@@ -25,7 +25,7 @@ const initialQuotes = [
     id: "QT-002", 
     client: "Builder Solutions",
     project: "Residential Complex",
-    amount: 78,500.17,
+    amount: '78,500.17',
     status: "In Revision",
     date: "2024-01-12"
   },
@@ -33,7 +33,7 @@ const initialQuotes = [
     id: "QT-003",
     client: "Metro Developers",
     project: "Commercial Center",
-    amount: 125,000.54,
+    amount: '125,000.54',
     status: "Completed",
     date: "2024-01-10"
   },
