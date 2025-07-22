@@ -322,7 +322,7 @@ const Quotes = () => {
                         <TableCell>{formatCurrency(totalAmount)}</TableCell>
                         <TableCell>
                           <Select value={quote.status} onValueChange={(value) => updateQuoteStatus(quote.id, value)}>
-                            <SelectTrigger className="w-[110px] h-7 bg-background">
+                            <SelectTrigger className={`w-[110px] h-7 border-0 ${statusColors[quote.status as keyof typeof statusColors]} [&>svg]:hidden`}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-background border shadow-lg z-50">
