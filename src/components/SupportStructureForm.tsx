@@ -18,8 +18,8 @@ const SupportStructureForm = ({ data, onUpdate }: SupportStructureFormProps) => 
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-6">Support Structure</h2>
-      <div className="grid grid-cols-1 gap-6">
+      <h2 className="text-xl font-semibold mb-4">Support Structure</h2>
+      <div className="grid grid-cols-1 gap-3">
         <div className="space-y-2">
           <Label htmlFor="mountingTrack">Mounting Track</Label>
           <Select

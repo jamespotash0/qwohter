@@ -35,6 +35,31 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     onUpdate(updatedWalls);
   };
 
+  const addNewWall = () => {
+    const newWall: WallSpecification = {
+      id: Date.now().toString(),
+      name: `Wall ${walls.length + 1}`,
+      width: "",
+      height: "",
+      quantity: "1",
+      panelType: "",
+      panelCount: "",
+      series: "",
+      model: "",
+      trackType: "",
+      panelThickness: "",
+      designType: "",
+      constructType: "",
+      stcRating: "",
+      trackSystem: "",
+      verticalSealants: "",
+      bottomSeals: "",
+      endPanelType: "",
+      finalSeal: ""
+    };
+    onUpdate([...walls, newWall]);
+  };
+
   const panelTypes = [
     "Continuously Hinged Panels",
     "Individual Panels",
@@ -58,6 +83,12 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     return (
       <div className="text-center py-8 text-gray-500">
         <p>No walls added yet. Click "Add Wall" to get started.</p>
+        <button
+            onClick={addNewWall}
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+          >
+            Add Wall
+          </button>
       </div>
     );
   }

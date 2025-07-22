@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEffect } from "react";
-import { User, Mail, MapPin, Phone, Printer, Globe } from "lucide-react";
+import { User, Mail, Phone, Printer, MapPin, Globe } from "lucide-react";
 
 interface ContactInfoData {
   contactName: string;
@@ -61,9 +61,9 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
     <div className="space-y-8">
       {/* Enhanced Header */}
       <div className="text-center space-y-3">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl mb-4">
+        {/* <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl mb-4">
           <User className="w-8 h-8 text-blue-600" />
-        </div>
+        </div> */}
         <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
           Contact Information
         </h2>
