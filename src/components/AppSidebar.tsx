@@ -55,7 +55,7 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
             <Building2 className="w-5 h-5 text-primary-foreground" />
           </div>
           {!isCollapsed && (
-            <span className="font-bold text-lg text-foreground">Donezo</span>
+            <span className="font-bold text-lg text-foreground">WallQu</span>
           )}
         </div>
       </SidebarHeader>
