@@ -13,6 +13,7 @@ import PricingForm from "./PricingForm";
 import { toast } from "sonner";
 import { QuoteNameInput } from "./QuoteNameInput";
 import { WallSpecification } from "../types/quote";
+import { useQuotes } from "@/hooks/useQuotes";
 
 interface QuoteCreatorProps {
   user: string;
@@ -23,6 +24,7 @@ interface QuoteCreatorProps {
 }
 
 const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNameChange }: QuoteCreatorProps) => {
+  const { createQuote, updateQuote } = useQuotes();
   const [activeTab, setActiveTab] = useState("contact");
   const [editingQuoteName, setEditingQuoteName] = useState(false);
   const [localQuoteName, setLocalQuoteName] = useState(quoteName);
@@ -118,7 +120,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
            pricing.paymentUponTrackInstallation;
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!isContactInfoValid()) {
       toast.error("Please complete all Contact Information fields");
       setActiveTab("contact");
@@ -140,7 +142,20 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
       return;
     }
 
-    toast.success("Quote PDF generated successfully!");
+    try {
+      await createQuote({
+        contactInfo,
+        jobDetails,
+        walls,
+        supportStructure,
+        deliveryLabor,
+        pricing,
+        status: quoteStatus
+      });
+      toast.success("Quote saved and PDF generated successfully!");
+    } catch (error) {
+      toast.error("Failed to save quote");
+    }
   };
 
   const allQuoteData = {

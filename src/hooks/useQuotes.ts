@@ -9,9 +9,12 @@ export interface Quote {
   id: string;
   proposal_number: string;
   quote_details: any;
-  job_details: any[];
-  wall_details: any[];
-  price_details: any[];
+  job_details: any;
+  wall_details: any;
+  price_details: any;
+  support_structure: any;
+  delivery_details: any;
+  labor_details: any;
   status: string;
   date_last_downloaded?: string;
   version: number;
@@ -45,7 +48,7 @@ export const useQuotes = () => {
     }
   };
 
-  const createQuote = async (proposalNumber: string, quoteData: any) => {
+  const createQuote = async (quoteData: any) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
@@ -53,12 +56,27 @@ export const useQuotes = () => {
       const { data, error } = await supabase
         .from('quotes')
         .insert({
-          proposal_number: proposalNumber,
-          quote_details: quoteData.quote_details || {},
-          job_details: quoteData.job_details || [],
-          wall_details: quoteData.wall_details || [],
-          price_details: quoteData.price_details || [],
-          status: 'draft',
+          proposal_number: quoteData.jobDetails.proposalNumber,
+          quote_details: quoteData.contactInfo || {},
+          job_details: {
+            job_location: quoteData.jobDetails.jobLocation,
+            client_name: quoteData.jobDetails.billedTo.name,
+            client_company: quoteData.jobDetails.billedTo.company,
+            client_address: quoteData.jobDetails.billedTo.address,
+            date: quoteData.jobDetails.date
+          },
+          wall_details: quoteData.walls || [],
+          price_details: {
+            base_price: quoteData.pricing.basePrice,
+            freight: quoteData.pricing.freight,
+            total: quoteData.pricing.total,
+            payment_upon_drawings: quoteData.pricing.paymentUponDrawings,
+            payment_upon_track_installation: quoteData.pricing.paymentUponTrackInstallation
+          },
+          support_structure: quoteData.supportStructure || {},
+          delivery_details: quoteData.deliveryLabor.delivery || {},
+          labor_details: quoteData.deliveryLabor.labor || {},
+          status: quoteData.status || 'draft',
           user_id: user.id
         })
         .select()
@@ -69,7 +87,7 @@ export const useQuotes = () => {
       setQuotes(prev => [data as Quote, ...prev]);
       toast({
         title: "Quote created",
-        description: `Quote ${proposalNumber} has been created successfully.`,
+        description: `Quote ${quoteData.jobDetails.proposalNumber} has been created successfully.`,
       });
       
       return data;

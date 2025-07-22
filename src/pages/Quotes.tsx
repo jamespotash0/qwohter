@@ -129,11 +129,19 @@ const Quotes = () => {
 
   const handleCreateQuote = async (quoteName: string) => {
     try {
-      const newQuote = await createQuote(quoteName, {
-        quote_details: { project_name: quoteName },
-        job_details: [],
-        wall_details: [],
-        price_details: []
+      const newQuote = await createQuote({
+        contactInfo: { project_name: quoteName },
+        jobDetails: { 
+          proposalNumber: `P${Date.now().toString().slice(-6)}`,
+          date: new Date().toISOString().split('T')[0],
+          jobLocation: "",
+          billedTo: { name: "", company: "", address: "" }
+        },
+        walls: [],
+        supportStructure: {},
+        deliveryLabor: { delivery: {}, labor: {} },
+        pricing: { basePrice: 0, freight: 0, total: "", paymentUponDrawings: "", paymentUponTrackInstallation: "" },
+        status: 'draft'
       });
       
       setNewQuoteName(quoteName);

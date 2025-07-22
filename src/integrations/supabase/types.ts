@@ -18,12 +18,15 @@ export type Database = {
         Row: {
           created_at: string
           date_last_downloaded: string | null
+          delivery_details: Json
           id: string
           job_details: Json
+          labor_details: Json
           price_details: Json
           proposal_number: string
           quote_details: Json
           status: string
+          support_structure: Json
           updated_at: string
           user_id: string
           version: number
@@ -32,12 +35,15 @@ export type Database = {
         Insert: {
           created_at?: string
           date_last_downloaded?: string | null
+          delivery_details?: Json
           id?: string
           job_details?: Json
+          labor_details?: Json
           price_details?: Json
           proposal_number: string
           quote_details?: Json
           status?: string
+          support_structure?: Json
           updated_at?: string
           user_id: string
           version?: number
@@ -46,12 +52,15 @@ export type Database = {
         Update: {
           created_at?: string
           date_last_downloaded?: string | null
+          delivery_details?: Json
           id?: string
           job_details?: Json
+          labor_details?: Json
           price_details?: Json
           proposal_number?: string
           quote_details?: Json
           status?: string
+          support_structure?: Json
           updated_at?: string
           user_id?: string
           version?: number
