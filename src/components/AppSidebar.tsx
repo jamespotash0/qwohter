@@ -35,13 +35,13 @@ const menuItems = [
   { title: "Dashboard", icon: Home, path: "/dashboard" },
   { title: "Quotes", icon: FileText, path: "/quotes" },
   { title: "Calendar", icon: Calendar, path: "/calendar" },
-  { title: "Analytics", icon: BarChart3, path: "/analytics" },
-  { title: "Team", icon: Users, path: "/team" },
+  // { title: "Analytics", icon: BarChart3, path: "/analytics" },
+  // { title: "Team", icon: Users, path: "/team" },
 ];
 
 const generalItems = [
   { title: "Settings", icon: Settings },
-  { title: "Help", icon: HelpCircle },
+  // { title: "Help", icon: HelpCircle },
 ];
 
 export function AppSidebar({ user, onLogout }: AppSidebarProps) {
@@ -55,7 +55,7 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-8 h-8 bg-primary rounded-lg">
-            <Building2 className="w-5 h-5 text-primary-foreground" />
+            {/* <Building2 className="w-5 h-5 text-primary-foreground" /> */}
           </div>
           {!isCollapsed && (
             <span className="font-bold text-lg text-foreground">WallQu</span>
