@@ -132,11 +132,6 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
       setActiveTab("job");
       return;
     }
-    if (!isDeliveryLaborValid()) {
-      toast.error("Please complete all Delivery & Labor fields");
-      setActiveTab("delivery");
-      return;
-    }
     if (!isPricingValid()) {
       toast.error("Please complete all Pricing fields");
       setActiveTab("pricing");
@@ -170,7 +165,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
           proposal_number: jobDetails.proposalNumber,
           status: quoteStatus
         });
-        toast.success("Quote updated and PDF generated successfully!");
+        toast.success("Quote updated successfully!");
       } else {
         // Create new quote
         await createQuote({
@@ -182,7 +177,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
           pricing,
           status: quoteStatus
         });
-        toast.success("Quote saved and PDF generated successfully!");
+        toast.success("Quote saved successfully!");
       }
     } catch (error) {
       toast.error("Failed to save quote");
