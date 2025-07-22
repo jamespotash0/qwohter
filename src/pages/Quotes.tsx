@@ -14,7 +14,7 @@ import QuoteCreator from "@/components/QuoteCreator";
 
 const initialQuotes = [
   {
-    id: "QT-001",
+    id: "P39853",
     client: "Acme Construction",
     project: "Office Building Renovation",
     amount: '45,538.15',
@@ -22,7 +22,7 @@ const initialQuotes = [
     date: "2024-01-15"
   },
   {
-    id: "QT-002", 
+    id: "P78563", 
     client: "Builder Solutions",
     project: "Residential Complex",
     amount: '78,500.17',
@@ -30,7 +30,7 @@ const initialQuotes = [
     date: "2024-01-12"
   },
   {
-    id: "QT-003",
+    id: "P56784",
     client: "Metro Developers",
     project: "Commercial Center",
     amount: '125,000.54',
