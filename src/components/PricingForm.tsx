@@ -1,13 +1,14 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { FileText } from "lucide-react";
 import { useEffect, useState } from "react";
 import jsPDF from 'jspdf';
 
 interface PricingData {
-  basePrice: string;
-  freight: string;
+  basePrice: number;
+  freight: number;
   total: string;
   paymentUponDrawings: string;
   paymentUponTrackInstallation: string;
@@ -23,46 +24,18 @@ interface PricingFormProps {
 const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps) => {
   const [calculatedTotal, setCalculatedTotal] = useState("");
 
-  // Format number with commas and decimals
-  const formatNumber = (value: string): string => {
-    // Remove all non-numeric characters except decimal point
-    const cleanValue = value.replace(/[^\d.]/g, '');
-    
-    // Handle multiple decimal points
-    const parts = cleanValue.split('.');
-    if (parts.length > 2) {
-      return parts[0] + '.' + parts.slice(1).join('');
-    }
-    
-    // If there's a decimal point, limit to 2 decimal places
-    if (parts.length === 2) {
-      return parts[0] + '.' + parts[1].slice(0, 2);
-    }
-    
-    return cleanValue;
-  };
-
-  const displayNumber = (value: string): string => {
-    if (!value || value === '') return '';
-    
-    const num = parseFloat(value);
-    if (isNaN(num)) return value;
-    
-    return num.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
+  const handleCurrencyChange = (field: 'basePrice' | 'freight', value: number) => {
+    onUpdate({ ...data, [field]: value });
   };
 
   const handleChange = (field: keyof PricingData, value: string) => {
-    const formattedValue = formatNumber(value);
-    onUpdate({ ...data, [field]: formattedValue });
+    onUpdate({ ...data, [field]: value });
   };
 
   // Calculate total automatically
   useEffect(() => {
-    const basePrice = parseFloat(data.basePrice) || 0;
-    const freight = parseFloat(data.freight) || 0;
+    const basePrice = data.basePrice || 0;
+    const freight = data.freight || 0;
     const total = basePrice + freight;
     
     if (total > 0) {
@@ -76,8 +49,8 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
 
   // Validation function
   const isFormValid = () => {
-    return data.basePrice && 
-           data.freight && 
+    return data.basePrice > 0 && 
+           data.freight > 0 && 
            data.paymentUponDrawings && 
            data.paymentUponTrackInstallation;
   };
@@ -239,9 +212,9 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
     yPos += 15;
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Base Price: $${data.basePrice || '0.00'}`, 20, yPos);
+    doc.text(`Base Price: $${data.basePrice?.toFixed(2) || '0.00'}`, 20, yPos);
     yPos += 7;
-    doc.text(`Freight + Delivery: $${data.freight || '0.00'}`, 20, yPos);
+    doc.text(`Freight + Delivery: $${data.freight?.toFixed(2) || '0.00'}`, 20, yPos);
     yPos += 10;
     doc.setFont("helvetica", "bold");
     doc.text(`TOTAL: ${calculatedTotal || '$0.00'}`, 20, yPos);
@@ -285,27 +258,23 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label htmlFor="basePrice">Base Price ($) *</Label>
-            <Input
+            <CurrencyInput
               id="basePrice"
-              type="text"
-              value={displayNumber(data.basePrice)}
-              onChange={(e) => handleChange("basePrice", e.target.value)}
-              placeholder="0.00"
-              required
-              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              value={data.basePrice}
+              onChange={(value) => handleCurrencyChange("basePrice", value)}
+              placeholder="$0.00"
+              className="w-full"
             />
           </div>
           
           <div className="space-y-2">
             <Label htmlFor="freight">Estimated Freight + Delivery ($) *</Label>
-            <Input
+            <CurrencyInput
               id="freight"
-              type="text"
-              value={displayNumber(data.freight)}
-              onChange={(e) => handleChange("freight", e.target.value)}
-              placeholder="0.00"
-              required
-              className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              value={data.freight}
+              onChange={(value) => handleCurrencyChange("freight", value)}
+              placeholder="$0.00"
+              className="w-full"
             />
           </div>
         </div>

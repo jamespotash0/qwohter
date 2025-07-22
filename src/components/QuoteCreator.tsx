@@ -68,8 +68,8 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   });
 
   const [pricing, setPricing] = useState({
-    basePrice: "",
-    freight: "",
+    basePrice: 0,
+    freight: 0,
     total: "",
     paymentUponDrawings: "",
     paymentUponTrackInstallation: ""
@@ -112,8 +112,8 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   };
 
   const isPricingValid = () => {
-    return pricing.basePrice && 
-           pricing.freight && 
+    return pricing.basePrice > 0 && 
+           pricing.freight > 0 && 
            pricing.paymentUponDrawings && 
            pricing.paymentUponTrackInstallation;
   };

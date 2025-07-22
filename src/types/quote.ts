@@ -22,3 +22,11 @@ export interface WallSpecification {
   trackType: string;
   trackSystem: string;
 }
+
+export interface PricingData {
+  basePrice: number;
+  freight: number;
+  total: string;
+  paymentUponDrawings: string;
+  paymentUponTrackInstallation: string;
+}
