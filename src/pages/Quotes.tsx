@@ -4,16 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Plus, Filter, MoreHorizontal, Eye, Download, Copy } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Search, Plus, Filter, MoreHorizontal, Eye, Download, Copy, Edit, Trash2, Check } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
-const mockQuotes = [
+const initialQuotes = [
   {
     id: "QT-001",
     client: "Acme Construction",
     project: "Office Building Renovation",
     amount: 45000,
-    status: "Sent",
+    status: "draft",
     date: "2024-01-15",
     dueDate: "2024-01-30"
   },
@@ -22,7 +24,7 @@ const mockQuotes = [
     client: "Builder Solutions",
     project: "Residential Complex",
     amount: 78500,
-    status: "Viewed",
+    status: "in revision",
     date: "2024-01-12",
     dueDate: "2024-01-28"
   },
@@ -31,7 +33,7 @@ const mockQuotes = [
     client: "Metro Developers",
     project: "Commercial Center",
     amount: 125000,
-    status: "Accepted",
+    status: "completed",
     date: "2024-01-10",
     dueDate: "2024-01-25"
   },
@@ -40,7 +42,7 @@ const mockQuotes = [
     client: "Green Building Co",
     project: "Eco-Friendly Housing",
     amount: 92000,
-    status: "Pending",
+    status: "draft",
     date: "2024-01-08",
     dueDate: "2024-01-22"
   },
@@ -49,30 +51,58 @@ const mockQuotes = [
     client: "Urban Planners Inc",
     project: "Downtown Retail Space",
     amount: 67300,
-    status: "Sent",
+    status: "in revision",
     date: "2024-01-05",
     dueDate: "2024-01-20"
   }
 ];
 
 const statusColors = {
-  Sent: "bg-blue-100 text-blue-800 border-blue-200",
-  Viewed: "bg-yellow-100 text-yellow-800 border-yellow-200", 
-  Accepted: "bg-green-100 text-green-800 border-green-200",
-  Pending: "bg-gray-100 text-gray-800 border-gray-200"
+  "completed": "bg-green-100 text-green-800 border-green-200",
+  "draft": "bg-gray-100 text-gray-800 border-gray-200",
+  "in revision": "bg-yellow-100 text-yellow-800 border-yellow-200"
 };
 
 export default function Quotes() {
+  const [quotes, setQuotes] = useState(initialQuotes);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("All");
+  const { toast } = useToast();
 
-  const filteredQuotes = mockQuotes.filter(quote => {
+  const filteredQuotes = quotes.filter(quote => {
     const matchesSearch = quote.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          quote.project.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          quote.id.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === "All" || quote.status === selectedStatus;
     return matchesSearch && matchesStatus;
   });
+
+  const updateQuoteStatus = (quoteId: string, newStatus: string) => {
+    setQuotes(quotes.map(quote => 
+      quote.id === quoteId ? { ...quote, status: newStatus } : quote
+    ));
+    toast({
+      title: "Status Updated",
+      description: `Quote ${quoteId} status changed to ${newStatus}`,
+    });
+  };
+
+  const deleteQuote = (quoteId: string) => {
+    setQuotes(quotes.filter(quote => quote.id !== quoteId));
+    toast({
+      title: "Quote Deleted",
+      description: `Quote ${quoteId} has been deleted successfully.`,
+      variant: "destructive",
+    });
+  };
+
+  const editQuote = (quoteId: string) => {
+    toast({
+      title: "Edit Quote",
+      description: `Opening editor for quote ${quoteId}`,
+    });
+    // TODO: Implement edit functionality
+  };
 
   const totalValue = filteredQuotes.reduce((sum, quote) => sum + quote.amount, 0);
 
@@ -99,7 +129,7 @@ export default function Quotes() {
           <CardContent>
             <div className="text-2xl font-bold">{filteredQuotes.length}</div>
             <p className="text-xs text-muted-foreground">
-              {filteredQuotes.length === mockQuotes.length ? 'All quotes' : `Filtered from ${mockQuotes.length}`}
+              {filteredQuotes.length === quotes.length ? 'All quotes' : `Filtered from ${quotes.length}`}
             </p>
           </CardContent>
         </Card>
@@ -122,7 +152,7 @@ export default function Quotes() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {filteredQuotes.filter(q => q.status === "Pending" || q.status === "Sent").length}
+              {filteredQuotes.filter(q => q.status === "draft" || q.status === "in revision").length}
             </div>
             <p className="text-xs text-muted-foreground">
               Awaiting response
@@ -132,14 +162,14 @@ export default function Quotes() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Accepted</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Completed</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {filteredQuotes.filter(q => q.status === "Accepted").length}
+              {filteredQuotes.filter(q => q.status === "completed").length}
             </div>
             <p className="text-xs text-muted-foreground">
-              Approved quotes
+              Completed quotes
             </p>
           </CardContent>
         </Card>
@@ -170,17 +200,14 @@ export default function Quotes() {
                   <DropdownMenuItem onClick={() => setSelectedStatus("All")}>
                     All Statuses
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedStatus("Sent")}>
-                    Sent
+                  <DropdownMenuItem onClick={() => setSelectedStatus("completed")}>
+                    Completed
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedStatus("Viewed")}>
-                    Viewed
+                  <DropdownMenuItem onClick={() => setSelectedStatus("draft")}>
+                    Draft
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedStatus("Accepted")}>
-                    Accepted
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSelectedStatus("Pending")}>
-                    Pending
+                  <DropdownMenuItem onClick={() => setSelectedStatus("in revision")}>
+                    In Revision
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -204,7 +231,7 @@ export default function Quotes() {
             </TableHeader>
             <TableBody>
               {filteredQuotes.map((quote) => (
-                <TableRow key={quote.id} className="hover:bg-muted/50">
+                <TableRow key={`quote-${quote.id}`} className="hover:bg-muted/50">
                   <TableCell className="font-medium">{quote.id}</TableCell>
                   <TableCell>{quote.client}</TableCell>
                   <TableCell>{quote.project}</TableCell>
@@ -228,7 +255,11 @@ export default function Quotes() {
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" className="bg-background border shadow-md">
+                        <DropdownMenuItem onClick={() => editQuote(quote.id)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Quote
+                        </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Eye className="w-4 h-4 mr-2" />
                           View Details
@@ -241,6 +272,51 @@ export default function Quotes() {
                           <Copy className="w-4 h-4 mr-2" />
                           Duplicate Quote
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <div className="px-2 py-1.5 text-sm font-medium text-muted-foreground">
+                          Update Status
+                        </div>
+                        <DropdownMenuItem onClick={() => updateQuoteStatus(quote.id, "completed")}>
+                          <Check className="w-4 h-4 mr-2 text-green-600" />
+                          Mark Completed
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateQuoteStatus(quote.id, "draft")}>
+                          <div className="w-4 h-4 mr-2 rounded-full bg-gray-400"></div>
+                          Set as Draft
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateQuoteStatus(quote.id, "in revision")}>
+                          <div className="w-4 h-4 mr-2 rounded-full bg-yellow-400"></div>
+                          Mark in Revision
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem 
+                              onSelect={(e) => e.preventDefault()}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete Quote
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Quote</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete quote {quote.id}? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => deleteQuote(quote.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
