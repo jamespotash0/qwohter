@@ -1,5 +1,10 @@
 import { WallSpecification } from '@/types/quote';
-import { toWords } from 'number-to-words';
+// Simple number to words conversion for small numbers
+const toWords = (num: number | string): string => {
+  const n = parseInt(num.toString());
+  const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+  return words[n] || n.toString();
+};
 
 interface QuoteData {
   quote_details?: any;

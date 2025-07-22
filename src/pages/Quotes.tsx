@@ -99,37 +99,82 @@ const Quotes = () => {
       // Generate the full quote text
       const quoteText = generateQuoteText(quote);
       
-      // Create a new PDF document
+      // Create a new PDF document with Times New Roman styling
       const doc = new jsPDF({
         orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
+        unit: 'pt',
+        format: 'letter'
       });
       
-      // Split the text into lines and render them properly in the PDF
-      const splitText = doc.splitTextToSize(quoteText, 180);
+      // Set font to Times Roman (closest to Times New Roman in jsPDF)
+      doc.setFont('times', 'normal');
+      doc.setFontSize(12);
       
-      // Add the text to the PDF
-      doc.setFontSize(10);
-      let y = 20;
-      const lineHeight = 5;
+      // Page margins and width calculations
+      const pageWidth = 612; // letter width in points
+      const margin = 36; // 0.5 inch margins
+      const maxWidth = 474; // 6.58 inches in points (6.58 * 72)
+      const wallSpecWidth = 522; // 7.25 inches in points (7.25 * 72)
+      const leftIndent = 36; // 0.5 inch left indent for wall specs
       
-      // Render each line
-      splitText.forEach((line: string) => {
-        // Add page break if we're near the bottom
-        if (y > 280) {
+      let yPosition = 50; // Start position
+      const lineHeight = 14; // 1.15 line height for 12pt font
+      
+      // Split content by sections to handle different formatting
+      const lines = quoteText.split('\n');
+      
+      lines.forEach((line, index) => {
+        // Check if we need a new page
+        if (yPosition > 720) { // Letter height is 792pt, leave margin at bottom
           doc.addPage();
-          y = 20;
+          yPosition = 50;
         }
         
-        doc.text(line, 15, y);
-        y += lineHeight;
+        // Handle section headers (make them bold)
+        if (line.match(/^(PANELS:|TRACK:|SUPPORT STRUCTURE|GENERAL:|Payment Terms:|ACCEPTANCE OF PROPOSAL:)/)) {
+          doc.setFont('times', 'bold');
+          doc.setFontSize(12);
+        } else {
+          doc.setFont('times', 'normal');
+          doc.setFontSize(12);
+        }
+        
+        // Handle wall specifications section with wider width and left indent
+        const isWallSpec = line.match(/^Wall [A-Z]/) || 
+                          (index > 0 && lines[index-1].match(/^Specifications as follows:/)) ||
+                          (index > 0 && lines[index-1].match(/^Wall [A-Z]/));
+        
+        const currentMaxWidth = isWallSpec ? wallSpecWidth - leftIndent : maxWidth;
+        const currentX = isWallSpec ? margin + leftIndent : margin;
+        
+        if (line.trim()) {
+          // Split long lines to fit width
+          const splitText = doc.splitTextToSize(line, currentMaxWidth);
+          
+          if (Array.isArray(splitText)) {
+            splitText.forEach((textLine: string) => {
+              if (yPosition > 720) {
+                doc.addPage();
+                yPosition = 50;
+              }
+              doc.text(textLine, currentX, yPosition);
+              yPosition += lineHeight;
+            });
+          } else {
+            doc.text(splitText, currentX, yPosition);
+            yPosition += lineHeight;
+          }
+        } else {
+          // Empty line - add spacing
+          yPosition += lineHeight * 0.5;
+        }
       });
       
-      // Add version information
+      // Add version information at bottom
+      doc.setFont('times', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
-      doc.text(`Version: ${quote.version + 1}`, 15, 290);
+      doc.text(`Version: ${quote.version + 1}`, margin, 770);
       
       // Save the PDF
       doc.save(`quote-${quote.proposal_number}-v${quote.version + 1}.pdf`);
