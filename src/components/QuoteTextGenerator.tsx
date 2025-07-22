@@ -115,25 +115,69 @@ export const generateQuoteText = (data: QuoteData): string => {
   const paymentUponDrawings = data.price_details?.payment_upon_drawings || '33';
   const paymentUponTrackInstallation = data.price_details?.payment_upon_track_installation || '33';
 
-  return `<div class="quote-header">
-<strong>Contact:</strong> ${contactName}<br>
-<strong>Address:</strong> ${address}<br>
-<strong>Phone:</strong> ${phone}<br>
-<strong>Fax:</strong> ${fax}<br>
-<strong>Website:</strong> ${website}
+  return `<div class="quote-container">
+<div class="header-section">
+  <div class="company-info">
+    <div class="company-logo">
+      <div class="logo-placeholder">CWS</div>
+      <div class="company-name">CONTEMPORARY<br>WALL SYSTEMS</div>
+    </div>
+  </div>
+  
+  <div class="contact-details">
+    <div class="contact-row">
+      <span class="label">Contact:</span>
+      <span class="value">${contactName}</span>
+    </div>
+    <div class="contact-row">
+      <span class="label">Address:</span>
+      <span class="value">${address}</span>
+    </div>
+    <div class="contact-row">
+      <span class="label">Phone:</span>
+      <span class="value">${phone}</span>
+    </div>
+    <div class="contact-row">
+      <span class="label">Fax:</span>
+      <span class="value">${fax}</span>
+    </div>
+    <div class="contact-row">
+      <span class="label">Website:</span>
+      <span class="value website-link">${website}</span>
+    </div>
+  </div>
 </div>
 
-<div class="job-info">
-<strong>Date:</strong> ${date}<br>
-<strong>Proposal #:</strong> ${proposalNumber}<br>
-<strong>Job Location:</strong> ${jobLocation}
-</div>
-
-<div class="billing-info">
-<h2 class="section-header">BILLED TO:</h2>
-${billedToName}<br>
-${billedToCompany}<br>
-${billedToAddress}
+<div class="billing-and-job-info">
+  <div class="billing-section">
+    <h2 class="section-header">BILLED TO:</h2>
+    <div class="billed-to-details">
+      <div class="billed-line">${billedToName}</div>
+      <div class="underline"></div>
+      <div class="billed-line">${billedToCompany}</div>
+      <div class="underline"></div>
+      <div class="billed-line">${billedToAddress}</div>
+      <div class="underline"></div>
+    </div>
+  </div>
+  
+  <div class="job-info-section">
+    <div class="job-row">
+      <span class="job-label">Date:</span>
+      <span class="job-value">${date}</span>
+      <div class="job-underline"></div>
+    </div>
+    <div class="job-row">
+      <span class="job-label">Proposal #:</span>
+      <span class="job-value">${proposalNumber}</span>
+      <div class="job-underline"></div>
+    </div>
+    <div class="job-row">
+      <span class="job-label">Job Location:</span>
+      <span class="job-value">${jobLocation}</span>
+      <div class="job-underline"></div>
+    </div>
+  </div>
 </div>
 
 <div class="proposal-intro">

@@ -106,109 +106,304 @@ const Quotes = () => {
       // Generate the full quote text with HTML
       const quoteText = generateQuoteText(quote);
       
-      // Create PDF with the canvas image
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'pt',
-        format: 'letter'
-      });
+      // Create a temporary div to render the HTML
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = quoteText;
+      tempDiv.style.cssText = `
+        font-family: "Times New Roman", serif;
+        font-size: 12pt;
+        line-height: 1.15;
+        max-width: 6.58in;
+        margin: 0 auto;
+        padding: 20px;
+        color: black;
+        background: white;
+      `;
 
-      doc.setFont('Times', 'normal');
-      doc.setFontSize(12);
-      const pageWidth = 612;
-      const margin = 36;
-      const maxWidth = 474;
-      const wallSpecWidth = 522;
-      const leftIndent = 36;
-
-      let yPosition = 50;
-      const lineHeight = 14;
-
-      // Strip HTML tags and split into lines
-      const plainText = quoteText.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
-      const lines = plainText.split('\n');
+      // Add enhanced styles for the header layout
+      const style = document.createElement('style');
+      style.textContent = `
+        .quote-container {
+          font-family: "Times New Roman", serif;
+          font-size: 12pt;
+          line-height: 1.15;
+          max-width: 6.58in;
+          margin: 0 auto;
+          color: black;
+        }
+        
+        .header-section {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 30px;
+          padding-bottom: 20px;
+        }
+        
+        .company-info {
+          flex: 1;
+          max-width: 40%;
+        }
+        
+        .company-logo {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+        }
+        
+        .logo-placeholder {
+          width: 60px;
+          height: 60px;
+          background: linear-gradient(135deg, #3B82F6, #F59E0B);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          font-size: 16pt;
+          border-radius: 8px;
+        }
+        
+        .company-name {
+          font-size: 14pt;
+          font-weight: bold;
+          color: #333;
+          line-height: 1.2;
+        }
+        
+        .contact-details {
+          flex: 1;
+          max-width: 55%;
+          text-align: right;
+        }
+        
+        .contact-row {
+          margin-bottom: 4px;
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+        }
+        
+        .contact-row .label {
+          font-weight: bold;
+          margin-right: 8px;
+          min-width: 80px;
+          text-align: right;
+        }
+        
+        .contact-row .value {
+          text-align: left;
+          flex: 1;
+        }
+        
+        .website-link {
+          color: #3B82F6;
+          text-decoration: underline;
+        }
+        
+        .billing-and-job-info {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 30px;
+          gap: 40px;
+        }
+        
+        .billing-section {
+          flex: 1;
+          max-width: 45%;
+        }
+        
+        .billed-to-details {
+          margin-top: 10px;
+        }
+        
+        .billed-line {
+          margin-bottom: 8px;
+          min-height: 20px;
+        }
+        
+        .underline {
+          height: 1px;
+          background-color: black;
+          margin-bottom: 12px;
+          width: 100%;
+        }
+        
+        .job-info-section {
+          flex: 1;
+          max-width: 50%;
+        }
+        
+        .job-row {
+          display: flex;
+          align-items: center;
+          margin-bottom: 15px;
+          position: relative;
+        }
+        
+        .job-label {
+          font-weight: bold;
+          margin-right: 20px;
+          min-width: 120px;
+        }
+        
+        .job-value {
+          flex: 1;
+          padding-bottom: 2px;
+        }
+        
+        .job-underline {
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          left: 140px;
+          height: 1px;
+          background-color: black;
+        }
+        
+        h2.section-header {
+          font-weight: bold;
+          font-size: 12pt;
+          margin-top: 1.5em;
+          margin-bottom: 0.5em;
+        }
+        
+        .wall-specifications {
+          line-height: 1.15;
+          max-width: 7.25in;
+          padding-left: 0.5in;
+        }
+        
+        .acceptance-section {
+          font-size: 9pt;
+          font-style: italic;
+          margin-top: 2em;
+        }
+        
+        table {
+          border-collapse: collapse;
+          width: 100%;
+        }
+        
+        td {
+          padding: 4px 8px;
+        }
+        
+        strong {
+          font-weight: bold;
+        }
+        
+        ol, ul {
+          margin: 0;
+          padding-left: 20px;
+        }
+        
+        li {
+          margin-bottom: 4px;
+        }
+      `;
       
-      lines.forEach((line, index) => {
-        // Check if we need a new page
-        if (yPosition > 720) { // Letter height is 792pt, leave margin at bottom
-          doc.addPage();
-          yPosition = 50;
+      document.head.appendChild(style);
+      document.body.appendChild(tempDiv);
+
+      try {
+        // Try HTML-to-canvas rendering first
+        const html2canvas = (await import('html2canvas')).default;
+        const canvas = await html2canvas(tempDiv, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          width: tempDiv.scrollWidth,
+          height: tempDiv.scrollHeight
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pdfWidth - 20;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        let heightLeft = imgHeight;
+        let position = 10;
+
+        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight - 20;
+
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight + 10;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+          heightLeft -= pdfHeight - 20;
         }
+
+        // Use current version (starts at 1) and increment after download
+        const currentVersion = quote.version || 1;
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('en-CA');
+        const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
         
-        // Handle section headers (make them bold)
-        if (line.match(/^(Contact:|Address:|Phone:|Fax:|Website:|Date:|Proposal #:|Job Location:|BILLED TO:|PANELS:|TRACK:|SUPPORT STRUCTURE \(HEADER\):|GENERAL:|Payment Terms:|General Notes and Terms:|Specifications as follows:|Signed By:)/)) {
-          doc.setFont('times', 'bold');
-          doc.setFontSize(12);
-        } 
-        else if (line.match(/^(ACCEPTANCE OF PROPOSAL:)/)) {
-          doc.setFont('times', 'bold');
-          doc.setFontSize(9);
-        }
-        else if (line.match(/The above prices, specifications, and conditions are satisfactory/)) {
-          doc.setFont('times', 'italic');
-          doc.setFontSize(9);
-        }
-        else {
-          doc.setFont('times', 'normal');
-          doc.setFontSize(12);
-        }
+        const fileName = `${quoteName}_v${currentVersion}_${dateStr}.pdf`;
+        pdf.save(fileName);
         
-        // Handle wall specifications section with wider width and left indent
-        const isWallSpec = line.match(/^(Wall [A-Z]|Specifications as follows:)/) || 
-                          (index > 0 && lines[index-1].match(/^(Specifications as follows:|Wall [A-Z])/));
+        toast({
+          title: "PDF Downloaded",
+          description: `Quote ${quote.proposal_number} has been downloaded successfully.`,
+        });
+      } catch (canvasError) {
+        console.error('Canvas rendering failed, falling back to text PDF:', canvasError);
         
-        const currentMaxWidth = isWallSpec ? wallSpecWidth - leftIndent : maxWidth;
-        const currentX = isWallSpec ? margin + leftIndent : margin;
+        // Fallback to text-based PDF if HTML rendering fails
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
         
-        if (line.trim()) {
-          // Split long lines to fit width
-          const splitText = doc.splitTextToSize(line, currentMaxWidth);
-          
-          if (Array.isArray(splitText)) {
-            splitText.forEach((textLine: string) => {
-              if (yPosition > 720) {
-                doc.addPage();
-                yPosition = 50;
-              }
-              doc.text(textLine, currentX, yPosition);
-              yPosition += lineHeight;
-            });
-          } else {
-            doc.text(splitText, currentX, yPosition);
-            yPosition += lineHeight;
+        const plainText = quoteText.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+        const splitText = doc.splitTextToSize(plainText, 180);
+        doc.setFontSize(10);
+        let y = 20;
+        const lineHeight = 5;
+        
+        splitText.forEach((line: string) => {
+          if (y > 280) {
+            doc.addPage();
+            y = 20;
           }
-        } else {
-          // Empty line - add spacing
-          yPosition += lineHeight * 0.5;
-        }
-      });
-
-      // Use current version (starts at 1) and increment after download
-      const currentVersion = quote.version || 1;
-      const today = new Date();
-      const dateStr = today.toLocaleDateString('en-CA'); // This gives YYYY-MM-DD format in local timezone
-      const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
+          doc.text(line, 15, y);
+          y += lineHeight;
+        });
+        
+        const currentVersion = quote.version || 1;
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('en-CA');
+        const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
+        
+        doc.setFontSize(8);
+        doc.setTextColor(128, 128, 128);
+        doc.text(`Version: ${currentVersion}`, 15, 290);
+        
+        const fileName = `${quoteName}_v${currentVersion}_${dateStr}.pdf`;
+        doc.save(fileName);
+        
+        toast({
+          title: "PDF Downloaded",
+          description: `Quote ${quote.proposal_number} has been downloaded (fallback mode).`,
+        });
+      }
       
-      doc.setFont('times', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(128, 128, 128);
-      doc.text(`Version: ${currentVersion}`, margin, 770);
-      
-      // Save the PDF with current version, then increment
-      const fileName = `${quoteName}_v${currentVersion}_${dateStr}.pdf`;
-      doc.save(fileName);
+      // Clean up DOM elements
+      document.body.removeChild(tempDiv);
+      document.head.removeChild(style);
       
       // Mark as downloaded (will increment version for next download)
       await markAsDownloaded(quote.id);
       
-      toast({
-        title: "PDF Downloaded",
-        description: `Quote ${quote.proposal_number} has been downloaded successfully.`,
-      });
     } catch (error) {
       console.error('Error downloading PDF:', error);
       
-      // Fallback to text-based PDF if HTML rendering fails
+      // Final fallback to simple text PDF
       try {
         const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
         const quoteText = generateQuoteText(quote);
