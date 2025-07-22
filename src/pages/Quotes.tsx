@@ -102,9 +102,9 @@ const Quotes = () => {
       doc.text(`Client: ${quote.quote_details?.client_name || 'N/A'}`, 20, 75);
       doc.text(`Project: ${quote.quote_details?.project_name || 'N/A'}`, 20, 85);
       
-      // Calculate total from price details
-      const total = quote.price_details?.reduce((sum: number, item: any) => sum + (item.total || 0), 0) || 0;
-      doc.text(`Amount: ${formatCurrency(total)}`, 20, 95);
+      // Get total from price details object
+      const totalAmount = quote.price_details?.total ? parseFloat(quote.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
+      doc.text(`Amount: ${formatCurrency(totalAmount)}`, 20, 95);
       doc.text(`Status: ${quote.status}`, 20, 105);
       doc.text(`Date: ${new Date(quote.created_at).toLocaleDateString()}`, 20, 115);
       doc.text(`Version: ${quote.version + 1}`, 20, 125); // +1 because version will be incremented
@@ -215,8 +215,8 @@ const Quotes = () => {
                   <CardDescription>Total Value</CardDescription>
                   <CardTitle className="text-3xl">
                     {formatCurrency(quotes.reduce((sum, quote) => {
-                      const total = quote.price_details?.reduce((itemSum: number, item: any) => itemSum + (item.total || 0), 0) || 0;
-                      return sum + total;
+                      const totalAmount = quote.price_details?.total ? parseFloat(quote.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
+                      return sum + totalAmount;
                     }, 0))}
                   </CardTitle>
                 </CardHeader>
@@ -287,14 +287,14 @@ const Quotes = () => {
                   </TableRow>
                 ) : (
                   filteredQuotes.map((quote) => {
-                    const total = quote.price_details?.reduce((sum: number, item: any) => sum + (item.total || 0), 0) || 0;
+                    const totalAmount = quote.price_details?.total ? parseFloat(quote.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
                     
                     return (
                       <TableRow key={quote.id}>
                         <TableCell className="font-medium">{quote.proposal_number}</TableCell>
                         <TableCell>{quote.quote_details?.client_name || 'N/A'}</TableCell>
                         <TableCell>{quote.quote_details?.project_name || 'N/A'}</TableCell>
-                        <TableCell>{formatCurrency(total)}</TableCell>
+                        <TableCell>{formatCurrency(totalAmount)}</TableCell>
                         <TableCell>
                           <Badge className={statusColors[quote.status as keyof typeof statusColors]}>
                             {quote.status}
