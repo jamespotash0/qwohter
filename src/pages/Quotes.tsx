@@ -58,7 +58,7 @@ const Quotes = () => {
     console.log('Quote data structure:', quote);
     console.log('price_details type:', typeof quote.price_details, quote.price_details);
     
-    const clientName = quote.quote_details?.client_name || "";
+    const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "";
     const projectName = quote.project_name || quote.quote_details?.project_name || "";
     
     const matchesSearch = clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -104,7 +104,7 @@ const Quotes = () => {
       // Quote details
       doc.setFontSize(12);
       doc.text(`Proposal #: ${quote.proposal_number}`, 20, 65);
-      doc.text(`Client: ${quote.quote_details?.client_name || 'N/A'}`, 20, 75);
+      doc.text(`Client: ${quote.job_details?.client_company || quote.job_details?.client_name || 'N/A'}`, 20, 75);
       doc.text(`Project: ${quote.quote_details?.project_name || 'N/A'}`, 20, 85);
       
       // Get total from price details object
@@ -317,7 +317,7 @@ const Quotes = () => {
                     return (
                       <TableRow key={quote.id}>
                         <TableCell className="font-medium">{quote.proposal_number}</TableCell>
-                        <TableCell>{quote.quote_details?.client_name || 'N/A'}</TableCell>
+                        <TableCell>{quote.job_details?.client_company || quote.job_details?.client_name || 'N/A'}</TableCell>
                         <TableCell>{quote.project_name || 'N/A'}</TableCell>
                         <TableCell>{formatCurrency(totalAmount)}</TableCell>
                         <TableCell>
