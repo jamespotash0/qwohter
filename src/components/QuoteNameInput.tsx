@@ -10,7 +10,7 @@ interface QuoteNameInputProps {
 export const QuoteNameInput = ({ 
   value, 
   onChange, 
-  maxChars = 25, 
+  maxChars = 35, 
   onSave 
 }: QuoteNameInputProps) => {
   const spanRef = useRef(null);
@@ -25,8 +25,8 @@ export const QuoteNameInput = ({
     }
   }, [value]);
 
-  // Limit max width roughly for 50 chars (assuming avg char width)
-  const maxWidth = 25 * 10; // 10px avg char width → 500px max
+  // Limit max width roughly for 35 chars (assuming avg char width)
+  const maxWidth = 35 * 10; // 10px avg char width → 350px max
 
   return (
     <>
