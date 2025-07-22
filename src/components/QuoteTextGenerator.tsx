@@ -1,4 +1,5 @@
 import { WallSpecification } from '@/types/quote';
+import { toWords } from 'number-to-words';
 
 interface QuoteData {
   quote_details?: any;
@@ -77,7 +78,7 @@ export const generateQuoteText = (data: QuoteData): string => {
   const website = data.quote_details?.website || 'contemporarywalls.com';
 
   // Job Details
-  const date = formatDate(data.job_details?.date || data.created_at);
+  const date = formatDate(data.job_details?.date || '');
   const proposalNumber = data.proposal_number || 'N/A';
   const jobLocation = data.job_details?.job_location || '';
   const billedToName = data.job_details?.client_name || '';
@@ -123,38 +124,39 @@ ${billedToName}
 ${billedToCompany}
 ${billedToAddress}
 
-Thank you for considering Contemporary Wall Systems for this project. As discussed, we are offering a proposal to furnish, deliver, and install, as noted, ${wallCount === 1 ? 'ONE (1)' : wallCount === 2 ? 'TWO (2)' : wallCount === 3 ? 'THREE (3)' : `${wallCount}`} ${wallSystemType} as specified below, at the above named project.
+Thank you for considering Contemporary Wall Systems for this project. As discussed, we are offering a proposal to furnish, deliver, and install, as noted, ${wallCount === 1 ? 'ONE (1)' : wallCount === 2 ? 'TWO (2)' : wallCount === 3 ? 'THREE (3)' : wallCount === 4 ? 'FOUR (4)' : `${wallCount}`} ${wallSystemType} as specified below, at the above named project.
 
 Specifications as follows:${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
   const dimensions = formatDimensions(wall.widthFeet, wall.widthInches, wall.heightFeet, wall.heightInches);
-  const panelCount = wall.panelCount || '1';
+  const panelCount = wall.panelCount || '';
   const panelType = wall.panelType || '';
   const quantity = wall.quantity || '1';
   
   return `
 ${wallName}
 ${dimensions}
-${panelCount.toUpperCase()} (${panelCount})
+${toWords(panelCount).charAt(0).toUpperCase()} (${panelCount})
 ${panelType}
 ${quantity} each`;
 }).join('')}
 
 PANELS:
-This wall system utilizes the ${wallEntries[0]?.[1]?.series || 'Kwik-Wall 3000'} Series 
-Model ${wallEntries[0]?.[1]?.model || '3020'}
-configured with ${wallEntries[0]?.[1]?.panelType || 'Hinged Paired Panels'}
-designed for use with a ${wallEntries[0]?.[1]?.trackType || 'Multi-Directional Track'} Layout, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
+This wall system utilizes the Kwik-Wall ${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || '3020'}
+configured with ${wallEntries[0]?.[1]?.panelType || 'Hinged Paired Panels'} designed for use with a ${wallEntries[0]?.[1]?.trackType || ''} Layout, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
 
-The wall consists of ${getPanelTypeText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelType || 'Hinged Paired Panels'}, finished in an Unfinished Rift Cut White Oak Veneer finish (as selected from the manufacturer's standard offerings). The wall stands ${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches).split(' x ')[1]} in height, with panel widths varying as needed. Each panel is nominally ${wallEntries[0]?.[1]?.panelThickness || '4'}" thick, constructed with a Steel Faced 1/2" gypsum board laminated to an acoustic material. Each panel features a Trimless Design and are suspended from an ${wallEntries[0]?.[1]?.trackSystem || 'Anodized Aluminum'} overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through ${wallEntries[0]?.[1]?.verticalSealants || 'Tongue-and-Groove'} vertical seals that create a continuous interlock, and ${wallEntries[0]?.[1]?.bottomSeals || 'Retractable Seals used with limited pressure mechanism operable'} bottom seals, set at the time of panel's placement and retract into the panels when in use for virtually effortless movement. End panels will incorporate a ${wallEntries[0]?.[1]?.endPanelType || 'Fixed Wall Jamb'}, which uses a Bulb as a final seal.
+The wall consists of ${getPanelTypeText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelType || 'Hinged Paired Panels'}, finished in an 
+Unfinished Rift Cut White Oak Veneer finish 
+(as selected from the manufacturer's standard offerings). The wall stands ${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches).split(' x ')[1]} in height, with panel widths varying as needed. Each panel is nominally ${wallEntries[0]?.[1]?.panelThickness || ''}" thick, constructed with a Steel Faced 1/2" gypsum board laminated to an acoustic material. 
+Each panel features a Trimless Design and are suspended from an ${wallEntries[0]?.[1]?.trackSystem || ''} overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through ${wallEntries[0]?.[1]?.verticalSealants || ''} vertical seals that create a continuous interlock, and ${wallEntries[0]?.[1]?.bottomSeals || ''} used with limited pressure mechanism operable bottom seals, set at the time of panel's placement and retract into the panels when in use for virtually effortless movement. End panels will incorporate a ${wallEntries[0]?.[1]?.endPanelType || ''}, which uses a Bulb as a final seal.
 
 TRACK:
-We will be using an ${wallEntries[0]?.[1]?.trackSystem || 'Aluminum'} Track System to suspend the doors from above. This track allows for Bi-Fold of the panels when not in use.
+We will be using an ${wallEntries[0]?.[1]?.trackSystem || ''} Track System to suspend the doors from above. This track allows for Bi-Fold of the panels when not in use.
 
 SUPPORT STRUCTURE (HEADER):
 Doors will be hung from a ${mountingTrack} above, to manufacturer's specs, as supplied by others. Soffits, if required, as supplied by others.
 
 GENERAL:
-Each door will carry a minimum STC of ${wallEntries[0]?.[1]?.stcRating || '56'}${wallEntries[0]?.[1]?.stcRating === '56' ? ' (Highest Available)' : ''}. Estimated delivery would be ${trackDelivery} weeks after approval of shop drawings for tracks, & ${panelDelivery} weeks for panels. Installation of tracks would take approximately ${trackInstallation} working days, panels installation would take ${panelInstallation} additional days.
+Each door will carry a minimum STC of ${wallEntries[0]?.[1]?.stcRating || ''}${wallEntries[0]?.[1]?.stcRating === '56' ? ' (Highest Available)' : ''}. Estimated delivery would be ${trackDelivery} weeks after approval of shop drawings for tracks, & ${panelDelivery} weeks for panels. Installation of tracks would take approximately ${trackInstallation} working days, panels installation would take ${panelInstallation} additional days.
 
 As described, furnished and installed
 ${basePrice}
