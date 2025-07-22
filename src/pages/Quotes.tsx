@@ -37,7 +37,7 @@ const Quotes = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [deleteQuoteId, setDeleteQuoteId] = useState<string | null>(null);
-  const [editingQuote, setEditingQuote] = useState<string | null>(null);
+  const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
   const [newQuoteName, setNewQuoteName] = useState("");
 
@@ -83,8 +83,8 @@ const Quotes = () => {
     setDeleteQuoteId(null);
   };
 
-  const editQuote = (quoteName: string) => {
-    setEditingQuote(quoteName);
+  const editQuote = (quote: Quote) => {
+    setEditingQuote(quote);
   };
 
   const downloadPDF = async (quote: Quote) => {
@@ -150,7 +150,7 @@ const Quotes = () => {
       
       setNewQuoteName(quoteName);
       setShowNewQuoteDialog(false);
-      setEditingQuote(quoteName);
+      setEditingQuote(newQuote as Quote);
     } catch (error) {
       console.error('Error creating quote:', error);
     }
@@ -165,9 +165,14 @@ const Quotes = () => {
           await supabase.auth.signOut();
           navigate("/auth");
         }}
-        quoteName={editingQuote}
+        quoteName={editingQuote.quote_details?.project_name || editingQuote.proposal_number}
+        existingQuote={editingQuote}
         onBackToDashboard={() => setEditingQuote(null)}
-        onQuoteNameChange={setEditingQuote}
+        onQuoteNameChange={(newName) => {
+          if (editingQuote) {
+            setEditingQuote({...editingQuote, quote_details: {...editingQuote.quote_details, project_name: newName}});
+          }
+        }}
       />
     );
   }
@@ -325,7 +330,7 @@ const Quotes = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-white">
-                              <DropdownMenuItem onClick={() => editQuote(quote.proposal_number)}>
+                              <DropdownMenuItem onClick={() => editQuote(quote)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>

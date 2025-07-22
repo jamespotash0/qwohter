@@ -21,60 +21,61 @@ interface QuoteCreatorProps {
   quoteName: string;
   onBackToDashboard: () => void;
   onQuoteNameChange?: (newName: string) => void;
+  existingQuote?: any;
 }
 
-const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNameChange }: QuoteCreatorProps) => {
+const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNameChange, existingQuote }: QuoteCreatorProps) => {
   const { createQuote, updateQuote } = useQuotes();
   const [activeTab, setActiveTab] = useState("contact");
   const [editingQuoteName, setEditingQuoteName] = useState(false);
   const [localQuoteName, setLocalQuoteName] = useState(quoteName);
   
-  // Form data states
-  const [quoteStatus, setQuoteStatus] = useState("draft");
+  // Form data states - populate with existing quote data if available
+  const [quoteStatus, setQuoteStatus] = useState(existingQuote?.status || "draft");
   const [contactInfo, setContactInfo] = useState({
-    contactName: "",
-    contactEmail: "",
-    address: "",
-    phone: "",
-    fax: "",
-    website: ""
+    contactName: existingQuote?.quote_details?.contactName || "",
+    contactEmail: existingQuote?.quote_details?.contactEmail || "",
+    address: existingQuote?.quote_details?.address || "",
+    phone: existingQuote?.quote_details?.phone || "",
+    fax: existingQuote?.quote_details?.fax || "",
+    website: existingQuote?.quote_details?.website || ""
   });
 
   const [jobDetails, setJobDetails] = useState({
-    date: new Date().toISOString().split('T')[0],
-    proposalNumber: `P${Date.now().toString().slice(-6)}`,
-    jobLocation: "",
+    date: existingQuote?.job_details?.date || new Date().toISOString().split('T')[0],
+    proposalNumber: existingQuote?.proposal_number || `P${Date.now().toString().slice(-6)}`,
+    jobLocation: existingQuote?.job_details?.job_location || "",
     billedTo: {
-      name: "",
-      company: "",
-      address: ""
+      name: existingQuote?.job_details?.client_name || "",
+      company: existingQuote?.job_details?.client_company || "",
+      address: existingQuote?.job_details?.client_address || ""
     }
   });
 
-  const [walls, setWalls] = useState<WallSpecification[]>([]);
+  const [walls, setWalls] = useState<WallSpecification[]>(existingQuote?.wall_details || []);
   const [supportStructure, setSupportStructure] = useState({
-    mountingTrack: ""
+    mountingTrack: existingQuote?.support_structure?.mountingTrack || ""
   });
   
   const [deliveryLabor, setDeliveryLabor] = useState({
     delivery: {
-      trackDeliveryWeeks: "",
-      panelDeliveryWeeks: "",
-      trackInstallationDays: "",
-      panelInstallationDays: ""
+      trackDeliveryWeeks: existingQuote?.delivery_details?.trackDeliveryWeeks || "",
+      panelDeliveryWeeks: existingQuote?.delivery_details?.panelDeliveryWeeks || "",
+      trackInstallationDays: existingQuote?.delivery_details?.trackInstallationDays || "",
+      panelInstallationDays: existingQuote?.delivery_details?.panelInstallationDays || ""
     },
     labor: {
-      laborType: "",
-      wageRate: ""
+      laborType: existingQuote?.labor_details?.laborType || "",
+      wageRate: existingQuote?.labor_details?.wageRate || ""
     }
   });
 
   const [pricing, setPricing] = useState({
-    basePrice: 0,
-    freight: 0,
-    total: "",
-    paymentUponDrawings: "",
-    paymentUponTrackInstallation: ""
+    basePrice: existingQuote?.price_details?.base_price || 0,
+    freight: existingQuote?.price_details?.freight || 0,
+    total: existingQuote?.price_details?.total || "",
+    paymentUponDrawings: existingQuote?.price_details?.payment_upon_drawings || "",
+    paymentUponTrackInstallation: existingQuote?.price_details?.payment_upon_track_installation || ""
   });
 
   // Validation functions
@@ -143,16 +144,45 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
     }
 
     try {
-      await createQuote({
-        contactInfo,
-        jobDetails,
-        walls,
-        supportStructure,
-        deliveryLabor,
-        pricing,
-        status: quoteStatus
-      });
-      toast.success("Quote saved and PDF generated successfully!");
+      if (existingQuote) {
+        // Update existing quote
+        await updateQuote(existingQuote.id, {
+          quote_details: contactInfo,
+          job_details: {
+            job_location: jobDetails.jobLocation,
+            client_name: jobDetails.billedTo.name,
+            client_company: jobDetails.billedTo.company,
+            client_address: jobDetails.billedTo.address,
+            date: jobDetails.date
+          },
+          wall_details: walls,
+          price_details: {
+            base_price: pricing.basePrice,
+            freight: pricing.freight,
+            total: pricing.total,
+            payment_upon_drawings: pricing.paymentUponDrawings,
+            payment_upon_track_installation: pricing.paymentUponTrackInstallation
+          },
+          support_structure: supportStructure,
+          delivery_details: deliveryLabor.delivery,
+          labor_details: deliveryLabor.labor,
+          proposal_number: jobDetails.proposalNumber,
+          status: quoteStatus
+        });
+        toast.success("Quote updated and PDF generated successfully!");
+      } else {
+        // Create new quote
+        await createQuote({
+          contactInfo,
+          jobDetails,
+          walls,
+          supportStructure,
+          deliveryLabor,
+          pricing,
+          status: quoteStatus
+        });
+        toast.success("Quote saved and PDF generated successfully!");
+      }
     } catch (error) {
       toast.error("Failed to save quote");
     }
@@ -223,6 +253,8 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
                     setEditingQuoteName(false);
                     if (onQuoteNameChange && localQuoteName.trim()) {
                       onQuoteNameChange(localQuoteName.trim());
+                      // Update the contact info with the new project name
+                      setContactInfo(prev => ({...prev, project_name: localQuoteName.trim()}));
                     }
                   }}
                 />
