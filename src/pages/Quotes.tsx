@@ -122,7 +122,7 @@ export default function Quotes() {
     
     // Quote information
     doc.setFontSize(12);
-    doc.text(`Quote ID: ${quote.id}`, 20, 50);
+    doc.text(`Proposal #: ${quote.id}`, 20, 50);
     doc.text(`Client: ${quote.client}`, 20, 65);
     doc.text(`Project: ${quote.project}`, 20, 80);
     doc.text(`Amount: $${quote.amount}`, 20, 95);
@@ -134,7 +134,7 @@ export default function Quotes() {
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 20, 285);
     
     // Save the PDF
-    doc.save(`quote-${quote.id}.pdf`);
+    doc.save(`Quote-${quote.id}.pdf`);
     
     toast({
       title: "PDF Downloaded",
