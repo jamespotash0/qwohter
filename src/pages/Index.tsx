@@ -1,5 +1,6 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import LoginForm from "@/components/LoginForm";
 import QuoteCreator from "@/components/QuoteCreator";
 import Dashboard from "@/components/Dashboard";
@@ -8,11 +9,23 @@ const Index = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<string>("");
   const [currentQuote, setCurrentQuote] = useState<string>("");
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogin = (username: string) => {
     setIsLoggedIn(true);
     setUser(username);
+    if (location.pathname === "/") {
+      navigate("/dashboard");
+    }
   };
+
+  useEffect(() => {
+    // Redirect to dashboard if user is logged in and on root path
+    if (isLoggedIn && location.pathname === "/") {
+      navigate("/dashboard");
+    }
+  }, [isLoggedIn, location.pathname, navigate]);
 
   const handleLogout = () => {
     setIsLoggedIn(false);

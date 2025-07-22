@@ -186,7 +186,7 @@ export default function Quotes() {
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => window.history.back()}
+            onClick={() => window.location.href = '/dashboard'}
             className="mr-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
