@@ -321,9 +321,16 @@ const Quotes = () => {
                         <TableCell>{quote.project_name || 'N/A'}</TableCell>
                         <TableCell>{formatCurrency(totalAmount)}</TableCell>
                         <TableCell>
-                          <Badge className={statusColors[quote.status as keyof typeof statusColors]}>
-                            {quote.status}
-                          </Badge>
+                          <Select value={quote.status} onValueChange={(value) => updateQuoteStatus(quote.id, value)}>
+                            <SelectTrigger className="w-[110px] h-7 bg-background">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background border shadow-lg z-50">
+                              <SelectItem value="Draft">Draft</SelectItem>
+                              <SelectItem value="Pending">Pending</SelectItem>
+                              <SelectItem value="Completed">Completed</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                         <TableCell>{new Date(quote.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
