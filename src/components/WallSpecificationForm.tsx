@@ -39,6 +39,9 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         }
         
         if (field === "model") {
+          // Auto-update track type based on model
+          updatedWall.trackType = getTrackTypeByModel(value);
+          updatedWall.trackSystem = "";
           // Reset dependent fields
           updatedWall.constructType = "";
           updatedWall.stcRating = "";
@@ -88,15 +91,29 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     }
   };
 
-  const getModelsBySeries = (series: string): string[] => {
-    switch (series) {
-      case "2000":
-        return ["2010", "2020", "2030", "2050e", "2010GL", "2020GL", "2030GL"];
-      case "3000":
-        return ["3010", "3020", "3030", "3050e", "3010GL", "3020GL", "3030GL"];
-      default:
-        return [];
+  const getModelsByPanelTypeAndSeries = (panelType: string, series: string): string[] => {
+    if (panelType === "Individual Panels") {
+      if (series === "2000") return ["2010", "2020", "2010GL", "2020GL"];
+      if (series === "3000") return ["3010", "3020", "3010GL", "3020GL"];
+    } else if (panelType === "Continuously-Hinged Panels") {
+      if (series === "2000") return ["2050e"];
+      if (series === "3000") return ["3050e"];
+    } else if (panelType === "Hinged-Paired Panels") {
+      if (series === "2000") return ["2030", "2030GL"];
+      if (series === "3000") return ["3030", "3030GL"];
     }
+    return [];
+  };
+
+  const getTrackTypeByModel = (model: string): string => {
+    if (["2010", "2010GL", "3010", "3010GL"].includes(model)) {
+      return "Curve & Diverter (Individual) Track";
+    } else if (["2020", "2020GL", "3020", "3020GL"].includes(model)) {
+      return "Multi-Directional Track";
+    } else if (["2050e", "3050e", "3030", "3030GL", "2030", "2030GL"].includes(model)) {
+      return "Hinged-Pair (Straight Line) Track";
+    }
+    return "";
   };
 
   const getConstructionTypesByModel = (model: string): string[] => {
@@ -131,7 +148,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     switch (trackType) {
       case "Multi-Directional Track":
         return ["Type 425 Clear Anodized Aluminum", "Type 850 Clear Anodized Aluminum"];
-      case "Hinged-Pair Track":
+      case "Hinged-Pair (Straight Line) Track":
         return ["Type 425 Clear Anodized Aluminum", "Type 850 Clear Anodized Aluminum"];
       case "Curve & Diverter (Individual) Track":
         return ["Type 850 Steel"];
@@ -342,7 +359,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         <SelectValue placeholder="Select model" />
                       </SelectTrigger>
                       <SelectContent className="bg-background border z-50">
-                        {getModelsBySeries(wall.series).map((model) => (
+                        {getModelsByPanelTypeAndSeries(wall.panelType, wall.series).map((model) => (
                           <SelectItem key={model} value={model}>
                             {model}
                           </SelectItem>
