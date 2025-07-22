@@ -142,25 +142,6 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Mobile App Download Card */}
-      {!isCollapsed && (
-        <SidebarFooter className="p-4">
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl p-4 text-white">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                <Building2 className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="font-medium text-sm">Download our Mobile App</h4>
-                <p className="text-xs text-white/70">Get easy in another way</p>
-              </div>
-            </div>
-            <button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium py-2 px-3 rounded-lg transition-colors">
-              Download
-            </button>
-          </div>
-        </SidebarFooter>
-      )}
     </Sidebar>
   );
 }
