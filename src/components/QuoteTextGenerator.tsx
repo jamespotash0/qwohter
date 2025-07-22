@@ -26,11 +26,14 @@ export const generateQuoteText = (data: QuoteData): string => {
       month: 'short', 
       day: 'numeric' 
     });
-    return new Date(dateString).toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    });
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      // Note: month is 0-based in JS Date constructor
+      const localDate = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+      return localDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+    // fallback
+    return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   const toWords = (num: number | string): string => {
@@ -78,7 +81,7 @@ export const generateQuoteText = (data: QuoteData): string => {
 
   // Contact Info
   const contactName = data.quote_details?.contactName || 'Ed Michinski';
-  const address = data.quote_details?.address || '567 Commerce St,<br>Franklin Lakes, NJ, 07417';
+  const address = data.quote_details?.address || '567 Commerce St,<br> Franklin&nbsp;Lakes, NJ, 07417';
   const phone = data.quote_details?.phone || '(973) 884-0474';
   const fax = data.quote_details?.fax || '(973) 884-1606';
   const website = data.quote_details?.website || 'contemporarywalls.com';
@@ -116,75 +119,105 @@ export const generateQuoteText = (data: QuoteData): string => {
   const paymentUponTrackInstallation = data.price_details?.payment_upon_track_installation || '33';
 
   return `<div class="quote-container">
-<div class="header-section">
-  <div class="company-info">
-    <div class="company-logo">
-      <img src="/lovable-uploads/f007c713-9d1a-427a-9453-d0b8ffb42da6.png" alt="Contemporary Wall Systems Logo" style="height: 80px; width: auto; max-width: 200px; object-fit: contain;" />
+  <div class="header-section">
+    <div class="company-info">
+      <div class="company-logo">
+        <img src="/lovable-uploads/f007c713-9d1a-427a-9453-d0b8ffb42da6.png" alt="Contemporary Wall Systems Logo" style="height: 80px; width: auto; max-width: 200px; object-fit: contain;" />
+      </div>
+    </div>
+    
+    <div class="contact-details" style="width: 50%; margin-left: 150px;">
+      <div class="contact-row">
+        <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Contact:</span>
+        <span class="value">${contactName}</span>
+      </div>
+     <div class="contact-row" style="display: flex; align-items: flex-start;">
+        <span class="label" style="font-weight: bold; width: 80px; flex-shrink: 0; text-align: right; padding-right: 0px;">
+          Address:
+        </span>
+        <span class="value" style="flex: 1; white-space: normal;">
+          ${address}
+        </span>
+      </div>
+      <div class="contact-row">
+        <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Phone:</span>
+        <span class="value">${phone}</span>
+      </div>
+      <div class="contact-row">
+        <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Fax:</span>
+        <span class="value">${fax}</span>
+      </div>
+      <div class="contact-row">
+        <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Website:</span>
+        <span class="value website-link">${website}</span>
+      </div>
     </div>
   </div>
-  
-  <div class="contact-details">
-    <div class="contact-row">
-      <span class="label">Contact:</span>
-      <span class="value">${contactName}</span>
-    </div>
-    <div class="contact-row">
-      <span class="label">Address:</span>
-      <span class="value">${address}</span>
-    </div>
-    <div class="contact-row">
-      <span class="label">Phone:</span>
-      <span class="value">${phone}</span>
-    </div>
-    <div class="contact-row">
-      <span class="label">Fax:</span>
-      <span class="value">${fax}</span>
-    </div>
-    <div class="contact-row">
-      <span class="label">Website:</span>
-      <span class="value website-link">${website}</span>
-    </div>
-  </div>
-</div>
 
-<div class="billing-and-job-info">
-  <div class="billing-section">
-    <h2 class="section-header">BILLED TO:</h2>
-    <div class="billed-to-details">
-      <div class="billed-line">${billedToName}</div>
-      <div class="underline"></div>
-      <div class="billed-line">${billedToCompany}</div>
-      <div class="underline"></div>
-      <div class="billed-line">${billedToAddress}</div>
-      <div class="underline"></div>
+  <div class="billing-job-container" style="display: flex; gap: 40px; align-items: flex-start; margin-top: 10px;">
+    <div class="billing-table" style="width: 30%;">
+      <div style="font-weight: bold; margin-bottom: 4px;">BILLED TO:</div>
+      <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+        <tr>
+          <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 16px 4px;">
+            ${billedToName}
+          </td>
+        </tr>
+        <tr>
+          <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 16px 4px;">
+            ${billedToCompany}
+          </td>
+        </tr>
+        <tr>
+          <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 16px 4px;">
+            ${billedToAddress}
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div class="job-info-section" style="flex-grow: 1;">
+      <table style="width: 75%; border-collapse: collapse; margin-left: 150px">
+        <colgroup>
+          <col style="width: 30%;">
+          <col style="width: 45%;">
+        </colgroup>
+        <tr>
+          <td style="font-weight: bold; padding: 4px; width: 80px; border: none; text-align: right;">
+            Date:
+          </td>
+          <td style="padding: 8px 8px 16px 8px; border-bottom: 0.5px solid black;">
+            ${date}
+          </td>
+        </tr>
+        <tr>
+          <td style="font-weight: bold; padding: 4px; border: none; text-align: right;">
+            Proposal #:
+          </td>
+          <td style="padding: 8px 8px 16px 8px; border-bottom: 0.5px solid black;">
+            ${proposalNumber}
+          </td>
+        </tr>
+        <tr>
+          <td style="font-weight: bold; padding: 4px; width: 20px; border: none; text-align: right; white-space: nowrap;">
+            Job Location:
+          </td>
+          <td style="padding: 8px 8px 16px 8px; border-bottom: 0.5px solid black;">
+            ${jobLocation}
+          </td>
+        </tr>
+      </table>
     </div>
   </div>
-  
-  <div class="job-info-section">
-    <div class="job-row">
-      <span class="job-label">Date:</span>
-      <span class="job-value">${date}</span>
-      <div class="job-underline"></div>
-    </div>
-    <div class="job-row">
-      <span class="job-label">Proposal #:</span>
-      <span class="job-value">${proposalNumber}</span>
-      <div class="job-underline"></div>
-    </div>
-    <div class="job-row">
-      <span class="job-label">Job Location:</span>
-      <span class="job-value">${jobLocation}</span>
-      <div class="job-underline"></div>
-    </div>
-  </div>
-</div>
 
-<div class="proposal-intro">
+<div class="proposal-intro" style="line-height: 1.2; margin-top: 12px;">
 Thank you for considering Contemporary Wall Systems for this project. As discussed, we are offering a proposal to furnish, deliver, and install, as noted, <strong>${wallCount === 1 ? 'ONE (1)' : wallCount === 2 ? 'TWO (2)' : wallCount === 3 ? 'THREE (3)' : wallCount === 4 ? 'FOUR (4)' : `${wallCount}`} ${wallSystemType}</strong> as specified below, at the above named project.
 </div>
 
-<div class="wall-specifications">
-<h2 class="section-header">Specifications as follows:</h2>
+<div class="wall-specifications" style="line-height: 1.15; margin-top: 15px;">
+  <strong>Specifications as follows:</strong>
+</div>
+
+<div class="wall-specifications-list" style="line-height: 1.15; margin-top: 10px;">
 ${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
   const dimensions = formatDimensions(wall.widthFeet, wall.widthInches, wall.heightFeet, wall.heightInches);
   const panelCount = wall.panelCount || '';
@@ -194,65 +227,80 @@ ${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
   return `<br><strong>${wallName}</strong>&nbsp;&nbsp;${dimensions}&nbsp;&nbsp;<strong>${toWords(panelCount)} (${panelCount})</strong>&nbsp;&nbsp;${panelType}&nbsp;&nbsp;${quantity} Each`;}).join('')}
 </div>
 
-<div class="panels-section">
-<h2 class="section-header">PANELS:</h2>
-This wall system utilizes the <strong>Kwik-Wall ${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || ''}</strong> configured with ${wallEntries[0]?.[1]?.panelType || ''} designed for use with a <strong>${wallEntries[0]?.[1]?.trackType || ''} Layout</strong>, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
 
-<br><br>The wall consists of <strong>${getPanelTypeText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelType || ''}</strong>, finished in an <strong>Unfinished Rift Cut White Oak Veneer finish</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches).split(' x ')[1]}</strong> in height, with panel widths varying as needed. Each panel is nominally <strong>${wallEntries[0]?.[1]?.panelThickness || ''}"</strong> thick, constructed with a <strong>Steel Faced 1/2" gypsum board</strong> laminated to an acoustic material. Each panel features a <strong>Trimless Design</strong> and are suspended from an <strong>${wallEntries[0]?.[1]?.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${wallEntries[0]?.[1]?.verticalSealants || ''}</strong> vertical seals that create a continuous interlock, and <strong>${wallEntries[0]?.[1]?.bottomSeals || ''}</strong> used with limited pressure mechanism operable bottom seals, set at the time of panel's placement and retract into the panels when in use for virtually effortless movement. End panels will incorporate a <strong>${wallEntries[0]?.[1]?.endPanelType || ''}</strong>, which uses a Bulb as a final seal.
+<div class="panels-section" style="line-height: 1.15;">
+<h2 class="section-header">PANELS:</h2>
+This wall system utilizes the Kwik-Wall <strong>${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || ''}</strong> configured with <strong>${wallEntries[0]?.[1]?.panelType || ''}</strong> designed for use with a <strong>${wallEntries[0]?.[1]?.trackType || ''} Layout</strong>, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
+
+<br><br>The wall consists of <strong>${getPanelTypeText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelType || ''}</strong>, finished in an <strong>Unfinished Rift Cut White Oak Veneer finish</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches).split(' x ')[1]}</strong> in height, with panel widths varying as needed. Each panel is nominally <strong>${wallEntries[0]?.[1]?.panelThickness || ''}"</strong> thick, constructed with a <strong>Steel Faced 1/2" gypsum board</strong> laminated to an acoustic material. Each panel features a <strong>Trimless Design</strong> and are suspended from a <strong>${wallEntries[0]?.[1]?.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${wallEntries[0]?.[1]?.verticalSealants || ''}</strong> vertical seals that create a continuous interlock, and <strong>${wallEntries[0]?.[1]?.bottomSeals || ''}</strong> used with limited pressure mechanism operable bottom seals, set at the time of panel's placement and retract into the panels when in use for virtually effortless movement. End panels will incorporate a <strong>${wallEntries[0]?.[1]?.endPanelType || ''}</strong>, which uses a Bulb as a final seal.
 </div>
 
-<div class="track-section">
+<div class="track-section" style="line-height: 1.15;">
 <h2 class="section-header">TRACK:</h2>
 We will be using an <strong>${wallEntries[0]?.[1]?.trackSystem || ''} Track System</strong> to suspend the doors from above. This track allows for <strong>Bi-Fold</strong> of the panels when not in use.
 </div>
 
-<div class="support-section">
+<div class="support-section" style="line-height: 1.15;">
 <h2 class="section-header">SUPPORT STRUCTURE (HEADER):</h2>
 Doors will be hung from a <strong>${mountingTrack}</strong> above, to manufacturer's specs, as supplied by others. Soffits, if required, as supplied by others.
 </div>
 
-<div class="general-section">
+<div class="general-section" style="line-height: 1.15; margin-bottom: 20px;">
 <h2 class="section-header">GENERAL:</h2>
 Each door will carry a minimum <strong>STC of ${wallEntries[0]?.[1]?.stcRating || ''}</strong>${wallEntries[0]?.[1]?.stcRating === '56' ? ' <strong>(Highest Available)</strong>' : ''}. Estimated delivery would be <strong>${trackDelivery} weeks</strong> after approval of shop drawings for tracks, & <strong>${panelDelivery} weeks</strong> for panels. Installation of tracks would take approximately <strong>${trackInstallation} working days</strong>, panels installation would take <strong>${panelInstallation} additional days</strong>.
 </div>
 
-<div class="pricing-section">
-<table style="width: 100%; margin-top: 20px;">
-<tr><td>As described, furnished and installed</td><td style="text-align: right;"><strong>${basePrice}</strong></td></tr>
-<tr style="border-bottom: 1px solid black;"><td>Estimated Inbound Freight + Local Delivery</td><td style="text-align: right; padding-bottom: 8px;"><strong>${freight}</strong></td></tr>
-<tr><td><strong>Total</strong></td><td style="text-align: right;"><strong>${total}</strong></td></tr>
-</table>
+<div class="pricing-section" style="margin-top: 10px;">
+  <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+    <colgroup>
+      <col style="width: 80%;">
+      <col style="width: 20%;">
+    </colgroup>
+    <tr>
+      <td style="border: 0.5px solid black; padding: 8px 8px 12px 8px;"><strong> As described, furnished and installed</strong></td>
+      <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${basePrice}</strong></td>
+    </tr>
+    <tr>
+      <td style="border: 0.5px solid black; padding: 8px;"><strong>Estimated Inbound Freight + Local Delivery</strong></td>
+      <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${freight}</strong></td>
+    </tr>
+    <tr>
+      <td style="border: 0.5px solid black; padding: 8px 8px 12px 8px;"><strong>Total</strong></td>
+      <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${total}</strong></td>
+    </tr>
+  </table>
+</div>
 
-<br><strong>Above Proposal is a Good Faith Estimate, Based on the Information Provided & Subject to Revision Upon Site Visit & Inspection. Pricing is Firm for 60 Days From Date Above</strong>
+<div class="statement-section" style="line-height: 1.15;">
+<br>Above Proposal is a Good Faith Estimate, Based on the Information Provided & Subject to Revision Upon Site Visit & Inspection. Pricing is Firm for 60 Days From Date Above
 </div>
 
 <div class="terms-section">
 <h2 class="section-header">General Notes and Terms:</h2>
 <ol>
-<li>All materials are <strong>FOB factory</strong>, prepaid, and added to the final invoice.</li>
-<li><strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</li>
-<li>All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate} Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</li>
-<li>Delivery includes drop-off to the <strong>Roof</strong> of the site, if applicable.</li>
-<li>Pricing is <strong>exclusive of any applicable taxes</strong>, which will be added as required.</li>
-<li>The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</li>
-<li>Final pricing is <strong>subject to site inspection and verification</strong> of all dimensions and conditions by our installation team.</li>
-<li>Any additional requirements or unforeseen conditions may be subject to <strong>revised pricing or additional charges</strong>.</li>
-<li>Panel colors and finishes are available as <strong>per the manufacturer's current standard offerings</strong>.</li>
-<li>A <strong>10-year factory warranty</strong> is provided on all operable wall systems.</li>
+<li>1.  All materials are <strong>FOB factory</strong>, prepaid, and added to the final invoice.</li>
+<li>2.  <strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</li>
+<li>3.  All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate} Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</li>
+<li>4.  <strong>Delivery includes drop-off to the Roof</strong> of the site, if applicable.</li>
+<li>5.  Pricing is <strong>exclusive of any applicable taxes</strong>, which will be added as required.</li>
+<li>6.  The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</li>
+<li>7.  Final pricing is <strong>subject to site inspection and verification</strong> of all dimensions and conditions by our installation team.</li>
+<li>8.  Any additional requirements or unforeseen conditions may be subject to <strong>revised pricing or additional charges</strong>.</li>
+<li>9.  Panel colors and finishes are available<strong> as per the manufacturer's current standard offerings</strong>.</li>
+<li>10. A <strong>10-year factory warranty</strong> is provided on all operable wall systems.</li>
+<li>11.
+  <strong> Payment Terms:</strong>
+  <div style="padding-left: 2rem;">
+    <div>– <strong>${paymentUponDrawings}%</strong> due upon approval of shop drawings</div>
+    <div>– <strong>${paymentUponTrackInstallation}%</strong> due upon track installation</div>
+    <div>– Remaining balance due upon final completion</div>
+  </div>
+</li>
 </ol>
 </div>
 
-<br><div class="payment-section">
-<strong>11. Payment Terms:</strong>
-<div style="margin-left: 40px; margin-top: 8px;">
-<div>- <strong>${paymentUponDrawings}%</strong> due upon approval of shop drawings</div>
-<div>- <strong>${paymentUponTrackInstallation}%</strong> due upon track installation</div>
-<div>- Remaining balance due upon final completion</div>
-</div>
-</div>
-
 <div class="signature-section">
-<br><strong>Signed By:</strong> __________________________&nbsp;&nbsp;&nbsp;<strong>Date:</strong> ${date}
+<br><strong>Signed By:</strong> _________________________________________________________&nbsp;&nbsp;&nbsp;<strong>Date:</strong> ${date}
 </div>
 
 <div class="acceptance-section">

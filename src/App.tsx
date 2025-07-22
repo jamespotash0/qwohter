@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import Quotes from "./pages/Quotes";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+// import 'styles.css';
 
 const queryClient = new QueryClient();
 

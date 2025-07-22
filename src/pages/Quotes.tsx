@@ -274,7 +274,6 @@ const Quotes = () => {
         .wall-specifications {
           line-height: 1.15;
           max-width: 7.25in;
-          padding-left: 0.5in;
         }
         
         .acceptance-section {
