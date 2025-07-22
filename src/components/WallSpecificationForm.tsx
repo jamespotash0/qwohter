@@ -142,13 +142,13 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const getSTCRatingOptions = (model: string, panelSkin: string): string[] => {
     if (!model || !panelSkin) return [];
 
-    // 2010GL, 2020GL
-    if (["2010GL", "2020GL"].includes(model)) {
+    // 2010GL, 2020GL, 2030GL
+    if (["2010GL", "2020GL", "2030GL"].includes(model)) {
       return ["38"];
     }
 
-    // 3010GL, 3020GL
-    if (["3010GL", "3020GL"].includes(model)) {
+    // 3010GL, 3020GL, 3030GL
+    if (["3010GL", "3020GL", "3030GL"].includes(model)) {
       return ["43", "48"];
     }
 
