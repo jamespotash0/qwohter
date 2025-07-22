@@ -228,27 +228,27 @@ Each door will carry a minimum <strong>STC of ${wallEntries[0]?.[1]?.stcRating |
 
 <div class="terms-section">
 <h2 class="section-header">General Notes and Terms:</h2>
-<ul>
-<li>All materials are FOB factory, prepaid, and added to the final invoice.</li>
-<li>Electrical, HVAC, and sprinkler system modifications, if required, are the responsibility of others.</li>
+<ol>
+<li>All materials are <strong>FOB factory</strong>, prepaid, and added to the final invoice.</li>
+<li><strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</li>
 <li>All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate} Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</li>
-<li>Delivery includes drop-off to the Roof of the site, if applicable.</li>
-<li>Pricing is exclusive of any applicable taxes, which will be added as required.</li>
-<li>The customer is responsible for obtaining any necessary permits or associated fees.</li>
-<li>Final pricing is subject to site inspection and verification of all dimensions and conditions by our installation team.</li>
-<li>Any additional requirements or unforeseen conditions may be subject to revised pricing or additional charges.</li>
-<li>Panel colors and finishes are available as per the manufacturer's current standard offerings.</li>
-<li>A 10-year factory warranty is provided on all operable wall systems.</li>
-</ul>
+<li>Delivery includes drop-off to the <strong>Roof</strong> of the site, if applicable.</li>
+<li>Pricing is <strong>exclusive of any applicable taxes</strong>, which will be added as required.</li>
+<li>The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</li>
+<li>Final pricing is <strong>subject to site inspection and verification</strong> of all dimensions and conditions by our installation team.</li>
+<li>Any additional requirements or unforeseen conditions may be subject to <strong>revised pricing or additional charges</strong>.</li>
+<li>Panel colors and finishes are available as <strong>per the manufacturer's current standard offerings</strong>.</li>
+<li>A <strong>10-year factory warranty</strong> is provided on all operable wall systems.</li>
+</ol>
 </div>
 
-<div class="payment-section">
-<h2 class="section-header">Payment Terms:</h2>
-<ul>
-<li><strong>${paymentUponDrawings}%</strong> due upon approval of shop drawings</li>
-<li><strong>${paymentUponTrackInstallation}%</strong> due upon track installation</li>
-<li><strong>Remaining balance</strong> due upon final completion</li>
-</ul>
+<br><div class="payment-section">
+<strong>11. Payment Terms:</strong>
+<div style="margin-left: 40px; margin-top: 8px;">
+<div>- <strong>${paymentUponDrawings}%</strong> due upon approval of shop drawings</div>
+<div>- <strong>${paymentUponTrackInstallation}%</strong> due upon track installation</div>
+<div>- Remaining balance due upon final completion</div>
+</div>
 </div>
 
 <div class="signature-section">
