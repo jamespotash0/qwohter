@@ -31,7 +31,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   const [localQuoteName, setLocalQuoteName] = useState(quoteName);
   
   // Form data states - populate with existing quote data if available
-  const [quoteStatus, setQuoteStatus] = useState(existingQuote?.status || "draft");
+  const [quoteStatus, setQuoteStatus] = useState(existingQuote?.status || "Draft");
   const [contactInfo, setContactInfo] = useState({
     contactName: existingQuote?.quote_details?.contactName || "",
     contactEmail: existingQuote?.quote_details?.contactEmail || "",
@@ -279,13 +279,13 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-white">
-                    <SelectItem value="draft">
+                    <SelectItem value="Draft">
                       <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
                         <span>Draft</span>
                       </div>
                     </SelectItem>
-                    <SelectItem value="completed">
+                    <SelectItem value="Completed">
                       <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 rounded-full bg-green-500"></div>
                         <span>Completed</span>

@@ -29,9 +29,9 @@ const Quotes = () => {
   } = useQuotes();
 
   const statusColors = {
-    draft: "bg-gray-100 text-gray-800",
-    pending: "bg-yellow-100 text-yellow-800",
-    completed: "bg-green-100 text-green-800",
+    Draft: "bg-gray-100 text-gray-800",
+    Pending: "bg-yellow-100 text-yellow-800",
+    Completed: "bg-green-100 text-green-800",
   };
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -145,7 +145,7 @@ const Quotes = () => {
         supportStructure: {},
         deliveryLabor: { delivery: {}, labor: {} },
         pricing: { basePrice: 0, freight: 0, total: "", paymentUponDrawings: "", paymentUponTrackInstallation: "" },
-        status: 'draft'
+        status: 'Draft'
       });
       
       setNewQuoteName(quoteName);
@@ -238,13 +238,13 @@ const Quotes = () => {
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription>Pending</CardDescription>
-                  <CardTitle className="text-3xl">{quotes.filter(q => q.status === 'pending').length}</CardTitle>
+                  <CardTitle className="text-3xl">{quotes.filter(q => q.status === 'Pending').length}</CardTitle>
                 </CardHeader>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription>Completed</CardDescription>
-                  <CardTitle className="text-3xl">{quotes.filter(q => q.status === 'completed').length}</CardTitle>
+                  <CardTitle className="text-3xl">{quotes.filter(q => q.status === 'Completed').length}</CardTitle>
                 </CardHeader>
               </Card>
             </div>
@@ -268,9 +268,9 @@ const Quotes = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="Draft">Draft</SelectItem>
+              <SelectItem value="Pending">Pending</SelectItem>
+              <SelectItem value="Completed">Completed</SelectItem>
             </SelectContent>
           </Select>
         </div>

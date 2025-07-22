@@ -78,7 +78,7 @@ export const useQuotes = () => {
           support_structure: quoteData.supportStructure || {},
           delivery_details: quoteData.deliveryLabor.delivery || {},
           labor_details: quoteData.deliveryLabor.labor || {},
-          status: quoteData.status || 'draft',
+          status: quoteData.status || 'Draft',
           user_id: user.id
         })
         .select()
