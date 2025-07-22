@@ -35,7 +35,7 @@ export const generateQuoteText = (data: QuoteData): string => {
 
   const toWords = (num: number | string): string => {
     const n = parseInt(num.toString());
-    const words = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'ELEVEN', 'TWELVE'];
+    const words = ['ZERO', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'ELEVEN', 'TWELVE'];
     return words[n] || n.toString();
   };
 
