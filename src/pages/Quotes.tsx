@@ -337,25 +337,24 @@ export default function Quotes() {
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Badge 
-                          variant="outline" 
-                          className={`cursor-pointer ${statusColors[quote.status as keyof typeof statusColors]}`}
+                        <button 
+                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer hover:opacity-80 ${statusColors[quote.status as keyof typeof statusColors]}`}
                         >
                           {capitalizeStatus(quote.status)}
-                        </Badge>
+                        </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="center" className="bg-background border shadow-md z-50">
+                      <DropdownMenuContent align="center" className="bg-background border shadow-lg z-50">
                         <DropdownMenuItem onClick={() => updateQuoteStatus(quote.id, "Completed")}>
                           <Check className="w-4 h-4 mr-2 text-green-600" />
-                          Mark Completed
+                          Completed
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => updateQuoteStatus(quote.id, "Draft")}>
                           <div className="w-4 h-4 mr-2 rounded-full bg-gray-400"></div>
-                          Set as Draft
+                          Draft
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => updateQuoteStatus(quote.id, "In Revision")}>
                           <div className="w-4 h-4 mr-2 rounded-full bg-yellow-400"></div>
-                          Mark in Revision
+                          In Revision
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
