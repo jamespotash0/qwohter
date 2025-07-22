@@ -1,0 +1,261 @@
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Search, Plus, Filter, MoreHorizontal, Eye, Download, Copy } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
+const mockQuotes = [
+  {
+    id: "QT-001",
+    client: "Acme Construction",
+    project: "Office Building Renovation",
+    amount: 45000,
+    status: "Sent",
+    date: "2024-01-15",
+    dueDate: "2024-01-30"
+  },
+  {
+    id: "QT-002", 
+    client: "Builder Solutions",
+    project: "Residential Complex",
+    amount: 78500,
+    status: "Viewed",
+    date: "2024-01-12",
+    dueDate: "2024-01-28"
+  },
+  {
+    id: "QT-003",
+    client: "Metro Developers",
+    project: "Commercial Center",
+    amount: 125000,
+    status: "Accepted",
+    date: "2024-01-10",
+    dueDate: "2024-01-25"
+  },
+  {
+    id: "QT-004",
+    client: "Green Building Co",
+    project: "Eco-Friendly Housing",
+    amount: 92000,
+    status: "Pending",
+    date: "2024-01-08",
+    dueDate: "2024-01-22"
+  },
+  {
+    id: "QT-005",
+    client: "Urban Planners Inc",
+    project: "Downtown Retail Space",
+    amount: 67300,
+    status: "Sent",
+    date: "2024-01-05",
+    dueDate: "2024-01-20"
+  }
+];
+
+const statusColors = {
+  Sent: "bg-blue-100 text-blue-800 border-blue-200",
+  Viewed: "bg-yellow-100 text-yellow-800 border-yellow-200", 
+  Accepted: "bg-green-100 text-green-800 border-green-200",
+  Pending: "bg-gray-100 text-gray-800 border-gray-200"
+};
+
+export default function Quotes() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("All");
+
+  const filteredQuotes = mockQuotes.filter(quote => {
+    const matchesSearch = quote.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         quote.project.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         quote.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = selectedStatus === "All" || quote.status === selectedStatus;
+    return matchesSearch && matchesStatus;
+  });
+
+  const totalValue = filteredQuotes.reduce((sum, quote) => sum + quote.amount, 0);
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Quotes</h1>
+          <p className="text-muted-foreground">Manage and track your project quotes</p>
+        </div>
+        <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+          <Plus className="w-4 h-4 mr-2" />
+          New Quote
+        </Button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Quotes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{filteredQuotes.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {filteredQuotes.length === mockQuotes.length ? 'All quotes' : `Filtered from ${mockQuotes.length}`}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Value</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${totalValue.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              Combined quote value
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {filteredQuotes.filter(q => q.status === "Pending" || q.status === "Sent").length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Awaiting response
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Accepted</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {filteredQuotes.filter(q => q.status === "Accepted").length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Approved quotes
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters and Search */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search quotes, clients, or projects..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="flex gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Filter className="w-4 h-4 mr-2" />
+                    Status: {selectedStatus}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => setSelectedStatus("All")}>
+                    All Statuses
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedStatus("Sent")}>
+                    Sent
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedStatus("Viewed")}>
+                    Viewed
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedStatus("Accepted")}>
+                    Accepted
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSelectedStatus("Pending")}>
+                    Pending
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Quote ID</TableHead>
+                <TableHead>Client</TableHead>
+                <TableHead>Project</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Due Date</TableHead>
+                <TableHead className="w-[50px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredQuotes.map((quote) => (
+                <TableRow key={quote.id} className="hover:bg-muted/50">
+                  <TableCell className="font-medium">{quote.id}</TableCell>
+                  <TableCell>{quote.client}</TableCell>
+                  <TableCell>{quote.project}</TableCell>
+                  <TableCell className="font-semibold">
+                    ${quote.amount.toLocaleString()}
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant="outline" 
+                      className={statusColors[quote.status as keyof typeof statusColors]}
+                    >
+                      {quote.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{quote.date}</TableCell>
+                  <TableCell>{quote.dueDate}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Download className="w-4 h-4 mr-2" />
+                          Download PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Duplicate Quote
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+
+          {filteredQuotes.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No quotes found matching your criteria.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

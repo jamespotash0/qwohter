@@ -10,6 +10,7 @@ import {
   FileText,
   Building2
 } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import {
   Sidebar,
@@ -31,11 +32,11 @@ interface AppSidebarProps {
 }
 
 const menuItems = [
-  { title: "Dashboard", icon: Home, isActive: true },
-  { title: "Quotes", icon: FileText, badge: "12+" },
-  { title: "Calendar", icon: Calendar },
-  { title: "Analytics", icon: BarChart3 },
-  { title: "Team", icon: Users },
+  { title: "Dashboard", icon: Home, path: "/" },
+  { title: "Quotes", icon: FileText, path: "/quotes", badge: "12+" },
+  { title: "Calendar", icon: Calendar, path: "/calendar" },
+  { title: "Analytics", icon: BarChart3, path: "/analytics" },
+  { title: "Team", icon: Users, path: "/team" },
 ];
 
 const generalItems = [
@@ -46,6 +47,8 @@ const generalItems = [
 export function AppSidebar({ user, onLogout }: AppSidebarProps) {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
+  const location = useLocation();
+  const navigate = useNavigate();
 
   return (
     <Sidebar className={isCollapsed ? "w-16" : "w-64"} collapsible="icon">
@@ -68,32 +71,38 @@ export function AppSidebar({ user, onLogout }: AppSidebarProps) {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild 
-                    className={`w-full justify-start ${
-                      item.isActive 
-                        ? "bg-primary text-primary-foreground font-medium" 
-                        : "hover:bg-muted"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 cursor-pointer">
-                      <item.icon className="h-4 w-4" />
-                      {!isCollapsed && (
-                        <>
-                          <span className="flex-1">{item.title}</span>
-                          {item.badge && (
-                            <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
-                              {item.badge}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {menuItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton 
+                      asChild 
+                      className={`w-full justify-start ${
+                        isActive 
+                          ? "bg-primary text-primary-foreground font-medium" 
+                          : "hover:bg-muted"
+                      }`}
+                    >
+                      <div 
+                        className="flex items-center gap-3 cursor-pointer"
+                        onClick={() => navigate(item.path)}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {!isCollapsed && (
+                          <>
+                            <span className="flex-1">{item.title}</span>
+                            {item.badge && (
+                              <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
+                                {item.badge}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
