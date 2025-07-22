@@ -79,10 +79,10 @@ export const generateQuoteText = (data: QuoteData): string => {
   // Job Details
   const date = formatDate(data.job_details?.date || data.created_at);
   const proposalNumber = data.proposal_number || 'N/A';
-  const jobLocation = data.job_details?.jobLocation || '';
-  const billedToName = data.job_details?.billedTo?.name || '';
-  const billedToCompany = data.job_details?.billedTo?.company || '';
-  const billedToAddress = data.job_details?.billedTo?.address || '';
+  const jobLocation = data.job_details?.job_location || '';
+  const billedToName = data.job_details?.client_name || '';
+  const billedToCompany = data.job_details?.client_company || '';
+  const billedToAddress = data.job_details?.client_address || '';
 
   // Wall Details
   const walls = data.wall_details?.walls || {};
@@ -94,19 +94,19 @@ export const generateQuoteText = (data: QuoteData): string => {
   const mountingTrack = data.support_structure?.mountingTrack || 'Pre-Drilled Steel Beam';
 
   // Delivery & Labor
-  const trackDelivery = data.delivery_details?.track_delivery || '1-2';
-  const panelDelivery = data.delivery_details?.panel_delivery || '3-4';
-  const trackInstallation = data.delivery_details?.track_installation || '3-4';
-  const panelInstallation = data.delivery_details?.panel_installation || '1';
-  const laborType = data.labor_details?.laborType || 'Non-Union';
-  const wageRate = data.labor_details?.wageRate || 'Standard';
+  const trackDelivery = data.delivery_details?.trackDeliveryWeeks || '';
+  const panelDelivery = data.delivery_details?.panelDeliveryWeeks || '';
+  const trackInstallation = data.delivery_details?.trackInstallationDays || '';
+  const panelInstallation = data.delivery_details?.panelInstallationDays || '';
+  const laborType = data.labor_details?.laborType || '';
+  const wageRate = data.labor_details?.wageRate || '';
 
   // Pricing
   const basePrice = formatCurrency(data.price_details?.basePrice || data.price_details?.base_price);
   const freight = formatCurrency(data.price_details?.freight);
   const total = formatCurrency(data.price_details?.total);
-  const paymentUponDrawings = data.price_details?.paymentUponDrawings || data.price_details?.payment_upon_drawings || '33';
-  const paymentUponTrackInstallation = data.price_details?.paymentUponTrackInstallation || data.price_details?.payment_upon_track_installation || '33';
+  const paymentUponDrawings = data.price_details?.payment_upon_drawings || '33';
+  const paymentUponTrackInstallation = data.price_details?.payment_upon_track_installation || '33';
 
   return `Contact: ${contactName}
 Address: ${address}
