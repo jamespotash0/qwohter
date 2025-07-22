@@ -97,35 +97,84 @@ const Quotes = () => {
       // Import the quote text generator
       const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
       
-      // Generate the full quote text
-      const quoteText = generateQuoteText(quote);
+      // Generate the full quote text with HTML
+      const quoteHTML = generateQuoteText(quote);
       
-      // Create a new PDF document
+      // Create a temporary container for HTML rendering
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = quoteHTML;
+      
+      // Apply CSS styles
+      const style = document.createElement('style');
+      style.textContent = `
+        body {
+          font-family: "Times New Roman", serif;
+          font-size: 12pt;
+          line-height: 1.15;
+          max-width: 6.58in;
+          margin: 0 auto;
+        }
+
+        h2.section-header {
+          font-weight: bold;
+          font-size: 12pt;
+          margin-top: 1.5em;
+          margin-bottom: 0.5em;
+        }
+
+        .wall-specifications {
+          line-height: 1.15;
+          max-width: 7.25in;
+          padding-left: 0.5in;
+        }
+        
+        .acceptance-section {
+          font-size: 9pt;
+          font-style: italic;
+        }
+      `;
+      
+      document.head.appendChild(style);
+      document.body.appendChild(tempDiv);
+      
+      // Use html2canvas and jsPDF to render the HTML content
+      const html2canvas = (await import('html2canvas')).default;
+      
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      });
+      
+      // Clean up
+      document.head.removeChild(style);
+      document.body.removeChild(tempDiv);
+      
+      // Create PDF with the canvas image
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
       });
       
-      // Split the text into lines and render them properly in the PDF
-      const splitText = doc.splitTextToSize(quoteText, 180);
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 210;
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
       
-      // Add the text to the PDF
-      doc.setFontSize(10);
-      let y = 20;
-      const lineHeight = 5;
+      let position = 0;
       
-      // Render each line
-      splitText.forEach((line: string) => {
-        // Add page break if we're near the bottom
-        if (y > 280) {
-          doc.addPage();
-          y = 20;
-        }
-        
-        doc.text(line, 15, y);
-        y += lineHeight;
-      });
+      // Add the image to PDF, splitting across pages if necessary
+      doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        doc.addPage();
+        doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
       
       // Add version information
       doc.setFontSize(8);
@@ -141,6 +190,50 @@ const Quotes = () => {
       });
     } catch (error) {
       console.error('Error downloading PDF:', error);
+      
+      // Fallback to text-based PDF if HTML rendering fails
+      try {
+        const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
+        const quoteText = generateQuoteText(quote);
+        
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+        
+        const splitText = doc.splitTextToSize(quoteText, 180);
+        doc.setFontSize(10);
+        let y = 20;
+        const lineHeight = 5;
+        
+        splitText.forEach((line: string) => {
+          if (y > 280) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.text(line, 15, y);
+          y += lineHeight;
+        });
+        
+        doc.setFontSize(8);
+        doc.setTextColor(128, 128, 128);
+        doc.text(`Version: ${quote.version + 1}`, 15, 290);
+        
+        doc.save(`quote-${quote.proposal_number}-v${quote.version + 1}.pdf`);
+        
+        toast({
+          title: "PDF Downloaded",
+          description: `Quote ${quote.proposal_number} has been downloaded (fallback mode).`,
+        });
+      } catch (fallbackError) {
+        console.error('Fallback PDF generation also failed:', fallbackError);
+        toast({
+          title: "PDF Download Failed",
+          description: "Unable to generate PDF. Please try again.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
