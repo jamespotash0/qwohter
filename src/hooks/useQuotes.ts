@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
+import { WallDetails } from "@/types/quote";
 
 type QuoteRow = Database['public']['Tables']['quotes']['Row'];
 
@@ -11,7 +12,7 @@ export interface Quote {
   project_name?: string;
   quote_details: any;
   job_details: any;
-  wall_details: any;
+  wall_details: WallDetails;
   price_details: any;
   support_structure: any;
   delivery_details: any;
@@ -22,6 +23,39 @@ export interface Quote {
   created_at: string;
   updated_at: string;
 }
+
+// Helper function to migrate wall_details from old array format to new object format
+const migrateWallDetails = (wallDetails: any): WallDetails => {
+  if (!wallDetails) return {};
+  
+  // If it's already an object, return as is
+  if (typeof wallDetails === 'object' && !Array.isArray(wallDetails)) {
+    return wallDetails;
+  }
+  
+  // If it's an array, convert to object format
+  if (Array.isArray(wallDetails)) {
+    const migratedWalls: WallDetails = {};
+    wallDetails.forEach((wall, index) => {
+      const wallName = wall.name || `Wall ${index + 1}`;
+      const { id, name, ...wallSpec } = wall;
+      migratedWalls[wallName] = wallSpec;
+    });
+    return migratedWalls;
+  }
+  
+  return {};
+};
+
+// Helper function to convert database row to Quote interface
+const convertRowToQuote = (row: QuoteRow): Quote => {
+  return {
+    ...row,
+    wall_details: migrateWallDetails(row.wall_details),
+    project_name: row.project_name || undefined,
+    date_last_downloaded: row.date_last_downloaded || undefined
+  };
+};
 
 export const useQuotes = () => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -37,7 +71,7 @@ export const useQuotes = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setQuotes((data as Quote[]) || []);
+      setQuotes(data ? data.map(convertRowToQuote) : []);
     } catch (error: any) {
       toast({
         title: "Error fetching quotes",
@@ -67,7 +101,7 @@ export const useQuotes = () => {
             client_address: quoteData.jobDetails.billedTo.address,
             date: quoteData.jobDetails.date
           },
-          wall_details: quoteData.walls || [],
+          wall_details: quoteData.walls || {},
           price_details: {
             base_price: quoteData.pricing.basePrice,
             freight: quoteData.pricing.freight,
@@ -86,7 +120,7 @@ export const useQuotes = () => {
 
       if (error) throw error;
       
-      setQuotes(prev => [data as Quote, ...prev]);
+      setQuotes(prev => [convertRowToQuote(data), ...prev]);
       toast({
         title: "Quote created",
         description: `Quote ${quoteData.jobDetails.proposalNumber} has been created successfully.`,
@@ -107,7 +141,7 @@ export const useQuotes = () => {
     try {
       const { data, error } = await supabase
         .from('quotes')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single();
@@ -115,7 +149,7 @@ export const useQuotes = () => {
       if (error) throw error;
       
       setQuotes(prev => prev.map(quote => 
-        quote.id === id ? { ...quote, ...(data as Partial<Quote>) } : quote
+        quote.id === id ? { ...quote, ...convertRowToQuote(data) } : quote
       ));
       
       return data;
@@ -165,7 +199,7 @@ export const useQuotes = () => {
       if (error) throw error;
       
       setQuotes(prev => prev.map(quote => 
-        quote.id === id ? { ...quote, ...(data as Partial<Quote>) } : quote
+        quote.id === id ? { ...quote, ...convertRowToQuote(data) } : quote
       ));
       
       return data;

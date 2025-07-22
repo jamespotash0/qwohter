@@ -12,7 +12,7 @@ import DeliveryLaborForm from "./DeliveryLaborForm";
 import PricingForm from "./PricingForm";
 import { toast } from "sonner";
 import { QuoteNameInput } from "./QuoteNameInput";
-import { WallSpecification } from "../types/quote";
+import { WallDetails } from "../types/quote";
 import { useQuotes } from "@/hooks/useQuotes";
 
 interface QuoteCreatorProps {
@@ -29,6 +29,29 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   const [activeTab, setActiveTab] = useState("contact");
   const [editingQuoteName, setEditingQuoteName] = useState(false);
   const [localQuoteName, setLocalQuoteName] = useState(quoteName);
+
+  // Helper function to migrate old array-based wall_details to new object format
+  const migrateWallDetails = (wallDetails: any): WallDetails => {
+    if (!wallDetails) return {};
+    
+    // If it's already an object, return as is
+    if (typeof wallDetails === 'object' && !Array.isArray(wallDetails)) {
+      return wallDetails;
+    }
+    
+    // If it's an array, convert to object format
+    if (Array.isArray(wallDetails)) {
+      const migratedWalls: WallDetails = {};
+      wallDetails.forEach((wall, index) => {
+        const wallName = wall.name || `Wall ${index + 1}`;
+        const { id, name, ...wallSpec } = wall;
+        migratedWalls[wallName] = wallSpec;
+      });
+      return migratedWalls;
+    }
+    
+    return {};
+  };
   
   // Form data states - populate with existing quote data if available
   const [quoteStatus, setQuoteStatus] = useState(existingQuote?.status || "Draft");
@@ -52,7 +75,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
     }
   });
 
-  const [walls, setWalls] = useState<WallSpecification[]>(existingQuote?.wall_details || []);
+  const [walls, setWalls] = useState<WallDetails>(migrateWallDetails(existingQuote?.wall_details));
   const [supportStructure, setSupportStructure] = useState({
     mountingTrack: existingQuote?.support_structure?.mountingTrack || ""
   });
@@ -107,7 +130,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   };
 
   const isWallSpecValid = () => {
-    return walls.length > 0;
+    return Object.keys(walls).length > 0;
   };
 
   const isSupportStructureValid = () => {

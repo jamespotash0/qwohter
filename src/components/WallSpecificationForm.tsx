@@ -3,83 +3,82 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2 } from "lucide-react";
-import { WallSpecification } from "../types/quote";
+import { Trash2, Edit } from "lucide-react";
+import { WallSpecification, WallDetails } from "@/types/quote";
+import { useState } from "react";
 
 interface WallSpecificationFormProps {
-  walls: WallSpecification[];
-  onUpdate: (walls: WallSpecification[]) => void;
+  walls: WallDetails;
+  onUpdate: (walls: WallDetails) => void;
 }
 
 const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) => {
-  const handleWallChange = (wallId: string, field: keyof WallSpecification, value: string) => {
-    const updatedWalls = walls.map(wall => {
-      if (wall.id === wallId) {
-        let updatedWall = { ...wall, [field]: value };
-        
-        // Cascading logic
-        if (field === "wallSystemType") {
-          // Reset all dependent fields when wall system type changes
-          updatedWall.panelType = "";
-          updatedWall.series = "";
-          updatedWall.model = "";
-          updatedWall.panelThickness = "";
-          updatedWall.panelSkin = "";
-          updatedWall.stcRating = "";
-          updatedWall.trackType = "";
-          updatedWall.trackSystem = "";
-          updatedWall.verticalSealants = "";
-          updatedWall.bottomSeals = "";
-          updatedWall.topSeals = "";
-          updatedWall.endPanelType = "";
-        }
-        
-        if (field === "panelType") {
-          // Reset dependent fields
-          updatedWall.series = "";
-          updatedWall.model = "";
-          updatedWall.panelThickness = "";
-          updatedWall.panelSkin = "";
-          updatedWall.stcRating = "";
-          updatedWall.trackType = "";
-          updatedWall.trackSystem = "";
-        }
-        
-        if (field === "series") {
-          // Auto-update panel thickness based on series
-          updatedWall.panelThickness = value === "2000" ? "3" : value === "3000" ? "4" : "";
-          // Reset dependent fields
-          updatedWall.model = "";
-          updatedWall.panelSkin = "";
-          updatedWall.stcRating = "";
-        }
-        
-        if (field === "model") {
-          // Auto-update track type based on model
-          updatedWall.trackType = getTrackTypeByModel(value);
-          updatedWall.trackSystem = "";
-          // Reset dependent fields
-          updatedWall.panelSkin = "";
-          updatedWall.stcRating = "";
-        }
-        
-        if (field === "panelSkin" || field === "model") {
-          // Reset STC rating when model or panel skin changes
-          updatedWall.stcRating = "";
-        }
-        
-        if (field === "trackType") {
-          // Reset track system when track type changes
-          updatedWall.trackSystem = "";
-        }
-        
-        return updatedWall;
-      }
-      return wall;
-    });
+  const [editingWallName, setEditingWallName] = useState<string | null>(null);
+  const [newWallName, setNewWallName] = useState("");
+
+  const handleWallChange = (wallName: string, field: keyof WallSpecification, value: string) => {
+    const updatedWalls = { ...walls };
+    let updatedWall = { ...updatedWalls[wallName], [field]: value };
+    
+    // Cascading logic
+    if (field === "wallSystemType") {
+      // Reset all dependent fields when wall system type changes
+      updatedWall.panelType = "";
+      updatedWall.series = "";
+      updatedWall.model = "";
+      updatedWall.panelThickness = "";
+      updatedWall.panelSkin = "";
+      updatedWall.stcRating = "";
+      updatedWall.trackType = "";
+      updatedWall.trackSystem = "";
+      updatedWall.verticalSealants = "";
+      updatedWall.bottomSeals = "";
+      updatedWall.topSeals = "";
+      updatedWall.endPanelType = "";
+    }
+    
+    if (field === "panelType") {
+      // Reset dependent fields
+      updatedWall.series = "";
+      updatedWall.model = "";
+      updatedWall.panelThickness = "";
+      updatedWall.panelSkin = "";
+      updatedWall.stcRating = "";
+      updatedWall.trackType = "";
+      updatedWall.trackSystem = "";
+    }
+    
+    if (field === "series") {
+      // Auto-update panel thickness based on series
+      updatedWall.panelThickness = value === "2000" ? "3" : value === "3000" ? "4" : "";
+      // Reset dependent fields
+      updatedWall.model = "";
+      updatedWall.panelSkin = "";
+      updatedWall.stcRating = "";
+    }
+    
+    if (field === "model") {
+      // Auto-update track type based on model
+      updatedWall.trackType = getTrackTypeByModel(value);
+      updatedWall.trackSystem = "";
+      // Reset dependent fields
+      updatedWall.panelSkin = "";
+      updatedWall.stcRating = "";
+    }
+    
+    if (field === "panelSkin" || field === "model") {
+      // Reset STC rating when model or panel skin changes
+      updatedWall.stcRating = "";
+    }
+    
+    if (field === "trackType") {
+      // Reset track system when track type changes
+      updatedWall.trackSystem = "";
+    }
+    
+    updatedWalls[wallName] = updatedWall;
     onUpdate(updatedWalls);
   };
-
 
   const getSeriesByPanelType = (panelType: string): string[] => {
     switch (panelType) {
@@ -120,19 +119,15 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   };
 
   const getPanelSkinOptions = (model: string): string[] => {
-    // 3010, 3020, 3030 series
     if (["3010", "3020", "3030"].includes(model)) {
       return ["Steel (Standard)", "Acoustical Substrate (Optional)", "Wood Veneer (Optional)", "High-Pressure Laminate/Gypsum (Optional)"];
     }
-    // 3050e, 3010GL, 3020GL, 3030GL series  
     if (["3050e", "3010GL", "3020GL", "3030GL"].includes(model)) {
       return ["Steel (Standard)", "Acoustical Substrate (Optional)"];
     }
-    // 2010, 2020, 2030 series
     if (["2010", "2020", "2030"].includes(model)) {
       return ["Acoustical Substrate (Standard)", "Steel (Optional)", "Wood Veneer (Optional)", "High-Pressure Laminate (Optional)"];
     }
-    // 2050e, 2010GL, 2020GL, 2030GL series
     if (["2050e", "2010GL", "2020GL", "2030GL"].includes(model)) {
       return ["Acoustical Substrate (Standard)", "Steel (Optional)"];
     }
@@ -142,17 +137,14 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const getSTCRatingOptions = (model: string, panelSkin: string): string[] => {
     if (!model || !panelSkin) return [];
 
-    // 2010GL, 2020GL, 2030GL
     if (["2010GL", "2020GL", "2030GL"].includes(model)) {
       return ["38"];
     }
 
-    // 3010GL, 3020GL, 3030GL
     if (["3010GL", "3020GL", "3030GL"].includes(model)) {
       return ["43", "48"];
     }
 
-    // 2010, 2020, 2030, 2050e
     if (["2010", "2020", "2030", "2050e"].includes(model)) {
       if (panelSkin.includes("Acoustical Substrate")) {
         return ["42", "45", "49", "50"];
@@ -162,7 +154,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       }
     }
 
-    // 3010, 3020, 3030, 3050e
     if (["3010", "3020", "3030", "3050e"].includes(model)) {
       if (panelSkin.includes("Steel")) {
         return ["46", "50", "52", "56"];
@@ -173,12 +164,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     }
 
     return [];
-  };
-
-  const getSTCRating = (series: string, panelSkin: string): string => {
-    // This function is kept for backward compatibility but now returns empty
-    // STC rating should be selected from dropdown options
-    return "";
   };
 
   const getTrackSystemsByTrackType = (trackType: string): string[] => {
@@ -194,15 +179,16 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     }
   };
 
-  const removeWall = (wallId: string) => {
-    const updatedWalls = walls.filter(wall => wall.id !== wallId);
+  const removeWall = (wallName: string) => {
+    const updatedWalls = { ...walls };
+    delete updatedWalls[wallName];
     onUpdate(updatedWalls);
   };
 
   const addNewWall = () => {
+    const wallCount = Object.keys(walls).length;
+    const newWallName = `Wall ${wallCount + 1}`;
     const newWall: WallSpecification = {
-      id: Date.now().toString(),
-      name: `Wall ${walls.length + 1}`,
       wallSystemType: "",
       widthFeet: "",
       widthInches: "",
@@ -223,7 +209,18 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       trackType: "",
       trackSystem: ""
     };
-    onUpdate([...walls, newWall]);
+    onUpdate({ ...walls, [newWallName]: newWall });
+  };
+
+  const renameWall = (oldName: string, newName: string) => {
+    if (newName && newName !== oldName && !walls[newName]) {
+      const updatedWalls = { ...walls };
+      updatedWalls[newName] = updatedWalls[oldName];
+      delete updatedWalls[oldName];
+      onUpdate(updatedWalls);
+    }
+    setEditingWallName(null);
+    setNewWallName("");
   };
 
   const wallSystemTypes = ["Operable Wall", "Glass Wall", "Accordion Partitions", "Unispan Support", "FlexTact"];
@@ -233,16 +230,18 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const topSeals = ["Fixed Top Seals", "Adjustable Top Seals", "No Top Seals"];
   const endPanelTypes = ["Fixed Wall Jamb", "Movable Jamb", "Pocket Door"];
 
-  if (walls.length === 0) {
+  const wallNames = Object.keys(walls);
+
+  if (wallNames.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-8 text-muted-foreground">
         <p>No walls added yet. Click "Add Wall" to get started.</p>
-        <button
-            onClick={addNewWall}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-          >
-            Add Wall
-          </button>
+        <Button
+          onClick={addNewWall}
+          className="mt-4"
+        >
+          Add Wall
+        </Button>
       </div>
     );
   }
@@ -258,305 +257,137 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           Add Wall
         </Button>
       </div>
-      {walls.map((wall, index) => (
-        <Card key={wall.id} className="shadow-sm border">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-            <CardTitle className="text-lg font-semibold">{wall.name}</CardTitle>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => removeWall(wall.id)}
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-8">
-              {/* Dimensions Section */}
-              <div>
-                <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Dimensions</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Width */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Width</Label>
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <Input
-                          value={wall.widthFeet}
-                          onChange={(e) => handleWallChange(wall.id, "widthFeet", e.target.value)}
-                          placeholder="32"
-                          className="text-center"
-                        />
-                        <Label className="text-xs text-muted-foreground mt-1 block text-center">Feet</Label>
-                      </div>
-                      <div className="flex-1">
-                        <Input
-                          value={wall.widthInches}
-                          onChange={(e) => handleWallChange(wall.id, "widthInches", e.target.value)}
-                          placeholder="4"
-                          className="text-center"
-                        />
-                        <Label className="text-xs text-muted-foreground mt-1 block text-center">Inches</Label>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Height */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Height</Label>
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <Input
-                          value={wall.heightFeet}
-                          onChange={(e) => handleWallChange(wall.id, "heightFeet", e.target.value)}
-                          placeholder="8"
-                          className="text-center"
-                        />
-                        <Label className="text-xs text-muted-foreground mt-1 block text-center">Feet</Label>
-                      </div>
-                      <div className="flex-1">
-                        <Input
-                          value={wall.heightInches}
-                          onChange={(e) => handleWallChange(wall.id, "heightInches", e.target.value)}
-                          placeholder="6"
-                          className="text-center"
-                        />
-                        <Label className="text-xs text-muted-foreground mt-1 block text-center">Inches</Label>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Panel Count */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Panel Count</Label>
+      {wallNames.map((wallName) => {
+        const wall = walls[wallName];
+        return (
+          <Card key={wallName} className="shadow-sm border">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <div className="flex items-center gap-2">
+                {editingWallName === wallName ? (
+                  <div className="flex items-center gap-2">
                     <Input
-                      value={wall.panelCount}
-                      onChange={(e) => handleWallChange(wall.id, "panelCount", e.target.value)}
-                      placeholder="3"
-                      className="text-center"
+                      value={newWallName}
+                      onChange={(e) => setNewWallName(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          renameWall(wallName, newWallName);
+                        }
+                      }}
+                      onBlur={() => renameWall(wallName, newWallName)}
+                      className="text-lg font-semibold"
+                      autoFocus
                     />
                   </div>
-                </div>
-              </div>
-
-              {/* Wall System Type Section */}
-              <div>
-                <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Wall System</h4>
-                
-                {/* Wall System Type Selection */}
-                <div className="mb-6">
-                  <div className="space-y-2">
-                    <Label htmlFor={`wallSystemType-${wall.id}`} className="text-sm font-medium">Wall System Type</Label>
-                    <Select
-                      value={wall.wallSystemType}
-                      onValueChange={(value) => handleWallChange(wall.id, "wallSystemType", value)}
+                ) : (
+                  <>
+                    <CardTitle className="text-lg font-semibold">{wallName}</CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setEditingWallName(wallName);
+                        setNewWallName(wallName);
+                      }}
                     >
-                      <SelectTrigger className="bg-background">
-                        <SelectValue placeholder="Select wall system type" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border z-50">
-                        {wallSystemTypes.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
               </div>
-
-              {/* Operable Wall Details Section - Only show if Operable Wall is selected */}
-              {wall.wallSystemType === "Operable Wall" && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => removeWall(wallName)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-8">
+                {/* Dimensions Section */}
                 <div>
-                  <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Operable Wall Details</h4>
-                  
-                  {/* First Row - Panel Type, Series, Model */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Dimensions</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Width */}
                     <div className="space-y-2">
-                      <Label htmlFor={`panelType-${wall.id}`} className="text-sm font-medium">Panel Type</Label>
-                      <Select
-                        value={wall.panelType}
-                        onValueChange={(value) => handleWallChange(wall.id, "panelType", value)}
-                      >
-                        <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select panel type" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border z-50">
-                          {panelTypes.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label className="text-sm font-medium">Width</Label>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <Input
+                            value={wall.widthFeet}
+                            onChange={(e) => handleWallChange(wallName, "widthFeet", e.target.value)}
+                            placeholder="32"
+                            className="text-center"
+                          />
+                          <Label className="text-xs text-muted-foreground mt-1 block text-center">Feet</Label>
+                        </div>
+                        <div className="flex-1">
+                          <Input
+                            value={wall.widthInches}
+                            onChange={(e) => handleWallChange(wallName, "widthInches", e.target.value)}
+                            placeholder="4"
+                            className="text-center"
+                          />
+                          <Label className="text-xs text-muted-foreground mt-1 block text-center">Inches</Label>
+                        </div>
+                      </div>
                     </div>
 
+                    {/* Height */}
                     <div className="space-y-2">
-                      <Label htmlFor={`series-${wall.id}`} className="text-sm font-medium">Series</Label>
-                      <Select
-                        value={wall.series}
-                        onValueChange={(value) => handleWallChange(wall.id, "series", value)}
-                        disabled={!wall.panelType}
-                      >
-                        <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select series" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border z-50">
-                          {getSeriesByPanelType(wall.panelType).map((series) => (
-                            <SelectItem key={series} value={series}>
-                              {series} Series
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label className="text-sm font-medium">Height</Label>
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <Input
+                            value={wall.heightFeet}
+                            onChange={(e) => handleWallChange(wallName, "heightFeet", e.target.value)}
+                            placeholder="8"
+                            className="text-center"
+                          />
+                          <Label className="text-xs text-muted-foreground mt-1 block text-center">Feet</Label>
+                        </div>
+                        <div className="flex-1">
+                          <Input
+                            value={wall.heightInches}
+                            onChange={(e) => handleWallChange(wallName, "heightInches", e.target.value)}
+                            placeholder="6"
+                            className="text-center"
+                          />
+                          <Label className="text-xs text-muted-foreground mt-1 block text-center">Inches</Label>
+                        </div>
+                      </div>
                     </div>
 
+                    {/* Panel Count */}
                     <div className="space-y-2">
-                      <Label htmlFor={`model-${wall.id}`} className="text-sm font-medium">Model</Label>
-                      <Select
-                        value={wall.model}
-                        onValueChange={(value) => handleWallChange(wall.id, "model", value)}
-                        disabled={!wall.series}
-                      >
-                        <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select model" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border z-50">
-                          {getModelsByPanelTypeAndSeries(wall.panelType, wall.series).map((model) => (
-                            <SelectItem key={model} value={model}>
-                              {model}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Second Row - Panel Thickness, Construction Type, STC Rating */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="space-y-2">
-                      <Label htmlFor={`panelThickness-${wall.id}`} className="text-sm font-medium">Panel Thickness (inches)</Label>
+                      <Label className="text-sm font-medium">Panel Count</Label>
                       <Input
-                        id={`panelThickness-${wall.id}`}
-                        value={wall.panelThickness}
-                        placeholder="Auto-calculated"
-                        className="text-center bg-muted"
-                        readOnly
+                        value={wall.panelCount}
+                        onChange={(e) => handleWallChange(wallName, "panelCount", e.target.value)}
+                        placeholder="3"
+                        className="text-center"
                       />
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor={`panelSkin-${wall.id}`} className="text-sm font-medium">Panel Skin</Label>
-                      <Select
-                        value={wall.panelSkin}
-                        onValueChange={(value) => handleWallChange(wall.id, "panelSkin", value)}
-                        disabled={!wall.model}
-                      >
-                        <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select panel skin" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border z-50">
-                          {getPanelSkinOptions(wall.model).map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor={`stcRating-${wall.id}`} className="text-sm font-medium">STC Rating</Label>
-                      <Select
-                        value={wall.stcRating}
-                        onValueChange={(value) => handleWallChange(wall.id, "stcRating", value)}
-                        disabled={!wall.model || !wall.panelSkin}
-                      >
-                        <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select STC rating" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border z-50">
-                          {getSTCRatingOptions(wall.model, wall.panelSkin).map((rating) => (
-                            <SelectItem key={rating} value={rating}>
-                              {rating}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
+                </div>
 
-                  {/* Third Row - Vertical Sealants, Bottom Seals, Top Seals, End Panel Type */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                {/* Wall System Type Section */}
+                <div>
+                  <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Wall System</h4>
+                  
+                  {/* Wall System Type Selection */}
+                  <div className="mb-6">
                     <div className="space-y-2">
-                      <Label htmlFor={`verticalSealants-${wall.id}`} className="text-sm font-medium">Vertical Sealants</Label>
+                      <Label className="text-sm font-medium">Wall System Type</Label>
                       <Select
-                        value={wall.verticalSealants}
-                        onValueChange={(value) => handleWallChange(wall.id, "verticalSealants", value)}
+                        value={wall.wallSystemType}
+                        onValueChange={(value) => handleWallChange(wallName, "wallSystemType", value)}
                       >
                         <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select vertical sealants" />
+                          <SelectValue placeholder="Select wall system type" />
                         </SelectTrigger>
                         <SelectContent className="bg-background border z-50">
-                          {verticalSealants.map((sealant) => (
-                            <SelectItem key={sealant} value={sealant}>
-                              {sealant}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor={`bottomSeals-${wall.id}`} className="text-sm font-medium">Bottom Seals</Label>
-                      <Select
-                        value={wall.bottomSeals}
-                        onValueChange={(value) => handleWallChange(wall.id, "bottomSeals", value)}
-                      >
-                        <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select bottom seals" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border z-50">
-                          {bottomSeals.map((seal) => (
-                            <SelectItem key={seal} value={seal}>
-                              {seal}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor={`topSeals-${wall.id}`} className="text-sm font-medium">Top Seals</Label>
-                      <Select
-                        value={wall.topSeals}
-                        onValueChange={(value) => handleWallChange(wall.id, "topSeals", value)}
-                      >
-                        <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select top seals" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border z-50">
-                          {topSeals.map((seal) => (
-                            <SelectItem key={seal} value={seal}>
-                              {seal}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor={`endPanelType-${wall.id}`} className="text-sm font-medium">End Panel Type</Label>
-                      <Select
-                        value={wall.endPanelType}
-                        onValueChange={(value) => handleWallChange(wall.id, "endPanelType", value)}
-                      >
-                        <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select end panel type" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border z-50">
-                          {endPanelTypes.map((type) => (
+                          {wallSystemTypes.map((type) => (
                             <SelectItem key={type} value={type}>
                               {type}
                             </SelectItem>
@@ -565,27 +396,228 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                       </Select>
                     </div>
                   </div>
+                </div>
 
-                  {/* Track Details Section */}
-                  <div className="mt-8">
-                    <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Track Details</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                {/* Operable Wall Details Section - Only show if Operable Wall is selected */}
+                {wall.wallSystemType === "Operable Wall" && (
+                  <div>
+                    <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Operable Wall Details</h4>
+                    
+                    {/* First Row - Panel Type, Series, Model */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                       <div className="space-y-2">
-                        <Label htmlFor={`trackType-${wall.id}`} className="text-sm font-medium">Track Type</Label>
+                        <Label className="text-sm font-medium">Panel Type</Label>
+                        <Select
+                          value={wall.panelType}
+                          onValueChange={(value) => handleWallChange(wallName, "panelType", value)}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select panel type" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            {panelTypes.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Series</Label>
+                        <Select
+                          value={wall.series}
+                          onValueChange={(value) => handleWallChange(wallName, "series", value)}
+                          disabled={!wall.panelType}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select series" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            {getSeriesByPanelType(wall.panelType).map((series) => (
+                              <SelectItem key={series} value={series}>
+                                {series} Series
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Model</Label>
+                        <Select
+                          value={wall.model}
+                          onValueChange={(value) => handleWallChange(wallName, "model", value)}
+                          disabled={!wall.series}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select model" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            {getModelsByPanelTypeAndSeries(wall.panelType, wall.series).map((model) => (
+                              <SelectItem key={model} value={model}>
+                                {model}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Continue with the rest of the form fields... */}
+                    {/* I'll add the remaining form fields in the same pattern */}
+                    
+                    {/* Second Row - Panel Thickness, Construction Type, STC Rating */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Panel Thickness</Label>
                         <Input
-                          id={`trackType-${wall.id}`}
-                          value={wall.trackType}
-                          placeholder="Auto-selected based on model"
-                          className="text-center bg-muted"
-                          readOnly
+                          value={wall.panelThickness}
+                          onChange={(e) => handleWallChange(wallName, "panelThickness", e.target.value)}
+                          placeholder="Auto-filled based on series"
+                          disabled
+                          className="bg-muted"
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor={`trackSystem-${wall.id}`} className="text-sm font-medium">Track System</Label>
+                        <Label className="text-sm font-medium">Panel Skin</Label>
+                        <Select
+                          value={wall.panelSkin}
+                          onValueChange={(value) => handleWallChange(wallName, "panelSkin", value)}
+                          disabled={!wall.model}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select panel skin" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            {getPanelSkinOptions(wall.model).map((skin) => (
+                              <SelectItem key={skin} value={skin}>
+                                {skin}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">STC Rating</Label>
+                        <Select
+                          value={wall.stcRating}
+                          onValueChange={(value) => handleWallChange(wallName, "stcRating", value)}
+                          disabled={!wall.model || !wall.panelSkin}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select STC rating" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            {getSTCRatingOptions(wall.model, wall.panelSkin).map((rating) => (
+                              <SelectItem key={rating} value={rating}>
+                                {rating}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Third Row - Seals */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Vertical Sealants</Label>
+                        <Select
+                          value={wall.verticalSealants}
+                          onValueChange={(value) => handleWallChange(wallName, "verticalSealants", value)}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select vertical sealants" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            {verticalSealants.map((sealant) => (
+                              <SelectItem key={sealant} value={sealant}>
+                                {sealant}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Bottom Seals</Label>
+                        <Select
+                          value={wall.bottomSeals}
+                          onValueChange={(value) => handleWallChange(wallName, "bottomSeals", value)}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select bottom seals" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            {bottomSeals.map((seal) => (
+                              <SelectItem key={seal} value={seal}>
+                                {seal}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Top Seals</Label>
+                        <Select
+                          value={wall.topSeals}
+                          onValueChange={(value) => handleWallChange(wallName, "topSeals", value)}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select top seals" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            {topSeals.map((seal) => (
+                              <SelectItem key={seal} value={seal}>
+                                {seal}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Fourth Row - End Panel and Track */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">End Panel Type</Label>
+                        <Select
+                          value={wall.endPanelType}
+                          onValueChange={(value) => handleWallChange(wallName, "endPanelType", value)}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select end panel type" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            {endPanelTypes.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Track Type</Label>
+                        <Input
+                          value={wall.trackType}
+                          placeholder="Auto-filled based on model"
+                          disabled
+                          className="bg-muted"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Track System</Label>
                         <Select
                           value={wall.trackSystem}
-                          onValueChange={(value) => handleWallChange(wall.id, "trackSystem", value)}
+                          onValueChange={(value) => handleWallChange(wallName, "trackSystem", value)}
                           disabled={!wall.trackType}
                         >
                           <SelectTrigger className="bg-background">
@@ -601,40 +633,26 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         </Select>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Quantity Section */}
-                  <div>
-                    <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Quantity</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Quantity */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor={`quantity-${wall.id}`} className="text-sm font-medium">Quantity</Label>
+                        <Label className="text-sm font-medium">Quantity</Label>
                         <Input
-                          id={`quantity-${wall.id}`}
-                          type="number"
                           value={wall.quantity}
-                          onChange={(e) => handleWallChange(wall.id, "quantity", e.target.value)}
+                          onChange={(e) => handleWallChange(wallName, "quantity", e.target.value)}
                           placeholder="1"
                           className="text-center"
                         />
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-
-              {/* Other Wall Systems - Show placeholder */}
-              {wall.wallSystemType && wall.wallSystemType !== "Operable Wall" && (
-                <div className="bg-muted/30 p-6 rounded-lg text-center">
-                  <p className="text-muted-foreground">
-                    {wall.wallSystemType} specifications coming soon.
-                  </p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 };

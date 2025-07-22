@@ -151,7 +151,7 @@ const Quotes = () => {
       
       setNewQuoteName(quoteName);
       setShowNewQuoteDialog(false);
-      setEditingQuote(newQuote as Quote);
+      setEditingQuote(newQuote as any);
     } catch (error) {
       console.error('Error creating quote:', error);
     }

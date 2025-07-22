@@ -1,7 +1,5 @@
 
 export interface WallSpecification {
-  id: string;
-  name: string;
   wallSystemType: string;
   widthFeet: string;
   widthInches: string;
@@ -21,6 +19,10 @@ export interface WallSpecification {
   endPanelType: string;
   trackType: string;
   trackSystem: string;
+}
+
+export interface WallDetails {
+  [wallName: string]: WallSpecification;
 }
 
 export interface PricingData {
