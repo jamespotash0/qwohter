@@ -178,10 +178,11 @@ const Quotes = () => {
         }
         
         .contact-row {
-          margin-bottom: 4px;
+          margin-bottom: 2px;
           display: flex;
           justify-content: flex-end;
           align-items: center;
+          line-height: 1.1;
         }
         
         .contact-row .label {
@@ -204,6 +205,7 @@ const Quotes = () => {
         .billing-and-job-info {
           display: flex;
           justify-content: space-between;
+          align-items: flex-start;
           margin-bottom: 30px;
           gap: 40px;
         }
@@ -218,14 +220,15 @@ const Quotes = () => {
         }
         
         .billed-line {
-          margin-bottom: 8px;
+          margin-bottom: 2px;
           min-height: 20px;
+          padding-bottom: 4px;
         }
         
         .underline {
           height: 1px;
           background-color: black;
-          margin-bottom: 12px;
+          margin-bottom: 8px;
           width: 100%;
         }
         
@@ -283,6 +286,11 @@ const Quotes = () => {
         table {
           border-collapse: collapse;
           width: 100%;
+        }
+        
+        tr:last-child td {
+          border-bottom: 1px solid black;
+          padding-bottom: 6px;
         }
         
         td {

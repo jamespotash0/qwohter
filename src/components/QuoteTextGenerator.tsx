@@ -78,7 +78,7 @@ export const generateQuoteText = (data: QuoteData): string => {
 
   // Contact Info
   const contactName = data.quote_details?.contactName || 'Ed Michinski';
-  const address = data.quote_details?.address || '567 Commerce St, Franklin Lakes, NJ, 07417';
+  const address = data.quote_details?.address || '567 Commerce St,<br>Franklin Lakes, NJ, 07417';
   const phone = data.quote_details?.phone || '(973) 884-0474';
   const fax = data.quote_details?.fax || '(973) 884-1606';
   const website = data.quote_details?.website || 'contemporarywalls.com';
@@ -219,8 +219,8 @@ Each door will carry a minimum <strong>STC of ${wallEntries[0]?.[1]?.stcRating |
 <div class="pricing-section">
 <table style="width: 100%; margin-top: 20px;">
 <tr><td>As described, furnished and installed</td><td style="text-align: right;"><strong>${basePrice}</strong></td></tr>
-<tr><td>Estimated Inbound Freight + Local Delivery</td><td style="text-align: right;"><strong>${freight}</strong></td></tr>
-<tr style="border-top: 1px solid black;"><td><strong>Total</strong></td><td style="text-align: right;"><strong>${total}</strong></td></tr>
+<tr style="border-bottom: 1px solid black;"><td>Estimated Inbound Freight + Local Delivery</td><td style="text-align: right; padding-bottom: 8px;"><strong>${freight}</strong></td></tr>
+<tr><td><strong>Total</strong></td><td style="text-align: right;"><strong>${total}</strong></td></tr>
 </table>
 
 <br><strong>Above Proposal is a Good Faith Estimate, Based on the Information Provided & Subject to Revision Upon Site Visit & Inspection. Pricing is Firm for 60 Days From Date Above</strong>
@@ -228,7 +228,7 @@ Each door will carry a minimum <strong>STC of ${wallEntries[0]?.[1]?.stcRating |
 
 <div class="terms-section">
 <h2 class="section-header">General Notes and Terms:</h2>
-<ol>
+<ul>
 <li>All materials are FOB factory, prepaid, and added to the final invoice.</li>
 <li>Electrical, HVAC, and sprinkler system modifications, if required, are the responsibility of others.</li>
 <li>All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate} Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</li>
@@ -239,7 +239,7 @@ Each door will carry a minimum <strong>STC of ${wallEntries[0]?.[1]?.stcRating |
 <li>Any additional requirements or unforeseen conditions may be subject to revised pricing or additional charges.</li>
 <li>Panel colors and finishes are available as per the manufacturer's current standard offerings.</li>
 <li>A 10-year factory warranty is provided on all operable wall systems.</li>
-</ol>
+</ul>
 </div>
 
 <div class="payment-section">
