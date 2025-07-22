@@ -166,6 +166,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
           status: quoteStatus
         });
         toast.success("Quote updated successfully!");
+        onBackToDashboard(); // Navigate back to quotes dashboard
       } else {
         // Create new quote
         await createQuote({
@@ -178,6 +179,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
           status: quoteStatus
         });
         toast.success("Quote saved successfully!");
+        onBackToDashboard(); // Navigate back to quotes dashboard
       }
     } catch (error) {
       toast.error("Failed to save quote");

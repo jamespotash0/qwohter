@@ -25,7 +25,8 @@ const Quotes = () => {
     updateQuote,
     deleteQuote: deleteQuoteFromDB,
     markAsDownloaded,
-    createQuote
+    createQuote,
+    refreshQuotes
   } = useQuotes();
 
   const statusColors = {
@@ -167,7 +168,10 @@ const Quotes = () => {
         }}
         quoteName={editingQuote.project_name || editingQuote.proposal_number}
         existingQuote={editingQuote}
-        onBackToDashboard={() => setEditingQuote(null)}
+        onBackToDashboard={() => {
+          setEditingQuote(null);
+          refreshQuotes(); // Refresh quotes data from database
+        }}
         onQuoteNameChange={(newName) => {
           if (editingQuote) {
             setEditingQuote({...editingQuote, project_name: newName});
