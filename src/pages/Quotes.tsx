@@ -249,7 +249,7 @@ export default function Quotes() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {filteredQuotes.filter(q => q.status === "draft" || q.status === "in revision").length}
+              {filteredQuotes.filter(q => q.status === "Draft" || q.status === "In Revision").length}
             </div>
             <p className="text-xs text-muted-foreground">
               Awaiting response
@@ -263,7 +263,7 @@ export default function Quotes() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {filteredQuotes.filter(q => q.status === "completed").length}
+              {filteredQuotes.filter(q => q.status === "Completed").length}
             </div>
             <p className="text-xs text-muted-foreground">
               Completed quotes
