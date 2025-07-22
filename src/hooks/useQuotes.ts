@@ -34,7 +34,7 @@ const migrateWallDetails = (wallDetails: any): WallDetails => {
   // If it's in the object format but without id (previous migration), wrap it
   if (wallDetails && typeof wallDetails === 'object' && !Array.isArray(wallDetails) && !wallDetails.id) {
     return {
-      id: `wall-config-${Date.now()}`,
+      id: crypto.randomUUID(),
       walls: wallDetails
     };
   }
@@ -48,14 +48,14 @@ const migrateWallDetails = (wallDetails: any): WallDetails => {
       wallsObject[wallName] = wallSpec;
     });
     return {
-      id: `wall-config-${Date.now()}`,
+      id: crypto.randomUUID(),
       walls: wallsObject
     };
   }
   
   // If empty or null, return default structure
   return {
-    id: `wall-config-${Date.now()}`,
+    id: crypto.randomUUID(),
     walls: {}
   };
 };
