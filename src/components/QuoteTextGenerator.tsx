@@ -1,10 +1,5 @@
 import { WallSpecification } from '@/types/quote';
-// Simple number to words conversion for small numbers
-const toWords = (num: number | string): string => {
-  const n = parseInt(num.toString());
-  const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
-  return words[n] || n.toString();
-};
+// import { toWords } from 'number-to-words';
 
 interface QuoteData {
   quote_details?: any;
@@ -36,6 +31,12 @@ export const generateQuoteText = (data: QuoteData): string => {
       month: 'short', 
       day: 'numeric' 
     });
+  };
+
+  const toWords = (num: number | string): string => {
+    const n = parseInt(num.toString());
+    const words = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'ELEVEN', 'TWELVE'];
+    return words[n] || n.toString();
   };
 
   const formatCurrency = (amount?: number | string) => {
@@ -138,18 +139,13 @@ Specifications as follows:${wallEntries.map(([wallName, wall]: [string, WallSpec
   const quantity = wall.quantity || '1';
   
   return `
-${wallName}
-${dimensions}
-${toWords(panelCount).charAt(0).toUpperCase()} (${panelCount})
-${panelType}
-${quantity} each`;
-}).join('')}
+${wallName} ${dimensions} ${toWords(panelCount).charAt(0).toUpperCase()} (${panelCount}) ${panelType} ${quantity} Each`;}).join('')}
 
 PANELS:
-This wall system utilizes the Kwik-Wall ${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || '3020'}
-configured with ${wallEntries[0]?.[1]?.panelType || 'Hinged Paired Panels'} designed for use with a ${wallEntries[0]?.[1]?.trackType || ''} Layout, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
+This wall system utilizes the Kwik-Wall ${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || ''}
+configured with ${wallEntries[0]?.[1]?.panelType || ''} designed for use with a ${wallEntries[0]?.[1]?.trackType || ''} Layout, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
 
-The wall consists of ${getPanelTypeText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelType || 'Hinged Paired Panels'}, finished in an 
+The wall consists of ${getPanelTypeText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelType || ''}, finished in an 
 Unfinished Rift Cut White Oak Veneer finish 
 (as selected from the manufacturer's standard offerings). The wall stands ${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches).split(' x ')[1]} in height, with panel widths varying as needed. Each panel is nominally ${wallEntries[0]?.[1]?.panelThickness || ''}" thick, constructed with a Steel Faced 1/2" gypsum board laminated to an acoustic material. 
 Each panel features a Trimless Design and are suspended from an ${wallEntries[0]?.[1]?.trackSystem || ''} overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through ${wallEntries[0]?.[1]?.verticalSealants || ''} vertical seals that create a continuous interlock, and ${wallEntries[0]?.[1]?.bottomSeals || ''} used with limited pressure mechanism operable bottom seals, set at the time of panel's placement and retract into the panels when in use for virtually effortless movement. End panels will incorporate a ${wallEntries[0]?.[1]?.endPanelType || ''}, which uses a Bulb as a final seal.
@@ -163,12 +159,9 @@ Doors will be hung from a ${mountingTrack} above, to manufacturer's specs, as su
 GENERAL:
 Each door will carry a minimum STC of ${wallEntries[0]?.[1]?.stcRating || ''}${wallEntries[0]?.[1]?.stcRating === '56' ? ' (Highest Available)' : ''}. Estimated delivery would be ${trackDelivery} weeks after approval of shop drawings for tracks, & ${panelDelivery} weeks for panels. Installation of tracks would take approximately ${trackInstallation} working days, panels installation would take ${panelInstallation} additional days.
 
-As described, furnished and installed
-${basePrice}
-Estimated Inbound Freight + Local Delivery
-${freight}
-Total
-${total}
+As described, furnished and installed ${basePrice}
+Estimated Inbound Freight + Local Delivery ${freight}
+Total ${total}
 
 Above Proposal is a Good Faith Estimate, Based on the Information Provided & Subject to Revision Upon Site Visit & Inspection. Pricing is Firm for 60 Days From Date Above
 
