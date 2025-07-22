@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,7 +68,19 @@ export default function Quotes() {
   const [editingQuote, setEditingQuote] = useState<string | null>(null);
   const [newQuoteName, setNewQuoteName] = useState("");
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
+  const [user, setUser] = useState<string>("");
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if user is logged in
+    const loggedInUser = localStorage.getItem("loggedInUser");
+    if (!loggedInUser) {
+      navigate("/");
+      return;
+    }
+    setUser(loggedInUser);
+  }, [navigate]);
 
   const filteredQuotes = quotes.filter(quote => {
     const matchesSearch = quote.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -169,8 +182,11 @@ export default function Quotes() {
     
     return (
       <QuoteCreator
-        user="Current User"
-        onLogout={() => {}}
+        user={user}
+        onLogout={() => {
+          localStorage.removeItem("loggedInUser");
+          navigate("/");
+        }}
         quoteName={quoteName}
         onBackToDashboard={handleBackToQuotes}
         onQuoteNameChange={() => {}}
@@ -186,7 +202,7 @@ export default function Quotes() {
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => window.location.href = '/dashboard'}
+            onClick={() => navigate('/dashboard')}
             className="mr-4"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
