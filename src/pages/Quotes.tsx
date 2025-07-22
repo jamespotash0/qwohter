@@ -93,32 +93,43 @@ const Quotes = () => {
       // Mark as downloaded (will increment version)
       await markAsDownloaded(quote.id);
       
-      const doc = new jsPDF();
+      // Import the quote text generator
+      const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
       
-      // Header
-      doc.setFontSize(20);
-      doc.text('Contemporary Wall Systems', 20, 30);
-      doc.setFontSize(16);
-      doc.text('Quote', 20, 45);
+      // Generate the full quote text
+      const quoteText = generateQuoteText(quote);
       
-      // Quote details
-      doc.setFontSize(12);
-      doc.text(`Proposal #: ${quote.proposal_number}`, 20, 65);
-      doc.text(`Client: ${quote.job_details?.client_company || quote.job_details?.client_name || 'N/A'}`, 20, 75);
-      doc.text(`Project: ${quote.quote_details?.project_name || 'N/A'}`, 20, 85);
+      // Create a new PDF document
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
       
-      // Get total from price details object
-      const totalAmount = quote.price_details?.total ? parseFloat(quote.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
-      doc.text(`Amount: ${formatCurrency(totalAmount)}`, 20, 95);
-      doc.text(`Status: ${quote.status}`, 20, 105);
-      doc.text(`Date: ${new Date(quote.created_at).toLocaleDateString()}`, 20, 115);
-      doc.text(`Version: ${quote.version + 1}`, 20, 125); // +1 because version will be incremented
+      // Split the text into lines and render them properly in the PDF
+      const splitText = doc.splitTextToSize(quoteText, 180);
       
-      // Carbon copy notice
+      // Add the text to the PDF
       doc.setFontSize(10);
+      let y = 20;
+      const lineHeight = 5;
+      
+      // Render each line
+      splitText.forEach((line: string) => {
+        // Add page break if we're near the bottom
+        if (y > 280) {
+          doc.addPage();
+          y = 20;
+        }
+        
+        doc.text(line, 15, y);
+        y += lineHeight;
+      });
+      
+      // Add version information
+      doc.setFontSize(8);
       doc.setTextColor(128, 128, 128);
-      doc.text('This is a carbon copy of the original quote.', 20, 270);
-      doc.text('For official purposes, please refer to the signed original.', 20, 280);
+      doc.text(`Version: ${quote.version + 1}`, 15, 290);
       
       // Save the PDF
       doc.save(`quote-${quote.proposal_number}-v${quote.version + 1}.pdf`);
