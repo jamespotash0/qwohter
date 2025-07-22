@@ -321,6 +321,7 @@ export default function Quotes() {
                 <TableHead>Project</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Update Status</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -341,6 +342,29 @@ export default function Quotes() {
                     >
                       {capitalizeStatus(quote.status)}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="bg-background">
+                          Update Status
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="center" className="bg-background border shadow-md z-50">
+                        <DropdownMenuItem onClick={() => updateQuoteStatus(quote.id, "Completed")}>
+                          <Check className="w-4 h-4 mr-2 text-green-600" />
+                          Mark Completed
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateQuoteStatus(quote.id, "Draft")}>
+                          <div className="w-4 h-4 mr-2 rounded-full bg-gray-400"></div>
+                          Set as Draft
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateQuoteStatus(quote.id, "In Revision")}>
+                          <div className="w-4 h-4 mr-2 rounded-full bg-yellow-400"></div>
+                          Mark in Revision
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                   <TableCell>{quote.date}</TableCell>
                   <TableCell>
@@ -366,22 +390,6 @@ export default function Quotes() {
                         <DropdownMenuItem>
                           <Copy className="w-4 h-4 mr-2" />
                           Duplicate Quote
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <div className="px-2 py-1.5 text-sm font-medium text-muted-foreground">
-                          Update Status
-                        </div>
-                        <DropdownMenuItem onClick={() => updateQuoteStatus(quote.id, "completed")}>
-                          <Check className="w-4 h-4 mr-2 text-green-600" />
-                          Mark Completed
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateQuoteStatus(quote.id, "draft")}>
-                          <div className="w-4 h-4 mr-2 rounded-full bg-gray-400"></div>
-                          Set as Draft
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateQuoteStatus(quote.id, "in revision")}>
-                          <div className="w-4 h-4 mr-2 rounded-full bg-yellow-400"></div>
-                          Mark in Revision
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <AlertDialog>
