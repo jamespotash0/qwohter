@@ -17,66 +17,89 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const [newWallName, setNewWallName] = useState("");
 
   const handleWallChange = (wallName: string, field: keyof WallSpecification, value: string) => {
-    const updatedWalls = { ...walls };
-    let updatedWall = { ...updatedWalls[wallName], [field]: value };
+    const updatedWalls = {
+      ...walls,
+      walls: {
+        ...walls.walls,
+        [wallName]: {
+          ...walls.walls[wallName],
+          [field]: value,
+        },
+      },
+    };
     
     // Cascading logic
     if (field === "wallSystemType") {
       // Reset all dependent fields when wall system type changes
-      updatedWall.panelType = "";
-      updatedWall.series = "";
-      updatedWall.model = "";
-      updatedWall.panelThickness = "";
-      updatedWall.panelSkin = "";
-      updatedWall.stcRating = "";
-      updatedWall.trackType = "";
-      updatedWall.trackSystem = "";
-      updatedWall.verticalSealants = "";
-      updatedWall.bottomSeals = "";
-      updatedWall.topSeals = "";
-      updatedWall.endPanelType = "";
+      updatedWalls.walls[wallName] = {
+        ...updatedWalls.walls[wallName],
+        panelType: "",
+        series: "",
+        model: "",
+        panelThickness: "",
+        panelSkin: "",
+        stcRating: "",
+        trackType: "",
+        trackSystem: "",
+        verticalSealants: "",
+        bottomSeals: "",
+        topSeals: "",
+        endPanelType: "",
+      };
     }
     
     if (field === "panelType") {
       // Reset dependent fields
-      updatedWall.series = "";
-      updatedWall.model = "";
-      updatedWall.panelThickness = "";
-      updatedWall.panelSkin = "";
-      updatedWall.stcRating = "";
-      updatedWall.trackType = "";
-      updatedWall.trackSystem = "";
+      updatedWalls.walls[wallName] = {
+        ...updatedWalls.walls[wallName],
+        series: "",
+        model: "",
+        panelThickness: "",
+        panelSkin: "",
+        stcRating: "",
+        trackType: "",
+        trackSystem: "",
+      };
     }
     
     if (field === "series") {
       // Auto-update panel thickness based on series
-      updatedWall.panelThickness = value === "2000" ? "3" : value === "3000" ? "4" : "";
-      // Reset dependent fields
-      updatedWall.model = "";
-      updatedWall.panelSkin = "";
-      updatedWall.stcRating = "";
+      updatedWalls.walls[wallName] = {
+        ...updatedWalls.walls[wallName],
+        panelThickness: value === "2000" ? "3" : value === "3000" ? "4" : "",
+        model: "",
+        panelSkin: "",
+        stcRating: "",
+      };
     }
     
     if (field === "model") {
       // Auto-update track type based on model
-      updatedWall.trackType = getTrackTypeByModel(value);
-      updatedWall.trackSystem = "";
-      // Reset dependent fields
-      updatedWall.panelSkin = "";
-      updatedWall.stcRating = "";
+      updatedWalls.walls[wallName] = {
+        ...updatedWalls.walls[wallName],
+        trackType: getTrackTypeByModel(value),
+        trackSystem: "",
+        panelSkin: "",
+        stcRating: "",
+      };
     }
     
     if (field === "panelSkin" || field === "model") {
       // Reset STC rating when model or panel skin changes
-      updatedWall.stcRating = "";
+      updatedWalls.walls[wallName] = {
+        ...updatedWalls.walls[wallName],
+        stcRating: "",
+      };
     }
     
     if (field === "trackType") {
       // Reset track system when track type changes
-      updatedWall.trackSystem = "";
+      updatedWalls.walls[wallName] = {
+        ...updatedWalls.walls[wallName],
+        trackSystem: "",
+      };
     }
     
-    updatedWalls[wallName] = updatedWall;
     onUpdate(updatedWalls);
   };
 
@@ -180,13 +203,15 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   };
 
   const removeWall = (wallName: string) => {
-    const updatedWalls = { ...walls };
-    delete updatedWalls[wallName];
-    onUpdate(updatedWalls);
+    const { [wallName]: removedWall, ...remainingWalls } = walls.walls;
+    onUpdate({
+      ...walls,
+      walls: remainingWalls
+    });
   };
 
   const addNewWall = () => {
-    const wallCount = Object.keys(walls).length;
+    const wallCount = Object.keys(walls.walls).length;
     const newWallName = `Wall ${wallCount + 1}`;
     const newWall: WallSpecification = {
       wallSystemType: "",
@@ -209,15 +234,25 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       trackType: "",
       trackSystem: ""
     };
-    onUpdate({ ...walls, [newWallName]: newWall });
+    onUpdate({
+      ...walls,
+      walls: {
+        ...walls.walls,
+        [newWallName]: newWall,
+      }
+    });
   };
 
   const renameWall = (oldName: string, newName: string) => {
-    if (newName && newName !== oldName && !walls[newName]) {
-      const updatedWalls = { ...walls };
-      updatedWalls[newName] = updatedWalls[oldName];
-      delete updatedWalls[oldName];
-      onUpdate(updatedWalls);
+    if (newName && newName !== oldName && !walls.walls[newName]) {
+      const { [oldName]: wallData, ...otherWalls } = walls.walls;
+      onUpdate({
+        ...walls,
+        walls: {
+          ...otherWalls,
+          [newName]: wallData,
+        }
+      });
     }
     setEditingWallName(null);
     setNewWallName("");
@@ -230,7 +265,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const topSeals = ["Fixed Top Seals", "Adjustable Top Seals", "No Top Seals"];
   const endPanelTypes = ["Fixed Wall Jamb", "Movable Jamb", "Pocket Door"];
 
-  const wallNames = Object.keys(walls);
+  const wallNames = Object.keys(walls.walls);
 
   if (wallNames.length === 0) {
     return (
@@ -258,7 +293,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         </Button>
       </div>
       {wallNames.map((wallName) => {
-        const wall = walls[wallName];
+        const wall = walls.walls[wallName];
         return (
           <Card key={wallName} className="shadow-sm border">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -465,18 +500,15 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                       </div>
                     </div>
 
-                    {/* Continue with the rest of the form fields... */}
-                    {/* I'll add the remaining form fields in the same pattern */}
-                    
-                    {/* Second Row - Panel Thickness, Construction Type, STC Rating */}
+                    {/* Second Row - Panel Thickness, Panel Skin, STC Rating */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">Panel Thickness</Label>
+                        <Label className="text-sm font-medium">Panel Thickness (inches)</Label>
                         <Input
                           value={wall.panelThickness}
                           onChange={(e) => handleWallChange(wallName, "panelThickness", e.target.value)}
-                          placeholder="Auto-filled based on series"
-                          disabled
+                          placeholder="Thickness"
+                          readOnly
                           className="bg-muted"
                         />
                       </div>
@@ -514,7 +546,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                           <SelectContent className="bg-background border z-50">
                             {getSTCRatingOptions(wall.model, wall.panelSkin).map((rating) => (
                               <SelectItem key={rating} value={rating}>
-                                {rating}
+                                STC {rating}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -582,7 +614,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                       </div>
                     </div>
 
-                    {/* Fourth Row - End Panel and Track */}
+                    {/* Fourth Row - End Panel Type, Track Type, Track System */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                       <div className="space-y-2">
                         <Label className="text-sm font-medium">End Panel Type</Label>
@@ -607,8 +639,8 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         <Label className="text-sm font-medium">Track Type</Label>
                         <Input
                           value={wall.trackType}
-                          placeholder="Auto-filled based on model"
-                          disabled
+                          placeholder="Track type (auto-filled)"
+                          readOnly
                           className="bg-muted"
                         />
                       </div>
@@ -634,15 +666,15 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                       </div>
                     </div>
 
-                    {/* Quantity */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Fifth Row - Quantity */}
+                    <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                       <div className="space-y-2">
                         <Label className="text-sm font-medium">Quantity</Label>
                         <Input
                           value={wall.quantity}
                           onChange={(e) => handleWallChange(wallName, "quantity", e.target.value)}
                           placeholder="1"
-                          className="text-center"
+                          className="max-w-xs"
                         />
                       </div>
                     </div>

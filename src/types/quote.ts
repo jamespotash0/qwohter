@@ -22,7 +22,10 @@ export interface WallSpecification {
 }
 
 export interface WallDetails {
-  [wallName: string]: WallSpecification;
+  id: string;
+  walls: {
+    [wallName: string]: WallSpecification;
+  };
 }
 
 export interface PricingData {

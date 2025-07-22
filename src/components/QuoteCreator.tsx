@@ -12,7 +12,7 @@ import DeliveryLaborForm from "./DeliveryLaborForm";
 import PricingForm from "./PricingForm";
 import { toast } from "sonner";
 import { QuoteNameInput } from "./QuoteNameInput";
-import { WallDetails } from "../types/quote";
+import { WallDetails, WallSpecification } from "../types/quote";
 import { useQuotes } from "@/hooks/useQuotes";
 
 interface QuoteCreatorProps {
@@ -30,27 +30,40 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   const [editingQuoteName, setEditingQuoteName] = useState(false);
   const [localQuoteName, setLocalQuoteName] = useState(quoteName);
 
-  // Helper function to migrate old array-based wall_details to new object format
+  // Helper function to migrate wall_details to the new format with id and walls
   const migrateWallDetails = (wallDetails: any): WallDetails => {
-    if (!wallDetails) return {};
-    
-    // If it's already an object, return as is
-    if (typeof wallDetails === 'object' && !Array.isArray(wallDetails)) {
+    // If it's already in the new format with id and walls, return as is
+    if (wallDetails && wallDetails.id && wallDetails.walls) {
       return wallDetails;
     }
     
-    // If it's an array, convert to object format
-    if (Array.isArray(wallDetails)) {
-      const migratedWalls: WallDetails = {};
-      wallDetails.forEach((wall, index) => {
-        const wallName = wall.name || `Wall ${index + 1}`;
-        const { id, name, ...wallSpec } = wall;
-        migratedWalls[wallName] = wallSpec;
-      });
-      return migratedWalls;
+    // If it's in the object format but without id (previous migration), wrap it
+    if (wallDetails && typeof wallDetails === 'object' && !Array.isArray(wallDetails) && !wallDetails.id) {
+      return {
+        id: `wall-config-${Date.now()}`,
+        walls: wallDetails
+      };
     }
     
-    return {};
+    // If it's an array (old format), convert to new format
+    if (Array.isArray(wallDetails)) {
+      const wallsObject: { [key: string]: WallSpecification } = {};
+      wallDetails.forEach((wall: any, index: number) => {
+        const wallName = wall.name || `Wall ${index + 1}`;
+        const { id, name, ...wallSpec } = wall;
+        wallsObject[wallName] = wallSpec;
+      });
+      return {
+        id: `wall-config-${Date.now()}`,
+        walls: wallsObject
+      };
+    }
+    
+    // If empty or null, return default structure
+    return {
+      id: `wall-config-${Date.now()}`,
+      walls: {}
+    };
   };
   
   // Form data states - populate with existing quote data if available
@@ -130,7 +143,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   };
 
   const isWallSpecValid = () => {
-    return Object.keys(walls).length > 0;
+    return Object.keys(walls.walls).length > 0;
   };
 
   const isSupportStructureValid = () => {

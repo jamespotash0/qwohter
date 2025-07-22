@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
-import { WallDetails } from "@/types/quote";
+import { WallDetails, WallSpecification } from "@/types/quote";
 
 type QuoteRow = Database['public']['Tables']['quotes']['Row'];
 
@@ -24,27 +24,40 @@ export interface Quote {
   updated_at: string;
 }
 
-// Helper function to migrate wall_details from old array format to new object format
+// Helper function to migrate wall_details to the new format with id and walls
 const migrateWallDetails = (wallDetails: any): WallDetails => {
-  if (!wallDetails) return {};
-  
-  // If it's already an object, return as is
-  if (typeof wallDetails === 'object' && !Array.isArray(wallDetails)) {
+  // If it's already in the new format with id and walls, return as is
+  if (wallDetails && wallDetails.id && wallDetails.walls) {
     return wallDetails;
   }
   
-  // If it's an array, convert to object format
-  if (Array.isArray(wallDetails)) {
-    const migratedWalls: WallDetails = {};
-    wallDetails.forEach((wall, index) => {
-      const wallName = wall.name || `Wall ${index + 1}`;
-      const { id, name, ...wallSpec } = wall;
-      migratedWalls[wallName] = wallSpec;
-    });
-    return migratedWalls;
+  // If it's in the object format but without id (previous migration), wrap it
+  if (wallDetails && typeof wallDetails === 'object' && !Array.isArray(wallDetails) && !wallDetails.id) {
+    return {
+      id: `wall-config-${Date.now()}`,
+      walls: wallDetails
+    };
   }
   
-  return {};
+  // If it's an array (old format), convert to new format
+  if (Array.isArray(wallDetails)) {
+    const wallsObject: { [key: string]: WallSpecification } = {};
+    wallDetails.forEach((wall: any, index: number) => {
+      const wallName = wall.name || `Wall ${index + 1}`;
+      const { id, name, ...wallSpec } = wall;
+      wallsObject[wallName] = wallSpec;
+    });
+    return {
+      id: `wall-config-${Date.now()}`,
+      walls: wallsObject
+    };
+  }
+  
+  // If empty or null, return default structure
+  return {
+    id: `wall-config-${Date.now()}`,
+    walls: {}
+  };
 };
 
 // Helper function to convert database row to Quote interface
