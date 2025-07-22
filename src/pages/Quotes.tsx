@@ -53,6 +53,10 @@ const Quotes = () => {
   }, [navigate]);
 
   const filteredQuotes = quotes.filter(quote => {
+    // Debug logging to see the actual data structure
+    console.log('Quote data structure:', quote);
+    console.log('price_details type:', typeof quote.price_details, quote.price_details);
+    
     const clientName = quote.quote_details?.client_name || "";
     const projectName = quote.quote_details?.project_name || "";
     
@@ -214,10 +218,15 @@ const Quotes = () => {
                 <CardHeader className="pb-2">
                   <CardDescription>Total Value</CardDescription>
                   <CardTitle className="text-3xl">
-                    {formatCurrency(quotes.reduce((sum, quote) => {
-                      const totalAmount = quote.price_details?.total ? parseFloat(quote.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
-                      return sum + totalAmount;
-                    }, 0))}
+                     {formatCurrency(quotes.reduce((sum, quote) => {
+                       try {
+                         const totalAmount = quote.price_details?.total ? parseFloat(quote.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
+                         return sum + totalAmount;
+                       } catch (error) {
+                         console.error('Error processing quote total:', error, quote);
+                         return sum;
+                       }
+                     }, 0))}
                   </CardTitle>
                 </CardHeader>
               </Card>
@@ -287,7 +296,14 @@ const Quotes = () => {
                   </TableRow>
                 ) : (
                   filteredQuotes.map((quote) => {
-                    const totalAmount = quote.price_details?.total ? parseFloat(quote.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
+                     const totalAmount = (() => {
+                       try {
+                         return quote.price_details?.total ? parseFloat(quote.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
+                       } catch (error) {
+                         console.error('Error processing quote amount:', error, quote.price_details);
+                         return 0;
+                       }
+                     })();
                     
                     return (
                       <TableRow key={quote.id}>
