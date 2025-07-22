@@ -58,7 +58,7 @@ const Quotes = () => {
     console.log('price_details type:', typeof quote.price_details, quote.price_details);
     
     const clientName = quote.quote_details?.client_name || "";
-    const projectName = quote.quote_details?.project_name || "";
+    const projectName = quote.project_name || quote.quote_details?.project_name || "";
     
     const matchesSearch = clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -165,12 +165,12 @@ const Quotes = () => {
           await supabase.auth.signOut();
           navigate("/auth");
         }}
-        quoteName={editingQuote.quote_details?.project_name || editingQuote.proposal_number}
+        quoteName={editingQuote.project_name || editingQuote.proposal_number}
         existingQuote={editingQuote}
         onBackToDashboard={() => setEditingQuote(null)}
         onQuoteNameChange={(newName) => {
           if (editingQuote) {
-            setEditingQuote({...editingQuote, quote_details: {...editingQuote.quote_details, project_name: newName}});
+            setEditingQuote({...editingQuote, project_name: newName});
           }
         }}
       />
@@ -314,7 +314,7 @@ const Quotes = () => {
                       <TableRow key={quote.id}>
                         <TableCell className="font-medium">{quote.proposal_number}</TableCell>
                         <TableCell>{quote.quote_details?.client_name || 'N/A'}</TableCell>
-                        <TableCell>{quote.quote_details?.project_name || 'N/A'}</TableCell>
+                        <TableCell>{quote.project_name || 'N/A'}</TableCell>
                         <TableCell>{formatCurrency(totalAmount)}</TableCell>
                         <TableCell>
                           <Badge className={statusColors[quote.status as keyof typeof statusColors]}>

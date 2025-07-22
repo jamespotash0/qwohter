@@ -8,6 +8,7 @@ type QuoteRow = Database['public']['Tables']['quotes']['Row'];
 export interface Quote {
   id: string;
   proposal_number: string;
+  project_name?: string;
   quote_details: any;
   job_details: any;
   wall_details: any;
@@ -57,6 +58,7 @@ export const useQuotes = () => {
         .from('quotes')
         .insert({
           proposal_number: quoteData.jobDetails.proposalNumber,
+          project_name: quoteData.contactInfo.project_name || quoteData.quoteName,
           quote_details: quoteData.contactInfo || {},
           job_details: {
             job_location: quoteData.jobDetails.jobLocation,

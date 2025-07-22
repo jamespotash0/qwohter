@@ -147,6 +147,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
       if (existingQuote) {
         // Update existing quote
         await updateQuote(existingQuote.id, {
+          project_name: localQuoteName,
           quote_details: contactInfo,
           job_details: {
             job_location: jobDetails.jobLocation,
