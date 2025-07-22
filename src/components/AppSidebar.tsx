@@ -32,7 +32,7 @@ interface AppSidebarProps {
 
 const menuItems = [
   { title: "Dashboard", icon: Home, isActive: true },
-  { title: "Tasks", icon: FileText, badge: "12+" },
+  { title: "Quotes", icon: FileText, badge: "12+" },
   { title: "Calendar", icon: Calendar },
   { title: "Analytics", icon: BarChart3 },
   { title: "Team", icon: Users },
