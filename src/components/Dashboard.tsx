@@ -5,28 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { 
-  Building2, 
   Plus, 
   Edit, 
   Trash2, 
   DollarSign, 
   FileText, 
-  TrendingUp, 
   Calendar, 
   User,
   Search,
-  Mail,
-  Bell,
-  ArrowUpRight,
-  Users,
-  Timer,
-  Play,
-  Square
+  TrendingUp,
+  Clock,
+  Eye,
+  CheckCircle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import CreateQuoteDialog from "./CreateQuoteDialog";
 import { AppSidebar } from "./AppSidebar";
+import QuoteCalendar from "./QuoteCalendar";
 
 interface Quote {
   id: string;
@@ -34,6 +30,7 @@ interface Quote {
   createdDate: string;
   totalCost: number;
   status: string;
+  clientName?: string;
 }
 
 interface DashboardProps {
@@ -46,31 +43,43 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
   const [quotes, setQuotes] = useState<Quote[]>([
     {
       id: "1",
-      name: "Office Building Project",
+      name: "Office Renovation Quote",
       createdDate: "2024-01-15",
       totalCost: 15000,
-      status: "Draft"
+      status: "Sent",
+      clientName: "Acme Corporation"
     },
     {
       id: "2", 
-      name: "Warehouse Renovation",
+      name: "Warehouse Partition System",
       createdDate: "2024-01-10",
       totalCost: 25000,
-      status: "Completed"
+      status: "Accepted",
+      clientName: "Industrial Solutions Inc"
     },
     {
       id: "3",
-      name: "Develop API Endpoints",
+      name: "Conference Room Walls",
       createdDate: "2024-01-20",
       totalCost: 8500,
-      status: "Draft"
+      status: "Viewed",
+      clientName: "Tech Startup LLC"
     },
     {
       id: "4",
-      name: "Build Dashboard",
+      name: "Retail Space Dividers",
       createdDate: "2024-01-22",
       totalCost: 12000,
-      status: "Draft"
+      status: "Sent",
+      clientName: "Retail Chain Co"
+    },
+    {
+      id: "5",
+      name: "Hospital Room Partitions",
+      createdDate: "2024-01-25",
+      totalCost: 35000,
+      status: "Viewed",
+      clientName: "Metro Hospital"
     }
   ]);
 
@@ -98,46 +107,61 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
 
   const totalQuotes = quotes.length;
   const totalValue = quotes.reduce((sum, quote) => sum + quote.totalCost, 0);
-  const runningProjects = quotes.filter(q => q.status === "Draft").length;
-  const completedProjects = quotes.filter(q => q.status === "Completed").length;
+  const upcomingQuotes = quotes.filter(q => {
+    const today = new Date();
+    const quoteDate = new Date(q.createdDate);
+    const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    return quoteDate >= today && quoteDate <= nextWeek;
+  }).length;
+
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'sent': return <Clock className="w-4 h-4" />;
+      case 'viewed': return <Eye className="w-4 h-4" />;
+      case 'accepted': return <CheckCircle className="w-4 h-4" />;
+      default: return <FileText className="w-4 h-4" />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'sent': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'viewed': return 'bg-amber-100 text-amber-800 border-amber-200';
+      case 'accepted': return 'bg-green-100 text-green-800 border-green-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-slate-50">
+      <div className="min-h-screen flex w-full bg-background">
         <AppSidebar user={user} onLogout={onLogout} />
         
         <main className="flex-1 flex flex-col">
           {/* Top Header */}
-          <header className="bg-white border-b border-slate-200 px-6 py-4">
+          <header className="bg-card border-b border-border px-6 py-4 sticky top-0 z-40 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <SidebarTrigger />
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input 
-                    placeholder="Search task" 
-                    className="pl-10 w-80 bg-slate-50 border-slate-200"
+                    placeholder="Search quotes..." 
+                    className="pl-10 w-80 bg-muted/50 border-border"
                   />
-                  <kbd className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
-                    ⌘F
-                  </kbd>
                 </div>
               </div>
               
               <div className="flex items-center gap-4">
-                <Button variant="ghost" size="sm">
-                  <Mail className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <Bell className="w-4 h-4" />
-                </Button>
+                <CreateQuoteDialog onCreateQuote={handleCreateQuote} />
+                
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4" />
+                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-primary-foreground" />
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium">{user}</p>
-                    <p className="text-xs text-slate-500">{user}@email.com</p>
+                    <p className="text-xs text-muted-foreground">{user.toLowerCase()}@company.com</p>
                   </div>
                 </div>
               </div>
@@ -147,85 +171,62 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
           {/* Main Dashboard Content */}
           <div className="flex-1 p-6 space-y-6">
             {/* Dashboard Header */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-                <p className="text-slate-600 mt-1">Plan, prioritize, and accomplish your tasks with ease.</p>
-              </div>
-              <div className="flex gap-3">
-                <CreateQuoteDialog onCreateQuote={handleCreateQuote} />
-                <Button variant="outline" className="bg-white">
-                  Import Data
-                </Button>
-              </div>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold text-foreground">Quote Dashboard</h1>
+              <p className="text-muted-foreground">Manage and track your quotes efficiently</p>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card className="bg-primary text-primary-foreground">
+            {/* Panel 1: Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 hover:shadow-lg transition-all duration-300">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm opacity-90">Total Projects</p>
-                      <p className="text-3xl font-bold">{totalQuotes}</p>
+                      <p className="text-sm font-medium text-primary/70 mb-1">Total Quotes</p>
+                      <p className="text-3xl font-bold text-primary">{totalQuotes}</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <TrendingUp className="w-3 h-3" />
-                        <span className="text-xs opacity-75">Increased from last month</span>
+                        <TrendingUp className="w-3 h-3 text-primary/60" />
+                        <span className="text-xs text-primary/60">All time</span>
                       </div>
                     </div>
-                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                      <ArrowUpRight className="w-5 h-5" />
+                    <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-primary" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-white">
+              <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200/50 hover:shadow-lg transition-all duration-300">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-600">Ended Projects</p>
-                      <p className="text-3xl font-bold text-slate-900">{completedProjects}</p>
+                      <p className="text-sm font-medium text-green-700 mb-1">Total Value</p>
+                      <p className="text-3xl font-bold text-green-800">${totalValue.toLocaleString()}</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <TrendingUp className="w-3 h-3 text-slate-400" />
-                        <span className="text-xs text-slate-500">Increased from last month</span>
+                        <TrendingUp className="w-3 h-3 text-green-600" />
+                        <span className="text-xs text-green-600">Portfolio value</span>
                       </div>
                     </div>
-                    <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                      <ArrowUpRight className="w-5 h-5 text-slate-600" />
+                    <div className="w-12 h-12 bg-green-200/60 rounded-xl flex items-center justify-center">
+                      <DollarSign className="w-6 h-6 text-green-700" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="bg-white">
+              <Card className="bg-gradient-to-br from-accent/5 to-accent/10 border-accent/20 hover:shadow-lg transition-all duration-300">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-600">Running Projects</p>
-                      <p className="text-3xl font-bold text-slate-900">{runningProjects}</p>
+                      <p className="text-sm font-medium text-accent/70 mb-1">Upcoming Quotes</p>
+                      <p className="text-3xl font-bold text-accent">{upcomingQuotes}</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <TrendingUp className="w-3 h-3 text-slate-400" />
-                        <span className="text-xs text-slate-500">Increased from last month</span>
+                        <Calendar className="w-3 h-3 text-accent/60" />
+                        <span className="text-xs text-accent/60">This week</span>
                       </div>
                     </div>
-                    <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                      <ArrowUpRight className="w-5 h-5 text-slate-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-slate-600">Pending Project</p>
-                      <p className="text-3xl font-bold text-slate-900">2</p>
-                      <p className="text-xs text-slate-500 mt-2">On Discuss</p>
-                    </div>
-                    <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                      <ArrowUpRight className="w-5 h-5 text-slate-600" />
+                    <div className="w-12 h-12 bg-accent/20 rounded-xl flex items-center justify-center">
+                      <Calendar className="w-6 h-6 text-accent" />
                     </div>
                   </div>
                 </CardContent>
@@ -234,167 +235,67 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
 
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left Column - Analytics & Team */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Project Analytics */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Project Analytics</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-64 flex items-end justify-between px-4">
-                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
-                        <div key={day} className="flex flex-col items-center gap-2">
-                          <div 
-                            className={`w-12 rounded-t-lg ${index === 3 ? 'bg-primary h-32' : index === 2 || index === 1 ? 'bg-primary/70 h-24' : 'bg-slate-200 h-16'}`}
-                          />
-                          <span className="text-xs text-slate-500">{day}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Team Collaboration */}
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Team Collaboration</CardTitle>
-                    <Button variant="outline" size="sm">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Member
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {[
-                        { name: "Alexandra Deff", task: "Github Project Repository", status: "Completed" },
-                        { name: "Edwin Adenike", task: "Integrate User Authentication System", status: "In Progress" },
-                        { name: "Isaac Oluwatemilorun", task: "Develop Search and Filter Functionality", status: "Pending" },
-                        { name: "David Oshodi", task: "Responsive Layout for Homepage", status: "In Progress" }
-                      ].map((member, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-slate-300 rounded-full" />
-                            <div>
-                              <p className="font-medium text-sm">{member.name}</p>
-                              <p className="text-xs text-slate-500">Working on {member.task}</p>
-                            </div>
-                          </div>
-                          <Badge variant={member.status === "Completed" ? "default" : member.status === "In Progress" ? "secondary" : "outline"}>
-                            {member.status}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+              {/* Panel 2: Quote Calendar */}
+              <div className="lg:col-span-1">
+                <QuoteCalendar quotes={quotes} />
               </div>
 
-              {/* Right Column - Reminders, Projects, Progress, Timer */}
-              <div className="space-y-6">
-                {/* Reminders */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Reminders</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="p-4 bg-slate-50 rounded-lg">
-                        <h4 className="font-medium">Meeting with Arc Company</h4>
-                        <p className="text-sm text-slate-500 mt-1">Time : 02:00 pm - 04:00 pm</p>
-                        <Button className="w-full mt-3 bg-primary text-primary-foreground">
-                          Start Meeting
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Project List */}
-                <Card>
+              {/* Panel 3: Recent Quotes List */}
+              <div className="lg:col-span-2">
+                <Card className="h-fit">
                   <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Project</CardTitle>
+                    <CardTitle className="text-xl font-semibold">Recent Quotes</CardTitle>
                     <Button variant="outline" size="sm">
-                      + New
+                      View All
                     </Button>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      {quotes.slice(0, 5).map((quote, index) => (
-                        <div key={quote.id} className="flex items-center gap-3">
-                          <div className={`w-2 h-2 rounded-full ${index % 2 === 0 ? 'bg-blue-500' : 'bg-yellow-500'}`} />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{quote.name}</p>
-                            <p className="text-xs text-slate-500">Due date: {quote.createdDate}</p>
+                    <div className="space-y-4">
+                      {quotes.slice(0, 8).map((quote, index) => (
+                        <div key={quote.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
+                              {getStatusIcon(quote.status)}
+                            </div>
+                            <div>
+                              <h4 className="font-medium text-foreground">{quote.clientName || 'Unknown Client'}</h4>
+                              <p className="text-sm text-muted-foreground">{quote.name}</p>
+                              <p className="text-xs text-muted-foreground">{quote.createdDate}</p>
+                            </div>
+                          </div>
+                          
+                          <div className="text-right flex items-center gap-4">
+                            <div>
+                              <p className="font-semibold text-foreground">${quote.totalCost.toLocaleString()}</p>
+                              <Badge 
+                                variant="outline" 
+                                className={`text-xs ${getStatusColor(quote.status)} border`}
+                              >
+                                {quote.status}
+                              </Badge>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onEditQuote(quote.name)}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteQuote(quote.id)}
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Project Progress */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Project Progress</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-center">
-                      <div className="relative w-32 h-32">
-                        <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
-                          <circle cx="50" cy="50" r="45" stroke="#e5e7eb" strokeWidth="8" fill="none" />
-                          <circle 
-                            cx="50" 
-                            cy="50" 
-                            r="45" 
-                            stroke="currentColor" 
-                            strokeWidth="8" 
-                            fill="none"
-                            strokeLinecap="round"
-                            strokeDasharray="283"
-                            strokeDashoffset="115"
-                            className="text-primary"
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="text-center">
-                            <div className="text-2xl font-bold">41%</div>
-                            <div className="text-xs text-slate-500">Project Ended</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex justify-center gap-4 mt-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-primary rounded-full" />
-                        <span className="text-xs">Completed</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-slate-800 rounded-full" />
-                        <span className="text-xs">In Progress</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-slate-300 rounded-full" />
-                        <span className="text-xs">Pending</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Time Tracker */}
-                <Card className="bg-gradient-to-br from-slate-900 to-slate-800 text-white">
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-medium mb-4">Time Tracker</h3>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold mb-4">01:24:08</div>
-                      <div className="flex justify-center gap-3">
-                        <Button variant="outline" size="sm" className="bg-white/20 border-white/30 text-white hover:bg-white/30">
-                          <Play className="w-4 h-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" className="bg-red-500 border-red-600 text-white hover:bg-red-600">
-                          <Square className="w-4 h-4" />
-                        </Button>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
