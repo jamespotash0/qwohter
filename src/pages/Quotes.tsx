@@ -188,7 +188,7 @@ const Quotes = () => {
             onClick={() => setShowNewQuoteDialog(true)}
             className="bg-green-600 hover:bg-green-700 text-white"
           >
-            + Create new Quote
+            + Create New Quote
           </Button>
         </div>
 
