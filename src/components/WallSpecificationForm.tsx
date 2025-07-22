@@ -25,7 +25,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           updatedWall.panelThickness = "";
           updatedWall.constructType = "";
           updatedWall.stcRating = "";
-          updatedWall.trackType = getTrackTypeByPanelType(value);
+          updatedWall.trackType = "";
           updatedWall.trackSystem = "";
         }
         
@@ -64,19 +64,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     onUpdate(updatedWalls);
   };
 
-  // Helper functions for cascading logic
-  const getTrackTypeByPanelType = (panelType: string): string => {
-    switch (panelType) {
-      case "Individual Panels":
-        return "Multi-Directional Track";
-      case "Hinged-Paired Panels":
-        return "Hinged-Pair Track";
-      case "Continuously-Hinged Panels":
-        return "Curve & Diverter (Individual) Track";
-      default:
-        return "";
-    }
-  };
 
   const getSeriesByPanelType = (panelType: string): string[] => {
     switch (panelType) {
