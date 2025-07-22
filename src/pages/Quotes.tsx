@@ -17,42 +17,27 @@ const initialQuotes = [
     id: "QT-001",
     client: "Acme Construction",
     project: "Office Building Renovation",
-    amount: 45000,
-    status: "draft",
+    amount: "$45,538.15",
+    status: "Draft",
     date: "2024-01-15"
   },
   {
     id: "QT-002", 
     client: "Builder Solutions",
     project: "Residential Complex",
-    amount: 78500,
-    status: "in revision",
+    amount: "$78,500.17",
+    status: "In Revision",
     date: "2024-01-12"
   },
   {
     id: "QT-003",
     client: "Metro Developers",
     project: "Commercial Center",
-    amount: 125000,
-    status: "completed",
+    amount: "$125,000.54",
+    status: "Completed",
     date: "2024-01-10"
   },
-  {
-    id: "QT-004",
-    client: "Green Building Co",
-    project: "Eco-Friendly Housing",
-    amount: 92000,
-    status: "draft",
-    date: "2024-01-08"
-  },
-  {
-    id: "QT-005",
-    client: "Urban Planners Inc",
-    project: "Downtown Retail Space",
-    amount: 67300,
-    status: "in revision",
-    date: "2024-01-05"
-  }
+
 ];
 
 const statusColors = {
