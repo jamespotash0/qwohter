@@ -113,7 +113,7 @@ const Quotes = () => {
         font-family: "Times New Roman", serif;
         font-size: 12pt;
         line-height: 1.15;
-        max-width: 6.58in;
+        width: 7in;
         margin: 0 auto;
         padding: 20px;
         color: black;
@@ -127,7 +127,7 @@ const Quotes = () => {
           font-family: "Times New Roman", serif;
           font-size: 12pt;
           line-height: 1.15;
-          max-width: 6.58in;
+          width: 7in;
           margin: 0 auto;
           color: black;
         }
