@@ -466,29 +466,40 @@ const Quotes = () => {
     }
   };
 
-  const handleCreateQuote = async (quoteName: string) => {
-    try {
-      const newQuote = await createQuote({
-        contactInfo: { project_name: quoteName },
-        jobDetails: { 
-          proposalNumber: `P${Date.now().toString().slice(-6)}`,
-          date: new Date().toISOString().split('T')[0],
-          jobLocation: "",
-          billedTo: { name: "", company: "", address: "" }
-        },
-        walls: [],
-        supportStructure: {},
-        deliveryLabor: { delivery: {}, labor: {} },
-        pricing: { basePrice: 0, freight: 0, total: "", paymentUponDrawings: "", paymentUponTrackInstallation: "" },
-        status: 'Draft'
-      });
-      
-      setNewQuoteName(quoteName);
-      setShowNewQuoteDialog(false);
-      setEditingQuote(newQuote as any);
-    } catch (error) {
-      console.error('Error creating quote:', error);
-    }
+  const handleCreateQuote = (quoteName: string) => {
+    // Create a local quote without saving to database
+    const newQuote = {
+      id: '', // Empty ID indicates it's not saved yet
+      proposal_number: `P${Date.now().toString().slice(-6)}`,
+      project_name: quoteName,
+      quote_details: { project_name: quoteName },
+      job_details: { 
+        job_location: "",
+        client_name: "",
+        client_company: "",
+        client_address: "",
+        date: new Date().toISOString().split('T')[0]
+      },
+      wall_details: { id: crypto.randomUUID(), walls: {} },
+      price_details: { 
+        base_price: 0, 
+        freight: 0, 
+        total: "", 
+        payment_upon_drawings: "", 
+        payment_upon_track_installation: "" 
+      },
+      support_structure: {},
+      delivery_details: {},
+      labor_details: {},
+      status: 'Draft',
+      version: 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    
+    setNewQuoteName(quoteName);
+    setShowNewQuoteDialog(false);
+    setEditingQuote(newQuote as any);
   };
 
   // If editing a quote, show the QuoteCreator

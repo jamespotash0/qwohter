@@ -45,6 +45,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         verticalSealants: "",
         bottomSeals: "",
         topSeals: "",
+        finalSeal: "",
         endPanelType: "",
       };
     }
@@ -61,6 +62,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         stcRating: "",
         trackType: "",
         trackSystem: "",
+        finalSeal: "",
       };
     }
     
@@ -71,7 +73,9 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         panelThickness: value === "2000" ? "3" : value === "3000" ? "4" : "",
         model: "",
         panelSkin: "",
+        panelDesign: "",
         stcRating: "",
+        finalSeal: "",
       };
     }
     
@@ -82,7 +86,9 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         trackType: getTrackTypeByModel(value),
         trackSystem: "",
         panelSkin: "",
+        panelDesign: "",
         stcRating: "",
+        finalSeal: "",
       };
     }
     
@@ -560,7 +566,48 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                       </div>
                     </div>
 
-                    {/* Third Row - Seals */}
+                    {/* Third Row - Panel Design and Final Seal */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Panel Design</Label>
+                        <Select
+                          value={wall.panelDesign}
+                          onValueChange={(value) => handleWallChange(wallName, "panelDesign", value)}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select panel design" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            {panelDesigns.map((design) => (
+                              <SelectItem key={design} value={design}>
+                                {design}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Final Seal</Label>
+                        <Select
+                          value={wall.finalSeal}
+                          onValueChange={(value) => handleWallChange(wallName, "finalSeal", value)}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select final seal" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            {finalSeal.map((seal) => (
+                              <SelectItem key={seal} value={seal}>
+                                {seal}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Fourth Row - Seals */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                       <div className="space-y-2">
                         <Label className="text-sm font-medium">Vertical Sealants</Label>
@@ -620,7 +667,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                       </div>
                     </div>
 
-                    {/* Fourth Row - End Panel Type, Track Type, Track System */}
+                    {/* Fifth Row - End Panel Type, Track Type, Track System */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                       <div className="space-y-2">
                         <Label className="text-sm font-medium">End Panel Type</Label>
@@ -672,7 +719,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                       </div>
                     </div>
 
-                    {/* Fifth Row - Quantity */}
+                    {/* Sixth Row - Quantity */}
                     <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                       <div className="space-y-2">
                         <Label className="text-sm font-medium">Quantity</Label>
