@@ -14,6 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
+      organization_members: {
+        Row: {
+          id: string
+          invited_by: string | null
+          joined_at: string
+          organization_id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          invited_by?: string | null
+          joined_at?: string
+          organization_id: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          invited_by?: string | null
+          joined_at?: string
+          organization_id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       quotes: {
         Row: {
           created_at: string
@@ -22,6 +105,7 @@ export type Database = {
           id: string
           job_details: Json
           labor_details: Json
+          organization_id: string | null
           price_details: Json
           project_name: string | null
           proposal_number: string
@@ -40,6 +124,7 @@ export type Database = {
           id?: string
           job_details?: Json
           labor_details?: Json
+          organization_id?: string | null
           price_details?: Json
           project_name?: string | null
           proposal_number: string
@@ -58,6 +143,7 @@ export type Database = {
           id?: string
           job_details?: Json
           labor_details?: Json
+          organization_id?: string | null
           price_details?: Json
           project_name?: string | null
           proposal_number?: string
@@ -69,7 +155,15 @@ export type Database = {
           version?: number
           wall_details?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quotes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
