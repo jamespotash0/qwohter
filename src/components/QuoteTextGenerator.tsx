@@ -23,17 +23,17 @@ export const generateQuoteText = (data: QuoteData): string => {
   const formatDate = (dateString?: string) => {
     if (!dateString) return new Date().toLocaleDateString('en-US', { 
       year: 'numeric', 
-      month: 'short', 
+      month: 'long', 
       day: 'numeric' 
     });
     const parts = dateString.split('-');
     if (parts.length === 3) {
       // Note: month is 0-based in JS Date constructor
       const localDate = new Date(+parts[0], +parts[1] - 1, +parts[2]);
-      return localDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      return localDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     }
     // fallback
-    return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const toWords = (num: number | string): string => {
@@ -149,7 +149,7 @@ export const generateQuoteText = (data: QuoteData): string => {
       </div>
       <div class="contact-row">
         <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Website:</span>
-        <span class="value website-link">${website}</span>
+        <span class="value website-link" style="text-decoration: underline; text-underline-offset: 3px;">${website}</span>
       </div>
     </div>
   </div>
@@ -176,16 +176,16 @@ export const generateQuoteText = (data: QuoteData): string => {
       </table>
     </div>
     <div class="job-info-section" style="flex-grow: 1;">
-      <table style="width: 75%; border-collapse: collapse; margin-left: 150px">
+      <table style="width: 80%; border-collapse: collapse; margin-left: 175px">
         <colgroup>
           <col style="width: 30%;">
-          <col style="width: 45%;">
+          <col style="width: 50%;">
         </colgroup>
         <tr>
           <td style="font-weight: bold; padding: 4px; width: 80px; border: none; text-align: right;">
             Date:
           </td>
-          <td style="padding: 8px 8px 16px 8px; border-bottom: 0.5px solid black;">
+          <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">
             ${date}
           </td>
         </tr>
@@ -193,15 +193,15 @@ export const generateQuoteText = (data: QuoteData): string => {
           <td style="font-weight: bold; padding: 4px; border: none; text-align: right;">
             Proposal #:
           </td>
-          <td style="padding: 8px 8px 16px 8px; border-bottom: 0.5px solid black;">
+          <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">
             ${proposalNumber}
           </td>
         </tr>
         <tr>
-          <td style="font-weight: bold; padding: 4px; width: 20px; border: none; text-align: right; white-space: nowrap;">
+          <td style="font-weight: bold; padding: 4px; width: 25px; border: none; text-align: right; white-space: nowrap;">
             Job Location:
           </td>
-          <td style="padding: 8px 8px 16px 8px; border-bottom: 0.5px solid black;">
+          <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; white-space: normal; word-break: break-word; max-width: 300px;">
             ${jobLocation}
           </td>
         </tr>
@@ -209,104 +209,115 @@ export const generateQuoteText = (data: QuoteData): string => {
     </div>
   </div>
 
-<div class="proposal-intro" style="line-height: 1.2; margin-top: 12px;">
-Thank you for considering Contemporary Wall Systems for this project. As discussed, we are offering a proposal to furnish, deliver, and install, as noted, <strong>${wallCount === 1 ? 'ONE (1)' : wallCount === 2 ? 'TWO (2)' : wallCount === 3 ? 'THREE (3)' : wallCount === 4 ? 'FOUR (4)' : `${wallCount}`} ${wallSystemType}</strong> as specified below, at the above named project.
-</div>
-
-<div class="wall-specifications" style="line-height: 1.15; margin-top: 15px;">
-  <strong>Specifications as follows:</strong>
-</div>
-
-<div class="wall-specifications-list" style="line-height: 1.15; margin-top: 10px;">
-${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
-  const dimensions = formatDimensions(wall.widthFeet, wall.widthInches, wall.heightFeet, wall.heightInches);
-  const panelCount = wall.panelCount || '';
-  const panelType = wall.panelType || '';
-  const quantity = wall.quantity || '1';
-  
-  return `<br><strong>${wallName}</strong>&nbsp;&nbsp;${dimensions}&nbsp;&nbsp;<strong>${toWords(panelCount)} (${panelCount})</strong>&nbsp;&nbsp;${panelType}&nbsp;&nbsp;${quantity} Each`;}).join('')}
-</div>
-
-
-<div class="panels-section" style="line-height: 1.15;">
-<h2 class="section-header">PANELS:</h2>
-This wall system utilizes the Kwik-Wall <strong>${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || ''}</strong> configured with <strong>${wallEntries[0]?.[1]?.panelType || ''}</strong> designed for use with a <strong>${wallEntries[0]?.[1]?.trackType || ''} Layout</strong>, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
-
-<br><br>The wall consists of <strong>${getPanelTypeText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelType || ''}</strong>, finished in an <strong>Unfinished Rift Cut White Oak Veneer finish</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches).split(' x ')[1]}</strong> in height, with panel widths varying as needed. Each panel is nominally <strong>${wallEntries[0]?.[1]?.panelThickness || ''}"</strong> thick, constructed with a <strong>Steel Faced 1/2" gypsum board</strong> laminated to an acoustic material. Each panel features a <strong>Trimless Design</strong> and are suspended from a <strong>${wallEntries[0]?.[1]?.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${wallEntries[0]?.[1]?.verticalSealants || ''}</strong> vertical seals that create a continuous interlock, and <strong>${wallEntries[0]?.[1]?.bottomSeals || ''}</strong> used with limited pressure mechanism operable bottom seals, set at the time of panel's placement and retract into the panels when in use for virtually effortless movement. End panels will incorporate a <strong>${wallEntries[0]?.[1]?.endPanelType || ''}</strong>, which uses a Bulb as a final seal.
-</div>
-
-<div class="track-section" style="line-height: 1.15;">
-<h2 class="section-header">TRACK:</h2>
-We will be using an <strong>${wallEntries[0]?.[1]?.trackSystem || ''} Track System</strong> to suspend the doors from above. This track allows for <strong>Bi-Fold</strong> of the panels when not in use.
-</div>
-
-<div class="support-section" style="line-height: 1.15;">
-<h2 class="section-header">SUPPORT STRUCTURE (HEADER):</h2>
-Doors will be hung from a <strong>${mountingTrack}</strong> above, to manufacturer's specs, as supplied by others. Soffits, if required, as supplied by others.
-</div>
-
-<div class="general-section" style="line-height: 1.15; margin-bottom: 20px;">
-<h2 class="section-header">GENERAL:</h2>
-Each door will carry a minimum <strong>STC of ${wallEntries[0]?.[1]?.stcRating || ''}</strong>${wallEntries[0]?.[1]?.stcRating === '56' ? ' <strong>(Highest Available)</strong>' : ''}. Estimated delivery would be <strong>${trackDelivery} weeks</strong> after approval of shop drawings for tracks, & <strong>${panelDelivery} weeks</strong> for panels. Installation of tracks would take approximately <strong>${trackInstallation} working days</strong>, panels installation would take <strong>${panelInstallation} additional days</strong>.
-</div>
-
-<div class="pricing-section" style="margin-top: 10px;">
-  <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
-    <colgroup>
-      <col style="width: 80%;">
-      <col style="width: 20%;">
-    </colgroup>
-    <tr>
-      <td style="border: 0.5px solid black; padding: 8px 8px 12px 8px;"><strong> As described, furnished and installed</strong></td>
-      <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${basePrice}</strong></td>
-    </tr>
-    <tr>
-      <td style="border: 0.5px solid black; padding: 8px;"><strong>Estimated Inbound Freight + Local Delivery</strong></td>
-      <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${freight}</strong></td>
-    </tr>
-    <tr>
-      <td style="border: 0.5px solid black; padding: 8px 8px 12px 8px;"><strong>Total</strong></td>
-      <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${total}</strong></td>
-    </tr>
-  </table>
-</div>
-
-<div class="statement-section" style="line-height: 1.15;">
-<br>Above Proposal is a Good Faith Estimate, Based on the Information Provided & Subject to Revision Upon Site Visit & Inspection. Pricing is Firm for 60 Days From Date Above
-</div>
-
-<div class="terms-section">
-<h2 class="section-header">General Notes and Terms:</h2>
-<ol>
-<li>1.  All materials are <strong>FOB factory</strong>, prepaid, and added to the final invoice.</li>
-<li>2.  <strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</li>
-<li>3.  All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate} Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</li>
-<li>4.  <strong>Delivery includes drop-off to the Roof</strong> of the site, if applicable.</li>
-<li>5.  Pricing is <strong>exclusive of any applicable taxes</strong>, which will be added as required.</li>
-<li>6.  The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</li>
-<li>7.  Final pricing is <strong>subject to site inspection and verification</strong> of all dimensions and conditions by our installation team.</li>
-<li>8.  Any additional requirements or unforeseen conditions may be subject to <strong>revised pricing or additional charges</strong>.</li>
-<li>9.  Panel colors and finishes are available<strong> as per the manufacturer's current standard offerings</strong>.</li>
-<li>10. A <strong>10-year factory warranty</strong> is provided on all operable wall systems.</li>
-<li>11.
-  <strong> Payment Terms:</strong>
-  <div style="padding-left: 2rem;">
-    <div>– <strong>${paymentUponDrawings}%</strong> due upon approval of shop drawings</div>
-    <div>– <strong>${paymentUponTrackInstallation}%</strong> due upon track installation</div>
-    <div>– Remaining balance due upon final completion</div>
+  <div class="proposal-intro" style="line-height: 1.2; margin-top: 12px;">
+    Thank you for considering Contemporary Wall Systems for this project. As discussed, we are offering a proposal to furnish, deliver, and install, as noted, <strong>${wallCount === 1 ? 'ONE (1)' : wallCount === 2 ? 'TWO (2)' : wallCount === 3 ? 'THREE (3)' : wallCount === 4 ? 'FOUR (4)' : `${wallCount}`} ${wallSystemType}</strong> as specified below, at the above named project.
   </div>
-</li>
-</ol>
-</div>
 
-<div class="signature-section">
-<br><strong>Signed By:</strong> _________________________________________________________&nbsp;&nbsp;&nbsp;<strong>Date:</strong> ${date}
-</div>
+  <div class="wall-specifications" style="line-height: 1.15; margin-top: 15px; padding-bottom: 10px;">
+    <strong>Specifications as follows:</strong>
+  </div>
 
-<div class="acceptance-section">
-<h2 class="section-header">ACCEPTANCE OF PROPOSAL:</h2>
-The above prices, specifications, and conditions are satisfactory and are hereby accepted. Any alteration or deviation from above specifications will be executed upon written approval and may/will be subject to additional costs over and above the estimate. All removal of packing material is the customer's responsibility. Electrical and H.V.A.C. installation(s) are not included. Visa, Mastercard and American Express (AMEX) are accepted. Payments by credit card will be charged a processing fee. Pricing subject to applicable sales tax unless otherwise noted. Late payments will be subject to a 1.5% finance charge per month. Cancellations will be subject to a restocking fee.
-</div>`;
-};
+  <div class="wall-specifications-list" style="line-height: 1.15; margin-top: 10px;">
+    <table style="border-collapse: collapse; width: 100%;">
+      <tbody>
+        ${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
+          const dimensions = formatDimensions(wall.widthFeet, wall.widthInches, wall.heightFeet, wall.heightInches);
+          const panelCount = wall.panelCount || '';
+          const panelType = wall.panelType || '';
+          const quantity = wall.quantity || '1';
 
-export default generateQuoteText;
+          return `
+            <tr>
+              <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black;">${wallName}</td>
+              <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${dimensions}</td>
+              <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${toWords(panelCount)} (${panelCount})</td>
+              <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black;">${panelType}</td>
+              <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${quantity} Each</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="panels-section" style="line-height: 1.15;">
+    <h2 class="section-header">PANELS:</h2>
+    This wall system utilizes the Kwik-Wall <strong>${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || ''}</strong> configured with <strong>${wallEntries[0]?.[1]?.panelType || ''}</strong> designed for use with a <strong>${wallEntries[0]?.[1]?.trackType || ''} Layout</strong>, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
+    <br><br>The wall consists of <strong>${getPanelTypeText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelType || ''}</strong>, finished in an <strong>Unfinished Rift Cut White Oak Veneer finish</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches).split(' x ')[1]}</strong> in height, with panel widths varying as needed. Each panel is nominally <strong>${wallEntries[0]?.[1]?.panelThickness || ''}"</strong> thick, constructed with a <strong>Steel Faced 1/2" gypsum board</strong> laminated to an acoustic material. Each panel features a <strong>Trimless Design</strong> and are suspended from a <strong>${wallEntries[0]?.[1]?.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${wallEntries[0]?.[1]?.verticalSealants || ''}</strong> vertical seals that create a continuous interlock, and <strong>${wallEntries[0]?.[1]?.bottomSeals || ''}</strong> used with limited pressure mechanism operable bottom seals, set at the time of panel's placement and retract into the panels when in use for virtually effortless movement. End panels will incorporate a <strong>${wallEntries[0]?.[1]?.endPanelType || ''}</strong>, which uses a Bulb as a final seal.
+  </div>
+
+  <div class="track-section" style="line-height: 1.15;">
+    <h2 class="section-header">TRACK:</h2>
+    We will be using an <strong>${wallEntries[0]?.[1]?.trackSystem || ''} Track System</strong> to suspend the doors from above. This track allows for <strong>Bi-Fold</strong> of the panels when not in use.
+  </div>
+
+  <div class="support-section" style="line-height: 1.15;">
+    <h2 class="section-header">SUPPORT STRUCTURE (HEADER):</h2>
+    Doors will be hung from a <strong>${mountingTrack}</strong> above, to manufacturer's specs, as supplied by others. Soffits, if required, as supplied by others.
+  </div>
+
+  <div class="general-section" style="line-height: 1.15; margin-bottom: 20px;">
+    <h2 class="section-header">GENERAL:</h2>
+    Each door will carry a minimum <strong>STC of ${wallEntries[0]?.[1]?.stcRating || ''}</strong>${wallEntries[0]?.[1]?.stcRating === '56' ? ' <strong>(Highest Available)</strong>' : ''}. Estimated delivery would be <strong>${trackDelivery} weeks</strong> after approval of shop drawings for tracks, & <strong>${panelDelivery} weeks</strong> for panels. Installation of tracks would take approximately <strong>${trackInstallation} working days</strong>, panels installation would take <strong>${panelInstallation} additional days</strong>.
+  </div>
+
+  <div class="pricing-section" style="margin-top: 10px;">
+    <table style="width: 90%; border-collapse: collapse; table-layout: fixed;">
+      <colgroup>
+        <col style="width: 80%;">
+        <col style="width: 20%;">
+      </colgroup>
+      <tr>
+        <td style="border: 0.5px solid black; padding: 8px 8px 12px 8px;"><strong> As described, furnished and installed</strong></td>
+        <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${basePrice}</strong></td>
+      </tr>
+      <tr>
+        <td style="border: 0.5px solid black; padding: 8px;"><strong>Estimated Inbound Freight + Local Delivery</strong></td>
+        <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${freight}</strong></td>
+      </tr>
+      <tr>
+        <td style="border: 0.5px solid black; padding: 8px 8px 12px 8px;"><strong>Total</strong></td>
+        <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${total}</strong></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="statement-section" style="line-height: 1.15;">
+    <br>Above Proposal is a Good Faith Estimate, Based on the Information Provided & Subject to Revision Upon Site Visit & Inspection. Pricing is Firm for 60 Days From Date Above
+  </div>
+
+  <div class="terms-section">
+    <h2 class="section-header">General Notes and Terms:</h2>
+    <ol>
+      <li>1.  All materials are <strong>FOB factory</strong>, prepaid, and added to the final invoice.</li>
+      <li>2.  <strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</li>
+      <li>3.  All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate} Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</li>
+      <li>4.  <strong>Delivery includes drop-off to the Roof</strong> of the site, if applicable.</li>
+      <li>5.  Pricing is <strong>exclusive of any applicable taxes</strong>, which will be added as required.</li>
+      <li>6.  The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</li>
+      <li>7.  Final pricing is <strong>subject to site inspection and verification</strong> of all dimensions and conditions by our installation team.</li>
+      <li>8.  Any additional requirements or unforeseen conditions may be subject to <strong>revised pricing or additional charges</strong>.</li>
+      <li>9.  Panel colors and finishes are available<strong> as per the manufacturer's current standard offerings</strong>.</li>
+      <li>10. A <strong>10-year factory warranty</strong> is provided on all operable wall systems.</li>
+      <li>11.
+        <strong> Payment Terms:</strong>
+        <div style="padding-left: 2rem;">
+          <div>– <strong>${paymentUponDrawings}%</strong> due upon approval of shop drawings</div>
+          <div>– <strong>${paymentUponTrackInstallation}%</strong> due upon track installation</div>
+          <div>– Remaining balance due upon final completion</div>
+        </div>
+      </li>
+    </ol>
+  </div>
+
+  <div class="signature-section">
+    <br><strong>Signed By:</strong> _________________________________________________________&nbsp;&nbsp;&nbsp;<strong>Date:</strong> ${date}
+  </div>
+
+  <div class="acceptance-section">
+    <h2 class="section-header">ACCEPTANCE OF PROPOSAL:</h2>
+    The above prices, specifications, and conditions are satisfactory and are hereby accepted. Any alteration or deviation from above specifications will be executed upon written approval and may/will be subject to additional costs over and above the estimate. All removal of packing material is the customer's responsibility. Electrical and H.V.A.C. installation(s) are not included. Visa, Mastercard and American Express (AMEX) are accepted. Payments by credit card will be charged a processing fee. Pricing subject to applicable sales tax unless otherwise noted. Late payments will be subject to a 1.5% finance charge per month. Cancellations will be subject to a restocking fee.
+  </div>`;
+  };
+
+  export default generateQuoteText;
