@@ -50,13 +50,21 @@ export const generateQuoteText = (data: QuoteData): string => {
     }).format(num);
   };
 
-  const formatDimensions = (widthFeet?: string, widthInches?: string, heightFeet?: string, heightInches?: string) => {
+  const formatDimensions = (
+    widthFeet?: string,
+    widthInches?: string,
+    heightFeet?: string,
+    heightInches?: string,
+    includeLabels = true
+  ) => {
     const wf = parseInt(widthFeet || '0');
     const wi = parseInt(widthInches || '0');
     const hf = parseInt(heightFeet || '0');
     const hi = parseInt(heightInches || '0');
-    
-    return `${wf}'-${wi}" W x ${hf}'-${hi}" H`;
+
+    const width = `${wf}'-${wi}"${includeLabels ? ' W' : ''}`;
+    const height = `${hf}'-${hi}"${includeLabels ? ' H' : ''}`;
+    return `${width} x ${height}`;
   };
 
   const getWallCount = () => {
@@ -221,7 +229,7 @@ export const generateQuoteText = (data: QuoteData): string => {
     <table style="border-collapse: collapse; width: 100%;">
       <tbody>
         ${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
-          const dimensions = formatDimensions(wall.widthFeet, wall.widthInches, wall.heightFeet, wall.heightInches);
+          const dimensions = formatDimensions(wall.widthFeet, wall.widthInches, wall.heightFeet, wall.heightInches, true);
           const panelCount = wall.panelCount || '';
           const panelType = wall.panelType || '';
           const quantity = wall.quantity || '1';
@@ -243,7 +251,7 @@ export const generateQuoteText = (data: QuoteData): string => {
   <div class="panels-section" style="line-height: 1.15;">
     <h2 class="section-header">PANELS:</h2>
     This wall system utilizes the Kwik-Wall <strong>${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || ''}</strong> configured with <strong>${wallEntries[0]?.[1]?.panelType || ''}</strong> designed for use with a <strong>${wallEntries[0]?.[1]?.trackType || ''} Layout</strong>, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
-    <br><br>The wall consists of <strong>${getPanelTypeText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelType || ''}</strong>, finished in an <strong>Unfinished Rift Cut White Oak Veneer finish</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches).split(' x ')[1]}</strong> in height, with panel widths varying as needed. Each panel features a <strong>${wallEntries[0]?.[1]?.panelDesign || ''}"</strong> is nominally <strong>${wallEntries[0]?.[1]?.panelThickness || ''}"</strong> thick, constructed with a <strong>Steel Faced 1/2" gypsum board</strong> laminated to an acoustic material. Each panel features a <strong>Trimless Design</strong> and are suspended from a <strong>${wallEntries[0]?.[1]?.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${wallEntries[0]?.[1]?.verticalSealants || ''}</strong> vertical seals that create a continuous interlock, and <strong>${wallEntries[0]?.[1]?.bottomSeals || ''}</strong> used with limited pressure mechanism operable bottom seals, set at the time of panel's placement and retract into the panels when in use for virtually effortless movement. End panels will incorporate a <strong>${wallEntries[0]?.[1]?.endPanelType || ''}</strong>, which uses a <strong>${wallEntries[0]?.[1]?.finalSeal || ''}</strong> as a final seal.
+    <br><br>The wall consists of <strong>${getPanelTypeText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelType || ''}</strong>, finished in an <strong>Unfinished Rift Cut White Oak Veneer finish</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches, false).split(' x ')[1]}</strong> in height, with panel widths varying as needed. Each panel features a <strong>${wallEntries[0]?.[1]?.panelDesign || ''} </strong> design and is nominally <strong>${wallEntries[0]?.[1]?.panelThickness || ''}"</strong> thick, constructed with a <strong>Steel Faced 1/2" gypsum board</strong> laminated to an acoustic material. Each panel features a <strong>${wallEntries[0]?.[1].panelDesign || ''}</strong> Design and are suspended from a <strong>${wallEntries[0]?.[1]?.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${wallEntries[0]?.[1]?.verticalSealants || ''}</strong> vertical seals that create a continuous interlock, and <strong>${wallEntries[0]?.[1]?.bottomSeals || ''}</strong> used with limited pressure mechanism operable bottom seals, set at the time of panel's placement and retract into the panels when in use for virtually effortless movement. End panels will incorporate a <strong>${wallEntries[0]?.[1]?.endPanelType || ''}</strong>, which uses a <strong>${wallEntries[0]?.[1]?.finalSeal || ''}</strong> as a final seal.
   </div>
 
   <div class="track-section" style="line-height: 1.15;">
