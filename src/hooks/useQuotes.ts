@@ -96,7 +96,7 @@ export const useQuotes = () => {
     }
   };
 
-  const createQuote = async (quoteData: any) => {
+  const createQuote = async (quoteData: any, organizationId?: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
@@ -125,8 +125,9 @@ export const useQuotes = () => {
           support_structure: quoteData.supportStructure || {},
           delivery_details: quoteData.deliveryLabor.delivery || {},
           labor_details: quoteData.deliveryLabor.labor || {},
-          status: quoteData.status || 'Draft',
-          user_id: user.id
+          status: quoteData.status || 'draft',
+          user_id: user.id,
+          organization_id: organizationId || null
         })
         .select()
         .single();

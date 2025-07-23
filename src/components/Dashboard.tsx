@@ -21,12 +21,17 @@ import {
   Users,
   Timer,
   Play,
-  Square
+  Square,
+  Settings
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import CreateQuoteDialog from "./CreateQuoteDialog";
 import { AppSidebar } from "./AppSidebar";
+import { OrganizationSelector } from "./OrganizationSelector";
+import { MemberManagement } from "./MemberManagement";
+import { useOrganizations } from "@/hooks/useOrganizations";
+import { useQuotes } from "@/hooks/useQuotes";
 
 interface Quote {
   id: string;
@@ -44,63 +49,33 @@ interface DashboardProps {
 
 const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
-  const [quotes, setQuotes] = useState<Quote[]>([
-    {
-      id: "1",
-      name: "Office Building Project",
-      createdDate: "2024-01-15",
-      totalCost: 15000,
-      status: "Draft"
-    },
-    {
-      id: "2", 
-      name: "Warehouse Renovation",
-      createdDate: "2024-01-10",
-      totalCost: 25000,
-      status: "Completed"
-    },
-    {
-      id: "3",
-      name: "Develop API Endpoints",
-      createdDate: "2024-01-20",
-      totalCost: 8500,
-      status: "Draft"
-    },
-    {
-      id: "4",
-      name: "Build Dashboard",
-      createdDate: "2024-01-22",
-      totalCost: 12000,
-      status: "Draft"
-    }
-  ]);
+  const [showMemberManagement, setShowMemberManagement] = useState(false);
+  
+  const { quotes } = useQuotes();
+  const {
+    organizations,
+    currentOrganization,
+    setCurrentOrganization,
+    members,
+    loading: orgLoading,
+    createOrganization,
+    inviteMember,
+    removeMember,
+    updateMemberRole
+  } = useOrganizations();
 
   const handleCreateQuote = (quoteName: string) => {
-    const newQuote: Quote = {
-      id: Date.now().toString(),
-      name: quoteName,
-      createdDate: new Date().toISOString().split('T')[0],
-      totalCost: 0,
-      status: "Draft"
-    };
-    setQuotes(prev => [...prev, newQuote]);
     onEditQuote(quoteName);
   };
 
-  const handleDeleteQuote = (id: string) => {
-    setQuotes(prev => prev.filter(quote => quote.id !== id));
-  };
-
-  const handleStatusChange = (id: string, newStatus: string) => {
-    setQuotes(prev => prev.map(quote => 
-      quote.id === id ? { ...quote, status: newStatus } : quote
-    ));
-  };
-
+  // Calculate stats from real quotes data
   const totalQuotes = quotes.length;
-  const totalValue = quotes.reduce((sum, quote) => sum + quote.totalCost, 0);
-  const runningProjects = quotes.filter(q => q.status === "Draft").length;
-  const completedProjects = quotes.filter(q => q.status === "Completed").length;
+  const totalValue = quotes.reduce((sum, quote) => {
+    const total = quote.price_details?.total || 0;
+    return sum + (typeof total === 'number' ? total : 0);
+  }, 0);
+  const runningProjects = quotes.filter(q => q.status === "draft").length;
+  const completedProjects = quotes.filter(q => q.status === "completed").length;
 
   return (
     <SidebarProvider>
@@ -113,10 +88,16 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <SidebarTrigger />
+                <OrganizationSelector
+                  currentOrganization={currentOrganization}
+                  organizations={organizations}
+                  onOrganizationChange={setCurrentOrganization}
+                  onCreateOrganization={createOrganization}
+                />
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
                   <Input 
-                    placeholder="Search task" 
+                    placeholder="Search quotes" 
                     className="pl-10 w-80 bg-slate-50 border-slate-200"
                   />
                   <kbd className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
@@ -126,6 +107,13 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
               </div>
               
               <div className="flex items-center gap-4">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setShowMemberManagement(!showMemberManagement)}
+                >
+                  <Settings className="w-4 h-4" />
+                </Button>
                 <Button variant="ghost" size="sm">
                   <Mail className="w-4 h-4" />
                 </Button>
@@ -138,7 +126,7 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium">{user}</p>
-                    <p className="text-xs text-slate-500">{user}@email.com</p>
+                    <p className="text-xs text-slate-500">{currentOrganization?.name || "Personal Workspace"}</p>
                   </div>
                 </div>
               </div>
@@ -237,6 +225,17 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
               </Card>
             </div>
 
+            {/* Member Management */}
+            {showMemberManagement && currentOrganization && (
+              <MemberManagement
+                organization={currentOrganization}
+                members={members}
+                onInviteMember={(email, role) => inviteMember(currentOrganization.id, email, role)}
+                onRemoveMember={removeMember}
+                onUpdateRole={updateMemberRole}
+              />
+            )}
+
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left Column - Analytics & Team */}
@@ -329,11 +328,14 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
                         <div key={quote.id} className="flex items-center gap-3">
                           <div className={`w-2 h-2 rounded-full ${index % 2 === 0 ? 'bg-blue-500' : 'bg-yellow-500'}`} />
                           <div className="flex-1">
-                            <p className="text-sm font-medium">{quote.name}</p>
-                            <p className="text-xs text-slate-500">Due date: {quote.createdDate}</p>
+                            <p className="text-sm font-medium">{quote.project_name || quote.proposal_number}</p>
+                            <p className="text-xs text-slate-500">Created: {new Date(quote.created_at).toLocaleDateString()}</p>
                           </div>
                         </div>
                       ))}
+                      {quotes.length === 0 && (
+                        <p className="text-sm text-slate-500 text-center py-4">No quotes yet</p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
