@@ -37,6 +37,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         series: "",
         model: "",
         panelThickness: "",
+        panelDesign: "",
         panelSkin: "",
         stcRating: "",
         trackType: "",
@@ -56,6 +57,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         model: "",
         panelThickness: "",
         panelSkin: "",
+        panelDesign: "",  
         stcRating: "",
         trackType: "",
         trackSystem: "",
@@ -226,10 +228,12 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       model: "",
       panelThickness: "",
       panelSkin: "",
+      panelDesign: "",
       stcRating: "",
       verticalSealants: "",
       bottomSeals: "",
       topSeals: "",
+      finalSeal: "",
       endPanelType: "",
       trackType: "",
       trackSystem: ""
@@ -260,10 +264,12 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
 
   const wallSystemTypes = ["Operable Wall", "Glass Wall", "Accordion Partitions", "Unispan Support", "FlexTact"];
   const panelTypes = ["Individual Panels", "Hinged-Paired Panels", "Continuously-Hinged Panels"];
-  const verticalSealants = ["Tongue-and-Groove", "Compression Seals", "Magnetic Seals"];
-  const bottomSeals = ["Retractable Seals", "Fixed Seals", "Adjustable Seals"];
+  const panelDesigns = ["Trimless", "Cap Trimmed"];
+  const verticalSealants = ["Tongue-and-Groove"];
+  const bottomSeals = ["Retractable", "Automatic", "Adjustable"];
   const topSeals = ["Fixed Top Seals", "Adjustable Top Seals", "No Top Seals"];
-  const endPanelTypes = ["Fixed Wall Jamb", "Movable Jamb", "Pocket Door"];
+  const endPanelTypes = ["Fixed Wall Jamb", "Telescoping Closure", "Closure Panel", "Adjustable Wall Jamb", "Articulating Panel"];
+  const finalSeal = ["Bulb", "Sliding Jamb"];
 
   const wallNames = Object.keys(walls.walls);
 

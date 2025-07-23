@@ -11,11 +11,13 @@ export interface WallSpecification {
   series: string;
   model: string;
   panelThickness: string;
+  panelDesign: string;
   panelSkin: string;
   stcRating: string;
   verticalSealants: string;
   bottomSeals: string;
   topSeals: string;
+  finalSeal: string;
   endPanelType: string;
   trackType: string;
   trackSystem: string;
