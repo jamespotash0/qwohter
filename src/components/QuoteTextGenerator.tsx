@@ -122,7 +122,7 @@ export const generateQuoteText = (data: QuoteData): string => {
   <div class="header-section">
     <div class="company-info">
       <div class="company-logo">
-        <img src="/lovable-uploads/f007c713-9d1a-427a-9453-d0b8ffb42da6.png" alt="Contemporary Wall Systems Logo" style="height: 80px; width: auto; max-width: 200px; object-fit: contain;" />
+        <img src="/lovable-uploads/f007c713-9d1a-427a-9453-d0b8ffb42da6.png" alt="Contemporary Wall Systems Logo" style="height: 80px; width: auto; max-width: 200px; object-fit: contain;"/>
       </div>
     </div>
     
@@ -131,7 +131,7 @@ export const generateQuoteText = (data: QuoteData): string => {
         <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Contact:</span>
         <span class="value">${contactName}</span>
       </div>
-     <div class="contact-row" style="display: flex; align-items: flex-start;">
+      <div class="contact-row" style="display: flex; align-items: flex-start;">
         <span class="label" style="font-weight: bold; width: 80px; flex-shrink: 0; text-align: right; padding-right: 0px;">
           Address:
         </span>
@@ -250,6 +250,8 @@ export const generateQuoteText = (data: QuoteData): string => {
     <h2 class="section-header">TRACK:</h2>
     We will be using an <strong>${wallEntries[0]?.[1]?.trackSystem || ''} Track System</strong> to suspend the doors from above. This track allows for <strong>Bi-Fold</strong> of the panels when not in use.
   </div>
+      
+  <div style="height: 120px;"></div>
 
   <div class="support-section" style="line-height: 1.15;">
     <h2 class="section-header">SUPPORT STRUCTURE (HEADER):</h2>

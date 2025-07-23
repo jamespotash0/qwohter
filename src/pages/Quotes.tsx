@@ -519,21 +519,23 @@ const Quotes = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container flex h-14 items-center px-6">
+        <div className="container flex h-16 items-center px-6 relative">
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => navigate('/dashboard')}
-            className="mr-4"
+            className="absolute left-6"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="h-4 w-4 mr-0" />
             Back to Dashboard
           </Button>
-          <h1 className="text-xl font-semibold">Quotes</h1>
+          <h1 className="mx-auto text-xl font-semibold">Quotes</h1>
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
+      {/* <div className="p-16 space-y-8"> */}
+      <div className="pt-8 px-16 pb-16 space-y-8">
+        {/* New Quote Dialog */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold">Project Quotes</h2>
@@ -679,18 +681,18 @@ const Quotes = () => {
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              {/* <DropdownMenuItem>
                                 <Eye className="mr-2 h-4 w-4" />
                                 View
-                              </DropdownMenuItem>
+                              </DropdownMenuItem> */}
                               <DropdownMenuItem onClick={() => downloadPDF(quote)}>
                                 <Download className="mr-2 h-4 w-4" />
                                 Download
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
+                              {/* <DropdownMenuItem>
                                 <Copy className="mr-2 h-4 w-4" />
                                 Duplicate
-                              </DropdownMenuItem>
+                              </DropdownMenuItem> */}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
                                 onClick={() => setDeleteQuoteId(quote.id)}

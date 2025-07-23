@@ -261,7 +261,7 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
                 </Card>
 
                 {/* Team Collaboration */}
-                <Card>
+                {/* <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Team Collaboration</CardTitle>
                     <Button variant="outline" size="sm">
@@ -292,7 +292,7 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
                       ))}
                     </div>
                   </CardContent>
-                </Card>
+                </Card> */}
               </div>
 
               {/* Right Column - Reminders, Projects, Progress, Timer */}
