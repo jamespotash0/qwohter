@@ -55,6 +55,7 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
   const {
     currentOrganization,
     members,
+    currentUserRole,
     loading: orgLoading,
     createOrganization,
     inviteMember,
@@ -206,10 +207,8 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
               </Card>
             </div>
 
-            {/* Member Management */}
-            {
-            // showMemberManagement && 
-            currentOrganization && (
+            {/* Member Management - Only for admins and owners */}
+            {currentOrganization && currentUserRole && ['admin', 'owner'].includes(currentUserRole) && (
               <MemberManagement
                 organization={currentOrganization}
                 members={members}
