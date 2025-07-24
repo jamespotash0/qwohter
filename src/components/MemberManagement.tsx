@@ -8,11 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useOrganizations, OrganizationMember, Profile, Organization } from "@/hooks/useOrganizations";
+import { useOrganizations, OrganizationMember, Organization } from "@/hooks/useOrganizations";
 
 interface MemberManagementProps {
   organization: Organization;
-  members: (OrganizationMember & { profile: Profile })[];
+  members: OrganizationMember[];
   onInviteMember: (email: string, role: 'admin' | 'member') => void;
   onRemoveMember: (memberId: string) => void;
   onUpdateRole: (memberId: string, role: 'admin' | 'member') => void;
@@ -134,9 +134,9 @@ export const MemberManagement = ({
                 </div>
                 <div>
                   <p className="font-medium text-sm">
-                    {member.profile.full_name || member.profile.email}
+                    {member.full_name || member.email}
                   </p>
-                  <p className="text-xs text-slate-500">{member.profile.email}</p>
+                  <p className="text-xs text-slate-500">{member.email}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">

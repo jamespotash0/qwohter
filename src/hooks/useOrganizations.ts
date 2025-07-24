@@ -13,23 +13,17 @@ export interface Organization {
 export interface OrganizationMember {
   id: string;
   organization_id: string;
-  user_id: string;
   role: 'owner' | 'admin' | 'member';
   invited_by?: string;
   joined_at: string;
-}
-
-export interface Profile {
-  id: string;
   email: string;
   full_name?: string;
-  created_at: string;
-  updated_at: string;
 }
+
 
 export const useOrganizations = () => {
   const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
-  const [members, setMembers] = useState<(OrganizationMember & { profile: Profile })[]>([]);
+  const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -73,10 +67,10 @@ export const useOrganizations = () => {
 
   const fetchMembers = async (organizationId: string) => {
     try {
-      // Fetch members with their profile information separately
+      // Fetch members from profiles table
       const { data: membersData, error: membersError } = await supabase
-        .from('organization_members')
-        .select('*')
+        .from('profiles')
+        .select('id, email, full_name, role, invited_by, joined_at, organization_id')
         .eq('organization_id', organizationId);
 
       if (membersError) throw membersError;
@@ -86,24 +80,16 @@ export const useOrganizations = () => {
         return;
       }
 
-      // Fetch profiles for all members
-      const userIds = membersData.map(member => member.user_id);
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', userIds);
-
-      if (profilesError) throw profilesError;
-
-      // Combine members with their profiles
-      const transformedData = membersData.map(member => {
-        const profile = profilesData?.find(p => p.id === member.user_id);
-        return {
-          ...member,
-          role: member.role as 'owner' | 'admin' | 'member',
-          profile: profile as Profile
-        };
-      }).filter(member => member.profile); // Filter out members without profiles
+      // Transform data to match OrganizationMember interface
+      const transformedData = membersData.map(profile => ({
+        id: profile.id,
+        organization_id: profile.organization_id,
+        role: profile.role as 'owner' | 'admin' | 'member',
+        invited_by: profile.invited_by,
+        joined_at: profile.joined_at,
+        email: profile.email,
+        full_name: profile.full_name
+      }));
 
       setMembers(transformedData);
     } catch (error: any) {
@@ -133,24 +119,16 @@ export const useOrganizations = () => {
 
       if (orgError) throw orgError;
 
-      // Update user's profile to link to this organization
+      // Update user's profile to link to this organization and set as owner
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ organization_id: orgData.id })
+        .update({ 
+          organization_id: orgData.id,
+          role: 'owner'
+        })
         .eq('id', user.id);
 
       if (profileError) throw profileError;
-
-      // Add creator as owner
-      const { error: memberError } = await supabase
-        .from('organization_members')
-        .insert({
-          organization_id: orgData.id,
-          user_id: user.id,
-          role: 'owner'
-        });
-
-      if (memberError) throw memberError;
 
       setCurrentOrganization(orgData);
       
@@ -186,27 +164,21 @@ export const useOrganizations = () => {
         throw new Error('User not found. They need to sign up first.');
       }
 
-      // Check if already a member
-      const { data: existingMember } = await supabase
-        .from('organization_members')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .eq('user_id', profile.id)
-        .single();
-
-      if (existingMember) {
-        throw new Error('User is already a member of this organization.');
+      // Check if user already has an organization
+      if (profile.organization_id) {
+        throw new Error('User is already a member of another organization.');
       }
 
-      // Add member
+      // Update user's profile to join organization
       const { data, error } = await supabase
-        .from('organization_members')
-        .insert({
+        .from('profiles')
+        .update({
           organization_id: organizationId,
-          user_id: profile.id,
           role,
-          invited_by: user.id
+          invited_by: user.id,
+          joined_at: new Date().toISOString()
         })
+        .eq('id', profile.id)
         .select()
         .single();
 
@@ -233,9 +205,15 @@ export const useOrganizations = () => {
 
   const removeMember = async (memberId: string) => {
     try {
+      // Remove organization association from profile
       const { error } = await supabase
-        .from('organization_members')
-        .delete()
+        .from('profiles')
+        .update({
+          organization_id: null,
+          role: 'member',
+          invited_by: null,
+          joined_at: null
+        })
         .eq('id', memberId);
 
       if (error) throw error;
@@ -259,7 +237,7 @@ export const useOrganizations = () => {
   const updateMemberRole = async (memberId: string, role: 'admin' | 'member') => {
     try {
       const { data, error } = await supabase
-        .from('organization_members')
+        .from('profiles')
         .update({ role })
         .eq('id', memberId)
         .select()
