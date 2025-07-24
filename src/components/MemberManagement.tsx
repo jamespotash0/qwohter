@@ -126,7 +126,7 @@ export const MemberManagement = ({
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {members.map((member) => (
+          {members?.filter(member => member && member.id).map((member) => (
             <div key={member.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
@@ -134,17 +134,17 @@ export const MemberManagement = ({
                 </div>
                 <div>
                   <p className="font-medium text-sm">
-                    {member.full_name || member.email}
+                    {member?.full_name || member?.email || 'Unknown User'}
                   </p>
-                  <p className="text-xs text-slate-500">{member.email}</p>
+                  <p className="text-xs text-slate-500">{member?.email || 'No email'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant={getRoleBadgeVariant(member.role)} className="flex items-center gap-1">
-                  {getRoleIcon(member.role)}
-                  {member.role}
+                <Badge variant={getRoleBadgeVariant(member?.role || 'member')} className="flex items-center gap-1">
+                  {getRoleIcon(member?.role || 'member')}
+                  {member?.role || 'member'}
                 </Badge>
-                {member.role !== 'owner' && (
+                {member?.role !== 'owner' && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm">

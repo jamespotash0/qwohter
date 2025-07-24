@@ -81,15 +81,17 @@ export const useOrganizations = () => {
       }
 
       // Transform data to match OrganizationMember interface
-      const transformedData = membersData.map(profile => ({
-        id: profile.id,
-        organization_id: profile.organization_id,
-        role: profile.role as 'owner' | 'admin' | 'member',
-        invited_by: profile.invited_by,
-        joined_at: profile.joined_at,
-        email: profile.email,
-        full_name: profile.full_name
-      }));
+      const transformedData = membersData
+        .filter(profile => profile && profile.id) // Filter out null/undefined profiles
+        .map(profile => ({
+          id: profile.id,
+          organization_id: profile.organization_id,
+          role: (profile.role as 'owner' | 'admin' | 'member') || 'member',
+          invited_by: profile.invited_by || null,
+          joined_at: profile.joined_at || new Date().toISOString(),
+          email: profile.email || '',
+          full_name: profile.full_name || null
+        }));
 
       setMembers(transformedData);
     } catch (error: any) {
