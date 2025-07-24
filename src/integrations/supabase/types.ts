@@ -14,38 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      organization_members: {
-        Row: {
-          id: string
-          joined_at: string
-          organization_id: string
-          role: string
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          joined_at?: string
-          organization_id: string
-          role?: string
-          user_id: string
-        }
-        Update: {
-          id?: string
-          joined_at?: string
-          organization_id?: string
-          role?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "organization_members_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       organizations: {
         Row: {
           created_at: string
@@ -76,7 +44,10 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          invited_by: string | null
+          joined_at: string
           organization_id: string
+          role: string
           updated_at: string
         }
         Insert: {
@@ -84,7 +55,10 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          invited_by?: string | null
+          joined_at?: string
           organization_id: string
+          role?: string
           updated_at?: string
         }
         Update: {
@@ -92,7 +66,10 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          invited_by?: string | null
+          joined_at?: string
           organization_id?: string
+          role?: string
           updated_at?: string
         }
         Relationships: [
@@ -178,7 +155,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_current_user_organization: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      user_has_admin_role_in_org: {
+        Args: { org_id: string }
+        Returns: boolean
+      }
+      user_has_role_in_org: {
+        Args: { org_id: string; required_role: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
