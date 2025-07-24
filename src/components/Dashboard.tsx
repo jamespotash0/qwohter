@@ -28,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import CreateQuoteDialog from "./CreateQuoteDialog";
 import { AppSidebar } from "./AppSidebar";
-import { OrganizationSelector } from "./OrganizationSelector";
+
 import { MemberManagement } from "./MemberManagement";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useQuotes } from "@/hooks/useQuotes";
@@ -51,11 +51,9 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
   const [showMemberManagement, setShowMemberManagement] = useState(false);
   
-  const { quotes } = useQuotes();
+  const { quotes, createQuote } = useQuotes();
   const {
-    organizations,
     currentOrganization,
-    setCurrentOrganization,
     members,
     loading: orgLoading,
     createOrganization,
@@ -64,8 +62,14 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
     updateMemberRole
   } = useOrganizations();
 
-  const handleCreateQuote = (quoteName: string) => {
-    onEditQuote(quoteName);
+  const handleCreateQuote = async (quoteName: string) => {
+    try {
+      await createQuote({ quoteName });
+      onEditQuote(quoteName);
+      setShowNewQuoteDialog(false);
+    } catch (error) {
+      console.error('Error creating quote:', error);
+    }
   };
 
   // Calculate stats from real quotes data
@@ -88,12 +92,10 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <SidebarTrigger />
-                <OrganizationSelector
-                  currentOrganization={currentOrganization}
-                  organizations={organizations}
-                  onOrganizationChange={setCurrentOrganization}
-                  onCreateOrganization={createOrganization}
-                />
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-5 h-5" />
+                  <span className="font-medium">{currentOrganization?.name || 'Loading...'}</span>
+                </div>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
                   <Input 

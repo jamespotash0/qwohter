@@ -79,6 +79,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          organization_id: string
           updated_at: string
         }
         Insert: {
@@ -86,6 +87,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          organization_id: string
           updated_at?: string
         }
         Update: {
@@ -93,9 +95,18 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          organization_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quotes: {
         Row: {
@@ -105,7 +116,7 @@ export type Database = {
           id: string
           job_details: Json
           labor_details: Json
-          organization_id: string | null
+          organization_id: string
           price_details: Json
           project_name: string | null
           proposal_number: string
@@ -124,7 +135,7 @@ export type Database = {
           id?: string
           job_details?: Json
           labor_details?: Json
-          organization_id?: string | null
+          organization_id: string
           price_details?: Json
           project_name?: string | null
           proposal_number: string
@@ -143,7 +154,7 @@ export type Database = {
           id?: string
           job_details?: Json
           labor_details?: Json
-          organization_id?: string | null
+          organization_id?: string
           price_details?: Json
           project_name?: string | null
           proposal_number?: string

@@ -28,30 +28,41 @@ export interface Profile {
 }
 
 export const useOrganizations = () => {
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<(OrganizationMember & { profile: Profile })[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchOrganizations = async () => {
+  const fetchUserOrganization = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data: user } = await supabase.auth.getUser();
+      if (!user.user) return;
 
-      if (error) throw error;
-      setOrganizations(data || []);
-      
-      // Set the first organization as current if none is selected
-      if (data && data.length > 0 && !currentOrganization) {
-        setCurrentOrganization(data[0]);
+      // Get user's organization from their profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select(`
+          organization_id,
+          organizations:organization_id (
+            id,
+            name,
+            created_at,
+            updated_at,
+            created_by
+          )
+        `)
+        .eq('id', user.user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      if (profileData?.organizations) {
+        setCurrentOrganization(profileData.organizations as Organization);
       }
     } catch (error: any) {
       toast({
-        title: "Error fetching organizations",
+        title: "Error fetching organization",
         description: error.message,
         variant: "destructive",
       });
@@ -122,6 +133,14 @@ export const useOrganizations = () => {
 
       if (orgError) throw orgError;
 
+      // Update user's profile to link to this organization
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ organization_id: orgData.id })
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+
       // Add creator as owner
       const { error: memberError } = await supabase
         .from('organization_members')
@@ -133,7 +152,6 @@ export const useOrganizations = () => {
 
       if (memberError) throw memberError;
 
-      setOrganizations(prev => [orgData, ...prev]);
       setCurrentOrganization(orgData);
       
       toast({
@@ -270,7 +288,7 @@ export const useOrganizations = () => {
   };
 
   useEffect(() => {
-    fetchOrganizations();
+    fetchUserOrganization();
   }, []);
 
   useEffect(() => {
@@ -280,15 +298,13 @@ export const useOrganizations = () => {
   }, [currentOrganization]);
 
   return {
-    organizations,
     currentOrganization,
-    setCurrentOrganization,
     members,
     loading,
     createOrganization,
     inviteMember,
     removeMember,
     updateMemberRole,
-    refreshOrganizations: fetchOrganizations
+    refreshOrganizations: fetchUserOrganization
   };
 };

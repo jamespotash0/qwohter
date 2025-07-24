@@ -96,10 +96,20 @@ export const useQuotes = () => {
     }
   };
 
-  const createQuote = async (quoteData: any, organizationId?: string) => {
+  const createQuote = async (quoteData: any) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
+
+      // Get user's organization from their profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+      if (!profileData?.organization_id) throw new Error('User not assigned to an organization');
 
       const { data, error } = await supabase
         .from('quotes')
@@ -127,7 +137,7 @@ export const useQuotes = () => {
           labor_details: quoteData.deliveryLabor.labor || {},
           status: quoteData.status || 'draft',
           user_id: user.id,
-          organization_id: organizationId || null
+          organization_id: profileData.organization_id
         })
         .select()
         .single();
