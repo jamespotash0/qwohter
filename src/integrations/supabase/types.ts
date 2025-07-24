@@ -17,7 +17,6 @@ export type Database = {
       organization_members: {
         Row: {
           id: string
-          invited_by: string | null
           joined_at: string
           organization_id: string
           role: string
@@ -25,7 +24,6 @@ export type Database = {
         }
         Insert: {
           id?: string
-          invited_by?: string | null
           joined_at?: string
           organization_id: string
           role?: string
@@ -33,7 +31,6 @@ export type Database = {
         }
         Update: {
           id?: string
-          invited_by?: string | null
           joined_at?: string
           organization_id?: string
           role?: string
