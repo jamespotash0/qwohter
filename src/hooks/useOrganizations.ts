@@ -24,6 +24,7 @@ export interface OrganizationMember {
 export const useOrganizations = () => {
   const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
+  const [currentUserRole, setCurrentUserRole] = useState<'owner' | 'admin' | 'member' | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -38,6 +39,7 @@ export const useOrganizations = () => {
         .from('profiles')
         .select(`
           organization_id,
+          role,
           organizations:organization_id (
             id,
             name,
@@ -53,6 +55,7 @@ export const useOrganizations = () => {
 
       if (profileData?.organizations) {
         setCurrentOrganization(profileData.organizations as Organization);
+        setCurrentUserRole(profileData.role as 'owner' | 'admin' | 'member');
       }
     } catch (error: any) {
       toast({
@@ -280,6 +283,7 @@ export const useOrganizations = () => {
   return {
     currentOrganization,
     members,
+    currentUserRole,
     loading,
     createOrganization,
     inviteMember,
