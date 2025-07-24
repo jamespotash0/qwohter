@@ -14,11 +14,12 @@ const menuItems = [{
   title: "Quotes",
   icon: FileText,
   path: "/quotes"
-}, {
-  title: "Calendar",
-  icon: Calendar,
-  path: "/calendar"
-}
+}, 
+// {
+//   title: "Calendar",
+//   icon: Calendar,
+//   path: "/calendar"
+// }
 // { title: "Analytics", icon: BarChart3, path: "/analytics" },
 // { title: "Team", icon: Users, path: "/team" },
 ];

@@ -96,7 +96,7 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
                   <Building2 className="w-5 h-5" />
                   <span className="font-medium">{currentOrganization?.name || 'Loading...'}</span>
                 </div>
-                <div className="relative">
+                {/* <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
                   <Input 
                     placeholder="Search quotes" 
@@ -105,23 +105,23 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
                   <kbd className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
                     ⌘F
                   </kbd>
-                </div>
+                </div> */}
               </div>
               
               <div className="flex items-center gap-4">
-                <Button 
+                {/* <Button 
                   variant="ghost" 
                   size="sm"
                   onClick={() => setShowMemberManagement(!showMemberManagement)}
                 >
                   <Settings className="w-4 h-4" />
-                </Button>
+                </Button> */}
                 <Button variant="ghost" size="sm">
                   <Mail className="w-4 h-4" />
                 </Button>
-                <Button variant="ghost" size="sm">
+                {/* <Button variant="ghost" size="sm">
                   <Bell className="w-4 h-4" />
-                </Button>
+                </Button> */}
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
                     <User className="w-4 h-4" />
@@ -144,11 +144,11 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
                 <p className="text-slate-600 mt-1">Plan, prioritize, and accomplish your tasks with ease.</p>
               </div>
               <div className="flex gap-3">
-        <CreateQuoteDialog 
-          open={showNewQuoteDialog}
-          onOpenChange={setShowNewQuoteDialog}
-          onCreateQuote={handleCreateQuote} 
-        />
+              <CreateQuoteDialog 
+                open={showNewQuoteDialog}
+                onOpenChange={setShowNewQuoteDialog}
+                onCreateQuote={handleCreateQuote} 
+              />
                 {/* <Button variant="outline" className="bg-white">
                   Import Data
                 </Button> */}
@@ -228,7 +228,9 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
             </div>
 
             {/* Member Management */}
-            {showMemberManagement && currentOrganization && (
+            {
+            // showMemberManagement && 
+            currentOrganization && (
               <MemberManagement
                 organization={currentOrganization}
                 members={members}
@@ -338,72 +340,6 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
                       {quotes.length === 0 && (
                         <p className="text-sm text-slate-500 text-center py-4">No quotes yet</p>
                       )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Project Progress */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Project Progress</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-center">
-                      <div className="relative w-32 h-32">
-                        <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 100 100">
-                          <circle cx="50" cy="50" r="45" stroke="#e5e7eb" strokeWidth="8" fill="none" />
-                          <circle 
-                            cx="50" 
-                            cy="50" 
-                            r="45" 
-                            stroke="currentColor" 
-                            strokeWidth="8" 
-                            fill="none"
-                            strokeLinecap="round"
-                            strokeDasharray="283"
-                            strokeDashoffset="115"
-                            className="text-primary"
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="text-center">
-                            <div className="text-2xl font-bold">41%</div>
-                            <div className="text-xs text-slate-500">Project Ended</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex justify-center gap-4 mt-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-primary rounded-full" />
-                        <span className="text-xs">Completed</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-slate-800 rounded-full" />
-                        <span className="text-xs">In Progress</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-slate-300 rounded-full" />
-                        <span className="text-xs">Pending</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Time Tracker */}
-                <Card className="bg-gradient-to-br from-slate-900 to-slate-800 text-white">
-                  <CardContent className="p-6">
-                    <h3 className="text-lg font-medium mb-4">Time Tracker</h3>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold mb-4">01:24:08</div>
-                      <div className="flex justify-center gap-3">
-                        <Button variant="outline" size="sm" className="bg-white/20 border-white/30 text-white hover:bg-white/30">
-                          <Play className="w-4 h-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" className="bg-red-500 border-red-600 text-white hover:bg-red-600">
-                          <Square className="w-4 h-4" />
-                        </Button>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
