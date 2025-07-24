@@ -33,7 +33,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       // Reset all dependent fields when wall system type changes
       updatedWalls.walls[wallName] = {
         ...updatedWalls.walls[wallName],
-        panelType: "",
+        panelConfiguration: "",
         series: "",
         model: "",
         panelThickness: "",
@@ -50,7 +50,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       };
     }
     
-    if (field === "panelType") {
+    if (field === "panelConfiguration") {
       // Reset dependent fields
       updatedWalls.walls[wallName] = {
         ...updatedWalls.walls[wallName],
@@ -111,7 +111,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     onUpdate(updatedWalls);
   };
 
-  const getSeriesByPanelType = (panelType: string): string[] => {
+  const getSeriesByPanelConfiguration = (panelType: string): string[] => {
     switch (panelType) {
       case "Individual Panels":
         return ["2000", "3000", "Hufcor: 600"];
@@ -124,7 +124,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     }
   };
 
-  const getModelsByPanelTypeAndSeries = (panelType: string, series: string): string[] => {
+  const getModelsByPanelConfigurationAndSeries = (panelType: string, series: string): string[] => {
     if (panelType === "Individual Panels") {
       if (series === "2000") return ["2010", "2020", "2010GL", "2020GL"];
       if (series === "3000") return ["3010", "3020", "3010GL", "3020GL"];
@@ -237,7 +237,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       heightFeet: "",
       heightInches: "",
       quantity: "1",
-      panelType: "",
+      panelConfiguration: "",
       panelCount: "",
       series: "",
       model: "",
@@ -278,7 +278,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   };
 
   const wallSystemTypes = ["Operable Wall", "Glass Wall", "Accordion Partitions", "Unispan Support", "FlexTact"];
-  const panelTypes = ["Individual Panels", "Hinged-Paired Panels", "Continuously-Hinged Panels"];
+  const panelConfigurations = ["Individual Panels", "Hinged-Paired Panels", "Continuously-Hinged Panels"];
   const panelDesigns = ["Trimless", "Cap Trimmed"];
   const verticalSealants = ["Tongue-and-Groove"];
   const bottomSeals = ["Retractable", "Automatic", "Adjustable"];
@@ -459,19 +459,19 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                   <div>
                     <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Operable Wall Details</h4>
                     
-                    {/* First Row - Panel Type, Series, Model */}
+                    {/* First Row - Panel Configuration, Series, Model */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">Panel Type</Label>
+                        <Label className="text-sm font-medium">Panel Configuration</Label>
                         <Select
-                          value={wall.panelType}
-                          onValueChange={(value) => handleWallChange(wallName, "panelType", value)}
+                          value={wall.panelConfiguration}
+                          onValueChange={(value) => handleWallChange(wallName, "panelConfiguration", value)}
                         >
                           <SelectTrigger className="bg-background">
-                            <SelectValue placeholder="Select panel type" />
+                            <SelectValue placeholder="Select panel configuration" />
                           </SelectTrigger>
                           <SelectContent className="bg-background border z-50">
-                            {panelTypes.map((type) => (
+                            {panelConfigurations.map((type) => (
                               <SelectItem key={type} value={type}>
                                 {type}
                               </SelectItem>
@@ -485,13 +485,13 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         <Select
                           value={wall.series}
                           onValueChange={(value) => handleWallChange(wallName, "series", value)}
-                          disabled={!wall.panelType}
+                          disabled={!wall.panelConfiguration}
                         >
                           <SelectTrigger className="bg-background">
                             <SelectValue placeholder="Select series" />
                           </SelectTrigger>
                           <SelectContent className="bg-background border z-50">
-                            {getSeriesByPanelType(wall.panelType).map((series) => (
+                            {getSeriesByPanelConfiguration(wall.panelConfiguration).map((series) => (
                               <SelectItem key={series} value={series}>
                                 {series} Series
                               </SelectItem>
@@ -511,7 +511,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                             <SelectValue placeholder="Select model" />
                           </SelectTrigger>
                           <SelectContent className="bg-background border z-50">
-                            {getModelsByPanelTypeAndSeries(wall.panelType, wall.series).map((model) => (
+                            {getModelsByPanelConfigurationAndSeries(wall.panelConfiguration, wall.series).map((model) => (
                               <SelectItem key={model} value={model}>
                                 {model}
                               </SelectItem>

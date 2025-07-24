@@ -6,7 +6,7 @@ export interface WallSpecification {
   heightFeet: string;
   heightInches: string;
   quantity: string;
-  panelType: string;
+  panelConfiguration: string;
   panelCount: string;
   series: string;
   model: string;
