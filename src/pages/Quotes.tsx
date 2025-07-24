@@ -520,18 +520,20 @@ const Quotes = () => {
       {/* Header */}
       <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="container flex h-16 items-center px-6 relative">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => navigate('/dashboard')}
-            className="absolute left-6"
-          >
-            <ArrowLeft className="h-4 w-4 mr-0" />
-            Back to Dashboard
-          </Button>
           <h1 className="mx-auto text-xl font-semibold">Quotes</h1>
         </div>
       </div>
+
+      {/* Fixed Back to Dashboard Button */}
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        onClick={() => navigate('/dashboard')}
+        className="fixed top-20 left-6 z-40 bg-background/80 backdrop-blur-sm border shadow-sm hover:bg-accent"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Back to Dashboard
+      </Button>
 
       {/* <div className="p-16 space-y-8"> */}
       <div className="pt-8 px-16 pb-16 space-y-8">
