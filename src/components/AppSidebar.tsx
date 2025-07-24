@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { BarChart3, Calendar, Home, Settings, HelpCircle, LogOut, Users, FileText, Building2 } from "lucide-react";
+import { BarChart3, Calendar, Home, Settings, HelpCircle, LogOut, Users, FileText, Building2, Menu } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 interface AppSidebarProps {
   user: string;
   onLogout: () => void;
@@ -39,10 +39,10 @@ export function AppSidebar({
   const isCollapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
-  return <Sidebar className={isCollapsed ? "w-16" : "w-64"} collapsible="icon">
+  return <Sidebar className={isCollapsed ? "w-16" : "w-52"} collapsible="icon">
       <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
-          
+        <div className="flex items-center justify-between">
+          <SidebarTrigger className="h-6 w-6" />
           {!isCollapsed && <span className="font-bold text-lg text-foreground">WallQu</span>}
         </div>
       </SidebarHeader>
