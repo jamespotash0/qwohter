@@ -70,7 +70,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       // Auto-update panel thickness based on series
       updatedWalls.walls[wallName] = {
         ...updatedWalls.walls[wallName],
-        panelThickness: value === "2000" ? "3" : value === "3000" ? "4" : "",
+        panelThickness: value === "2000" ? "3" : value === "3000" ? "4" : value === "Hufcor: 600" ? "4" : "",
         model: "",
         panelSkin: "",
         panelDesign: "",
@@ -114,7 +114,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const getSeriesByPanelType = (panelType: string): string[] => {
     switch (panelType) {
       case "Individual Panels":
-        return ["2000", "3000"];
+        return ["2000", "3000", "Hufcor: 600"];
       case "Hinged-Paired Panels":
         return ["2000", "3000"];
       case "Continuously-Hinged Panels":
@@ -128,6 +128,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     if (panelType === "Individual Panels") {
       if (series === "2000") return ["2010", "2020", "2010GL", "2020GL"];
       if (series === "3000") return ["3010", "3020", "3010GL", "3020GL"];
+      if (series === "Hufcor: 600") return ["Hufcor 641"];
     } else if (panelType === "Continuously-Hinged Panels") {
       if (series === "2000") return ["2050e"];
       if (series === "3000") return ["3050e"];
@@ -139,9 +140,9 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   };
 
   const getTrackTypeByModel = (model: string): string => {
-    if (["2010", "2010GL", "3010", "3010GL"].includes(model)) {
+    if (["Hufcor 641", "2010", "2010GL", "3010", "3010GL"].includes(model)) {
       return "Curve & Diverter (Individual) Track";
-    } else if (["2020", "2020GL", "3020", "3020GL"].includes(model)) {
+    } else if (["Hufcor 641", "2020", "2020GL", "3020", "3020GL"].includes(model)) {
       return "Multi-Directional Track";
     } else if (["2050e", "3050e", "3030", "3030GL", "2030", "2030GL"].includes(model)) {
       return "Hinged-Pair (Straight Line) Track";
@@ -150,6 +151,9 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   };
 
   const getPanelSkinOptions = (model: string): string[] => {
+    if (["Hufcor 641"].includes(model)) {
+      return ["Steel"];
+    }
     if (["3010", "3020", "3030"].includes(model)) {
       return ["Steel (Standard)", "Acoustical Substrate (Optional)", "Wood Veneer (Optional)", "High-Pressure Laminate/Gypsum (Optional)"];
     }
@@ -167,7 +171,9 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
 
   const getSTCRatingOptions = (model: string, panelSkin: string): string[] => {
     if (!model || !panelSkin) return [];
-
+    if (["Hufcor 641"].includes(model)) {
+      return ["43", "47", "49", "52", "54", "56"];
+    }
     if (["2010GL", "2020GL", "2030GL"].includes(model)) {
       return ["38"];
     }
@@ -197,7 +203,10 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     return [];
   };
 
-  const getTrackSystemsByTrackType = (trackType: string): string[] => {
+  const getTrackSystemsByTrackType = (trackType: string, model?: string): string[] => {
+    if (model === "Hufcor 641") {
+      return ["Type 26 Clear Anodized Aluminum", "Type 36 Clear Anodized Aluminum", "Type 57 Clear Anodized Aluminum", "Type 11L Steel", "Type 11 Steel"];
+    }
     switch (trackType) {
       case "Multi-Directional Track":
         return ["Type 425 Clear Anodized Aluminum", "Type 850 Clear Anodized Aluminum"];
@@ -709,7 +718,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                             <SelectValue placeholder="Select track system" />
                           </SelectTrigger>
                           <SelectContent className="bg-background border z-50">
-                            {getTrackSystemsByTrackType(wall.trackType).map((system) => (
+                            {getTrackSystemsByTrackType(wall.trackType, wall.model).map((system) => (
                               <SelectItem key={system} value={system}>
                                 {system}
                               </SelectItem>
