@@ -218,15 +218,15 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
 
   const getTrackSystemsByTrackType = (trackType: string, model?: string): string[] => {
     if (model === "Hufcor 641") {
-      return ["Type 26 Clear Anodized Aluminum", "Type 36 Clear Anodized Aluminum", "Type 57 Clear Anodized Aluminum", "Type 11L Steel", "Type 11 Steel"];
+      return ["Type 26 Clear Satin-Anodized Aluminum", "Type 36 Clear Satin-Anodized Aluminum", "Type 57 Clear Anodized Aluminum", "Type 11L Powder Coated Off-White Steel", "Type 11 Powder Coated Off-White Steel"];
     }
     switch (trackType) {
       case "Multi-Directional Track":
-        return ["Type 425 Clear Anodized Aluminum", "Type 850 Clear Anodized Aluminum"];
+        return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
       case "Hinged-Pair (Straight Line) Track":
-        return ["Type 425 Clear Anodized Aluminum", "Type 850 Clear Anodized Aluminum"];
+        return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
       case "Curve & Diverter (Individual) Track":
-        return ["Type 850 Steel"];
+        return ["Type 850 Powder Coated Off-White Steel"];
       default:
         return [];
     }
@@ -241,22 +241,22 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     
     // Placeholder function - will be populated when specific items are provided
     switch (category) {
-      case "Standard Vinyl":
-        return ["Vinyl Option 1", "Vinyl Option 2"]; // Placeholder
-      case "Upgraded Vinyl":
-        return ["Upgraded Vinyl Option 1", "Upgraded Vinyl Option 2"]; // Placeholder
-      case "Standard Carpet":
-        return ["Carpet Option 1", "Carpet Option 2"]; // Placeholder
-      case "Upgraded Carpet":
-        return ["Upgraded Carpet Option 1", "Upgraded Carpet Option 2"]; // Placeholder 
-      case "Standard Fabric":
-        return ["Fabric Option 1", "Fabric Option 2"]; // Placeholder
-      case "Upgraded Fabric": 
-        return ["Upgraded Fabric Option 1", "Upgraded Fabric Option 2"]; // Placeholder 
-      case "Wood Veneer":
-        return ["Wood Veneer Option 1", "Wood Veneer Option 2"]; // Placeholder
-      case "High Pressure Laminate (HPL)":
-        return ["HPL Option 1", "HPL Option 2"]; // Placeholder
+      case "Koroseal Standard Vinyl":
+        return [""]; // Placeholder
+      case "Koroseal Upgrade Vinyl":
+        return [""]; // Placeholder
+      case "Shaw Standard Carpet":
+        return [""]; // Placeholder
+      case "HyTex Upgrade Carpet":
+        return [""]; // Placeholder 
+      case "HyTex Standard Fabric":
+        return [""]; // Placeholder
+      case "HyTex Upgrade Fabric": 
+        return [""]; // Placeholder 
+      case "Standard Wood Veneer":
+        return [""]; // Placeholder
+      case "Wilsonart High Pressure Laminate (HPL)":
+        return [""]; // Placeholder
       default:
         return [];
     }
@@ -327,7 +327,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const panelConfigurations = ["Individual Panels", "Hinged-Paired Panels", "Continuously-Hinged Panels"];
   const panelDesigns = ["Trimless", "Cap Trimmed"];
   const passDoorOptions = ["Single", "Double"];
-  const panelFinishCategories = ["Standard Vinyl", "Upgraded Vinyl", "Standard Carpet", "Upgraded Carpet", "Standard Fabric", "Upgraded Fabric", "Wood Veneer", "High Pressure Laminate (HPL)", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
+  const panelFinishCategories = ["Koroseal Standard Vinyl", "Koroseal Upgrade Vinyl", "Shaw Standard Carpet", "HyTex Upgrade Carpet", "HyTex Standard Fabric", "HyTex Upgrade Fabric", "Standard Wood Veneer", "Wilsonart High Pressure Laminate (HPL)", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
   const verticalSeals = ["Tongue-and-Groove"];
   const bottomSeals = ["Retractable", "Automatic", "Adjustable"];
   const topSeals = ["Adjustable", "Operable"];
