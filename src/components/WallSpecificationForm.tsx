@@ -124,8 +124,8 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     onUpdate(updatedWalls);
   };
 
-  const getSeriesByPanelConfiguration = (panelType: string): string[] => {
-    switch (panelType) {
+  const getSeriesByPanelConfiguration = (panelConfiguration: string): string[] => {
+    switch (panelConfiguration) {
       case "Individual Panels":
         return ["2000", "3000", "Hufcor: 600"];
       case "Hinged-Paired Panels":
@@ -137,15 +137,15 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     }
   };
 
-  const getModelsByPanelConfigurationAndSeries = (panelType: string, series: string): string[] => {
-    if (panelType === "Individual Panels") {
+  const getModelsByPanelConfigurationAndSeries = (panelConfiguration: string, series: string): string[] => {
+    if (panelConfiguration === "Individual Panels") {
       if (series === "2000") return ["2010", "2020", "2010GL", "2020GL"];
       if (series === "3000") return ["3010", "3020", "3010GL", "3020GL"];
       if (series === "Hufcor: 600") return ["Hufcor 641"];
-    } else if (panelType === "Continuously-Hinged Panels") {
+    } else if (panelConfiguration === "Continuously-Hinged Panels") {
       if (series === "2000") return ["2050e"];
       if (series === "3000") return ["3050e"];
-    } else if (panelType === "Hinged-Paired Panels") {
+    } else if (panelConfiguration === "Hinged-Paired Panels") {
       if (series === "2000") return ["2030", "2030GL"];
       if (series === "3000") return ["3030", "3030GL"];
     }
@@ -321,12 +321,12 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const panelConfigurations = ["Individual Panels", "Hinged-Paired Panels", "Continuously-Hinged Panels"];
   const panelDesigns = ["Trimless", "Cap Trimmed"];
   const passDoorOptions = ["Single", "Double"];
-  const panelFinishCategories = ["Vinyl", "Carpet", "Fabric", "Wood Veneer", "High Pressure Laminate (HPL)", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
+  const panelFinishCategories = ["Standard Vinyl", "Upgraded Vinyl", "Carpet", "Fabric", "Wood Veneer", "High Pressure Laminate (HPL)", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
   const verticalSealants = ["Tongue-and-Groove"];
   const bottomSeals = ["Retractable", "Automatic", "Adjustable"];
-  const topSeals = ["Fixed Top Seals", "Adjustable Top Seals", "No Top Seals"];
+  const topSeals = ["Adjustable", "Operable"];
   const endPanelTypes = ["Fixed Wall Jamb", "Telescoping Closure", "Closure Panel", "Adjustable Wall Jamb", "Articulating Panel"];
-  const finalSeal = ["Bulb", "Sliding Jamb"];
+  const finalSeal = ["Bulb", "Fixed Jamb", "Sliding Jamb"];
 
   const wallNames = Object.keys(walls.walls);
 

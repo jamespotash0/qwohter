@@ -82,7 +82,7 @@ export const generateQuoteText = (data: QuoteData): string => {
     return model?.includes('GL') || false;
   };
 
-  const getPanelTypeText = (panelCount?: string) => {
+  const getPanelConfigurationText = (panelCount?: string) => {
     const count = parseInt(panelCount || '1');
     return count > 1 ? 'Multiple' : 'Single';
   };
@@ -231,7 +231,7 @@ export const generateQuoteText = (data: QuoteData): string => {
         ${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
           const dimensions = formatDimensions(wall.widthFeet, wall.widthInches, wall.heightFeet, wall.heightInches, true);
           const panelCount = wall.panelCount || '';
-          const panelType = wall.panelConfiguration || '';
+          const panelConfiguration = wall.panelConfiguration || '';
           const quantity = wall.quantity || '1';
 
           return `
@@ -239,7 +239,7 @@ export const generateQuoteText = (data: QuoteData): string => {
               <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black;">${wallName}</td>
               <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${dimensions}</td>
               <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${toWords(panelCount)} (${panelCount})</td>
-              <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black;">${panelType}</td>
+              <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black;">${panelConfiguration}</td>
               <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${quantity} Each</td>
             </tr>
           `;
@@ -251,7 +251,7 @@ export const generateQuoteText = (data: QuoteData): string => {
   <div class="panels-section" style="line-height: 1.15;">
     <h2 class="section-header">PANELS:</h2>
     This wall system utilizes the Kwik-Wall <strong>${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || ''}</strong> configured with <strong>${wallEntries[0]?.[1]?.panelConfiguration || ''}</strong> designed for use with a <strong>${wallEntries[0]?.[1]?.trackType || ''} Layout</strong>, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
-    <br><br>The wall consists of <strong>${getPanelTypeText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelConfiguration || ''}</strong>, finished in an <strong>Unfinished Rift Cut White Oak Veneer finish</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches, false).split(' x ')[1]}</strong> in height, with panel widths varying as needed. Each panel features a <strong>${wallEntries[0]?.[1]?.panelDesign || ''} </strong> design and is nominally <strong>${wallEntries[0]?.[1]?.panelThickness || ''}"</strong> thick, constructed with a <strong>Steel Faced 1/2" gypsum board</strong> laminated to an acoustic material. Each panel features a <strong>${wallEntries[0]?.[1].panelDesign || ''}</strong> Design and are suspended from a <strong>${wallEntries[0]?.[1]?.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${wallEntries[0]?.[1]?.verticalSealants || ''}</strong> vertical seals that create a continuous interlock, and <strong>${wallEntries[0]?.[1]?.bottomSeals || ''}</strong> used with limited pressure mechanism operable bottom seals, set at the time of panel's placement and retract into the panels when in use for virtually effortless movement. End panels will incorporate a <strong>${wallEntries[0]?.[1]?.endPanelType || ''}</strong>, which uses a <strong>${wallEntries[0]?.[1]?.finalSeal || ''}</strong> as a final seal.
+    <br><br>The wall consists of <strong>${getPanelConfigurationText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelConfiguration || ''}</strong>, finished in an <strong>Unfinished Rift Cut White Oak Veneer finish</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches, false).split(' x ')[1]}</strong> in height, with panel widths varying as needed. Each panel features a <strong>${wallEntries[0]?.[1]?.panelDesign || ''} </strong> design and is nominally <strong>${wallEntries[0]?.[1]?.panelThickness || ''}"</strong> thick, constructed with a <strong>Steel Faced 1/2" gypsum board</strong> laminated to an acoustic material. Each panel features a <strong>${wallEntries[0]?.[1].panelDesign || ''}</strong> Design and are suspended from a <strong>${wallEntries[0]?.[1]?.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${wallEntries[0]?.[1]?.verticalSealants || ''}</strong> vertical seals that create a continuous interlock, and <strong>${wallEntries[0]?.[1]?.bottomSeals || ''}</strong> used with limited pressure mechanism operable bottom seals, set at the time of panel's placement and retract into the panels when in use for virtually effortless movement. End panels will incorporate a <strong>${wallEntries[0]?.[1]?.endPanelType || ''}</strong>, which uses a <strong>${wallEntries[0]?.[1]?.finalSeal || ''}</strong> as a final seal.
   </div>
 
   <div class="track-section" style="line-height: 1.15;">
@@ -286,8 +286,8 @@ export const generateQuoteText = (data: QuoteData): string => {
         <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${freight}</strong></td>
       </tr>
       <tr>
-        <td style="border-left: 0.5px solid black; border-right: 0.5px solid black; border-top: 0.5px solid black; padding: 8px 8px 12px 8px;"><strong>Total</strong></td>
-        <td style="border-right: 0.5px solid black; border-top: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${total}</strong></td>
+        <td style="border: 0.5px solid black; padding: 8px 8px 12px 8px;"><strong>Total</strong></td>
+        <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${total}</strong></td>
       </tr>
     </table>
   </div>
