@@ -25,18 +25,19 @@ const Auth = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if user is already logged in
+    // Check if user is already logged in - only redirect if we're on auth step
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      if (session && step === "auth") {
         navigate("/dashboard");
       }
     };
     checkUser();
 
-    // Listen for auth changes - only redirect if not in signup flow
+    // Listen for auth changes - don't auto-redirect during signup flow
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && step === "auth") {
+      // Only redirect for sign-in (not during signup flow)
+      if (session && step === "auth" && event === 'SIGNED_IN') {
         navigate("/dashboard");
       }
     });
