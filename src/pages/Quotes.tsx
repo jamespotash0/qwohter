@@ -532,12 +532,12 @@ const Quotes = () => {
 
         {/* Advanced Quote Analytics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <Card className="bg-primary text-primary-foreground">
+          <Card className="bg-black/5 border-black/10">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm opacity-90">Total Quoted Value</p>
-                  <p className="text-2xl font-bold">
+                  <p className="text-sm text-black/70">Total Quoted Value</p>
+                  <p className="text-2xl font-bold text-black">
                     {formatCurrency(quotes.reduce((sum, quote) => {
                       try {
                         const totalAmount = quote.price_details?.total ? parseFloat(quote.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
@@ -548,12 +548,12 @@ const Quotes = () => {
                     }, 0))}
                   </p>
                   <div className="flex items-center gap-1 mt-1">
-                    <DollarSign className="w-3 h-3" />
-                    <span className="text-xs opacity-75">All quotes combined</span>
+                    <DollarSign className="w-3 h-3 text-black/60" />
+                    <span className="text-xs text-black/60">All quotes combined</span>
                   </div>
                 </div>
-                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                  <DollarSign className="w-4 h-4" />
+                <div className="w-8 h-8 bg-black/10 rounded-lg flex items-center justify-center">
+                  <DollarSign className="w-4 h-4 text-black/70" />
                 </div>
               </div>
             </CardContent>
