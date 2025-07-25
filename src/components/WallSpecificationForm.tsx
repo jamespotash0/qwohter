@@ -412,6 +412,19 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
+                        <div className="flex items-center gap-2 ml-4">
+                          <Label className="text-sm font-medium">Qty:</Label>
+                          <Input
+                            value={wall.quantity}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handleWallChange(wallName, "quantity", e.target.value);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder="1"
+                            className="w-16 h-8 text-center"
+                          />
+                        </div>
                       </>
                     )}
                   </div>
@@ -652,8 +665,8 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                           </div>
                         </div>
 
-                        {/* Third Row - Panel Design and Final Seal */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        {/* Third Row - Panel Design, Pass Door Panels, Vertical Seals */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                           <div className="space-y-2">
                             <Label className="text-sm font-medium">Panel Design</Label>
                             <Select
@@ -674,6 +687,47 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                           </div>
 
                           <div className="space-y-2">
+                            <Label className="text-sm font-medium">Pass Door Panels</Label>
+                            <Select
+                              value={wall.passDoorPanels}
+                              onValueChange={(value) => handleWallChange(wallName, "passDoorPanels", value)}
+                            >
+                              <SelectTrigger className="bg-background">
+                                <SelectValue placeholder="Select pass door panels" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-background border z-50">
+                                {passDoorOptions.map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {option}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Vertical Seals</Label>
+                            <Select
+                              value={wall.verticalSeals}
+                              onValueChange={(value) => handleWallChange(wallName, "verticalSeals", value)}
+                            >
+                              <SelectTrigger className="bg-background">
+                                <SelectValue placeholder="Select vertical seals" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-background border z-50">
+                                {verticalSeals.map((sealant) => (
+                                  <SelectItem key={sealant} value={sealant}>
+                                    {sealant}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        {/* Fourth Row - Final Seal, Bottom Seals, Top Seals */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                          <div className="space-y-2">
                             <Label className="text-sm font-medium">Final Seal</Label>
                             <Select
                               value={wall.finalSeal}
@@ -691,23 +745,39 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                               </SelectContent>
                             </Select>
                           </div>
-                        </div>
 
-                        {/* Pass Door Panels Section */}
-                        <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-6">
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium">Pass Door Panels</Label>
+                            <Label className="text-sm font-medium">Bottom Seals</Label>
                             <Select
-                              value={wall.passDoorPanels}
-                              onValueChange={(value) => handleWallChange(wallName, "passDoorPanels", value)}
+                              value={wall.bottomSeals}
+                              onValueChange={(value) => handleWallChange(wallName, "bottomSeals", value)}
                             >
                               <SelectTrigger className="bg-background">
-                                <SelectValue placeholder="Select pass door panels" />
+                                <SelectValue placeholder="Select bottom seals" />
                               </SelectTrigger>
                               <SelectContent className="bg-background border z-50">
-                                {passDoorOptions.map((option) => (
-                                  <SelectItem key={option} value={option}>
-                                    {option}
+                                {bottomSeals.map((seal) => (
+                                  <SelectItem key={seal} value={seal}>
+                                    {seal}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Top Seals</Label>
+                            <Select
+                              value={wall.topSeals}
+                              onValueChange={(value) => handleWallChange(wallName, "topSeals", value)}
+                            >
+                              <SelectTrigger className="bg-background">
+                                <SelectValue placeholder="Select top seals" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-background border z-50">
+                                {topSeals.map((seal) => (
+                                  <SelectItem key={seal} value={seal}>
+                                    {seal}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -759,66 +829,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                           )}
                         </div>
 
-                        {/* Fourth Row - Seals */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Vertical Seals</Label>
-                            <Select
-                              value={wall.verticalSeals}
-                              onValueChange={(value) => handleWallChange(wallName, "verticalSeals", value)}
-                            >
-                              <SelectTrigger className="bg-background">
-                                <SelectValue placeholder="Select vertical seals" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-background border z-50">
-                                {verticalSeals.map((sealant) => (
-                                  <SelectItem key={sealant} value={sealant}>
-                                    {sealant}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Bottom Seals</Label>
-                            <Select
-                              value={wall.bottomSeals}
-                              onValueChange={(value) => handleWallChange(wallName, "bottomSeals", value)}
-                            >
-                              <SelectTrigger className="bg-background">
-                                <SelectValue placeholder="Select bottom seals" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-background border z-50">
-                                {bottomSeals.map((seal) => (
-                                  <SelectItem key={seal} value={seal}>
-                                    {seal}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Top Seals</Label>
-                            <Select
-                              value={wall.topSeals}
-                              onValueChange={(value) => handleWallChange(wallName, "topSeals", value)}
-                            >
-                              <SelectTrigger className="bg-background">
-                                <SelectValue placeholder="Select top seals" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-background border z-50">
-                                {topSeals.map((seal) => (
-                                  <SelectItem key={seal} value={seal}>
-                                    {seal}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-
                         {/* Fifth Row - End Panel Type, Track Type, Track System */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                           <div className="space-y-2">
@@ -868,19 +878,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                                 ))}
                               </SelectContent>
                             </Select>
-                          </div>
-                        </div>
-
-                        {/* Sixth Row - Quantity */}
-                        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Quantity</Label>
-                            <Input
-                              value={wall.quantity}
-                              onChange={(e) => handleWallChange(wallName, "quantity", e.target.value)}
-                              placeholder="1"
-                              className="max-w-xs"
-                            />
                           </div>
                         </div>
                       </div>
