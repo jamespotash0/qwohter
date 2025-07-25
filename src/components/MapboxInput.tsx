@@ -58,7 +58,7 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
     try {
       console.log('Making Mapbox API call for:', inputValue);
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(inputValue)}.json?access_token=${mapboxToken}&types=address,poi&limit=5`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(inputValue)}.json?access_token=${mapboxToken}&types=address,poi&country=us&limit=5`
       );
       
       console.log('Mapbox API response status:', response.status);
@@ -119,8 +119,7 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
               className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
               onClick={() => handleSuggestionClick(suggestion)}
             >
-              <div className="font-medium">{suggestion.text}</div>
-              <div className="text-sm text-gray-600">{suggestion.place_name}</div>
+              <div className="text-sm">{suggestion.place_name}</div>
             </div>
           ))}
         </div>
