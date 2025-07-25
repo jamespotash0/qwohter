@@ -52,20 +52,24 @@ const Auth = () => {
     setLoading(true);
     try {
       if (isSignUp) {
-        const { data, error } = await supabase.auth.signInWithOtp({
+        const { data, error } = await supabase.auth.signUp({
           email,
+          password,
           options: {
-            shouldCreateUser: true
+            emailRedirectTo: `${window.location.origin}/auth`
           }
         });
         
         if (error) throw error;
         
-        setStep("verify-otp");
-        toast({
-          title: "Verification code sent!",
-          description: "Please check your email and enter the 6-digit code.",
-        });
+        if (data.user) {
+          setUserId(data.user.id);
+          setStep("verify-otp");
+          toast({
+            title: "Verification code sent!",
+            description: "Please check your email and enter the 6-digit code.",
+          });
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
