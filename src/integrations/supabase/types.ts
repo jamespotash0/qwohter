@@ -91,6 +91,7 @@ export type Database = {
           job_details: Json
           labor_details: Json
           organization_id: string
+          pocket_doors: Json
           price_details: Json
           project_name: string | null
           proposal_number: string
@@ -110,6 +111,7 @@ export type Database = {
           job_details?: Json
           labor_details?: Json
           organization_id: string
+          pocket_doors?: Json
           price_details?: Json
           project_name?: string | null
           proposal_number: string
@@ -129,6 +131,7 @@ export type Database = {
           job_details?: Json
           labor_details?: Json
           organization_id?: string
+          pocket_doors?: Json
           price_details?: Json
           project_name?: string | null
           proposal_number?: string
