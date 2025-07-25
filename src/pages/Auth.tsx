@@ -126,22 +126,16 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      // Ensure user session is established
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error("Please sign in again to continue");
-      }
-
       if (orgChoice === "create") {
         if (!orgName) return;
         
-        // Create organization with authenticated user
+        // Create organization using the userId from signup
         const orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
           .insert({
             name: orgName,
-            created_by: session.user.id,
+            created_by: userId,
             organization_code: orgCode
           })
           .select()
@@ -157,7 +151,7 @@ const Auth = () => {
             role: 'owner',
             status: 'active'
           })
-          .eq('id', session.user.id);
+          .eq('id', userId);
 
         if (profileError) throw profileError;
 
@@ -190,7 +184,7 @@ const Auth = () => {
             role: 'member',
             status: 'pending'
           })
-          .eq('id', session.user.id);
+          .eq('id', userId);
 
         if (profileError) throw profileError;
 
