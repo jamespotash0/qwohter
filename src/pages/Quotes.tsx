@@ -653,12 +653,16 @@ const Quotes = () => {
                         <TableCell className="py-2 px-3 text-sm">{quote.project_name || 'N/A'}</TableCell>
                         <TableCell className="py-2 px-3 text-sm font-medium">{formatCurrency(totalAmount)}</TableCell>
                         <TableCell className="py-2 px-3">
-                          <Badge 
-                            variant="secondary" 
-                            className={`text-xs px-2 py-0.5 ${statusColors[quote.status as keyof typeof statusColors]}`}
-                          >
-                            {quote.status}
-                          </Badge>
+                          <Select value={quote.status} onValueChange={(value) => updateQuoteStatus(quote.id, value)}>
+                            <SelectTrigger className={`w-[90px] h-6 border-0 text-xs px-2 ${statusColors[quote.status as keyof typeof statusColors]} [&>svg]:hidden`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background border shadow-lg z-50">
+                              <SelectItem value="Draft">Draft</SelectItem>
+                              <SelectItem value="Pending">Pending</SelectItem>
+                              <SelectItem value="Completed">Completed</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                         <TableCell className="py-2 px-3 text-sm text-muted-foreground">{new Date(quote.created_at).toLocaleDateString()}</TableCell>
                         <TableCell className="py-2 px-2">
