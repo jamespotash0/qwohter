@@ -122,16 +122,12 @@ const Auth = () => {
 
   const handleOrganizationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orgChoice) return;
+    if (!orgChoice || !userId) return;
 
     setLoading(true);
     try {
       if (orgChoice === "create") {
         if (!orgName) return;
-        
-        // Get current user to ensure we're authenticated
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("User not authenticated");
         
         // Create organization
         const orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -139,7 +135,7 @@ const Auth = () => {
           .from('organizations')
           .insert({
             name: orgName,
-            created_by: user.id,
+            created_by: userId,
             organization_code: orgCode
           })
           .select()
