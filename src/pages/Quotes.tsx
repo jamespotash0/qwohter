@@ -287,11 +287,6 @@ const Quotes = () => {
           width: 100%;
         }
         
-        tr:last-child td {
-          border-bottom: 1px solid black;
-          padding-bottom: 6px;
-        }
-        
         td {
           padding: 4px 8px;
         }
