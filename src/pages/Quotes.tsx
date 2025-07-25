@@ -466,29 +466,9 @@ const Quotes = () => {
     }
   };
 
-  const handleCreateQuote = async (quoteName: string) => {
-    try {
-      const newQuote = await createQuote({
-        contactInfo: { project_name: quoteName },
-        jobDetails: { 
-          proposalNumber: `P${Date.now().toString().slice(-6)}`,
-          date: new Date().toISOString().split('T')[0],
-          jobLocation: "",
-          billedTo: { name: "", company: "", address: "" }
-        },
-        walls: { id: crypto.randomUUID(), walls: {} },
-        supportStructure: {},
-        deliveryLabor: { delivery: {}, labor: {} },
-        pricing: { basePrice: 0, freight: 0, total: "", paymentUponDrawings: "", paymentUponTrackInstallation: "" },
-        status: 'Draft'
-      });
-      
-      setNewQuoteName(quoteName);
-      setShowNewQuoteDialog(false);
-      setEditingQuote(newQuote as any);
-    } catch (error) {
-      console.error('Error creating quote:', error);
-    }
+  const handleCreateQuote = (quoteName: string) => {
+    setShowNewQuoteDialog(false);
+    navigate("/newquote");
   };
 
   // If editing a quote, show the QuoteCreator

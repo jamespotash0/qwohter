@@ -241,43 +241,23 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
-      {/* Enhanced Header */}
-      <div className="bg-white/80 backdrop-blur-md shadow-lg border-b border-slate-200/60 sticky top-0 z-50">
-        <div className="w-full max-w-7xl mx-auto px-6">
-          <div className="flex justify-between items-center h-16 py-4">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                onClick={onBackToDashboard}
-                className="text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition-all duration-200 rounded-xl px-4 py-2"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Button>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm font-medium text-slate-900">Welcome Back</p>
-                <p className="text-xs text-slate-500">{user}</p>
-              </div>
-              <Button 
-                variant="outline" 
-                onClick={onLogout}
-                className="border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 rounded-xl"
-              >
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Quote Name Section */}
-      <div className="bg-white/60 backdrop-blur-sm border-b border-slate-200/40">
-        <div className="w-full max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+    <div className="min-h-screen bg-background">
+      {/* Compact Header */}
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="flex h-12 items-center justify-between px-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBackToDashboard}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back
+          </Button>
+          
+          <div className="flex items-center gap-4">
+            {/* Compact Quote Name */}
+            <div className="flex items-center gap-2">
               {editingQuoteName ? (
                 <QuoteNameInput
                   value={localQuoteName}
@@ -287,116 +267,85 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
                     setEditingQuoteName(false);
                     if (onQuoteNameChange && localQuoteName.trim()) {
                       onQuoteNameChange(localQuoteName.trim());
-                      // Update the contact info with the new project name
                       setContactInfo(prev => ({...prev, project_name: localQuoteName.trim()}));
                     }
                   }}
                 />
               ) : (
-                <>
-                  <h1
-                    className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent cursor-pointer hover:opacity-70 transition-opacity"
-                    onClick={() => setEditingQuoteName(true)}
-                  >
-                    {localQuoteName}
-                  </h1>
-                  <span
-                    className="text-sm text-slate-500 font-medium whitespace-nowrap cursor-pointer"
-                    onClick={() => setEditingQuoteName(true)}
-                  >
-                    (Click to edit)
-                  </span>
-                </>
+                <h1
+                  className="text-lg font-semibold cursor-pointer hover:text-muted-foreground transition-colors"
+                  onClick={() => setEditingQuoteName(true)}
+                >
+                  {localQuoteName}
+                </h1>
               )}
             </div>
-            <div className="flex items-center space-x-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-600">Quote Status</label>
-                <Select value={quoteStatus} onValueChange={setQuoteStatus}>
-                  <SelectTrigger className="w-36 h-9 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white">
-                    <SelectItem value="Draft">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 rounded-full bg-gray-500"></div>
-                        <span>Draft</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="Completed">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                        <span>Completed</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="Pending">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                        <span>Pending</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+
+            {/* Compact Status */}
+            <Select value={quoteStatus} onValueChange={setQuoteStatus}>
+              <SelectTrigger className="w-28 h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Draft">Draft</SelectItem>
+                <SelectItem value="Pending">Pending</SelectItem>
+                <SelectItem value="Completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <div className="text-xs text-muted-foreground">{user}</div>
+            <Button variant="outline" size="sm" onClick={onLogout}>
+              Logout
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Enhanced Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-10">
-          {/* Enhanced Tab Navigation */}
-          <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-1 shadow-xl border border-white/50">
-            <TabsList className="grid w-full grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-1 p-0">
+      {/* Main Content */}
+      <div className="flex flex-col h-[calc(100vh-3rem)]">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+          {/* Compact Sticky Tab Navigation */}
+          <div className="sticky top-12 z-40 bg-background/95 backdrop-blur border-b">
+            <TabsList className="w-full h-10 grid grid-cols-6 p-0 bg-transparent">
               {tabs.map((tab) => (
                 <TabsTrigger 
                   key={tab.id}
                   value={tab.id} 
-                  className={`
-                    relative rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300
-                    data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-indigo-600
-                    data-[state=active]:text-white data-[state=active]:shadow-lg
-                    data-[state=inactive]:text-slate-600 data-[state=inactive]:hover:text-slate-900
-                    data-[state=inactive]:hover:bg-slate-100/60
-                    ${tab.isValid ? 'ring-2 ring-green-200 ring-offset-2 ring-offset-transparent' : ''}
-                  `}
+                  className="h-10 text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground relative"
                 >
-                  <div className="flex items-center space-x-2">
-                    <span>{tab.label}</span>
-                    {tab.isValid && (
-                      <CheckCircle2 className="w-4 h-4 text-green-500 data-[state=active]:text-green-200" />
-                    )}
-                  </div>
+                  <span>{tab.label}</span>
+                  {tab.isValid && (
+                    <CheckCircle2 className="w-3 h-3 ml-1 text-green-500 data-[state=active]:text-green-200" />
+                  )}
                 </TabsTrigger>
               ))}
             </TabsList>
           </div>
 
-          {/* Enhanced Content Container */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/60 overflow-hidden">
-            <div className="p-6 md:p-10 overflow-y-auto max-h-[calc(100vh-240px)]">
-              <TabsContent value="contact" className="mt-0">
+          {/* Optimized Content Container */}
+          <div className="flex-1 overflow-hidden">
+            <div className="h-full overflow-y-auto p-4">
+              <TabsContent value="contact" className="mt-0 h-full">
                 <ContactInfoForm data={contactInfo} onUpdate={setContactInfo} />
               </TabsContent>
 
-              <TabsContent value="job" className="mt-0">
+              <TabsContent value="job" className="mt-0 h-full">
                 <JobDetailsForm data={jobDetails} onUpdate={setJobDetails} />
               </TabsContent>
 
-              <TabsContent value="walls" className="mt-0">
+              <TabsContent value="walls" className="mt-0 h-full">
                 <WallSpecificationForm walls={walls} onUpdate={setWalls} />
               </TabsContent>
 
-              <TabsContent value="support" className="mt-0">
+              <TabsContent value="support" className="mt-0 h-full">
                 <SupportStructureForm data={supportStructure} onUpdate={setSupportStructure} />
               </TabsContent>
 
-              <TabsContent value="delivery" className="mt-0">
+              <TabsContent value="delivery" className="mt-0 h-full">
                 <DeliveryLaborForm data={deliveryLabor} onUpdate={setDeliveryLabor} />
               </TabsContent>
 
-              <TabsContent value="pricing" className="mt-0">
+              <TabsContent value="pricing" className="mt-0 h-full">
                 <PricingForm 
                   data={pricing} 
                   onUpdate={setPricing} 

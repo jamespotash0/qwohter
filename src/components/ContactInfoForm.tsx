@@ -58,25 +58,18 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
   }, []);
 
   return (
-    <div className="space-y-8">
-      {/* Enhanced Header */}
-      <div className="text-center space-y-3">
-        {/* <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl mb-4">
-          <User className="w-8 h-8 text-blue-600" />
-        </div> */}
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-          Contact Information
-        </h2>
-        <p className="text-slate-600 max-w-2xl mx-auto">
-          Select your contact details to personalize this quote
-        </p>
+    <div className="space-y-4">
+      {/* Compact Header */}
+      <div className="mb-4">
+        <h2 className="text-xl font-semibold mb-1">Contact Information</h2>
+        <p className="text-sm text-muted-foreground">Select your contact details to personalize this quote</p>
       </div>
 
-      {/* Enhanced Form Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="space-y-3">
-          <Label htmlFor="contactName" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <User className="w-4 h-4" />
+      {/* Optimized Form Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-1">
+          <Label htmlFor="contactName" className="text-sm font-medium flex items-center gap-1">
+            <User className="w-3 h-3" />
             Contact Name *
           </Label>
           <Select
@@ -84,12 +77,12 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             onValueChange={(value) => handleChange("contactName", value)}
             required
           >
-            <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-200">
+            <SelectTrigger className="h-9">
               <SelectValue placeholder="Select contact name" />
             </SelectTrigger>
-            <SelectContent className="bg-white border-slate-200 rounded-xl shadow-xl">
+            <SelectContent>
               {contactNames.map((name) => (
-                <SelectItem key={name} value={name} className="rounded-lg">
+                <SelectItem key={name} value={name}>
                   {name}
                 </SelectItem>
               ))}
@@ -97,9 +90,9 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
           </Select>
         </div>
 
-        <div className="space-y-3">
-          <Label htmlFor="contactEmail" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <Mail className="w-4 h-4" />
+        <div className="space-y-1">
+          <Label htmlFor="contactEmail" className="text-sm font-medium flex items-center gap-1">
+            <Mail className="w-3 h-3" />
             Contact Email *
           </Label>
           <Select
@@ -107,12 +100,12 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             onValueChange={(value) => handleChange("contactEmail", value)}
             required
           >
-            <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-200">
+            <SelectTrigger className="h-9">
               <SelectValue placeholder="Select contact email" />
             </SelectTrigger>
-            <SelectContent className="bg-white border-slate-200 rounded-xl shadow-xl">
+            <SelectContent>
               {contactEmails.map((email) => (
-                <SelectItem key={email} value={email} className="rounded-lg">
+                <SelectItem key={email} value={email}>
                   {email}
                 </SelectItem>
               ))}
@@ -120,9 +113,9 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
           </Select>
         </div>
         
-        <div className="space-y-3">
-          <Label htmlFor="phone" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <Phone className="w-4 h-4" />
+        <div className="space-y-1">
+          <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-1">
+            <Phone className="w-3 h-3" />
             Phone *
           </Label>
           <Input
@@ -131,13 +124,13 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             onChange={(e) => handleChange("phone", e.target.value)}
             placeholder="(973) 884-0474"
             required
-            className="h-12 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-200"
+            className="h-9"
           />
         </div>
         
-        <div className="space-y-3">
-          <Label htmlFor="fax" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <Printer className="w-4 h-4" />
+        <div className="space-y-1">
+          <Label htmlFor="fax" className="text-sm font-medium flex items-center gap-1">
+            <Printer className="w-3 h-3" />
             Fax *
           </Label>
           <Input
@@ -146,13 +139,13 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             onChange={(e) => handleChange("fax", e.target.value)}
             placeholder="(973) 884-1606"
             required
-            className="h-12 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-200"
+            className="h-9"
           />
         </div>
         
-        <div className="space-y-3 md:col-span-2">
-          <Label htmlFor="address" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <MapPin className="w-4 h-4" />
+        <div className="space-y-1 md:col-span-2">
+          <Label htmlFor="address" className="text-sm font-medium flex items-center gap-1">
+            <MapPin className="w-3 h-3" />
             Address *
           </Label>
           <Input
@@ -161,13 +154,13 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             onChange={(e) => handleChange("address", e.target.value)}
             placeholder="567 Commerce St, Franklin Lakes, NJ, 07417"
             required
-            className="h-12 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-200"
+            className="h-9"
           />
         </div>
         
-        <div className="space-y-3 md:col-span-2">
-          <Label htmlFor="website" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-            <Globe className="w-4 h-4" />
+        <div className="space-y-1 md:col-span-3">
+          <Label htmlFor="website" className="text-sm font-medium flex items-center gap-1">
+            <Globe className="w-3 h-3" />
             Website *
           </Label>
           <Input
@@ -176,7 +169,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             onChange={(e) => handleChange("website", e.target.value)}
             placeholder="www.contemporarywalls.com"
             required
-            className="h-12 rounded-xl border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 transition-all duration-200"
+            className="h-9"
           />
         </div>
       </div>
