@@ -126,16 +126,22 @@ const Auth = () => {
 
     setLoading(true);
     try {
+      // Ensure user session is established
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Please sign in again to continue");
+      }
+
       if (orgChoice === "create") {
         if (!orgName) return;
         
-        // Create organization
+        // Create organization with authenticated user
         const orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
           .insert({
             name: orgName,
-            created_by: userId,
+            created_by: session.user.id,
             organization_code: orgCode
           })
           .select()
@@ -151,28 +157,29 @@ const Auth = () => {
             role: 'owner',
             status: 'active'
           })
-          .eq('id', userId);
+          .eq('id', session.user.id);
 
         if (profileError) throw profileError;
 
         toast({
           title: "Organization created!",
-          description: `${orgName} has been created successfully.`,
+          description: `${orgName} has been created successfully. Your code: ${orgCode}`,
         });
         
         navigate("/dashboard");
       } else {
         if (!orgCode) return;
         
-        // Find organization by code
+        // Find organization by code (trim whitespace and convert to uppercase)
+        const cleanCode = orgCode.trim().toUpperCase();
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
           .select('*')
-          .eq('organization_code', orgCode.toUpperCase())
+          .eq('organization_code', cleanCode)
           .single();
 
-        if (orgError) {
-          throw new Error("Invalid organization code");
+        if (orgError || !orgData) {
+          throw new Error("Invalid organization code. Please check the code and try again.");
         }
 
         // Update profile with organization as pending member
@@ -183,7 +190,7 @@ const Auth = () => {
             role: 'member',
             status: 'pending'
           })
-          .eq('id', userId);
+          .eq('id', session.user.id);
 
         if (profileError) throw profileError;
 
