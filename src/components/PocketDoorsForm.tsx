@@ -35,11 +35,11 @@ const PocketDoorsForm = ({ data, onUpdate }: PocketDoorsFormProps) => {
   const getAvailableFoldStyles = (foldType: string) => {
     switch (foldType) {
       case "Bi-Fold":
-        return ["Bulb Seal", "Expander"];
+        return ["Bulb Seal"];
       case "Single":
         return ["Bulb Seal", "Expander"];
       case "Double":
-        return ["Expander", "Lap Trim"];
+        return ["Lap Trim", "Expander", "Expander & Interlock Switches"];
       default:
         return [];
     }
