@@ -794,7 +794,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         </div>
 
                         {/* Panel Finish Section */}
-                        <div className={`grid grid-cols-1 gap-4 mb-6 ${getPanelFinishSpecificItems(wall.panelFinishCategory).length > 0 ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
+                        <div className={`grid grid-cols-1 gap-4 mb-6 ${getPanelFinishSpecificItems(wall.panelFinishCategory).length > 0 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
                           <div className="space-y-2">
                             <Label className="text-sm font-medium">Panel Finish Category</Label>
                             <Select
@@ -836,10 +836,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                               </Select>
                             </div>
                           )}
-                        </div>
 
-                        {/* Fifth Row - End Panel Type, Track Type, Track System */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                           <div className="space-y-2">
                             <Label className="text-sm font-medium">End Panel Type</Label>
                             <Select
@@ -859,7 +856,10 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                               </SelectContent>
                             </Select>
                           </div>
+                        </div>
 
+                        {/* Track Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                           <div className="space-y-2">
                             <Label className="text-sm font-medium">Track Type *</Label>
                             <Input
