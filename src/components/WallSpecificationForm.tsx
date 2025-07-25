@@ -241,12 +241,18 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     
     // Placeholder function - will be populated when specific items are provided
     switch (category) {
-      case "Vinyl":
+      case "Standard Vinyl":
         return ["Vinyl Option 1", "Vinyl Option 2"]; // Placeholder
-      case "Carpet":
+      case "Upgraded Vinyl":
+        return ["Upgraded Vinyl Option 1", "Upgraded Vinyl Option 2"]; // Placeholder
+      case "Standard Carpet":
         return ["Carpet Option 1", "Carpet Option 2"]; // Placeholder
-      case "Fabric":
+      case "Upgraded Carpet":
+        return ["Upgraded Carpet Option 1", "Upgraded Carpet Option 2"]; // Placeholder 
+      case "Standard Fabric":
         return ["Fabric Option 1", "Fabric Option 2"]; // Placeholder
+      case "Upgraded Fabric": 
+        return ["Upgraded Fabric Option 1", "Upgraded Fabric Option 2"]; // Placeholder 
       case "Wood Veneer":
         return ["Wood Veneer Option 1", "Wood Veneer Option 2"]; // Placeholder
       case "High Pressure Laminate (HPL)":
@@ -321,7 +327,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const panelConfigurations = ["Individual Panels", "Hinged-Paired Panels", "Continuously-Hinged Panels"];
   const panelDesigns = ["Trimless", "Cap Trimmed"];
   const passDoorOptions = ["Single", "Double"];
-  const panelFinishCategories = ["Standard Vinyl", "Upgraded Vinyl", "Carpet", "Fabric", "Wood Veneer", "High Pressure Laminate (HPL)", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
+  const panelFinishCategories = ["Standard Vinyl", "Upgraded Vinyl", "Standard Carpet", "Upgraded Carpet", "Standard Fabric", "Upgraded Fabric", "Wood Veneer", "High Pressure Laminate (HPL)", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
   const verticalSeals = ["Tongue-and-Groove"];
   const bottomSeals = ["Retractable", "Automatic", "Adjustable"];
   const topSeals = ["Adjustable", "Operable"];
