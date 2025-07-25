@@ -189,15 +189,25 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
     return true;
   };
 
+  // const isPocketDoorsValid = () => {
+  //   if (!pocketDoors.foldType) {
+  //     return true; // Fold type is optional
+  //   }
+  //   // If fold type is selected, require fold style
+  //   if (pocketDoors.foldType && !pocketDoors.foldStyle) {
+  //     return false;
+  //   }
+  //   return true; // Fold type itself is not required
+  // };
   const isPocketDoorsValid = () => {
-    if (!pocketDoors.foldType) {
-      return true; // Fold type is optional
+    const { foldType, foldStyle } = pocketDoors;
+
+    if (!foldType || foldType === 'None') {
+      return true; // Both optional if foldType is unselected
     }
-    // If fold type is selected, require fold style
-    if (pocketDoors.foldType && !pocketDoors.foldStyle) {
-      return false;
-    }
-    return true; // Fold type itself is not required
+
+    // If foldType is selected, require foldStyle
+    return !!foldStyle;
   };
 
   const isSupportStructureValid = () => {
