@@ -519,80 +519,76 @@ const Quotes = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container flex h-16 items-center relative">
+        <div className="container flex h-12 items-center relative">
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={() => navigate('/dashboard')}
-            className="fixed left-6 z-50"
+            className="fixed left-4 z-50"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
           </Button>
-          <h1 className="mx-auto text-xl font-semibold">Quotes</h1>
+          <h1 className="mx-auto text-lg font-semibold">Quotes</h1>
+          <Button 
+            onClick={() => setShowNewQuoteDialog(true)}
+            size="sm"
+            className="bg-green-600 hover:bg-green-700 text-white fixed right-4 z-50"
+          >
+            + New Quote
+          </Button>
         </div>
       </div>
 
-      {/* <div className="p-16 space-y-8"> */}
-      <div className="pt-8 px-16 pb-16 space-y-8">
-        {/* New Quote Dialog */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="pt-4 px-8 pb-8 space-y-4">
+        {/* Compact header */}
+        <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold">Project Quotes</h2>
-            <p className="text-muted-foreground">Manage and track your project quotes</p>
+            <h2 className="text-xl font-bold">Project Quotes</h2>
+            <p className="text-sm text-muted-foreground">Manage and track quotes</p>
           </div>
-          <Button 
-            onClick={() => setShowNewQuoteDialog(true)}
-            className="bg-green-600 hover:bg-green-700 text-white"
-          >
-            + Create New Quote
-          </Button>
         </div>
 
         {/* Summary Cards */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="flex-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Total Quotes</CardDescription>
-                  <CardTitle className="text-3xl">{quotes.length}</CardTitle>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Total Value</CardDescription>
-                  <CardTitle className="text-3xl">
-                     {formatCurrency(quotes.reduce((sum, quote) => {
-                       try {
-                         const totalAmount = quote.price_details?.total ? parseFloat(quote.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
-                         return sum + totalAmount;
-                       } catch (error) {
-                         console.error('Error processing quote total:', error, quote);
-                         return sum;
-                       }
-                     }, 0))}
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Pending</CardDescription>
-                  <CardTitle className="text-3xl">{quotes.filter(q => q.status === 'Pending').length}</CardTitle>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardDescription>Completed</CardDescription>
-                  <CardTitle className="text-3xl">{quotes.filter(q => q.status === 'Completed').length}</CardTitle>
-                </CardHeader>
-              </Card>
-            </div>
-          </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardDescription className="text-xs">Total Quotes</CardDescription>
+              <CardTitle className="text-xl">{quotes.length}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardDescription className="text-xs">Total Value</CardDescription>
+              <CardTitle className="text-xl">
+                 {formatCurrency(quotes.reduce((sum, quote) => {
+                   try {
+                     const totalAmount = quote.price_details?.total ? parseFloat(quote.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
+                     return sum + totalAmount;
+                   } catch (error) {
+                     console.error('Error processing quote total:', error, quote);
+                     return sum;
+                   }
+                 }, 0))}
+              </CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardDescription className="text-xs">Pending</CardDescription>
+              <CardTitle className="text-xl">{quotes.filter(q => q.status === 'Pending').length}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className="border-0 shadow-sm">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardDescription className="text-xs">Completed</CardDescription>
+              <CardTitle className="text-xl">{quotes.filter(q => q.status === 'Completed').length}</CardTitle>
+            </CardHeader>
+          </Card>
         </div>
 
         {/* Search and Filter */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
@@ -616,28 +612,28 @@ const Quotes = () => {
         </div>
 
         {/* Quotes Table */}
-        <Card>
+        <Card className="border-0 shadow-sm">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Proposal #</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
+                <TableRow className="border-b">
+                  <TableHead className="py-2 px-3 text-xs font-medium">Proposal #</TableHead>
+                  <TableHead className="py-2 px-3 text-xs font-medium">Client</TableHead>
+                  <TableHead className="py-2 px-3 text-xs font-medium">Project</TableHead>
+                  <TableHead className="py-2 px-3 text-xs font-medium">Amount</TableHead>
+                  <TableHead className="py-2 px-3 text-xs font-medium">Status</TableHead>
+                  <TableHead className="py-2 px-3 text-xs font-medium">Date</TableHead>
+                  <TableHead className="w-[40px] py-2 px-2"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center">Loading quotes...</TableCell>
+                    <TableCell colSpan={7} className="text-center py-8">Loading quotes...</TableCell>
                   </TableRow>
                 ) : filteredQuotes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center">No quotes found</TableCell>
+                    <TableCell colSpan={7} className="text-center py-8">No quotes found</TableCell>
                   </TableRow>
                 ) : (
                   filteredQuotes.map((quote) => {
@@ -651,58 +647,32 @@ const Quotes = () => {
                      })();
                     
                     return (
-                      <TableRow key={quote.id}>
-                        <TableCell className="font-medium">{quote.proposal_number}</TableCell>
-                        <TableCell>{quote.job_details?.client_company || quote.job_details?.client_name || 'N/A'}</TableCell>
-                        <TableCell>{quote.project_name || 'N/A'}</TableCell>
-                        <TableCell>{formatCurrency(totalAmount)}</TableCell>
-                        <TableCell>
-                          <Select value={quote.status} onValueChange={(value) => updateQuoteStatus(quote.id, value)}>
-                            <SelectTrigger className={`w-[110px] h-7 border-0 ${statusColors[quote.status as keyof typeof statusColors]} [&>svg]:hidden`}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-background border shadow-lg z-50">
-                              <SelectItem value="Draft">Draft</SelectItem>
-                              <SelectItem value="Pending">Pending</SelectItem>
-                              <SelectItem value="Completed">Completed</SelectItem>
-                            </SelectContent>
-                          </Select>
+                      <TableRow key={quote.id} className="hover:bg-muted/50">
+                        <TableCell className="font-medium py-2 px-3 text-sm">{quote.proposal_number}</TableCell>
+                        <TableCell className="py-2 px-3 text-sm">{quote.job_details?.client_company || quote.job_details?.client_name || 'N/A'}</TableCell>
+                        <TableCell className="py-2 px-3 text-sm">{quote.project_name || 'N/A'}</TableCell>
+                        <TableCell className="py-2 px-3 text-sm font-medium">{formatCurrency(totalAmount)}</TableCell>
+                        <TableCell className="py-2 px-3">
+                          <Badge 
+                            variant="secondary" 
+                            className={`text-xs px-2 py-0.5 ${statusColors[quote.status as keyof typeof statusColors]}`}
+                          >
+                            {quote.status}
+                          </Badge>
                         </TableCell>
-                        <TableCell>{new Date(quote.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-white">
-                              <DropdownMenuItem onClick={() => editQuote(quote)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit
-                              </DropdownMenuItem>
-                              {/* <DropdownMenuItem>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View
-                              </DropdownMenuItem> */}
-                              <DropdownMenuItem onClick={() => downloadPDF(quote)}>
-                                <Download className="mr-2 h-4 w-4" />
-                                Download
-                              </DropdownMenuItem>
-                              {/* <DropdownMenuItem>
-                                <Copy className="mr-2 h-4 w-4" />
-                                Duplicate
-                              </DropdownMenuItem> */}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => setDeleteQuoteId(quote.id)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                        <TableCell className="py-2 px-3 text-sm text-muted-foreground">{new Date(quote.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell className="py-2 px-2">
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => editQuote(quote)}>
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => downloadPDF(quote)}>
+                              <Download className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-600 hover:text-red-700" onClick={() => setDeleteQuoteId(quote.id)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
