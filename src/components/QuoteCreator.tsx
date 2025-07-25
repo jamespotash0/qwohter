@@ -256,7 +256,9 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
       <div className="min-h-screen w-full bg-background">
         {/* Header - Full Width */}
         <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-          <div className="flex h-12 items-center justify-between px-4">
+          
+          <div className="flex h-12 items-center justify-between px-4 relative">
+            {/* Left (Back Button) */}
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
@@ -268,34 +270,34 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
                 Back
               </Button>
             </div>
-            
-            <div className="flex items-center gap-4">
-              {/* Quote Name */}
-              <div className="flex items-center gap-2">
-                {editingQuoteName ? (
-                  <QuoteNameInput
-                    value={localQuoteName}
-                    maxChars={50}
-                    onChange={(e) => setLocalQuoteName(e.target.value)}
-                    onSave={() => {
-                      setEditingQuoteName(false);
-                      if (onQuoteNameChange && localQuoteName.trim()) {
-                        onQuoteNameChange(localQuoteName.trim());
-                        setContactInfo(prev => ({...prev, project_name: localQuoteName.trim()}));
-                      }
-                    }}
-                  />
-                ) : (
-                  <h1
-                    className="text-lg font-semibold cursor-pointer hover:text-muted-foreground transition-colors"
-                    onClick={() => setEditingQuoteName(true)}
-                  >
-                    {localQuoteName}
-                  </h1>
-                )}
-              </div>
 
-              {/* Status */}
+            {/* Center (Quote Name) */}
+            <div className="absolute left-1/2 transform -translate-x-1/2">
+              {editingQuoteName ? (
+                <QuoteNameInput
+                  value={localQuoteName}
+                  maxChars={50}
+                  onChange={(e) => setLocalQuoteName(e.target.value)}
+                  onSave={() => {
+                    setEditingQuoteName(false);
+                    if (onQuoteNameChange && localQuoteName.trim()) {
+                      onQuoteNameChange(localQuoteName.trim());
+                      setContactInfo(prev => ({ ...prev, project_name: localQuoteName.trim() }));
+                    }
+                  }}
+                />
+              ) : (
+                <h1
+                  className="text-lg font-semibold cursor-pointer hover:text-muted-foreground transition-colors"
+                  onClick={() => setEditingQuoteName(true)}
+                >
+                  {localQuoteName}
+                </h1>
+              )}
+            </div>
+
+            {/* Right (Status + Save) */}
+            <div className="flex items-center gap-4">
               <Select value={quoteStatus} onValueChange={setQuoteStatus}>
                 <SelectTrigger className="w-28 h-8 text-xs">
                   <SelectValue />
@@ -307,8 +309,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
                 </SelectContent>
               </Select>
 
-              {/* Save Button */}
-              <Button 
+              <Button
                 onClick={handleGenerate}
                 variant="default"
                 size="sm"
@@ -320,9 +321,10 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
           </div>
         </div>
 
+
         <div className="flex w-full">
           {/* Quote Navigation Sidebar */}
-          <Sidebar className="w-64 border-r">
+          <Sidebar className="w-64 border-r mt-12">
           <SidebarContent>
             <SidebarGroup>
               <SidebarGroupContent>
