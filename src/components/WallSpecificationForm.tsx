@@ -114,7 +114,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     if (field === "panelFinishCategory") {
       // Reset specific item when category changes
       // Clear the field entirely if the category doesn't need specific items
-      const categoriesWithoutSpecificItems = ["Uncovered", "C.O.M. Material", "Field Painting by Others"];
+      const categoriesWithoutSpecificItems = ["Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
       updatedWalls.walls[wallName] = {
         ...updatedWalls.walls[wallName],
         panelFinishSpecificItem: categoriesWithoutSpecificItems.includes(value) ? "" : "",
@@ -251,8 +251,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         return ["Wood Veneer Option 1", "Wood Veneer Option 2"]; // Placeholder
       case "High Pressure Laminate (HPL)":
         return ["HPL Option 1", "HPL Option 2"]; // Placeholder
-      case "Full Height Marker (Tack) Board":
-        return ["Marker Board Option 1", "Marker Board Option 2"]; // Placeholder
       default:
         return [];
     }
