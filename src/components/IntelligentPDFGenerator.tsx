@@ -264,26 +264,26 @@ export class IntelligentPDFGenerator {
           `Track System: ${wall.trackSystem || 'N/A'}`,
         ];
 
-        if (wall.panelFinishCategory && wall.panelFinishCategory !== 'None') {
+        if (wall.panelFinishCategory && wall.panelFinishCategory !== 'none') {
           wallContent.push(`Panel Finish: ${wall.panelFinishCategory}`);
-          if (wall.panelFinishSpecificItem && wall.panelFinishSpecificItem !== 'None') {
+          if (wall.panelFinishSpecificItem && wall.panelFinishSpecificItem !== 'none') {
             wallContent.push(`Specific Item: ${wall.panelFinishSpecificItem}`);
           }
         }
 
-        // Add seals and other optional items only if they're not "None" or empty
+        // Add seals and other optional items only if they're not "none" or empty
         ['verticalSeals', 'bottomSeals', 'topSeals', 'finalSeal'].forEach(seal => {
-          if (wall[seal] && wall[seal] !== 'None' && wall[seal] !== '') {
+          if (wall[seal] && wall[seal] !== 'none' && wall[seal] !== '') {
             const sealName = seal.replace(/([A-Z])/g, ' $1').toLowerCase();
             wallContent.push(`${sealName.charAt(0).toUpperCase() + sealName.slice(1)}: ${wall[seal]}`);
           }
         });
 
-        if (wall.passDoorPanels && wall.passDoorPanels !== 'None') {
+        if (wall.passDoorPanels && wall.passDoorPanels !== 'none') {
           wallContent.push(`Pass Door Panels: ${wall.passDoorPanels}`);
         }
 
-        if (wall.endPanelType && wall.endPanelType !== 'None') {
+        if (wall.endPanelType && wall.endPanelType !== 'none') {
           wallContent.push(`End Panel Type: ${wall.endPanelType}`);
         }
 
@@ -295,7 +295,7 @@ export class IntelligentPDFGenerator {
     }
 
     // Pocket Doors
-    if (data.pocket_doors?.foldType && data.pocket_doors.foldType !== 'None') {
+    if (data.pocket_doors?.foldType && data.pocket_doors.foldType !== 'none') {
       sections.push({
         title: 'Pocket Doors',
         content: [
