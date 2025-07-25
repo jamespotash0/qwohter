@@ -531,7 +531,7 @@ const Quotes = () => {
         </div>
 
         {/* Advanced Quote Analytics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <Card className="bg-primary text-primary-foreground">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -559,79 +559,11 @@ const Quotes = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-blue-50 border-blue-200">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-blue-600">Quotes Won This Month</p>
-                  <p className="text-2xl font-bold text-blue-900">
-                    {(() => {
-                      const currentDate = new Date();
-                      const currentMonth = currentDate.getMonth();
-                      const currentYear = currentDate.getFullYear();
-                      return quotes.filter(q => {
-                        const quoteDate = new Date(q.created_at);
-                        return q.status === "won" && 
-                               quoteDate.getMonth() === currentMonth && 
-                               quoteDate.getFullYear() === currentYear;
-                      }).length;
-                    })()}
-                  </p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <TrendingUp className="w-3 h-3 text-blue-400" />
-                    <span className="text-xs text-blue-500">
-                      Won this year: {quotes.filter(q => {
-                        const quoteDate = new Date(q.created_at);
-                        return q.status === "won" && quoteDate.getFullYear() === new Date().getFullYear();
-                      }).length}
-                    </span>
-                  </div>
-                </div>
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           <Card className="bg-white">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-600">Total Quotes This Month</p>
-                  <p className="text-2xl font-bold text-slate-900">
-                    {(() => {
-                      const currentDate = new Date();
-                      const currentMonth = currentDate.getMonth();
-                      const currentYear = currentDate.getFullYear();
-                      return quotes.filter(q => {
-                        const quoteDate = new Date(q.created_at);
-                        return quoteDate.getMonth() === currentMonth && quoteDate.getFullYear() === currentYear;
-                      }).length;
-                    })()}
-                  </p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <FileText className="w-3 h-3 text-slate-400" />
-                    <span className="text-xs text-slate-500">
-                      This year: {quotes.filter(q => {
-                        const quoteDate = new Date(q.created_at);
-                        return quoteDate.getFullYear() === new Date().getFullYear();
-                      }).length}
-                    </span>
-                  </div>
-                </div>
-                <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                  <FileText className="w-4 h-4 text-slate-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-slate-600">Avg Quote Value</p>
+                  <p className="text-sm text-slate-600">Average Quote Value</p>
                   <p className="text-2xl font-bold text-slate-900">
                     {(() => {
                       const totalValue = quotes.reduce((sum, quote) => {
@@ -646,17 +578,159 @@ const Quotes = () => {
                       return formatCurrency(avgValue);
                     })()}
                   </p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Conversion: {(() => {
-                      const finalizedQuotes = quotes.filter(q => ['won', 'rejected'].includes(q.status));
-                      const wonQuotes = quotes.filter(q => q.status === "won");
-                      const conversionRate = finalizedQuotes.length > 0 ? (wonQuotes.length / finalizedQuotes.length) * 100 : 0;
-                      return conversionRate.toFixed(1);
-                    })()}%
-                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <TrendingUp className="w-3 h-3 text-slate-400" />
+                    <span className="text-xs text-slate-500">Across all quotes</span>
+                  </div>
                 </div>
                 <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
                   <TrendingUp className="w-4 h-4 text-slate-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-green-50 border-green-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-green-600">Conversion Rate</p>
+                  <p className="text-2xl font-bold text-green-900">
+                    {(() => {
+                      const finalizedQuotes = quotes.filter(q => ['won', 'rejected'].includes(q.status));
+                      const wonQuotes = quotes.filter(q => q.status === "won");
+                      const conversionRate = finalizedQuotes.length > 0 ? (wonQuotes.length / finalizedQuotes.length) * 100 : 0;
+                      return conversionRate.toFixed(1) + '%';
+                    })()}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <TrendingUp className="w-3 h-3 text-green-400" />
+                    <span className="text-xs text-green-500">
+                      {quotes.filter(q => q.status === "won").length} won / {quotes.filter(q => ['won', 'rejected'].includes(q.status)).length} final
+                    </span>
+                  </div>
+                </div>
+                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Monthly and Yearly Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-blue-600">Quotes Won This Month</p>
+                  <p className="text-2xl font-bold text-blue-900">
+                    {(() => {
+                      const currentDate = new Date();
+                      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                      const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+                      return quotes.filter(q => {
+                        const quoteDate = new Date(q.created_at);
+                        return q.status === "won" && 
+                               quoteDate >= startOfMonth && 
+                               quoteDate <= endOfMonth;
+                      }).length;
+                    })()}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <TrendingUp className="w-3 h-3 text-blue-400" />
+                    <span className="text-xs text-blue-500">This month</span>
+                  </div>
+                </div>
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-indigo-50 border-indigo-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-indigo-600">Quotes Won This Year</p>
+                  <p className="text-2xl font-bold text-indigo-900">
+                    {(() => {
+                      const currentYear = new Date().getFullYear();
+                      const startOfYear = new Date(currentYear, 0, 1);
+                      const endOfYear = new Date(currentYear, 11, 31);
+                      return quotes.filter(q => {
+                        const quoteDate = new Date(q.created_at);
+                        return q.status === "won" && 
+                               quoteDate >= startOfYear && 
+                               quoteDate <= endOfYear;
+                      }).length;
+                    })()}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <TrendingUp className="w-3 h-3 text-indigo-400" />
+                    <span className="text-xs text-indigo-500">Jan 1 - Dec 31</span>
+                  </div>
+                </div>
+                <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-indigo-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-slate-50 border-slate-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-600">Total Quotes This Month</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {(() => {
+                      const currentDate = new Date();
+                      const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                      const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+                      return quotes.filter(q => {
+                        const quoteDate = new Date(q.created_at);
+                        return quoteDate >= startOfMonth && quoteDate <= endOfMonth;
+                      }).length;
+                    })()}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <FileText className="w-3 h-3 text-slate-400" />
+                    <span className="text-xs text-slate-500">This month</span>
+                  </div>
+                </div>
+                <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <FileText className="w-4 h-4 text-slate-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gray-50 border-gray-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Total Quotes This Year</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {(() => {
+                      const currentYear = new Date().getFullYear();
+                      const startOfYear = new Date(currentYear, 0, 1);
+                      const endOfYear = new Date(currentYear, 11, 31);
+                      return quotes.filter(q => {
+                        const quoteDate = new Date(q.created_at);
+                        return quoteDate >= startOfYear && quoteDate <= endOfYear;
+                      }).length;
+                    })()}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <FileText className="w-3 h-3 text-gray-400" />
+                    <span className="text-xs text-gray-500">Jan 1 - Dec 31</span>
+                  </div>
+                </div>
+                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <FileText className="w-4 h-4 text-gray-600" />
                 </div>
               </div>
             </CardContent>
