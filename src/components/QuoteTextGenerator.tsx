@@ -91,6 +91,13 @@ export const generateQuoteText = (data: QuoteData): string => {
     return count > 1 ? 'Multiple' : 'Single';
   };
 
+  const getMovementOnTrackText = (panelConfiguration?: string) => {
+    if (panelConfiguration == 'Individual') {
+      return "Independent Sliding";
+    }
+    return "Folding";
+  };
+
   // Contact Info
   const contactName = data.quote_details?.contactName || 'Ed Michinski';
   const address = data.quote_details?.address || '567 Commerce St,<br> Franklin&nbsp;Lakes, NJ, 07417';
@@ -264,7 +271,7 @@ export const generateQuoteText = (data: QuoteData): string => {
 
   <div class="track-section" style="line-height: 1.15;">
     <h2 class="section-header">TRACK:</h2>
-    We will be using an <strong>${wallEntries[0]?.[1]?.trackSystem || ''} Track System</strong> to suspend the doors from above. This track allows for <strong>Bi-Fold</strong> of the panels when not in use.
+    We will be using an <strong>${wallEntries[0]?.[1]?.trackSystem || ''} Track System</strong> to suspend the doors from above. This track allows for <strong>${getMovementOnTrackText(wallEntries[0]?.[1]?.panelConfiguration)}</strong> of the panels, along the overhead track, enabling flexible operation and easy stacking when the partition is not in use.
   </div>
       
   <!-- 
