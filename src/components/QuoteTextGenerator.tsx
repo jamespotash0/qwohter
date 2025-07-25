@@ -115,6 +115,10 @@ export const generateQuoteText = (data: QuoteData): string => {
   // Support Structure
   const mountingTrack = data.support_structure?.mountingTrack || '';
 
+  // Pocket Doors
+  const pocketFoldType = data.pocket_doors?.foldType || '';
+  const pocketFoldStyle = data.pocket_doors?.foldStyle || '';
+
   // Delivery & Labor
   const trackDelivery = data.delivery_details?.trackDeliveryWeeks || '';
   const panelDelivery = data.delivery_details?.panelDeliveryWeeks || '';
@@ -255,7 +259,7 @@ export const generateQuoteText = (data: QuoteData): string => {
   <div class="panels-section" style="line-height: 1.15;">
     <h2 class="section-header">PANELS:</h2>
     This wall system utilizes the Kwik-Wall <strong>${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || ''}</strong> configured with <strong>${wallEntries[0]?.[1]?.panelConfiguration || ''}</strong> designed for use with a <strong>${wallEntries[0]?.[1]?.trackType || ''} Layout</strong>, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
-    <br><br>The wall consists of <strong>${getPanelConfigurationText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelConfiguration || ''}</strong>, finished in an <strong>Unfinished Rift Cut White Oak Veneer finish</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches, false).split(' x ')[1]}</strong> in height, with panel widths varying as needed. Each panel features a <strong>${wallEntries[0]?.[1]?.panelDesign || ''} </strong> design and is nominally <strong>${wallEntries[0]?.[1]?.panelThickness || ''}"</strong> thick, constructed with a <strong>Steel Faced 1/2" gypsum board</strong> laminated to an acoustic material. Each panel features a <strong>${wallEntries[0]?.[1].panelDesign || ''}</strong> Design and are suspended from a <strong>${wallEntries[0]?.[1]?.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${wallEntries[0]?.[1]?.verticalSeals || ''}</strong> vertical seals that create a continuous interlock, and <strong>${wallEntries[0]?.[1]?.bottomSeals || ''}</strong> operable bottom seals, set at the time of panel's placement and retract into the panels when in use for virtually effortless movement. End panels will incorporate a <strong>${wallEntries[0]?.[1]?.endPanelType || ''}</strong>, which uses a <strong>${wallEntries[0]?.[1]?.finalSeal || ''}</strong> as a final seal.
+    <br><br>The wall consists of <strong>${getPanelConfigurationText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelConfiguration || ''}</strong>, finished in an <strong>${wallEntries[0]?.[1]?.panelFinishCategory || ''} ${wallEntries[0]?.[1]?.panelFinishSpecificItem || ''}</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches, false).split(' x ')[1]}</strong> in height, with panel widths varying as needed. Each panel features a <strong>${wallEntries[0]?.[1]?.panelDesign || ''} </strong> design and is nominally <strong>${wallEntries[0]?.[1]?.panelThickness || ''}"</strong> thick, constructed with a <strong>Steel Faced 1/2" gypsum board</strong> laminated to an acoustic material. Each panel features a <strong>${wallEntries[0]?.[1].panelDesign || ''}</strong> Design and are suspended from a <strong>${wallEntries[0]?.[1]?.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${wallEntries[0]?.[1]?.verticalSeals || ''}</strong> vertical seals that create a continuous interlock, and <strong>${wallEntries[0]?.[1]?.bottomSeals || ''}</strong> operable bottom seals, set at the time of panel's placement and retract into the panels when in use for virtually effortless movement. End panels will incorporate a <strong>${wallEntries[0]?.[1]?.endPanelType || ''}</strong>, which uses a <strong>${wallEntries[0]?.[1]?.finalSeal || ''}</strong> as a final seal.
   </div>
 
   <div class="track-section" style="line-height: 1.15;">
@@ -268,7 +272,7 @@ export const generateQuoteText = (data: QuoteData): string => {
   ${data.pocket_doors?.foldType && data.pocket_doors?.foldStyle ? `
   <div class="pocket-doors-section" style="line-height: 1.15;">
     <h2 class="section-header">POCKET DOORS:</h2>
-    <strong>${data.pocket_doors.foldType}</strong> doors with an <strong>${data.pocket_doors.foldStyle}</strong> style will be used to house the panels in the stack, offering a space-efficient and acoustically enhanced storage solution.
+    <strong>${pocketFoldType}</strong> doors with an <strong>${pocketFoldStyle}</strong> style will be used to house the panels in the stack, offering a space-efficient and acoustically enhanced storage solution.
   </div>
   ` : ''}
 
