@@ -50,16 +50,16 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
   };
 
   return (
-    <div className="space-y-2 relative">
-      <Label htmlFor={id}>{label}</Label>
+    <div className="space-y-1 relative">
+      {label && <Label htmlFor={id} className="text-sm font-medium">{label}</Label>}
       {!mapboxToken && (
-        <div className="mb-2">
+        <div className="mb-1">
           <Input
             type="text"
             placeholder="Enter your Mapbox public token for autocomplete"
             value={mapboxToken}
             onChange={(e) => setMapboxToken(e.target.value)}
-            className="text-xs"
+            className="text-xs h-9"
           />
           <p className="text-xs text-gray-500 mt-1">
             Get your token at <a href="https://mapbox.com" target="_blank" className="underline">mapbox.com</a>
@@ -74,6 +74,7 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
         placeholder={placeholder}
         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
         required={required}
+        className="h-9"
       />
       
       {showSuggestions && suggestions.length > 0 && (

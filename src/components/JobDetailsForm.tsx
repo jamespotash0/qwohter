@@ -67,8 +67,9 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
           </div>
           
           <div className="space-y-1 md:col-span-2">
+            <Label htmlFor="jobLocation" className="text-sm font-medium">Job Location *</Label>
             <MapboxInput
-              label="Job Location *"
+              label=""
               value={data.jobLocation}
               onChange={(value) => handleChange("jobLocation", value)}
               placeholder="Enter job location"
@@ -106,8 +107,9 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
             </div>
             
             <div className="space-y-1">
+              <Label htmlFor="billedAddress" className="text-sm font-medium">Client Address *</Label>
               <MapboxInput
-                label="Client Address *"
+                label=""
                 value={data.billedTo.address}
                 onChange={(value) => handleBilledToChange("address", value)}
                 placeholder="Client address"

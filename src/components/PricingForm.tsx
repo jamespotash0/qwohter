@@ -132,16 +132,6 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
           </div>
         </div>
         
-         <div className="flex justify-end">
-           <Button 
-             onClick={onGenerate}
-             className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
-             size="lg"
-             disabled={!isFormValid()}
-           >
-             Save Quote
-           </Button>
-         </div>
       </div>
     </div>
   );
