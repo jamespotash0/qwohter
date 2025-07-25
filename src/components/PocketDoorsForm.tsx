@@ -50,10 +50,7 @@ const PocketDoorsForm = ({ data, onUpdate }: PocketDoorsFormProps) => {
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold">Pocket Doors</h2>
-        <p className="text-muted-foreground">
-          Configure the pocket doors for housing the panels when not in use.
-        </p>
+        <h2 className="text-xl font-semibold">Pocket Doors</h2>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -89,11 +86,6 @@ const PocketDoorsForm = ({ data, onUpdate }: PocketDoorsFormProps) => {
               ))}
             </SelectContent>
           </Select>
-          {foldType && (
-            <p className="text-xs text-muted-foreground">
-              Available styles for {foldType}: {availableFoldStyles.join(", ")}
-            </p>
-          )}
         </div>
       </div>
     </div>
