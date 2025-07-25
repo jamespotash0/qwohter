@@ -696,6 +696,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                                 <SelectValue placeholder="Select pass door panels" />
                               </SelectTrigger>
                               <SelectContent className="bg-background border z-50">
+                                <SelectItem value="">None</SelectItem>
                                 {passDoorOptions.map((option) => (
                                   <SelectItem key={option} value={option}>
                                     {option}
@@ -715,6 +716,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                                 <SelectValue placeholder="Select vertical seals" />
                               </SelectTrigger>
                               <SelectContent className="bg-background border z-50">
+                                <SelectItem value="">None</SelectItem>
                                 {verticalSeals.map((sealant) => (
                                   <SelectItem key={sealant} value={sealant}>
                                     {sealant}
@@ -737,6 +739,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                                 <SelectValue placeholder="Select final seal" />
                               </SelectTrigger>
                               <SelectContent className="bg-background border z-50">
+                                <SelectItem value="">None</SelectItem>
                                 {finalSeal.map((seal) => (
                                   <SelectItem key={seal} value={seal}>
                                     {seal}
@@ -756,6 +759,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                                 <SelectValue placeholder="Select bottom seals" />
                               </SelectTrigger>
                               <SelectContent className="bg-background border z-50">
+                                <SelectItem value="">None</SelectItem>
                                 {bottomSeals.map((seal) => (
                                   <SelectItem key={seal} value={seal}>
                                     {seal}
@@ -775,6 +779,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                                 <SelectValue placeholder="Select top seals" />
                               </SelectTrigger>
                               <SelectContent className="bg-background border z-50">
+                                <SelectItem value="">None</SelectItem>
                                 {topSeals.map((seal) => (
                                   <SelectItem key={seal} value={seal}>
                                     {seal}
@@ -797,6 +802,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                                 <SelectValue placeholder="Select panel finish category" />
                               </SelectTrigger>
                               <SelectContent className="bg-background border z-50">
+                                <SelectItem value="">None</SelectItem>
                                 {panelFinishCategories.map((category) => (
                                   <SelectItem key={category} value={category}>
                                     {category}
@@ -841,6 +847,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                                 <SelectValue placeholder="Select end panel type" />
                               </SelectTrigger>
                               <SelectContent className="bg-background border z-50">
+                                <SelectItem value="">None</SelectItem>
                                 {endPanelTypes.map((type) => (
                                   <SelectItem key={type} value={type}>
                                     {type}
