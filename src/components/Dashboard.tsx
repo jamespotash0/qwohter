@@ -136,7 +136,7 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <Card className="bg-primary text-primary-foreground">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -208,7 +208,7 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
                   </div>
                 </CardContent>
               </Card>
-            </div>
+            </div> */}
 
             {/* Member Management - Only for admins and owners */}
             {currentOrganization && currentUserRole && ['admin', 'owner'].includes(currentUserRole) && (
