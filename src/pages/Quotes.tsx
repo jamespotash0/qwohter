@@ -100,11 +100,13 @@ const Quotes = () => {
     }
 
     try {
-      // Import the quote text generator
+      // Import the quote text generator and smart page break utility
       const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
+      const { calculateSmartPageBreak } = await import('@/utils/smartPageBreak');
       
-      // Generate the full quote text with HTML
-      const quoteText = generateQuoteText(quote);
+      // Generate the full quote text with HTML and apply smart page breaks
+      const rawQuoteText = generateQuoteText(quote);
+      const quoteText = calculateSmartPageBreak(rawQuoteText);
       
       // Create a temporary div to render the HTML
       const tempDiv = document.createElement('div');
@@ -407,8 +409,10 @@ const Quotes = () => {
       
       // Final fallback to simple text PDF
       try {
-        const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
-        const quoteText = generateQuoteText(quote);
+      const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
+      const { calculateSmartPageBreak } = await import('@/utils/smartPageBreak');
+      const rawQuoteText = generateQuoteText(quote);
+      const quoteText = calculateSmartPageBreak(rawQuoteText);
         
         const doc = new jsPDF({
           orientation: 'portrait',
