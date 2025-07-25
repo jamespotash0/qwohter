@@ -21,7 +21,7 @@ const SupportStructureForm = ({ data, onUpdate }: SupportStructureFormProps) => 
       <h2 className="text-xl font-semibold mb-4">Support Structure</h2>
       <div className="grid grid-cols-1 gap-3">
         <div className="space-y-2">
-          <Label htmlFor="mountingTrack">Mounting Track</Label>
+          <Label htmlFor="mountingTrack">Mounting Track *</Label>
           <Select
             value={data.mountingTrack}
             onValueChange={(value) => handleChange("mountingTrack", value)}

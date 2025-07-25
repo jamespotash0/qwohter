@@ -456,7 +456,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Width */}
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">Width</Label>
+                          <Label className="text-sm font-medium">Width *</Label>
                           <div className="flex gap-2">
                             <div className="flex-1">
                               <Input
@@ -481,7 +481,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
 
                         {/* Height */}
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">Height</Label>
+                          <Label className="text-sm font-medium">Height *</Label>
                           <div className="flex gap-2">
                             <div className="flex-1">
                               <Input
@@ -506,7 +506,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
 
                         {/* Panel Count */}
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">Panel Count</Label>
+                          <Label className="text-sm font-medium">Panel Count *</Label>
                           <Input
                             value={wall.panelCount}
                             onChange={(e) => handleWallChange(wallName, "panelCount", e.target.value)}
@@ -524,7 +524,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                       {/* Wall System Type Selection */}
                       <div className="mb-6">
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">Wall System Type</Label>
+                          <Label className="text-sm font-medium">Wall System Type *</Label>
                           <Select
                             value={wall.wallSystemType}
                             onValueChange={(value) => handleWallChange(wallName, "wallSystemType", value)}
@@ -552,7 +552,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         {/* First Row - Panel Configuration, Series, Model */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium">Panel Configuration</Label>
+                            <Label className="text-sm font-medium">Panel Configuration *</Label>
                             <Select
                               value={wall.panelConfiguration}
                               onValueChange={(value) => handleWallChange(wallName, "panelConfiguration", value)}
@@ -571,7 +571,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium">Series</Label>
+                            <Label className="text-sm font-medium">Series *</Label>
                             <Select
                               value={wall.series}
                               onValueChange={(value) => handleWallChange(wallName, "series", value)}
@@ -591,7 +591,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium">Model</Label>
+                            <Label className="text-sm font-medium">Model *</Label>
                             <Select
                               value={wall.model}
                               onValueChange={(value) => handleWallChange(wallName, "model", value)}
@@ -625,7 +625,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium">Panel Skin</Label>
+                            <Label className="text-sm font-medium">Panel Skin *</Label>
                             <Select
                               value={wall.panelSkin}
                               onValueChange={(value) => handleWallChange(wallName, "panelSkin", value)}
@@ -645,7 +645,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium">STC Rating</Label>
+                            <Label className="text-sm font-medium">STC Rating *</Label>
                             <Select
                               value={wall.stcRating}
                               onValueChange={(value) => handleWallChange(wallName, "stcRating", value)}
@@ -668,7 +668,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         {/* Third Row - Panel Design, Pass Door Panels, Vertical Seals */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium">Panel Design</Label>
+                            <Label className="text-sm font-medium">Panel Design *</Label>
                             <Select
                               value={wall.panelDesign}
                               onValueChange={(value) => handleWallChange(wallName, "panelDesign", value)}
@@ -808,7 +808,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
 
                           {getPanelFinishSpecificItems(wall.panelFinishCategory).length > 0 && (
                             <div className="space-y-2">
-                              <Label className="text-sm font-medium">Panel Finish Specific Item</Label>
+                              <Label className="text-sm font-medium">Panel Finish Specific Item *</Label>
                               <Select
                                 value={wall.panelFinishSpecificItem}
                                 onValueChange={(value) => handleWallChange(wallName, "panelFinishSpecificItem", value)}
@@ -851,7 +851,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium">Track Type</Label>
+                            <Label className="text-sm font-medium">Track Type *</Label>
                             <Input
                               value={wall.trackType}
                               placeholder="Track type (auto-filled)"
@@ -861,7 +861,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                           </div>
 
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium">Track System</Label>
+                            <Label className="text-sm font-medium">Track System *</Label>
                             <Select
                               value={wall.trackSystem}
                               onValueChange={(value) => handleWallChange(wallName, "trackSystem", value)}

@@ -69,7 +69,7 @@ const PocketDoorsForm = ({ data, onUpdate }: PocketDoorsFormProps) => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="foldStyle">Fold Style</Label>
+          <Label htmlFor="foldStyle">Fold Style{foldType ? ' *' : ''}</Label>
           <Select 
             value={foldStyle} 
             onValueChange={setFoldStyle}
