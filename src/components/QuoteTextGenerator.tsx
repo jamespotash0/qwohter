@@ -286,8 +286,8 @@ export const generateQuoteText = (data: QuoteData): string => {
         <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${freight}</strong></td>
       </tr>
       <tr>
-        <td style="border: 0.5px solid black; padding: 8px 8px 12px 8px;"><strong>Total</strong></td>
-        <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${total}</strong></td>
+        <td style="border-left: 0.5px solid black; border-right: 0.5px solid black; border-top: 0.5px solid black; padding: 8px 8px 12px 8px;"><strong>Total</strong></td>
+        <td style="border-right: 0.5px solid black; border-top: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${total}</strong></td>
       </tr>
     </table>
   </div>
