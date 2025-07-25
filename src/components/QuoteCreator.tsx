@@ -190,6 +190,9 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   };
 
   const isPocketDoorsValid = () => {
+    if (!pocketDoors.foldType) {
+      return true; // Fold type is optional
+    }
     // If fold type is selected, require fold style
     if (pocketDoors.foldType && !pocketDoors.foldStyle) {
       return false;
