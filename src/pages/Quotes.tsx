@@ -631,10 +631,11 @@ const Quotes = () => {
                       const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
                       const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
                       return quotes.filter(q => {
-                        const quoteDate = new Date(q.created_at);
+                        // Use job_details.date if available, otherwise fall back to created_at
+                        const dateToUse = q.job_details?.date ? new Date(q.job_details.date) : new Date(q.created_at);
                         return q.status === "won" && 
-                               quoteDate >= startOfMonth && 
-                               quoteDate <= endOfMonth;
+                               dateToUse >= startOfMonth && 
+                               dateToUse <= endOfMonth;
                       }).length;
                     })()}
                   </p>
@@ -661,10 +662,11 @@ const Quotes = () => {
                       const startOfYear = new Date(currentYear, 0, 1);
                       const endOfYear = new Date(currentYear, 11, 31);
                       return quotes.filter(q => {
-                        const quoteDate = new Date(q.created_at);
+                        // Use job_details.date if available, otherwise fall back to created_at
+                        const dateToUse = q.job_details?.date ? new Date(q.job_details.date) : new Date(q.created_at);
                         return q.status === "won" && 
-                               quoteDate >= startOfYear && 
-                               quoteDate <= endOfYear;
+                               dateToUse >= startOfYear && 
+                               dateToUse <= endOfYear;
                       }).length;
                     })()}
                   </p>
@@ -691,8 +693,9 @@ const Quotes = () => {
                       const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
                       const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
                       return quotes.filter(q => {
-                        const quoteDate = new Date(q.created_at);
-                        return quoteDate >= startOfMonth && quoteDate <= endOfMonth;
+                        // Use job_details.date if available, otherwise fall back to created_at
+                        const dateToUse = q.job_details?.date ? new Date(q.job_details.date) : new Date(q.created_at);
+                        return dateToUse >= startOfMonth && dateToUse <= endOfMonth;
                       }).length;
                     })()}
                   </p>
@@ -719,8 +722,9 @@ const Quotes = () => {
                       const startOfYear = new Date(currentYear, 0, 1);
                       const endOfYear = new Date(currentYear, 11, 31);
                       return quotes.filter(q => {
-                        const quoteDate = new Date(q.created_at);
-                        return quoteDate >= startOfYear && quoteDate <= endOfYear;
+                        // Use job_details.date if available, otherwise fall back to created_at
+                        const dateToUse = q.job_details?.date ? new Date(q.job_details.date) : new Date(q.created_at);
+                        return dateToUse >= startOfYear && dateToUse <= endOfYear;
                       }).length;
                     })()}
                   </p>
