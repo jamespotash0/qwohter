@@ -159,14 +159,46 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   };
 
   const isWallSpecValid = () => {
-    return Object.keys(walls.walls).length > 0;
+    const wallEntries = Object.entries(walls.walls);
+    
+    // Require at least 1 wall
+    if (wallEntries.length === 0) return false;
+    
+    // Check each wall for required fields
+    for (const [wallName, wall] of wallEntries) {
+      // Always required fields
+      if (!wall.widthFeet || !wall.heightFeet || !wall.panelCount || !wall.wallSystemType) {
+        return false;
+      }
+      
+      // If "Operable Wall" is selected, require additional fields
+      if (wall.wallSystemType === "Operable Wall") {
+        if (!wall.panelConfiguration || !wall.series || !wall.model || 
+            !wall.panelSkin || !wall.stcRating || !wall.panelDesign || 
+            !wall.trackType || !wall.trackSystem) {
+          return false;
+        }
+      }
+      
+      // If panel finish category is selected, require panel finish specific item
+      if (wall.panelFinishCategory && !wall.panelFinishSpecificItem) {
+        return false;
+      }
+    }
+    
+    return true;
   };
 
   const isPocketDoorsValid = () => {
-    return pocketDoors.foldType !== "" && pocketDoors.foldStyle !== "";
+    // If fold type is selected, require fold style
+    if (pocketDoors.foldType && !pocketDoors.foldStyle) {
+      return false;
+    }
+    return true; // Fold type itself is not required
   };
 
   const isSupportStructureValid = () => {
+    // Mounting track is now required
     return supportStructure.mountingTrack !== "";
   };
 
@@ -186,6 +218,21 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
     if (!isJobDetailsValid()) {
       toast.error("Please complete all Job Details fields");
       setActiveSection("job");
+      return;
+    }
+    if (!isWallSpecValid()) {
+      toast.error("Please complete Wall Specifications - at least 1 wall with required fields");
+      setActiveSection("walls");
+      return;
+    }
+    if (!isPocketDoorsValid()) {
+      toast.error("Please complete Pocket Doors - fold style required when fold type is selected");
+      setActiveSection("pockets");
+      return;
+    }
+    if (!isSupportStructureValid()) {
+      toast.error("Please select a mounting track for Support Structure");
+      setActiveSection("support");
       return;
     }
     if (!isPricingValid()) {
@@ -326,7 +373,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
                 onClick={handleGenerate}
                 variant="default"
                 size="sm"
-                disabled={!isContactInfoValid() || !isJobDetailsValid() || !isPricingValid()}
+                disabled={!isContactInfoValid() || !isJobDetailsValid() || !isWallSpecValid() || !isPocketDoorsValid() || !isSupportStructureValid() || !isPricingValid()}
               >
                 Save Quote
               </Button>
