@@ -869,7 +869,16 @@ const Quotes = () => {
                             </SelectContent>
                           </Select>
                         </TableCell>
-                        <TableCell className="py-2 px-3 text-sm text-muted-foreground">{new Date(quote.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell className="py-2 px-3 text-sm text-muted-foreground">
+                          {(() => {
+                            // Use job_details.date if available, otherwise fall back to created_at
+                            const jobDate = quote.job_details?.date;
+                            if (jobDate) {
+                              return new Date(jobDate).toLocaleDateString();
+                            }
+                            return new Date(quote.created_at).toLocaleDateString();
+                          })()}
+                        </TableCell>
                         <TableCell className="py-2 px-2">
                           <div className="flex items-center gap-1">
                             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => editQuote(quote)}>
