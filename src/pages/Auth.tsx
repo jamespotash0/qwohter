@@ -98,16 +98,13 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      // Create profile with full name (temporary org will be set later)
+      // Update the existing profile with full name (profile was created by trigger)
       const { error } = await supabase
         .from('profiles')
-        .insert({
-          id: userId,
-          email,
-          full_name: fullName,
-          status: 'pending',
-          organization_id: '00000000-0000-0000-0000-000000000000' // temporary placeholder
-        });
+        .update({
+          full_name: fullName
+        })
+        .eq('id', userId);
 
       if (error) throw error;
 
