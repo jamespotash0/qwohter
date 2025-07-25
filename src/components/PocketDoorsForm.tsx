@@ -61,7 +61,7 @@ const PocketDoorsForm = ({ data, onUpdate }: PocketDoorsFormProps) => {
               <SelectValue placeholder="Select fold type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">None</SelectItem>
+              <SelectItem value="">None</SelectItem>
               <SelectItem value="Bi-Fold">Bi-Fold</SelectItem>
               <SelectItem value="Single">Single</SelectItem>
               <SelectItem value="Double">Double</SelectItem>
@@ -80,7 +80,7 @@ const PocketDoorsForm = ({ data, onUpdate }: PocketDoorsFormProps) => {
               <SelectValue placeholder="Select fold style" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">None</SelectItem>
+              <SelectItem value="">None</SelectItem>
               {availableFoldStyles.map((style) => (
                 <SelectItem key={style} value={style}>
                   {style}
