@@ -77,14 +77,41 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
     }
   };
 
-  // Calculate stats from real quotes data
-  const totalQuotes = quotes.length;
-  const totalValue = quotes.reduce((sum, quote) => {
+  // Calculate advanced quote analytics
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  
+  const wonQuotes = quotes.filter(q => q.status === "won");
+  const rejectedQuotes = quotes.filter(q => q.status === "rejected");
+  
+  // This month quotes
+  const quotesThisMonth = quotes.filter(q => {
+    const quoteDate = new Date(q.created_at);
+    return quoteDate.getMonth() === currentMonth && quoteDate.getFullYear() === currentYear;
+  });
+  
+  // This year quotes
+  const quotesThisYear = quotes.filter(q => {
+    const quoteDate = new Date(q.created_at);
+    return quoteDate.getFullYear() === currentYear;
+  });
+  
+  const quotesWonThisMonth = quotesThisMonth.filter(q => q.status === "won").length;
+  const quotesWonThisYear = quotesThisYear.filter(q => q.status === "won").length;
+  
+  // Total quoted value (all quotes regardless of status)
+  const totalQuotedValue = quotes.reduce((sum, quote) => {
     const total = quote.price_details?.total || 0;
     return sum + (typeof total === 'number' ? total : 0);
   }, 0);
-  const runningProjects = quotes.filter(q => q.status === "draft").length;
-  const completedProjects = quotes.filter(q => q.status === "completed").length;
+  
+  // Average quote value
+  const avgQuoteValue = quotes.length > 0 ? totalQuotedValue / quotes.length : 0;
+  
+  // Conversion rate (won quotes / total quotes that have a final status)
+  const finalizedQuotes = quotes.filter(q => ['won', 'rejected'].includes(q.status));
+  const conversionRate = finalizedQuotes.length > 0 ? (wonQuotes.length / finalizedQuotes.length) * 100 : 0;
 
   return (
     <SidebarProvider>
@@ -144,15 +171,33 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm opacity-90">Total Projects</p>
-                      <p className="text-3xl font-bold">{totalQuotes}</p>
+                      <p className="text-sm opacity-90">Total Quoted Value</p>
+                      <p className="text-3xl font-bold">${totalQuotedValue.toLocaleString()}</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <TrendingUp className="w-3 h-3" />
-                        <span className="text-xs opacity-75">Increased from last month</span>
+                        <DollarSign className="w-3 h-3" />
+                        <span className="text-xs opacity-75">All quotes combined</span>
                       </div>
                     </div>
                     <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                      <ArrowUpRight className="w-5 h-5" />
+                      <DollarSign className="w-5 h-5" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-blue-50 border-blue-200">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-blue-600">Quotes Won This Month</p>
+                      <p className="text-3xl font-bold text-blue-900">{quotesWonThisMonth}</p>
+                      <div className="flex items-center gap-1 mt-2">
+                        <TrendingUp className="w-3 h-3 text-blue-400" />
+                        <span className="text-xs text-blue-500">Won this year: {quotesWonThisYear}</span>
+                      </div>
+                    </div>
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-blue-600" />
                     </div>
                   </div>
                 </CardContent>
@@ -162,15 +207,15 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-600">Ended Projects</p>
-                      <p className="text-3xl font-bold text-slate-900">{completedProjects}</p>
+                      <p className="text-sm text-slate-600">Total Quotes This Month</p>
+                      <p className="text-3xl font-bold text-slate-900">{quotesThisMonth.length}</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <TrendingUp className="w-3 h-3 text-slate-400" />
-                        <span className="text-xs text-slate-500">Increased from last month</span>
+                        <FileText className="w-3 h-3 text-slate-400" />
+                        <span className="text-xs text-slate-500">This year: {quotesThisYear.length}</span>
                       </div>
                     </div>
                     <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                      <ArrowUpRight className="w-5 h-5 text-slate-600" />
+                      <FileText className="w-5 h-5 text-slate-600" />
                     </div>
                   </div>
                 </CardContent>
@@ -180,12 +225,9 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-600">Running Projects</p>
-                      <p className="text-3xl font-bold text-slate-900">{runningProjects}</p>
-                      <div className="flex items-center gap-1 mt-2">
-                        <TrendingUp className="w-3 h-3 text-slate-400" />
-                        <span className="text-xs text-slate-500">Increased from last month</span>
-                      </div>
+                      <p className="text-sm text-slate-600">Avg Quote Value</p>
+                      <p className="text-3xl font-bold text-slate-900">${avgQuoteValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}</p>
+                      <p className="text-xs text-slate-500 mt-2">Conversion: {conversionRate.toFixed(1)}%</p>
                     </div>
                     <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
                       <ArrowUpRight className="w-5 h-5 text-slate-600" />
@@ -193,17 +235,35 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
                   </div>
                 </CardContent>
               </Card>
+            </div>
 
-              <Card className="bg-white">
+            {/* Additional Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="bg-green-50 border-green-200">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-600">Pending Project</p>
-                      <p className="text-3xl font-bold text-slate-900">2</p>
-                      <p className="text-xs text-slate-500 mt-2">On Discuss</p>
+                      <p className="text-sm text-green-600">Won Quotes</p>
+                      <p className="text-3xl font-bold text-green-900">{wonQuotes.length}</p>
+                      <p className="text-xs text-green-500 mt-2">Total value: ${wonQuotes.reduce((sum, q) => sum + (q.price_details?.total || 0), 0).toLocaleString()}</p>
                     </div>
-                    <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                      <ArrowUpRight className="w-5 h-5 text-slate-600" />
+                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-green-600" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-red-50 border-red-200">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-red-600">Rejected Quotes</p>
+                      <p className="text-3xl font-bold text-red-900">{rejectedQuotes.length}</p>
+                      <p className="text-xs text-red-500 mt-2">Total value: ${rejectedQuotes.reduce((sum, q) => sum + (q.price_details?.total || 0), 0).toLocaleString()}</p>
+                    </div>
+                    <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                      <ArrowUpRight className="w-5 h-5 text-red-600" />
                     </div>
                   </div>
                 </CardContent>
