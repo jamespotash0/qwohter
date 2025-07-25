@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MapboxInputProps {
   label: string;
@@ -16,13 +17,39 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [mapboxToken, setMapboxToken] = useState("");
+  const [isLoadingToken, setIsLoadingToken] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // For now, we'll use a simple input until Mapbox token is provided
+  // Fetch Mapbox token on component mount
+  useEffect(() => {
+    const fetchMapboxToken = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-mapbox-token');
+        
+        if (error) {
+          console.error('Error fetching Mapbox token:', error);
+          setIsLoadingToken(false);
+          return;
+        }
+        
+        if (data?.token) {
+          setMapboxToken(data.token);
+        }
+      } catch (error) {
+        console.error('Error fetching Mapbox token:', error);
+      } finally {
+        setIsLoadingToken(false);
+      }
+    };
+
+    fetchMapboxToken();
+  }, []);
+
   const handleInputChange = async (inputValue: string) => {
     onChange(inputValue);
     
-    if (!mapboxToken || inputValue.length < 3) {
+    // Don't make API calls if token is still loading or missing, or input is too short
+    if (isLoadingToken || !mapboxToken || inputValue.length < 3) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
