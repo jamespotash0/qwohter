@@ -101,7 +101,7 @@ const Auth = () => {
         <Card className="bg-white border border-slate-200 shadow-sm">
           <CardHeader className="text-center space-y-4 pb-8">
             <CardTitle className="text-2xl font-bold text-slate-900">
-              {isSignUp ? "Create Account" : "Welcome Back"}
+              {isSignUp ? "Create Account" : "Welcome"}
             </CardTitle>
             <CardDescription className="text-slate-600 text-base">
               {isSignUp 
