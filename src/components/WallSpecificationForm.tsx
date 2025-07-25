@@ -113,9 +113,11 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     
     if (field === "panelFinishCategory") {
       // Reset specific item when category changes
+      // Clear the field entirely if the category doesn't need specific items
+      const categoriesWithoutSpecificItems = ["Uncovered", "C.O.M. Material", "Field Painting by Others"];
       updatedWalls.walls[wallName] = {
         ...updatedWalls.walls[wallName],
-        panelFinishSpecificItem: "",
+        panelFinishSpecificItem: categoriesWithoutSpecificItems.includes(value) ? "" : "",
       };
     }
     
@@ -231,6 +233,12 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   };
 
   const getPanelFinishSpecificItems = (category: string): string[] => {
+    // Categories that don't need specific items
+    const categoriesWithoutSpecificItems = ["Uncovered", "C.O.M. Material", "Field Painting by Others"];
+    if (categoriesWithoutSpecificItems.includes(category)) {
+      return [];
+    }
+    
     // Placeholder function - will be populated when specific items are provided
     switch (category) {
       case "Vinyl":
@@ -245,12 +253,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         return ["HPL Option 1", "HPL Option 2"]; // Placeholder
       case "Full Height Marker (Tack) Board":
         return ["Marker Board Option 1", "Marker Board Option 2"]; // Placeholder
-      case "Uncovered":
-        return ["Uncovered Option 1"]; // Placeholder
-      case "C.O.M. Material":
-        return ["C.O.M. Option 1", "C.O.M. Option 2"]; // Placeholder
-      case "Field Painting by Others":
-        return ["Field Painting Option 1"]; // Placeholder
       default:
         return [];
     }
@@ -681,7 +683,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                     </div>
 
                     {/* Panel Finish Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div className={`grid grid-cols-1 gap-4 mb-6 ${getPanelFinishSpecificItems(wall.panelFinishCategory).length > 0 ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}>
                       <div className="space-y-2">
                         <Label className="text-sm font-medium">Panel Finish Category</Label>
                         <Select
@@ -701,25 +703,27 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         </Select>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Panel Finish Specific Item</Label>
-                        <Select
-                          value={wall.panelFinishSpecificItem}
-                          onValueChange={(value) => handleWallChange(wallName, "panelFinishSpecificItem", value)}
-                          disabled={!wall.panelFinishCategory}
-                        >
-                          <SelectTrigger className="bg-background">
-                            <SelectValue placeholder="Select specific item" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background border z-50">
-                            {getPanelFinishSpecificItems(wall.panelFinishCategory).map((item) => (
-                              <SelectItem key={item} value={item}>
-                                {item}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      {getPanelFinishSpecificItems(wall.panelFinishCategory).length > 0 && (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Panel Finish Specific Item</Label>
+                          <Select
+                            value={wall.panelFinishSpecificItem}
+                            onValueChange={(value) => handleWallChange(wallName, "panelFinishSpecificItem", value)}
+                            disabled={!wall.panelFinishCategory}
+                          >
+                            <SelectTrigger className="bg-background">
+                              <SelectValue placeholder="Select specific item" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background border z-50">
+                              {getPanelFinishSpecificItems(wall.panelFinishCategory).map((item) => (
+                                <SelectItem key={item} value={item}>
+                                  {item}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </div>
 
                     {/* Fourth Row - Seals */}
