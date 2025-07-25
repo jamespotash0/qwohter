@@ -45,7 +45,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         panelFinishSpecificItem: "",
         trackType: "",
         trackSystem: "",
-        verticalSealants: "",
+        verticalSeals: "",
         bottomSeals: "",
         topSeals: "",
         finalSeal: "",
@@ -285,7 +285,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       passDoorPanels: "",
       panelFinishCategory: "",
       panelFinishSpecificItem: "",
-      verticalSealants: "",
+      verticalSeals: "",
       bottomSeals: "",
       topSeals: "",
       finalSeal: "",
@@ -322,7 +322,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const panelDesigns = ["Trimless", "Cap Trimmed"];
   const passDoorOptions = ["Single", "Double"];
   const panelFinishCategories = ["Standard Vinyl", "Upgraded Vinyl", "Carpet", "Fabric", "Wood Veneer", "High Pressure Laminate (HPL)", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
-  const verticalSealants = ["Tongue-and-Groove"];
+  const verticalSeals = ["Tongue-and-Groove"];
   const bottomSeals = ["Retractable", "Automatic", "Adjustable"];
   const topSeals = ["Adjustable", "Operable"];
   const endPanelTypes = ["Fixed Wall Jamb", "Telescoping Closure", "Closure Panel", "Adjustable Wall Jamb", "Articulating Panel"];
@@ -727,16 +727,16 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                     {/* Fourth Row - Seals */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">Vertical Sealants</Label>
+                        <Label className="text-sm font-medium">Vertical Seals</Label>
                         <Select
-                          value={wall.verticalSealants}
-                          onValueChange={(value) => handleWallChange(wallName, "verticalSealants", value)}
+                          value={wall.verticalSeals}
+                          onValueChange={(value) => handleWallChange(wallName, "verticalSeals", value)}
                         >
                           <SelectTrigger className="bg-background">
-                            <SelectValue placeholder="Select vertical sealants" />
+                            <SelectValue placeholder="Select vertical seals" />
                           </SelectTrigger>
                           <SelectContent className="bg-background border z-50">
-                            {verticalSealants.map((sealant) => (
+                            {verticalSeals.map((sealant) => (
                               <SelectItem key={sealant} value={sealant}>
                                 {sealant}
                               </SelectItem>
