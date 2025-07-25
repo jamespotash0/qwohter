@@ -23,13 +23,19 @@ const PocketDoorsForm = ({ data, onUpdate }: PocketDoorsFormProps) => {
 
   // Reset fold style when fold type changes and current style is not available
   const handleFoldTypeChange = (value: string) => {
-    setFoldType(value);
+    const newFoldType = value === "None" ? "" : value;
+    setFoldType(newFoldType);
     
     // Reset fold style if current selection is not valid for new fold type
-    const availableStyles = getAvailableFoldStyles(value);
+    const availableStyles = getAvailableFoldStyles(newFoldType);
     if (!availableStyles.includes(foldStyle)) {
       setFoldStyle("");
     }
+  };
+
+  const handleFoldStyleChange = (value: string) => {
+    const newFoldStyle = value === "None" ? "" : value;
+    setFoldStyle(newFoldStyle);
   };
 
   const getAvailableFoldStyles = (foldType: string) => {
@@ -73,7 +79,7 @@ const PocketDoorsForm = ({ data, onUpdate }: PocketDoorsFormProps) => {
           <Label htmlFor="foldStyle">Fold Style{foldType ? ' *' : ''}</Label>
           <Select 
             value={foldStyle} 
-            onValueChange={setFoldStyle}
+            onValueChange={handleFoldStyleChange}
             disabled={!foldType || availableFoldStyles.length === 0}
           >
             <SelectTrigger>

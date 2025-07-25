@@ -19,13 +19,16 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const [collapsedWalls, setCollapsedWalls] = useState<Set<string>>(new Set());
 
   const handleWallChange = (wallName: string, field: keyof WallSpecification, value: string) => {
+    // Convert "None" to empty string to reset to placeholder state
+    const actualValue = value === "None" ? "" : value;
+    
     const updatedWalls = {
       ...walls,
       walls: {
         ...walls.walls,
         [wallName]: {
           ...walls.walls[wallName],
-          [field]: value,
+          [field]: actualValue,
         },
       },
     };
