@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Search, Download, Edit, Eye, Copy, Trash2, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, Search, Download, Edit, Eye, Copy, Trash2, MoreHorizontal, DollarSign, TrendingUp, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,9 +31,11 @@ const Quotes = () => {
   } = useQuotes();
 
   const statusColors = {
-    Draft: "bg-gray-100 text-gray-800",
-    Pending: "bg-yellow-100 text-yellow-800",
-    Completed: "bg-green-100 text-green-800",
+    draft: "bg-gray-100 text-gray-800",
+    pending: "bg-yellow-100 text-yellow-800",
+    completed: "bg-green-100 text-green-800",
+    won: "bg-blue-100 text-blue-800",
+    rejected: "bg-red-100 text-red-800",
   };
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -528,41 +530,187 @@ const Quotes = () => {
           </div>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-1 pt-3 px-3">
-              <CardDescription className="text-xs">Total Quotes</CardDescription>
-              <CardTitle className="text-xl">{quotes.length}</CardTitle>
-            </CardHeader>
+        {/* Advanced Quote Analytics */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card className="bg-primary text-primary-foreground">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-90">Total Quoted Value</p>
+                  <p className="text-2xl font-bold">
+                    {formatCurrency(quotes.reduce((sum, quote) => {
+                      try {
+                        const totalAmount = quote.price_details?.total ? parseFloat(quote.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
+                        return sum + totalAmount;
+                      } catch (error) {
+                        return sum;
+                      }
+                    }, 0))}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <DollarSign className="w-3 h-3" />
+                    <span className="text-xs opacity-75">All quotes combined</span>
+                  </div>
+                </div>
+                <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                  <DollarSign className="w-4 h-4" />
+                </div>
+              </div>
+            </CardContent>
           </Card>
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-1 pt-3 px-3">
-              <CardDescription className="text-xs">Total Value</CardDescription>
-              <CardTitle className="text-xl">
-                 {formatCurrency(quotes.reduce((sum, quote) => {
-                   try {
-                     const totalAmount = quote.price_details?.total ? parseFloat(quote.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
-                     return sum + totalAmount;
-                   } catch (error) {
-                     console.error('Error processing quote total:', error, quote);
-                     return sum;
-                   }
-                 }, 0))}
-              </CardTitle>
-            </CardHeader>
+
+          <Card className="bg-blue-50 border-blue-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-blue-600">Quotes Won This Month</p>
+                  <p className="text-2xl font-bold text-blue-900">
+                    {(() => {
+                      const currentDate = new Date();
+                      const currentMonth = currentDate.getMonth();
+                      const currentYear = currentDate.getFullYear();
+                      return quotes.filter(q => {
+                        const quoteDate = new Date(q.created_at);
+                        return q.status === "won" && 
+                               quoteDate.getMonth() === currentMonth && 
+                               quoteDate.getFullYear() === currentYear;
+                      }).length;
+                    })()}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <TrendingUp className="w-3 h-3 text-blue-400" />
+                    <span className="text-xs text-blue-500">
+                      Won this year: {quotes.filter(q => {
+                        const quoteDate = new Date(q.created_at);
+                        return q.status === "won" && quoteDate.getFullYear() === new Date().getFullYear();
+                      }).length}
+                    </span>
+                  </div>
+                </div>
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
           </Card>
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-1 pt-3 px-3">
-              <CardDescription className="text-xs">Pending</CardDescription>
-              <CardTitle className="text-xl">{quotes.filter(q => q.status === 'Pending').length}</CardTitle>
-            </CardHeader>
+
+          <Card className="bg-white">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-600">Total Quotes This Month</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {(() => {
+                      const currentDate = new Date();
+                      const currentMonth = currentDate.getMonth();
+                      const currentYear = currentDate.getFullYear();
+                      return quotes.filter(q => {
+                        const quoteDate = new Date(q.created_at);
+                        return quoteDate.getMonth() === currentMonth && quoteDate.getFullYear() === currentYear;
+                      }).length;
+                    })()}
+                  </p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <FileText className="w-3 h-3 text-slate-400" />
+                    <span className="text-xs text-slate-500">
+                      This year: {quotes.filter(q => {
+                        const quoteDate = new Date(q.created_at);
+                        return quoteDate.getFullYear() === new Date().getFullYear();
+                      }).length}
+                    </span>
+                  </div>
+                </div>
+                <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <FileText className="w-4 h-4 text-slate-600" />
+                </div>
+              </div>
+            </CardContent>
           </Card>
-          <Card className="border-0 shadow-sm">
-            <CardHeader className="pb-1 pt-3 px-3">
-              <CardDescription className="text-xs">Completed</CardDescription>
-              <CardTitle className="text-xl">{quotes.filter(q => q.status === 'Completed').length}</CardTitle>
-            </CardHeader>
+
+          <Card className="bg-white">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-600">Avg Quote Value</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {(() => {
+                      const totalValue = quotes.reduce((sum, quote) => {
+                        try {
+                          const totalAmount = quote.price_details?.total ? parseFloat(quote.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
+                          return sum + totalAmount;
+                        } catch (error) {
+                          return sum;
+                        }
+                      }, 0);
+                      const avgValue = quotes.length > 0 ? totalValue / quotes.length : 0;
+                      return formatCurrency(avgValue);
+                    })()}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Conversion: {(() => {
+                      const finalizedQuotes = quotes.filter(q => ['won', 'rejected'].includes(q.status));
+                      const wonQuotes = quotes.filter(q => q.status === "won");
+                      const conversionRate = finalizedQuotes.length > 0 ? (wonQuotes.length / finalizedQuotes.length) * 100 : 0;
+                      return conversionRate.toFixed(1);
+                    })()}%
+                  </p>
+                </div>
+                <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-slate-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Won/Rejected Stats Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <Card className="bg-green-50 border-green-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-green-600">Won Quotes</p>
+                  <p className="text-2xl font-bold text-green-900">{quotes.filter(q => q.status === "won").length}</p>
+                  <p className="text-xs text-green-500 mt-1">
+                    Total value: {formatCurrency(quotes.filter(q => q.status === "won").reduce((sum, q) => {
+                      try {
+                        const totalAmount = q.price_details?.total ? parseFloat(q.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
+                        return sum + totalAmount;
+                      } catch (error) {
+                        return sum;
+                      }
+                    }, 0))}
+                  </p>
+                </div>
+                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-green-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-red-50 border-red-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-red-600">Rejected Quotes</p>
+                  <p className="text-2xl font-bold text-red-900">{quotes.filter(q => q.status === "rejected").length}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    Total value: {formatCurrency(quotes.filter(q => q.status === "rejected").reduce((sum, q) => {
+                      try {
+                        const totalAmount = q.price_details?.total ? parseFloat(q.price_details.total.replace(/[^0-9.-]+/g,"")) : 0;
+                        return sum + totalAmount;
+                      } catch (error) {
+                        return sum;
+                      }
+                    }, 0))}
+                  </p>
+                </div>
+                <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-red-600" />
+                </div>
+              </div>
+            </CardContent>
           </Card>
         </div>
 
@@ -583,9 +731,11 @@ const Quotes = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="Draft">Draft</SelectItem>
-              <SelectItem value="Pending">Pending</SelectItem>
-              <SelectItem value="Completed">Completed</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="won">Won</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -637,9 +787,11 @@ const Quotes = () => {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-background border shadow-lg z-50">
-                              <SelectItem value="Draft">Draft</SelectItem>
-                              <SelectItem value="Pending">Pending</SelectItem>
-                              <SelectItem value="Completed">Completed</SelectItem>
+                              <SelectItem value="draft">Draft</SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="won">Won</SelectItem>
+                              <SelectItem value="rejected">Rejected</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>
