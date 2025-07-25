@@ -258,7 +258,6 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
         <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
           <div className="flex h-12 items-center justify-between px-4">
             <div className="flex items-center gap-4">
-              <SidebarTrigger />
               <Button
                 variant="ghost"
                 size="sm"
@@ -349,38 +348,49 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
           </SidebarContent>
         </Sidebar>
 
-        {/* Main Content Area */}
-        <SidebarInset className="flex-1 flex flex-col">
-          {/* Content Container with 20% margins */}
-          <div className="flex-1 flex justify-center px-[10%]">
-            <div className="w-full max-w-6xl h-[calc(100vh-3rem)] overflow-y-auto p-6">
-
-              {activeSection === "contact" && (
-                <ContactInfoForm data={contactInfo} onUpdate={setContactInfo} />
-              )}
-              {activeSection === "job" && (
-                <JobDetailsForm data={jobDetails} onUpdate={setJobDetails} />
-              )}
-              {activeSection === "walls" && (
-                <WallSpecificationForm walls={walls} onUpdate={setWalls} />
-              )}
-              {activeSection === "support" && (
-                <SupportStructureForm data={supportStructure} onUpdate={setSupportStructure} />
-              )}
-              {activeSection === "delivery" && (
-                <DeliveryLaborForm data={deliveryLabor} onUpdate={setDeliveryLabor} />
-              )}
-              {activeSection === "pricing" && (
-                <PricingForm 
-                  data={pricing} 
-                  onUpdate={setPricing} 
-                  onGenerate={handleGenerate}
-                  quoteData={allQuoteData}
-                />
-              )}
+          {/* Main Content Area */}
+          <SidebarInset className="flex-1 flex flex-col">
+            {/* Content Container with 20% margins and more top spacing */}
+            <div className="flex-1 flex justify-center px-[10%] pt-8">
+              <div className="w-full max-w-6xl">
+                {activeSection === "contact" && (
+                  <div className="bg-muted/30 rounded-lg p-6 border">
+                    <ContactInfoForm data={contactInfo} onUpdate={setContactInfo} />
+                  </div>
+                )}
+                {activeSection === "job" && (
+                  <div className="bg-muted/30 rounded-lg p-6 border">
+                    <JobDetailsForm data={jobDetails} onUpdate={setJobDetails} />
+                  </div>
+                )}
+                {activeSection === "walls" && (
+                  <div className="bg-muted/30 rounded-lg p-6 border h-[calc(100vh-8rem)] overflow-y-auto">
+                    <WallSpecificationForm walls={walls} onUpdate={setWalls} />
+                  </div>
+                )}
+                {activeSection === "support" && (
+                  <div className="bg-muted/30 rounded-lg p-6 border">
+                    <SupportStructureForm data={supportStructure} onUpdate={setSupportStructure} />
+                  </div>
+                )}
+                {activeSection === "delivery" && (
+                  <div className="bg-muted/30 rounded-lg p-6 border">
+                    <DeliveryLaborForm data={deliveryLabor} onUpdate={setDeliveryLabor} />
+                  </div>
+                )}
+                {activeSection === "pricing" && (
+                  <div className="bg-muted/30 rounded-lg p-6 border">
+                    <PricingForm 
+                      data={pricing} 
+                      onUpdate={setPricing} 
+                      onGenerate={handleGenerate}
+                      quoteData={allQuoteData}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </SidebarInset>
+          </SidebarInset>
         </div>
       </div>
     </SidebarProvider>
