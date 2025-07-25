@@ -32,6 +32,8 @@ import { AppSidebar } from "./AppSidebar";
 import { MemberManagement } from "./MemberManagement";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useQuotes } from "@/hooks/useQuotes";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Quote {
   id: string;
@@ -43,11 +45,12 @@ interface Quote {
 
 interface DashboardProps {
   user: string;
+  userId: string;
   onLogout: () => void;
   onEditQuote: (quoteName: string) => void;
 }
 
-const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
+const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
   const [showMemberManagement, setShowMemberManagement] = useState(false);
   
@@ -62,6 +65,7 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
     removeMember,
     updateMemberRole
   } = useOrganizations();
+  const { profile } = useUserProfile(userId);
 
   const handleCreateQuote = async (quoteName: string) => {
     try {
@@ -106,8 +110,7 @@ const Dashboard = ({ user, onLogout, onEditQuote }: DashboardProps) => {
                       <User className="w-4 h-4" />
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">{user}</p>
-                      <p className="text-xs text-slate-500">{currentOrganization?.name || "Personal Workspace"}</p>
+                      <p className="text-sm font-medium">{profile?.full_name || user}</p>
                     </div>
                   </div>
                 </div>

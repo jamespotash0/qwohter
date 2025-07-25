@@ -59,6 +59,7 @@ const DashboardPage = () => {
     return (
       <Dashboard 
         user={user.email || ""} 
+        userId={user.id}
         onLogout={handleLogout} 
         onEditQuote={handleEditQuote}
       />
