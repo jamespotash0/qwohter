@@ -1,9 +1,20 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Contact, FileText, Square, Building, Truck, DollarSign } from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger
+} from "@/components/ui/sidebar";
 import ContactInfoForm from "./ContactInfoForm";
 import JobDetailsForm from "./JobDetailsForm";
 import WallSpecificationForm from "./WallSpecificationForm";
@@ -26,7 +37,7 @@ interface QuoteCreatorProps {
 
 const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNameChange, existingQuote }: QuoteCreatorProps) => {
   const { createQuote, updateQuote } = useQuotes();
-  const [activeTab, setActiveTab] = useState("contact");
+  const [activeSection, setActiveSection] = useState("contact");
   const [editingQuoteName, setEditingQuoteName] = useState(false);
   const [localQuoteName, setLocalQuoteName] = useState(quoteName);
 
@@ -160,17 +171,17 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   const handleGenerate = async () => {
     if (!isContactInfoValid()) {
       toast.error("Please complete all Contact Information fields");
-      setActiveTab("contact");
+      setActiveSection("contact");
       return;
     }
     if (!isJobDetailsValid()) {
       toast.error("Please complete all Job Details fields");
-      setActiveTab("job");
+      setActiveSection("job");
       return;
     }
     if (!isPricingValid()) {
       toast.error("Please complete all Pricing fields");
-      setActiveTab("pricing");
+      setActiveSection("pricing");
       return;
     }
 
@@ -231,133 +242,140 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
     pricing
   };
 
-  const tabs = [
-    { id: "contact", label: "Contact Info", isValid: isContactInfoValid() },
-    { id: "job", label: "Job Details", isValid: isJobDetailsValid() },
-    { id: "walls", label: "Wall Specs", isValid: isWallSpecValid() },
-    { id: "support", label: "Support Structure", isValid: isSupportStructureValid() },
-    { id: "delivery", label: "Delivery & Labor", isValid: isDeliveryLaborValid() },
-    { id: "pricing", label: "Pricing", isValid: isPricingValid() }
+  const sections = [
+    { id: "contact", label: "Contact Info", icon: Contact, isValid: isContactInfoValid() },
+    { id: "job", label: "Job Details", icon: FileText, isValid: isJobDetailsValid() },
+    { id: "walls", label: "Wall Specs", icon: Square, isValid: isWallSpecValid() },
+    { id: "support", label: "Support Structure", icon: Building, isValid: isSupportStructureValid() },
+    { id: "delivery", label: "Delivery & Labor", icon: Truck, isValid: isDeliveryLaborValid() },
+    { id: "pricing", label: "Pricing", icon: DollarSign, isValid: isPricingValid() }
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Compact Header */}
-      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="flex h-12 items-center justify-between px-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBackToDashboard}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Back
-          </Button>
-          
-          <div className="flex items-center gap-4">
-            {/* Compact Quote Name */}
-            <div className="flex items-center gap-2">
-              {editingQuoteName ? (
-                <QuoteNameInput
-                  value={localQuoteName}
-                  maxChars={50}
-                  onChange={(e) => setLocalQuoteName(e.target.value)}
-                  onSave={() => {
-                    setEditingQuoteName(false);
-                    if (onQuoteNameChange && localQuoteName.trim()) {
-                      onQuoteNameChange(localQuoteName.trim());
-                      setContactInfo(prev => ({...prev, project_name: localQuoteName.trim()}));
-                    }
-                  }}
-                />
-              ) : (
-                <h1
-                  className="text-lg font-semibold cursor-pointer hover:text-muted-foreground transition-colors"
-                  onClick={() => setEditingQuoteName(true)}
+    <SidebarProvider>
+      <div className="min-h-screen w-full flex bg-background">
+        {/* Quote Navigation Sidebar */}
+        <Sidebar className="w-64 border-r">
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {sections.map((section) => (
+                    <SidebarMenuItem key={section.id}>
+                      <SidebarMenuButton
+                        onClick={() => setActiveSection(section.id)}
+                        isActive={activeSection === section.id}
+                        className="w-full justify-start gap-3 py-3"
+                      >
+                        <section.icon className="w-4 h-4" />
+                        <span className="flex-1">{section.label}</span>
+                        {section.isValid && (
+                          <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        )}
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+        </Sidebar>
+
+        {/* Main Content Area */}
+        <SidebarInset className="flex-1 flex flex-col">
+          {/* Header */}
+          <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+            <div className="flex h-12 items-center justify-between px-4">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger className="lg:hidden" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onBackToDashboard}
+                  className="text-muted-foreground hover:text-foreground"
                 >
-                  {localQuoteName}
-                </h1>
-              )}
-            </div>
-
-            {/* Compact Status */}
-            <Select value={quoteStatus} onValueChange={setQuoteStatus}>
-              <SelectTrigger className="w-28 h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Draft">Draft</SelectItem>
-                <SelectItem value="Pending">Pending</SelectItem>
-                <SelectItem value="Completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <div className="text-xs text-muted-foreground">{user}</div>
-            <Button variant="outline" size="sm" onClick={onLogout}>
-              Logout
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex flex-col h-[calc(100vh-3rem)]">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
-          {/* Compact Sticky Tab Navigation */}
-          <div className="sticky top-12 z-40 bg-background/95 backdrop-blur border-b">
-            <TabsList className="w-full h-10 grid grid-cols-6 p-0 bg-transparent">
-              {tabs.map((tab) => (
-                <TabsTrigger 
-                  key={tab.id}
-                  value={tab.id} 
-                  className="h-10 text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground relative"
-                >
-                  <span>{tab.label}</span>
-                  {tab.isValid && (
-                    <CheckCircle2 className="w-3 h-3 ml-1 text-green-500 data-[state=active]:text-green-200" />
+                  <ArrowLeft className="w-4 h-4 mr-1" />
+                  Back
+                </Button>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                {/* Quote Name */}
+                <div className="flex items-center gap-2">
+                  {editingQuoteName ? (
+                    <QuoteNameInput
+                      value={localQuoteName}
+                      maxChars={50}
+                      onChange={(e) => setLocalQuoteName(e.target.value)}
+                      onSave={() => {
+                        setEditingQuoteName(false);
+                        if (onQuoteNameChange && localQuoteName.trim()) {
+                          onQuoteNameChange(localQuoteName.trim());
+                          setContactInfo(prev => ({...prev, project_name: localQuoteName.trim()}));
+                        }
+                      }}
+                    />
+                  ) : (
+                    <h1
+                      className="text-lg font-semibold cursor-pointer hover:text-muted-foreground transition-colors"
+                      onClick={() => setEditingQuoteName(true)}
+                    >
+                      {localQuoteName}
+                    </h1>
                   )}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+                </div>
+
+                {/* Status */}
+                <Select value={quoteStatus} onValueChange={setQuoteStatus}>
+                  <SelectTrigger className="w-28 h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Draft">Draft</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <div className="text-xs text-muted-foreground">{user}</div>
+                <Button variant="outline" size="sm" onClick={onLogout}>
+                  Logout
+                </Button>
+              </div>
+            </div>
           </div>
 
-          {/* Optimized Content Container */}
-          <div className="flex-1 overflow-hidden">
-            <div className="h-full overflow-y-auto p-4">
-              <TabsContent value="contact" className="mt-0 h-full">
+          {/* Content Container with 20% margins */}
+          <div className="flex-1 flex justify-center px-[10%]">
+            <div className="w-full max-w-6xl h-[calc(100vh-3rem)] overflow-y-auto p-6">
+              {activeSection === "contact" && (
                 <ContactInfoForm data={contactInfo} onUpdate={setContactInfo} />
-              </TabsContent>
-
-              <TabsContent value="job" className="mt-0 h-full">
+              )}
+              {activeSection === "job" && (
                 <JobDetailsForm data={jobDetails} onUpdate={setJobDetails} />
-              </TabsContent>
-
-              <TabsContent value="walls" className="mt-0 h-full">
+              )}
+              {activeSection === "walls" && (
                 <WallSpecificationForm walls={walls} onUpdate={setWalls} />
-              </TabsContent>
-
-              <TabsContent value="support" className="mt-0 h-full">
+              )}
+              {activeSection === "support" && (
                 <SupportStructureForm data={supportStructure} onUpdate={setSupportStructure} />
-              </TabsContent>
-
-              <TabsContent value="delivery" className="mt-0 h-full">
+              )}
+              {activeSection === "delivery" && (
                 <DeliveryLaborForm data={deliveryLabor} onUpdate={setDeliveryLabor} />
-              </TabsContent>
-
-              <TabsContent value="pricing" className="mt-0 h-full">
+              )}
+              {activeSection === "pricing" && (
                 <PricingForm 
                   data={pricing} 
                   onUpdate={setPricing} 
                   onGenerate={handleGenerate}
                   quoteData={allQuoteData}
                 />
-              </TabsContent>
+              )}
             </div>
           </div>
-        </Tabs>
+        </SidebarInset>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 
