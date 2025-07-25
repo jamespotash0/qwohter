@@ -119,7 +119,7 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
               className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
               onClick={() => handleSuggestionClick(suggestion)}
             >
-              <div className="text-sm">{suggestion.place_name}</div>
+              <div className="text-sm">{suggestion.place_name.replace(', United States', '')}</div>
             </div>
           ))}
         </div>

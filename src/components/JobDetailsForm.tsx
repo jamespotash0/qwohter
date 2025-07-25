@@ -81,7 +81,7 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
         
         <div className="border-t pt-3">
           <h3 className="text-lg font-medium mb-3">Billed To</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="space-y-1">
               <Label htmlFor="billedName" className="text-sm font-medium">Name *</Label>
               <Input
@@ -106,7 +106,7 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
               />
             </div>
             
-            <div className="space-y-1">
+            <div className="space-y-1 md:col-span-2">
               <Label htmlFor="billedAddress" className="text-sm font-medium">Client Address *</Label>
               <MapboxInput
                 label=""
