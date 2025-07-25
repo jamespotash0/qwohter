@@ -14,6 +14,9 @@ export interface WallSpecification {
   panelDesign: string;
   panelSkin: string;
   stcRating: string;
+  passDoorPanels: string;
+  panelFinishCategory: string;
+  panelFinishSpecificItem: string;
   verticalSealants: string;
   bottomSeals: string;
   topSeals: string;

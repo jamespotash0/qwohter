@@ -40,6 +40,9 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         panelDesign: "",
         panelSkin: "",
         stcRating: "",
+        passDoorPanels: "",
+        panelFinishCategory: "",
+        panelFinishSpecificItem: "",
         trackType: "",
         trackSystem: "",
         verticalSealants: "",
@@ -105,6 +108,14 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       updatedWalls.walls[wallName] = {
         ...updatedWalls.walls[wallName],
         trackSystem: "",
+      };
+    }
+    
+    if (field === "panelFinishCategory") {
+      // Reset specific item when category changes
+      updatedWalls.walls[wallName] = {
+        ...updatedWalls.walls[wallName],
+        panelFinishSpecificItem: "",
       };
     }
     
@@ -219,6 +230,32 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     }
   };
 
+  const getPanelFinishSpecificItems = (category: string): string[] => {
+    // Placeholder function - will be populated when specific items are provided
+    switch (category) {
+      case "Vinyl":
+        return ["Vinyl Option 1", "Vinyl Option 2"]; // Placeholder
+      case "Carpet":
+        return ["Carpet Option 1", "Carpet Option 2"]; // Placeholder
+      case "Fabric":
+        return ["Fabric Option 1", "Fabric Option 2"]; // Placeholder
+      case "Wood Veneer":
+        return ["Wood Veneer Option 1", "Wood Veneer Option 2"]; // Placeholder
+      case "High Pressure Laminate (HPL)":
+        return ["HPL Option 1", "HPL Option 2"]; // Placeholder
+      case "Full Height Marker (Tack) Board":
+        return ["Marker Board Option 1", "Marker Board Option 2"]; // Placeholder
+      case "Uncovered":
+        return ["Uncovered Option 1"]; // Placeholder
+      case "C.O.M. Material":
+        return ["C.O.M. Option 1", "C.O.M. Option 2"]; // Placeholder
+      case "Field Painting by Others":
+        return ["Field Painting Option 1"]; // Placeholder
+      default:
+        return [];
+    }
+  };
+
   const removeWall = (wallName: string) => {
     const { [wallName]: removedWall, ...remainingWalls } = walls.walls;
     onUpdate({
@@ -245,6 +282,9 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       panelSkin: "",
       panelDesign: "",
       stcRating: "",
+      passDoorPanels: "",
+      panelFinishCategory: "",
+      panelFinishSpecificItem: "",
       verticalSealants: "",
       bottomSeals: "",
       topSeals: "",
@@ -280,6 +320,8 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const wallSystemTypes = ["Operable Wall", "Glass Wall", "Accordion Partitions", "Unispan Support", "FlexTact"];
   const panelConfigurations = ["Individual Panels", "Hinged-Paired Panels", "Continuously-Hinged Panels"];
   const panelDesigns = ["Trimless", "Cap Trimmed"];
+  const passDoorOptions = ["Single", "Double Pass Doors"];
+  const panelFinishCategories = ["Vinyl", "Carpet", "Fabric", "Wood Veneer", "High Pressure Laminate (HPL)", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
   const verticalSealants = ["Tongue-and-Groove"];
   const bottomSeals = ["Retractable", "Automatic", "Adjustable"];
   const topSeals = ["Fixed Top Seals", "Adjustable Top Seals", "No Top Seals"];
@@ -609,6 +651,70 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                             {finalSeal.map((seal) => (
                               <SelectItem key={seal} value={seal}>
                                 {seal}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Pass Door Panels Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Pass Door Panels</Label>
+                        <Select
+                          value={wall.passDoorPanels}
+                          onValueChange={(value) => handleWallChange(wallName, "passDoorPanels", value)}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select pass door panels" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            {passDoorOptions.map((option) => (
+                              <SelectItem key={option} value={option}>
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Panel Finish Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Panel Finish Category</Label>
+                        <Select
+                          value={wall.panelFinishCategory}
+                          onValueChange={(value) => handleWallChange(wallName, "panelFinishCategory", value)}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select panel finish category" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            {panelFinishCategories.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Panel Finish Specific Item</Label>
+                        <Select
+                          value={wall.panelFinishSpecificItem}
+                          onValueChange={(value) => handleWallChange(wallName, "panelFinishSpecificItem", value)}
+                          disabled={!wall.panelFinishCategory}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select specific item" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            {getPanelFinishSpecificItems(wall.panelFinishCategory).map((item) => (
+                              <SelectItem key={item} value={item}>
+                                {item}
                               </SelectItem>
                             ))}
                           </SelectContent>
