@@ -63,7 +63,10 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
     createOrganization,
     inviteMember,
     removeMember,
-    updateMemberRole
+    updateMemberRole,
+    approveMember,
+    rejectMember,
+    refreshOrganizations
   } = useOrganizations();
   const { profile } = useUserProfile(userId);
 
@@ -218,6 +221,9 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
                 onInviteMember={(email, role) => inviteMember(currentOrganization.id, email, role)}
                 onRemoveMember={removeMember}
                 onUpdateRole={updateMemberRole}
+                onApproveMember={approveMember}
+                onRejectMember={rejectMember}
+                onRefresh={refreshOrganizations}
               />
             )}
 

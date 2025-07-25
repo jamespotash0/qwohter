@@ -14,6 +14,7 @@ export interface OrganizationMember {
   id: string;
   organization_id: string;
   role: 'owner' | 'admin' | 'member';
+  status: 'pending' | 'active' | 'suspended';
   invited_by?: string;
   joined_at: string;
   email: string;
@@ -73,7 +74,7 @@ export const useOrganizations = () => {
       // Fetch members from profiles table
       const { data: membersData, error: membersError } = await supabase
         .from('profiles')
-        .select('id, email, full_name, role, invited_by, joined_at, organization_id')
+        .select('id, email, full_name, role, status, invited_by, joined_at, organization_id')
         .eq('organization_id', organizationId);
 
       if (membersError) throw membersError;
@@ -90,6 +91,7 @@ export const useOrganizations = () => {
           id: profile.id,
           organization_id: profile.organization_id,
           role: (profile.role as 'owner' | 'admin' | 'member') || 'member',
+          status: (profile.status as 'pending' | 'active' | 'suspended') || 'active',
           invited_by: profile.invited_by || null,
           joined_at: profile.joined_at || new Date().toISOString(),
           email: profile.email || '',
@@ -113,11 +115,13 @@ export const useOrganizations = () => {
       if (!user) throw new Error('User not authenticated');
 
       // Create organization
+      const orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
         .insert({
           name,
-          created_by: user.id
+          created_by: user.id,
+          organization_code: orgCode
         })
         .select()
         .single();
@@ -270,6 +274,64 @@ export const useOrganizations = () => {
     }
   };
 
+  const approveMember = async (memberId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('approve_member', {
+        member_id: memberId
+      });
+
+      if (error) throw error;
+
+      // Refresh members list
+      if (currentOrganization) {
+        await fetchMembers(currentOrganization.id);
+      }
+      
+      toast({
+        title: "Member approved",
+        description: "Member has been approved and can now access the organization.",
+      });
+      
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Error approving member",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const rejectMember = async (memberId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('reject_member', {
+        member_id: memberId
+      });
+
+      if (error) throw error;
+
+      // Refresh members list
+      if (currentOrganization) {
+        await fetchMembers(currentOrganization.id);
+      }
+      
+      toast({
+        title: "Member rejected",
+        description: "Member request has been rejected.",
+      });
+      
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Error rejecting member",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   useEffect(() => {
     fetchUserOrganization();
   }, []);
@@ -289,6 +351,8 @@ export const useOrganizations = () => {
     inviteMember,
     removeMember,
     updateMemberRole,
+    approveMember,
+    rejectMember,
     refreshOrganizations: fetchUserOrganization
   };
 };

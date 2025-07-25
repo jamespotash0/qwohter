@@ -20,6 +20,7 @@ export type Database = {
           created_by: string
           id: string
           name: string
+          organization_code: string
           updated_at: string
         }
         Insert: {
@@ -27,6 +28,7 @@ export type Database = {
           created_by: string
           id?: string
           name: string
+          organization_code: string
           updated_at?: string
         }
         Update: {
@@ -34,6 +36,7 @@ export type Database = {
           created_by?: string
           id?: string
           name?: string
+          organization_code?: string
           updated_at?: string
         }
         Relationships: []
@@ -48,6 +51,7 @@ export type Database = {
           joined_at: string
           organization_id: string
           role: string
+          status: string
           updated_at: string
         }
         Insert: {
@@ -59,6 +63,7 @@ export type Database = {
           joined_at?: string
           organization_id: string
           role?: string
+          status?: string
           updated_at?: string
         }
         Update: {
@@ -70,6 +75,7 @@ export type Database = {
           joined_at?: string
           organization_id?: string
           role?: string
+          status?: string
           updated_at?: string
         }
         Relationships: [
@@ -158,6 +164,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_member: {
+        Args: { member_id: string }
+        Returns: boolean
+      }
       get_current_user_organization: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -165,6 +175,10 @@ export type Database = {
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      reject_member: {
+        Args: { member_id: string }
+        Returns: boolean
       }
       user_has_admin_role_in_org: {
         Args: { org_id: string }
