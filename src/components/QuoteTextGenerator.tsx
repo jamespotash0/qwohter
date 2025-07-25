@@ -10,6 +10,10 @@ interface QuoteData {
       [wallName: string]: WallSpecification;
     };
   };
+  pocket_doors?: {
+    foldType?: string;
+    foldStyle?: string;
+  };
   support_structure?: any;
   delivery_details?: any;
   labor_details?: any;
@@ -260,6 +264,13 @@ export const generateQuoteText = (data: QuoteData): string => {
   </div>
       
   <div style="height: 120px;"></div>
+
+  ${data.pocket_doors?.foldType && data.pocket_doors?.foldStyle ? `
+  <div class="pocket-doors-section" style="line-height: 1.15;">
+    <h2 class="section-header">POCKET DOORS:</h2>
+    <strong>${data.pocket_doors.foldType}</strong> doors with an <strong>${data.pocket_doors.foldStyle}</strong> style will be used to house the panels in the stack, offering a space-efficient and acoustically enhanced storage solution.
+  </div>
+  ` : ''}
 
   <div class="support-section" style="line-height: 1.15;">
     <h2 class="section-header">SUPPORT STRUCTURE (HEADER):</h2>

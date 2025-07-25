@@ -13,6 +13,7 @@ export interface Quote {
   quote_details: any;
   job_details: any;
   wall_details: WallDetails;
+  pocket_doors?: any;
   price_details: any;
   support_structure: any;
   delivery_details: any;
@@ -125,6 +126,7 @@ export const useQuotes = () => {
             date: quoteData.jobDetails.date
           },
           wall_details: quoteData.walls || {},
+          pocket_doors: quoteData.pocketDoors || {},
           price_details: {
             base_price: quoteData.pricing.basePrice,
             freight: quoteData.pricing.freight,

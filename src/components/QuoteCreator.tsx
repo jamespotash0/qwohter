@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, CheckCircle2, Contact, FileText, Square, Building, Truck, DollarSign } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Contact, FileText, Square, Building, Truck, DollarSign, DoorOpen } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -18,6 +18,7 @@ import {
 import ContactInfoForm from "./ContactInfoForm";
 import JobDetailsForm from "./JobDetailsForm";
 import WallSpecificationForm from "./WallSpecificationForm";
+import PocketDoorsForm from "./PocketDoorsForm";
 import SupportStructureForm from "./SupportStructureForm";
 import DeliveryLaborForm from "./DeliveryLaborForm";
 import PricingForm from "./PricingForm";
@@ -100,6 +101,10 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   });
 
   const [walls, setWalls] = useState<WallDetails>(migrateWallDetails(existingQuote?.wall_details));
+  const [pocketDoors, setPocketDoors] = useState({
+    foldType: existingQuote?.pocket_doors?.foldType || "",
+    foldStyle: existingQuote?.pocket_doors?.foldStyle || ""
+  });
   const [supportStructure, setSupportStructure] = useState({
     mountingTrack: existingQuote?.support_structure?.mountingTrack || ""
   });
@@ -157,6 +162,10 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
     return Object.keys(walls.walls).length > 0;
   };
 
+  const isPocketDoorsValid = () => {
+    return pocketDoors.foldType !== "" && pocketDoors.foldStyle !== "";
+  };
+
   const isSupportStructureValid = () => {
     return supportStructure.mountingTrack !== "";
   };
@@ -199,6 +208,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
             date: jobDetails.date
           },
           wall_details: walls,
+          pocket_doors: pocketDoors,
           price_details: {
             base_price: pricing.basePrice,
             freight: pricing.freight,
@@ -220,6 +230,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
           contactInfo,
           jobDetails,
           walls,
+          pocketDoors,
           supportStructure,
           deliveryLabor,
           pricing,
@@ -237,6 +248,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
     contactInfo,
     jobDetails,
     walls,
+    pocketDoors,
     supportStructure,
     deliveryLabor,
     pricing
@@ -246,6 +258,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
     { id: "contact", label: "Contact Info", icon: Contact, isValid: isContactInfoValid() },
     { id: "job", label: "Job Details", icon: FileText, isValid: isJobDetailsValid() },
     { id: "walls", label: "Wall Specs", icon: Square, isValid: isWallSpecValid() },
+    { id: "pockets", label: "Pocket Doors", icon: DoorOpen, isValid: isPocketDoorsValid() },
     { id: "support", label: "Support Structure", icon: Building, isValid: isSupportStructureValid() },
     { id: "delivery", label: "Delivery & Labor", icon: Truck, isValid: isDeliveryLaborValid() },
     { id: "pricing", label: "Pricing", icon: DollarSign, isValid: isPricingValid() }
@@ -368,6 +381,11 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
                 {activeSection === "walls" && (
                   <div className="bg-muted/30 rounded-lg p-6 border h-[calc(100vh-8rem)] overflow-y-auto">
                     <WallSpecificationForm walls={walls} onUpdate={setWalls} />
+                  </div>
+                )}
+                {activeSection === "pockets" && (
+                  <div className="bg-muted/30 rounded-lg p-6 border">
+                    <PocketDoorsForm data={pocketDoors} onUpdate={setPocketDoors} />
                   </div>
                 )}
                 {activeSection === "support" && (

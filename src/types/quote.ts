@@ -33,6 +33,11 @@ export interface WallDetails {
   };
 }
 
+export interface PocketDoorsData {
+  foldType: string;
+  foldStyle: string;
+}
+
 export interface PricingData {
   basePrice: number;
   freight: number;
