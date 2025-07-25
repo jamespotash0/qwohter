@@ -34,15 +34,15 @@ const Auth = () => {
     };
     checkUser();
 
-    // Listen for auth changes
+    // Listen for auth changes - only redirect if not in signup flow
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
+      if (session && step === "auth") {
         navigate("/dashboard");
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, step]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
