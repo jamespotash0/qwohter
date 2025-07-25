@@ -18,7 +18,8 @@ const Auth = () => {
   const [orgName, setOrgName] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<"auth" | "profile" | "organization">("auth");
+  const [step, setStep] = useState<"auth" | "verify-otp" | "profile" | "organization">("auth");
+  const [otpCode, setOtpCode] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -50,24 +51,20 @@ const Auth = () => {
     setLoading(true);
     try {
       if (isSignUp) {
-        const { data, error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signInWithOtp({
           email,
-          password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth`
+            shouldCreateUser: true
           }
         });
         
         if (error) throw error;
         
-        if (data.user) {
-          setUserId(data.user.id);
-          setStep("profile");
-          toast({
-            title: "Account created!",
-            description: "Please complete your profile setup.",
-          });
-        }
+        setStep("verify-otp");
+        toast({
+          title: "Verification code sent!",
+          description: "Please check your email and enter the 6-digit code.",
+        });
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -84,6 +81,39 @@ const Auth = () => {
     } catch (error: any) {
       toast({
         title: "Authentication Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOtpVerification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpCode || !email) return;
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token: otpCode,
+        type: 'email'
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        setUserId(data.user.id);
+        setStep("profile");
+        toast({
+          title: "Email verified!",
+          description: "Please complete your profile setup.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Verification Error",
         description: error.message,
         variant: "destructive",
       });
@@ -227,6 +257,7 @@ const Auth = () => {
           <CardHeader className="text-center space-y-4 pb-8">
             <CardTitle className="text-2xl font-bold text-slate-900">
               {step === "auth" && (isSignUp ? "Create Account" : "Welcome")}
+              {step === "verify-otp" && "Verify Your Email"}
               {step === "profile" && "Complete Your Profile"}
               {step === "organization" && "Organization Setup"}
             </CardTitle>
@@ -235,6 +266,7 @@ const Auth = () => {
                 ? "Create your account to start managing quotes"
                 : "Sign in to access your quote management system"
               )}
+              {step === "verify-otp" && "Enter the 6-digit code sent to your email"}
               {step === "profile" && "Please provide your full name to continue"}
               {step === "organization" && "Join an existing organization or create a new one"}
             </CardDescription>
@@ -303,6 +335,50 @@ const Auth = () => {
                   </button>
                 </div>
               </>
+            )}
+
+            {step === "verify-otp" && (
+              <form onSubmit={handleOtpVerification} className="space-y-6">
+                <div className="space-y-3">
+                  <Label htmlFor="otpCode" className="text-slate-700 font-medium text-sm">
+                    Verification Code
+                  </Label>
+                  <Input 
+                    id="otpCode" 
+                    type="text" 
+                    value={otpCode} 
+                    onChange={(e) => setOtpCode(e.target.value)} 
+                    placeholder="Enter 6-digit code" 
+                    maxLength={6}
+                    required 
+                    className="bg-slate-50 border-slate-200 h-12 text-center text-lg tracking-widest" 
+                  />
+                  <p className="text-sm text-slate-500 text-center">
+                    Code sent to {email}
+                  </p>
+                </div>
+
+                <Button 
+                  type="submit" 
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold h-12"
+                  disabled={loading || otpCode.length !== 6}
+                >
+                  {loading ? "Verifying..." : "Verify Email"}
+                </Button>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep("auth");
+                      setOtpCode("");
+                    }}
+                    className="text-primary hover:text-primary/80 text-sm font-medium"
+                  >
+                    Back to sign up
+                  </button>
+                </div>
+              </form>
             )}
 
             {step === "profile" && (
