@@ -56,17 +56,38 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
     }
 
     try {
+      console.log('Making Mapbox API call for:', inputValue);
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(inputValue)}.json?access_token=${mapboxToken}&types=address,poi&limit=5`
       );
-      const data = await response.json();
       
-      if (data.features) {
+      console.log('Mapbox API response status:', response.status);
+      
+      if (!response.ok) {
+        console.error('Mapbox API error:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Mapbox API error details:', errorText);
+        setSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+      
+      const data = await response.json();
+      console.log('Mapbox API response data:', data);
+      
+      if (data.features && data.features.length > 0) {
         setSuggestions(data.features);
         setShowSuggestions(true);
+        console.log('Found', data.features.length, 'suggestions');
+      } else {
+        console.log('No features found in response');
+        setSuggestions([]);
+        setShowSuggestions(false);
       }
     } catch (error) {
       console.error("Mapbox geocoding error:", error);
+      setSuggestions([]);
+      setShowSuggestions(false);
     }
   };
 
