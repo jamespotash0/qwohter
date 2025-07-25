@@ -267,7 +267,10 @@ export const generateQuoteText = (data: QuoteData): string => {
     We will be using an <strong>${wallEntries[0]?.[1]?.trackSystem || ''} Track System</strong> to suspend the doors from above. This track allows for <strong>Bi-Fold</strong> of the panels when not in use.
   </div>
       
+  <!-- 
   <div style="height: 120px;"></div>
+  -->
+
 
   ${data.pocket_doors?.foldType && data.pocket_doors?.foldStyle ? `
   <div class="pocket-doors-section" style="line-height: 1.15;">
