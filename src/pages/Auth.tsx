@@ -166,6 +166,9 @@ const Auth = () => {
         
         // Create organization using the userId from signup
         const orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+        
+        console.log('Creating organization with userId:', userId);
+        
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
           .insert({
@@ -176,7 +179,12 @@ const Auth = () => {
           .select()
           .single();
 
-        if (orgError) throw orgError;
+        if (orgError) {
+          console.error('Organization creation error:', orgError);
+          throw orgError;
+        }
+
+        console.log('Organization created successfully:', orgData);
 
         // Update profile with organization and set as owner
         const { error: profileError } = await supabase
@@ -188,7 +196,10 @@ const Auth = () => {
           })
           .eq('id', userId);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('Profile update error:', profileError);
+          throw profileError;
+        }
 
         toast({
           title: "Organization created!",
@@ -201,14 +212,27 @@ const Auth = () => {
         
         // Find organization by code (trim whitespace and convert to uppercase)
         const cleanCode = orgCode.trim().toUpperCase();
+        console.log('Searching for organization with code:', cleanCode);
+        
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
           .select('*')
           .eq('organization_code', cleanCode)
           .single();
 
-        if (orgError || !orgData) {
-          throw new Error("Invalid organization code. Please check the code and try again.");
+        console.log('Organization search result:', { orgData, orgError });
+
+        if (orgError) {
+          console.error('Organization search error:', orgError);
+          // Handle specific error cases
+          if (orgError.code === 'PGRST116') {
+            throw new Error("Organization code not found. Please check the code and try again.");
+          }
+          throw new Error("Error searching for organization. Please try again.");
+        }
+
+        if (!orgData) {
+          throw new Error("Organization not found. Please check the code and try again.");
         }
 
         // Update profile with organization as pending member
@@ -221,7 +245,10 @@ const Auth = () => {
           })
           .eq('id', userId);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('Profile update error:', profileError);
+          throw profileError;
+        }
 
         toast({
           title: "Join request sent!",
@@ -231,6 +258,7 @@ const Auth = () => {
         navigate("/dashboard");
       }
     } catch (error: any) {
+      console.error('Organization submit error:', error);
       toast({
         title: "Organization Error",
         description: error.message,
