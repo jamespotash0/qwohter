@@ -188,6 +188,10 @@ export type Database = {
         Args: { org_id: string; required_role: string }
         Returns: boolean
       }
+      get_organization_by_code: {
+        Args: { input_code: string }
+        Returns: { id: string; organization_code: string }[]  // matches the table columns returned
+      }
     }
     Enums: {
       [_ in never]: never
