@@ -74,7 +74,7 @@ const LoginForm = ({
         {/* Footer */}
         <div className="text-center mt-8">
           <p className="text-slate-500 text-sm">
-            © 2024 Contemporary Wall Systems. All rights reserved.
+            © 2024 AiQu. All rights reserved.
           </p>
         </div>
       </div>
