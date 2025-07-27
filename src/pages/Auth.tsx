@@ -213,34 +213,50 @@ const Auth = () => {
         const cleanCode = orgCode.trim().toUpperCase();
         console.log('Searching for organization with code:', cleanCode);
         
+        // const { data: orgData, error: orgError } = await supabase
+        //   .from('organizations')
+        //   .select('*')
+        //   .eq('organization_code', cleanCode)
+        //   .maybeSingle();
+
+        // console.log('Organization search result:', { orgData, orgError });
+
+        // if (orgError) {
+        //   console.error('Organization search error:', orgError);
+        //   // Handle specific error cases
+        //   if (orgError.code === 'PGRST116') {
+        //     throw new Error("Organization code not found. Please check the code and try again.");
+        //   }
+        //   throw new Error("Error searching for organization. Please try again.");
+        // }
+
+        // if (!orgData) {
+        //   throw new Error("Organization not found. Please check the code and try again.");
+        // }
+
         const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .select('*')
-          .eq('organization_code', orgCode)
-          .single();
+          .rpc('get_organization_by_code', { input_code: cleanCode });
 
-        console.log('Organization search result:', { orgData, orgError });
+          console.log('Organization search result:', { orgData, orgError });
 
-        if (orgError) {
-          console.error('Organization search error:', orgError);
-          // Handle specific error cases
-          if (orgError.code === 'PGRST116') {
-            throw new Error("Organization code not found. Please check the code and try again.");
+          if (orgError) {
+            console.error('Organization search error:', orgError);
+            // Handle specific error cases
+            if (orgError.code === 'PGRST116') {
+              throw new Error("Organization code not found. Please check the code and try again.");
+            }
+            throw new Error("Error searching for organization. Please try again.");
           }
-          throw new Error("Error searching for organization. Please try again.");
-        }
 
-        if (!orgData) {
-          throw new Error("Organization not found. Please check the code and try again.");
-        }
-
-        console.log('I am here');
+          if (!orgData) {
+            throw new Error("Organization not found. Please check the code and try again.");
+          }
 
         // Update profile with organization as pending member
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
-            organization_id: orgData.id,
+            organization_id: orgData[0].id,
             role: 'member',
             status: 'pending'
           })
