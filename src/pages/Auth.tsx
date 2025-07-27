@@ -166,7 +166,6 @@ const Auth = () => {
         
         // Create organization using the userId from signup
         const orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-        
         console.log('Creating organization with userId:', userId);
         
         const { data: orgData, error: orgError } = await supabase
@@ -191,7 +190,7 @@ const Auth = () => {
           .from('profiles')
           .update({
             organization_id: orgData.id,
-            role: 'owner',
+            role: 'admin',
             status: 'active'
           })
           .eq('id', userId);
@@ -210,14 +209,14 @@ const Auth = () => {
       } else {
         if (!orgCode) return;
         
-        // Find organization by code (trim whitespace and convert to uppercase)
+       // Find organization by code (trim whitespace and convert to uppercase)
         const cleanCode = orgCode.trim().toUpperCase();
         console.log('Searching for organization with code:', cleanCode);
         
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
           .select('*')
-          .eq('organization_code', cleanCode)
+          .eq('organization_code', orgCode)
           .single();
 
         console.log('Organization search result:', { orgData, orgError });
@@ -234,6 +233,8 @@ const Auth = () => {
         if (!orgData) {
           throw new Error("Organization not found. Please check the code and try again.");
         }
+
+        console.log('I am here');
 
         // Update profile with organization as pending member
         const { error: profileError } = await supabase
@@ -281,7 +282,7 @@ const Auth = () => {
             WallQu
           </h1>
           <p className="text-slate-600 text-base">
-            Professional Operable Wall Tool
+            Professional Quote Tool
           </p>
         </div>
 
