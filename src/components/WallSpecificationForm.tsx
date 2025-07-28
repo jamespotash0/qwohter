@@ -173,16 +173,16 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       return ["Steel"];
     }
     if (["3010", "3020", "3030"].includes(model)) {
-      return ["Steel (Standard)", "Acoustical Substrate (Optional)", "Wood Veneer (Optional)", "High-Pressure Laminate/Gypsum (Optional)"];
+      return ["Standard Steel Skin", "Optional Acoustical Substrate", "Optional Wood Veneer", "Optional High-Pressure Laminate"];
     }
     if (["3050e", "3010GL", "3020GL", "3030GL"].includes(model)) {
-      return ["Steel (Standard)", "Acoustical Substrate (Optional)"];
+      return ["Standard Steel Skin", "Optional Acoustical Substrate"];
     }
     if (["2010", "2020", "2030"].includes(model)) {
-      return ["Acoustical Substrate (Standard)", "Steel (Optional)", "Wood Veneer (Optional)", "High-Pressure Laminate (Optional)"];
+      return ["Standard Acoustical Substrate", "Optional Steel Skin", "Optiona Wood Veneer", "Optional High-Pressure Laminate"];
     }
     if (["2050e", "2010GL", "2020GL", "2030GL"].includes(model)) {
-      return ["Acoustical Substrate (Standard)", "Steel (Optional)"];
+      return ["Standard Acoustical Substrate", "Optional Steel Skin"];
     }
     return [];
   };
