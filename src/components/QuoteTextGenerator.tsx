@@ -276,14 +276,14 @@ export const generateQuoteText = (data: QuoteData): string => {
   </div>
   ` : ''}
 
+  <div style="height: 120px;"></div>
+
   ${data.pocket_doors?.foldType && data.pocket_doors?.foldStyle ? `
   <div class="pocket-doors-section" style="line-height: 1.15;">
     <h2 class="section-header">POCKET DOORS:</h2>
     <strong>${pocketFoldType}</strong> doors with an <strong>${pocketFoldStyle}</strong> style will be used to house the panels in the stack, offering a space-efficient and acoustically enhanced storage solution.
   </div>
   ` : ''}
-
-  <div style="height: 120px;"></div>
 
   <div class="track-section" style="line-height: 1.15;">
     <h2 class="section-header">TRACK:</h2>
