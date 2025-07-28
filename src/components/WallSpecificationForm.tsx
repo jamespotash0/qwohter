@@ -348,7 +348,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const bottomSeals = ["Retractable", "Automatic", "Adjustable"];
   const topSeals = ["Adjustable", "Operable"];
   const endPanelTypes = ["Fixed Wall Jamb", "Telescoping Closure", "Closure Panel", "Adjustable Wall Jamb", "Articulating Panel"];
-  const initialClosureSystem = ["Bulb", "Fixed Starter Jamb", "Adjustable Starter Jamb"];
+  const initialClosureSystem = ["Standard Bulb", "Optional Fixed Starter Jamb", "Optional Adjustable Starter Jamb"];
 
   const wallNames = Object.keys(walls.walls);
 
