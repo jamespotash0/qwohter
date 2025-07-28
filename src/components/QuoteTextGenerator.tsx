@@ -1,5 +1,6 @@
 import { WallSpecification } from '@/types/quote';
 import { PageContainer } from './PageContainer';
+import { PageBreakManager } from '@/utils/pageBreakManager';
 // import { toWords } from 'number-to-words';
 
 interface QuoteData {
@@ -142,7 +143,8 @@ export const generateQuoteText = (data: QuoteData): string => {
   const paymentUponDrawings = data.price_details?.payment_upon_drawings || '33';
   const paymentUponTrackInstallation = data.price_details?.payment_upon_track_installation || '33';
 
-  return `<div class="quote-container" data-page-content="true">
+  // Generate the raw HTML content
+  const rawContent = `<div class="quote-container" data-page-content="true">
   <div class="header-section">
     <div class="company-info">
       <div class="company-logo">
@@ -277,8 +279,6 @@ export const generateQuoteText = (data: QuoteData): string => {
   </div>
   ` : ''}
 
-  <!-- <div style="height: 80px;"></div> -->
-
   ${data.pocket_doors?.foldType && data.pocket_doors?.foldStyle ? `
   <div class="pocket-doors-section" style="line-height: 1.15;">
     <h2 class="section-header">POCKET DOORS:</h2>
@@ -357,7 +357,12 @@ export const generateQuoteText = (data: QuoteData): string => {
   <div class="acceptance-section">
     <h2 class="section-header">ACCEPTANCE OF PROPOSAL:</h2>
     The above prices, specifications, and conditions are satisfactory and are hereby accepted. Any alteration or deviation from above specifications will be executed upon written approval and may/will be subject to additional costs over and above the estimate. All removal of packing material is the customer's responsibility. Electrical and H.V.A.C. installation(s) are not included. Visa, Mastercard and American Express (AMEX) are accepted. Payments by credit card will be charged a processing fee. Pricing subject to applicable sales tax unless otherwise noted. Late payments will be subject to a 1.5% finance charge per month. Cancellations will be subject to a restocking fee.
-  </div>`;
+  </div>
+</div>`;
+
+  // Process the content through the PageBreakManager to create proper page layout
+  const pageManager = new PageBreakManager();
+  return pageManager.processHTMLContent(rawContent);
   };
 
   export default generateQuoteText;
