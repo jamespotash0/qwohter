@@ -101,6 +101,7 @@ export const optimizeContentLayout = (htmlContent: string): string => {
     // Find sections that might need spacing adjustments
     const criticalSections = [
       '.pocket-doors-section',
+      '.panel-doors-section',
       '.support-section', 
       '.general-section',
       '.pricing-section',
