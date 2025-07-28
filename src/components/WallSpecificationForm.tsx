@@ -53,7 +53,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         verticalSeals: "",
         bottomSeals: "",
         topSeals: "",
-        finalSeal: "",
+        initialClosureSystem: "",
         endPanelType: "",
       };
     }
@@ -70,7 +70,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         stcRating: "",
         trackType: "",
         trackSystem: "",
-        finalSeal: "",
+        initialClosureSystem: "",
       };
     }
     
@@ -83,7 +83,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         panelSkin: "",
         panelDesign: "",
         stcRating: "",
-        finalSeal: "",
+        initialClosureSystem: "",
       };
     }
     
@@ -96,7 +96,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         panelSkin: "",
         panelDesign: "",
         stcRating: "",
-        finalSeal: "",
+        initialClosureSystem: "",
       };
     }
     
@@ -298,7 +298,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       verticalSeals: "",
       bottomSeals: "",
       topSeals: "",
-      finalSeal: "",
+      initialClosureSystem: "",
       endPanelType: "",
       trackType: "",
       trackSystem: ""
@@ -348,7 +348,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const bottomSeals = ["Retractable", "Automatic", "Adjustable"];
   const topSeals = ["Adjustable", "Operable"];
   const endPanelTypes = ["Fixed Wall Jamb", "Telescoping Closure", "Closure Panel", "Adjustable Wall Jamb", "Articulating Panel"];
-  const finalSeal = ["Bulb", "Fixed Jamb", "Sliding Jamb"];
+  const initialClosureSystem = ["Bulb", "Fixed Starter Jamb", "Adjustable Starter Jamb"];
 
   const wallNames = Object.keys(walls.walls);
 
@@ -730,20 +730,20 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                           </div>
                         </div>
 
-                        {/* Fourth Row - Final Seal, Bottom Seals, Top Seals */}
+                        {/* Fourth Row - Initial Closure System, Bottom Seals, Top Seals */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                           <div className="space-y-2">
-                            <Label className="text-sm font-medium">Final Seal</Label>
+                            <Label className="text-sm font-medium">Initial Closure System</Label>
                             <Select
-                              value={wall.finalSeal}
-                              onValueChange={(value) => handleWallChange(wallName, "finalSeal", value)}
+                              value={wall.initialClosureSystem}
+                              onValueChange={(value) => handleWallChange(wallName, "initialClosureSystem", value)}
                             >
                               <SelectTrigger className="bg-background">
-                                <SelectValue placeholder="Select final seal" />
+                                <SelectValue placeholder="Select initial closure system" />
                               </SelectTrigger>
                               <SelectContent className="bg-background border z-50">
                                 <SelectItem value="None">None</SelectItem>
-                                {finalSeal.map((seal) => (
+                                {initialClosureSystem.map((seal) => (
                                   <SelectItem key={seal} value={seal}>
                                     {seal}
                                   </SelectItem>

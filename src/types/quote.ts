@@ -20,7 +20,7 @@ export interface WallSpecification {
   verticalSeals: string;
   bottomSeals: string;
   topSeals: string;
-  finalSeal: string;
+  initialClosureSystem: string;
   endPanelType: string;
   trackType: string;
   trackSystem: string;
