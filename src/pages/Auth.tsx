@@ -295,7 +295,7 @@ const Auth = () => {
             <Building2 className="w-10 h-10 text-primary-foreground" />
           </div>
           <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            WallQu
+            AiQu
           </h1>
           <p className="text-slate-600 text-base">
             Professional Quote Tool

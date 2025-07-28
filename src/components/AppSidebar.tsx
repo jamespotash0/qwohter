@@ -42,7 +42,7 @@ export function AppSidebar({
   return <Sidebar className={isCollapsed ? "w-16" : "w-52"} collapsible="icon">
       <SidebarHeader className="p-4">
         <div className="flex items-center justify-between">
-          {!isCollapsed && <span className="font-bold text-lg text-foreground">WallQu</span>}
+          {!isCollapsed && <span className="font-bold text-lg text-foreground">AiQu</span>}
           <SidebarTrigger className="h-6 w-6" />
         </div>
       </SidebarHeader>
