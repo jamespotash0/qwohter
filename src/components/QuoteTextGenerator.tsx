@@ -277,7 +277,7 @@ export const generateQuoteText = (data: QuoteData): string => {
   </div>
   ` : ''}
 
-  <div style="height: 120px;"></div>
+  <!-- <div style="height: 80px;"></div> -->
 
   ${data.pocket_doors?.foldType && data.pocket_doors?.foldStyle ? `
   <div class="pocket-doors-section" style="line-height: 1.15;">
