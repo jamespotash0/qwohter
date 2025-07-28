@@ -268,11 +268,6 @@ export const generateQuoteText = (data: QuoteData): string => {
     This wall system utilizes the Kwik-Wall <strong>${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || ''}</strong> configured with <strong>${wallEntries[0]?.[1]?.panelConfiguration || ''}</strong> designed for use with a <strong>${wallEntries[0]?.[1]?.trackType || ''} Layout</strong>, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
     <br><br>The wall consists of <strong>${getPanelConfigurationText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelConfiguration || ''}</strong>, finished in an <strong>${wallEntries[0]?.[1]?.panelFinishCategory || ''}</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches, false).split(' x ')[1]}</strong> in height, with panel widths varying as needed. Each panel features a <strong>${wallEntries[0]?.[1]?.panelDesign || ''} </strong> design and is nominally <strong>${wallEntries[0]?.[1]?.panelThickness || ''}"</strong> thick, constructed with a 1/2" gypsum board laminated to a <strong>${wallEntries[0]?.[1].panelSkin}</strong>. The panels will be suspended from a <strong>${wallEntries[0]?.[1]?.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${wallEntries[0]?.[1]?.verticalSeals || ''}</strong> vertical seals that create a continuous interlock, <strong>${wallEntries[0]?.[1]?.bottomSeals || ''}</strong> operable bottom seals, and <strong>${wallEntries[0]?.[1]?.topSeals}</strong> top seals. Adjustable seals are set at the time of installation and operable/retractable seals are user-adjustable for virtually effortless movement. The lead panel provides the initial closure using a <strong>${wallEntries[0]?.[1]?.initialClosureSystem || ''}</strong>, and the end panel uses a <strong>${wallEntries[0]?.[1]?.endPanelType || ''}</strong>, securing the system when fully deployed.
   </div>
-
-      
-  <!-- 
-  <div style="height: 120px;"></div>
-  -->
   
   ${wallEntries[0]?.[1]?.passDoorPanels ? `
   <div class="panel" style="line-height: 1.15; margin-top: 20px;">
@@ -287,6 +282,8 @@ export const generateQuoteText = (data: QuoteData): string => {
     <strong>${pocketFoldType}</strong> doors with an <strong>${pocketFoldStyle}</strong> style will be used to house the panels in the stack, offering a space-efficient and acoustically enhanced storage solution.
   </div>
   ` : ''}
+
+  <div style="height: 120px;"></div>
 
   <div class="track-section" style="line-height: 1.15;">
     <h2 class="section-header">TRACK:</h2>
