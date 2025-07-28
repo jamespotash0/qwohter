@@ -1,4 +1,5 @@
 import { WallSpecification } from '@/types/quote';
+import { PageContainer } from './PageContainer';
 // import { toWords } from 'number-to-words';
 
 interface QuoteData {
@@ -141,7 +142,7 @@ export const generateQuoteText = (data: QuoteData): string => {
   const paymentUponDrawings = data.price_details?.payment_upon_drawings || '33';
   const paymentUponTrackInstallation = data.price_details?.payment_upon_track_installation || '33';
 
-  return `<div class="quote-container">
+  return `<div class="quote-container" data-page-content="true">
   <div class="header-section">
     <div class="company-info">
       <div class="company-logo">

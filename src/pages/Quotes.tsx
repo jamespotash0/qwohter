@@ -313,49 +313,97 @@ const Quotes = () => {
       document.body.appendChild(tempDiv);
 
       try {
-        // Try HTML-to-canvas rendering first
+        // Try HTML-to-canvas rendering first with enhanced page support
         const html2canvas = (await import('html2canvas')).default;
-        const canvas = await html2canvas(tempDiv, {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          width: tempDiv.scrollWidth,
-          height: tempDiv.scrollHeight
-        });
+        
+        // Check if content has page structure
+        const pageElements = tempDiv.querySelectorAll('.page');
+        
+        if (pageElements.length > 0) {
+          // Handle multi-page content
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          
+          for (let i = 0; i < pageElements.length; i++) {
+            const pageElement = pageElements[i] as HTMLElement;
+            
+            const canvas = await html2canvas(pageElement, {
+              scale: 2,
+              useCORS: true,
+              backgroundColor: '#ffffff',
+              width: 816, // 8.5 inches at 96 DPI
+              height: 1056 // 11 inches at 96 DPI
+            });
 
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = pdfWidth - 20;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = pdfWidth - 20;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-        let heightLeft = imgHeight;
-        let position = 10;
+            if (i > 0) {
+              pdf.addPage();
+            }
+            
+            pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pdfHeight - 20));
+          }
+          
+          // Save the PDF
+          const currentVersion = quote.version || 1;
+          const today = new Date();
+          const dateStr = today.toLocaleDateString('en-CA');
+          const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
+          
+          const fileName = `${quoteName}_v${currentVersion}_${dateStr}.pdf`;
+          pdf.save(fileName);
+          
+          toast({
+            title: "PDF Downloaded",
+            description: `Quote ${quote.proposal_number} has been downloaded successfully.`,
+          });
+        } else {
+          // Single page fallback
+          const canvas = await html2canvas(tempDiv, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            width: tempDiv.scrollWidth,
+            height: tempDiv.scrollHeight
+          });
 
-        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight - 20;
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          const imgWidth = pdfWidth - 20;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-        while (heightLeft >= 0) {
-          position = heightLeft - imgHeight + 10;
-          pdf.addPage();
+          let heightLeft = imgHeight;
+          let position = 10;
+
           pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
           heightLeft -= pdfHeight - 20;
-        }
 
-        // Use current version (starts at 1) and increment after download
-        const currentVersion = quote.version || 1;
-        const today = new Date();
-        const dateStr = today.toLocaleDateString('en-CA');
-        const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
-        
-        const fileName = `${quoteName}_v${currentVersion}_${dateStr}.pdf`;
-        pdf.save(fileName);
-        
-        toast({
-          title: "PDF Downloaded",
-          description: `Quote ${quote.proposal_number} has been downloaded successfully.`,
-        });
+          while (heightLeft >= 0) {
+            position = heightLeft - imgHeight + 10;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+            heightLeft -= pdfHeight - 20;
+          }
+
+          // Use current version (starts at 1) and increment after download
+          const currentVersion = quote.version || 1;
+          const today = new Date();
+          const dateStr = today.toLocaleDateString('en-CA');
+          const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
+          
+          const fileName = `${quoteName}_v${currentVersion}_${dateStr}.pdf`;
+          pdf.save(fileName);
+          
+          toast({
+            title: "PDF Downloaded",
+            description: `Quote ${quote.proposal_number} has been downloaded successfully.`,
+          });
+        }
       } catch (canvasError) {
         console.error('Canvas rendering failed, falling back to text PDF:', canvasError);
         
@@ -412,9 +460,9 @@ const Quotes = () => {
       // Final fallback to simple text PDF
       try {
       const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
-      const { calculateSmartPageBreak } = await import('@/utils/smartPageBreak');
+      const { enhanceWithPageBreaks } = await import('@/utils/pageBreakManager');
       const rawQuoteText = generateQuoteText(quote);
-      const quoteText = calculateSmartPageBreak(rawQuoteText);
+      const quoteText = enhanceWithPageBreaks(rawQuoteText);
         
         const doc = new jsPDF({
           orientation: 'portrait',
