@@ -359,10 +359,11 @@ export const generateQuoteText = (data: QuoteData): string => {
     The above prices, specifications, and conditions are satisfactory and are hereby accepted. Any alteration or deviation from above specifications will be executed upon written approval and may/will be subject to additional costs over and above the estimate. All removal of packing material is the customer's responsibility. Electrical and H.V.A.C. installation(s) are not included. Visa, Mastercard and American Express (AMEX) are accepted. Payments by credit card will be charged a processing fee. Pricing subject to applicable sales tax unless otherwise noted. Late payments will be subject to a 1.5% finance charge per month. Cancellations will be subject to a restocking fee.
   </div>
 </div>`;
+return;
 
   // Process the content through the PageBreakManager to create proper page layout
-  const pageManager = new PageBreakManager();
-  return pageManager.processHTMLContent(rawContent);
+  // const pageManager = new PageBreakManager();
+  // return pageManager.processHTMLContent(rawContent);
   };
 
   export default generateQuoteText;
