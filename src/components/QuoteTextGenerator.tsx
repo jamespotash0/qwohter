@@ -333,7 +333,7 @@ export const generateQuoteText = (data: QuoteData): string => {
     </div>
 
     <div class="statement-section" style="line-height: 1.15;">
-      <br>Above Proposal is a Good Faith Estimate, Based on the Information Provided & Subject to Revision Upon Site Visit & Inspection. Pricing is Firm for 60 Days From Date Above
+      <br><strong>Above Proposal is a Good Faith Estimate, Based on the Information Provided & Subject to Revision Upon Site Visit & Inspection. Pricing is Firm for 60 Days From Date Above</strong>
     </div>
 
     <div class="terms-section">
