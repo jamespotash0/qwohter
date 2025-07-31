@@ -58,7 +58,7 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
     try {
       console.log('Making Mapbox API call for:', inputValue);
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(inputValue)}.json?access_token=${mapboxToken}&types=address,poi&country=us&limit=5`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(inputValue)}.json?access_token=${mapboxToken}&types=poi,address&country=us&limit=5`
       );
       
       console.log('Mapbox API response status:', response.status);
@@ -73,7 +73,7 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
       }
       
       const data = await response.json();
-      console.log('Mapbox API response data:', data);
+      console.log('POI suggestions:', data);
       
       if (data.features && data.features.length > 0) {
         setSuggestions(data.features);
@@ -92,7 +92,7 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
   };
 
   const handleSuggestionClick = (suggestion: any) => {
-    onChange(suggestion.place_name);
+    onChange(suggestion.place_name.replace(/,\s*United States$/, ''));
     setSuggestions([]);
     setShowSuggestions(false);
   };
@@ -119,7 +119,7 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
               className="p-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
               onClick={() => handleSuggestionClick(suggestion)}
             >
-              <div className="text-sm">{suggestion.place_name.replace(', United States', '')}</div>
+              <div className="text-sm">{suggestion.place_name}</div>
             </div>
           ))}
         </div>

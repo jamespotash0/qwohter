@@ -819,6 +819,7 @@ const Quotes = () => {
                       const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client Name";
                       const projectName = quote.project_name || quote.quote_details?.project_name || "Untitled Project";
                       const total = quote.price_details?.total || 0;
+                      const projectLocation = quote.job_details?.job_location || "";
 
 
                       return (
@@ -827,7 +828,7 @@ const Quotes = () => {
                           <TableCell>
                             <div>
                               <div className="font-medium">{projectName}</div>
-                              {/* <div className="text-sm text-slate-500">{projectName}</div> */}
+                              <div className="text-sm text-slate-500">{projectLocation}</div>
                             </div>
                           </TableCell>
                           <TableCell>
