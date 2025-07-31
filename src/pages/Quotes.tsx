@@ -828,7 +828,7 @@ const Quotes = () => {
                           <TableCell>
                             <div>
                               <div className="font-medium">{projectName}</div>
-                              <div className="text-sm text-slate-500">{projectLocation}</div>
+                              <div className="text-sm text-slate-500 break-words max-w-[200px]">{projectLocation}</div>
                             </div>
                           </TableCell>
                           <TableCell>
