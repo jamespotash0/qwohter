@@ -180,7 +180,7 @@ export const generateQuoteText = (data: QuoteData): string => {
       </div>
     </div>
 
-    <div class="billing-job-container" style="display: flex; gap: 40px; align-items: flex-start; margin-top: 10px;">
+    <div class="billing-job-container" style="display: flex; gap: 40px; align-items: flex-start; margin-top: -40px;">
       <div class="billing-table" style="width: 30%;">
         <div style="font-weight: bold; margin-bottom: 4px;">BILLED TO:</div>
         <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
@@ -268,27 +268,37 @@ export const generateQuoteText = (data: QuoteData): string => {
 
     <div class="panels-section" style="line-height: 1.15;">
       <h2 class="section-header">PANELS:</h2>
-      This wall system utilizes the Kwik-Wall <strong>${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || ''}</strong> configured with <strong>${wallEntries[0]?.[1]?.panelConfiguration || ''}</strong> designed for use with a <strong>${wallEntries[0]?.[1]?.trackType || ''} Layout</strong>, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
-      <br><br>The wall consists of <strong>${getPanelConfigurationText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelConfiguration || ''}</strong>, finished in an <strong>${wallEntries[0]?.[1]?.panelFinishCategory || ''}</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches, false).split(' x ')[1]}</strong> in height, with panel widths varying as needed. Each panel features a <strong>${wallEntries[0]?.[1]?.panelDesign || ''} </strong> design and is nominally <strong>${wallEntries[0]?.[1]?.panelThickness || ''}"</strong> thick, constructed with a 1/2" gypsum board laminated to a <strong>${wallEntries[0]?.[1].panelSkin}</strong>. The panels will be suspended from a <strong>${wallEntries[0]?.[1]?.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${wallEntries[0]?.[1]?.verticalSeals || ''}</strong> vertical seals that create a continuous interlock, <strong>${wallEntries[0]?.[1]?.bottomSeals || ''}</strong> operable bottom seals, and <strong>${wallEntries[0]?.[1]?.topSeals}</strong> top seals. Adjustable seals are set at the time of installation and operable/retractable seals are user-adjustable for virtually effortless movement. The lead panel provides the initial closure using a <strong>${wallEntries[0]?.[1]?.initialClosureSystem || ''}</strong>, and the end panel uses a <strong>${wallEntries[0]?.[1]?.endPanelType || ''}</strong>, securing the system when fully deployed.
+      <p>
+        This wall system utilizes the Kwik-Wall <strong>${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || ''}</strong> configured with <strong>${wallEntries[0]?.[1]?.panelConfiguration || ''}</strong> designed for use with a <strong>${wallEntries[0]?.[1]?.trackType || ''} Layout</strong>, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
+        <br><br>The wall consists of <strong>${getPanelConfigurationText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelConfiguration || ''}</strong>, finished in an <strong>${wallEntries[0]?.[1]?.panelFinishCategory || ''}</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches, false).split(' x ')[1]}</strong> in height, with panel widths varying as needed. Each panel features a <strong>${wallEntries[0]?.[1]?.panelDesign || ''} </strong> design and is nominally <strong>${wallEntries[0]?.[1]?.panelThickness || ''}"</strong> thick, constructed with a 1/2" gypsum board laminated to a <strong>${wallEntries[0]?.[1].panelSkin}</strong>. The panels will be suspended from a <strong>${wallEntries[0]?.[1]?.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${wallEntries[0]?.[1]?.verticalSeals || ''}</strong> vertical seals that create a continuous interlock, <strong>${wallEntries[0]?.[1]?.bottomSeals || ''}</strong> operable bottom seals, and <strong>${wallEntries[0]?.[1]?.topSeals}</strong> top seals. Adjustable seals are set at the time of installation and operable/retractable seals are user-adjustable for virtually effortless movement. The lead panel provides the initial closure using a <strong>${wallEntries[0]?.[1]?.initialClosureSystem || ''}</strong>, and the end panel uses a <strong>${wallEntries[0]?.[1]?.endPanelType || ''}</strong>, securing the system when fully deployed.
+      </p>
     </div>
     
     ${wallEntries[0]?.[1]?.passDoorPanels ? `
     <div class="panel" style="line-height: 1.15; margin-top: 20px;">
       <h2 class="section-header">PANEL DOORS:</h2>
-      A <strong>${wallEntries[0]?.[1]?.passDoorPanels || ''}</strong> pass door panel is incorporated to allow for convenient access without disrupting the overall wall system.
+      <p>
+        A <strong>${wallEntries[0]?.[1]?.passDoorPanels || ''}</strong> pass door panel is incorporated to allow for convenient access without disrupting the overall wall system.
+      </p>
     </div>
     ` : ''}
 
     ${data.pocket_doors?.foldType && data.pocket_doors?.foldStyle ? `
     <div class="pocket-doors-section" style="line-height: 1.15;">
       <h2 class="section-header">POCKET DOORS:</h2>
-      <strong>${pocketFoldType}</strong> doors with an <strong>${pocketFoldStyle}</strong> style will be used to house the panels in the stack, offering a space-efficient and acoustically enhanced storage solution.
+      <p>
+        <strong>${pocketFoldType}</strong> doors with an <strong>${pocketFoldStyle}</strong> style will be used to house the panels in the stack, offering a space-efficient and acoustically enhanced storage solution.
+      </p>  
     </div>
     ` : ''}
 
-    <div class="track-section" style="line-height: 1.15;">
+    <div class="page-break" style="height: 65px; page-break-before: always;"></div>
+
+    <div class="track-section" style="line-height: 1.15; margin-top: 0px;">
       <h2 class="section-header">TRACK:</h2>
-      We will be using an <strong>${wallEntries[0]?.[1]?.trackSystem || ''} Track System</strong> to suspend the doors from above. This track allows for <strong>${getMovementOnTrackText(wallEntries[0]?.[1]?.panelConfiguration)}</strong> of the panels, along the overhead track, enabling flexible operation and easy stacking when the wall is not in use.
+      <p>
+        We will be using an <strong>${wallEntries[0]?.[1]?.trackSystem || ''} Track System</strong> to suspend the doors from above. This track allows for <strong>${getMovementOnTrackText(wallEntries[0]?.[1]?.panelConfiguration)}</strong> of the panels, along the overhead track, enabling flexible operation and easy stacking when the wall is not in use.
+      </p>
     </div>
 
     <div class="support-section" style="line-height: 1.15;">
@@ -350,6 +360,8 @@ export const generateQuoteText = (data: QuoteData): string => {
       </ol>
     </div>
 
+    <div class="page-break" style="height: 135px; page-break-before: always;"></div>
+
     <div class="signature-section">
       <br><strong>Signed By:</strong> _________________________________________________________&nbsp;&nbsp;&nbsp;<strong>Date:</strong> ${date}
     </div>
@@ -359,11 +371,6 @@ export const generateQuoteText = (data: QuoteData): string => {
       The above prices, specifications, and conditions are satisfactory and are hereby accepted. Any alteration or deviation from above specifications will be executed upon written approval and may/will be subject to additional costs over and above the estimate. All removal of packing material is the customer's responsibility. Electrical and H.V.A.C. installation(s) are not included. Visa, Mastercard and American Express (AMEX) are accepted. Payments by credit card will be charged a processing fee. Pricing subject to applicable sales tax unless otherwise noted. Late payments will be subject to a 1.5% finance charge per month. Cancellations will be subject to a restocking fee.
     </div>
   </div>`;
-
-
-  // Process the content through the PageBreakManager to create proper page layout
-  // const pageManager = new PageBreakManager();
-  // return pageManager.processHTMLContent(rawContent);
   };
 
   export default generateQuoteText;

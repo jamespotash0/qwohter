@@ -23,6 +23,7 @@ import { useQuotes } from "@/hooks/useQuotes";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+import { max } from "date-fns";
 
 const Analytics = () => {
   const navigate = useNavigate();
@@ -47,19 +48,32 @@ const Analytics = () => {
     await supabase.auth.signOut();
     navigate("/auth");
   };
+  const parseCurrency = (formatted: string): number => {
+    return Number(formatted.replace(/[^0-9.-]+/g, ''));
+  };
 
   // Calculate metrics
   const totalQuotes = quotes.length;
-  const totalValue = quotes.reduce((sum, quote) => {
-    const total = quote.price_details?.total_cost || 0;
-    return sum + (typeof total === 'number' ? total : 0);
+  const totalRevenue = quotes.reduce((sum, quote) => {
+    const total = quote.price_details?.total || 0;
+  
+    // Only add if job is won
+    if (quote.status === 'Won') {
+      return sum + parseCurrency(total);
+    }
+
+    return sum;
   }, 0);
-  const averageValue = totalQuotes > 0 ? totalValue / totalQuotes : 0;
-  const wonQuotes = quotes.filter(q => q.status === 'won').length;
+
+  
+
+
+  const wonQuotes = quotes.filter(q => q.status === 'Won').length;
+  const averageRevenuePerQuote = wonQuotes > 0 ? totalRevenue / wonQuotes : 0;
   const conversionRate = totalQuotes > 0 ? (wonQuotes / totalQuotes) * 100 : 0;
 
   // Generate monthly data for charts
-  const generateMonthlyData = () => {
+  const generateMonthlyRevenueData = () => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const currentYear = new Date().getFullYear();
     
@@ -69,28 +83,40 @@ const Analytics = () => {
         return quoteDate.getFullYear() === currentYear && quoteDate.getMonth() === index;
       });
       
+      const parseCurrency = (formatted: string): number => {
+        return Number(formatted.replace(/[^0-9.-]+/g, ''));
+      };
+
       const monthlyValue = monthQuotes.reduce((sum, quote) => {
-        const total = quote.price_details?.total_cost || 0;
-        return sum + (typeof total === 'number' ? total : 0);
+        if (quote.status !== 'Won') return sum;
+
+        const total = quote.price_details?.total || 0;
+        if (typeof total === 'string') {
+          return sum + parseCurrency(total);
+        } else if (typeof total === 'number') {
+          return sum + total;
+        } else {
+          return sum;
+        }
       }, 0);
-      
+
       return {
         month,
-        value: monthlyValue,
-        count: monthQuotes.length,
-        won: monthQuotes.filter(q => q.status === 'won').length
+        value: monthlyValue, // total revenue from won quotes only
+        count: monthQuotes.length, // total quotes that month
+        won: monthQuotes.filter(q => q.status === 'Won').length // how many were won
       };
     });
   };
 
-  const monthlyData = generateMonthlyData();
+  const monthlyData = generateMonthlyRevenueData();
 
   // Status distribution data
   const statusData = [
-    { name: 'Draft', value: quotes.filter(q => q.status === 'draft').length, color: '#94a3b8' },
-    { name: 'Pending', value: quotes.filter(q => q.status === 'pending').length, color: '#fbbf24' },
-    { name: 'Won', value: quotes.filter(q => q.status === 'won').length, color: '#10b981' },
-    { name: 'Rejected', value: quotes.filter(q => q.status === 'rejected').length, color: '#ef4444' },
+    { name: 'Draft', value: quotes.filter(q => q.status === 'Draft').length, color: '#94a3b8' },
+    { name: 'Pending', value: quotes.filter(q => q.status === 'Completed').length, color: '#fbbf24' },
+    { name: 'Won', value: quotes.filter(q => q.status === 'Won').length, color: '#10b981' },
+    { name: 'Rejected', value: quotes.filter(q => q.status === 'Rejected').length, color: '#ef4444' },
   ];
 
   if (!user) return null;
@@ -141,10 +167,10 @@ const Analytics = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-blue-700">Total Revenue</p>
-                      <p className="text-3xl font-bold text-blue-900">${totalValue.toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-blue-900">${totalRevenue.toLocaleString()}</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <ArrowUpRight className="w-4 h-4 text-green-600" />
-                        <span className="text-xs text-green-600 font-medium">+12.5%</span>
+                        {/* <ArrowUpRight className="w-4 h-4 text-green-600" />
+                        <span className="text-xs text-green-600 font-medium">+12.5%</span> */}
                       </div>
                     </div>
                     <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg">
@@ -161,8 +187,8 @@ const Analytics = () => {
                       <p className="text-sm font-medium text-emerald-700">Total Quotes</p>
                       <p className="text-3xl font-bold text-emerald-900">{totalQuotes}</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <ArrowUpRight className="w-4 h-4 text-green-600" />
-                        <span className="text-xs text-green-600 font-medium">+8.2%</span>
+                        {/* <ArrowUpRight className="w-4 h-4 text-green-600" />
+                        <span className="text-xs text-green-600 font-medium">+8.2%</span> */}
                       </div>
                     </div>
                     <div className="w-12 h-12 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg">
@@ -176,11 +202,11 @@ const Analytics = () => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-purple-700">Average Value</p>
-                      <p className="text-3xl font-bold text-purple-900">${averageValue.toLocaleString()}</p>
+                      <p className="text-sm font-medium text-purple-700">Average Revenue per Quote</p>
+                      <p className="text-3xl font-bold text-purple-900">${averageRevenuePerQuote.toLocaleString()}</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <ArrowUpRight className="w-4 h-4 text-green-600" />
-                        <span className="text-xs text-green-600 font-medium">+3.8%</span>
+                        {/* <ArrowUpRight className="w-4 h-4 text-green-600" />
+                        <span className="text-xs text-green-600 font-medium">+3.8%</span> */}
                       </div>
                     </div>
                     <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center shadow-lg">
@@ -197,8 +223,8 @@ const Analytics = () => {
                       <p className="text-sm font-medium text-amber-700">Conversion Rate</p>
                       <p className="text-3xl font-bold text-amber-900">{conversionRate.toFixed(1)}%</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <ArrowDownRight className="w-4 h-4 text-red-600" />
-                        <span className="text-xs text-red-600 font-medium">-2.1%</span>
+                        {/* <ArrowDownRight className="w-4 h-4 text-red-600" />
+                        <span className="text-xs text-red-600 font-medium">-2.1%</span> */}
                       </div>
                     </div>
                     <div className="w-12 h-12 bg-amber-500 rounded-xl flex items-center justify-center shadow-lg">
@@ -216,7 +242,7 @@ const Analytics = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <BarChart3 className="w-5 h-5 text-blue-600" />
-                    Revenue Trend (2024)
+                    Monthly Revenue ({new Date().getFullYear()})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -231,7 +257,7 @@ const Analytics = () => {
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                         <XAxis dataKey="month" stroke="#64748b" />
-                        <YAxis stroke="#64748b" tickFormatter={(value) => `$${value.toLocaleString()}`} />
+                        <YAxis stroke="#64748b" tickFormatter={(value) => `$${value.toLocaleString()}`} width={80}/>
                         <Area 
                           type="monotone" 
                           dataKey="value" 
@@ -263,7 +289,7 @@ const Analytics = () => {
                           cy="50%"
                           innerRadius={60}
                           outerRadius={100}
-                          paddingAngle={5}
+                          paddingAngle={1}
                           dataKey="value"
                         >
                           {statusData.map((entry, index) => (
@@ -302,7 +328,7 @@ const Analytics = () => {
                     <BarChart data={monthlyData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                       <XAxis dataKey="month" stroke="#64748b" />
-                      <YAxis stroke="#64748b" />
+                      <YAxis stroke="#64748b" domain={[0, 'dataMax + 5']} ticks={[0, 3, 6, 9, 12, 15]} />
                       <Bar 
                         dataKey="count" 
                         fill="#10b981" 

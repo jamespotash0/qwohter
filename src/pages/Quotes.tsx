@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Download, Edit, Trash2, MoreHorizontal, DollarSign, TrendingUp, FileText, Building2, User, BarChart3 } from "lucide-react";
+import { Search, Download, Edit, Trash2, MoreHorizontal, DollarSign, TrendingUp, FileText, Building2, User, BarChart3, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,7 @@ import { useOrganizations } from "@/hooks/useOrganizations";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { useToast } from "@/hooks/use-toast";
+import NewQuote from "./NewQuote";
 
 const Quotes = () => {
   const navigate = useNavigate();
@@ -33,6 +34,15 @@ const Quotes = () => {
     createQuote,
     refreshQuotes
   } = useQuotes();
+
+  const statusColors = {
+    Draft: "bg-gray-100 text-gray-800",
+    Pending: "bg-yellow-100 text-yellow-800",
+    Completed: "bg-green-100 text-green-800",
+    Won: "bg-blue-100 text-blue-800",
+    Rejected: "bg-red-100 text-red-800",
+  };
+
   const { currentOrganization } = useOrganizations();
   const { profile } = useUserProfile(user?.id);
 
@@ -104,9 +114,11 @@ const Quotes = () => {
     try {
       const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
       const { enhanceWithPageBreaks } = await import('@/utils/pageBreakManager');
+     
       const rawQuoteText = generateQuoteText(quote);
       const quoteText = enhanceWithPageBreaks(rawQuoteText);
       
+
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = quoteText;
       tempDiv.style.cssText = `
@@ -120,13 +132,203 @@ const Quotes = () => {
         background: white;
       `;
 
+      // Add enhanced styles for the header layout
+      const style = document.createElement('style');
+      style.textContent = `
+        .quote-container {
+          font-family: "Times New Roman", serif;
+          font-size: 12pt;
+          line-height: 1.15;
+          width: 7in;
+          margin: 0 auto;
+          color: black;
+        }
+        
+        .header-section {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 30px;
+          padding-bottom: 20px;
+        }
+        
+        .company-info {
+          flex: 1;
+          max-width: 40%;
+        }
+        
+        .company-logo {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+        }
+        
+        .logo-placeholder {
+          width: 60px;
+          height: 60px;
+          background: linear-gradient(135deg, #3B82F6, #F59E0B);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          font-size: 16pt;
+          border-radius: 8px;
+        }
+        
+        .company-name {
+          font-size: 14pt;
+          font-weight: bold;
+          color: #333;
+          line-height: 1.2;
+        }
+        
+        .contact-details {
+          flex: 1;
+          max-width: 55%;
+          text-align: right;
+        }
+        
+        .contact-row {
+          margin-bottom: 2px;
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          line-height: 1.1;
+        }
+        
+        .contact-row .label {
+          font-weight: bold;
+          margin-right: 8px;
+          min-width: 80px;
+          text-align: right;
+        }
+        
+        .contact-row .value {
+          text-align: left;
+          flex: 1;
+        }
+        
+        .website-link {
+          color: #3B82F6;
+          text-decoration: underline;
+        }
+        
+        .billing-and-job-info {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 30px;
+          gap: 40px;
+        }
+        
+        .billing-section {
+          flex: 1;
+          max-width: 45%;
+        }
+        
+        .billed-to-details {
+          margin-top: 10px;
+        }
+        
+        .billed-line {
+          margin-bottom: 2px;
+          min-height: 20px;
+          padding-bottom: 4px;
+        }
+        
+        .underline {
+          height: 1px;
+          background-color: black;
+          margin-bottom: 8px;
+          width: 100%;
+        }
+        
+        .job-info-section {
+          flex: 1;
+          max-width: 50%;
+        }
+        
+        .job-row {
+          display: flex;
+          align-items: center;
+          margin-bottom: 15px;
+          position: relative;
+        }
+        
+        .job-label {
+          font-weight: bold;
+          margin-right: 20px;
+          min-width: 120px;
+        }
+        
+        .job-value {
+          flex: 1;
+          padding-bottom: 2px;
+        }
+        
+        .job-underline {
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          left: 140px;
+          height: 1px;
+          background-color: black;
+        }
+        
+        h2.section-header {
+          font-weight: bold;
+          font-size: 12pt;
+          margin-top: 1.5em;
+          margin-bottom: 0.5em;
+        }
+        
+        .wall-specifications {
+          line-height: 1.15;
+          max-width: 7.25in;
+        }
+        
+        .acceptance-section {
+          font-size: 9pt;
+          font-style: italic;
+          margin-top: 2em;
+        }
+        
+        table {
+          border-collapse: collapse;
+          width: 100%;
+        }
+        
+        td {
+          padding: 4px 8px;
+        }
+        
+        strong {
+          font-weight: bold;
+        }
+        
+        ol, ul {
+          margin: 0;
+          padding-left: 20px;
+        }
+        
+        li {
+          margin-bottom: 4px;
+        }
+      `;
+      
+      document.head.appendChild(style);
       document.body.appendChild(tempDiv);
 
       try {
+        // Try HTML-to-canvas rendering first with enhanced page support
         const html2canvas = (await import('html2canvas')).default;
+        
+        // Check if content has page structure
         const pageElements = tempDiv.querySelectorAll('.page');
         
         if (pageElements.length > 0) {
+          // Handle multi-page content
           const pdf = new jsPDF('p', 'mm', 'a4');
           const pdfWidth = pdf.internal.pageSize.getWidth();
           const pdfHeight = pdf.internal.pageSize.getHeight();
@@ -138,8 +340,8 @@ const Quotes = () => {
               scale: 2,
               useCORS: true,
               backgroundColor: '#ffffff',
-              width: 816,
-              height: 1056
+              width: 816, // 8.5 inches at 96 DPI
+              height: 1056 // 11 inches at 96 DPI
             });
 
             const imgData = canvas.toDataURL('image/png');
@@ -153,6 +355,50 @@ const Quotes = () => {
             pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pdfHeight - 20));
           }
           
+          // Save the PDF
+          const currentVersion = quote.version || 1;
+          const today = new Date();
+          const dateStr = today.toLocaleDateString('en-CA');
+          const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
+          
+          const fileName = `${quoteName}_v${currentVersion}_${dateStr}.pdf`;
+          pdf.save(fileName);
+          
+          toast({
+            title: "PDF Downloaded",
+            description: `Quote ${quote.proposal_number} has been downloaded successfully.`,
+          });
+        } else {
+          // Single page fallback
+          const canvas = await html2canvas(tempDiv, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            width: tempDiv.scrollWidth,
+            height: tempDiv.scrollHeight
+          });
+
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          const imgWidth = pdfWidth - 20;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+          let heightLeft = imgHeight;
+          let position = 10;
+
+          pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+          heightLeft -= pdfHeight - 20;
+
+          while (heightLeft >= 0) {
+            position = heightLeft - imgHeight + 10;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+            heightLeft -= pdfHeight - 20;
+          }
+
+          // Use current version (starts at 1) and increment after download
           const currentVersion = quote.version || 1;
           const today = new Date();
           const dateStr = today.toLocaleDateString('en-CA');
@@ -167,29 +413,198 @@ const Quotes = () => {
           });
         }
       } catch (canvasError) {
-        console.error('Canvas rendering failed:', canvasError);
+        console.error('Canvas rendering failed, falling back to text PDF:', canvasError);
+        
+        // Fallback to text-based PDF if HTML rendering fails
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+        
+        const plainText = quoteText.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+        const splitText = doc.splitTextToSize(plainText, 180);
+        doc.setFontSize(10);
+        let y = 20;
+        const lineHeight = 5;
+        
+        splitText.forEach((line: string) => {
+          if (y > 280) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.text(line, 15, y);
+          y += lineHeight;
+        });
+        
+        const currentVersion = quote.version || 1;
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('en-CA');
+        const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
+        
+        doc.setFontSize(8);
+        doc.setTextColor(128, 128, 128);
+        doc.text(`Version: ${currentVersion}`, 15, 290);
+        
+        const fileName = `${quoteName}_v${currentVersion}_${dateStr}.pdf`;
+        doc.save(fileName);
+        
+        toast({
+          title: "PDF Downloaded",
+          description: `Quote ${quote.proposal_number} has been downloaded (fallback mode).`,
+        });
+      }
+      
+      // Clean up DOM elements
+      document.body.removeChild(tempDiv);
+      document.head.removeChild(style);
+      
+      // Mark as downloaded (will increment version for next download)
+      await markAsDownloaded(quote.id);
+      
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      
+      // Final fallback to simple text PDF
+    try {
+      const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
+      const { enhanceWithPageBreaks } = await import('@/utils/pageBreakManager');
+      const rawQuoteText = generateQuoteText(quote);
+      const quoteText = enhanceWithPageBreaks(rawQuoteText);
+        
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+        
+        const plainText = quoteText.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+        const splitText = doc.splitTextToSize(plainText, 180);
+        doc.setFontSize(10);
+        let y = 20;
+        const lineHeight = 5;
+        
+        splitText.forEach((line: string) => {
+          if (y > 280) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.text(line, 15, y);
+          y += lineHeight;
+        });
+        
+        const currentVersion = quote.version || 1;
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('en-CA');
+        const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
+        
+        doc.setFontSize(8);
+        doc.setTextColor(128, 128, 128);
+        doc.text(`Version: ${currentVersion}`, 15, 290);
+        
+        const fileName = `${quoteName}_v${currentVersion}_${dateStr}.pdf`;
+        doc.save(fileName);
+        
+        // Mark as downloaded (will increment version for next download)
+        await markAsDownloaded(quote.id);
+        
+        toast({
+          title: "PDF Downloaded",
+          description: `Quote ${quote.proposal_number} has been downloaded (fallback mode).`,
+        });
+      } catch (fallbackError) {
+        console.error('Fallback PDF generation also failed:', fallbackError);
         toast({
           title: "PDF Download Failed",
           description: "Unable to generate PDF. Please try again.",
           variant: "destructive"
         });
       }
-      
-      document.body.removeChild(tempDiv);
-      await markAsDownloaded(quote.id);
-      
-    } catch (error) {
-      console.error('Error downloading PDF:', error);
-      toast({
-        title: "PDF Download Failed",
-        description: "Unable to generate PDF. Please try again.",
-        variant: "destructive"
-      });
     }
   };
+  //     const tempDiv = document.createElement('div');
+  //     tempDiv.innerHTML = quoteText;
+  //     tempDiv.style.cssText = `
+  //       font-family: "Times New Roman", serif;
+  //       font-size: 12pt;
+  //       line-height: 1.15;
+  //       width: 7in;
+  //       margin: 0 auto;
+  //       padding: 20px;
+  //       color: black;
+  //       background: white;
+  //     `;
+
+  //     // document.body.appendChild(tempDiv);
+
+  //     try {
+  //       const html2canvas = (await import('html2canvas')).default;
+  //       const pageElements = tempDiv.querySelectorAll('.page');
+        
+  //       if (pageElements.length > 0) {
+  //         const pdf = new jsPDF('p', 'mm', 'a4');
+  //         const pdfWidth = pdf.internal.pageSize.getWidth();
+  //         const pdfHeight = pdf.internal.pageSize.getHeight();
+          
+  //         for (let i = 0; i < pageElements.length; i++) {
+  //           const pageElement = pageElements[i] as HTMLElement;
+            
+  //           const canvas = await html2canvas(pageElement, {
+  //             scale: 2,
+  //             useCORS: true,
+  //             backgroundColor: '#ffffff',
+  //             width: 816,
+  //             height: 1056
+  //           });
+
+  //           const imgData = canvas.toDataURL('image/png');
+  //           const imgWidth = pdfWidth - 20;
+  //           const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+  //           if (i > 0) {
+  //             pdf.addPage();
+  //           }
+            
+  //           pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pdfHeight - 20));
+  //         }
+          
+  //         const currentVersion = quote.version || 1;
+  //         const today = new Date();
+  //         const dateStr = today.toLocaleDateString('en-CA');
+  //         const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
+          
+  //         const fileName = `${quoteName}_v${currentVersion}_${dateStr}.pdf`;
+  //         pdf.save(fileName);
+          
+  //         toast({
+  //           title: "PDF Downloaded",
+  //           description: `Quote ${quote.proposal_number} has been downloaded successfully.`,
+  //         });
+  //       }
+  //     } catch (canvasError) {
+  //       console.error('Canvas rendering failed:', canvasError);
+  //       toast({
+  //         title: "PDF Download Failed",
+  //         description: "Unable to generate PDF. Please try again.",
+  //         variant: "destructive"
+  //       });
+  //     }
+      
+  //     document.body.removeChild(tempDiv);
+  //     await markAsDownloaded(quote.id);
+      
+  //   } catch (error) {
+  //     console.error('Error downloading PDF:', error);
+  //     toast({
+  //       title: "PDF Download Failed",
+  //       description: "Unable to generate PDF. Please try again.",
+  //       variant: "destructive"
+  //     });
+  //   }
+  // };
 
   // Generate beautiful monthly revenue data for line chart
-  const generateMonthlyRevenueData = () => {
+  const generateMonthlyQuoteValueData = () => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const currentYear = new Date().getFullYear();
     
@@ -198,10 +613,20 @@ const Quotes = () => {
         const quoteDate = new Date(quote.created_at);
         return quoteDate.getFullYear() === currentYear && quoteDate.getMonth() === index;
       });
-      
+
+      const parseCurrency = (formatted: string): number => {
+        return Number(formatted.replace(/[^0-9.-]+/g, ''));
+      };
+
       const monthlyValue = monthQuotes.reduce((sum, quote) => {
-        const total = quote.price_details?.total_cost || 0;
-        return sum + (typeof total === 'number' ? total : 0);
+        const total = quote.price_details?.total;
+        if (typeof total === 'string') {
+          return sum + parseCurrency(total);
+        } else if (typeof total === 'number') {
+          return sum + total;
+        } else {
+          return sum;
+        }
       }, 0);
       
       return {
@@ -211,7 +636,11 @@ const Quotes = () => {
     });
   };
 
-  const monthlyRevenueData = generateMonthlyRevenueData();
+  const monthlyQuoteValueData = generateMonthlyQuoteValueData();
+  const handleCreateQuote = (quoteName: string) => {
+    setShowNewQuoteDialog(false);
+    navigate("/newquote");
+  };
 
   if (editingQuote) {
     return (
@@ -219,9 +648,16 @@ const Quotes = () => {
         user={user?.email || ""} 
         onLogout={handleLogout} 
         quoteName={editingQuote.project_name || editingQuote.proposal_number}
-        onBackToDashboard={() => setEditingQuote(null)}
-        onQuoteNameChange={() => {}}
         existingQuote={editingQuote}
+        onBackToDashboard={() => {
+          setEditingQuote(null)
+          refreshQuotes();
+        }}
+        onQuoteNameChange={(newName) => {
+          if (editingQuote) {
+            setEditingQuote({...editingQuote, project_name: newName});
+          }
+        }}
       />
     );
   }
@@ -266,13 +702,13 @@ const Quotes = () => {
                 </h1>
                 <p className="text-slate-600 mt-2 text-lg">Manage and track your project quotes</p>
               </div>
-              <Button 
+              {/* <Button 
                 onClick={() => setShowNewQuoteDialog(true)}
                 className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-300 hover-scale"
               >
                 <FileText className="w-4 h-4 mr-2" />
                 New Quote
-              </Button>
+              </Button> */}
             </div>
 
             {/* Beautiful Revenue Chart */}
@@ -280,16 +716,16 @@ const Quotes = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-xl">
                   <BarChart3 className="w-6 h-6 text-blue-600" />
-                  Quote Revenue Trend (2024)
+                  Quoted Amount (2025)
                 </CardTitle>
                 <CardDescription>
-                  Monthly revenue from quotes throughout the year
+                  Monthly Total (Potential) Revenue from quotes throughout the year
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={monthlyRevenueData}>
+                    <LineChart data={monthlyQuoteValueData}>
                       <defs>
                         <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
@@ -336,18 +772,31 @@ const Quotes = () => {
                 />
               </div>
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-full sm:w-[180px] bg-white/80 backdrop-blur-sm border-slate-200 shadow-sm">
+                <SelectTrigger className="w-full sm:w-[120px] bg-white/80 backdrop-blur-sm border-slate-200 shadow-sm">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="won">Won</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="Draft">Draft</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="Won">Won</SelectItem>
+                  <SelectItem value="Rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
+              <Button 
+                onClick={() => setShowNewQuoteDialog(true)}
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-300 hover-scale"
+              >
+                New Quote
+              </Button>
+              {/* <Button 
+                variant="outline" 
+                className="bg-white/80 backdrop-blur-sm shadow-sm hover:bg-slate-50 transition-all duration-200"
+                onClick={refreshQuotes}
+              >
+                <RefreshCcw/>
+              </Button>  */}
             </div>
 
             {/* Quotes Table */}
@@ -357,7 +806,8 @@ const Quotes = () => {
                   <TableHeader>
                     <TableRow className="bg-slate-50/50">
                       <TableHead className="font-semibold">Proposal #</TableHead>
-                      <TableHead className="font-semibold">Client/Project</TableHead>
+                      <TableHead className="font-semibold">Project Name</TableHead>
+                      <TableHead className="font-semibold">Client Name</TableHead>
                       <TableHead className="font-semibold">Created</TableHead>
                       <TableHead className="font-semibold">Total</TableHead>
                       <TableHead className="font-semibold">Status</TableHead>
@@ -366,35 +816,41 @@ const Quotes = () => {
                   </TableHeader>
                   <TableBody>
                     {filteredQuotes.map((quote) => {
-                      const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "N/A";
+                      const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client Name";
                       const projectName = quote.project_name || quote.quote_details?.project_name || "Untitled Project";
-                      const total = quote.price_details?.total_cost || 0;
-                      const formattedTotal = typeof total === 'number' ? formatCurrency(total) : 'N/A';
+                      const total = quote.price_details?.total || 0;
+
 
                       return (
                         <TableRow key={quote.id} className="hover:bg-slate-50/50 transition-colors">
                           <TableCell className="font-medium">{quote.proposal_number}</TableCell>
                           <TableCell>
                             <div>
+                              <div className="font-medium">{projectName}</div>
+                              {/* <div className="text-sm text-slate-500">{projectName}</div> */}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>
                               <div className="font-medium">{clientName}</div>
-                              <div className="text-sm text-slate-500">{projectName}</div>
+                              {/* <div className="text-sm text-slate-500">{clientName}</div> */}
                             </div>
                           </TableCell>
                           <TableCell className="text-slate-600">
                             {new Date(quote.created_at).toLocaleDateString()}
                           </TableCell>
-                          <TableCell className="font-semibold">{formattedTotal}</TableCell>
+                          <TableCell className="font-semibold">{formatCurrency(total)}</TableCell>
                           <TableCell>
                             <Select value={quote.status || "draft"} onValueChange={(value) => updateQuoteStatus(quote.id, value)}>
-                              <SelectTrigger className="w-32">
+                              <SelectTrigger className={`w-28 h-6 border-0 text-md px-3 ${statusColors[quote.status as keyof typeof statusColors]} [&>svg]:hidden`}>
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="draft">Draft</SelectItem>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="completed">Completed</SelectItem>
-                                <SelectItem value="won">Won</SelectItem>
-                                <SelectItem value="rejected">Rejected</SelectItem>
+                              <SelectContent className="bg-background border shadow-lg z-50">
+                                <SelectItem value="Draft">Draft</SelectItem>
+                                <SelectItem value="Pending">Pending</SelectItem>
+                                <SelectItem value="Completed">Completed</SelectItem>
+                                <SelectItem value="Won">Won</SelectItem>
+                                <SelectItem value="Rejected">Rejected</SelectItem>
                               </SelectContent>
                             </Select>
                           </TableCell>
@@ -468,15 +924,7 @@ const Quotes = () => {
       <CreateQuoteDialog 
         open={showNewQuoteDialog}
         onOpenChange={setShowNewQuoteDialog}
-        onCreateQuote={async (quoteName) => {
-          await createQuote({ quoteName });
-          await refreshQuotes();
-          const newQuote = quotes.find(q => q.quote_details?.quoteName === quoteName || q.project_name === quoteName);
-          if (newQuote) {
-            setEditingQuote(newQuote);
-          }
-          setShowNewQuoteDialog(false);
-        }} 
+        onCreateQuote={handleCreateQuote}
       />
     </SidebarProvider>
   );

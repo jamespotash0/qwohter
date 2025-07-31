@@ -81,10 +81,10 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
   };
 
   // Calculate basic stats from real quotes data
-  const totalQuotes = quotes.length;
-  const draftQuotes = quotes.filter(q => q.status === "draft").length;
-  const pendingQuotes = quotes.filter(q => q.status === "pending").length;
-  const completedQuotes = quotes.filter(q => q.status === "completed").length;
+  // const totalQuotes = quotes.length;
+  // const draftQuotes = quotes.filter(q => q.status === "draft").length;
+  // const pendingQuotes = quotes.filter(q => q.status === "pending").length;
+  // const completedQuotes = quotes.filter(q => q.status === "completed").length;
 
   return (
     <SidebarProvider>
@@ -232,7 +232,7 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
               {/* Left Column - Analytics & Team */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Project Analytics */}
-                <Card>
+                {/* <Card>
                   <CardHeader>
                     <CardTitle>Project Analytics</CardTitle>
                   </CardHeader>
@@ -248,7 +248,7 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
                       ))}
                     </div>
                   </CardContent>
-                </Card>
+                </Card> */}
 
                 {/* Team Collaboration */}
                 {/* <Card>

@@ -36,10 +36,9 @@ const CreateQuoteDialog = ({
           <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl mx-auto mb-4">
             <FileText className="w-8 h-8 text-blue-600" />
           </div>
-          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r text-center from-slate-900 to-slate-700 bg-clip-text text-transparent">
             Create New Quote
           </DialogTitle>
-          <p className="text-slate-600">Start building your professional quote</p>
         </DialogHeader>
         <div className="space-y-6 py-6">
           <div className="space-y-3">

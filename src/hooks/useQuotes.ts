@@ -67,7 +67,8 @@ const convertRowToQuote = (row: QuoteRow): Quote => {
     ...row,
     wall_details: migrateWallDetails(row.wall_details),
     project_name: row.project_name || undefined,
-    date_last_downloaded: row.date_last_downloaded || undefined
+    date_last_downloaded: row.date_last_downloaded || undefined,
+    status: row.status || undefined
   };
 };
 
@@ -111,33 +112,33 @@ export const useQuotes = () => {
 
       if (profileError) throw profileError;
       if (!profileData?.organization_id) throw new Error('User not assigned to an organization');
-
+      
       const { data, error } = await supabase
         .from('quotes')
         .insert({
           proposal_number: quoteData.jobDetails.proposalNumber,
-          project_name: quoteData.contactInfo.project_name || quoteData.quoteName,
+          project_name: quoteData.project_name || quoteData.quoteName,
           quote_details: quoteData.contactInfo || {},
           job_details: {
-            job_location: quoteData.jobDetails.jobLocation,
-            client_name: quoteData.jobDetails.billedTo.name,
-            client_company: quoteData.jobDetails.billedTo.company,
-            client_address: quoteData.jobDetails.billedTo.address,
-            date: quoteData.jobDetails.date
+            job_location: quoteData.jobDetails || '',
+            client_name: quoteData.jobDetails.billedTo.name || '',
+            client_company: quoteData.job_details.billedTo.company || '',
+            client_address: quoteData.job_details.billedTo.address || '',
+            date: quoteData.job_details.date
           },
-          wall_details: quoteData.walls || {},
-          pocket_doors: quoteData.pocketDoors || {},
+          wall_details: quoteData.wall_details || {},
+          pocket_doors: quoteData.pocket_doors || {},
           price_details: {
-            base_price: quoteData.pricing.basePrice,
-            freight: quoteData.pricing.freight,
-            total: quoteData.pricing.total,
-            payment_upon_drawings: quoteData.pricing.paymentUponDrawings,
-            payment_upon_track_installation: quoteData.pricing.paymentUponTrackInstallation
+            base_price: quoteData.price_details.base_price,
+            freight: quoteData.price_details.freight,
+            total: quoteData.price_details.total,
+            payment_upon_drawings: quoteData.price_details.paymentUponDrawings,
+            payment_upon_track_installation: quoteData.price_details.paymentUponTrackInstallation
           },
-          support_structure: quoteData.supportStructure || {},
-          delivery_details: quoteData.deliveryLabor.delivery || {},
-          labor_details: quoteData.deliveryLabor.labor || {},
-          status: quoteData.status || 'draft',
+          support_structure: quoteData.support_structure || {},
+          delivery_details: quoteData.delivery_details || {},
+          labor_details: quoteData.labor_details || {},
+          status: quoteData.status || 'Draft',
           user_id: user.id,
           organization_id: profileData.organization_id
         })
@@ -149,7 +150,7 @@ export const useQuotes = () => {
       setQuotes(prev => [convertRowToQuote(data), ...prev]);
       toast({
         title: "Quote created",
-        description: `Quote ${quoteData.jobDetails.proposalNumber} has been created successfully.`,
+        description: `Quote ${quoteData.proposal_number} has been created successfully.`,
       });
       
       return data;

@@ -79,7 +79,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   };
   
   // Form data states - populate with existing quote data if available
-  const [quoteStatus, setQuoteStatus] = useState(existingQuote?.status || "Draft");
+  const [quoteStatus, setQuoteStatus] = useState(existingQuote?.status || "draft");
   const [contactInfo, setContactInfo] = useState({
     contactName: existingQuote?.quote_details?.contactName || "",
     contactEmail: existingQuote?.quote_details?.contactEmail || "",
@@ -311,7 +311,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
     pocketDoors,
     supportStructure,
     deliveryLabor,
-    pricing
+    pricing,
   };
 
   const sections = [
@@ -379,6 +379,8 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
                   <SelectItem value="Draft">Draft</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
                   <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="Won">Won</SelectItem>
+                  <SelectItem value="Rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
 

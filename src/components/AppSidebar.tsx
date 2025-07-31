@@ -42,7 +42,7 @@ export function AppSidebar({
   const isCollapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
-  return <Sidebar className={isCollapsed ? "w-16" : "w-52"} collapsible="icon">
+  return <Sidebar className={isCollapsed ? "w-16" : "w-60"} collapsible="icon">
       <SidebarHeader className="p-4">
         <div className="flex items-center justify-between">
           {!isCollapsed && <span className="font-bold text-lg text-foreground">AiQu</span>}
