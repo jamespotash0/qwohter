@@ -122,9 +122,9 @@ export const useQuotes = () => {
           job_details: {
             job_location: quoteData.jobDetails || '',
             client_name: quoteData.jobDetails.billedTo.name || '',
-            client_company: quoteData.job_details.billedTo.company || '',
-            client_address: quoteData.job_details.billedTo.address || '',
-            date: quoteData.job_details.date
+            client_company: quoteData.jobDetails.billedTo.company || '',
+            client_address: quoteData.jobDetails.billedTo.address || '',
+            date: quoteData.jobDetails.date
           },
           wall_details: quoteData.wall_details || {},
           pocket_doors: quoteData.pocket_doors || {},
