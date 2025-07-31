@@ -57,20 +57,20 @@ export const generateQuoteText = (data: QuoteData): string => {
   };
 
   const formatDimensions = (
-    widthFeet?: string,
-    widthInches?: string,
+    lengthFeet?: string,
+    lengthInches?: string,
     heightFeet?: string,
     heightInches?: string,
     includeLabels = true
   ) => {
-    const wf = parseInt(widthFeet || '0');
-    const wi = parseInt(widthInches || '0');
+    const wf = parseInt(lengthFeet || '0');
+    const wi = parseInt(lengthInches || '0');
     const hf = parseInt(heightFeet || '0');
     const hi = parseInt(heightInches || '0');
 
-    const width = `${wf}'-${wi}"${includeLabels ? ' W' : ''}`;
+    const length = `${wf}'-${wi}"${includeLabels ? ' L' : ''}`;
     const height = `${hf}'-${hi}"${includeLabels ? ' H' : ''}`;
-    return `${width} x ${height}`;
+    return `${length} x ${height}`;
   };
 
   const getWallCount = () => {
@@ -247,7 +247,7 @@ export const generateQuoteText = (data: QuoteData): string => {
       <table style="border-collapse: collapse; width: 100%;">
         <tbody>
           ${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
-            const dimensions = formatDimensions(wall.widthFeet, wall.widthInches, wall.heightFeet, wall.heightInches, true);
+            const dimensions = formatDimensions(wall.lengthFeet, wall.lengthInches, wall.heightFeet, wall.heightInches, true);
             const panelCount = wall.panelCount || '';
             const panelConfiguration = wall.panelConfiguration || '';
             const quantity = wall.quantity || '1';
@@ -270,7 +270,7 @@ export const generateQuoteText = (data: QuoteData): string => {
       <h2 class="section-header">PANELS:</h2>
       <p>
         This wall system utilizes the Kwik-Wall <strong>${wallEntries[0]?.[1]?.series || ''} Series Model ${wallEntries[0]?.[1]?.model || ''}</strong> configured with <strong>${wallEntries[0]?.[1]?.panelConfiguration || ''}</strong> designed for use with a <strong>${wallEntries[0]?.[1]?.trackType || ''} Layout</strong>, and includes ${isGLModel(wallEntries[0]?.[1]?.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
-        <br><br>The wall consists of <strong>${getPanelConfigurationText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelConfiguration || ''}</strong>, finished in an <strong>${wallEntries[0]?.[1]?.panelFinishCategory || ''}</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches, false).split(' x ')[1]}</strong> in height, with panel widths varying as needed. Each panel features a <strong>${wallEntries[0]?.[1]?.panelDesign || ''} </strong> design and is nominally <strong>${wallEntries[0]?.[1]?.panelThickness || ''}"</strong> thick, constructed with a 1/2" gypsum board laminated to a <strong>${wallEntries[0]?.[1].panelSkin}</strong>. The panels will be suspended from a <strong>${wallEntries[0]?.[1]?.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${wallEntries[0]?.[1]?.verticalSeals || ''}</strong> vertical seals that create a continuous interlock, <strong>${wallEntries[0]?.[1]?.bottomSeals || ''}</strong> operable bottom seals, and <strong>${wallEntries[0]?.[1]?.topSeals}</strong> top seals. Adjustable seals are set at the time of installation and operable/retractable seals are user-adjustable for virtually effortless movement. The lead panel provides the initial closure using a <strong>${wallEntries[0]?.[1]?.initialClosureSystem || ''}</strong>, and the end panel uses a <strong>${wallEntries[0]?.[1]?.endPanelType || ''}</strong>, securing the system when fully deployed.
+        <br><br>The wall(s) consists of <strong>${getPanelConfigurationText(wallEntries[0]?.[1]?.panelCount)} ${wallEntries[0]?.[1]?.panelConfiguration || ''}</strong>, finished in an <strong>${wallEntries[0]?.[1]?.panelFinishCategory || ''}</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${formatDimensions('0', '0', wallEntries[0]?.[1]?.heightFeet, wallEntries[0]?.[1]?.heightInches, false).split(' x ')[1]}</strong> in height, with panel lengths varying as needed. Each panel features a <strong>${wallEntries[0]?.[1]?.panelDesign || ''} </strong> design and is nominally <strong>${wallEntries[0]?.[1]?.panelThickness || ''}"</strong> thick, constructed with a 1/2" gypsum board laminated to a <strong>${wallEntries[0]?.[1].panelSkin}</strong>. The panels will be suspended from a <strong>${wallEntries[0]?.[1]?.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${wallEntries[0]?.[1]?.verticalSeals || ''}</strong> vertical seals that create a continuous interlock, <strong>${wallEntries[0]?.[1]?.bottomSeals || ''}</strong> operable bottom seals, and <strong>${wallEntries[0]?.[1]?.topSeals}</strong> top seals. Adjustable seals are set at the time of installation and operable/retractable seals are user-adjustable for virtually effortless movement. The lead panel provides the initial closure using a <strong>${wallEntries[0]?.[1]?.initialClosureSystem || ''}</strong>, and the end panel uses a <strong>${wallEntries[0]?.[1]?.endPanelType || ''}</strong>, securing the system when fully deployed.
       </p>
     </div>
     

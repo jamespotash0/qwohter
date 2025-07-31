@@ -167,7 +167,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
     // Check each wall for required fields
     for (const [wallName, wall] of wallEntries) {
       // Always required fields
-      if (!wall.widthFeet || !wall.heightFeet || !wall.panelCount || !wall.wallSystemType) {
+      if (!wall.lengthFeet || !wall.heightFeet || !wall.panelCount || !wall.wallSystemType) {
         return false;
       }
       
@@ -327,7 +327,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
   return (
     <SidebarProvider>
       <div className="min-h-screen w-full bg-background">
-        {/* Header - Full Width */}
+        {/* Header - Full Length */}
         <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
           
           <div className="flex h-12 items-center justify-between px-4 relative">

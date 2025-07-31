@@ -279,8 +279,8 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     const newWallName = `Wall ${String.fromCharCode(65 + wallCount)}`;
     const newWall: WallSpecification = {
       wallSystemType: "",
-      widthFeet: "",
-      widthInches: "",
+      lengthFeet: "",
+      lengthInches: "",
       heightFeet: "",
       heightInches: "",
       quantity: "1",
@@ -341,12 +341,12 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
 
   const wallSystemTypes = ["Operable Wall", "Glass Wall", "Accordion Partitions", "Unispan Support", "FlexTact"];
   const panelConfigurations = ["Individual Panels", "Hinged-Paired Panels", "Continuously-Hinged Panels"];
-  const panelDesigns = ["Trimless", "Cap Trimmed"];
+  const panelDesigns = ["Trimless U Capped", "U-Capped Trim"]; //trimless, cap trimmed
   const passDoorOptions = ["Single", "Double"];
   const panelFinishCategories = ["Koroseal Standard Vinyl", "Koroseal Upgrade Vinyl", "Shaw Standard Carpet", "HyTex Upgrade Carpet", "HyTex Standard Fabric", "HyTex Upgrade Fabric", "Standard Wood Veneer", "Wilsonart High Pressure Laminate (HPL)", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
   const verticalSeals = ["Tongue-and-Groove"];
   const bottomSeals = ["Retractable", "Automatic", "Adjustable"];
-  const topSeals = ["Adjustable", "Operable"];
+  const topSeals = ["Fixed", "Adjustable", "Operable"];
   const endPanelTypes = ["Fixed Wall Jamb", "Telescoping Closure", "Closure Panel", "Adjustable Wall Jamb", "Articulating Panel"];
   const initialClosureSystem = ["Standard Bulb", "Optional Fixed Starter Jamb", "Optional Adjustable Starter Jamb"];
 
@@ -457,14 +457,14 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                     <div>
                       <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Dimensions</h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Width */}
+                        {/* Length */}
                         <div className="space-y-2">
-                          <Label className="text-sm font-medium">Width *</Label>
+                          <Label className="text-sm font-medium">Length *</Label>
                           <div className="flex gap-2">
                             <div className="flex-1">
                               <Input
-                                value={wall.widthFeet}
-                                onChange={(e) => handleWallChange(wallName, "widthFeet", e.target.value)}
+                                value={wall.lengthFeet}
+                                onChange={(e) => handleWallChange(wallName, "lengthFeet", e.target.value)}
                                 placeholder="32"
                                 className="text-center"
                               />
@@ -472,8 +472,8 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                             </div>
                             <div className="flex-1">
                               <Input
-                                value={wall.widthInches}
-                                onChange={(e) => handleWallChange(wallName, "widthInches", e.target.value)}
+                                value={wall.lengthInches}
+                                onChange={(e) => handleWallChange(wallName, "lengthInches", e.target.value)}
                                 placeholder="4"
                                 className="text-center"
                               />

@@ -1,10 +1,24 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Search, Download, Edit, Trash2, MoreHorizontal, DollarSign, TrendingUp, FileText, Building2, User, BarChart3, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+// import {
+//   ColumnDef,
+//   getCoreRowModel,
+//   getFilteredRowModel,
+//   getPaginationRowModel,
+//   getSortedRowModel,
+//   PaginationState,
+//   SortingState,
+//   useReactTable,
+// } from '@tanstack/react-table';
+// import { DataGrid, DataGridContainer } from '@/components/ui/data-grid-table';
+// import { DataGridPagination } from '@/components/ui/data-grid-table';
+// import { DataGridTable } from '@/components/ui/data-grid-table';
+// import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -820,7 +834,6 @@ const Quotes = () => {
                       const projectName = quote.project_name || quote.quote_details?.project_name || "Untitled Project";
                       const total = quote.price_details?.total || 0;
                       const projectLocation = quote.job_details?.job_location || "";
-
 
                       return (
                         <TableRow key={quote.id} className="hover:bg-slate-50/50 transition-colors">

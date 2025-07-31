@@ -1,8 +1,8 @@
 
 export interface WallSpecification {
   wallSystemType: string;
-  widthFeet: string;
-  widthInches: string;
+  lengthFeet: string;
+  lengthInches: string;
   heightFeet: string;
   heightInches: string;
   quantity: string;
