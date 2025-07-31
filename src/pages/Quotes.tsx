@@ -116,11 +116,11 @@ const Quotes = () => {
       const { enhanceWithPageBreaks } = await import('@/utils/pageBreakManager');
      
       const rawQuoteText = generateQuoteText(quote);
-      const quoteText = enhanceWithPageBreaks(rawQuoteText);
+      // const quoteText = enhanceWithPageBreaks(rawQuoteText);
       
 
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = quoteText;
+      tempDiv.innerHTML = rawQuoteText;
       tempDiv.style.cssText = `
         font-family: "Times New Roman", serif;
         font-size: 12pt;
@@ -422,7 +422,7 @@ const Quotes = () => {
           format: 'a4'
         });
         
-        const plainText = quoteText.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+        const plainText = rawQuoteText.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
         const splitText = doc.splitTextToSize(plainText, 180);
         doc.setFontSize(10);
         let y = 20;
