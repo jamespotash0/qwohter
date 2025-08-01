@@ -117,27 +117,27 @@ export const useQuotes = () => {
         .from('quotes')
         .insert({
           proposal_number: quoteData.jobDetails.proposalNumber,
-          project_name: quoteData.project_name || quoteData.quoteName,
+          project_name: quoteData.quoteName || quoteData.project_name,
           quote_details: quoteData.contactInfo || {},
           job_details: {
-            job_location: quoteData.jobDetails || '',
+            job_location: quoteData.jobDetails.jobLocation || '',
             client_name: quoteData.jobDetails.billedTo.name || '',
             client_company: quoteData.jobDetails.billedTo.company || '',
             client_address: quoteData.jobDetails.billedTo.address || '',
             date: quoteData.jobDetails.date
           },
-          wall_details: quoteData.wall_details || {},
-          pocket_doors: quoteData.pocket_doors || {},
+          wall_details: quoteData.walls || {},
+          pocket_doors: quoteData.pocketDoors || {},
           price_details: {
-            base_price: quoteData.price_details.base_price,
-            freight: quoteData.price_details.freight,
-            total: quoteData.price_details.total,
-            payment_upon_drawings: quoteData.price_details.paymentUponDrawings,
-            payment_upon_track_installation: quoteData.price_details.paymentUponTrackInstallation
+            base_price: quoteData.pricing.basePrice,
+            freight: quoteData.pricing.freight,
+            total: quoteData.pricing.total,
+            payment_upon_drawings: quoteData.pricing.paymentUponDrawings,
+            payment_upon_track_installation: quoteData.pricing.paymentUponTrackInstallation
           },
-          support_structure: quoteData.support_structure || {},
-          delivery_details: quoteData.delivery_details || {},
-          labor_details: quoteData.labor_details || {},
+          support_structure: quoteData.supportStructure || {},
+          delivery_details: quoteData.deliveryLabor.delivery || {},
+          labor_details: quoteData.deliveryLabor.labor || {},
           status: quoteData.status || 'Draft',
           user_id: user.id,
           organization_id: profileData.organization_id
