@@ -287,31 +287,34 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-background via-secondary/30 to-accent/10" />
+      
+      <div className="w-full max-w-md relative z-10">
         {/* Logo and branding section */}
-        <div className="text-center mb-8">
-          <div className="mx-auto w-20 h-20 bg-primary rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+        <div className="text-center mb-8 animate-fade-in-up">
+          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-primary to-primary/80 rounded-3xl flex items-center justify-center mb-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
             <Building2 className="w-10 h-10 text-primary-foreground" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent mb-2">
             AiQu
           </h1>
-          <p className="text-slate-600 text-base">
-            Professional Quote Tool
+          <p className="text-muted-foreground text-lg font-medium">
+            Professional Quote Management
           </p>
         </div>
 
         {/* Auth card */}
-        <Card className="bg-white border border-slate-200 shadow-sm">
+        <Card className="card-floating backdrop-blur-sm border-0 shadow-large animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
           <CardHeader className="text-center space-y-4 pb-8">
-            <CardTitle className="text-2xl font-bold text-slate-900">
+            <CardTitle className="text-2xl font-bold text-foreground">
               {step === "auth" && (isSignUp ? "Create Account" : "Welcome")}
               {step === "verify-otp" && "Verify Your Email"}
               {step === "profile" && "Complete Your Profile"}
               {step === "organization" && "Organization Setup"}
             </CardTitle>
-            <CardDescription className="text-slate-600 text-base">
+            <CardDescription className="text-muted-foreground text-base">
               {step === "auth" && (isSignUp 
                 ? "Create your account to start managing quotes"
                 : "Sign in to access your quote management system"
@@ -327,7 +330,7 @@ const Auth = () => {
               <>
                 <form onSubmit={handleAuth} className="space-y-6">
                   <div className="space-y-3">
-                    <Label htmlFor="email" className="text-slate-700 font-medium text-sm">
+                    <Label htmlFor="email" className="text-foreground font-medium text-sm">
                       Email
                     </Label>
                     <Input 
@@ -337,12 +340,12 @@ const Auth = () => {
                       onChange={(e) => setEmail(e.target.value)} 
                       placeholder="Enter your email" 
                       required 
-                      className="bg-slate-50 border-slate-200 h-12" 
+                      className="bg-secondary/50 border-border h-12 transition-all duration-200 focus:ring-2 focus:ring-primary/20" 
                     />
                   </div>
 
                   <div className="space-y-3">
-                    <Label htmlFor="password" className="text-slate-700 font-medium text-sm">
+                    <Label htmlFor="password" className="text-foreground font-medium text-sm">
                       Password
                     </Label>
                     <Input 
@@ -352,13 +355,13 @@ const Auth = () => {
                       onChange={(e) => setPassword(e.target.value)} 
                       placeholder="Enter your password" 
                       required 
-                      className="bg-slate-50 border-slate-200 h-12" 
+                      className="bg-secondary/50 border-border h-12 transition-all duration-200 focus:ring-2 focus:ring-primary/20" 
                     />
                   </div>
 
                   <Button 
                     type="submit" 
-                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold h-12"
+                    className="w-full bg-gradient-to-r from-primary to-primary/90 text-primary-foreground hover:from-primary/90 hover:to-primary/80 font-semibold h-12 btn-floating"
                     disabled={loading}
                   >
                     {loading ? (

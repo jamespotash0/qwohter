@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Quotes from "./pages/Quotes";
 import Analytics from "./pages/Analytics";
+import Team from "./pages/Team";
 import NewQuote from "./pages/NewQuote";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/quotes" element={<Quotes />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/team" element={<Team />} />
           <Route path="/newquote" element={<NewQuote />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
