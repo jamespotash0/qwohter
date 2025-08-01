@@ -69,13 +69,15 @@ const Analytics = () => {
 
 
   const wonQuotes = quotes.filter(q => q.status === 'Won').length;
+  const rejectedQuotes = quotes.filter(q => q.status === 'rejected').length;
   const averageRevenuePerQuote = wonQuotes > 0 ? totalRevenue / wonQuotes : 0;
-  const conversionRate = totalQuotes > 0 ? (wonQuotes / totalQuotes) * 100 : 0;
+  const conversionRate = totalQuotes > 0 ? (wonQuotes / (wonQuotes+ rejectedQuotes)) * 100 : 0;
 
   // Generate monthly data for charts
   const generateMonthlyRevenueData = () => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const currentYear = new Date().getFullYear();
+    
     
     return months.map((month, index) => {
       const monthQuotes = quotes.filter(quote => {
