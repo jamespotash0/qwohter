@@ -114,7 +114,7 @@ const Analytics = () => {
   // Status distribution data
   const statusData = [
     { name: 'Draft', value: quotes.filter(q => q.status === 'Draft').length, color: '#94a3b8' },
-    { name: 'Pending', value: quotes.filter(q => q.status === 'Completed').length, color: '#fbbf24' },
+    { name: 'Submitted', value: quotes.filter(q => q.status === 'Submitted').length, color: '#fbbf24' },
     { name: 'Won', value: quotes.filter(q => q.status === 'Won').length, color: '#10b981' },
     { name: 'Rejected', value: quotes.filter(q => q.status === 'Rejected').length, color: '#ef4444' },
   ];

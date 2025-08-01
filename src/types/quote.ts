@@ -46,4 +46,4 @@ export interface PricingData {
   paymentUponTrackInstallation: string;
 }
 
-export type QuoteStatus = 'draft' | 'pending' | 'completed' | 'won' | 'rejected';
+export type QuoteStatus = 'Draft' | 'Pending' | 'Submitted' | 'Won' | 'Rejected';

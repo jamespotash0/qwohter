@@ -52,7 +52,7 @@ const Quotes = () => {
   const statusColors = {
     Draft: "bg-gray-100 text-gray-800",
     Pending: "bg-yellow-100 text-yellow-800",
-    Completed: "bg-green-100 text-green-800",
+    Submitted: "bg-green-100 text-green-800",
     Won: "bg-blue-100 text-blue-800",
     Rejected: "bg-red-100 text-red-800",
   };
@@ -793,7 +793,7 @@ const Quotes = () => {
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="Draft">Draft</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="Submitted">Submitted</SelectItem>
                   <SelectItem value="Won">Won</SelectItem>
                   <SelectItem value="Rejected">Rejected</SelectItem>
                 </SelectContent>
@@ -862,7 +862,7 @@ const Quotes = () => {
                               <SelectContent className="bg-background border shadow-lg z-50">
                                 <SelectItem value="Draft">Draft</SelectItem>
                                 <SelectItem value="Pending">Pending</SelectItem>
-                                <SelectItem value="Completed">Completed</SelectItem>
+                                <SelectItem value="Submitted">Submitted</SelectItem>
                                 <SelectItem value="Won">Won</SelectItem>
                                 <SelectItem value="Rejected">Rejected</SelectItem>
                               </SelectContent>
