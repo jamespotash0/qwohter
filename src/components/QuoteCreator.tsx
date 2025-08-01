@@ -287,6 +287,7 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
       } else {
         // Create new quote
         await createQuote({
+          quoteName: localQuoteName,
           contactInfo,
           jobDetails,
           walls,
