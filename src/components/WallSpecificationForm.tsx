@@ -347,7 +347,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const verticalSeals = ["Tongue-and-Groove"];
   const bottomSeals = ["Retractable", "Automatic", "Adjustable"];
   const topSeals = ["Fixed", "Adjustable", "Operable"];
-  const endPanelTypes = ["Fixed Wall Jamb", "Telescoping Closure", "Closure Panel", "Adjustable Wall Jamb", "Articulating Panel"];
+  const endPanelTypes = ["Standard Expander Panel Closure", "Optional Hinged Panel(s) Closure"];
   const initialClosureSystem = ["Standard Bulb", "Optional Fixed Starter Jamb", "Optional Adjustable Starter Jamb"];
 
   const wallNames = Object.keys(walls.walls);
