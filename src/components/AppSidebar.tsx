@@ -18,6 +18,10 @@ const menuItems = [{
   title: "Analytics", 
   icon: BarChart3, 
   path: "/analytics"
+}, {
+  title: "Team",
+  icon: Users,
+  path: "/team"
 },
 // {
 //   title: "Calendar",
@@ -43,9 +47,16 @@ export function AppSidebar({
   const location = useLocation();
   const navigate = useNavigate();
   return <Sidebar className={isCollapsed ? "w-16" : "w-60"} collapsible="icon">
-      <SidebarHeader className="p-4">
+      <SidebarHeader className="p-4 border-b border-sidebar-border/50">
         <div className="flex items-center justify-between">
-          {!isCollapsed && <span className="font-bold text-lg text-foreground">AiQu</span>}
+          {!isCollapsed && (
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center">
+                <Building2 className="w-4 h-4 text-primary-foreground" />
+              </div>
+              <span className="font-bold text-lg bg-gradient-to-r from-sidebar-foreground to-sidebar-foreground/80 bg-clip-text text-transparent">AiQu</span>
+            </div>
+          )}
           <SidebarTrigger className="h-6 w-6" />
         </div>
       </SidebarHeader>
@@ -61,7 +72,7 @@ export function AppSidebar({
               {menuItems.map(item => {
               const isActive = location.pathname === item.path;
               return <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild className={`w-full justify-start ${isActive ? "bg-primary text-primary-foreground font-medium" : "hover:bg-muted"}`}>
+                    <SidebarMenuButton asChild className={`w-full justify-start transition-all duration-200 ${isActive ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground font-medium shadow-md" : "hover:bg-sidebar-accent/80"}`}>
                       <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(item.path)}>
                         <item.icon className="h-4 w-4" />
                         {!isCollapsed && <span className="flex-1">{item.title}</span>}

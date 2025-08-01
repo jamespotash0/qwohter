@@ -22,7 +22,9 @@ import {
   Timer,
   Play,
   Square,
-  Settings
+  Settings,
+  Crown,
+  Shield
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -88,29 +90,32 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-slate-50">
+      <div className="min-h-screen flex w-full bg-background">
         <AppSidebar user={user} onLogout={onLogout} />
         
         <main className="flex-1 flex flex-col">
           {/* Floating Header */}
           <div className="p-6 pb-0">
-            <header className="bg-white/80 backdrop-blur-sm border border-slate-200/50 shadow-lg rounded-[22px] px-6 py-4">
+            <header className="bg-card/80 backdrop-blur-sm border border-border/50 shadow-large rounded-[22px] px-6 py-4 animate-fade-in-up">
               <div className="flex items-center justify-between">
                 <div className="flex-1" />
                 <div className="flex items-center justify-center gap-2">
-                  <Building2 className="w-5 h-5" />
-                  <span className="font-medium text-lg">{currentOrganization?.name || 'Loading...'}</span>
+                  <Building2 className="w-5 h-5 text-muted-foreground" />
+                  <span className="font-medium text-lg bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+                    {currentOrganization?.name || 'Loading...'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-4 flex-1 justify-end">
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" className="btn-floating">
                     <Mail className="w-4 h-4" />
                   </Button>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4" />
+                    <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-primary/5 rounded-full flex items-center justify-center">
+                      <User className="w-4 h-4 text-primary" />
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">{profile?.full_name || user}</p>
+                      <p className="text-sm font-medium text-foreground">{profile?.full_name || user}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{currentUserRole}</p>
                     </div>
                   </div>
                 </div>
@@ -121,20 +126,19 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
           {/* Main Dashboard Content */}
           <div className="flex-1 p-6 pt-3 space-y-6">
             {/* Dashboard Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
               <div>
-                <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-                <p className="text-slate-600 mt-1">Plan, prioritize, and accomplish your tasks with ease.</p>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+                  Dashboard
+                </h1>
+                <p className="text-muted-foreground mt-2 text-lg">Plan, prioritize, and accomplish your tasks with ease.</p>
               </div>
               <div className="flex gap-3">
-              <CreateQuoteDialog 
-                open={showNewQuoteDialog}
-                onOpenChange={setShowNewQuoteDialog}
-                onCreateQuote={handleCreateQuote} 
-              />
-                {/* <Button variant="outline" className="bg-white">
-                  Import Data
-                </Button> */}
+                <CreateQuoteDialog 
+                  open={showNewQuoteDialog}
+                  onOpenChange={setShowNewQuoteDialog}
+                  onCreateQuote={handleCreateQuote} 
+                />
               </div>
             </div>
 
@@ -213,22 +217,85 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
               </Card>
             </div> */}
 
-            {/* Member Management - Only for admins and owners */}
-            {currentOrganization && currentUserRole && ['admin', 'owner'].includes(currentUserRole) && (
-              <MemberManagement
-                organization={currentOrganization}
-                members={members}
-                onInviteMember={(email, role) => inviteMember(currentOrganization.id, email, role)}
-                onRemoveMember={removeMember}
-                onUpdateRole={updateMemberRole}
-                onApproveMember={approveMember}
-                onRejectMember={rejectMember}
-                onRefresh={refreshOrganizations}
-              />
-            )}
+            {/* Quick Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+              <Card className="card-elevated hover:shadow-medium transition-shadow duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Quotes</p>
+                      <p className="text-3xl font-bold text-foreground">{quotes.length}</p>
+                      <div className="flex items-center gap-1 mt-2">
+                        <TrendingUp className="w-3 h-3 text-primary" />
+                        <span className="text-xs text-muted-foreground">All time</span>
+                      </div>
+                    </div>
+                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-primary" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="card-elevated hover:shadow-medium transition-shadow duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Active Members</p>
+                      <p className="text-3xl font-bold text-foreground">{members.filter(m => m.status === 'active').length}</p>
+                      <div className="flex items-center gap-1 mt-2">
+                        <Users className="w-3 h-3 text-accent" />
+                        <span className="text-xs text-muted-foreground">In organization</span>
+                      </div>
+                    </div>
+                    <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center">
+                      <Users className="w-6 h-6 text-accent" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="card-elevated hover:shadow-medium transition-shadow duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">This Month</p>
+                      <p className="text-3xl font-bold text-foreground">{quotes.filter(q => new Date(q.created_at).getMonth() === new Date().getMonth()).length}</p>
+                      <div className="flex items-center gap-1 mt-2">
+                        <Calendar className="w-3 h-3 text-secondary-foreground" />
+                        <span className="text-xs text-muted-foreground">New quotes</span>
+                      </div>
+                    </div>
+                    <div className="w-12 h-12 bg-secondary/50 rounded-xl flex items-center justify-center">
+                      <Calendar className="w-6 h-6 text-secondary-foreground" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="card-elevated hover:shadow-medium transition-shadow duration-300">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Your Role</p>
+                      <p className="text-lg font-semibold text-foreground capitalize">{currentUserRole}</p>
+                      <div className="flex items-center gap-1 mt-2">
+                        <Building2 className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Organization</span>
+                      </div>
+                    </div>
+                    <div className="w-12 h-12 bg-secondary/50 rounded-xl flex items-center justify-center">
+                      {currentUserRole === 'owner' && <Crown className="w-6 h-6 text-yellow-500" />}
+                      {currentUserRole === 'admin' && <Shield className="w-6 h-6 text-blue-500" />}
+                      {currentUserRole === 'member' && <User className="w-6 h-6 text-muted-foreground" />}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
               {/* Left Column - Analytics & Team */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Project Analytics */}
@@ -288,16 +355,20 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
               {/* Right Column - Reminders, Projects, Progress, Timer */}
               <div className="space-y-6">
                 {/* Reminders */}
-                <Card>
+                <Card className="card-floating">
                   <CardHeader>
-                    <CardTitle>Reminders</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <Bell className="w-5 h-5 text-primary" />
+                      Reminders
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="p-4 bg-slate-50 rounded-lg">
-                        <h4 className="font-medium">Meeting with Arc Company</h4>
-                        <p className="text-sm text-slate-500 mt-1">Time : 02:00 pm - 04:00 pm</p>
-                        <Button className="w-full mt-3 bg-primary text-primary-foreground">
+                      <div className="p-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl border border-primary/20">
+                        <h4 className="font-medium text-foreground">Meeting with Arc Company</h4>
+                        <p className="text-sm text-muted-foreground mt-1">Time : 02:00 pm - 04:00 pm</p>
+                        <Button className="w-full mt-3 bg-gradient-to-r from-primary to-primary/90 btn-floating">
+                          <Play className="w-4 h-4 mr-2" />
                           Start Meeting
                         </Button>
                       </div>
@@ -306,26 +377,36 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
                 </Card>
 
                 {/* Project List */}
-                <Card>
+                <Card className="card-floating">
                   <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Project</CardTitle>
-                    <Button variant="outline" size="sm">
-                      + New
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-primary" />
+                      Recent Projects
+                    </CardTitle>
+                    <Button variant="outline" size="sm" className="btn-floating">
+                      <Plus className="w-4 h-4 mr-1" />
+                      New
                     </Button>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {quotes.slice(0, 5).map((quote, index) => (
-                        <div key={quote.id} className="flex items-center gap-3">
-                          <div className={`w-2 h-2 rounded-full ${index % 2 === 0 ? 'bg-blue-500' : 'bg-yellow-500'}`} />
+                        <div key={quote.id} className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer"
+                             onClick={() => onEditQuote(quote.project_name || quote.proposal_number)}>
+                          <div className={`w-3 h-3 rounded-full ${index % 3 === 0 ? 'bg-primary' : index % 3 === 1 ? 'bg-accent' : 'bg-secondary-foreground'}`} />
                           <div className="flex-1">
-                            <p className="text-sm font-medium">{quote.project_name || quote.proposal_number}</p>
-                            <p className="text-xs text-slate-500">Created: {new Date(quote.created_at).toLocaleDateString()}</p>
+                            <p className="text-sm font-medium text-foreground">{quote.project_name || quote.proposal_number}</p>
+                            <p className="text-xs text-muted-foreground">Created: {new Date(quote.created_at).toLocaleDateString()}</p>
                           </div>
+                          <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
                         </div>
                       ))}
                       {quotes.length === 0 && (
-                        <p className="text-sm text-slate-500 text-center py-4">No quotes yet</p>
+                        <div className="text-center py-8">
+                          <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                          <p className="text-sm text-muted-foreground">No quotes yet</p>
+                          <p className="text-xs text-muted-foreground mt-1">Create your first quote to get started</p>
+                        </div>
                       )}
                     </div>
                   </CardContent>
