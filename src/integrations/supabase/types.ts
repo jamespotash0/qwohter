@@ -176,13 +176,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
-      get_organization_by_code: {
-        Args: { input_code: string }
-        Returns: {
-          id: string
-          organization_code: string
-        }[]
-      }
       reject_member: {
         Args: { member_id: string }
         Returns: boolean
@@ -194,6 +187,10 @@ export type Database = {
       user_has_role_in_org: {
         Args: { org_id: string; required_role: string }
         Returns: boolean
+      }
+      get_organization_by_code: {
+        Args: { input_code: string }
+        Returns: { id: string; organization_code: string }[]  // matches the table columns returned
       }
     }
     Enums: {

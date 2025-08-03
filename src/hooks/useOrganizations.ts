@@ -8,7 +8,6 @@ export interface Organization {
   created_by: string;
   created_at: string;
   updated_at: string;
-  organization_code: string;
 }
 
 export interface OrganizationMember {
@@ -41,29 +40,25 @@ export const useOrganizations = () => {
         .from('profiles')
         .select(`
           organization_id,
-          role
+          role,
+          organizations:organization_id (
+            id,
+            name,
+            created_at,
+            updated_at,
+            created_by
+          )
         `)
         .eq('id', user.user.id)
         .single();
 
       if (profileError) throw profileError;
 
-      // For now, create a mock organization since we can't access the organizations table yet
-      if (profileData?.organization_id) {
-        const mockOrganization: Organization = {
-          id: profileData.organization_id,
-          name: "Contemporary Walls", // Default name for now
-          created_by: user.user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          organization_code: "CW123456" // Default code for now
-        };
-        
-        setCurrentOrganization(mockOrganization);
+      if (profileData?.organizations) {
+        setCurrentOrganization(profileData.organizations as Organization);
         setCurrentUserRole(profileData.role as 'owner' | 'admin' | 'member');
       }
     } catch (error: any) {
-      console.error('Error fetching organization:', error);
       toast({
         title: "Error fetching organization",
         description: error.message,
