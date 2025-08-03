@@ -85,15 +85,8 @@ const Team = () => {
   }, [navigate]);
 
 
-  const [orgCode, setOrgCode] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchAndSetOrgCode = async () => {
-      const code = await getOrgCode(userId);
-      setOrgCode(code);
-    };
-    fetchAndSetOrgCode();
-  }, [userId]);
+  // Get org code from currentOrganization instead of separate fetch
+  const orgCode = currentOrganization?.organization_code || null;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -122,49 +115,24 @@ const Team = () => {
   };
 
 
-  const getOrgCode = async (user_id: string): Promise<string | null> => {
-    const { data: userData, error: userError } = await supabase
-    .from('profiles')
-    .select('role, organization_id')
-    .eq('id', user_id)
-    .single();
-
-  if (userError || !userData) {
-    console.error('User fetch error or not found', userError);
-    return null;
-  }
-
-  // Check if the user is an admin
-  if (userData.role !== 'admin') {
-    console.warn('Access denied: user is not an admin');
-    return null;
-  }
-
-  // Step 2: Fetch the organization_code using organization_id
-  const { data: orgData, error: orgError } = await supabase
-    .from('organizations')
-    .select('organization_code')
-    .eq('id', userData.organization_id)
-    .single();
-
-  if (orgError || !orgData) {
-    console.error('Organization fetch error or not found', orgError);
-    return null;
-  }
-
-  return orgData.organization_code;
-};
-
   const copyOrganizationCode = async () => {
-    // TODO: Get organization code from database when available
-    // const orgCode = await getOrgCode(userId); // Placeholder
-    navigator.clipboard.writeText(orgCode);
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
-    toast({
-      title: "Copied!",
-      description: "Organization code copied to clipboard",
-    });
+    if (!orgCode) return;
+    
+    try {
+      await navigator.clipboard.writeText(orgCode);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+      toast({
+        title: "Copied!",
+        description: "Organization code copied to clipboard",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy organization code",
+        variant: "destructive",
+      });
+    }
   };
 
   const getRoleIcon = (role: string) => {

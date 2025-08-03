@@ -8,6 +8,7 @@ export interface Organization {
   created_by: string;
   created_at: string;
   updated_at: string;
+  organization_code: string;
 }
 
 export interface OrganizationMember {
@@ -38,27 +39,27 @@ export const useOrganizations = () => {
       // Get user's organization from their profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select(`
-          organization_id,
-          role,
-          organizations:organization_id (
-            id,
-            name,
-            created_at,
-            updated_at,
-            created_by
-          )
-        `)
+        .select('organization_id, role')
         .eq('id', user.user.id)
         .single();
 
       if (profileError) throw profileError;
 
-      if (profileData?.organizations) {
-        setCurrentOrganization(profileData.organizations as Organization);
+      if (profileData?.organization_id) {
+        // Now fetch the organization details separately
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .select('id, name, created_at, updated_at, created_by, organization_code')
+          .eq('id', profileData.organization_id)
+          .single();
+
+        if (orgError) throw orgError;
+
+        setCurrentOrganization(orgData as Organization);
         setCurrentUserRole(profileData.role as 'owner' | 'admin' | 'member');
       }
     } catch (error: any) {
+      console.error('Error fetching organization:', error);
       toast({
         title: "Error fetching organization",
         description: error.message,
