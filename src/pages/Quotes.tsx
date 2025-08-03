@@ -65,6 +65,8 @@ const Quotes = () => {
   const [deleteQuoteId, setDeleteQuoteId] = useState<string | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Check authentication
   useEffect(() => {
@@ -94,6 +96,17 @@ const Quotes = () => {
     const matchesStatus = selectedStatus === "all" || quote.status === selectedStatus;
     return matchesSearch && matchesStatus;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredQuotes.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedQuotes = filteredQuotes.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedStatus]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -680,10 +693,10 @@ const Quotes = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
         <AppSidebar user={user.email || ""} onLogout={handleLogout} />
         
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col overflow-hidden">
           {/* Floating Header */}
           <div className="p-6 pb-0">
             <header className="bg-white/80 backdrop-blur-sm border border-slate-200/50 shadow-lg rounded-[22px] px-6 py-4 animate-fade-in">
@@ -707,7 +720,7 @@ const Quotes = () => {
             </header>
           </div>
 
-          <div className="flex-1 p-6 pt-3 space-y-6">
+          <div className="flex-1 p-6 pt-3 space-y-4 overflow-auto">
             {/* Page Header */}
             <div className="flex items-center justify-between animate-fade-in">
               <div>
@@ -725,19 +738,19 @@ const Quotes = () => {
               </Button> */}
             </div>
 
-            {/* Beautiful Revenue Chart */}
+            {/* Compact Revenue Chart */}
             <Card className="animate-fade-in hover:shadow-lg transition-all duration-300">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-xl">
-                  <BarChart3 className="w-6 h-6 text-blue-600" />
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <BarChart3 className="w-5 h-5 text-blue-600" />
                   Quoted Amount (2025)
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-sm">
                   Monthly Total (Potential) Revenue from quotes throughout the year
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-80">
+                <div className="h-48">{/* Reduced from h-80 to h-48 */}
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={monthlyQuoteValueData}>
                       <defs>
@@ -775,18 +788,18 @@ const Quotes = () => {
             </Card>
 
             {/* Search and Filter */}
-            <div className="flex flex-col sm:flex-row gap-4 animate-fade-in">
+            <div className="flex flex-col sm:flex-row gap-3 animate-fade-in">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
                 <Input
                   placeholder="Search quotes by client, project, or proposal number..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-white/80 backdrop-blur-sm border-slate-200 shadow-sm"
+                  className="pl-10 bg-white/80 backdrop-blur-sm border-slate-200 shadow-sm h-9"
                 />
               </div>
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-full sm:w-[120px] bg-white/80 backdrop-blur-sm border-slate-200 shadow-sm">
+                <SelectTrigger className="w-full sm:w-[120px] bg-white/80 backdrop-blur-sm border-slate-200 shadow-sm h-9">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -798,115 +811,149 @@ const Quotes = () => {
                   <SelectItem value="Rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
+                <SelectTrigger className="w-full sm:w-[80px] bg-white/80 backdrop-blur-sm border-slate-200 shadow-sm h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
               <Button 
                 onClick={() => setShowNewQuoteDialog(true)}
-                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-300 hover-scale"
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-300 hover-scale h-9"
               >
                 New Quote
               </Button>
-              {/* <Button 
-                variant="outline" 
-                className="bg-white/80 backdrop-blur-sm shadow-sm hover:bg-slate-50 transition-all duration-200"
-                onClick={refreshQuotes}
-              >
-                <RefreshCcw/>
-              </Button>  */}
             </div>
 
-            {/* Quotes Table */}
-            <Card className="animate-fade-in hover:shadow-lg transition-all duration-300">
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-slate-50/50">
-                      <TableHead className="font-semibold">Proposal #</TableHead>
-                      <TableHead className="font-semibold">Project Name</TableHead>
-                      <TableHead className="font-semibold">Client Name</TableHead>
-                      <TableHead className="font-semibold">Created</TableHead>
-                      <TableHead className="font-semibold">Total</TableHead>
-                      <TableHead className="font-semibold">Status</TableHead>
-                      <TableHead className="font-semibold">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredQuotes.map((quote) => {
-                      const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client Name";
-                      const projectName = quote.project_name || quote.quote_details?.project_name || "Untitled Project";
-                      const total = quote.price_details?.total || 0;
-                      const projectLocation = quote.job_details?.job_location || "";
+            {/* Quotes Table with Pagination */}
+            <Card className="animate-fade-in hover:shadow-lg transition-all duration-300 flex-1 flex flex-col min-h-0">
+              <CardContent className="p-0 flex-1 flex flex-col min-h-0">
+                <div className="flex-1 overflow-auto">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-white z-10">
+                      <TableRow className="bg-slate-50/50">
+                        <TableHead className="font-semibold">Proposal #</TableHead>
+                        <TableHead className="font-semibold">Project Name</TableHead>
+                        <TableHead className="font-semibold">Client Name</TableHead>
+                        <TableHead className="font-semibold">Created</TableHead>
+                        <TableHead className="font-semibold">Total</TableHead>
+                        <TableHead className="font-semibold">Status</TableHead>
+                        <TableHead className="font-semibold">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedQuotes.map((quote) => {
+                        const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client Name";
+                        const projectName = quote.project_name || quote.quote_details?.project_name || "Untitled Project";
+                        const total = quote.price_details?.total || 0;
+                        const projectLocation = quote.job_details?.job_location || "";
 
-                      return (
-                        <TableRow key={quote.id} className="hover:bg-slate-50/50 transition-colors">
-                          <TableCell className="font-medium">{quote.proposal_number}</TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{projectName}</div>
-                              <div className="text-sm text-slate-500 break-words max-w-[200px]">{projectLocation}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{clientName}</div>
-                              {/* <div className="text-sm text-slate-500">{clientName}</div> */}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-slate-600">
-                            {new Date(quote.created_at).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell className="font-semibold">{formatCurrency(total)}</TableCell>
-                          <TableCell>
-                            <Select value={quote.status || "draft"} onValueChange={(value) => updateQuoteStatus(quote.id, value)}>
-                              <SelectTrigger className={`w-28 h-6 border-0 text-md px-3 ${statusColors[quote.status as keyof typeof statusColors]} [&>svg]:hidden`}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent className="bg-background border shadow-lg z-50">
-                                <SelectItem value="Draft">Draft</SelectItem>
-                                <SelectItem value="Pending">Pending</SelectItem>
-                                <SelectItem value="Submitted">Submitted</SelectItem>
-                                <SelectItem value="Won">Won</SelectItem>
-                                <SelectItem value="Rejected">Rejected</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => editQuote(quote)}>
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => downloadPDF(quote)}>
-                                  <Download className="mr-2 h-4 w-4" />
-                                  Download PDF
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                  onClick={() => setDeleteQuoteId(quote.id)}
-                                  className="text-red-600 focus:text-red-600"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                        return (
+                          <TableRow key={quote.id} className="hover:bg-slate-50/50 transition-colors">
+                            <TableCell className="font-medium">{quote.proposal_number}</TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">{projectName}</div>
+                                <div className="text-sm text-slate-500 break-words max-w-[200px]">{projectLocation}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">{clientName}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-slate-600">
+                              {new Date(quote.created_at).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="font-semibold">{formatCurrency(total)}</TableCell>
+                            <TableCell>
+                              <Select value={quote.status || "draft"} onValueChange={(value) => updateQuoteStatus(quote.id, value)}>
+                                <SelectTrigger className={`w-28 h-6 border-0 text-md px-3 ${statusColors[quote.status as keyof typeof statusColors]} [&>svg]:hidden`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-background border shadow-lg z-50">
+                                  <SelectItem value="Draft">Draft</SelectItem>
+                                  <SelectItem value="Pending">Pending</SelectItem>
+                                  <SelectItem value="Submitted">Submitted</SelectItem>
+                                  <SelectItem value="Won">Won</SelectItem>
+                                  <SelectItem value="Rejected">Rejected</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => editQuote(quote)}>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => downloadPDF(quote)}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Download PDF
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    onClick={() => setDeleteQuoteId(quote.id)}
+                                    className="text-red-600 focus:text-red-600"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {paginatedQuotes.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8 text-slate-500">
+                            {quotes.length === 0 ? "No quotes yet. Create your first quote!" : "No quotes match your search criteria."}
                           </TableCell>
                         </TableRow>
-                      );
-                    })}
-                    {filteredQuotes.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-slate-500">
-                          {quotes.length === 0 ? "No quotes yet. Create your first quote!" : "No quotes match your search criteria."}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                
+                {/* Pagination Controls */}
+                {filteredQuotes.length > 0 && (
+                  <div className="border-t bg-white p-4 flex items-center justify-between">
+                    <div className="text-sm text-slate-600">
+                      Showing {startIndex + 1} to {Math.min(endIndex, filteredQuotes.length)} of {filteredQuotes.length} quotes
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <span className="text-sm text-slate-600">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
