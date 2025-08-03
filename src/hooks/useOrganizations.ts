@@ -35,30 +35,37 @@ export const useOrganizations = () => {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
 
-      // Get user's organization from their profile
+      // Get user's profile first
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select(`
-          organization_id,
-          role,
-          organizations:organization_id (
-            id,
-            name,
-            created_at,
-            updated_at,
-            created_by
-          )
-        `)
+        .select('organization_id, role')
         .eq('id', user.user.id)
         .single();
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Profile error:', profileError);
+        throw profileError;
+      }
 
-      if (profileData?.organizations) {
-        setCurrentOrganization(profileData.organizations as Organization);
-        setCurrentUserRole(profileData.role as 'owner' | 'admin' | 'member');
+      if (profileData?.organization_id) {
+        // If user has an organization, try to fetch it
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .select('id, name, created_at, updated_at, created_by')
+          .eq('id', profileData.organization_id)
+          .single();
+
+        if (orgError) {
+          console.error('Organization error:', orgError);
+          // Don't throw here, just set role without organization
+          setCurrentUserRole(profileData.role as 'owner' | 'admin' | 'member');
+        } else {
+          setCurrentOrganization(orgData as Organization);
+          setCurrentUserRole(profileData.role as 'owner' | 'admin' | 'member');
+        }
       }
     } catch (error: any) {
+      console.error('Fetch organization error:', error);
       toast({
         title: "Error fetching organization",
         description: error.message,
