@@ -811,16 +811,6 @@ const Quotes = () => {
                   <SelectItem value="Rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
-                <SelectTrigger className="w-full sm:w-[80px] bg-white/80 backdrop-blur-sm border-slate-200 shadow-sm h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                </SelectContent>
-              </Select>
               <Button 
                 onClick={() => setShowNewQuoteDialog(true)}
                 className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-300 hover-scale h-9"
@@ -928,8 +918,20 @@ const Quotes = () => {
                 {/* Pagination Controls */}
                 {filteredQuotes.length > 0 && (
                   <div className="border-t bg-white p-4 flex items-center justify-between">
-                    <div className="text-sm text-slate-600">
-                      Showing {startIndex + 1} to {Math.min(endIndex, filteredQuotes.length)} of {filteredQuotes.length} quotes
+                    <div className="flex items-center gap-4">
+                      <div className="text-sm text-slate-600">
+                        Showing {startIndex + 1} to {Math.min(endIndex, filteredQuotes.length)} of {filteredQuotes.length} quotes
+                      </div>
+                      <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
+                        <SelectTrigger className="w-[80px] bg-white border-slate-200 shadow-sm h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="25">25</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
