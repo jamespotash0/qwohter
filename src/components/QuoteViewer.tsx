@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { PageContainer } from './PageContainer';
 import { generateQuoteText } from './QuoteTextGenerator';
-import { enhanceWithPageBreaks } from '@/utils/pageBreakManager';
+import { DynamicPageBreakManager } from '@/utils/dynamicPageBreakManager';
 import '@/styles/pages.css';
 
 interface QuoteViewerProps {
@@ -28,11 +28,12 @@ export const QuoteViewer: React.FC<QuoteViewerProps> = ({
     try {
       setIsLoading(true);
       
-      // Generate the quote HTML
+      // Generate the quote HTML using the appropriate template
       const rawQuoteText = generateQuoteText(quote);
       
-      // Process with enhanced page breaks
-      const pagedContent = enhanceWithPageBreaks(rawQuoteText);
+      // Process with dynamic page breaks based on content
+      const pageBreakManager = new DynamicPageBreakManager();
+      const pagedContent = pageBreakManager.processHTMLWithDynamicBreaks(rawQuoteText, quote);
       
       setHtmlContent(pagedContent);
     } catch (error) {
