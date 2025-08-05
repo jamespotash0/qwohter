@@ -12,15 +12,6 @@ export class GlassWallTemplate extends BaseQuoteTemplate {
 
     <div class="wall-specifications-list" style="line-height: 1.15; margin-top: 10px;">
       <table style="border-collapse: collapse; width: 100%;">
-        <thead>
-          <tr style="background-color: #f0f8ff;">
-            <th style="padding: 8px; border: 0.5px solid black; font-weight: bold;">Wall</th>
-            <th style="padding: 8px; border: 0.5px solid black; font-weight: bold;">Dimensions</th>
-            <th style="padding: 8px; border: 0.5px solid black; font-weight: bold;">Glass Panels</th>
-            <th style="padding: 8px; border: 0.5px solid black; font-weight: bold;">Frame Type</th>
-            <th style="padding: 8px; border: 0.5px solid black; font-weight: bold;">Quantity</th>
-          </tr>
-        </thead>
         <tbody>
           ${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
             const dimensions = this.helpers.formatDimensions(wall.lengthFeet, wall.lengthInches, wall.heightFeet, wall.heightInches, true);

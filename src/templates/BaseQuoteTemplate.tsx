@@ -272,30 +272,26 @@ export abstract class BaseQuoteTemplate {
         <li>5.  Pricing is <strong>exclusive of any applicable taxes</strong>, which will be added as required.</li>
         <li>6.  The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</li>
         <li>7.  Final pricing is <strong>subject to site inspection and verification</strong> of all dimensions and conditions by our installation team.</li>
-        <li>8.  Payment Terms: <strong>${paymentUponDrawings}%</strong> upon acceptance and approval of shop drawings, <strong>${paymentUponTrackInstallation}%</strong> upon track installation, <strong>balance due upon completion</strong>.</li>
-        <li>9.  Change orders must be agreed upon in writing and will be invoiced separately.</li>
-        <li>10. <strong>Contemporary Wall Systems</strong> reserves the right to stop work if payments are not made according to the agreed schedule.</li>
+        <li>8.  Any additional requirements or unforeseen conditions may be subject to <strong>revised pricing or additional charges</strong>.</li>
+        <li>9.  Panel colors and finishes are available<strong> as per the manufacturer's current standard offerings</strong>.</li>
+        <li>10. A <strong>10-year factory warranty</strong> is provided on all operable wall systems.</li>
+        <li>11.<strong> Payment Terms:</strong>
+          <div style="padding-left: 2rem;">
+            <div>– <strong>${paymentUponDrawings}%</strong> due upon approval of shop drawings</div>
+            <div>– <strong>${paymentUponTrackInstallation}%</strong> due upon track installation</div>
+            <div>– Remaining balance due upon final completion</div>
+          </div>
+        </li>
       </ol>
     </div>
 
-    <div class="signature-section" style="margin-top: 30px;">
-      <table style="width: 100%; border-collapse: collapse;">
-        <tr>
-          <td style="width: 50%; padding: 20px 20px 40px 0;">
-            <div style="border-bottom: 1px solid black; height: 40px; margin-bottom: 10px;"></div>
-            <div style="text-align: center; font-weight: bold;">Contemporary Wall Systems</div>
-          </td>
-          <td style="width: 50%; padding: 20px 0 40px 20px;">
-            <div style="border-bottom: 1px solid black; height: 40px; margin-bottom: 10px;"></div>
-            <div style="text-align: center; font-weight: bold;">Acceptance / Date</div>
-          </td>
-        </tr>
-      </table>
+    <div class="signature-section">
+      <br><strong>Signed By:</strong> ___________________________________________&nbsp;&nbsp;&nbsp;<strong>Date:</strong> _____________________
     </div>
 
-    <div class="acceptance-section" style="margin-top: 20px; font-size: 14px; line-height: 1.4;">
-      <p><strong>Acceptance:</strong> The above prices, specifications and conditions are hereby accepted. You are authorized to do the work as specified. Payment will be made as outlined above. Date of acceptance: _______________</p>
-      <p style="margin-top: 15px;">Signature: ________________________________________</p>
+    <div class="acceptance-section">
+      <h2 class="section-header">ACCEPTANCE OF PROPOSAL:</h2>
+      The above prices, specifications, and conditions are satisfactory and are hereby accepted. Any alteration or deviation from above specifications will be executed upon written approval and may/will be subject to additional costs over and above the estimate. All removal of packing material is the customer's responsibility. Electrical and H.V.A.C. installation(s) are not included. Visa, Mastercard and American Express (AMEX) are accepted. Payments by credit card will be charged a processing fee. Pricing subject to applicable sales tax unless otherwise noted. Late payments will be subject to a 1.5% finance charge per month. Cancellations will be subject to a restocking fee.
     </div>`;
   }
 
