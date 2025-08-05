@@ -119,7 +119,10 @@ const Analytics = () => {
     { name: 'Submitted', value: quotes.filter(q => q.status === 'Submitted').length, color: '#fbbf24' },
     { name: 'Won', value: quotes.filter(q => q.status === 'Won').length, color: '#10b981' },
     { name: 'Rejected', value: quotes.filter(q => q.status === 'Rejected').length, color: '#ef4444' },
-  ];
+  ].map(item => ({
+    ...item,
+    percentage: totalQuotes > 0 ? ((item.value / totalQuotes) * 100).toFixed(1) : '0.0'
+  }));
 
   if (!user) return null;
 
@@ -162,8 +165,7 @@ const Analytics = () => {
               <p className="text-slate-600 mt-2 text-lg">Comprehensive insights into your business performance</p>
             </div>
 
-            {/* Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-fade-in">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 animate-fade-in max-w-4xl mx-auto">{/* Key Metrics */}
               <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 hover-scale transition-all duration-300 hover:shadow-lg">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -308,7 +310,7 @@ const Analytics = () => {
                           className="w-3 h-3 rounded-full" 
                           style={{ backgroundColor: status.color }}
                         />
-                        <span className="text-xs text-slate-600">{status.name} ({status.value})</span>
+                        <span className="text-xs text-slate-600">{status.name} ({status.value}) - {status.percentage}%</span>
                       </div>
                     ))}
                   </div>
