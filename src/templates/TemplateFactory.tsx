@@ -1,16 +1,18 @@
 import { QuoteData } from './BaseQuoteTemplate';
 import { OperableWallTemplate } from './OperableWallTemplate';
 import { GlassWallTemplate } from './GlassWallTemplate';
+import { AccordionWallTemplate } from './AccordionWallTemplate';
 
-export type WallSystemType = 'Operable Wall' | 'Glass Wall' | 'Folding Glass Wall';
+export type WallSystemType = 'Operable Wall' | 'Glass Wall' | 'Accordion Partitions';
 
 export class TemplateFactory {
   static getTemplate(data: QuoteData) {
     const wallSystemType = this.determineWallSystemType(data);
     
     switch (wallSystemType) {
+      case 'Accordion Partitions':
+        return new AccordionWallTemplate();
       case 'Glass Wall':
-      case 'Folding Glass Wall':
         return new GlassWallTemplate();
       case 'Operable Wall':
       default:
@@ -22,20 +24,18 @@ export class TemplateFactory {
     const walls = data.wall_details?.walls || {};
     const firstWall = Object.values(walls)[0];
     
-    if (!firstWall) return 'Operable Wall';
+    if (!firstWall || !firstWall.wallSystemType) return 'Operable Wall';
     
-    const wallSystemType = firstWall.wallSystemType?.toLowerCase() || '';
-    const model = firstWall.model?.toLowerCase() || '';
-    const panelSkin = firstWall.panelSkin?.toLowerCase() || '';
+    const type = firstWall.wallSystemType?.toLowerCase() || '';
+  
     
     // Check for glass wall indicators
-    if (wallSystemType.includes('glass') || 
-        model.includes('glass') ||
-        panelSkin.includes('glass') ||
-        wallSystemType.includes('folding glass')) {
-      return wallSystemType.includes('folding') ? 'Folding Glass Wall' : 'Glass Wall';
+    if (type.includes('glass')) { 
+      return 'Glass Wall';
     }
-    
+    if (type.includes('accordion')) {
+      return 'Accordion Partitions';
+    }
     return 'Operable Wall';
   }
 
