@@ -5,35 +5,94 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 
 // Configuration data based on model specifications
 const modelConfigurations = {
-  STELLA: {
-    configurations: ['Single Track', 'Multi-Track', 'Curved Track'],
-    operations: ['Manual', 'Automated', 'Semi-Automated Seals'],
-    panelFaces: ['Solid Face', 'MDF-Backed', 'Melamine', 'Wood Insert'],
-    frameFinishes: ['Clear Anodized', 'Black', 'White', 'Powder Coat', 'Custom RAL Powder Coat']
+  Stella: {
+    configurations: ['Individual Panels'],
+    operations: ['Manual', 'Automated', 'Programmable Self-Driving', 'Semi-Automated Seals'],
+    glassType: ['Tempered Glass', 'Laminated Glass', 'Switchable Glass', 'Child-Safe Glass', 'Fully Back-Painted Glass'],
+    stcRating: ['44', '50'],
+    partitionSupport: ['Top-Supported'],
+    passDoorType: ['Full-Height', 'Inset'],
+    passDoorOption: ['Single', 'Double'],
+    panelFaces: ['Solid Face', 'MDF-Backed Melamine', 'High Pressure Laminate', 'Electrical Internal Mini-Blinds', 'Internal Mullions & Muntins'],
+    hinging: ['Invisible Hinges'],
+    frameFinishes: ['Clear Anodized', 'Black', 'White', 'Custom RAL Powder Coat', 'Sublimation Wood Look'],
+    trackType: ['Top-Supported Multi-directional & Single-Point'],
+    trackFinish: ['Clear Anodized', 'Black Powder Coat', 'White Powder Coat', 'Custom RAL Option'],
+    finalClosure: ['Panel-Mounted Telescoping Jamb', 'Wall-Mounted Telescoping Jamb', 'Full-Height Door'],
+    bottomSeals: ['Electric', 'Automatic', 'Semi-Automatic', 'Manual', 'Operable'],
+    topSeals: ['Electric', 'Automatic', 'Semi-Automatic', 'Manual', 'Operable']
   },
-  LUNA: {
-    configurations: ['Single Track', 'Multi-Track'],
-    operations: ['Manual', 'Automated'],
-    panelFaces: ['Solid Face', 'MDF-Backed', 'HPL', 'Electric Internal Mini-Blinds'],
-    frameFinishes: ['Clear Anodized', 'Black', 'White', 'Stained Fruitwood', 'Stained Dark Oak']
+  Luna: {
+    configurations: ['Individual Panels', 'Continuously-Hinged Panels'],
+    operations: ['Manual'],
+    glassType: ['Tempered Glass', 'Laminated Glass', 'Switchable Glass', 'Child-Safe Glass', 'Fully Back-Painted Glass'],
+    stcRating: ['43'],
+    partitionSupport: ['Top-Supported', 'Floor-Supported'],
+    passDoorType: ['Full-Height'],
+    passDoorOption: ['Single', 'Double'],
+    panelFaces: ['Solid Face', 'MDF-Backed Melamine', 'High Pressure Laminate', 'Electrical Internal Mini-Blinds', 'Internal Muntins'],
+    hinging: ['Invisible Hinges'],
+    frameFinishes: ['Black Powder Coat', 'Custom RAL Powder Coat', 'Sublimation Wood Look'],
+    trackType: ['Top-Supported Multi-directional & Single-Point', 'Floor-Supported Top Guide'],
+    trackFinish: ['Black Powder Coat','Clear Anodized', 'White', 'Custom RAL Option'],
+    floorGuide: ['Optional'],
+    finalClosure: ['Hinged Closure Panel', 'Full-Height Door'],
+    bottomSeals: ['Floor Supported Fixed Bulb', 'Top Supported Fixed Brush'],
+    topSeals: ['Floor Supported Fixed Bulb', 'Top Supported Fixed Brush'],
   },
-  ILLONA: {
-    configurations: ['Single Track', 'Curved Track'],
-    operations: ['Manual', 'Semi-Automated Seals'],
-    panelFaces: ['Solid Face', 'Melamine', 'Wood Insert', 'Mullions - Muntins'],
-    frameFinishes: ['Clear Anodized', 'White', 'Custom Sublimation Wood Look', 'Painted Black']
+  Illona: {
+    configurations: ['Individual Panels', 'Continuously-Hinged Panels', 'Pivoting Individual Panels', 'Single & Telescoping Slider Panels'],
+    operations: ['Manual'],
+    glassType: ['Tempered Glass', 'Laminated Glass', 'Back-Painted Glass'],
+    stcRating: ['33'],
+    partitionSupport: ['Top-Supported'],
+    passDoorType: ['Full-Height'],
+    passDoorOption: ['Single', 'Double'],
+    panelFaces: ['Surface-Mounted Muntins'],
+    hinging: ['Invisible Hinges'],
+    frameFinishes: ['Black Powder Coat', 'White Powder Coat', 'Custom RAL Powder Coat', 'Sublimation Wood Look'],
+    trackType: ['Top-Supported Multi-directional & Single-Point'],
+    trackFinish: ['Black Powder Coat','Clear Anodized', 'White Powder Coat', 'Custom RAL Option'],
+    floorGuide: ['Optional'],
+    finalClosure: ['Hinged Closure Panel', 'Full-Height Door'],
+    bottomSeals: ['Fixed Brush'],
+    topSeals: ['Fixed Brush'],
   },
-  AVA: {
-    configurations: ['Multi-Track', 'Curved Track'],
-    operations: ['Automated', 'Semi-Automated Seals'],
-    panelFaces: ['MDF-Backed', 'HPL', 'Electric Internal Mini-Blinds'],
-    frameFinishes: ['Black', 'Powder Coat', 'Stained Wheat', 'Stained Cordovan', 'Painted White']
+  Ava: {
+    configurations: ['Individual Panels', 'Hinged-Paired Panels'],
+    operations: ['Manual'],
+    glassType: ['1/2" Tempered Glass'],
+    stcRating: ['None-Acoustic'],
+    partitionSupport: ['Top-Supported'],
+    passDoorType: ['Full-Height'],
+    passDoorOption: ['Single', 'Double'],
+    panelFaces: ['None'],
+    hinging: ['Full-Leaf Butt Hinges'],
+    frameFinishes: ['Clear Anodized', 'Black Powder Coat', 'Custom RAL Color Options'],
+    trackType: ['Top-Supported Multi-directional & Single-Point'],
+    trackFinish: ['Black Powder Coat', 'Clear Anodized', 'Custom RAL Color Option'],
+    floorGuide: ['None'],
+    finalClosure: ['Fixed Pivot Panel', 'Fixed Swing Panel'],
+    bottomSeals: ['Fixed Brush'],
+    topSeals: ['Fixed Brush'],
   },
-  MATA: {
-    configurations: ['Single Track', 'Multi-Track', 'Curved Track'],
-    operations: ['Manual', 'Automated', 'Semi-Automated Seals'],
-    panelFaces: ['Solid Face', 'MDF-Backed', 'Melamine', 'HPL', 'Wood Insert'],
-    frameFinishes: ['Clear Anodized', 'Black', 'White', 'Powder Coat', 'Unfinished']
+  Mata: {
+    configurations: ['Individual Panels', 'Continuously-Hinged Panels', 'Single & Telescoping Slider Panels'],
+    operations: ['Manual'],
+    glassType: ['1/4" Tempered Glass', '5/16" Frosted Laminated Glass', 'Custom Glass Options'],
+    stcRating: ['None-Acoustic'],
+    partitionSupport: ['Top-Supported'],
+    passDoorType: ['Full-Height'],
+    passDoorOption: ['Single', 'Double'],
+    panelFaces: ['Wood Insert', 'Mullions & Surface-Mounted Muntins'],
+    hinging: ['Full-Leaf Butt Hinges'],
+    frameFinishes: ['Stained Fruitwood Dark Oak', 'Stained Wheat', 'Stained Cordovan', 'Painted Black', 'Painted White', 'Unfinished'],
+    trackType: ['Top-Supported Multi-directional & Single-Point'],
+    trackFinish: ['Black Powder Coat', 'Clear Anodized', 'Custom RAL Option'],
+    floorGuide: ['None'],
+    finalClosure: ['Hinged Closure Panel', 'None Required'],
+    bottomSeals: ['Fixed Flexible Vinyl'],
+    topSeals: ['Fixed Flexible Vinyl'],
   }
 };
 
@@ -41,8 +100,20 @@ export interface GlassWallConfiguration {
   model: string;
   configurationType: string;
   operationType: string;
+  glassType: string;
+  stc_rating: string;
+  partitionSupport: string;
+  passDoorType: string;
+  passDoorOption: string;
   panelFace: string;
+  hingeType: string;
   frameFinish: string;
+  frameThickness: string;
+  trackType: string;
+  trackFinish: string;
+  finalClosure: string;
+  bottomSeals: string;
+  topSeals: string;
 }
 
 interface GlassWallConfigurationFormProps {
@@ -57,20 +128,58 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
   const [selectedModel, setSelectedModel] = useState<string>(initialConfig.model || '');
   const [selectedConfiguration, setSelectedConfiguration] = useState<string>(initialConfig.configurationType || '');
   const [selectedOperation, setSelectedOperation] = useState<string>(initialConfig.operationType || '');
+  const [selectedSTCRating, setSelectedSTCRating] = useState<string>(initialConfig.stc_rating);
   const [selectedPanelFace, setSelectedPanelFace] = useState<string>(initialConfig.panelFace || '');
   const [selectedFrameFinish, setSelectedFrameFinish] = useState<string>(initialConfig.frameFinish || '');
 
   // Get available options based on selected model
-  const getAvailableOptions = (field: keyof typeof modelConfigurations.STELLA) => {
+  const getAvailableOptions = (field: keyof typeof modelConfigurations.Stella) => {
     if (!selectedModel || !(selectedModel in modelConfigurations)) return [];
     return modelConfigurations[selectedModel as keyof typeof modelConfigurations][field] || [];
   };
 
+  const getFrameThickness = (model: string) => {
+    const stc = selectedSTCRating;
+    switch (model) {
+      case 'Stella':
+        if (stc === '44') return '4-1/2"';
+        return '4-11/16"';
+      case 'Luna':
+        return '2-3/4"';
+      case 'Illona':
+        return '1-3/8"';
+      case 'Ava':
+        return '1-7/16"';
+      case 'Mata':
+        return '1-3/4"';
+      default:
+        return 'N/A';
+    }
+  };
+  const getPanelWidth = (model: string) => {
+    switch (model) {
+      case 'Stella':
+        return '51"';
+      case 'Luna':
+        return '41-3/8"';
+      case 'Illona':
+        return '39-3/8"';
+      case 'Ava':
+        return '48"';
+      case 'Mata':
+        return '48"';
+      default:
+        return 'N/A';
+    }
+  };
   // Reset dependent fields when model changes
   useEffect(() => {
     if (selectedModel) {
       const availableConfigs = getAvailableOptions('configurations');
       const availableOps = getAvailableOptions('operations');
+      const availableSTCRatings = getAvailableOptions('stcRating');
+      const frameThickness = getFrameThickness(selectedModel);
+      const panelWidth = getPanelWidth(selectedModel);
       const availableFaces = getAvailableOptions('panelFaces');
       const availableFinishes = getAvailableOptions('frameFinishes');
 
@@ -80,6 +189,9 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
       }
       if (!availableOps.includes(selectedOperation)) {
         setSelectedOperation('');
+      }
+      if (!availableSTCRatings.includes(selectedSTCRating)) {
+        setSelectedSTCRating('');
       }
       if (!availableFaces.includes(selectedPanelFace)) {
         setSelectedPanelFace('');
@@ -98,20 +210,29 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
         configurationType: selectedConfiguration,
         operationType: selectedOperation,
         panelFace: selectedPanelFace,
-        frameFinish: selectedFrameFinish
+        frameFinish: selectedFrameFinish,
+        glassType: '',
+        stc_rating: '',
+        partitionSupport: '',
+        passDoorType: '',
+        passDoorOption: '',
+        hingeType: '',
+        frameThickness: '',
+        trackType: '',
+        trackFinish: '',
+        finalClosure: '',
+        bottomSeals: '',
+        topSeals: ''
       });
     }
   }, [selectedModel, selectedConfiguration, selectedOperation, selectedPanelFace, selectedFrameFinish, onConfigurationChange]);
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Glass Wall Configuration</CardTitle>
-      </CardHeader>
       <CardContent className="space-y-6">
         {/* Step 1: Wall System Model */}
         <div className="space-y-2">
-          <Label htmlFor="model">Wall System Model *</Label>
+          <Label htmlFor="model">Glass Wall Model *</Label>
           <Select value={selectedModel} onValueChange={setSelectedModel}>
             <SelectTrigger>
               <SelectValue placeholder="Select a model" />
@@ -128,7 +249,7 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
 
         {/* Step 2: Configuration Type */}
         <div className="space-y-2">
-          <Label htmlFor="configuration">Configuration Type *</Label>
+          <Label htmlFor="configuration">Configuration</Label>
           <Select 
             value={selectedConfiguration} 
             onValueChange={setSelectedConfiguration}
