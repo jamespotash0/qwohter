@@ -7,6 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Trash2, Edit, ChevronDown, ChevronUp } from "lucide-react";
 import { WallSpecification, WallDetails } from "@/types/quote";
 import { useState } from "react";
+import { GlassWallConfigurationForm, GlassWallConfiguration } from "./GlassWallConfigurationForm";
 
 interface WallSpecificationFormProps {
   walls: WallDetails;
@@ -325,6 +326,27 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     }
     setEditingWallName(null);
     setNewWallName("");
+  };
+
+  const handleGlassWallConfigChange = (wallName: string, config: GlassWallConfiguration) => {
+    const updatedWalls = {
+      ...walls,
+      walls: {
+        ...walls.walls,
+        [wallName]: {
+          ...walls.walls[wallName],
+          series: config.model, // Map model to series field for consistency
+          model: config.model,
+          panelConfiguration: config.configurationType,
+          // Use existing fields to store Glass Wall specific data
+          trackType: config.operationType, // Store operation type in trackType field
+          panelSkin: config.panelFace, // Store panel face in panelSkin field
+          panelFinishCategory: config.frameFinish, // Store frame finish in panelFinishCategory
+        },
+      },
+    };
+    
+    onUpdate(updatedWalls);
   };
 
   const toggleWallCollapse = (wallName: string) => {
@@ -890,6 +912,22 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                             </Select>
                           </div>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Glass Wall Details Section - Only show if Glass Wall is selected */}
+                    {wall.wallSystemType === "Glass Wall" && (
+                      <div>
+                        <GlassWallConfigurationForm
+                          onConfigurationChange={(config) => handleGlassWallConfigChange(wallName, config)}
+                          initialConfig={{
+                            model: wall.model,
+                            configurationType: wall.panelConfiguration,
+                            operationType: wall.trackType,
+                            panelFace: wall.panelSkin,
+                            frameFinish: wall.panelFinishCategory,
+                          }}
+                        />
                       </div>
                     )}
                   </div>
