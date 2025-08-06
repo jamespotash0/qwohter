@@ -126,7 +126,10 @@ export const useQuotes = () => {
             client_address: quoteData.jobDetails.billedTo.address || '',
             date: quoteData.jobDetails.date
           },
-          wall_details: quoteData.walls || {},
+          wall_details: (() => {
+            const { filterWallDetailsForSave } = require('@/utils/wallDataFilter');
+            return filterWallDetailsForSave(quoteData.walls || {});
+          })(),
           pocket_doors: quoteData.pocketDoors || {},
           price_details: {
             base_price: quoteData.pricing.basePrice,
@@ -166,9 +169,16 @@ export const useQuotes = () => {
 
   const updateQuote = async (id: string, updates: Partial<Quote>) => {
     try {
+      // Filter wall_details based on wall system type before saving
+      let processedUpdates = { ...updates };
+      if (updates.wall_details) {
+        const { filterWallDetailsForSave } = require('@/utils/wallDataFilter');
+        processedUpdates.wall_details = filterWallDetailsForSave(updates.wall_details);
+      }
+
       const { data, error } = await supabase
         .from('quotes')
-        .update(updates as any)
+        .update(processedUpdates as any)
         .eq('id', id)
         .select()
         .single();
