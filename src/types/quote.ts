@@ -24,6 +24,23 @@ export interface WallSpecification {
   endPanelType: string;
   trackType: string;
   trackSystem: string;
+  // Glass Wall specific fields
+  glasswallModel?: string;
+  glasswallOperation?: string;
+  glasswallPanelFace?: string;
+  glasswallFrameFinish?: string;
+  glasswallGlassType?: string;
+  glasswallSTCRating?: string;
+  glasswallPartitionSupport?: string;
+  glasswallPassDoorType?: string;
+  glasswallPassDoorOption?: string;
+  glasswallHingeType?: string;
+  glasswallFrameThickness?: string;
+  glasswallTrackType?: string;
+  glasswallTrackFinish?: string;
+  glasswallFinalClosure?: string;
+  glasswallBottomSeals?: string;
+  glasswallTopSeals?: string;
 }
 
 export interface WallDetails {

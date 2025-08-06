@@ -56,6 +56,23 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         topSeals: "",
         initialClosureSystem: "",
         endPanelType: "",
+        // Clear glass wall specific fields too
+        glasswallModel: "",
+        glasswallOperation: "",
+        glasswallPanelFace: "",
+        glasswallFrameFinish: "",
+        glasswallGlassType: "",
+        glasswallSTCRating: "",
+        glasswallPartitionSupport: "",
+        glasswallPassDoorType: "",
+        glasswallPassDoorOption: "",
+        glasswallHingeType: "",
+        glasswallFrameThickness: "",
+        glasswallTrackType: "",
+        glasswallTrackFinish: "",
+        glasswallFinalClosure: "",
+        glasswallBottomSeals: "",
+        glasswallTopSeals: "",
       };
     }
     
@@ -335,13 +352,24 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         ...walls.walls,
         [wallName]: {
           ...walls.walls[wallName],
-          series: config.model, // Map model to series field for consistency
-          model: config.model,
+          // Map glass wall config to dedicated fields
+          glasswallModel: config.model,
           panelConfiguration: config.configurationType,
-          // Use existing fields to store Glass Wall specific data
-          trackType: config.operationType, // Store operation type in trackType field
-          panelSkin: config.panelFace, // Store panel face in panelSkin field
-          panelFinishCategory: config.frameFinish, // Store frame finish in panelFinishCategory
+          glasswallOperation: config.operationType,
+          glasswallPanelFace: config.panelFace,
+          glasswallFrameFinish: config.frameFinish,
+          glasswallGlassType: config.glassType,
+          glasswallSTCRating: config.stc_rating,
+          glasswallPartitionSupport: config.partitionSupport,
+          glasswallPassDoorType: config.passDoorType,
+          glasswallPassDoorOption: config.passDoorOption,
+          glasswallHingeType: config.hingeType,
+          glasswallFrameThickness: config.frameThickness,
+          glasswallTrackType: config.trackType,
+          glasswallTrackFinish: config.trackFinish,
+          glasswallFinalClosure: config.finalClosure,
+          glasswallBottomSeals: config.bottomSeals,
+          glasswallTopSeals: config.topSeals,
         },
       },
     };

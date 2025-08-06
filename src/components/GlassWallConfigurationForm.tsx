@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Input } from './ui/input';
 
 // Configuration data based on model specifications
 const modelConfigurations = {
@@ -182,69 +183,23 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
         return 'N/A';
     }
   };
-  // Reset dependent fields when model changes
+  // Reset all fields when model changes
   useEffect(() => {
-    if (selectedModel) {
-      const availableConfigs = getAvailableOptions('configurations');
-      const availableOps = getAvailableOptions('operations');
-      const availableGlassTypes = getAvailableOptions('glassType');
-      const availableSTCRatings = getAvailableOptions('stcRating');
-      const availablePartitionSupports = getAvailableOptions('partitionSupport');
-      const availablePassDoorTypes = getAvailableOptions('passDoorType');
-      const availableFaces = getAvailableOptions('panelFaces');
-      const availableHinging = getAvailableOptions('hinging');
-      const availableFinishes = getAvailableOptions('frameFinishes');
-      const availableTrackTypes = getAvailableOptions('trackType');
-      const availableTrackFinishes = getAvailableOptions('trackFinish');
-      const availableFinalClosures = getAvailableOptions('finalClosure');
-      const availableBottomSeals = getAvailableOptions('bottomSeals');
-      const availableTopSeals = getAvailableOptions('topSeals');
-
-      // Reset if current selection is not available in new model
-      if (!availableConfigs.includes(selectedConfiguration)) {
-        setSelectedConfiguration('');
-      }
-      if (!availableOps.includes(selectedOperation)) {
-        setSelectedOperation('');
-      }
-      if (!availableGlassTypes.includes(selectedGlassType)) {
-        setSelectedGlassType('');
-      }
-      if (!availableSTCRatings.includes(selectedSTCRating)) {
-        setSelectedSTCRating('');
-      }
-      if (!availablePartitionSupports.includes(selectedPartitionSupport)) {
-        setSelectedPartitionSupport('');
-      }
-      if (!availablePassDoorTypes.includes(selectedPassDoorType)) {
-        setSelectedPassDoorType('');
-        setSelectedPassDoorOption(''); // Reset dependent field
-      }
-      if (!availableFaces.includes(selectedPanelFace)) {
-        setSelectedPanelFace('');
-      }
-      if (!availableHinging.includes(selectedHingeType)) {
-        setSelectedHingeType('');
-      }
-      if (!availableFinishes.includes(selectedFrameFinish)) {
-        setSelectedFrameFinish('');
-      }
-      if (!availableTrackTypes.includes(selectedTrackType)) {
-        setSelectedTrackType('');
-      }
-      if (!availableTrackFinishes.includes(selectedTrackFinish)) {
-        setSelectedTrackFinish('');
-      }
-      if (!availableFinalClosures.includes(selectedFinalClosure)) {
-        setSelectedFinalClosure('');
-      }
-      if (!availableBottomSeals.includes(selectedBottomSeals)) {
-        setSelectedBottomSeals('');
-      }
-      if (!availableTopSeals.includes(selectedTopSeals)) {
-        setSelectedTopSeals('');
-      }
-    }
+    setSelectedConfiguration('');
+    setSelectedOperation('');
+    setSelectedGlassType('');
+    setSelectedSTCRating('');
+    setSelectedPartitionSupport('');
+    setSelectedPassDoorType('');
+    setSelectedPassDoorOption('');
+    setSelectedPanelFace('');
+    setSelectedHingeType('');
+    setSelectedFrameFinish('');
+    setSelectedTrackType('');
+    setSelectedTrackFinish('');
+    setSelectedFinalClosure('');
+    setSelectedBottomSeals('');
+    setSelectedTopSeals('');
   }, [selectedModel]);
 
   // Reset passDoorOption when passDoorType changes
@@ -284,364 +239,361 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
 
   return (
     <Card className="w-full">
-      <CardContent className="space-y-6">
-        {/* Step 1: Wall System Model */}
-        <div className="space-y-2">
-          <Label htmlFor="model">Glass Wall Model *</Label>
-          <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a model" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.keys(modelConfigurations).map((model) => (
-                <SelectItem key={model} value={model}>
-                  {model}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Step 2: Configuration Type */}
-        <div className="space-y-2">
-          <Label htmlFor="configuration">Configuration</Label>
-          <Select 
-            value={selectedConfiguration} 
-            onValueChange={setSelectedConfiguration}
-            disabled={!selectedModel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={selectedModel ? "Select configuration" : "Select model first"} />
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableOptions('configurations').map((config) => (
-                <SelectItem key={config} value={config}>
-                  {config}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Step 3: Operation Type */}
-        <div className="space-y-2">
-          <Label htmlFor="operation">Operation Type *</Label>
-          <Select 
-            value={selectedOperation} 
-            onValueChange={setSelectedOperation}
-            disabled={!selectedModel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={selectedModel ? "Select operation type" : "Select model first"} />
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableOptions('operations').map((operation) => (
-                <SelectItem key={operation} value={operation}>
-                  {operation}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Step 4: Panel Face Options */}
-        <div className="space-y-2">
-          <Label htmlFor="panelFace">Panel Face Options *</Label>
-          <Select 
-            value={selectedPanelFace} 
-            onValueChange={setSelectedPanelFace}
-            disabled={!selectedModel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={selectedModel ? "Select panel face" : "Select model first"} />
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableOptions('panelFaces').map((face) => (
-                <SelectItem key={face} value={face}>
-                  {face}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Step 5: Frame Finish Options */}
-        <div className="space-y-2">
-          <Label htmlFor="frameFinish">Frame Finish Options *</Label>
-          <Select 
-            value={selectedFrameFinish} 
-            onValueChange={setSelectedFrameFinish}
-            disabled={!selectedModel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={selectedModel ? "Select frame finish" : "Select model first"} />
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableOptions('frameFinishes').map((finish) => (
-                <SelectItem key={finish} value={finish}>
-                  {finish}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Step 6: Glass Type */}
-        <div className="space-y-2">
-          <Label htmlFor="glassType">Glass Type</Label>
-          <Select 
-            value={selectedGlassType} 
-            onValueChange={setSelectedGlassType}
-            disabled={!selectedModel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={selectedModel ? "Select glass type" : "Select model first"} />
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableOptions('glassType').map((glass) => (
-                <SelectItem key={glass} value={glass}>
-                  {glass}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Step 7: STC Rating */}
-        <div className="space-y-2">
-          <Label htmlFor="stcRating">STC Rating</Label>
-          <Select 
-            value={selectedSTCRating} 
-            onValueChange={setSelectedSTCRating}
-            disabled={!selectedModel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={selectedModel ? "Select STC rating" : "Select model first"} />
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableOptions('stcRating').map((rating) => (
-                <SelectItem key={rating} value={rating}>
-                  {rating}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Step 8: Partition Support */}
-        <div className="space-y-2">
-          <Label htmlFor="partitionSupport">Partition Support</Label>
-          <Select 
-            value={selectedPartitionSupport} 
-            onValueChange={setSelectedPartitionSupport}
-            disabled={!selectedModel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={selectedModel ? "Select partition support" : "Select model first"} />
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableOptions('partitionSupport').map((support) => (
-                <SelectItem key={support} value={support}>
-                  {support}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Step 9: Pass Door Type */}
-        <div className="space-y-2">
-          <Label htmlFor="passDoorType">Pass Door Type</Label>
-          <Select 
-            value={selectedPassDoorType} 
-            onValueChange={setSelectedPassDoorType}
-            disabled={!selectedModel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={selectedModel ? "Select pass door type" : "Select model first"} />
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableOptions('passDoorType').map((doorType) => (
-                <SelectItem key={doorType} value={doorType}>
-                  {doorType}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Step 10: Pass Door Option (dependent on Pass Door Type) */}
-        <div className="space-y-2">
-          <Label htmlFor="passDoorOption">Pass Door Option</Label>
-          <Select 
-            value={selectedPassDoorOption} 
-            onValueChange={setSelectedPassDoorOption}
-            disabled={!selectedModel || !selectedPassDoorType}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={selectedPassDoorType ? "Select pass door option" : "Select pass door type first"} />
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableOptions('passDoorOption').map((option) => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Step 11: Hinge Type */}
-        <div className="space-y-2">
-          <Label htmlFor="hingeType">Hinge Type</Label>
-          <Select 
-            value={selectedHingeType} 
-            onValueChange={setSelectedHingeType}
-            disabled={!selectedModel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={selectedModel ? "Select hinge type" : "Select model first"} />
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableOptions('hinging').map((hinge) => (
-                <SelectItem key={hinge} value={hinge}>
-                  {hinge}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Step 12: Track Type */}
-        <div className="space-y-2">
-          <Label htmlFor="trackType">Track Type</Label>
-          <Select 
-            value={selectedTrackType} 
-            onValueChange={setSelectedTrackType}
-            disabled={!selectedModel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={selectedModel ? "Select track type" : "Select model first"} />
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableOptions('trackType').map((track) => (
-                <SelectItem key={track} value={track}>
-                  {track}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Step 13: Track Finish */}
-        <div className="space-y-2">
-          <Label htmlFor="trackFinish">Track Finish</Label>
-          <Select 
-            value={selectedTrackFinish} 
-            onValueChange={setSelectedTrackFinish}
-            disabled={!selectedModel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={selectedModel ? "Select track finish" : "Select model first"} />
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableOptions('trackFinish').map((finish) => (
-                <SelectItem key={finish} value={finish}>
-                  {finish}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Step 14: Final Closure */}
-        <div className="space-y-2">
-          <Label htmlFor="finalClosure">Final Closure</Label>
-          <Select 
-            value={selectedFinalClosure} 
-            onValueChange={setSelectedFinalClosure}
-            disabled={!selectedModel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={selectedModel ? "Select final closure" : "Select model first"} />
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableOptions('finalClosure').map((closure) => (
-                <SelectItem key={closure} value={closure}>
-                  {closure}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Step 15: Bottom Seals */}
-        <div className="space-y-2">
-          <Label htmlFor="bottomSeals">Bottom Seals</Label>
-          <Select 
-            value={selectedBottomSeals} 
-            onValueChange={setSelectedBottomSeals}
-            disabled={!selectedModel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={selectedModel ? "Select bottom seals" : "Select model first"} />
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableOptions('bottomSeals').map((seal) => (
-                <SelectItem key={seal} value={seal}>
-                  {seal}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Step 16: Top Seals */}
-        <div className="space-y-2">
-          <Label htmlFor="topSeals">Top Seals</Label>
-          <Select 
-            value={selectedTopSeals} 
-            onValueChange={setSelectedTopSeals}
-            disabled={!selectedModel}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder={selectedModel ? "Select top seals" : "Select model first"} />
-            </SelectTrigger>
-            <SelectContent>
-              {getAvailableOptions('topSeals').map((seal) => (
-                <SelectItem key={seal} value={seal}>
-                  {seal}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Configuration Summary */}
-        {selectedModel && (
-          <div className="mt-6 p-4 bg-muted rounded-lg">
-            <h4 className="font-medium mb-2">Current Configuration:</h4>
-            <div className="text-sm space-y-1">
-              <div><strong>Model:</strong> {selectedModel}</div>
-              {selectedConfiguration && <div><strong>Configuration:</strong> {selectedConfiguration}</div>}
-              {selectedOperation && <div><strong>Operation:</strong> {selectedOperation}</div>}
-              {selectedGlassType && <div><strong>Glass Type:</strong> {selectedGlassType}</div>}
-              {selectedSTCRating && <div><strong>STC Rating:</strong> {selectedSTCRating}</div>}
-              {selectedPartitionSupport && <div><strong>Partition Support:</strong> {selectedPartitionSupport}</div>}
-              {selectedPassDoorType && <div><strong>Pass Door Type:</strong> {selectedPassDoorType}</div>}
-              {selectedPassDoorOption && <div><strong>Pass Door Option:</strong> {selectedPassDoorOption}</div>}
-              {selectedPanelFace && <div><strong>Panel Face:</strong> {selectedPanelFace}</div>}
-              {selectedHingeType && <div><strong>Hinge Type:</strong> {selectedHingeType}</div>}
-              {selectedFrameFinish && <div><strong>Frame Finish:</strong> {selectedFrameFinish}</div>}
-              {selectedModel && <div><strong>Frame Thickness:</strong> {getFrameThickness(selectedModel)}</div>}
-              {selectedTrackType && <div><strong>Track Type:</strong> {selectedTrackType}</div>}
-              {selectedTrackFinish && <div><strong>Track Finish:</strong> {selectedTrackFinish}</div>}
-              {selectedFinalClosure && <div><strong>Final Closure:</strong> {selectedFinalClosure}</div>}
-              {selectedBottomSeals && <div><strong>Bottom Seals:</strong> {selectedBottomSeals}</div>}
-              {selectedTopSeals && <div><strong>Top Seals:</strong> {selectedTopSeals}</div>}
-            </div>
+      <CardContent className="space-y-8">
+        {/* Row 1: Glass Wall Model, Panel Configuration, Operation Type */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="model">Glass Wall Model *</Label>
+            <Select value={selectedModel} onValueChange={setSelectedModel}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a model" />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {Object.keys(modelConfigurations).map((model) => (
+                  <SelectItem key={model} value={model}>
+                    {model}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        )}
+
+          <div className="space-y-2">
+            <Label htmlFor="configuration">Panel Configuration *</Label>
+            <Select 
+              value={selectedConfiguration} 
+              onValueChange={setSelectedConfiguration}
+              disabled={!selectedModel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedModel ? "Select configuration" : "Select model first"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {getAvailableOptions('configurations').map((config) => (
+                  <SelectItem key={config} value={config}>
+                    {config}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="operation">Operation Type *</Label>
+            <Select 
+              value={selectedOperation} 
+              onValueChange={setSelectedOperation}
+              disabled={!selectedModel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedModel ? "Select operation type" : "Select model first"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {getAvailableOptions('operations').map((operation) => (
+                  <SelectItem key={operation} value={operation}>
+                    {operation}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Row 2: Glass Type, STC Rating, Partition Support */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="glassType">Glass Type *</Label>
+            <Select 
+              value={selectedGlassType} 
+              onValueChange={setSelectedGlassType}
+              disabled={!selectedModel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedModel ? "Select glass type" : "Select model first"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {getAvailableOptions('glassType').map((glass) => (
+                  <SelectItem key={glass} value={glass}>
+                    {glass}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="stcRating">STC Rating *</Label>
+            <Select 
+              value={selectedSTCRating} 
+              onValueChange={setSelectedSTCRating}
+              disabled={!selectedModel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedModel ? "Select STC rating" : "Select model first"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {getAvailableOptions('stcRating').map((rating) => (
+                  <SelectItem key={rating} value={rating}>
+                    {rating}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="partitionSupport">Partition Support *</Label>
+            <Select 
+              value={selectedPartitionSupport} 
+              onValueChange={setSelectedPartitionSupport}
+              disabled={!selectedModel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedModel ? "Select partition support" : "Select model first"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {getAvailableOptions('partitionSupport').map((support) => (
+                  <SelectItem key={support} value={support}>
+                    {support}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Row 3: Frame Thickness, Panel Width (Auto-calculated fields) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="frameThickness">Frame Thickness (Auto-calculated)</Label>
+            <Input 
+              value={getFrameThickness(selectedModel)}
+              readOnly
+              className="bg-muted text-muted-foreground"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="panelWidth">Panel Width (Auto-calculated)</Label>
+            <Input 
+              value={getPanelWidth(selectedModel)}
+              readOnly
+              className="bg-muted text-muted-foreground"
+            />
+          </div>
+        </div>
+
+        {/* Row 4: Panel Face Options, Frame Finish Options, Hinge Type */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="panelFace">Panel Face Options</Label>
+            <Select 
+              value={selectedPanelFace} 
+              onValueChange={setSelectedPanelFace}
+              disabled={!selectedModel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedModel ? "Select panel face" : "Select model first"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {getAvailableOptions('panelFaces').map((face) => (
+                  <SelectItem key={face} value={face}>
+                    {face}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="frameFinish">Frame Finish Options</Label>
+            <Select 
+              value={selectedFrameFinish} 
+              onValueChange={setSelectedFrameFinish}
+              disabled={!selectedModel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedModel ? "Select frame finish" : "Select model first"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {getAvailableOptions('frameFinishes').map((finish) => (
+                  <SelectItem key={finish} value={finish}>
+                    {finish}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="hingeType">Hinge Type</Label>
+            <Select 
+              value={selectedHingeType} 
+              onValueChange={setSelectedHingeType}
+              disabled={!selectedModel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedModel ? "Select hinge type" : "Select model first"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {getAvailableOptions('hinging').map((hinge) => (
+                  <SelectItem key={hinge} value={hinge}>
+                    {hinge}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Row 5: Pass Door Type, Pass Door Option, Final Closure */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="passDoorType">Pass Door Type</Label>
+            <Select 
+              value={selectedPassDoorType} 
+              onValueChange={setSelectedPassDoorType}
+              disabled={!selectedModel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedModel ? "Select pass door type" : "Select model first"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {getAvailableOptions('passDoorType').map((doorType) => (
+                  <SelectItem key={doorType} value={doorType}>
+                    {doorType}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="passDoorOption">Pass Door Option</Label>
+            <Select 
+              value={selectedPassDoorOption} 
+              onValueChange={setSelectedPassDoorOption}
+              disabled={!selectedModel || !selectedPassDoorType}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedPassDoorType ? "Select pass door option" : "Select pass door type first"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {getAvailableOptions('passDoorOption').map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="finalClosure">Final Closure</Label>
+            <Select 
+              value={selectedFinalClosure} 
+              onValueChange={setSelectedFinalClosure}
+              disabled={!selectedModel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedModel ? "Select final closure" : "Select model first"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {getAvailableOptions('finalClosure').map((closure) => (
+                  <SelectItem key={closure} value={closure}>
+                    {closure}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Row 6: Bottom Seals, Top Seals */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="bottomSeals">Bottom Seals</Label>
+            <Select 
+              value={selectedBottomSeals} 
+              onValueChange={setSelectedBottomSeals}
+              disabled={!selectedModel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedModel ? "Select bottom seals" : "Select model first"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {getAvailableOptions('bottomSeals').map((seal) => (
+                  <SelectItem key={seal} value={seal}>
+                    {seal}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="topSeals">Top Seals</Label>
+            <Select 
+              value={selectedTopSeals} 
+              onValueChange={setSelectedTopSeals}
+              disabled={!selectedModel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedModel ? "Select top seals" : "Select model first"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {getAvailableOptions('topSeals').map((seal) => (
+                  <SelectItem key={seal} value={seal}>
+                    {seal}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Row 7: Track Type, Track Finish */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="trackType">Track Type *</Label>
+            <Select 
+              value={selectedTrackType} 
+              onValueChange={setSelectedTrackType}
+              disabled={!selectedModel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedModel ? "Select track type" : "Select model first"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {getAvailableOptions('trackType').map((track) => (
+                  <SelectItem key={track} value={track}>
+                    {track}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="trackFinish">Track Finish</Label>
+            <Select 
+              value={selectedTrackFinish} 
+              onValueChange={setSelectedTrackFinish}
+              disabled={!selectedModel}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedModel ? "Select track finish" : "Select model first"} />
+              </SelectTrigger>
+              <SelectContent className="bg-background border z-50">
+                {getAvailableOptions('trackFinish').map((finish) => (
+                  <SelectItem key={finish} value={finish}>
+                    {finish}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
