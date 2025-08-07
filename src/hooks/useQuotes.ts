@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
 import { WallDetails, WallSpecification } from "@/types/quote";
+import { filterWallDetailsForSave } from "@/utils/wallDataFilter";
 
 type QuoteRow = Database['public']['Tables']['quotes']['Row'];
 
@@ -125,11 +126,8 @@ export const useQuotes = () => {
             client_company: quoteData.jobDetails.billedTo.company || '',
             client_address: quoteData.jobDetails.billedTo.address || '',
             date: quoteData.jobDetails.date
-          },
-          wall_details: (() => {
-            const { filterWallDetailsForSave } = require('@/utils/wallDataFilter');
-            return filterWallDetailsForSave(quoteData.walls || {});
-          })(),
+           },
+          wall_details: filterWallDetailsForSave(quoteData.walls || {}),
           pocket_doors: quoteData.pocketDoors || {},
           price_details: {
             base_price: quoteData.pricing.basePrice,
@@ -172,7 +170,6 @@ export const useQuotes = () => {
       // Filter wall_details based on wall system type before saving
       let processedUpdates = { ...updates };
       if (updates.wall_details) {
-        const { filterWallDetailsForSave } = require('@/utils/wallDataFilter');
         processedUpdates.wall_details = filterWallDetailsForSave(updates.wall_details);
       }
 
