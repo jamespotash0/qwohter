@@ -115,7 +115,6 @@ export interface GlassWallConfiguration {
   finalClosure: string;
   bottomSeals: string;
   topSeals: string;
-  panelCount: string;
 }
 
 interface GlassWallConfigurationFormProps {
@@ -143,7 +142,7 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
   const [selectedFinalClosure, setSelectedFinalClosure] = useState<string>(initialConfig.finalClosure || '');
   const [selectedBottomSeals, setSelectedBottomSeals] = useState<string>(initialConfig.bottomSeals || '');
   const [selectedTopSeals, setSelectedTopSeals] = useState<string>(initialConfig.topSeals || '');
-  const [selectedPanelCount, setSelectedPanelCount] = useState<string>(initialConfig.panelCount || '');
+  // const [selectedPanelCount, setSelectedPanelCount] = useState<string>(initialConfig.panelCount || '');
 
   // Get available options based on selected model
   const getAvailableOptions = (field: keyof typeof modelConfigurations.Stella) => {
@@ -202,7 +201,7 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
     setSelectedFinalClosure('');
     setSelectedBottomSeals('');
     setSelectedTopSeals('');
-    setSelectedPanelCount('');
+    // setSelectedPanelCount('');
   }, [selectedModel]);
 
   // Reset passDoorOption when passDoorType changes
@@ -231,14 +230,14 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
         finalClosure: selectedFinalClosure,
         bottomSeals: selectedBottomSeals,
         topSeals: selectedTopSeals,
-        panelCount: selectedPanelCount
+        // panelCount: selectedPanelCount
       });
     }
   }, [
     selectedModel, selectedConfiguration, selectedOperation, selectedGlassType, selectedSTCRating,
     selectedPartitionSupport, selectedPassDoorType, selectedPassDoorOption, selectedPanelFace,
     selectedHingeType, selectedFrameFinish, selectedTrackType, selectedTrackFinish,
-    selectedFinalClosure, selectedBottomSeals, selectedTopSeals, selectedPanelCount, onConfigurationChange
+    selectedFinalClosure, selectedBottomSeals, selectedTopSeals, onConfigurationChange
   ]);
 
   return (
@@ -282,7 +281,7 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
             </Select>
           </div>
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="panelCount">Panel Count</Label>
             <Input 
               value={selectedPanelCount}
@@ -291,7 +290,7 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
               type="number"
               min="1"
             />
-          </div>
+          </div> */}
         </div>
 
         {/* Row 2: Operation Type, Glass Type, STC Rating */}

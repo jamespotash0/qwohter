@@ -370,7 +370,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           glasswallFinalClosure: config.finalClosure,
           glasswallBottomSeals: config.bottomSeals,
           glasswallTopSeals: config.topSeals,
-          panelCount: config.panelCount
         },
       },
     };
@@ -967,7 +966,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                             finalClosure: wall.glasswallFinalClosure,
                             bottomSeals: wall.glasswallBottomSeals,
                             topSeals: wall.glasswallTopSeals,
-                            panelCount: wall.panelCount,
                           }}
                         />
                       </div>
