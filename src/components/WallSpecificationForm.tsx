@@ -949,11 +949,23 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         <GlassWallConfigurationForm
                           onConfigurationChange={(config) => handleGlassWallConfigChange(wallName, config)}
                           initialConfig={{
-                            model: wall.model,
+                            model: wall.glasswallModel,
                             configurationType: wall.panelConfiguration,
-                            operationType: wall.trackType,
-                            panelFace: wall.panelSkin,
-                            frameFinish: wall.panelFinishCategory,
+                            operationType: wall.glasswallOperation,
+                            glassType: wall.glasswallGlassType,
+                            stc_rating: wall.glasswallSTCRating,
+                            partitionSupport: wall.glasswallPartitionSupport,
+                            passDoorType: wall.glasswallPassDoorType,
+                            passDoorOption: wall.glasswallPassDoorOption,
+                            panelFace: wall.glasswallPanelFace,
+                            hingeType: wall.glasswallHingeType,
+                            frameFinish: wall.glasswallFrameFinish,
+                            frameThickness: wall.glasswallFrameThickness,
+                            trackType: wall.glasswallTrackType,
+                            trackFinish: wall.glasswallTrackFinish,
+                            finalClosure: wall.glasswallFinalClosure,
+                            bottomSeals: wall.glasswallBottomSeals,
+                            topSeals: wall.glasswallTopSeals,
                           }}
                         />
                       </div>
