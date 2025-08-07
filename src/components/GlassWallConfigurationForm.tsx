@@ -115,6 +115,7 @@ export interface GlassWallConfiguration {
   finalClosure: string;
   bottomSeals: string;
   topSeals: string;
+  panelCount: string;
 }
 
 interface GlassWallConfigurationFormProps {
@@ -142,6 +143,7 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
   const [selectedFinalClosure, setSelectedFinalClosure] = useState<string>(initialConfig.finalClosure || '');
   const [selectedBottomSeals, setSelectedBottomSeals] = useState<string>(initialConfig.bottomSeals || '');
   const [selectedTopSeals, setSelectedTopSeals] = useState<string>(initialConfig.topSeals || '');
+  const [selectedPanelCount, setSelectedPanelCount] = useState<string>(initialConfig.panelCount || '');
 
   // Get available options based on selected model
   const getAvailableOptions = (field: keyof typeof modelConfigurations.Stella) => {
@@ -200,6 +202,7 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
     setSelectedFinalClosure('');
     setSelectedBottomSeals('');
     setSelectedTopSeals('');
+    setSelectedPanelCount('');
   }, [selectedModel]);
 
   // Reset passDoorOption when passDoorType changes
@@ -227,20 +230,21 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
         trackFinish: selectedTrackFinish,
         finalClosure: selectedFinalClosure,
         bottomSeals: selectedBottomSeals,
-        topSeals: selectedTopSeals
+        topSeals: selectedTopSeals,
+        panelCount: selectedPanelCount
       });
     }
   }, [
     selectedModel, selectedConfiguration, selectedOperation, selectedGlassType, selectedSTCRating,
     selectedPartitionSupport, selectedPassDoorType, selectedPassDoorOption, selectedPanelFace,
     selectedHingeType, selectedFrameFinish, selectedTrackType, selectedTrackFinish,
-    selectedFinalClosure, selectedBottomSeals, selectedTopSeals, onConfigurationChange
+    selectedFinalClosure, selectedBottomSeals, selectedTopSeals, selectedPanelCount, onConfigurationChange
   ]);
 
   return (
     <Card className="w-full">
       <CardContent className="space-y-8">
-        {/* Row 1: Glass Wall Model, Panel Configuration, Operation Type */}
+        {/* Row 1: Glass Wall Model, Panel Configuration, Panel Count */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="model">Glass Wall Model *</Label>
@@ -279,6 +283,20 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="panelCount">Panel Count</Label>
+            <Input 
+              value={selectedPanelCount}
+              onChange={(e) => setSelectedPanelCount(e.target.value)}
+              placeholder="Enter panel count"
+              type="number"
+              min="1"
+            />
+          </div>
+        </div>
+
+        {/* Row 2: Operation Type, Glass Type, STC Rating */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
             <Label htmlFor="operation">Operation Type *</Label>
             <Select 
               value={selectedOperation} 
@@ -297,10 +315,7 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
               </SelectContent>
             </Select>
           </div>
-        </div>
 
-        {/* Row 2: Glass Type, STC Rating, Partition Support */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="glassType">Glass Type *</Label>
             <Select 
@@ -340,7 +355,10 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
               </SelectContent>
             </Select>
           </div>
+        </div>
 
+        {/* Row 3: Partition Support, Frame Thickness, Panel Width */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="partitionSupport">Partition Support *</Label>
             <Select 
@@ -360,10 +378,7 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
               </SelectContent>
             </Select>
           </div>
-        </div>
 
-        {/* Row 3: Frame Thickness, Panel Width (Auto-calculated fields) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="frameThickness">Frame Thickness (Auto-calculated)</Label>
             <Input 

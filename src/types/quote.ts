@@ -27,6 +27,7 @@ export interface WallSpecification {
   // Glass Wall specific fields
   glasswallModel?: string;
   glasswallOperation?: string;
+  glasswallPanelConfiguration?: string;
   glasswallPanelFace?: string;
   glasswallFrameFinish?: string;
   glasswallGlassType?: string;

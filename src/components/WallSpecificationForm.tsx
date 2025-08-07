@@ -354,7 +354,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           ...walls.walls[wallName],
           // Map glass wall config to dedicated fields
           glasswallModel: config.model,
-          panelConfiguration: config.configurationType,
+          glasswallPanelConfiguration: config.configurationType,
           glasswallOperation: config.operationType,
           glasswallPanelFace: config.panelFace,
           glasswallFrameFinish: config.frameFinish,
@@ -370,6 +370,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           glasswallFinalClosure: config.finalClosure,
           glasswallBottomSeals: config.bottomSeals,
           glasswallTopSeals: config.topSeals,
+          panelCount: config.panelCount
         },
       },
     };
@@ -950,7 +951,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                           onConfigurationChange={(config) => handleGlassWallConfigChange(wallName, config)}
                           initialConfig={{
                             model: wall.glasswallModel,
-                            configurationType: wall.panelConfiguration,
+                            configurationType: wall.glasswallPanelConfiguration,
                             operationType: wall.glasswallOperation,
                             glassType: wall.glasswallGlassType,
                             stc_rating: wall.glasswallSTCRating,
@@ -966,6 +967,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                             finalClosure: wall.glasswallFinalClosure,
                             bottomSeals: wall.glasswallBottomSeals,
                             topSeals: wall.glasswallTopSeals,
+                            panelCount: wall.panelCount,
                           }}
                         />
                       </div>
