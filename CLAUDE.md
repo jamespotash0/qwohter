@@ -79,6 +79,9 @@ src/
 4. **Use Feature Flags for Experimental Changes** (optional):
    - Wrap experimental UI/backend features in a toggle for safe rollout
 
+## Log Tracking
+   In order to ensure that we are internally tracking, all changes, please provide a file (.md) with a summary of what was changed, the file, how many lines, and what functionality was changed. Each update should have it's own file named claude_v{insert_version_#}.md, for reference to make it easy to revert changes back. 
+   
 ## Working Directory
 
 The main application code is located in `/wall-quote-wizard/` subdirectory. Always work from this directory for npm commands and file operations.
