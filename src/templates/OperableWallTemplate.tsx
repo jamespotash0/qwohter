@@ -1,5 +1,6 @@
 import { BaseQuoteTemplate, QuoteData } from './BaseQuoteTemplate';
 import { WallSpecification } from '@/types/quote';
+import { SmartQuoteHelper } from './SmartQuoteTemplate';
 
 export class OperableWallTemplate extends BaseQuoteTemplate {
   generateWallTable(data: QuoteData): string {
@@ -51,22 +52,83 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
 
     if (!firstWall) return '';
 
+    // Build smart sentences that skip empty parts
+    const systemDescription = SmartQuoteHelper.buildSentence([
+      { text: "This wall system utilizes the Kwik-Wall" },
+      { text: `<strong>${firstWall.series} Series Model ${firstWall.model}</strong>`, condition: SmartQuoteHelper.hasAllValues(firstWall.series, firstWall.model) },
+      { text: `configured with <strong>${firstWall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(firstWall.panelConfiguration) },
+      { text: `designed for use with a <strong>${firstWall.trackType} Layout</strong>`, condition: SmartQuoteHelper.hasValue(firstWall.trackType) },
+      { text: `and includes ${this.helpers.isGLModel(firstWall.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance` }
+    ]);
+
+    const wallDescription = SmartQuoteHelper.buildSentence([
+      { text: "The wall(s) consists of" },
+      { text: `<strong>${this.helpers.getPanelConfigurationText(firstWall.panelCount)} ${firstWall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasAllValues(firstWall.panelCount, firstWall.panelConfiguration) },
+      { text: `finished in an <strong>${firstWall.panelFinishCategory}</strong>`, condition: SmartQuoteHelper.hasValue(firstWall.panelFinishCategory) },
+      { text: "(as selected from the manufacturer's standard offerings)", condition: SmartQuoteHelper.hasValue(firstWall.panelFinishCategory) }
+    ]);
+
+    const dimensionsText = SmartQuoteHelper.conditionalText(
+      SmartQuoteHelper.hasAllValues(firstWall.heightFeet, firstWall.heightInches),
+      `The wall stands <strong>${this.helpers.formatDimensions('0', '0', firstWall.heightFeet, firstWall.heightInches, false).split(' x ')[1]}</strong> in height, with panel lengths varying as needed.`
+    );
+
+    const panelConstruction = SmartQuoteHelper.buildSentence([
+      { text: "Each panel features" },
+      { text: `a <strong>${firstWall.panelDesign}</strong> design`, condition: SmartQuoteHelper.hasValue(firstWall.panelDesign) },
+      { text: `and is nominally <strong>${firstWall.panelThickness}"</strong> thick`, condition: SmartQuoteHelper.hasValue(firstWall.panelThickness) },
+      { text: `constructed with a 1/2" gypsum board laminated to a <strong>${firstWall.panelSkin}</strong>`, condition: SmartQuoteHelper.hasValue(firstWall.panelSkin) }
+    ]);
+
+    const suspensionText = SmartQuoteHelper.conditionalText(
+      SmartQuoteHelper.hasValue(firstWall.trackSystem),
+      `The panels will be suspended from a <strong>${firstWall.trackSystem}</strong> overhead track system, allowing for smooth and efficient movement.`
+    );
+
+    const acousticPerformance = SmartQuoteHelper.buildSentence([
+      { text: "Acoustic performance is enhanced through" },
+      { text: `<strong>${firstWall.verticalSeals}</strong> vertical seals that create a continuous interlock`, condition: SmartQuoteHelper.hasValue(firstWall.verticalSeals) },
+      { text: `<strong>${firstWall.bottomSeals}</strong> operable bottom seals`, condition: SmartQuoteHelper.hasValue(firstWall.bottomSeals) },
+      { text: `and <strong>${firstWall.topSeals}</strong> top seals`, condition: SmartQuoteHelper.hasValue(firstWall.topSeals) }
+    ]);
+
+    const sealAdjustmentText = SmartQuoteHelper.conditionalText(
+      SmartQuoteHelper.hasValue(firstWall.bottomSeals) || SmartQuoteHelper.hasValue(firstWall.topSeals),
+      "Adjustable seals are set at the time of installation and operable/retractable seals are user-adjustable for virtually effortless movement."
+    );
+
+    const closureText = SmartQuoteHelper.buildSentence([
+      { text: "The lead panel provides the initial closure" },
+      { text: `using a <strong>${firstWall.initialClosureSystem}</strong>`, condition: SmartQuoteHelper.hasValue(firstWall.initialClosureSystem) },
+      { text: `and the end panel uses a <strong>${firstWall.endPanelType}</strong>`, condition: SmartQuoteHelper.hasValue(firstWall.endPanelType) },
+      { text: "securing the system when fully deployed" }
+    ]);
+
+    const panelsSectionContent = [
+      systemDescription,
+      wallDescription,
+      dimensionsText,
+      panelConstruction,
+      suspensionText,
+      acousticPerformance,
+      sealAdjustmentText,
+      closureText
+    ].filter(text => text.trim() !== '').join('<br><br>');
+
     return `<div class="panels-section" style="line-height: 1.15;">
       <h2 class="section-header">PANELS:</h2>
-      <p>
-        This wall system utilizes the Kwik-Wall <strong>${firstWall.series || ''} Series Model ${firstWall.model || ''}</strong> configured with <strong>${firstWall.panelConfiguration || ''}</strong> designed for use with a <strong>${firstWall.trackType || ''} Layout</strong>, and includes ${this.helpers.isGLModel(firstWall.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
-        <br><br>The wall(s) consists of <strong>${this.helpers.getPanelConfigurationText(firstWall.panelCount)} ${firstWall.panelConfiguration || ''}</strong>, finished in an <strong>${firstWall.panelFinishCategory || ''}</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${this.helpers.formatDimensions('0', '0', firstWall.heightFeet, firstWall.heightInches, false).split(' x ')[1]}</strong> in height, with panel lengths varying as needed. Each panel features a <strong>${firstWall.panelDesign || ''} </strong> design and is nominally <strong>${firstWall.panelThickness || ''}"</strong> thick, constructed with a 1/2" gypsum board laminated to a <strong>${firstWall.panelSkin}</strong>. The panels will be suspended from a <strong>${firstWall.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${firstWall.verticalSeals || ''}</strong> vertical seals that create a continuous interlock, <strong>${firstWall.bottomSeals || ''}</strong> operable bottom seals, and <strong>${firstWall.topSeals}</strong> top seals. Adjustable seals are set at the time of installation and operable/retractable seals are user-adjustable for virtually effortless movement. The lead panel provides the initial closure using a <strong>${firstWall.initialClosureSystem || ''}</strong>, and the end panel uses a <strong>${firstWall.endPanelType || ''}</strong>, securing the system when fully deployed.
-      </p>
+      <p>${panelsSectionContent}</p>
     </div>
     
-    ${firstWall.passDoorPanels ? `
-    <div class="panel-doors-section" style="line-height: 1.15; margin-top: 20px;">
-      <h2 class="section-header">PANEL DOORS:</h2>
-      <p>
-        A <strong>${firstWall.passDoorPanels || ''}</strong> pass door panel is incorporated to allow for convenient access without disrupting the overall wall system.
-      </p>
-    </div>
-    ` : ''}`;
+    ${SmartQuoteHelper.conditionalText(
+      SmartQuoteHelper.hasValue(firstWall.passDoorPanels),
+      `<div class="panel-doors-section" style="line-height: 1.15; margin-top: 20px;">
+        <h2 class="section-header">PANEL DOORS:</h2>
+        <p>
+          A <strong>${firstWall.passDoorPanels}</strong> pass door panel is incorporated to allow for convenient access without disrupting the overall wall system.
+        </p>
+      </div>`
+    )}`;
   }
 
   generateTrackSection(data: QuoteData): string {

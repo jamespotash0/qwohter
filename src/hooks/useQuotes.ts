@@ -2,7 +2,7 @@ import { useState, useEffect, ButtonHTMLAttributes } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
-import { WallDetails, WallSpecification } from "@/types/quote";
+import { WallDetails, WallSpecification, QuoteCustomization } from "@/types/quote";
 import { filterWallDetailsForSave } from "@/utils/wallDataFilter";
 
 type QuoteRow = Database['public']['Tables']['quotes']['Row'];
@@ -24,6 +24,7 @@ export interface Quote {
   version: number;
   created_at: string;
   updated_at: string;
+  customization?: QuoteCustomization;
 }
 
 // Helper function to migrate wall_details to the new format with id and walls
@@ -247,6 +248,50 @@ export const useQuotes = () => {
     }
   };
 
+  const saveQuoteCustomization = async (id: string, customization: QuoteCustomization) => {
+    try {
+      // Update the version for customization tracking
+      const currentQuote = quotes.find(q => q.id === id);
+      const newVersion = (currentQuote?.version || 0) + 1;
+      
+      const updateData = {
+        customization: {
+          ...customization,
+          lastModified: new Date().toISOString(),
+          version: newVersion
+        },
+        version: newVersion
+      };
+
+      const { data, error } = await supabase
+        .from('quotes')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      setQuotes(prev => prev.map(quote => 
+        quote.id === id ? { ...quote, ...convertRowToQuote(data) } : quote
+      ));
+      
+      toast({
+        title: "Customization saved",
+        description: "Quote customization has been saved successfully.",
+      });
+      
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Error saving customization",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   useEffect(() => {
     fetchQuotes();
   }, []);
@@ -258,6 +303,7 @@ export const useQuotes = () => {
     updateQuote,
     deleteQuote,
     markAsDownloaded,
+    saveQuoteCustomization,
     refreshQuotes: fetchQuotes
   };
 };

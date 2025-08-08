@@ -65,3 +65,18 @@ export interface PricingData {
 }
 
 export type QuoteStatus = 'Draft' | 'Pending' | 'Submitted' | 'Won' | 'Rejected';
+
+export interface QuoteCustomization {
+  customSections?: Array<{
+    id: string;
+    title: string;
+    content: string;
+    isVisible: boolean;
+    isRequired: boolean;
+    dependencies?: string[];
+  }>;
+  customHTML?: string;
+  isCustomized?: boolean;
+  lastModified?: Date;
+  version?: number;
+}

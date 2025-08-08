@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Search, Download, Edit, Trash2, MoreHorizontal, DollarSign, TrendingUp, FileText, Building2, User, BarChart3, RefreshCcw } from "lucide-react";
+import { Search, Download, Edit, Edit3, Trash2, MoreHorizontal, DollarSign, TrendingUp, FileText, Building2, User, BarChart3, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +34,8 @@ import { useUserProfile } from "@/hooks/useUserProfile";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { useToast } from "@/hooks/use-toast";
 import NewQuote from "./NewQuote";
+import SmartQuoteEditor from "@/components/SmartQuoteEditor";
+import { SmartQuoteData } from "@/templates/SmartQuoteTemplate";
 
 const Quotes = () => {
   const navigate = useNavigate();
@@ -46,6 +48,7 @@ const Quotes = () => {
     deleteQuote: deleteQuoteFromDB,
     markAsDownloaded,
     createQuote,
+    saveQuoteCustomization,
     refreshQuotes
   } = useQuotes();
 
@@ -64,6 +67,7 @@ const Quotes = () => {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [deleteQuoteId, setDeleteQuoteId] = useState<string | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
+  const [smartEditingQuote, setSmartEditingQuote] = useState<Quote | null>(null);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -126,6 +130,124 @@ const Quotes = () => {
 
   const editQuote = (quote: Quote) => {
     setEditingQuote(quote);
+  };
+
+  const smartEditQuote = (quote: Quote) => {
+    setSmartEditingQuote(quote);
+  };
+
+  const handleSmartQuoteSave = async (customizedQuote: SmartQuoteData) => {
+    try {
+      if (smartEditingQuote && customizedQuote.customSections) {
+        await saveQuoteCustomization(smartEditingQuote.id, {
+          customSections: customizedQuote.customSections,
+          customHTML: customizedQuote.customHTML,
+          isCustomized: customizedQuote.isCustomized || true,
+          lastModified: new Date(),
+          version: 1
+        });
+        setSmartEditingQuote(null);
+        refreshQuotes();
+      }
+    } catch (error) {
+      // Error handling is done in saveQuoteCustomization
+    }
+  };
+
+  const handleSmartQuoteDownload = async (html: string) => {
+    if (!smartEditingQuote) return;
+    
+    try {
+      const quoteName = smartEditingQuote.project_name || smartEditingQuote.proposal_number || 'quote';
+      
+      // Create temp div with exactly the same styling as standard PDF download
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      tempDiv.style.cssText = `
+        font-family: "Times New Roman", serif;
+        font-size: 12pt;
+        line-height: 1.15;
+        width: 7in;
+        margin: 0 auto;
+        padding: 20px;
+        color: black;
+        background: white;
+      `;
+
+      // Add the same enhanced styles as standard download
+      const style = document.createElement('style');
+      style.textContent = `
+        .quote-container {
+          font-family: "Times New Roman", serif;
+          font-size: 12pt;
+          line-height: 1.15;
+          width: 7in;
+          margin: 0 auto;
+          color: black;
+        }
+        .header-section { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 20px; }
+        .company-info { flex: 1; max-width: 40%; }
+        .company-logo { display: flex; align-items: center; gap: 15px; }
+        .logo-placeholder { width: 60px; height: 60px; background: linear-gradient(135deg, #3B82F6, #F59E0B); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16pt; border-radius: 8px; }
+        .company-name { font-size: 14pt; font-weight: bold; color: #333; line-height: 1.2; }
+        .contact-details { flex: 1; max-width: 55%; text-align: right; }
+        .contact-row { margin-bottom: 2px; display: flex; justify-content: flex-end; align-items: center; line-height: 1.1; }
+        .contact-row .label { font-weight: bold; margin-right: 8px; min-width: 80px; text-align: right; }
+        .contact-row .value { text-align: left; flex: 1; }
+        .website-link { color: #3B82F6; text-decoration: underline; }
+        .billing-and-job-info { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; gap: 40px; }
+        .billing-section { flex: 1; max-width: 45%; }
+        .billed-to-details { margin-top: 10px; }
+        .billed-line { margin-bottom: 2px; min-height: 20px; padding-bottom: 4px; }
+        .underline { height: 1px; background-color: black; margin-bottom: 8px; width: 100%; }
+        .job-info-section { flex: 1; max-width: 50%; }
+        .job-row { display: flex; align-items: center; margin-bottom: 15px; position: relative; }
+        .job-label { font-weight: bold; margin-right: 20px; min-width: 120px; }
+        .job-value { flex: 1; padding-bottom: 2px; }
+        .job-underline { position: absolute; bottom: 0; right: 0; left: 140px; height: 1px; background-color: black; }
+        h2.section-header { font-weight: bold; font-size: 12pt; margin-top: 1.5em; margin-bottom: 0.5em; }
+        .wall-specifications { line-height: 1.15; max-width: 7.25in; }
+        .acceptance-section p { font-style: italic; font-size: 9pt; line-height: 1.2; }
+      `;
+      
+      document.head.appendChild(style);
+      document.body.appendChild(tempDiv);
+
+      const { default: html2canvas } = await import('html2canvas');
+      const canvas = await html2canvas(tempDiv, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff'
+      });
+
+      document.body.removeChild(tempDiv);
+      document.head.removeChild(style);
+
+      const pdf = new jsPDF('p', 'pt', 'letter');
+      const imgWidth = 612;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const imgData = canvas.toDataURL('image/png');
+
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`${quoteName}_customized.pdf`);
+      
+      // Mark as downloaded
+      await markAsDownloaded(smartEditingQuote.id);
+      
+      toast({
+        title: "Download complete",
+        description: "Your customized quote has been downloaded successfully.",
+      });
+      
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast({
+        title: "Download failed",
+        description: "There was an error generating the PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const downloadPDF = async (quote: Quote) => {
@@ -689,6 +811,39 @@ const Quotes = () => {
     );
   }
 
+  if (smartEditingQuote) {
+    return (
+      <SidebarProvider>
+        <div className="flex">
+          <AppSidebar />
+          <div className="flex-1 p-6">
+            <div className="mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold">Smart Quote Editor</h1>
+                  <p className="text-muted-foreground">
+                    Customize "{smartEditingQuote.project_name || smartEditingQuote.proposal_number}" quote content
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setSmartEditingQuote(null)}
+                >
+                  Back to Quotes
+                </Button>
+              </div>
+            </div>
+            <SmartQuoteEditor
+              quote={smartEditingQuote}
+              onSave={handleSmartQuoteSave}
+              onDownload={handleSmartQuoteDownload}
+            />
+          </div>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
   if (!user) return null;
 
   return (
@@ -885,6 +1040,10 @@ const Quotes = () => {
                                   <DropdownMenuItem onClick={() => editQuote(quote)}>
                                     <Edit className="mr-2 h-4 w-4" />
                                     Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => smartEditQuote(quote)}>
+                                    <Edit3 className="mr-2 h-4 w-4" />
+                                    Smart Edit
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => downloadPDF(quote)}>
                                     <Download className="mr-2 h-4 w-4" />
