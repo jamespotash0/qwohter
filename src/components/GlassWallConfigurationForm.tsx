@@ -146,10 +146,14 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
 
   // Track previous model to avoid clearing during initial load
   const prevModelRef = useRef<string>('');
+  const isSyncingRef = useRef<boolean>(false);
+  const prevConfigRef = useRef<string>('');
 
   // Sync local state when initialConfig changes (e.g., editing existing quote)
   useEffect(() => {
     if (!initialConfig) return;
+    isSyncingRef.current = true;
+
     if (initialConfig.model !== undefined) setSelectedModel(initialConfig.model || '');
     if (initialConfig.configurationType !== undefined) setSelectedConfiguration(initialConfig.configurationType || '');
     if (initialConfig.operationType !== undefined) setSelectedOperation(initialConfig.operationType || '');
@@ -167,6 +171,9 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
     if (initialConfig.bottomSeals !== undefined) setSelectedBottomSeals(initialConfig.bottomSeals || '');
     if (initialConfig.topSeals !== undefined) setSelectedTopSeals(initialConfig.topSeals || '');
     // if (initialConfig.panelCount !== undefined) setSelectedPanelCount(initialConfig.panelCount || '');
+
+    // allow notifying after state settles
+    setTimeout(() => { isSyncingRef.current = false; }, 0);
   }, [initialConfig]);
   // Get available options based on selected model
   const getAvailableOptions = (field: keyof typeof modelConfigurations.Stella) => {
@@ -240,32 +247,38 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
 
   // Reset passDoorOption when passDoorType changes
   useEffect(() => {
+    if (isSyncingRef.current) return;
     setSelectedPassDoorOption('');
   }, [selectedPassDoorType]);
 
-  // Notify parent of configuration changes
   useEffect(() => {
-    if (onConfigurationChange && selectedModel) {
-      onConfigurationChange({
-        model: selectedModel,
-        configurationType: selectedConfiguration,
-        operationType: selectedOperation,
-        glassType: selectedGlassType,
-        stc_rating: selectedSTCRating,
-        partitionSupport: selectedPartitionSupport,
-        passDoorType: selectedPassDoorType,
-        passDoorOption: selectedPassDoorOption,
-        panelFace: selectedPanelFace,
-        hingeType: selectedHingeType,
-        frameFinish: selectedFrameFinish,
-        frameThickness: getFrameThickness(selectedModel),
-        trackType: selectedTrackType,
-        trackFinish: selectedTrackFinish,
-        finalClosure: selectedFinalClosure,
-        bottomSeals: selectedBottomSeals,
-        topSeals: selectedTopSeals,
-        // panelCount: selectedPanelCount
-      });
+    if (!onConfigurationChange || !selectedModel || isSyncingRef.current) return;
+
+    const config: GlassWallConfiguration = {
+      model: selectedModel,
+      configurationType: selectedConfiguration,
+      operationType: selectedOperation,
+      glassType: selectedGlassType,
+      stc_rating: selectedSTCRating,
+      partitionSupport: selectedPartitionSupport,
+      passDoorType: selectedPassDoorType,
+      passDoorOption: selectedPassDoorOption,
+      panelFace: selectedPanelFace,
+      hingeType: selectedHingeType,
+      frameFinish: selectedFrameFinish,
+      frameThickness: getFrameThickness(selectedModel),
+      trackType: selectedTrackType,
+      trackFinish: selectedTrackFinish,
+      finalClosure: selectedFinalClosure,
+      bottomSeals: selectedBottomSeals,
+      topSeals: selectedTopSeals,
+      // panelCount: selectedPanelCount
+    };
+
+    const serialized = JSON.stringify(config);
+    if (serialized !== prevConfigRef.current) {
+      prevConfigRef.current = serialized;
+      onConfigurationChange(config);
     }
   }, [
     selectedModel, selectedConfiguration, selectedOperation, selectedGlassType, selectedSTCRating,
