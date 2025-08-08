@@ -1,4 +1,29 @@
 
+// Enhanced domain-specific types for better type safety
+export type WallSystemType = 'Glass Wall' | 'Operable Wall' | 'Accordion Wall';
+export type GlassWallModel = 'Stella' | 'Luna' | 'Illona' | 'Ava' | 'Mata';
+
+// Glass Wall Configuration interface for form handling
+export interface GlassWallConfiguration {
+  model: string;
+  configurationType: string;
+  operationType: string;
+  glassType: string;
+  stc_rating: string;
+  partitionSupport: string;
+  passDoorType: string;
+  passDoorOption: string;
+  panelFace: string;
+  hingeType: string;
+  frameFinish: string;
+  frameThickness: string;
+  trackType: string;
+  trackFinish: string;
+  finalClosure: string;
+  bottomSeals: string;
+  topSeals: string;
+}
+
 export interface WallSpecification {
   wallSystemType: string;
   lengthFeet: string;
