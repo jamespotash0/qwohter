@@ -36,7 +36,7 @@ export const WallSpecificationView: React.FC<WallSpecificationViewProps> = ({
   return (
     <div className={`space-y-6 ${className}`}>
       
-      {/* Header with Add Wall Button */}
+      {/* Header with Add Wall Button - only show button when there are walls */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-foreground">Wall Specifications</h2>
@@ -48,32 +48,18 @@ export const WallSpecificationView: React.FC<WallSpecificationViewProps> = ({
           </p>
         </div>
         
-        <Button
-          onClick={() => viewModel.addWall()}
-          disabled={disabled}
-          className="flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Add Wall
-        </Button>
+        {/* {viewModel.hasWalls && ( */}
+          <Button
+            onClick={() => viewModel.addWall()}
+            disabled={disabled}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Add Wall
+          </Button>
+        {/* )} */}
       </div>
 
-      {/* Validation Summary */}
-      {!viewModel.validationResult.isValid && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-3">
-          <div className="text-sm text-red-800">
-            <strong>Validation Issues:</strong>
-            {!viewModel.validationResult.hasAtLeastOneWall && (
-              <div>• At least one wall is required</div>
-            )}
-            {Object.entries(viewModel.validationResult.wallValidations).map(([wallName, validation]) => (
-              validation.errors.map((error, index) => (
-                <div key={`${wallName}-${index}`}>• {wallName}: {error}</div>
-              ))
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Wall List */}
       {viewModel.hasWalls ? (
@@ -84,12 +70,10 @@ export const WallSpecificationView: React.FC<WallSpecificationViewProps> = ({
             
             const isCollapsed = viewModel.isWallCollapsed(wallName);
             const isEditing = viewModel.currentEditingWallName === wallName;
-            const validationErrors = viewModel.getWallValidationErrors(wallName);
-            const hasErrors = validationErrors.length > 0;
             
             return (
               <Collapsible key={wallName} open={!isCollapsed}>
-                <Card className={hasErrors ? "border-red-200" : ""}>
+                <Card>
                   <CollapsibleTrigger 
                     onClick={() => viewModel.toggleWallCollapse(wallName)}
                     disabled={disabled}
@@ -143,13 +127,6 @@ export const WallSpecificationView: React.FC<WallSpecificationViewProps> = ({
                         
                       </div>
                       
-                      {/* Validation Errors Preview */}
-                      {hasErrors && (
-                        <div className="text-left mt-2 text-xs text-red-600">
-                          {validationErrors.slice(0, 2).join(', ')}
-                          {validationErrors.length > 2 && ` (${validationErrors.length - 2} more)`}
-                        </div>
-                      )}
                       
                     </CardHeader>
                   </CollapsibleTrigger>
@@ -172,6 +149,7 @@ export const WallSpecificationView: React.FC<WallSpecificationViewProps> = ({
                         onConfigurationChange={(config) => viewModel.updateGlassWallConfig(wallName, config)}
                         disabled={disabled}
                       />
+
                       
                       {/* Operable Wall Section - Placeholder for future implementation */}
                       {wall.wallSystemType === "Operable Wall" && (
@@ -193,17 +171,6 @@ export const WallSpecificationView: React.FC<WallSpecificationViewProps> = ({
                         </div>
                       )}
                       
-                      {/* Detailed Validation Errors */}
-                      {hasErrors && (
-                        <div className="mt-6 p-3 bg-red-50 border border-red-200 rounded-md">
-                          <h4 className="text-sm font-medium text-red-800 mb-2">Configuration Issues:</h4>
-                          <ul className="text-xs text-red-600 space-y-1">
-                            {validationErrors.map((error, index) => (
-                              <li key={index}>• {error}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
                       
                     </CardContent>
                   </CollapsibleContent>
@@ -214,24 +181,18 @@ export const WallSpecificationView: React.FC<WallSpecificationViewProps> = ({
         </div>
       ) : (
         /* Empty State */
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <div className="text-center space-y-4">
-              <div className="text-muted-foreground">
-                <div className="text-lg font-medium">No walls configured yet</div>
-                <div className="text-sm">Click "Add Wall" to get started with your wall specifications.</div>
+        <div className="flex items-center justify-between">
+          <Card className="flex-1">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <div className="text-center space-y-2">
+                <div className="text-muted-foreground">
+                  <div className="text-lg font-medium">No walls configured yet</div>
+                  <div className="text-sm">Click "Add Wall" to get started with your wall specifications.</div>
+                </div>
               </div>
-              <Button
-                onClick={() => viewModel.addWall()}
-                disabled={disabled}
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add Your First Wall
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       )}
       
       {/* Quick Actions for Multiple Walls */}

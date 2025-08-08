@@ -29,8 +29,7 @@ export const BasicWallInfo: React.FC<BasicWallInfoProps> = ({
             value={wall.lengthFeet}
             onChange={(e) => onFieldChange("lengthFeet", e.target.value)}
             placeholder="Enter feet"
-            type="number"
-            min="1"
+            type="text"
             disabled={disabled}
           />
         </div>
@@ -41,9 +40,7 @@ export const BasicWallInfo: React.FC<BasicWallInfoProps> = ({
             value={wall.lengthInches}
             onChange={(e) => onFieldChange("lengthInches", e.target.value)}
             placeholder="Enter inches"
-            type="number"
-            min="0"
-            max="11"
+            type="text"
             disabled={disabled}
           />
         </div>
@@ -54,8 +51,7 @@ export const BasicWallInfo: React.FC<BasicWallInfoProps> = ({
             value={wall.heightFeet}
             onChange={(e) => onFieldChange("heightFeet", e.target.value)}
             placeholder="Enter feet"
-            type="number"
-            min="1"
+            type="text"
             disabled={disabled}
           />
         </div>
@@ -66,9 +62,7 @@ export const BasicWallInfo: React.FC<BasicWallInfoProps> = ({
             value={wall.heightInches}
             onChange={(e) => onFieldChange("heightInches", e.target.value)}
             placeholder="Enter inches"
-            type="number"
-            min="0"
-            max="11"
+            type="text"
             disabled={disabled}
           />
         </div>
@@ -100,8 +94,7 @@ export const BasicWallInfo: React.FC<BasicWallInfoProps> = ({
             value={wall.panelCount}
             onChange={(e) => onFieldChange("panelCount", e.target.value)}
             placeholder="Enter panel count"
-            type="number"
-            min="1"
+            type="text"
             disabled={disabled}
           />
         </div>
@@ -112,8 +105,7 @@ export const BasicWallInfo: React.FC<BasicWallInfoProps> = ({
             value={wall.quantity}
             onChange={(e) => onFieldChange("quantity", e.target.value)}
             placeholder="Enter quantity"
-            type="number"
-            min="1"
+            type="text"
             disabled={disabled}
           />
         </div>
