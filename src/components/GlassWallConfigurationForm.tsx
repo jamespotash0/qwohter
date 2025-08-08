@@ -323,7 +323,7 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
             <Label htmlFor="model">Glass Wall Model *</Label>
             <Select value={selectedModel} onValueChange={setSelectedModel}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a model" />
+                <SelectValue placeholder="Select glass wall model" />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {Object.keys(modelConfigurations).map((model) => (
@@ -343,7 +343,7 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
               disabled={!selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={selectedModel ? "Select configuration" : "Select model first"} />
+                <SelectValue placeholder={selectedModel ? "Select panel configuration" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {getAvailableOptions('configurations').map((config) => (
@@ -481,7 +481,7 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
               disabled={!selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={selectedModel ? "Select panel face" : "Select model first"} />
+                <SelectValue placeholder={selectedModel ? "Select panel face options" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {getAvailableOptions('panelFaces').map((face) => (
