@@ -148,6 +148,7 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
   const prevModelRef = useRef<string>('');
   const isSyncingRef = useRef<boolean>(false);
   const prevConfigRef = useRef<string>('');
+  const prevPanelConfigRef = useRef<string>('');
 
   // Sync local state when initialConfig changes (e.g., editing existing quote)
   useEffect(() => {
@@ -244,6 +245,32 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
 
     prevModelRef.current = selectedModel;
   }, [selectedModel]);
+
+  // Reset all dependent fields when panel configuration changes
+  useEffect(() => {
+    if (isSyncingRef.current) return;
+    if (!selectedModel) return;
+
+    if (prevPanelConfigRef.current && prevPanelConfigRef.current !== selectedConfiguration) {
+      setSelectedOperation('');
+      setSelectedGlassType('');
+      setSelectedSTCRating('');
+      setSelectedPartitionSupport('');
+      setSelectedPassDoorType('');
+      setSelectedPassDoorOption('');
+      setSelectedPanelFace('');
+      setSelectedHingeType('');
+      setSelectedFrameFinish('');
+      setSelectedTrackType('');
+      setSelectedTrackFinish('');
+      setSelectedFinalClosure('');
+      setSelectedBottomSeals('');
+      setSelectedTopSeals('');
+      // setSelectedPanelCount('');
+    }
+
+    prevPanelConfigRef.current = selectedConfiguration;
+  }, [selectedConfiguration, selectedModel]);
 
   // Reset passDoorOption when passDoorType changes
   useEffect(() => {
