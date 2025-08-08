@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -144,6 +144,30 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
   const [selectedTopSeals, setSelectedTopSeals] = useState<string>(initialConfig.topSeals || '');
   // const [selectedPanelCount, setSelectedPanelCount] = useState<string>(initialConfig.panelCount || '');
 
+  // Track previous model to avoid clearing during initial load
+  const prevModelRef = useRef<string>('');
+
+  // Sync local state when initialConfig changes (e.g., editing existing quote)
+  useEffect(() => {
+    if (!initialConfig) return;
+    if (initialConfig.model !== undefined) setSelectedModel(initialConfig.model || '');
+    if (initialConfig.configurationType !== undefined) setSelectedConfiguration(initialConfig.configurationType || '');
+    if (initialConfig.operationType !== undefined) setSelectedOperation(initialConfig.operationType || '');
+    if (initialConfig.glassType !== undefined) setSelectedGlassType(initialConfig.glassType || '');
+    if (initialConfig.stc_rating !== undefined) setSelectedSTCRating(initialConfig.stc_rating || '');
+    if (initialConfig.partitionSupport !== undefined) setSelectedPartitionSupport(initialConfig.partitionSupport || '');
+    if (initialConfig.passDoorType !== undefined) setSelectedPassDoorType(initialConfig.passDoorType || '');
+    if (initialConfig.passDoorOption !== undefined) setSelectedPassDoorOption(initialConfig.passDoorOption || '');
+    if (initialConfig.panelFace !== undefined) setSelectedPanelFace(initialConfig.panelFace || '');
+    if (initialConfig.hingeType !== undefined) setSelectedHingeType(initialConfig.hingeType || '');
+    if (initialConfig.frameFinish !== undefined) setSelectedFrameFinish(initialConfig.frameFinish || '');
+    if (initialConfig.trackType !== undefined) setSelectedTrackType(initialConfig.trackType || '');
+    if (initialConfig.trackFinish !== undefined) setSelectedTrackFinish(initialConfig.trackFinish || '');
+    if (initialConfig.finalClosure !== undefined) setSelectedFinalClosure(initialConfig.finalClosure || '');
+    if (initialConfig.bottomSeals !== undefined) setSelectedBottomSeals(initialConfig.bottomSeals || '');
+    if (initialConfig.topSeals !== undefined) setSelectedTopSeals(initialConfig.topSeals || '');
+    // if (initialConfig.panelCount !== undefined) setSelectedPanelCount(initialConfig.panelCount || '');
+  }, [initialConfig]);
   // Get available options based on selected model
   const getAvailableOptions = (field: keyof typeof modelConfigurations.Stella) => {
     if (!selectedModel || !(selectedModel in modelConfigurations)) return [];
@@ -184,24 +208,34 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
         return 'N/A';
     }
   };
-  // Reset all fields when model changes
+  // Reset all fields when model changes (but skip initial load)
   useEffect(() => {
-    setSelectedConfiguration('');
-    setSelectedOperation('');
-    setSelectedGlassType('');
-    setSelectedSTCRating('');
-    setSelectedPartitionSupport('');
-    setSelectedPassDoorType('');
-    setSelectedPassDoorOption('');
-    setSelectedPanelFace('');
-    setSelectedHingeType('');
-    setSelectedFrameFinish('');
-    setSelectedTrackType('');
-    setSelectedTrackFinish('');
-    setSelectedFinalClosure('');
-    setSelectedBottomSeals('');
-    setSelectedTopSeals('');
-    // setSelectedPanelCount('');
+    // Skip reset during first-time initialization when previous model was empty
+    if (!prevModelRef.current && selectedModel) {
+      prevModelRef.current = selectedModel;
+      return;
+    }
+
+    if (prevModelRef.current !== selectedModel) {
+      setSelectedConfiguration('');
+      setSelectedOperation('');
+      setSelectedGlassType('');
+      setSelectedSTCRating('');
+      setSelectedPartitionSupport('');
+      setSelectedPassDoorType('');
+      setSelectedPassDoorOption('');
+      setSelectedPanelFace('');
+      setSelectedHingeType('');
+      setSelectedFrameFinish('');
+      setSelectedTrackType('');
+      setSelectedTrackFinish('');
+      setSelectedFinalClosure('');
+      setSelectedBottomSeals('');
+      setSelectedTopSeals('');
+      // setSelectedPanelCount('');
+    }
+
+    prevModelRef.current = selectedModel;
   }, [selectedModel]);
 
   // Reset passDoorOption when passDoorType changes
