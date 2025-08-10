@@ -24,7 +24,8 @@ import {
   Square,
   Settings,
   Crown,
-  Shield
+  Shield,
+  BarChart3
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,7 @@ import { useOrganizations } from "@/hooks/useOrganizations";
 import { useQuotes } from "@/hooks/useQuotes";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { supabase } from "@/integrations/supabase/client";
+import { AnalyticsCharts } from "./AnalyticsCharts";
 
 interface Quote {
   id: string;
@@ -294,62 +296,56 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
               </Card>
             </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-              {/* Left Column - Analytics & Team */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Project Analytics */}
-                {/* <Card>
-                  <CardHeader>
-                    <CardTitle>Project Analytics</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-64 flex items-end justify-between px-4">
-                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
-                        <div key={day} className="flex flex-col items-center gap-2">
-                          <div 
-                            className={`w-12 rounded-t-lg ${index === 3 ? 'bg-primary h-32' : index === 2 || index === 1 ? 'bg-primary/70 h-24' : 'bg-slate-200 h-16'}`}
-                          />
-                          <span className="text-xs text-slate-500">{day}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card> */}
+            {/* Analytics Section */}
+            <div className="animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+              <AnalyticsCharts quotes={quotes} />
+            </div>
 
-                {/* Team Collaboration */}
-                {/* <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Team Collaboration</CardTitle>
-                    <Button variant="outline" size="sm">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Member
-                    </Button>
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+              {/* Left Column - Quick Actions */}
+              <div className="lg:col-span-2 space-y-6">
+                <Card className="card-floating">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-primary" />
+                      Quick Actions
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      {[
-                        { name: "Alexandra Deff", task: "Github Project Repository", status: "Completed" },
-                        { name: "Edwin Adenike", task: "Integrate User Authentication System", status: "In Progress" },
-                        { name: "Isaac Oluwatemilorun", task: "Develop Search and Filter Functionality", status: "Pending" },
-                        { name: "David Oshodi", task: "Responsive Layout for Homepage", status: "In Progress" }
-                      ].map((member, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-slate-300 rounded-full" />
-                            <div>
-                              <p className="font-medium text-sm">{member.name}</p>
-                              <p className="text-xs text-slate-500">Working on {member.task}</p>
-                            </div>
-                          </div>
-                          <Badge variant={member.status === "Completed" ? "default" : member.status === "In Progress" ? "secondary" : "outline"}>
-                            {member.status}
-                          </Badge>
-                        </div>
-                      ))}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Button 
+                        className="h-24 flex-col gap-2 bg-gradient-to-br from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white"
+                        onClick={() => setShowNewQuoteDialog(true)}
+                      >
+                        <Plus className="w-6 h-6" />
+                        Create New Quote
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="h-24 flex-col gap-2 border-2 hover:bg-secondary/50"
+                        onClick={() => setShowMemberManagement(true)}
+                      >
+                        <Users className="w-6 h-6" />
+                        Manage Team
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="h-24 flex-col gap-2 border-2 hover:bg-secondary/50"
+                      >
+                        <BarChart3 className="w-6 h-6" />
+                        View Reports
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="h-24 flex-col gap-2 border-2 hover:bg-secondary/50"
+                      >
+                        <Settings className="w-6 h-6" />
+                        Settings
+                      </Button>
                     </div>
                   </CardContent>
-                </Card> */}
+                </Card>
               </div>
 
               {/* Right Column - Reminders, Projects, Progress, Timer */}

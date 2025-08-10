@@ -219,11 +219,11 @@ export const SmartQuoteEditor: React.FC<SmartQuoteEditorProps> = ({
       <Card className="mb-6">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center space-x-2">
+            {/* <CardTitle className="flex items-center space-x-2">
               <Edit3 className="h-5 w-5" />
               <span>Smart Quote Editor</span>
               {isCustomized && <Badge variant="secondary">Customized</Badge>}
-            </CardTitle>
+            </CardTitle> */}
             <div className="flex items-center space-x-2">
               <Button
                 variant="outline"

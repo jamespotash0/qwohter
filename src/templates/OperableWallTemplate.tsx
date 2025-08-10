@@ -26,7 +26,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
                 <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black; font-weight: bold;">${wallName}</td>
                 <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${dimensions}</td>
                 <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${this.helpers.toWords(panelCount)} (${panelCount})</td>
-                <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black;">${panelConfiguration}</td>
+                <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black;">${panelConfiguration} </td>
                 <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${quantity} Each</td>
               </tr>
             `;
@@ -113,7 +113,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
       acousticPerformance,
       sealAdjustmentText,
       closureText
-    ].filter(text => text.trim() !== '').join('<br><br>');
+    ].filter(text => text.trim() !== '').join(''); //<br><br>
 
     return `<div class="panels-section" style="line-height: 1.15;">
       <h2 class="section-header">PANELS:</h2>

@@ -226,9 +226,18 @@ export abstract class BaseQuoteTemplate {
   }
 
   protected generatePricingSection(data: QuoteData): string {
-    const basePrice = this.helpers.formatCurrency(data.price_details?.basePrice || data.price_details?.base_price);
-    const freight = this.helpers.formatCurrency(data.price_details?.freight);
-    const total = this.helpers.formatCurrency(data.price_details?.total);
+    const basePriceValue = data.price_details?.basePrice || data.price_details?.base_price;
+    const freightValue = data.price_details?.freight;
+    const totalValue = data.price_details?.total;
+
+    const basePrice = this.helpers.formatCurrency(basePriceValue);
+    const freight = this.helpers.formatCurrency(freightValue);
+    const total = this.helpers.formatCurrency(totalValue);
+
+    // Debug pricing values to console for troubleshooting
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Pricing Debug:', { basePriceValue, freightValue, totalValue, basePrice, freight, total });
+    }
 
     return `<div class="pricing-section" style="margin-top: 10px;">
       <table style="width: 90%; border-collapse: collapse; table-layout: fixed;">

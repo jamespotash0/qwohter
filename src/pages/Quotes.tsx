@@ -815,7 +815,7 @@ const Quotes = () => {
     return (
       <SidebarProvider>
         <div className="flex">
-          <AppSidebar />
+          <AppSidebar user={user?.email || ""} onLogout={handleLogout}/>  {/* made this update */}
           <div className="flex-1 p-6">
             <div className="mb-6">
               <div className="flex items-center justify-between">
@@ -894,8 +894,8 @@ const Quotes = () => {
             </div>
 
             {/* Compact Revenue Chart */}
-            <Card className="animate-fade-in hover:shadow-lg transition-all duration-300">
-              <CardHeader className="pb-3">
+            {/* <Card className="animate-fade-in hover:shadow-lg transition-all duration-300"> */}
+              {/* <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <BarChart3 className="w-5 h-5 text-blue-600" />
                   Quoted Amount (2025)
@@ -903,10 +903,10 @@ const Quotes = () => {
                 <CardDescription className="text-sm">
                   Monthly Total (Potential) Revenue from quotes throughout the year
                 </CardDescription>
-              </CardHeader>
-              <CardContent>
+              </CardHeader> */}
+              {/* <CardContent>
                 <div className="h-48">{/* Reduced from h-80 to h-48 */}
-                  <ResponsiveContainer width="100%" height="100%">
+                  {/* <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={monthlyQuoteValueData}>
                       <defs>
                         <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -925,9 +925,8 @@ const Quotes = () => {
                         stroke="#64748b"
                         tick={{ fontSize: 12 }}
                         tickLine={{ stroke: '#e2e8f0' }}
-                        tickFormatter={(value) => `$${value.toLocaleString()}`}
-                      />
-                      <Line 
+                        tickFormatter={(value) => `$${value.toLocaleString()}`} */}
+                      {/* <Line 
                         type="monotone" 
                         dataKey="revenue" 
                         stroke="#3b82f6" 
@@ -940,7 +939,7 @@ const Quotes = () => {
                   </ResponsiveContainer>
                 </div>
               </CardContent>
-            </Card>
+            </Card> */}
 
             {/* Search and Filter */}
             <div className="flex flex-col sm:flex-row gap-3 animate-fade-in">
