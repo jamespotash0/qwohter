@@ -18,6 +18,7 @@ export interface QuoteData {
   labor_details?: any;
   price_details?: any;
   proposal_number?: string;
+  project_name?: string;
   created_at?: string;
 }
 

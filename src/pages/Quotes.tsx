@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Search, Download, Edit, Edit3, Trash2, MoreHorizontal, DollarSign, TrendingUp, FileText, Building2, User, BarChart3, RefreshCcw } from "lucide-react";
+import { Search, Download, Edit3, Trash2, MoreHorizontal, DollarSign, TrendingUp, FileText, Building2, User, BarChart3, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import QuoteCreatorWizard from "@/components/QuoteCreatorWizard";
 import CreateQuoteDialog from "@/components/CreateQuoteDialog";
 import jsPDF from 'jspdf';
 import { useNavigate } from "react-router-dom";
@@ -33,8 +32,7 @@ import { useOrganizations } from "@/hooks/useOrganizations";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { useToast } from "@/hooks/use-toast";
-import NewQuote from "./NewQuote";
-import GoogleDocsSmartEditor from "@/components/GoogleDocsSmartEditor";
+import UnifiedQuoteEditor from "@/components/UnifiedQuoteEditor";
 import { SmartQuoteData } from "@/templates/SmartQuoteTemplate";
 
 const Quotes = () => {
@@ -67,7 +65,6 @@ const Quotes = () => {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [deleteQuoteId, setDeleteQuoteId] = useState<string | null>(null);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
-  const [smartEditingQuote, setSmartEditingQuote] = useState<Quote | null>(null);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -132,21 +129,17 @@ const Quotes = () => {
     setEditingQuote(quote);
   };
 
-  const smartEditQuote = (quote: Quote) => {
-    setSmartEditingQuote(quote);
-  };
-
-  const handleSmartQuoteSave = async (customizedQuote: SmartQuoteData) => {
+  const handleUnifiedQuoteSave = async (customizedQuote: SmartQuoteData) => {
     try {
-      if (smartEditingQuote && customizedQuote.customSections) {
-        await saveQuoteCustomization(smartEditingQuote.id, {
+      if (editingQuote && customizedQuote.customSections) {
+        await saveQuoteCustomization(editingQuote.id, {
           customSections: customizedQuote.customSections,
           customHTML: customizedQuote.customHTML,
           isCustomized: customizedQuote.isCustomized || true,
           lastModified: new Date(),
           version: 1
         });
-        setSmartEditingQuote(null);
+        setEditingQuote(null);
         refreshQuotes();
       }
     } catch (error) {
@@ -154,11 +147,11 @@ const Quotes = () => {
     }
   };
 
-  const handleSmartQuoteDownload = async (html: string) => {
-    if (!smartEditingQuote) return;
+  const handleUnifiedQuoteDownload = async (html: string) => {
+    if (!editingQuote) return;
     
     try {
-      const quoteName = smartEditingQuote.project_name || smartEditingQuote.proposal_number || 'quote';
+      const quoteName = editingQuote.project_name || editingQuote.proposal_number || 'quote';
       
       // Create temp div with exactly the same styling as standard PDF download
       const tempDiv = document.createElement('div');
@@ -370,7 +363,7 @@ const Quotes = () => {
           }
           
           // Use consistent naming with version tracking
-          const currentVersion = smartEditingQuote.version || 1;
+          const currentVersion = editingQuote.version || 1;
           const today = new Date();
           const dateStr = today.toLocaleDateString('en-CA');
           
@@ -407,7 +400,7 @@ const Quotes = () => {
           }
 
           // Use consistent naming with version tracking
-          const currentVersion = smartEditingQuote.version || 1;
+          const currentVersion = editingQuote.version || 1;
           const today = new Date();
           const dateStr = today.toLocaleDateString('en-CA');
           
@@ -439,7 +432,7 @@ const Quotes = () => {
           y += lineHeight;
         });
         
-        const currentVersion = smartEditingQuote.version || 1;
+        const currentVersion = editingQuote.version || 1;
         const today = new Date();
         const dateStr = today.toLocaleDateString('en-CA');
         
@@ -456,11 +449,11 @@ const Quotes = () => {
       document.head.removeChild(style);
       
       // Mark as downloaded (consistent with standard download)
-      await markAsDownloaded(smartEditingQuote.id);
+      await markAsDownloaded(editingQuote.id);
       
       toast({
         title: "PDF Downloaded",
-        description: `Customized quote ${smartEditingQuote.proposal_number} has been downloaded successfully.`,
+        description: `Customized quote ${editingQuote.proposal_number} has been downloaded successfully.`,
       });
       
     } catch (error) {
@@ -1016,56 +1009,18 @@ const Quotes = () => {
 
   if (editingQuote) {
     return (
-      <QuoteCreatorWizard 
-        user={user?.email || ""} 
-        onLogout={handleLogout} 
-        quoteName={editingQuote.project_name || editingQuote.proposal_number}
-        existingQuote={editingQuote}
-        onBackToDashboard={() => {
-          setEditingQuote(null)
+      <UnifiedQuoteEditor
+        quote={editingQuote}
+        onSave={handleUnifiedQuoteSave}
+        onDownload={handleUnifiedQuoteDownload}
+        onBack={() => {
+          setEditingQuote(null);
           refreshQuotes();
-        }}
-        onQuoteNameChange={(newName) => {
-          if (editingQuote) {
-            setEditingQuote({...editingQuote, project_name: newName});
-          }
         }}
       />
     );
   }
 
-  if (smartEditingQuote) {
-    return (
-      <SidebarProvider>
-        <div className="flex">
-          <AppSidebar user={user?.email || ""} onLogout={handleLogout}/>  {/* made this update */}
-          <div className="flex-1 p-6">
-            <div className="mb-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold">Smart Quote Editor</h1>
-                  <p className="text-muted-foreground">
-                    Customize "{smartEditingQuote.project_name || smartEditingQuote.proposal_number}" quote content
-                  </p>
-                </div>
-                <Button 
-                  variant="outline" 
-                  onClick={() => setSmartEditingQuote(null)}
-                >
-                  Back to Quotes
-                </Button>
-              </div>
-            </div>
-            <GoogleDocsSmartEditor
-              quote={smartEditingQuote}
-              onSave={handleSmartQuoteSave}
-              onDownload={handleSmartQuoteDownload}
-            />
-          </div>
-        </div>
-      </SidebarProvider>
-    );
-  }
 
   if (!user) return null;
 
@@ -1251,12 +1206,8 @@ const Quotes = () => {
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem onClick={() => editQuote(quote)}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => smartEditQuote(quote)}>
                                     <Edit3 className="mr-2 h-4 w-4" />
-                                    Smart Edit
+                                    Edit
                                   </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => downloadPDF(quote)}>
                                     <Download className="mr-2 h-4 w-4" />
