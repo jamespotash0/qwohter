@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import QuoteCreator from "@/components/QuoteCreator";
+import QuoteCreatorWizard from "@/components/QuoteCreatorWizard";
 import { supabase } from "@/integrations/supabase/client";
 
 const NewQuote = () => {
@@ -50,7 +50,7 @@ const NewQuote = () => {
   }
 
   return (
-    <QuoteCreator
+    <QuoteCreatorWizard
       user={user.email || ""}
       onLogout={handleLogout}
       quoteName={quoteName}

@@ -150,10 +150,10 @@ export const useQuotes = () => {
       if (error) throw error;
       
       setQuotes(prev => [convertRowToQuote(data), ...prev]);
-      toast({
-        title: "Quote created",
-        description: `Quote ${quoteData.proposal_number} has been created successfully.`,
-      });
+      // toast({
+      //   title: "Quote created",
+      //   description: `Quote ${quoteData.proposal_number} has been created successfully.`,
+      // });
       
       return data;
     } catch (error: any) {

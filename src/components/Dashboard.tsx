@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import CreateQuoteDialog from "./CreateQuoteDialog";
+import EnhancedCreateQuoteDialog from "./EnhancedCreateQuoteDialog";
 import { AppSidebar } from "./AppSidebar";
 
 import { MemberManagement } from "./MemberManagement";
@@ -137,11 +137,7 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
                 <p className="text-muted-foreground mt-2 text-lg">Plan, prioritize, and accomplish your tasks with ease.</p>
               </div>
               <div className="flex gap-3">
-                <CreateQuoteDialog 
-                  open={showNewQuoteDialog}
-                  onOpenChange={setShowNewQuoteDialog}
-                  onCreateQuote={handleCreateQuote} 
-                />
+                {/* Create quote button moved to Quick Actions section */}
               </div>
             </div>
 
@@ -315,13 +311,12 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <Button 
-                        className="h-24 flex-col gap-2 bg-gradient-to-br from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white"
-                        onClick={() => setShowNewQuoteDialog(true)}
-                      >
-                        <Plus className="w-6 h-6" />
-                        Create New Quote
-                      </Button>
+                      <EnhancedCreateQuoteDialog 
+                        open={showNewQuoteDialog}
+                        onOpenChange={setShowNewQuoteDialog}
+                        onCreateQuote={handleCreateQuote}
+                        variant="dashboard-card"
+                      />
                       <Button 
                         variant="outline"
                         className="h-24 flex-col gap-2 border-2 hover:bg-secondary/50"

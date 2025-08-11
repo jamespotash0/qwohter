@@ -23,7 +23,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import QuoteCreator from "@/components/QuoteCreator";
+import QuoteCreatorWizard from "@/components/QuoteCreatorWizard";
 import CreateQuoteDialog from "@/components/CreateQuoteDialog";
 import jsPDF from 'jspdf';
 import { useNavigate } from "react-router-dom";
@@ -793,7 +793,7 @@ const Quotes = () => {
 
   if (editingQuote) {
     return (
-      <QuoteCreator 
+      <QuoteCreatorWizard 
         user={user?.email || ""} 
         onLogout={handleLogout} 
         quoteName={editingQuote.project_name || editingQuote.proposal_number}
