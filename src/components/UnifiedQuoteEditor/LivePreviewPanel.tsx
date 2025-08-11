@@ -99,14 +99,16 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
 
     if (!sectionElement) {
       // Check for special clickable sections
-      sectionElement = target.closest('.proposal-intro') || target.closest('.wall-specifications');
+      sectionElement = target.closest('.proposal-intro') || target.closest('.pocket-doors-section') || target.closest('.panel-doors-section');
       if (!sectionElement) return;
       
       // Extract section ID from class name
       if (sectionElement.classList.contains('proposal-intro')) {
         sectionId = 'proposal-intro';
-      } else if (sectionElement.classList.contains('wall-specifications')) {
-        sectionId = 'wall-specifications';
+      } else if (sectionElement.classList.contains('pocket-doors-section')) {
+        sectionId = 'pocket-doors-section';
+      } else if (sectionElement.classList.contains('panel-doors-section')) {
+        sectionId = 'panel-doors-section';
       } else {
         return;
       }
@@ -132,19 +134,28 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
         const content = sectionElement?.outerHTML || '';
         sectionData = {
           id: 'proposal-intro',
-          title: 'Project Introduction',
+          title: 'Project Introduction & Specifications',
           content: content,
           isVisible: true,
           isRequired: true
         };
-      } else if (sectionId === 'wall-specifications') {
+      } else if (sectionId === 'pocket-doors-section') {
         const content = sectionElement?.outerHTML || '';
         sectionData = {
-          id: 'wall-specifications',
-          title: 'Specifications Header',
+          id: 'pocket-doors-section',
+          title: 'Pocket Doors',
           content: content,
           isVisible: true,
-          isRequired: true
+          isRequired: false
+        };
+      } else if (sectionId === 'panel-doors-section') {
+        const content = sectionElement?.outerHTML || '';
+        sectionData = {
+          id: 'panel-doors-section',
+          title: 'Panel Doors',
+          content: content,
+          isVisible: true,
+          isRequired: false
         };
       } else {
         return;
@@ -171,12 +182,14 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
       }
     } else {
       // Check for special clickable sections
-      sectionElement = target.closest('.proposal-intro') || target.closest('.wall-specifications');
+      sectionElement = target.closest('.proposal-intro') || target.closest('.pocket-doors-section') || target.closest('.panel-doors-section');
       if (sectionElement) {
         if (sectionElement.classList.contains('proposal-intro')) {
           sectionId = 'proposal-intro';
-        } else if (sectionElement.classList.contains('wall-specifications')) {
-          sectionId = 'wall-specifications';
+        } else if (sectionElement.classList.contains('pocket-doors-section')) {
+          sectionId = 'pocket-doors-section';
+        } else if (sectionElement.classList.contains('panel-doors-section')) {
+          sectionId = 'panel-doors-section';
         }
       }
     }
@@ -228,9 +241,10 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
         pointer-events: none;
       }
       
-      /* Make proposal intro and specifications sections hoverable */
+      /* Make proposal intro, pocket doors, and panel doors sections hoverable */
       .quote-document .proposal-intro,
-      .quote-document .wall-specifications {
+      .quote-document .pocket-doors-section,
+      .quote-document .panel-doors-section {
         transition: all 0.2s ease;
         cursor: pointer;
         border-radius: 4px;
@@ -238,13 +252,15 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
       }
       
       .quote-document .proposal-intro:hover,
-      .quote-document .wall-specifications:hover {
+      .quote-document .pocket-doors-section:hover,
+      .quote-document .panel-doors-section:hover {
         background-color: rgba(59, 130, 246, 0.05);
         box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
       }
       
       .quote-document .proposal-intro:hover::after,
-      .quote-document .wall-specifications:hover::after {
+      .quote-document .pocket-doors-section:hover::after,
+      .quote-document .panel-doors-section:hover::after {
         content: "✏️ Click to edit";
         position: absolute;
         top: -25px;
@@ -323,6 +339,13 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
       .terms-section { margin-top: 20px; }
       .terms-section ol { padding-left: 20px; list-style-type: none; }
       .terms-section li { margin-bottom: 4px; line-height: 1.1; display: list-item; }
+      /* Ensure proper spacing in panels section */
+      .panels-section p { 
+        line-height: 1.15; 
+        word-spacing: normal; 
+        letter-spacing: normal; 
+        white-space: normal;
+      }
       .signature-section { margin-top: 30px; }
       .general-notes-section { margin-top: 20px; line-height: 1.0; }
       .general-notes-section p { margin: 0; line-height: 1.0; }

@@ -409,11 +409,31 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                   />
                 </div>
                 <div>
+                  <Label htmlFor={`${wallName}-lengthInches`}>Length (in)</Label>
+                  <Input
+                    id={`${wallName}-lengthInches`}
+                    value={wall.lengthInches || ''}
+                    onChange={(e) => handleWallFieldChange(wallName, 'lengthInches', e.target.value)}
+                    placeholder="0"
+                    className="text-xs h-8"
+                  />
+                </div>
+                <div>
                   <Label htmlFor={`${wallName}-heightFeet`}>Height (ft)</Label>
                   <Input
                     id={`${wallName}-heightFeet`}
                     value={wall.heightFeet || ''}
                     onChange={(e) => handleWallFieldChange(wallName, 'heightFeet', e.target.value)}
+                    placeholder="0"
+                    className="text-xs h-8"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`${wallName}-heightInches`}>Height (in)</Label>
+                  <Input
+                    id={`${wallName}-heightInches`}
+                    value={wall.heightInches || ''}
+                    onChange={(e) => handleWallFieldChange(wallName, 'heightInches', e.target.value)}
                     placeholder="0"
                     className="text-xs h-8"
                   />
@@ -425,6 +445,16 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                     value={wall.panelCount || ''}
                     onChange={(e) => handleWallFieldChange(wallName, 'panelCount', e.target.value)}
                     placeholder="0"
+                    className="text-xs h-8"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`${wallName}-quantity`}>Quantity</Label>
+                  <Input
+                    id={`${wallName}-quantity`}
+                    value={wall.quantity || ''}
+                    onChange={(e) => handleWallFieldChange(wallName, 'quantity', e.target.value)}
+                    placeholder="1"
                     className="text-xs h-8"
                   />
                 </div>
@@ -452,15 +482,20 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                       <Label>Panel Configuration</Label>
                       <Select
                         value={wall.panelConfiguration || ''}
-                        onValueChange={(value) => handleWallFieldChange(wallName, 'panelConfiguration', value)}
+                        onValueChange={(value) => {
+                          handleWallFieldChange(wallName, 'panelConfiguration', value);
+                          // Reset dependent fields when configuration changes
+                          handleWallFieldChange(wallName, 'series', '');
+                          handleWallFieldChange(wallName, 'model', '');
+                        }}
                       >
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select config" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Single Direction">Single Direction</SelectItem>
-                          <SelectItem value="Center Bipart">Center Bipart</SelectItem>
-                          <SelectItem value="Multi-Stack">Multi-Stack</SelectItem>
+                          <SelectItem value="Individual Panels">Individual Panels</SelectItem>
+                          <SelectItem value="Hinged-Paired Panels">Hinged-Paired Panels</SelectItem>
+                          <SelectItem value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -468,16 +503,628 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                       <Label>Series</Label>
                       <Select
                         value={wall.series || ''}
-                        onValueChange={(value) => handleWallFieldChange(wallName, 'series', value)}
+                        onValueChange={(value) => {
+                          handleWallFieldChange(wallName, 'series', value);
+                          // Reset model when series changes
+                          handleWallFieldChange(wallName, 'model', '');
+                        }}
+                        disabled={!wall.panelConfiguration}
                       >
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select series" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="600">600</SelectItem>
-                          <SelectItem value="700">700</SelectItem>
-                          <SelectItem value="800">800</SelectItem>
-                          <SelectItem value="900">900</SelectItem>
+                          {wall.panelConfiguration === "Individual Panels" && (
+                            <>
+                              <SelectItem value="2000">2000</SelectItem>
+                              <SelectItem value="3000">3000</SelectItem>
+                              <SelectItem value="Hufcor: 600">Hufcor: 600</SelectItem>
+                            </>
+                          )}
+                          {(wall.panelConfiguration === "Hinged-Paired Panels" || wall.panelConfiguration === "Continuously-Hinged Panels") && (
+                            <>
+                              <SelectItem value="2000">2000</SelectItem>
+                              <SelectItem value="3000">3000</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Model</Label>
+                      <Select
+                        value={wall.model || ''}
+                        onValueChange={(value) => {
+                          handleWallFieldChange(wallName, 'model', value);
+                          // Reset dependent fields
+                          handleWallFieldChange(wallName, 'panelSkin', '');
+                          handleWallFieldChange(wallName, 'stcRating', '');
+                        }}
+                        disabled={!wall.series}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select model" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {wall.panelConfiguration === "Individual Panels" && wall.series === "2000" && (
+                            <>
+                              <SelectItem value="2010">2010</SelectItem>
+                              <SelectItem value="2020">2020</SelectItem>
+                              <SelectItem value="2010GL">2010GL</SelectItem>
+                              <SelectItem value="2020GL">2020GL</SelectItem>
+                            </>
+                          )}
+                          {wall.panelConfiguration === "Individual Panels" && wall.series === "3000" && (
+                            <>
+                              <SelectItem value="3010">3010</SelectItem>
+                              <SelectItem value="3020">3020</SelectItem>
+                              <SelectItem value="3010GL">3010GL</SelectItem>
+                              <SelectItem value="3020GL">3020GL</SelectItem>
+                            </>
+                          )}
+                          {wall.panelConfiguration === "Individual Panels" && wall.series === "Hufcor: 600" && (
+                            <SelectItem value="Hufcor 641">Hufcor 641</SelectItem>
+                          )}
+                          {wall.panelConfiguration === "Continuously-Hinged Panels" && wall.series === "2000" && (
+                            <SelectItem value="2050e">2050e</SelectItem>
+                          )}
+                          {wall.panelConfiguration === "Continuously-Hinged Panels" && wall.series === "3000" && (
+                            <SelectItem value="3050e">3050e</SelectItem>
+                          )}
+                          {wall.panelConfiguration === "Hinged-Paired Panels" && wall.series === "2000" && (
+                            <>
+                              <SelectItem value="2030">2030</SelectItem>
+                              <SelectItem value="2030GL">2030GL</SelectItem>
+                            </>
+                          )}
+                          {wall.panelConfiguration === "Hinged-Paired Panels" && wall.series === "3000" && (
+                            <>
+                              <SelectItem value="3030">3030</SelectItem>
+                              <SelectItem value="3030GL">3030GL</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Panel Thickness</Label>
+                      <Select
+                        value={wall.panelThickness || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'panelThickness', value)}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select thickness" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="2">2"</SelectItem>
+                          <SelectItem value="3">3"</SelectItem>
+                          <SelectItem value="4">4"</SelectItem>
+                          <SelectItem value="6">6"</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Panel Design</Label>
+                      <Select
+                        value={wall.panelDesign || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'panelDesign', value)}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select design" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Flush">Flush</SelectItem>
+                          <SelectItem value="Raised Panel">Raised Panel</SelectItem>
+                          <SelectItem value="Contemporary">Contemporary</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Panel Skin</Label>
+                      <Select
+                        value={wall.panelSkin || ''}
+                        onValueChange={(value) => {
+                          handleWallFieldChange(wallName, 'panelSkin', value);
+                          // Reset STC rating when skin changes
+                          handleWallFieldChange(wallName, 'stcRating', '');
+                        }}
+                        disabled={!wall.model}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select skin" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {wall.model === "Hufcor 641" && (
+                            <SelectItem value="Steel">Steel</SelectItem>
+                          )}
+                          {["3010", "3020", "3030"].includes(wall.model || '') && (
+                            <>
+                              <SelectItem value="Standard Steel Skin">Standard Steel Skin</SelectItem>
+                              <SelectItem value="Optional Acoustical Substrate">Optional Acoustical Substrate</SelectItem>
+                              <SelectItem value="Optional Wood Veneer">Optional Wood Veneer</SelectItem>
+                              <SelectItem value="Optional High-Pressure Laminate">Optional High-Pressure Laminate</SelectItem>
+                            </>
+                          )}
+                          {["3050e", "3010GL", "3020GL", "3030GL"].includes(wall.model || '') && (
+                            <>
+                              <SelectItem value="Standard Steel Skin">Standard Steel Skin</SelectItem>
+                              <SelectItem value="Optional Acoustical Substrate">Optional Acoustical Substrate</SelectItem>
+                            </>
+                          )}
+                          {["2010", "2020", "2030"].includes(wall.model || '') && (
+                            <>
+                              <SelectItem value="Standard Acoustical Substrate">Standard Acoustical Substrate</SelectItem>
+                              <SelectItem value="Optional Steel Skin">Optional Steel Skin</SelectItem>
+                              <SelectItem value="Optional Wood Veneer">Optional Wood Veneer</SelectItem>
+                              <SelectItem value="Optional High-Pressure Laminate">Optional High-Pressure Laminate</SelectItem>
+                            </>
+                          )}
+                          {["2050e", "2010GL", "2020GL", "2030GL"].includes(wall.model || '') && (
+                            <>
+                              <SelectItem value="Standard Acoustical Substrate">Standard Acoustical Substrate</SelectItem>
+                              <SelectItem value="Optional Steel Skin">Optional Steel Skin</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>STC Rating</Label>
+                      <Select
+                        value={wall.stcRating || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'stcRating', value)}
+                        disabled={!wall.model || !wall.panelSkin}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select STC" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {wall.model === "Hufcor 641" && (
+                            <>
+                              <SelectItem value="43">43</SelectItem>
+                              <SelectItem value="47">47</SelectItem>
+                              <SelectItem value="49">49</SelectItem>
+                              <SelectItem value="52">52</SelectItem>
+                              <SelectItem value="54">54</SelectItem>
+                              <SelectItem value="56">56</SelectItem>
+                            </>
+                          )}
+                          {["2010GL", "2020GL", "2030GL"].includes(wall.model || '') && (
+                            <SelectItem value="38">38</SelectItem>
+                          )}
+                          {["3010GL", "3020GL", "3030GL"].includes(wall.model || '') && (
+                            <>
+                              <SelectItem value="43">43</SelectItem>
+                              <SelectItem value="48">48</SelectItem>
+                            </>
+                          )}
+                          {["2010", "2020", "2030", "2050e"].includes(wall.model || '') && wall.panelSkin?.includes("Acoustical Substrate") && (
+                            <>
+                              <SelectItem value="42">42</SelectItem>
+                              <SelectItem value="45">45</SelectItem>
+                              <SelectItem value="49">49</SelectItem>
+                              <SelectItem value="50">50</SelectItem>
+                            </>
+                          )}
+                          {["2010", "2020", "2030", "2050e"].includes(wall.model || '') && wall.panelSkin?.includes("Steel") && (
+                            <>
+                              <SelectItem value="49">49</SelectItem>
+                              <SelectItem value="51">51</SelectItem>
+                            </>
+                          )}
+                          {["3010", "3020", "3030", "3050e"].includes(wall.model || '') && wall.panelSkin?.includes("Steel") && (
+                            <>
+                              <SelectItem value="46">46</SelectItem>
+                              <SelectItem value="50">50</SelectItem>
+                              <SelectItem value="52">52</SelectItem>
+                              <SelectItem value="56">56</SelectItem>
+                            </>
+                          )}
+                          {["3010", "3020", "3030", "3050e"].includes(wall.model || '') && wall.panelSkin?.includes("Acoustical Substrate") && (
+                            <>
+                              <SelectItem value="43">43</SelectItem>
+                              <SelectItem value="46">46</SelectItem>
+                              <SelectItem value="48">48</SelectItem>
+                              <SelectItem value="50">50</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Panel Design</Label>
+                      <Select
+                        value={wall.panelDesign || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'panelDesign', value)}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select design" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Trimless U Capped">Trimless U Capped</SelectItem>
+                          <SelectItem value="U-Capped Trim">U-Capped Trim</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Panel Finish Category</Label>
+                      <Select
+                        value={wall.panelFinishCategory || ''}
+                        onValueChange={(value) => {
+                          handleWallFieldChange(wallName, 'panelFinishCategory', value);
+                          // Reset specific item when category changes
+                          handleWallFieldChange(wallName, 'panelFinishSpecificItem', '');
+                        }}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select finish" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Koroseal Standard Vinyl">Koroseal Standard Vinyl</SelectItem>
+                          <SelectItem value="Koroseal Upgrade Vinyl">Koroseal Upgrade Vinyl</SelectItem>
+                          <SelectItem value="Shaw Standard Carpet">Shaw Standard Carpet</SelectItem>
+                          <SelectItem value="HyTex Upgrade Carpet">HyTex Upgrade Carpet</SelectItem>
+                          <SelectItem value="HyTex Standard Fabric">HyTex Standard Fabric</SelectItem>
+                          <SelectItem value="HyTex Upgrade Fabric">HyTex Upgrade Fabric</SelectItem>
+                          <SelectItem value="Standard Wood Veneer">Standard Wood Veneer</SelectItem>
+                          <SelectItem value="Wilsonart High Pressure Laminate (HPL)">Wilsonart High Pressure Laminate (HPL)</SelectItem>
+                          <SelectItem value="Full Height Marker (Tack) Board">Full Height Marker (Tack) Board</SelectItem>
+                          <SelectItem value="Uncovered">Uncovered</SelectItem>
+                          <SelectItem value="C.O.M. Material">C.O.M. Material</SelectItem>
+                          <SelectItem value="Field Painting by Others">Field Painting by Others</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {!["Uncovered", "C.O.M. Material", "Field Painting by Others"].includes(wall.panelFinishCategory || '') && wall.panelFinishCategory && (
+                      <div>
+                        <Label>Panel Finish Specific Item</Label>
+                        <Select
+                          value={wall.panelFinishSpecificItem || ''}
+                          onValueChange={(value) => handleWallFieldChange(wallName, 'panelFinishSpecificItem', value)}
+                          disabled={!wall.panelFinishCategory}
+                        >
+                          <SelectTrigger className="text-xs h-8">
+                            <SelectValue placeholder="Select specific item" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {wall.panelFinishCategory === "Standard Wood Veneer" && (
+                              <>
+                                <SelectItem value="Unfinished Flat Cut White Maple">Unfinished Flat Cut White Maple</SelectItem>
+                                <SelectItem value="Unfinished Flat Cut White Oak">Unfinished Flat Cut White Oak</SelectItem>
+                                <SelectItem value="Unfinished Flat Cut Walnut">Unfinished Flat Cut Walnut</SelectItem>
+                                <SelectItem value="Unfinished Flat Cut Cherry">Unfinished Flat Cut Cherry</SelectItem>
+                                <SelectItem value="Unfinished Flat Cut Red Oak">Unfinished Flat Cut Red Oak</SelectItem>
+                              </>
+                            )}
+                            {/* Add more specific items as needed - truncated for brevity */}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <div>
+                      <Label>Vertical Seals</Label>
+                      <Select
+                        value={wall.verticalSeals || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'verticalSeals', value)}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select seals" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="None">None</SelectItem>
+                          <SelectItem value="Tongue-and-Groove">Tongue-and-Groove</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Bottom Seals</Label>
+                      <Select
+                        value={wall.bottomSeals || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'bottomSeals', value)}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select seals" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="None">None</SelectItem>
+                          <SelectItem value="Retractable">Retractable</SelectItem>
+                          <SelectItem value="Automatic">Automatic</SelectItem>
+                          <SelectItem value="Adjustable">Adjustable</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Top Seals</Label>
+                      <Select
+                        value={wall.topSeals || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'topSeals', value)}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select seals" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="None">None</SelectItem>
+                          <SelectItem value="Fixed">Fixed</SelectItem>
+                          <SelectItem value="Adjustable">Adjustable</SelectItem>
+                          <SelectItem value="Operable">Operable</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Track Type</Label>
+                      <Select
+                        value={wall.trackType || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'trackType', value)}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select track" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Straight">Straight</SelectItem>
+                          <SelectItem value="Curved">Curved</SelectItem>
+                          <SelectItem value="T-Layout">T-Layout</SelectItem>
+                          <SelectItem value="L-Layout">L-Layout</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Track System</Label>
+                      <Select
+                        value={wall.trackSystem || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'trackSystem', value)}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select system" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Heavy-Duty">Heavy-Duty</SelectItem>
+                          <SelectItem value="Standard">Standard</SelectItem>
+                          <SelectItem value="Light-Duty">Light-Duty</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Initial Closure System</Label>
+                      <Select
+                        value={wall.initialClosureSystem || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'initialClosureSystem', value)}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select closure" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="None">None</SelectItem>
+                          <SelectItem value="Standard Bulb">Standard Bulb</SelectItem>
+                          <SelectItem value="Optional Fixed Starter Jamb">Optional Fixed Starter Jamb</SelectItem>
+                          <SelectItem value="Optional Adjustable Starter Jamb">Optional Adjustable Starter Jamb</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>End Panel Type</Label>
+                      <Select
+                        value={wall.endPanelType || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'endPanelType', value)}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select end panel" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="None">None</SelectItem>
+                          <SelectItem value="Standard Expander Panel Closure">Standard Expander Panel Closure</SelectItem>
+                          <SelectItem value="Optional Hinged Panel(s) Closure">Optional Hinged Panel(s) Closure</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Pass Door Panels</Label>
+                      <Select
+                        value={wall.passDoorPanels || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'passDoorPanels', value)}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select pass door" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="None">None</SelectItem>
+                          <SelectItem value="Single">Single</SelectItem>
+                          <SelectItem value="Double">Double</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Track System</Label>
+                      <Select
+                        value={wall.trackSystem || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'trackSystem', value)}
+                        disabled={!wall.trackType && !wall.model}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select system" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {wall.model === "Hufcor 641" && (
+                            <>
+                              <SelectItem value="Type 26 Clear Satin-Anodized Aluminum">Type 26 Clear Satin-Anodized Aluminum</SelectItem>
+                              <SelectItem value="Type 36 Clear Satin-Anodized Aluminum">Type 36 Clear Satin-Anodized Aluminum</SelectItem>
+                              <SelectItem value="Type 57 Clear Anodized Aluminum">Type 57 Clear Anodized Aluminum</SelectItem>
+                              <SelectItem value="Type 11L Powder Coated Off-White Steel">Type 11L Powder Coated Off-White Steel</SelectItem>
+                              <SelectItem value="Type 11 Powder Coated Off-White Steel">Type 11 Powder Coated Off-White Steel</SelectItem>
+                            </>
+                          )}
+                          {(wall.trackType === "Multi-Directional Track" || wall.trackType === "Hinged-Pair (Straight Line) Track") && (
+                            <>
+                              <SelectItem value="Type 425 Clear Satin-Anodized Aluminum">Type 425 Clear Satin-Anodized Aluminum</SelectItem>
+                              <SelectItem value="Type 850 Clear Satin-Anodized Aluminum">Type 850 Clear Satin-Anodized Aluminum</SelectItem>
+                            </>
+                          )}
+                          {wall.trackType === "Curve & Diverter (Individual) Track" && (
+                            <SelectItem value="Type 850 Powder Coated Off-White Steel">Type 850 Powder Coated Off-White Steel</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+                
+                {/* Additional fields for Glass Wall */}
+                {wall.wallSystemType === "Glass Wall" && (
+                  <>
+                    <div>
+                      <Label>Glass Wall Model</Label>
+                      <Select
+                        value={wall.glasswallModel || ''}
+                        onValueChange={(value) => {
+                          handleWallFieldChange(wallName, 'glasswallModel', value);
+                          // Reset dependent fields
+                          handleWallFieldChange(wallName, 'glasswallPanelConfiguration', '');
+                          handleWallFieldChange(wallName, 'glasswallOperation', '');
+                        }}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select model" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Stella">Stella</SelectItem>
+                          <SelectItem value="Luna">Luna</SelectItem>
+                          <SelectItem value="Illona">Illona</SelectItem>
+                          <SelectItem value="Ava">Ava</SelectItem>
+                          <SelectItem value="Mata">Mata</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Glass Wall Panel Configuration</Label>
+                      <Select
+                        value={wall.glasswallPanelConfiguration || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallPanelConfiguration', value)}
+                        disabled={!wall.glasswallModel}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select config" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {wall.glasswallModel === "Stella" && (
+                            <SelectItem value="Individual Panels">Individual Panels</SelectItem>
+                          )}
+                          {wall.glasswallModel === "Luna" && (
+                            <>
+                              <SelectItem value="Individual Panels">Individual Panels</SelectItem>
+                              <SelectItem value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Illona" && (
+                            <>
+                              <SelectItem value="Individual Panels">Individual Panels</SelectItem>
+                              <SelectItem value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
+                              <SelectItem value="Pivoting Individual Panels">Pivoting Individual Panels</SelectItem>
+                              <SelectItem value="Single & Telescoping Slider Panels">Single & Telescoping Slider Panels</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Ava" && (
+                            <>
+                              <SelectItem value="Individual Panels">Individual Panels</SelectItem>
+                              <SelectItem value="Hinged-Paired Panels">Hinged-Paired Panels</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Mata" && (
+                            <>
+                              <SelectItem value="Individual Panels">Individual Panels</SelectItem>
+                              <SelectItem value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
+                              <SelectItem value="Single & Telescoping Slider Panels">Single & Telescoping Slider Panels</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Glass Wall Operation</Label>
+                      <Select
+                        value={wall.glasswallOperation || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallOperation', value)}
+                        disabled={!wall.glasswallModel}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select operation" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {wall.glasswallModel === "Stella" && (
+                            <>
+                              <SelectItem value="Manual">Manual</SelectItem>
+                              <SelectItem value="Automated">Automated</SelectItem>
+                              <SelectItem value="Programmable Self-Driving">Programmable Self-Driving</SelectItem>
+                              <SelectItem value="Semi-Automated Seals">Semi-Automated Seals</SelectItem>
+                            </>
+                          )}
+                          {["Luna", "Illona", "Ava", "Mata"].includes(wall.glasswallModel || '') && (
+                            <SelectItem value="Manual">Manual</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Glass Wall Panel Face</Label>
+                      <Select
+                        value={wall.glasswallPanelFace || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallPanelFace', value)}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select face" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Clear Glass">Clear Glass</SelectItem>
+                          <SelectItem value="Frosted Glass">Frosted Glass</SelectItem>
+                          <SelectItem value="Tinted Glass">Tinted Glass</SelectItem>
+                          <SelectItem value="Low-E Glass">Low-E Glass</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Glass Wall Frame Finish</Label>
+                      <Select
+                        value={wall.glasswallFrameFinish || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallFrameFinish', value)}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select finish" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Anodized Aluminum">Anodized Aluminum</SelectItem>
+                          <SelectItem value="Powder Coated">Powder Coated</SelectItem>
+                          <SelectItem value="Stainless Steel">Stainless Steel</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Glass Wall STC Rating</Label>
+                      <Select
+                        value={wall.glasswallSTCRating || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallSTCRating', value)}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select STC" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="35">35</SelectItem>
+                          <SelectItem value="40">40</SelectItem>
+                          <SelectItem value="45">45</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Glass Wall Track Type</Label>
+                      <Select
+                        value={wall.glasswallTrackType || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallTrackType', value)}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select track" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Heavy-Duty Glass">Heavy-Duty Glass</SelectItem>
+                          <SelectItem value="Standard Glass">Standard Glass</SelectItem>
+                          <SelectItem value="Premium Glass">Premium Glass</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

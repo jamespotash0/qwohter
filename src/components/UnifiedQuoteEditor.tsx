@@ -61,7 +61,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   // UI state
   const [isLoading, setIsLoading] = useState(true);
   const [documentTitle, setDocumentTitle] = useState('');
-  const [zoomLevel, setZoomLevel] = useState(85);
+  const [zoomLevel, setZoomLevel] = useState(100);
   const [selectedSection, setSelectedSection] = useState<QuoteSection | null>(null);
   const [showDataPanel, setShowDataPanel] = useState(true);
 
@@ -365,7 +365,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       <div className="flex">
         {/* Data Panel */}
         {showDataPanel && (
-          <div className="w-80 bg-white border-r border-gray-200 h-screen sticky top-[73px] overflow-y-auto">
+          <div className="w-96 bg-white border-r border-gray-200 h-screen sticky top-[73px] overflow-y-auto">
             <div className="p-4 min-h-full">
               <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                 <Edit3 className="w-4 h-4" />

@@ -6,11 +6,7 @@ export class AccordionWallTemplate extends BaseQuoteTemplate {
     const walls = data.wall_details?.walls || {};
     const wallEntries = Object.entries(walls);
 
-    return `<div class="wall-specifications" style="line-height: 1.15; margin-top: 15px; padding-bottom: 10px;">
-      <strong>Specifications as follows [for Accordion]:</strong>
-    </div>
-
-    <div class="wall-specifications-list" style="line-height: 1.15; margin-top: 10px;">
+    return `<div class="wall-specifications-list" style="line-height: 1.15; margin-top: 10px;">
       <table style="border-collapse: collapse; width: 100%;">
         <tbody>
           ${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
@@ -40,6 +36,7 @@ export class AccordionWallTemplate extends BaseQuoteTemplate {
 
     return `<div class="proposal-intro" style="line-height: 1.2; margin-top: 12px;">
       Thank you for considering Contemporary Wall Systems for this project. As discussed, we are offering a proposal to furnish, deliver, and install, as noted, <strong>${wallCount === 1 ? 'ONE (1)' : wallCount === 2 ? 'TWO (2)' : wallCount === 3 ? 'THREE (3)' : wallCount === 4 ? 'FOUR (4)' : `${wallCount}`} ${wallSystemType}</strong> as specified below, at the above named project.
+      <br><br><strong>Specifications as follows:</strong>
     </div>`;
   }
 

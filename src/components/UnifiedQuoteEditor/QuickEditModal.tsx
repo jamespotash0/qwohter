@@ -47,6 +47,11 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
       
       setRichEditingContent(cleanHTML);
       
+      // Set the content directly to the contentEditable element
+      if (richEditorRef.current) {
+        richEditorRef.current.innerHTML = cleanHTML;
+      }
+      
       // For plain text mode, extract text content
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = cleanHTML;
@@ -69,7 +74,24 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
   // Handle rich text input changes
   const handleRichTextInput = useCallback(() => {
     if (richEditorRef.current) {
+      // Save cursor position before updating state
+      const selection = window.getSelection();
+      const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+      
       setRichEditingContent(richEditorRef.current.innerHTML);
+      
+      // Restore cursor position after state update
+      if (range && selection) {
+        setTimeout(() => {
+          try {
+            selection.removeAllRanges();
+            selection.addRange(range);
+          } catch (error) {
+            // Range might be invalid, just focus the element
+            richEditorRef.current?.focus();
+          }
+        }, 0);
+      }
     }
   }, []);
 
@@ -234,7 +256,6 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
                     lineHeight: '1.5'
                   }}
                   onInput={handleRichTextInput}
-                  dangerouslySetInnerHTML={{ __html: richEditingContent }}
                   suppressContentEditableWarning={true}
                 />
                 
