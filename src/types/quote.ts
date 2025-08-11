@@ -37,8 +37,10 @@ export interface WallSpecification {
   glasswallPassDoorOption?: string;
   glasswallHingeType?: string;
   glasswallFrameThickness?: string;
+  glasswallPanelWidth?: string;
   glasswallTrackType?: string;
   glasswallTrackFinish?: string;
+  glasswallFloorGuide?: string;
   glasswallFinalClosure?: string;
   glasswallBottomSeals?: string;
   glasswallTopSeals?: string;

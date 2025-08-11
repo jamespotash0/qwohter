@@ -458,7 +458,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                     className="text-xs h-8"
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor={`${wallName}-wallSystemType`}>System Type</Label>
                   <Select
                     value={wall.wallSystemType || ''}
@@ -467,10 +467,10 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                     <SelectTrigger className="text-xs h-8">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Operable Wall">Operable Wall</SelectItem>
-                      <SelectItem value="Glass Wall">Glass Wall</SelectItem>
-                      <SelectItem value="Accordion Partitions">Accordion Partitions</SelectItem>
+                    <SelectContent className="text-left">
+                      <SelectItem className="text-left" value="Operable Wall">Operable Wall</SelectItem>
+                      <SelectItem className="text-left" value="Glass Wall">Glass Wall</SelectItem>
+                      <SelectItem className="text-left" value="Accordion Partitions">Accordion Partitions</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -478,7 +478,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                 {/* Additional fields for Operable Wall */}
                 {wall.wallSystemType === "Operable Wall" && (
                   <>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Panel Configuration</Label>
                       <Select
                         value={wall.panelConfiguration || ''}
@@ -492,14 +492,14 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select config" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Individual Panels">Individual Panels</SelectItem>
-                          <SelectItem value="Hinged-Paired Panels">Hinged-Paired Panels</SelectItem>
-                          <SelectItem value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
+                          <SelectItem className="text-left" value="Hinged-Paired Panels">Hinged-Paired Panels</SelectItem>
+                          <SelectItem className="text-left" value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Series</Label>
                       <Select
                         value={wall.series || ''}
@@ -513,24 +513,24 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select series" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="text-left">
                           {wall.panelConfiguration === "Individual Panels" && (
                             <>
-                              <SelectItem value="2000">2000</SelectItem>
-                              <SelectItem value="3000">3000</SelectItem>
-                              <SelectItem value="Hufcor: 600">Hufcor: 600</SelectItem>
+                              <SelectItem className="text-left" value="2000">2000</SelectItem>
+                              <SelectItem className="text-left" value="3000">3000</SelectItem>
+                              <SelectItem className="text-left" value="Hufcor: 600">Hufcor: 600</SelectItem>
                             </>
                           )}
                           {(wall.panelConfiguration === "Hinged-Paired Panels" || wall.panelConfiguration === "Continuously-Hinged Panels") && (
                             <>
-                              <SelectItem value="2000">2000</SelectItem>
-                              <SelectItem value="3000">3000</SelectItem>
+                              <SelectItem className="text-left" value="2000">2000</SelectItem>
+                              <SelectItem className="text-left" value="3000">3000</SelectItem>
                             </>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Model</Label>
                       <Select
                         value={wall.model || ''}
@@ -545,65 +545,62 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select model" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="text-left">
                           {wall.panelConfiguration === "Individual Panels" && wall.series === "2000" && (
                             <>
-                              <SelectItem value="2010">2010</SelectItem>
-                              <SelectItem value="2020">2020</SelectItem>
-                              <SelectItem value="2010GL">2010GL</SelectItem>
-                              <SelectItem value="2020GL">2020GL</SelectItem>
+                              <SelectItem className="text-left" value="2010">2010</SelectItem>
+                              <SelectItem className="text-left" value="2020">2020</SelectItem>
+                              <SelectItem className="text-left" value="2010GL">2010GL</SelectItem>
+                              <SelectItem className="text-left" value="2020GL">2020GL</SelectItem>
                             </>
                           )}
                           {wall.panelConfiguration === "Individual Panels" && wall.series === "3000" && (
                             <>
-                              <SelectItem value="3010">3010</SelectItem>
-                              <SelectItem value="3020">3020</SelectItem>
-                              <SelectItem value="3010GL">3010GL</SelectItem>
-                              <SelectItem value="3020GL">3020GL</SelectItem>
+                              <SelectItem className="text-left" value="3010">3010</SelectItem>
+                              <SelectItem className="text-left" value="3020">3020</SelectItem>
+                              <SelectItem className="text-left" value="3010GL">3010GL</SelectItem>
+                              <SelectItem className="text-left" value="3020GL">3020GL</SelectItem>
                             </>
                           )}
                           {wall.panelConfiguration === "Individual Panels" && wall.series === "Hufcor: 600" && (
-                            <SelectItem value="Hufcor 641">Hufcor 641</SelectItem>
+                            <SelectItem className="text-left" value="Hufcor 641">Hufcor 641</SelectItem>
                           )}
                           {wall.panelConfiguration === "Continuously-Hinged Panels" && wall.series === "2000" && (
-                            <SelectItem value="2050e">2050e</SelectItem>
+                            <SelectItem className="text-left" value="2050e">2050e</SelectItem>
                           )}
                           {wall.panelConfiguration === "Continuously-Hinged Panels" && wall.series === "3000" && (
-                            <SelectItem value="3050e">3050e</SelectItem>
+                            <SelectItem className="text-left" value="3050e">3050e</SelectItem>
                           )}
                           {wall.panelConfiguration === "Hinged-Paired Panels" && wall.series === "2000" && (
                             <>
-                              <SelectItem value="2030">2030</SelectItem>
-                              <SelectItem value="2030GL">2030GL</SelectItem>
+                              <SelectItem className="text-left" value="2030">2030</SelectItem>
+                              <SelectItem className="text-left" value="2030GL">2030GL</SelectItem>
                             </>
                           )}
                           {wall.panelConfiguration === "Hinged-Paired Panels" && wall.series === "3000" && (
                             <>
-                              <SelectItem value="3030">3030</SelectItem>
-                              <SelectItem value="3030GL">3030GL</SelectItem>
+                              <SelectItem className="text-left" value="3030">3030</SelectItem>
+                              <SelectItem className="text-left" value="3030GL">3030GL</SelectItem>
                             </>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <Label>Panel Thickness</Label>
-                      <Select
-                        value={wall.panelThickness || ''}
-                        onValueChange={(value) => handleWallFieldChange(wallName, 'panelThickness', value)}
-                      >
-                        <SelectTrigger className="text-xs h-8">
-                          <SelectValue placeholder="Select thickness" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="2">2"</SelectItem>
-                          <SelectItem value="3">3"</SelectItem>
-                          <SelectItem value="4">4"</SelectItem>
-                          <SelectItem value="6">6"</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-2">
+                      <Label>Panel Thickness (Auto-calculated)</Label>
+                      <Input
+                        value={(() => {
+                          const series = wall.series;
+                          if (series === "2000") return "3\"";
+                          if (series === "3000") return "4\"";
+                          if (series === "Hufcor: 600") return "4\"";
+                          return "";
+                        })()}
+                        readOnly
+                        className="text-xs h-8 bg-muted text-muted-foreground"
+                      />
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Panel Design</Label>
                       <Select
                         value={wall.panelDesign || ''}
@@ -612,14 +609,13 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select design" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Flush">Flush</SelectItem>
-                          <SelectItem value="Raised Panel">Raised Panel</SelectItem>
-                          <SelectItem value="Contemporary">Contemporary</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="Trimless U Capped">Trimless U Capped</SelectItem>
+                          <SelectItem className="text-left" value="U-Capped Trim">U-Capped Trim</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Panel Skin</Label>
                       <Select
                         value={wall.panelSkin || ''}
@@ -633,42 +629,42 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select skin" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="text-left">
                           {wall.model === "Hufcor 641" && (
-                            <SelectItem value="Steel">Steel</SelectItem>
+                            <SelectItem className="text-left" value="Steel">Steel</SelectItem>
                           )}
                           {["3010", "3020", "3030"].includes(wall.model || '') && (
                             <>
-                              <SelectItem value="Standard Steel Skin">Standard Steel Skin</SelectItem>
-                              <SelectItem value="Optional Acoustical Substrate">Optional Acoustical Substrate</SelectItem>
-                              <SelectItem value="Optional Wood Veneer">Optional Wood Veneer</SelectItem>
-                              <SelectItem value="Optional High-Pressure Laminate">Optional High-Pressure Laminate</SelectItem>
+                              <SelectItem className="text-left" value="Standard Steel Skin">Standard Steel Skin</SelectItem>
+                              <SelectItem className="text-left" value="Optional Acoustical Substrate">Optional Acoustical Substrate</SelectItem>
+                              <SelectItem className="text-left" value="Optional Wood Veneer">Optional Wood Veneer</SelectItem>
+                              <SelectItem className="text-left" value="Optional High-Pressure Laminate">Optional High-Pressure Laminate</SelectItem>
                             </>
                           )}
                           {["3050e", "3010GL", "3020GL", "3030GL"].includes(wall.model || '') && (
                             <>
-                              <SelectItem value="Standard Steel Skin">Standard Steel Skin</SelectItem>
-                              <SelectItem value="Optional Acoustical Substrate">Optional Acoustical Substrate</SelectItem>
+                              <SelectItem className="text-left" value="Standard Steel Skin">Standard Steel Skin</SelectItem>
+                              <SelectItem className="text-left" value="Optional Acoustical Substrate">Optional Acoustical Substrate</SelectItem>
                             </>
                           )}
                           {["2010", "2020", "2030"].includes(wall.model || '') && (
                             <>
-                              <SelectItem value="Standard Acoustical Substrate">Standard Acoustical Substrate</SelectItem>
-                              <SelectItem value="Optional Steel Skin">Optional Steel Skin</SelectItem>
-                              <SelectItem value="Optional Wood Veneer">Optional Wood Veneer</SelectItem>
-                              <SelectItem value="Optional High-Pressure Laminate">Optional High-Pressure Laminate</SelectItem>
+                              <SelectItem className="text-left" value="Standard Acoustical Substrate">Standard Acoustical Substrate</SelectItem>
+                              <SelectItem className="text-left" value="Optional Steel Skin">Optional Steel Skin</SelectItem>
+                              <SelectItem className="text-left" value="Optional Wood Veneer">Optional Wood Veneer</SelectItem>
+                              <SelectItem className="text-left" value="Optional High-Pressure Laminate">Optional High-Pressure Laminate</SelectItem>
                             </>
                           )}
                           {["2050e", "2010GL", "2020GL", "2030GL"].includes(wall.model || '') && (
                             <>
-                              <SelectItem value="Standard Acoustical Substrate">Standard Acoustical Substrate</SelectItem>
-                              <SelectItem value="Optional Steel Skin">Optional Steel Skin</SelectItem>
+                              <SelectItem className="text-left" value="Standard Acoustical Substrate">Standard Acoustical Substrate</SelectItem>
+                              <SelectItem className="text-left" value="Optional Steel Skin">Optional Steel Skin</SelectItem>
                             </>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>STC Rating</Label>
                       <Select
                         value={wall.stcRating || ''}
@@ -678,60 +674,60 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select STC" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="text-left">
                           {wall.model === "Hufcor 641" && (
                             <>
-                              <SelectItem value="43">43</SelectItem>
-                              <SelectItem value="47">47</SelectItem>
-                              <SelectItem value="49">49</SelectItem>
-                              <SelectItem value="52">52</SelectItem>
-                              <SelectItem value="54">54</SelectItem>
-                              <SelectItem value="56">56</SelectItem>
+                              <SelectItem className="text-left" value="43">43</SelectItem>
+                              <SelectItem className="text-left" value="47">47</SelectItem>
+                              <SelectItem className="text-left" value="49">49</SelectItem>
+                              <SelectItem className="text-left" value="52">52</SelectItem>
+                              <SelectItem className="text-left" value="54">54</SelectItem>
+                              <SelectItem className="text-left" value="56">56</SelectItem>
                             </>
                           )}
                           {["2010GL", "2020GL", "2030GL"].includes(wall.model || '') && (
-                            <SelectItem value="38">38</SelectItem>
+                            <SelectItem className="text-left" value="38">38</SelectItem>
                           )}
                           {["3010GL", "3020GL", "3030GL"].includes(wall.model || '') && (
                             <>
-                              <SelectItem value="43">43</SelectItem>
-                              <SelectItem value="48">48</SelectItem>
+                              <SelectItem className="text-left" value="43">43</SelectItem>
+                              <SelectItem className="text-left" value="48">48</SelectItem>
                             </>
                           )}
                           {["2010", "2020", "2030", "2050e"].includes(wall.model || '') && wall.panelSkin?.includes("Acoustical Substrate") && (
                             <>
-                              <SelectItem value="42">42</SelectItem>
-                              <SelectItem value="45">45</SelectItem>
-                              <SelectItem value="49">49</SelectItem>
-                              <SelectItem value="50">50</SelectItem>
+                              <SelectItem className="text-left" value="42">42</SelectItem>
+                              <SelectItem className="text-left" value="45">45</SelectItem>
+                              <SelectItem className="text-left" value="49">49</SelectItem>
+                              <SelectItem className="text-left" value="50">50</SelectItem>
                             </>
                           )}
                           {["2010", "2020", "2030", "2050e"].includes(wall.model || '') && wall.panelSkin?.includes("Steel") && (
                             <>
-                              <SelectItem value="49">49</SelectItem>
-                              <SelectItem value="51">51</SelectItem>
+                              <SelectItem className="text-left" value="49">49</SelectItem>
+                              <SelectItem className="text-left" value="51">51</SelectItem>
                             </>
                           )}
                           {["3010", "3020", "3030", "3050e"].includes(wall.model || '') && wall.panelSkin?.includes("Steel") && (
                             <>
-                              <SelectItem value="46">46</SelectItem>
-                              <SelectItem value="50">50</SelectItem>
-                              <SelectItem value="52">52</SelectItem>
-                              <SelectItem value="56">56</SelectItem>
+                              <SelectItem className="text-left" value="46">46</SelectItem>
+                              <SelectItem className="text-left" value="50">50</SelectItem>
+                              <SelectItem className="text-left" value="52">52</SelectItem>
+                              <SelectItem className="text-left" value="56">56</SelectItem>
                             </>
                           )}
                           {["3010", "3020", "3030", "3050e"].includes(wall.model || '') && wall.panelSkin?.includes("Acoustical Substrate") && (
                             <>
-                              <SelectItem value="43">43</SelectItem>
-                              <SelectItem value="46">46</SelectItem>
-                              <SelectItem value="48">48</SelectItem>
-                              <SelectItem value="50">50</SelectItem>
+                              <SelectItem className="text-left" value="43">43</SelectItem>
+                              <SelectItem className="text-left" value="46">46</SelectItem>
+                              <SelectItem className="text-left" value="48">48</SelectItem>
+                              <SelectItem className="text-left" value="50">50</SelectItem>
                             </>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    {/* <div className="space-y-2">
                       <Label>Panel Design</Label>
                       <Select
                         value={wall.panelDesign || ''}
@@ -740,13 +736,13 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select design" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Trimless U Capped">Trimless U Capped</SelectItem>
-                          <SelectItem value="U-Capped Trim">U-Capped Trim</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="Trimless U Capped">Trimless U Capped</SelectItem>
+                          <SelectItem className="text-left" value="U-Capped Trim">U-Capped Trim</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div>
+                    </div> */}
+                    <div className="space-y-2">
                       <Label>Panel Finish Category</Label>
                       <Select
                         value={wall.panelFinishCategory || ''}
@@ -759,19 +755,19 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select finish" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Koroseal Standard Vinyl">Koroseal Standard Vinyl</SelectItem>
-                          <SelectItem value="Koroseal Upgrade Vinyl">Koroseal Upgrade Vinyl</SelectItem>
-                          <SelectItem value="Shaw Standard Carpet">Shaw Standard Carpet</SelectItem>
-                          <SelectItem value="HyTex Upgrade Carpet">HyTex Upgrade Carpet</SelectItem>
-                          <SelectItem value="HyTex Standard Fabric">HyTex Standard Fabric</SelectItem>
-                          <SelectItem value="HyTex Upgrade Fabric">HyTex Upgrade Fabric</SelectItem>
-                          <SelectItem value="Standard Wood Veneer">Standard Wood Veneer</SelectItem>
-                          <SelectItem value="Wilsonart High Pressure Laminate (HPL)">Wilsonart High Pressure Laminate (HPL)</SelectItem>
-                          <SelectItem value="Full Height Marker (Tack) Board">Full Height Marker (Tack) Board</SelectItem>
-                          <SelectItem value="Uncovered">Uncovered</SelectItem>
-                          <SelectItem value="C.O.M. Material">C.O.M. Material</SelectItem>
-                          <SelectItem value="Field Painting by Others">Field Painting by Others</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="Koroseal Standard Vinyl">Koroseal Standard Vinyl</SelectItem>
+                          <SelectItem className="text-left" value="Koroseal Upgrade Vinyl">Koroseal Upgrade Vinyl</SelectItem>
+                          <SelectItem className="text-left" value="Shaw Standard Carpet">Shaw Standard Carpet</SelectItem>
+                          <SelectItem className="text-left" value="HyTex Upgrade Carpet">HyTex Upgrade Carpet</SelectItem>
+                          <SelectItem className="text-left" value="HyTex Standard Fabric">HyTex Standard Fabric</SelectItem>
+                          <SelectItem className="text-left" value="HyTex Upgrade Fabric">HyTex Upgrade Fabric</SelectItem>
+                          <SelectItem className="text-left" value="Standard Wood Veneer">Standard Wood Veneer</SelectItem>
+                          <SelectItem className="text-left" value="Wilsonart High Pressure Laminate (HPL)">Wilsonart High Pressure Laminate (HPL)</SelectItem>
+                          <SelectItem className="text-left" value="Full Height Marker (Tack) Board">Full Height Marker (Tack) Board</SelectItem>
+                          <SelectItem className="text-left" value="Uncovered">Uncovered</SelectItem>
+                          <SelectItem className="text-left" value="C.O.M. Material">C.O.M. Material</SelectItem>
+                          <SelectItem className="text-left" value="Field Painting by Others">Field Painting by Others</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -786,14 +782,14 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                           <SelectTrigger className="text-xs h-8">
                             <SelectValue placeholder="Select specific item" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="text-left">
                             {wall.panelFinishCategory === "Standard Wood Veneer" && (
                               <>
-                                <SelectItem value="Unfinished Flat Cut White Maple">Unfinished Flat Cut White Maple</SelectItem>
-                                <SelectItem value="Unfinished Flat Cut White Oak">Unfinished Flat Cut White Oak</SelectItem>
-                                <SelectItem value="Unfinished Flat Cut Walnut">Unfinished Flat Cut Walnut</SelectItem>
-                                <SelectItem value="Unfinished Flat Cut Cherry">Unfinished Flat Cut Cherry</SelectItem>
-                                <SelectItem value="Unfinished Flat Cut Red Oak">Unfinished Flat Cut Red Oak</SelectItem>
+                                <SelectItem className="text-left" value="Unfinished Flat Cut White Maple">Unfinished Flat Cut White Maple</SelectItem>
+                                <SelectItem className="text-left" value="Unfinished Flat Cut White Oak">Unfinished Flat Cut White Oak</SelectItem>
+                                <SelectItem className="text-left" value="Unfinished Flat Cut Walnut">Unfinished Flat Cut Walnut</SelectItem>
+                                <SelectItem className="text-left" value="Unfinished Flat Cut Cherry">Unfinished Flat Cut Cherry</SelectItem>
+                                <SelectItem className="text-left" value="Unfinished Flat Cut Red Oak">Unfinished Flat Cut Red Oak</SelectItem>
                               </>
                             )}
                             {/* Add more specific items as needed - truncated for brevity */}
@@ -801,7 +797,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         </Select>
                       </div>
                     )}
-                    <div>
+                    <div className="space-y-2">
                       <Label>Vertical Seals</Label>
                       <Select
                         value={wall.verticalSeals || ''}
@@ -810,13 +806,13 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select seals" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="None">None</SelectItem>
-                          <SelectItem value="Tongue-and-Groove">Tongue-and-Groove</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="None">None</SelectItem>
+                          <SelectItem className="text-left" value="Tongue-and-Groove">Tongue-and-Groove</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Bottom Seals</Label>
                       <Select
                         value={wall.bottomSeals || ''}
@@ -825,15 +821,15 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select seals" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="None">None</SelectItem>
-                          <SelectItem value="Retractable">Retractable</SelectItem>
-                          <SelectItem value="Automatic">Automatic</SelectItem>
-                          <SelectItem value="Adjustable">Adjustable</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="None">None</SelectItem>
+                          <SelectItem className="text-left" value="Retractable">Retractable</SelectItem>
+                          <SelectItem className="text-left" value="Automatic">Automatic</SelectItem>
+                          <SelectItem className="text-left" value="Adjustable">Adjustable</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Top Seals</Label>
                       <Select
                         value={wall.topSeals || ''}
@@ -842,15 +838,15 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select seals" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="None">None</SelectItem>
-                          <SelectItem value="Fixed">Fixed</SelectItem>
-                          <SelectItem value="Adjustable">Adjustable</SelectItem>
-                          <SelectItem value="Operable">Operable</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="None">None</SelectItem>
+                          <SelectItem className="text-left" value="Fixed">Fixed</SelectItem>
+                          <SelectItem className="text-left" value="Adjustable">Adjustable</SelectItem>
+                          <SelectItem className="text-left" value="Operable">Operable</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    {/* <div className="space-y-2">
                       <Label>Track Type</Label>
                       <Select
                         value={wall.trackType || ''}
@@ -859,15 +855,15 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select track" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Straight">Straight</SelectItem>
-                          <SelectItem value="Curved">Curved</SelectItem>
-                          <SelectItem value="T-Layout">T-Layout</SelectItem>
-                          <SelectItem value="L-Layout">L-Layout</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="Straight">Straight</SelectItem>
+                          <SelectItem className="text-left" value="Curved">Curved</SelectItem>
+                          <SelectItem className="text-left" value="T-Layout">T-Layout</SelectItem>
+                          <SelectItem className="text-left" value="L-Layout">L-Layout</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div>
+                    </div> */}
+                    {/* <div className="space-y-2">
                       <Label>Track System</Label>
                       <Select
                         value={wall.trackSystem || ''}
@@ -876,14 +872,14 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select system" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Heavy-Duty">Heavy-Duty</SelectItem>
-                          <SelectItem value="Standard">Standard</SelectItem>
-                          <SelectItem value="Light-Duty">Light-Duty</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="Heavy-Duty">Heavy-Duty</SelectItem>
+                          <SelectItem className="text-left" value="Standard">Standard</SelectItem>
+                          <SelectItem className="text-left" value="Light-Duty">Light-Duty</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div>
+                    </div> */}
+                    <div className="space-y-2">
                       <Label>Initial Closure System</Label>
                       <Select
                         value={wall.initialClosureSystem || ''}
@@ -892,15 +888,15 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select closure" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="None">None</SelectItem>
-                          <SelectItem value="Standard Bulb">Standard Bulb</SelectItem>
-                          <SelectItem value="Optional Fixed Starter Jamb">Optional Fixed Starter Jamb</SelectItem>
-                          <SelectItem value="Optional Adjustable Starter Jamb">Optional Adjustable Starter Jamb</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="None">None</SelectItem>
+                          <SelectItem className="text-left" value="Standard Bulb">Standard Bulb</SelectItem>
+                          <SelectItem className="text-left" value="Optional Fixed Starter Jamb">Optional Fixed Starter Jamb</SelectItem>
+                          <SelectItem className="text-left" value="Optional Adjustable Starter Jamb">Optional Adjustable Starter Jamb</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>End Panel Type</Label>
                       <Select
                         value={wall.endPanelType || ''}
@@ -909,14 +905,14 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select end panel" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="None">None</SelectItem>
-                          <SelectItem value="Standard Expander Panel Closure">Standard Expander Panel Closure</SelectItem>
-                          <SelectItem value="Optional Hinged Panel(s) Closure">Optional Hinged Panel(s) Closure</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="None">None</SelectItem>
+                          <SelectItem className="text-left" value="Standard Expander Panel Closure">Standard Expander Panel Closure</SelectItem>
+                          <SelectItem className="text-left" value="Optional Hinged Panel(s) Closure">Optional Hinged Panel(s) Closure</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Pass Door Panels</Label>
                       <Select
                         value={wall.passDoorPanels || ''}
@@ -925,14 +921,14 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select pass door" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="None">None</SelectItem>
-                          <SelectItem value="Single">Single</SelectItem>
-                          <SelectItem value="Double">Double</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="None">None</SelectItem>
+                          <SelectItem className="text-left" value="Single">Single</SelectItem>
+                          <SelectItem className="text-left" value="Double">Double</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Track System</Label>
                       <Select
                         value={wall.trackSystem || ''}
@@ -942,24 +938,24 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select system" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="text-left">
                           {wall.model === "Hufcor 641" && (
                             <>
-                              <SelectItem value="Type 26 Clear Satin-Anodized Aluminum">Type 26 Clear Satin-Anodized Aluminum</SelectItem>
-                              <SelectItem value="Type 36 Clear Satin-Anodized Aluminum">Type 36 Clear Satin-Anodized Aluminum</SelectItem>
-                              <SelectItem value="Type 57 Clear Anodized Aluminum">Type 57 Clear Anodized Aluminum</SelectItem>
-                              <SelectItem value="Type 11L Powder Coated Off-White Steel">Type 11L Powder Coated Off-White Steel</SelectItem>
-                              <SelectItem value="Type 11 Powder Coated Off-White Steel">Type 11 Powder Coated Off-White Steel</SelectItem>
+                              <SelectItem className="text-left" value="Type 26 Clear Satin-Anodized Aluminum">Type 26 Clear Satin-Anodized Aluminum</SelectItem>
+                              <SelectItem className="text-left" value="Type 36 Clear Satin-Anodized Aluminum">Type 36 Clear Satin-Anodized Aluminum</SelectItem>
+                              <SelectItem className="text-left" value="Type 57 Clear Anodized Aluminum">Type 57 Clear Anodized Aluminum</SelectItem>
+                              <SelectItem className="text-left" value="Type 11L Powder Coated Off-White Steel">Type 11L Powder Coated Off-White Steel</SelectItem>
+                              <SelectItem className="text-left" value="Type 11 Powder Coated Off-White Steel">Type 11 Powder Coated Off-White Steel</SelectItem>
                             </>
                           )}
                           {(wall.trackType === "Multi-Directional Track" || wall.trackType === "Hinged-Pair (Straight Line) Track") && (
                             <>
-                              <SelectItem value="Type 425 Clear Satin-Anodized Aluminum">Type 425 Clear Satin-Anodized Aluminum</SelectItem>
-                              <SelectItem value="Type 850 Clear Satin-Anodized Aluminum">Type 850 Clear Satin-Anodized Aluminum</SelectItem>
+                              <SelectItem className="text-left" value="Type 425 Clear Satin-Anodized Aluminum">Type 425 Clear Satin-Anodized Aluminum</SelectItem>
+                              <SelectItem className="text-left" value="Type 850 Clear Satin-Anodized Aluminum">Type 850 Clear Satin-Anodized Aluminum</SelectItem>
                             </>
                           )}
                           {wall.trackType === "Curve & Diverter (Individual) Track" && (
-                            <SelectItem value="Type 850 Powder Coated Off-White Steel">Type 850 Powder Coated Off-White Steel</SelectItem>
+                            <SelectItem className="text-left" value="Type 850 Powder Coated Off-White Steel">Type 850 Powder Coated Off-White Steel</SelectItem>
                           )}
                         </SelectContent>
                       </Select>
@@ -970,7 +966,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                 {/* Additional fields for Glass Wall */}
                 {wall.wallSystemType === "Glass Wall" && (
                   <>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Glass Wall Model</Label>
                       <Select
                         value={wall.glasswallModel || ''}
@@ -984,16 +980,16 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select model" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Stella">Stella</SelectItem>
-                          <SelectItem value="Luna">Luna</SelectItem>
-                          <SelectItem value="Illona">Illona</SelectItem>
-                          <SelectItem value="Ava">Ava</SelectItem>
-                          <SelectItem value="Mata">Mata</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="Stella">Stella</SelectItem>
+                          <SelectItem className="text-left" value="Luna">Luna</SelectItem>
+                          <SelectItem className="text-left" value="Illona">Illona</SelectItem>
+                          <SelectItem className="text-left" value="Ava">Ava</SelectItem>
+                          <SelectItem className="text-left" value="Mata">Mata</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Glass Wall Panel Configuration</Label>
                       <Select
                         value={wall.glasswallPanelConfiguration || ''}
@@ -1003,41 +999,41 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select config" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="text-left">
                           {wall.glasswallModel === "Stella" && (
-                            <SelectItem value="Individual Panels">Individual Panels</SelectItem>
+                            <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
                           )}
                           {wall.glasswallModel === "Luna" && (
                             <>
-                              <SelectItem value="Individual Panels">Individual Panels</SelectItem>
-                              <SelectItem value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
+                              <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
+                              <SelectItem className="text-left" value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
                             </>
                           )}
                           {wall.glasswallModel === "Illona" && (
                             <>
-                              <SelectItem value="Individual Panels">Individual Panels</SelectItem>
-                              <SelectItem value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
-                              <SelectItem value="Pivoting Individual Panels">Pivoting Individual Panels</SelectItem>
-                              <SelectItem value="Single & Telescoping Slider Panels">Single & Telescoping Slider Panels</SelectItem>
+                              <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
+                              <SelectItem className="text-left" value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
+                              <SelectItem className="text-left" value="Pivoting Individual Panels">Pivoting Individual Panels</SelectItem>
+                              <SelectItem className="text-left" value="Single & Telescoping Slider Panels">Single & Telescoping Slider Panels</SelectItem>
                             </>
                           )}
                           {wall.glasswallModel === "Ava" && (
                             <>
-                              <SelectItem value="Individual Panels">Individual Panels</SelectItem>
-                              <SelectItem value="Hinged-Paired Panels">Hinged-Paired Panels</SelectItem>
+                              <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
+                              <SelectItem className="text-left" value="Hinged-Paired Panels">Hinged-Paired Panels</SelectItem>
                             </>
                           )}
                           {wall.glasswallModel === "Mata" && (
                             <>
-                              <SelectItem value="Individual Panels">Individual Panels</SelectItem>
-                              <SelectItem value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
-                              <SelectItem value="Single & Telescoping Slider Panels">Single & Telescoping Slider Panels</SelectItem>
+                              <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
+                              <SelectItem className="text-left" value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
+                              <SelectItem className="text-left" value="Single & Telescoping Slider Panels">Single & Telescoping Slider Panels</SelectItem>
                             </>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Glass Wall Operation</Label>
                       <Select
                         value={wall.glasswallOperation || ''}
@@ -1047,22 +1043,22 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select operation" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="text-left">
                           {wall.glasswallModel === "Stella" && (
                             <>
-                              <SelectItem value="Manual">Manual</SelectItem>
-                              <SelectItem value="Automated">Automated</SelectItem>
-                              <SelectItem value="Programmable Self-Driving">Programmable Self-Driving</SelectItem>
-                              <SelectItem value="Semi-Automated Seals">Semi-Automated Seals</SelectItem>
+                              <SelectItem className="text-left" value="Manual">Manual</SelectItem>
+                              <SelectItem className="text-left" value="Automated">Automated</SelectItem>
+                              <SelectItem className="text-left" value="Programmable Self-Driving">Programmable Self-Driving</SelectItem>
+                              <SelectItem className="text-left" value="Semi-Automated Seals">Semi-Automated Seals</SelectItem>
                             </>
                           )}
                           {["Luna", "Illona", "Ava", "Mata"].includes(wall.glasswallModel || '') && (
-                            <SelectItem value="Manual">Manual</SelectItem>
+                            <SelectItem className="text-left" value="Manual">Manual</SelectItem>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Glass Wall Panel Face</Label>
                       <Select
                         value={wall.glasswallPanelFace || ''}
@@ -1071,15 +1067,15 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select face" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Clear Glass">Clear Glass</SelectItem>
-                          <SelectItem value="Frosted Glass">Frosted Glass</SelectItem>
-                          <SelectItem value="Tinted Glass">Tinted Glass</SelectItem>
-                          <SelectItem value="Low-E Glass">Low-E Glass</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="Clear Glass">Clear Glass</SelectItem>
+                          <SelectItem className="text-left" value="Frosted Glass">Frosted Glass</SelectItem>
+                          <SelectItem className="text-left" value="Tinted Glass">Tinted Glass</SelectItem>
+                          <SelectItem className="text-left" value="Low-E Glass">Low-E Glass</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Glass Wall Frame Finish</Label>
                       <Select
                         value={wall.glasswallFrameFinish || ''}
@@ -1088,14 +1084,14 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select finish" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Anodized Aluminum">Anodized Aluminum</SelectItem>
-                          <SelectItem value="Powder Coated">Powder Coated</SelectItem>
-                          <SelectItem value="Stainless Steel">Stainless Steel</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="Anodized Aluminum">Anodized Aluminum</SelectItem>
+                          <SelectItem className="text-left" value="Powder Coated">Powder Coated</SelectItem>
+                          <SelectItem className="text-left" value="Stainless Steel">Stainless Steel</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label>Glass Wall STC Rating</Label>
                       <Select
                         value={wall.glasswallSTCRating || ''}
@@ -1104,27 +1100,448 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         <SelectTrigger className="text-xs h-8">
                           <SelectValue placeholder="Select STC" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="35">35</SelectItem>
-                          <SelectItem value="40">40</SelectItem>
-                          <SelectItem value="45">45</SelectItem>
-                          <SelectItem value="50">50</SelectItem>
+                        <SelectContent className="text-left">
+                          <SelectItem className="text-left" value="35">35</SelectItem>
+                          <SelectItem className="text-left" value="40">40</SelectItem>
+                          <SelectItem className="text-left" value="45">45</SelectItem>
+                          <SelectItem className="text-left" value="50">50</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
+                      <Label>Partition Support</Label>
+                      <Select
+                        value={wall.glasswallPartitionSupport || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallPartitionSupport', value)}
+                        disabled={!wall.glasswallModel}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select support" />
+                        </SelectTrigger>
+                        <SelectContent className="text-left">
+                          {wall.glasswallModel === "Stella" && (
+                            <SelectItem className="text-left" value="Top-Supported">Top-Supported</SelectItem>
+                          )}
+                          {wall.glasswallModel === "Luna" && (
+                            <>
+                              <SelectItem className="text-left" value="Top-Supported">Top-Supported</SelectItem>
+                              <SelectItem className="text-left" value="Floor-Supported">Floor-Supported</SelectItem>
+                            </>
+                          )}
+                          {["Illona", "Ava", "Mata"].includes(wall.glasswallModel || '') && (
+                            <SelectItem className="text-left" value="Top-Supported">Top-Supported</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Frame Thickness (Auto-calculated)</Label>
+                      <Input
+                        value={(() => {
+                          const model = wall.glasswallModel;
+                          const stc = wall.glasswallSTCRating;
+                          if (model === 'Stella') return stc === '44' ? '4-1/2"' : '4-11/16"';
+                          if (model === 'Luna') return '2-3/4"';
+                          if (model === 'Illona') return '1-3/8"';
+                          if (model === 'Ava') return '1-7/16"';
+                          if (model === 'Mata') return '1-3/4"';
+                          return 'N/A';
+                        })()}
+                        readOnly
+                        className="text-xs h-8 bg-muted text-muted-foreground"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Panel Width (Auto-calculated)</Label>
+                      <Input
+                        value={(() => {
+                          const model = wall.glasswallModel;
+                          if (model === 'Stella') return '51"';
+                          if (model === 'Luna') return '41-3/8"';
+                          if (model === 'Illona') return '39-3/8"';
+                          if (model === 'Ava') return '48"';
+                          if (model === 'Mata') return '48"';
+                          return 'N/A';
+                        })()}
+                        readOnly
+                        className="text-xs h-8 bg-muted text-muted-foreground"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Panel Face Options</Label>
+                      <Select
+                        value={wall.glasswallPanelFace || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallPanelFace', value)}
+                        disabled={!wall.glasswallModel}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select panel face" />
+                        </SelectTrigger>
+                        <SelectContent className="text-left">
+                          {wall.glasswallModel === "Stella" && (
+                            <>
+                              <SelectItem className="text-left" value="Solid Face">Solid Face</SelectItem>
+                              <SelectItem className="text-left" value="MDF-Backed Melamine">MDF-Backed Melamine</SelectItem>
+                              <SelectItem className="text-left" value="High Pressure Laminate">High Pressure Laminate</SelectItem>
+                              <SelectItem className="text-left" value="Electrical Internal Mini-Blinds">Electrical Internal Mini-Blinds</SelectItem>
+                              <SelectItem className="text-left" value="Internal Mullions & Muntins">Internal Mullions & Muntins</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Luna" && (
+                            <>
+                              <SelectItem className="text-left" value="Solid Face">Solid Face</SelectItem>
+                              <SelectItem className="text-left" value="MDF-Backed Melamine">MDF-Backed Melamine</SelectItem>
+                              <SelectItem className="text-left" value="High Pressure Laminate">High Pressure Laminate</SelectItem>
+                              <SelectItem className="text-left" value="Electrical Internal Mini-Blinds">Electrical Internal Mini-Blinds</SelectItem>
+                              <SelectItem className="text-left" value="Internal Muntins">Internal Muntins</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Illona" && (
+                            <SelectItem className="text-left" value="Surface-Mounted Muntins">Surface-Mounted Muntins</SelectItem>
+                          )}
+                          {wall.glasswallModel === "Ava" && (
+                            <SelectItem className="text-left" value="None">None</SelectItem>
+                          )}
+                          {wall.glasswallModel === "Mata" && (
+                            <>
+                              <SelectItem className="text-left" value="Wood Insert">Wood Insert</SelectItem>
+                              <SelectItem className="text-left" value="Mullions & Surface-Mounted Muntins">Mullions & Surface-Mounted Muntins</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Frame Finish</Label>
+                      <Select
+                        value={wall.glasswallFrameFinish || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallFrameFinish', value)}
+                        disabled={!wall.glasswallModel}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select frame finish" />
+                        </SelectTrigger>
+                        <SelectContent className="text-left">
+                          {wall.glasswallModel === "Stella" && (
+                            <>
+                              <SelectItem className="text-left" value="Clear Anodized">Clear Anodized</SelectItem>
+                              <SelectItem className="text-left" value="Black">Black</SelectItem>
+                              <SelectItem className="text-left" value="White">White</SelectItem>
+                              <SelectItem className="text-left" value="Custom RAL Powder Coat">Custom RAL Powder Coat</SelectItem>
+                              <SelectItem className="text-left" value="Sublimation Wood Look">Sublimation Wood Look</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Luna" && (
+                            <>
+                              <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
+                              <SelectItem className="text-left" value="Custom RAL Powder Coat">Custom RAL Powder Coat</SelectItem>
+                              <SelectItem className="text-left" value="Sublimation Wood Look">Sublimation Wood Look</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Illona" && (
+                            <>
+                              <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
+                              <SelectItem className="text-left" value="White Powder Coat">White Powder Coat</SelectItem>
+                              <SelectItem className="text-left" value="Custom RAL Powder Coat">Custom RAL Powder Coat</SelectItem>
+                              <SelectItem className="text-left" value="Sublimation Wood Look">Sublimation Wood Look</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Ava" && (
+                            <>
+                              <SelectItem className="text-left" value="Clear Anodized">Clear Anodized</SelectItem>
+                              <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
+                              <SelectItem className="text-left" value="Custom RAL Color Options">Custom RAL Color Options</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Mata" && (
+                            <>
+                              <SelectItem className="text-left" value="Stained Fruitwood Dark Oak">Stained Fruitwood Dark Oak</SelectItem>
+                              <SelectItem className="text-left" value="Stained Wheat">Stained Wheat</SelectItem>
+                              <SelectItem className="text-left" value="Stained Cordovan">Stained Cordovan</SelectItem>
+                              <SelectItem className="text-left" value="Painted Black">Painted Black</SelectItem>
+                              <SelectItem className="text-left" value="Painted White">Painted White</SelectItem>
+                              <SelectItem className="text-left" value="Unfinished">Unfinished</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Hinge Type</Label>
+                      <Select
+                        value={wall.glasswallHingeType || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallHingeType', value)}
+                        disabled={!wall.glasswallModel}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select hinge type" />
+                        </SelectTrigger>
+                        <SelectContent className="text-left">
+                          {["Stella", "Luna", "Illona"].includes(wall.glasswallModel || '') && (
+                            <SelectItem className="text-left" value="Invisible Hinges">Invisible Hinges</SelectItem>
+                          )}
+                          {["Ava", "Mata"].includes(wall.glasswallModel || '') && (
+                            <SelectItem className="text-left" value="Full-Leaf Butt Hinges">Full-Leaf Butt Hinges</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
                       <Label>Glass Wall Track Type</Label>
                       <Select
                         value={wall.glasswallTrackType || ''}
                         onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallTrackType', value)}
+                        disabled={!wall.glasswallModel}
                       >
                         <SelectTrigger className="text-xs h-8">
-                          <SelectValue placeholder="Select track" />
+                          <SelectValue placeholder="Select track type" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Heavy-Duty Glass">Heavy-Duty Glass</SelectItem>
-                          <SelectItem value="Standard Glass">Standard Glass</SelectItem>
-                          <SelectItem value="Premium Glass">Premium Glass</SelectItem>
+                        <SelectContent className="text-left">
+                          {wall.glasswallModel === "Stella" && (
+                            <SelectItem className="text-left" value="Top-Supported Multi-directional & Single-Point">Top-Supported Multi-directional & Single-Point</SelectItem>
+                          )}
+                          {wall.glasswallModel === "Luna" && (
+                            <>
+                              <SelectItem className="text-left" value="Top-Supported Multi-directional & Single-Point">Top-Supported Multi-directional & Single-Point</SelectItem>
+                              <SelectItem className="text-left" value="Floor-Supported Top Guide">Floor-Supported Top Guide</SelectItem>
+                            </>
+                          )}
+                          {["Illona", "Ava", "Mata"].includes(wall.glasswallModel || '') && (
+                            <SelectItem className="text-left" value="Top-Supported Multi-directional & Single-Point">Top-Supported Multi-directional & Single-Point</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Track Finish</Label>
+                      <Select
+                        value={wall.glasswallTrackFinish || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallTrackFinish', value)}
+                        disabled={!wall.glasswallModel}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select track finish" />
+                        </SelectTrigger>
+                        <SelectContent className="text-left">
+                          {wall.glasswallModel === "Stella" && (
+                            <>
+                              <SelectItem className="text-left" value="Clear Anodized">Clear Anodized</SelectItem>
+                              <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
+                              <SelectItem className="text-left" value="White Powder Coat">White Powder Coat</SelectItem>
+                              <SelectItem className="text-left" value="Custom RAL Option">Custom RAL Option</SelectItem>
+                            </>
+                          )}
+                          {["Luna", "Illona"].includes(wall.glasswallModel || '') && (
+                            <>
+                              <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
+                              <SelectItem className="text-left" value="Clear Anodized">Clear Anodized</SelectItem>
+                              <SelectItem className="text-left" value="White Powder Coat">White Powder Coat</SelectItem>
+                              <SelectItem className="text-left" value="Custom RAL Option">Custom RAL Option</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Ava" && (
+                            <>
+                              <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
+                              <SelectItem className="text-left" value="Clear Anodized">Clear Anodized</SelectItem>
+                              <SelectItem className="text-left" value="Custom RAL Color Option">Custom RAL Color Option</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Mata" && (
+                            <>
+                              <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
+                              <SelectItem className="text-left" value="Clear Anodized">Clear Anodized</SelectItem>
+                              <SelectItem className="text-left" value="Custom RAL Option">Custom RAL Option</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Floor Guide</Label>
+                      <Select
+                        value={wall.glasswallFloorGuide || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallFloorGuide', value)}
+                        disabled={!wall.glasswallModel}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select floor guide" />
+                        </SelectTrigger>
+                        <SelectContent className="text-left">
+                          {["Luna", "Illona"].includes(wall.glasswallModel || '') && (
+                            <SelectItem className="text-left" value="Optional">Optional</SelectItem>
+                          )}
+                          {["Ava", "Mata"].includes(wall.glasswallModel || '') && (
+                            <SelectItem className="text-left" value="None">None</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Pass Door Type</Label>
+                      <Select
+                        value={wall.glasswallPassDoorType || ''}
+                        onValueChange={(value) => {
+                          handleWallFieldChange(wallName, 'glasswallPassDoorType', value);
+                          // Reset dependent field
+                          handleWallFieldChange(wallName, 'glasswallPassDoorOption', '');
+                        }}
+                        disabled={!wall.glasswallModel}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select door type" />
+                        </SelectTrigger>
+                        <SelectContent className="text-left">
+                          {wall.glasswallModel === "Stella" && (
+                            <>
+                              <SelectItem className="text-left" value="Full-Height">Full-Height</SelectItem>
+                              <SelectItem className="text-left" value="Inset">Inset</SelectItem>
+                            </>
+                          )}
+                          {["Luna", "Illona", "Ava", "Mata"].includes(wall.glasswallModel || '') && (
+                            <SelectItem className="text-left" value="Full-Height">Full-Height</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Pass Door Option</Label>
+                      <Select
+                        value={wall.glasswallPassDoorOption || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallPassDoorOption', value)}
+                        disabled={!wall.glasswallModel || !wall.glasswallPassDoorType}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select door option" />
+                        </SelectTrigger>
+                        <SelectContent className="text-left">
+                          {wall.glasswallPassDoorType && (
+                            <>
+                              <SelectItem className="text-left" value="Single">Single</SelectItem>
+                              <SelectItem className="text-left" value="Double">Double</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Final Closure</Label>
+                      <Select
+                        value={wall.glasswallFinalClosure || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallFinalClosure', value)}
+                        disabled={!wall.glasswallModel}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select closure" />
+                        </SelectTrigger>
+                        <SelectContent className="text-left">
+                          {wall.glasswallModel === "Stella" && (
+                            <>
+                              <SelectItem className="text-left" value="Panel-Mounted Telescoping Jamb">Panel-Mounted Telescoping Jamb</SelectItem>
+                              <SelectItem className="text-left" value="Wall-Mounted Telescoping Jamb">Wall-Mounted Telescoping Jamb</SelectItem>
+                              <SelectItem className="text-left" value="Full-Height Door">Full-Height Door</SelectItem>
+                            </>
+                          )}
+                          {["Luna", "Illona"].includes(wall.glasswallModel || '') && (
+                            <>
+                              <SelectItem className="text-left" value="Hinged Closure Panel">Hinged Closure Panel</SelectItem>
+                              <SelectItem className="text-left" value="Full-Height Door">Full-Height Door</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Ava" && (
+                            <>
+                              <SelectItem className="text-left" value="Fixed Pivot Panel">Fixed Pivot Panel</SelectItem>
+                              <SelectItem className="text-left" value="Fixed Swing Panel">Fixed Swing Panel</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Mata" && (
+                            <>
+                              <SelectItem className="text-left" value="Hinged Closure Panel">Hinged Closure Panel</SelectItem>
+                              <SelectItem className="text-left" value="None Required">None Required</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Bottom Seals</Label>
+                      <Select
+                        value={wall.glasswallBottomSeals || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallBottomSeals', value)}
+                        disabled={!wall.glasswallModel}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select bottom seals" />
+                        </SelectTrigger>
+                        <SelectContent className="text-left">
+                          {wall.glasswallModel === "Stella" && (
+                            <>
+                              <SelectItem className="text-left" value="Electric">Electric</SelectItem>
+                              <SelectItem className="text-left" value="Automatic">Automatic</SelectItem>
+                              <SelectItem className="text-left" value="Semi-Automatic">Semi-Automatic</SelectItem>
+                              <SelectItem className="text-left" value="Manual">Manual</SelectItem>
+                              <SelectItem className="text-left" value="Operable">Operable</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Luna" && (
+                            <>
+                              <SelectItem className="text-left" value="Floor Supported Fixed Bulb">Floor Supported Fixed Bulb</SelectItem>
+                              <SelectItem className="text-left" value="Top Supported Fixed Brush">Top Supported Fixed Brush</SelectItem>
+                            </>
+                          )}
+                          {["Illona", "Ava"].includes(wall.glasswallModel || '') && (
+                            <SelectItem className="text-left" value="Fixed Brush">Fixed Brush</SelectItem>
+                          )}
+                          {wall.glasswallModel === "Mata" && (
+                            <SelectItem className="text-left" value="Fixed Flexible Vinyl">Fixed Flexible Vinyl</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Top Seals</Label>
+                      <Select
+                        value={wall.glasswallTopSeals || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallTopSeals', value)}
+                        disabled={!wall.glasswallModel}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder="Select top seals" />
+                        </SelectTrigger>
+                        <SelectContent className="text-left">
+                          {wall.glasswallModel === "Stella" && (
+                            <>
+                              <SelectItem className="text-left" value="Electric">Electric</SelectItem>
+                              <SelectItem className="text-left" value="Automatic">Automatic</SelectItem>
+                              <SelectItem className="text-left" value="Semi-Automatic">Semi-Automatic</SelectItem>
+                              <SelectItem className="text-left" value="Manual">Manual</SelectItem>
+                              <SelectItem className="text-left" value="Operable">Operable</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Luna" && (
+                            <>
+                              <SelectItem className="text-left" value="Floor Supported Fixed Bulb">Floor Supported Fixed Bulb</SelectItem>
+                              <SelectItem className="text-left" value="Top Supported Fixed Brush">Top Supported Fixed Brush</SelectItem>
+                            </>
+                          )}
+                          {["Illona", "Ava"].includes(wall.glasswallModel || '') && (
+                            <SelectItem className="text-left" value="Fixed Brush">Fixed Brush</SelectItem>
+                          )}
+                          {wall.glasswallModel === "Mata" && (
+                            <SelectItem className="text-left" value="Fixed Flexible Vinyl">Fixed Flexible Vinyl</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -1164,7 +1581,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
               <SelectTrigger className="text-sm">
                 <SelectValue placeholder="Select fold type" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="text-left">
                 <SelectItem value="None">None</SelectItem>
                 <SelectItem value="Bi-Fold">Bi-Fold</SelectItem>
                 <SelectItem value="Single">Single</SelectItem>
@@ -1186,7 +1603,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                 <SelectTrigger className="text-sm">
                   <SelectValue placeholder="Select fold style" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="text-left">
                   <SelectItem value="None">None</SelectItem>
                   {getAvailableFoldStyles(data.pocket_doors?.foldType || '').map((style) => (
                     <SelectItem key={style} value={style}>
@@ -1219,7 +1636,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
               <SelectTrigger className="text-sm">
                 <SelectValue placeholder="Select mounting track type" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="text-left">
                 <SelectItem value="Pre-Drilled Steel Beam">Pre-Drilled Steel Beam</SelectItem>
                 <SelectItem value="Existing Steel Beam">Existing Steel Beam</SelectItem>
                 <SelectItem value="Secured to Concrete">Secured to Concrete</SelectItem>
@@ -1250,7 +1667,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
               <SelectTrigger className="text-sm">
                 <SelectValue placeholder="Select labor type" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="text-left">
                 <SelectItem value="Union">Union</SelectItem>
                 <SelectItem value="Non-Union">Non-Union</SelectItem>
                 {/* <SelectItem value="Mixed">Mixed</SelectItem> */}
@@ -1269,7 +1686,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
               <SelectTrigger className="text-sm">
                 <SelectValue placeholder="Select wage rate" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="text-left">
                 <SelectItem value="Prevailing">Prevailing</SelectItem>
                 <SelectItem value="Standard">Standard</SelectItem>
                 {/* <SelectItem value="Fixed">Fixed</SelectItem> */}

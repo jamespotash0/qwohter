@@ -277,7 +277,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
                 placeholder="Untitled document"
               />
               {state.isDirty && (
-                <span className="text-sm text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                <span className="text-sm text-amber-600 bg-amber-50 px-3 py-1 rounded whitespace-nowrap">
                   Unsaved Changes
                 </span>
               )}
