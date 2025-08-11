@@ -153,9 +153,19 @@ const Quotes = () => {
     try {
       const quoteName = editingQuote.project_name || editingQuote.proposal_number || 'quote';
       
+      // Apply dynamic page breaks to the HTML content
+      const { PageBreakManager } = await import('@/utils/pageBreakManager');
+      const manager = new PageBreakManager();
+      let pagedHTML = manager.processHTMLContent(html);
+      
+      // If no page structure was created, force create a single page wrapper
+      if (!pagedHTML.includes('class="page"')) {
+        pagedHTML = `<div class="page" data-page="1"><div class="page-content">${html}</div></div>`;
+      }
+      
       // Create temp div with exactly the same styling as standard PDF download
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = html;
+      tempDiv.innerHTML = pagedHTML;
       tempDiv.style.cssText = `
         font-family: "Times New Roman", serif;
         font-size: 12pt;
@@ -322,6 +332,37 @@ const Quotes = () => {
         li {
           margin-bottom: 4px;
         }
+        /* Page break styles for PDF generation */
+        .page {
+          width: 7in;
+          min-height: 9.5in;
+          margin: 0 auto;
+          padding: 0.75in;
+          page-break-after: always;
+          box-sizing: border-box;
+          background: white;
+        }
+        .page:last-child {
+          page-break-after: auto;
+        }
+        .page-break {
+          page-break-before: always;
+        }
+        .keep-together {
+          page-break-inside: avoid;
+        }
+        .avoid-break-before {
+          page-break-before: avoid;
+        }
+        .avoid-break-after {
+          page-break-after: avoid;
+        }
+        @media print {
+          .page {
+            margin: 0;
+            box-shadow: none;
+          }
+        }
       `;
       
       document.head.appendChild(style);
@@ -478,14 +519,20 @@ const Quotes = () => {
 
     try {
       const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
-      const { enhanceWithPageBreaks } = await import('@/utils/pageBreakManager');
+      const { PageBreakManager } = await import('@/utils/pageBreakManager');
      
       const rawQuoteText = generateQuoteText(quote);
-      // const quoteText = enhanceWithPageBreaks(rawQuoteText);
+      const manager = new PageBreakManager();
+      let quoteText = manager.processHTMLContent(rawQuoteText);
+      
+      // If no page structure was created, force create a single page wrapper
+      if (!quoteText.includes('class="page"')) {
+        quoteText = `<div class="page" data-page="1"><div class="page-content">${rawQuoteText}</div></div>`;
+      }
       
 
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = rawQuoteText;
+      tempDiv.innerHTML = quoteText;
       tempDiv.style.cssText = `
         font-family: "Times New Roman", serif;
         font-size: 12pt;
@@ -833,9 +880,15 @@ const Quotes = () => {
       // Final fallback to simple text PDF
     try {
       const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
-      const { enhanceWithPageBreaks } = await import('@/utils/pageBreakManager');
+      const { PageBreakManager } = await import('@/utils/pageBreakManager');
       const rawQuoteText = generateQuoteText(quote);
-      const quoteText = enhanceWithPageBreaks(rawQuoteText);
+      const manager = new PageBreakManager();
+      let quoteText = manager.processHTMLContent(rawQuoteText);
+      
+      // If no page structure was created, use original content for text fallback
+      if (!quoteText.includes('class="page"')) {
+        quoteText = rawQuoteText;
+      }
         
         const doc = new jsPDF({
           orientation: 'portrait',

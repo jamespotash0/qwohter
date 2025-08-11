@@ -66,7 +66,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
   className = ''
 }) => {
   const [openSections, setOpenSections] = useState({
-    contact: true,
+    contact: false,
     client: false,
     walls: false,
     pockets: false,
@@ -154,7 +154,34 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
           trackType: '',
           trackSystem: '',
           panelFinishCategory: '',
-          panelFinishSpecificItem: ''
+          panelFinishSpecificItem: '',
+          // Glass Wall specific fields
+          glasswallModel: '',
+          glasswallOperation: '',
+          glasswallPanelConfiguration: '',
+          glasswallPanelFace: '',
+          glasswallFrameFinish: '',
+          glasswallGlassType: '',
+          glasswallSTCRating: '',
+          glasswallPartitionSupport: '',
+          glasswallPassDoorType: '',
+          glasswallPassDoorOption: '',
+          glasswallHingeType: '',
+          glasswallFrameThickness: '',
+          glasswallPanelWidth: '',
+          glasswallTrackType: '',
+          glasswallTrackFinish: '',
+          glasswallFloorGuide: '',
+          glasswallFinalClosure: '',
+          glasswallBottomSeals: '',
+          glasswallTopSeals: '',
+          // Common fields
+          panelThickness: '',
+          verticalSeals: '',
+          bottomSeals: '',
+          topSeals: '',
+          initialClosureSystem: '',
+          endPanelType: ''
         }
       }
     };
@@ -175,17 +202,71 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
 
   // Helper function to update wall field
   const handleWallFieldChange = (wallName: string, field: string, value: any) => {
+    console.log('handleWallFieldChange called:', { wallName, field, value });
+    const currentWall = data.wall_details?.walls?.[wallName] || {};
+    console.log('Current wall before update:', currentWall);
+    
+    // Ensure all Glass Wall fields exist for proper dropdown functionality
+    const wallWithDefaults = {
+      lengthFeet: '',
+      lengthInches: '',
+      heightFeet: '',
+      heightInches: '',
+      panelCount: '',
+      wallSystemType: '',
+      panelConfiguration: '',
+      series: '',
+      model: '',
+      panelSkin: '',
+      stcRating: '',
+      panelDesign: '',
+      trackType: '',
+      trackSystem: '',
+      panelFinishCategory: '',
+      panelFinishSpecificItem: '',
+      // Glass Wall specific fields
+      glasswallModel: '',
+      glasswallOperation: '',
+      glasswallPanelConfiguration: '',
+      glasswallPanelFace: '',
+      glasswallFrameFinish: '',
+      glasswallGlassType: '',
+      glasswallSTCRating: '',
+      glasswallPartitionSupport: '',
+      glasswallPassDoorType: '',
+      glasswallPassDoorOption: '',
+      glasswallHingeType: '',
+      glasswallFrameThickness: '',
+      glasswallPanelWidth: '',
+      glasswallTrackType: '',
+      glasswallTrackFinish: '',
+      glasswallFloorGuide: '',
+      glasswallFinalClosure: '',
+      glasswallBottomSeals: '',
+      glasswallTopSeals: '',
+      // Common fields
+      panelThickness: '',
+      verticalSeals: '',
+      bottomSeals: '',
+      topSeals: '',
+      initialClosureSystem: '',
+      endPanelType: '',
+      // Override with current wall data
+      ...currentWall,
+      // Apply the new field value
+      [field]: value
+    };
+    
     const updatedWalls = {
       id: data.wall_details?.id || crypto.randomUUID(),
       walls: {
         ...(data.wall_details?.walls || {}),
-        [wallName]: {
-          ...(data.wall_details?.walls?.[wallName] || {}),
-          [field]: value
-        }
+        [wallName]: wallWithDefaults
       }
     };
     
+    console.log('Final wall with defaults:', wallWithDefaults);
+    console.log('Updated walls object:', updatedWalls);
     onChange('wall_details', updatedWalls);
   };
 
@@ -384,7 +465,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
       >
         <div className="space-y-4">
           {Object.entries(data.wall_details?.walls || {}).map(([wallName, wall]) => (
-            <Card key={wallName} className="p-3 bg-gray-50">
+            <Card key={`${wallName}-${wall.wallSystemType}-${wall.glasswallModel}`} className="p-3 bg-gray-50">
               <div className="flex justify-between items-center mb-3">
                 <h4 className="font-medium text-sm">{wallName}</h4>
                 <Button
@@ -968,9 +1049,15 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                   <>
                     <div className="space-y-2">
                       <Label>Glass Wall Model</Label>
+                      <div className="text-xs text-gray-500 mb-1">
+                        Current value: "{wall.glasswallModel || 'empty'}"
+                      </div>
                       <Select
+                        key={`${wallName}-glasswallModel-${wall.glasswallModel}`}
                         value={wall.glasswallModel || ''}
                         onValueChange={(value) => {
+                          console.log('Glass Wall Model selected:', value, 'for wall:', wallName);
+                          console.log('Current wall data:', wall);
                           handleWallFieldChange(wallName, 'glasswallModel', value);
                           // Reset dependent fields
                           handleWallFieldChange(wallName, 'glasswallPanelConfiguration', '');

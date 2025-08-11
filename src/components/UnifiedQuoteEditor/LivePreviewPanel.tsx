@@ -44,42 +44,52 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
     }
   }, [previewHTML]);
 
-  // Calculate pages for pagination
-  const calculatePages = useCallback(() => {
-    if (!measureRef.current || !previewHTML) return;
+  // Calculate pages for pagination with dynamic page breaks
+  const calculatePages = useCallback(async () => {
+    if (!previewHTML) return;
 
-    // Create a temporary element to measure content height
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = previewHTML;
-    tempDiv.style.cssText = `
-      position: absolute;
-      visibility: hidden;
-      width: 640px;
-      font-family: 'Times New Roman', Times, serif;
-      font-size: 12pt;
-      line-height: 1.15;
-      padding: 0;
-      margin: 0;
-    `;
-    document.body.appendChild(tempDiv);
+    try {
+      // Apply dynamic page breaks to the HTML content
+      const { enhanceWithPageBreaks } = await import('@/utils/pageBreakManager');
+      const pagedHTML = enhanceWithPageBreaks(previewHTML);
 
-    const contentHeight = tempDiv.scrollHeight;
-    const pageHeight = 800; // Larger content area to accommodate wider pages
-    const totalPages = Math.ceil(contentHeight / pageHeight);
+      // Create a temporary element to parse the paged content
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = pagedHTML;
+      
+      // Look for page elements created by the page break manager
+      const pageElements = tempDiv.querySelectorAll('.page');
+      
+      const newPages: DocumentPage[] = [];
+      
+      if (pageElements.length > 0) {
+        // Use the pages created by the page break manager
+        pageElements.forEach((pageElement, index) => {
+          newPages.push({
+            id: `page-${index}`,
+            content: pageElement.innerHTML,
+            pageNumber: index + 1
+          });
+        });
+      } else {
+        // Fallback: put all content on one page if no page structure found
+        newPages.push({
+          id: 'page-0',
+          content: pagedHTML,
+          pageNumber: 1
+        });
+      }
 
-    document.body.removeChild(tempDiv);
-
-    // For now, put all content on first page (we'll enhance pagination later)
-    const newPages: DocumentPage[] = [];
-    for (let i = 0; i < Math.max(1, totalPages); i++) {
-      newPages.push({
-        id: `page-${i}`,
-        content: i === 0 ? previewHTML : '', // Put all content on first page for now
-        pageNumber: i + 1
-      });
+      setPages(newPages);
+    } catch (error) {
+      console.error('Error calculating pages:', error);
+      // Fallback to single page with original content
+      setPages([{
+        id: 'page-0',
+        content: previewHTML,
+        pageNumber: 1
+      }]);
     }
-
-    setPages(newPages);
   }, [previewHTML]);
 
   useEffect(() => {
@@ -210,9 +220,46 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
     setHoveredSectionId(null);
   }, []);
 
-  // Add custom styles for hover effects and click indicators
+  // Add custom styles for hover effects, click indicators, and page layout
   const customStyles = `
     <style>
+      /* Page layout styles for live preview */
+      .page {
+        width: 100%;
+        min-height: auto;
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
+        page-break-after: auto;
+      }
+      
+      .page-break {
+        margin: 20px 0;
+        border-top: 2px dashed #e2e8f0;
+        position: relative;
+      }
+      
+      .page-break::after {
+        content: "Page Break";
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #f8fafc;
+        padding: 2px 8px;
+        font-size: 10px;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+      }
+      
+      .keep-together {
+        outline: 1px dashed rgba(34, 197, 94, 0.3);
+        outline-offset: 2px;
+      }
+      
+      /* Section hover and click styles */
       .quote-document [class*="-section"]:not(.wall-specifications-list):not(.pricing-section):not(.billing-job-container):not(.job-info-section):not(.billing-table) {
         transition: all 0.2s ease;
         cursor: pointer;
