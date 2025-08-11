@@ -34,7 +34,7 @@ import { useUserProfile } from "@/hooks/useUserProfile";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { useToast } from "@/hooks/use-toast";
 import NewQuote from "./NewQuote";
-import SmartQuoteEditor from "@/components/SmartQuoteEditor";
+import GoogleDocsSmartEditor from "@/components/GoogleDocsSmartEditor";
 import { SmartQuoteData } from "@/templates/SmartQuoteTemplate";
 
 const Quotes = () => {
@@ -174,7 +174,7 @@ const Quotes = () => {
         background: white;
       `;
 
-      // Add the same enhanced styles as standard download
+      // Add the same enhanced styles as standard download (identical to main downloadPDF function)
       const style = document.createElement('style');
       style.textContent = `
         .quote-container {
@@ -185,59 +185,282 @@ const Quotes = () => {
           margin: 0 auto;
           color: black;
         }
-        .header-section { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 20px; }
-        .company-info { flex: 1; max-width: 40%; }
-        .company-logo { display: flex; align-items: center; gap: 15px; }
-        .logo-placeholder { width: 60px; height: 60px; background: linear-gradient(135deg, #3B82F6, #F59E0B); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16pt; border-radius: 8px; }
-        .company-name { font-size: 14pt; font-weight: bold; color: #333; line-height: 1.2; }
-        .contact-details { flex: 1; max-width: 55%; text-align: right; }
-        .contact-row { margin-bottom: 2px; display: flex; justify-content: flex-end; align-items: center; line-height: 1.1; }
-        .contact-row .label { font-weight: bold; margin-right: 8px; min-width: 80px; text-align: right; }
-        .contact-row .value { text-align: left; flex: 1; }
-        .website-link { color: #3B82F6; text-decoration: underline; }
-        .billing-and-job-info { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; gap: 40px; }
-        .billing-section { flex: 1; max-width: 45%; }
-        .billed-to-details { margin-top: 10px; }
-        .billed-line { margin-bottom: 2px; min-height: 20px; padding-bottom: 4px; }
-        .underline { height: 1px; background-color: black; margin-bottom: 8px; width: 100%; }
-        .job-info-section { flex: 1; max-width: 50%; }
-        .job-row { display: flex; align-items: center; margin-bottom: 15px; position: relative; }
-        .job-label { font-weight: bold; margin-right: 20px; min-width: 120px; }
-        .job-value { flex: 1; padding-bottom: 2px; }
-        .job-underline { position: absolute; bottom: 0; right: 0; left: 140px; height: 1px; background-color: black; }
-        h2.section-header { font-weight: bold; font-size: 12pt; margin-top: 1.5em; margin-bottom: 0.5em; }
-        .wall-specifications { line-height: 1.15; max-width: 7.25in; }
-        .acceptance-section p { font-style: italic; font-size: 9pt; line-height: 1.2; }
+        .header-section {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 30px;
+          padding-bottom: 20px;
+        }
+        .company-info {
+          flex: 1;
+          max-width: 40%;
+        }
+        .company-logo {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+        }
+        .logo-placeholder {
+          width: 60px;
+          height: 60px;
+          background: linear-gradient(135deg, #3B82F6, #F59E0B);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          font-size: 16pt;
+          border-radius: 8px;
+        }
+        .company-name {
+          font-size: 14pt;
+          font-weight: bold;
+          color: #333;
+          line-height: 1.2;
+        }
+        .contact-details {
+          flex: 1;
+          max-width: 55%;
+          text-align: right;
+        }
+        .contact-row {
+          margin-bottom: 2px;
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          line-height: 1.1;
+        }
+        .contact-row .label {
+          font-weight: bold;
+          margin-right: 8px;
+          min-width: 80px;
+          text-align: right;
+        }
+        .contact-row .value {
+          text-align: left;
+          flex: 1;
+        }
+        .website-link {
+          color: #3B82F6;
+          text-decoration: underline;
+        }
+        .billing-and-job-info {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 30px;
+          gap: 40px;
+        }
+        .billing-section {
+          flex: 1;
+          max-width: 45%;
+        }
+        .billed-to-details {
+          margin-top: 10px;
+        }
+        .billed-line {
+          margin-bottom: 2px;
+          min-height: 20px;
+          padding-bottom: 4px;
+        }
+        .underline {
+          height: 1px;
+          background-color: black;
+          margin-bottom: 8px;
+          width: 100%;
+        }
+        .job-info-section {
+          flex: 1;
+          max-width: 50%;
+        }
+        .job-row {
+          display: flex;
+          align-items: center;
+          margin-bottom: 15px;
+          position: relative;
+        }
+        .job-label {
+          font-weight: bold;
+          margin-right: 20px;
+          min-width: 120px;
+        }
+        .job-value {
+          flex: 1;
+          padding-bottom: 2px;
+        }
+        .job-underline {
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          left: 140px;
+          height: 1px;
+          background-color: black;
+        }
+        h2.section-header {
+          font-weight: bold;
+          font-size: 12pt;
+          margin-top: 1.5em;
+          margin-bottom: 0.5em;
+        }
+        .wall-specifications {
+          line-height: 1.15;
+          max-width: 7.25in;
+        }
+        .acceptance-section {
+          font-size: 9pt;
+          font-style: italic;
+          margin-top: 2em;
+        }
+        table {
+          border-collapse: collapse;
+          width: 100%;
+        }
+        td {
+          padding: 4px 8px;
+        }
+        strong {
+          font-weight: bold;
+        }
+        ol, ul {
+          margin: 0;
+          padding-left: 20px;
+        }
+        li {
+          margin-bottom: 4px;
+        }
       `;
       
       document.head.appendChild(style);
       document.body.appendChild(tempDiv);
 
-      const { default: html2canvas } = await import('html2canvas');
-      const canvas = await html2canvas(tempDiv, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: '#ffffff'
-      });
+      try {
+        // Use the exact same rendering logic as standard downloadPDF
+        const html2canvas = (await import('html2canvas')).default;
+        
+        // Check if content has page structure
+        const pageElements = tempDiv.querySelectorAll('.page');
+        
+        if (pageElements.length > 0) {
+          // Handle multi-page content
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          
+          for (let i = 0; i < pageElements.length; i++) {
+            const pageElement = pageElements[i] as HTMLElement;
+            
+            const canvas = await html2canvas(pageElement, {
+              scale: 2,
+              useCORS: true,
+              backgroundColor: '#ffffff',
+              width: 816, // 8.5 inches at 96 DPI
+              height: 1056 // 11 inches at 96 DPI
+            });
 
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = pdfWidth - 20;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+            if (i > 0) {
+              pdf.addPage();
+            }
+            
+            pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pdfHeight - 20));
+          }
+          
+          // Use consistent naming with version tracking
+          const currentVersion = smartEditingQuote.version || 1;
+          const today = new Date();
+          const dateStr = today.toLocaleDateString('en-CA');
+          
+          const fileName = `${quoteName}_v${currentVersion}_${dateStr}_customized.pdf`;
+          pdf.save(fileName);
+        } else {
+          // Single page fallback (same as standard)
+          const canvas = await html2canvas(tempDiv, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            width: tempDiv.scrollWidth,
+            height: tempDiv.scrollHeight
+          });
+
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          const imgWidth = pdfWidth - 20;
+          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+          let heightLeft = imgHeight;
+          let position = 10;
+
+          pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+          heightLeft -= pdfHeight - 20;
+
+          while (heightLeft >= 0) {
+            position = heightLeft - imgHeight + 10;
+            pdf.addPage();
+            pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+            heightLeft -= pdfHeight - 20;
+          }
+
+          // Use consistent naming with version tracking
+          const currentVersion = smartEditingQuote.version || 1;
+          const today = new Date();
+          const dateStr = today.toLocaleDateString('en-CA');
+          
+          const fileName = `${quoteName}_v${currentVersion}_${dateStr}_customized.pdf`;
+          pdf.save(fileName);
+        }
+      } catch (canvasError) {
+        console.error('Canvas rendering failed, falling back to text PDF:', canvasError);
+        
+        // Same fallback logic as standard downloadPDF
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+        
+        const plainText = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+        const splitText = doc.splitTextToSize(plainText, 180);
+        doc.setFontSize(10);
+        let y = 20;
+        const lineHeight = 5;
+        
+        splitText.forEach((line: string) => {
+          if (y > 280) {
+            doc.addPage();
+            y = 20;
+          }
+          doc.text(line, 15, y);
+          y += lineHeight;
+        });
+        
+        const currentVersion = smartEditingQuote.version || 1;
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('en-CA');
+        
+        doc.setFontSize(8);
+        doc.setTextColor(128, 128, 128);
+        doc.text(`Version: ${currentVersion} (Customized)`, 15, 290);
+        
+        const fileName = `${quoteName}_v${currentVersion}_${dateStr}_customized.pdf`;
+        doc.save(fileName);
+      }
+      
+      // Clean up DOM elements
       document.body.removeChild(tempDiv);
       document.head.removeChild(style);
-
-      const pdf = new jsPDF('p', 'pt', 'letter');
-      const imgWidth = 612;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const imgData = canvas.toDataURL('image/png');
-
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-      pdf.save(`${quoteName}_customized.pdf`);
       
-      // Mark as downloaded
+      // Mark as downloaded (consistent with standard download)
       await markAsDownloaded(smartEditingQuote.id);
       
       toast({
-        title: "Download complete",
-        description: "Your customized quote has been downloaded successfully.",
+        title: "PDF Downloaded",
+        description: `Customized quote ${smartEditingQuote.proposal_number} has been downloaded successfully.`,
       });
       
     } catch (error) {
@@ -833,7 +1056,7 @@ const Quotes = () => {
                 </Button>
               </div>
             </div>
-            <SmartQuoteEditor
+            <GoogleDocsSmartEditor
               quote={smartEditingQuote}
               onSave={handleSmartQuoteSave}
               onDownload={handleSmartQuoteDownload}

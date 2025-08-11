@@ -78,6 +78,9 @@ export class SmartQuoteHelper {
   static extractSections(html: string): QuoteSection[] {
     const sections: QuoteSection[] = [];
     
+    // Define which sections should NOT be editable (read-only)
+    const readOnlySections = ['wall-specifications-list', 'pricing-section'];
+    
     // Pattern 1: Sections with *-section class
     const sectionPattern = /<div class="([^"]*-section)"[^>]*>([\s\S]*?)<\/div>/g;
     let match;
@@ -85,6 +88,12 @@ export class SmartQuoteHelper {
     while ((match = sectionPattern.exec(html)) !== null) {
       const className = match[1];
       const id = className.replace('-section', '');
+      
+      // Skip read-only sections like wall-specifications-list (Wall A table) 
+      if (readOnlySections.includes(className)) {
+        console.log(`Skipping read-only section: ${className}`);
+        continue;
+      }
       
       sections.push({
         id,
@@ -95,7 +104,7 @@ export class SmartQuoteHelper {
       });
     }
     
-    // Pattern 2: H2 section headers with following content
+    // Pattern 2: H2 section headers with following content (but exclude pricing details)
     const headerPattern = /<h2[^>]*class="section-header"[^>]*>(.*?)<\/h2>([\s\S]*?)(?=<h2[^>]*class="section-header"|$)/g;
     let headerMatch;
     
@@ -104,19 +113,21 @@ export class SmartQuoteHelper {
       const content = headerMatch[2].trim();
       const id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
       
-      // Skip if we already have this section from pattern 1
-      if (!sections.find(s => s.id === id)) {
-        sections.push({
-          id,
-          title,
-          content: `<h2 class="section-header">${headerMatch[1]}</h2>${content}`,
-          isVisible: true,
-          isRequired: this.isRequiredSection(id)
-        });
+      // Skip sections that are already handled or should be read-only
+      if (sections.find(s => s.id === id) || readOnlySections.includes(id)) {
+        continue;
       }
+      
+      sections.push({
+        id,
+        title,
+        content: `<h2 class="section-header">${headerMatch[1]}</h2>${content}`,
+        isVisible: true,
+        isRequired: this.isRequiredSection(id)
+      });
     }
     
-    // Pattern 3: Major structural sections
+    // Pattern 3: Major structural sections (but exclude problematic ones)
     const structuralSections = [
       { pattern: /<div class="header-section"[^>]*>([\s\S]*?)<\/div>/g, name: 'header', title: 'Header' },
       { pattern: /<div class="billing-and-job-info"[^>]*>([\s\S]*?)<\/div>/g, name: 'billing-job', title: 'Billing & Job Info' },
@@ -128,15 +139,18 @@ export class SmartQuoteHelper {
       let structMatch;
       pattern.lastIndex = 0; // Reset regex
       while ((structMatch = pattern.exec(html)) !== null) {
-        if (!sections.find(s => s.id === name)) {
-          sections.push({
-            id: name,
-            title,
-            content: structMatch[0],
-            isVisible: true,
-            isRequired: this.isRequiredSection(name)
-          });
+        // Skip if already exists or is read-only
+        if (sections.find(s => s.id === name) || readOnlySections.includes(name)) {
+          continue;
         }
+        
+        sections.push({
+          id: name,
+          title,
+          content: structMatch[0],
+          isVisible: true,
+          isRequired: this.isRequiredSection(name)
+        });
       }
     });
     

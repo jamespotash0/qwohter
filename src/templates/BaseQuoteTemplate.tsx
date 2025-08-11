@@ -65,11 +65,45 @@ export abstract class BaseQuoteTemplate {
       },
 
       formatCurrency: (amount?: number | string) => {
-        const num = typeof amount === 'string' ? parseFloat(amount) : (amount || 0);
-        return new Intl.NumberFormat('en-US', {
+        if (amount === null || amount === undefined || amount === '') return '$0.00';
+        
+        let num: number;
+        if (typeof amount === 'string') {
+          // Handle string currency values that might have formatting
+          // Remove everything except digits, decimal points, and minus signs
+          const cleanString = amount.replace(/[^0-9.-]/g, '');
+          if (cleanString === '' || cleanString === '-') return '$0.00';
+          num = parseFloat(cleanString);
+        } else {
+          num = amount;
+        }
+        
+        // Ensure we have a valid number
+        if (isNaN(num) || !isFinite(num)) return '$0.00';
+        
+        // Handle edge cases for very large numbers (up to 7 digits)
+        const absNum = Math.abs(num);
+        if (absNum >= 10000000) { // 7+ digits
+          console.warn('Currency value may be too large:', num);
+        }
+        
+        // Use Intl.NumberFormat for proper locale-specific formatting
+        const formatter = new Intl.NumberFormat('en-US', {
           style: 'currency',
-          currency: 'USD'
-        }).format(num);
+          currency: 'USD',
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+          useGrouping: true // Ensures comma separators for thousands
+        });
+        
+        const formatted = formatter.format(num);
+        
+        // Debug logging for development
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Currency formatting: ${amount} -> ${num} -> ${formatted}`);
+        }
+        
+        return formatted;
       },
 
       formatDimensions: (
@@ -230,13 +264,32 @@ export abstract class BaseQuoteTemplate {
     const freightValue = data.price_details?.freight;
     const totalValue = data.price_details?.total;
 
-    const basePrice = this.helpers.formatCurrency(basePriceValue);
-    const freight = this.helpers.formatCurrency(freightValue);
-    const total = this.helpers.formatCurrency(totalValue);
+    // Additional processing to ensure numeric values with better null handling
+    const parsedBasePrice = basePriceValue ? 
+      (typeof basePriceValue === 'string' ? parseFloat(basePriceValue.replace(/[^0-9.-]/g, '')) : basePriceValue) : 0;
+    const parsedFreight = freightValue ? 
+      (typeof freightValue === 'string' ? parseFloat(freightValue.replace(/[^0-9.-]/g, '')) : freightValue) : 0;
+    const parsedTotal = totalValue ? 
+      (typeof totalValue === 'string' ? parseFloat(totalValue.replace(/[^0-9.-]/g, '')) : totalValue) : 0;
 
-    // Debug pricing values to console for troubleshooting
+    const basePrice = this.helpers.formatCurrency(parsedBasePrice);
+    const freight = this.helpers.formatCurrency(parsedFreight);
+    const total = this.helpers.formatCurrency(parsedTotal);
+
+    // Enhanced debug pricing values to console for troubleshooting
     if (process.env.NODE_ENV === 'development') {
-      console.log('Pricing Debug:', { basePriceValue, freightValue, totalValue, basePrice, freight, total });
+      console.log('Pricing Debug:', { 
+        original: { basePriceValue, freightValue, totalValue },
+        parsed: { parsedBasePrice, parsedFreight, parsedTotal },
+        formatted: { basePrice, freight, total }
+      });
+      
+      // Test currency formatting for all digit lengths
+      const testValues = [12.34, 123.45, 1234.56, 12345.67, 123456.78, 1234567.89, 12345678.90];
+      console.log('Currency formatting tests:');
+      testValues.forEach(val => {
+        console.log(`${val} digits -> ${this.helpers.formatCurrency(val)}`);
+      });
     }
 
     return `<div class="pricing-section" style="margin-top: 10px;">
@@ -276,7 +329,7 @@ export abstract class BaseQuoteTemplate {
       <ol>
         <li>1.  All materials are <strong>FOB factory</strong>, prepaid, and added to the final invoice.</li>
         <li>2.  <strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</li>
-        <li>3.  All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate} Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</li>
+        <li>3.  All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate ? wageRate + ' ' : ''}Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</li>
         <li>4.  <strong>Delivery includes drop-off to the Roof</strong> of the site, if applicable.</li>
         <li>5.  Pricing is <strong>exclusive of any applicable taxes</strong>, which will be added as required.</li>
         <li>6.  The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</li>

@@ -311,20 +311,19 @@ export const SmartQuoteEditor: React.FC<SmartQuoteEditorProps> = ({
             <CardTitle>Live Preview</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="border rounded-lg bg-white">
-              <ScrollArea className="h-96">
-                <div
-                  ref={previewRef}
-                  className="p-6"
-                  dangerouslySetInnerHTML={{ __html: previewHTML }}
-                  style={{
-                    fontSize: '12px',
-                    lineHeight: '1.4',
-                    color: '#000',
-                    backgroundColor: '#fff'
-                  }}
-                />
-              </ScrollArea>
+            <div className="border rounded-lg bg-white overflow-auto" style={{ maxHeight: '70vh' }}>
+              <div
+                ref={previewRef}
+                className="p-6"
+                dangerouslySetInnerHTML={{ __html: previewHTML }}
+                style={{
+                  fontSize: '12px',
+                  lineHeight: '1.4',
+                  color: '#000',
+                  backgroundColor: '#fff',
+                  minHeight: '600px'
+                }}
+              />
             </div>
           </CardContent>
         </Card>
