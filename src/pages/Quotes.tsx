@@ -876,22 +876,6 @@ const Quotes = () => {
           </div>
 
           <div className="flex-1 p-6 pt-3 space-y-4 overflow-auto">
-            {/* Page Header */}
-            <div className="flex items-center justify-between animate-fade-in">
-              <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                  Quotes
-                </h1>
-                <p className="text-slate-600 mt-2 text-lg">Manage and track your project quotes</p>
-              </div>
-              {/* <Button 
-                onClick={() => setShowNewQuoteDialog(true)}
-                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-300 hover-scale"
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                New Quote
-              </Button> */}
-            </div>
 
             {/* Compact Revenue Chart */}
             {/* <Card className="animate-fade-in hover:shadow-lg transition-all duration-300"> */}
@@ -944,16 +928,16 @@ const Quotes = () => {
             {/* Search and Filter */}
             <div className="flex flex-col sm:flex-row gap-3 animate-fade-in">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
                 <Input
                   placeholder="Search quotes by client, project, or proposal number..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-white/80 backdrop-blur-sm border-slate-200 shadow-sm h-9"
+                  className="pl-10 bg-white/80 backdrop-blur-sm border-slate-200 shadow-sm h-12"
                 />
               </div>
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-full sm:w-[120px] bg-white/80 backdrop-blur-sm border-slate-200 shadow-sm h-9">
+                <SelectTrigger className="w-full sm:w-[140px] bg-white/80 backdrop-blur-sm border-slate-200 shadow-sm h-12">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -967,7 +951,7 @@ const Quotes = () => {
               </Select>
               <Button 
                 onClick={() => setShowNewQuoteDialog(true)}
-                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-300 hover-scale h-9"
+                className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all duration-300 hover-scale h-12"
               >
                 New Quote
               </Button>
@@ -976,17 +960,26 @@ const Quotes = () => {
             {/* Quotes Table with Pagination */}
             <Card className="animate-fade-in hover:shadow-lg transition-all duration-300 flex-1 flex flex-col min-h-0">
               <CardContent className="p-0 flex-1 flex flex-col min-h-0">
-                <div className="flex-1 overflow-auto">
+                <div className={`flex-1 ${paginatedQuotes.length > 7 ? 'overflow-auto max-h-96' : ''}`}>
                   <Table>
+                    <colgroup>
+                      <col className="w-24" /> {/* Proposal # - Fixed */}
+                      <col /> {/* Project Name - Flexible */}
+                      <col /> {/* Client Name - Flexible */}
+                      <col className="w-20" /> {/* Created - Fixed */}
+                      <col className="w-24" /> {/* Total - Fixed */}
+                      <col className="w-24" /> {/* Status - Fixed */}
+                      <col className="w-16" /> {/* Actions - Fixed */}
+                    </colgroup>
                     <TableHeader className="sticky top-0 bg-white z-10">
-                      <TableRow className="bg-slate-50/50">
-                        <TableHead className="font-semibold">Proposal #</TableHead>
-                        <TableHead className="font-semibold">Project Name</TableHead>
-                        <TableHead className="font-semibold">Client Name</TableHead>
-                        <TableHead className="font-semibold">Created</TableHead>
-                        <TableHead className="font-semibold">Total</TableHead>
-                        <TableHead className="font-semibold">Status</TableHead>
-                        <TableHead className="font-semibold">Actions</TableHead>
+                      <TableRow className="bg-slate-50/50 h-10">
+                        <TableHead className="font-semibold py-2 text-xs">Proposal #</TableHead>
+                        <TableHead className="font-semibold py-2 text-xs">Project Name</TableHead>
+                        <TableHead className="font-semibold py-2 text-xs">Client Name</TableHead>
+                        <TableHead className="font-semibold py-2 text-xs">Created</TableHead>
+                        <TableHead className="font-semibold py-2 text-xs">Total</TableHead>
+                        <TableHead className="font-semibold py-2 text-xs">Status</TableHead>
+                        <TableHead className="font-semibold py-2 text-xs">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -997,26 +990,24 @@ const Quotes = () => {
                         const projectLocation = quote.job_details?.job_location || "";
 
                         return (
-                          <TableRow key={quote.id} className="hover:bg-slate-50/50 transition-colors">
-                            <TableCell className="font-medium">{quote.proposal_number}</TableCell>
-                            <TableCell>
+                          <TableRow key={quote.id} className="hover:bg-slate-50/50 transition-colors h-14">
+                            <TableCell className="font-medium py-2 text-sm">{quote.proposal_number}</TableCell>
+                            <TableCell className="py-2">
                               <div>
-                                <div className="font-medium">{projectName}</div>
-                                <div className="text-sm text-slate-500 break-words max-w-[200px]">{projectLocation}</div>
+                                <div className="font-medium text-sm truncate">{projectName}</div>
+                                <div className="text-xs text-slate-500 truncate">{projectLocation}</div>
                               </div>
                             </TableCell>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">{clientName}</div>
-                              </div>
+                            <TableCell className="py-2">
+                              <div className="font-medium text-sm truncate">{clientName}</div>
                             </TableCell>
-                            <TableCell className="text-slate-600">
-                              {new Date(quote.created_at).toLocaleDateString()}
+                            <TableCell className="text-slate-600 py-2 text-sm">
+                              {new Date(quote.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                             </TableCell>
-                            <TableCell className="font-semibold">{formatCurrency(total)}</TableCell>
-                            <TableCell>
+                            <TableCell className="font-semibold py-2 text-sm">{formatCurrency(total)}</TableCell>
+                            <TableCell className="py-2">
                               <Select value={quote.status || "draft"} onValueChange={(value) => updateQuoteStatus(quote.id, value)}>
-                                <SelectTrigger className={`w-28 h-6 border-0 text-md px-3 ${statusColors[quote.status as keyof typeof statusColors]} [&>svg]:hidden`}>
+                                <SelectTrigger className={`w-22 h-7 border-0 text-xs px-2 ${statusColors[quote.status as keyof typeof statusColors]} [&>svg]:hidden`}>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-background border shadow-lg z-50">
@@ -1028,10 +1019,10 @@ const Quotes = () => {
                                 </SelectContent>
                               </Select>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="py-2">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <Button variant="ghost" className="h-7 w-7 p-0">
                                     <MoreHorizontal className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
@@ -1064,7 +1055,7 @@ const Quotes = () => {
                       })}
                       {paginatedQuotes.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-8 text-slate-500">
+                          <TableCell colSpan={7} className="text-center py-6 text-slate-500 text-sm">
                             {quotes.length === 0 ? "No quotes yet. Create your first quote!" : "No quotes match your search criteria."}
                           </TableCell>
                         </TableRow>
@@ -1075,13 +1066,13 @@ const Quotes = () => {
                 
                 {/* Pagination Controls */}
                 {filteredQuotes.length > 0 && (
-                  <div className="border-t bg-white p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="text-sm text-slate-600">
+                  <div className="border-t bg-white p-2 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="text-xs text-slate-600">
                         Showing {startIndex + 1} to {Math.min(endIndex, filteredQuotes.length)} of {filteredQuotes.length} quotes
                       </div>
                       <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
-                        <SelectTrigger className="w-[80px] bg-white border-slate-200 shadow-sm h-8">
+                        <SelectTrigger className="w-[70px] bg-white border-slate-200 shadow-sm h-7 text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1097,10 +1088,11 @@ const Quotes = () => {
                         size="sm"
                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                         disabled={currentPage === 1}
+                        className="h-7 px-3 text-xs"
                       >
                         Previous
                       </Button>
-                      <span className="text-sm text-slate-600">
+                      <span className="text-xs text-slate-600">
                         Page {currentPage} of {totalPages}
                       </span>
                       <Button
@@ -1108,6 +1100,7 @@ const Quotes = () => {
                         size="sm"
                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                         disabled={currentPage === totalPages}
+                        className="h-7 px-3 text-xs"
                       >
                         Next
                       </Button>

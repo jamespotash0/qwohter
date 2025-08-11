@@ -77,10 +77,11 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
   const handleCreateQuote = async (quoteName: string) => {
     try {
       await createQuote({ quoteName });
-      onEditQuote(quoteName);
       setShowNewQuoteDialog(false);
+      onEditQuote(quoteName);
     } catch (error) {
-      console.error('Error creating quote:', error);
+      // Error is already handled by useQuotes hook with toast
+      setShowNewQuoteDialog(false);
     }
   };
 

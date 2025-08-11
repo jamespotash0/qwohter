@@ -61,25 +61,43 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
       };
     });
 
-    const monthlyData = months.map(({ month, monthIndex, year }) => {
-      const monthQuotes = quotes.filter(q => {
-        const quoteDate = new Date(q.created_at);
-        return quoteDate.getMonth() === monthIndex && quoteDate.getFullYear() === year;
-      });
+    // Pre-process quotes with parsed dates for better performance
+    const quotesWithDates = quotes.map(q => ({
+      ...q,
+      parsedDate: new Date(q.created_at),
+      parsedPrice: parseCurrency(q.price_details?.total || q.price_details?.basePrice || q.price_details?.base_price || 0)
+    }));
 
-      const wonQuotes = monthQuotes.filter(q => q.status === 'Won');
-      const totalValue = wonQuotes.reduce((sum, q) => {
-        const price = q.price_details?.total || q.price_details?.basePrice || q.price_details?.base_price || 0;
-        return sum + parseCurrency(price);
-      }, 0);
+    const monthlyData = months.map(({ month, monthIndex, year }) => {
+      const monthQuotes = quotesWithDates.filter(q => 
+        q.parsedDate.getMonth() === monthIndex && q.parsedDate.getFullYear() === year
+      );
+
+      let wonCount = 0, pendingCount = 0, rejectedCount = 0, totalValue = 0;
+      
+      // Single loop for all calculations
+      monthQuotes.forEach(q => {
+        switch (q.status) {
+          case 'Won':
+            wonCount++;
+            totalValue += q.parsedPrice;
+            break;
+          case 'Pending':
+            pendingCount++;
+            break;
+          case 'Rejected':
+            rejectedCount++;
+            break;
+        }
+      });
 
       return {
         month,
         count: monthQuotes.length,
         value: totalValue,
-        won: wonQuotes.length,
-        pending: monthQuotes.filter(q => q.status === 'Pending').length,
-        rejected: monthQuotes.filter(q => q.status === 'Rejected').length
+        won: wonCount,
+        pending: pendingCount,
+        rejected: rejectedCount
       };
     });
 
@@ -90,25 +108,21 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
       return acc;
     }, {} as Record<string, number>);
 
-    // Monthly Revenue (Won quotes only) vs Total Quoted Amounts
+    // Monthly Revenue (Won quotes only) vs Total Quoted Amounts (Optimized)
     const revenueVsQuotedData = months.map(({ month, monthIndex, year }) => {
-      const monthQuotes = quotes.filter(q => {
-        const quoteDate = new Date(q.created_at);
-        return quoteDate.getMonth() === monthIndex && quoteDate.getFullYear() === year;
+      const monthQuotes = quotesWithDates.filter(q => 
+        q.parsedDate.getMonth() === monthIndex && q.parsedDate.getFullYear() === year
+      );
+
+      let wonRevenue = 0, totalQuotedAmount = 0;
+      
+      // Single loop for both calculations
+      monthQuotes.forEach(q => {
+        totalQuotedAmount += q.parsedPrice;
+        if (q.status === 'Won') {
+          wonRevenue += q.parsedPrice;
+        }
       });
-
-      // Won quotes revenue (actual revenue)
-      const wonQuotes = monthQuotes.filter(q => q.status === 'Won');
-      const wonRevenue = wonQuotes.reduce((sum, q) => {
-        const price = q.price_details?.total || q.price_details?.basePrice || q.price_details?.base_price || 0;
-        return sum + parseCurrency(price);
-      }, 0);
-
-      // Total quoted amounts (potential revenue)
-      const totalQuotedAmount = monthQuotes.reduce((sum, q) => {
-        const price = q.price_details?.total || q.price_details?.basePrice || q.price_details?.base_price || 0;
-        return sum + parseCurrency(price);
-      }, 0);
 
       return {
         month,
@@ -184,8 +198,8 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
   };
 
 
-  // Quote Volume Multi-Bar Chart
-  const volumeData = {
+  // Quote Volume Multi-Bar Chart (Memoized)
+  const volumeData = useMemo(() => ({
     labels: chartData.monthlyData.map(d => d.month),
     datasets: [
       {
@@ -207,16 +221,17 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
         borderSkipped: false,
       },
     ],
-  };
+  }), [chartData.monthlyData]);
 
-  // Status Doughnut Chart
-  const statusLabels = Object.keys(chartData.statusCounts);
-  const statusValues = Object.values(chartData.statusCounts);
-  const statusData = {
-    labels: statusLabels,
-    datasets: [
-      {
-        data: statusValues,
+  // Status Doughnut Chart (Memoized)
+  const statusData = useMemo(() => {
+    const statusLabels = Object.keys(chartData.statusCounts);
+    const statusValues = Object.values(chartData.statusCounts);
+    return {
+      labels: statusLabels,
+      datasets: [
+        {
+          data: statusValues,
         backgroundColor: [
           'rgba(99, 102, 241, 0.9)',   // Primary
           'rgba(16, 185, 129, 0.9)',   // Green  
@@ -234,29 +249,22 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
         borderWidth: 3,
         hoverBorderWidth: 4,
         hoverOffset: 8,
-      },
-    ],
-  };
+        },
+      ],
+    };
+  }, [chartData.statusCounts]);
 
 
-  // Dual Line Chart - Revenue vs Quoted Amounts
-  const revenueVsQuotedData = {
+
+  // Dual Line Chart - Revenue vs Quoted Amounts (Optimized)
+  const revenueVsQuotedData = useMemo(() => ({
     labels: chartData.monthlyData.map(d => d.month),
     datasets: [
       {
         label: 'Revenue (Quotes Won)',
         data: chartData.revenueVsQuotedData.map(d => d.wonRevenue),
         borderColor: 'rgb(16, 185, 129)',
-        backgroundColor: (context: any) => {
-          if (!context.chart.chartArea) {
-            return;
-          }
-          const { ctx, chartArea: { top, bottom } } = context.chart;
-          const gradient = ctx.createLinearGradient(0, top, 0, bottom);
-          gradient.addColorStop(0, 'rgba(16, 185, 129, 0.1)');
-          gradient.addColorStop(1, 'rgba(16, 185, 129, 0.01)');
-          return gradient;
-        },
+        backgroundColor: 'rgba(16, 185, 129, 0.1)', // Solid color for better performance
         borderWidth: 3,
         fill: true,
         tension: 0.4,
@@ -270,16 +278,7 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
         label: 'Total Quoted Amount (Potential)',
         data: chartData.revenueVsQuotedData.map(d => d.totalQuotedAmount),
         borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: (context: any) => {
-          if (!context.chart.chartArea) {
-            return;
-          }
-          const { ctx, chartArea: { top, bottom } } = context.chart;
-          const gradient = ctx.createLinearGradient(0, top, 0, bottom);
-          gradient.addColorStop(0, 'rgba(59, 130, 246, 0.05)');
-          gradient.addColorStop(1, 'rgba(59, 130, 246, 0.01)');
-          return gradient;
-        },
+        backgroundColor: 'rgba(59, 130, 246, 0.05)', // Solid color for better performance
         borderWidth: 3,
         fill: true,
         tension: 0.4,
@@ -290,7 +289,7 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
         pointHoverRadius: 8,
       },
     ],
-  };
+  }), [chartData.monthlyData, chartData.revenueVsQuotedData]);
 
   const doughnutOptions = {
     responsive: true,
@@ -327,8 +326,8 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
     },
   };
 
-  // Stock Market Style Chart Options for Revenue Charts
-  const stockMarketOptions = {
+  // Stock Market Style Chart Options for Revenue Charts (Memoized)
+  const stockMarketOptions = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
     interaction: {
@@ -403,14 +402,14 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
         },
       },
     },
-  };
+  }), []);
 
   return (
     <div className="space-y-8">
       {/* Main Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Quote Volume */}
-        <Card className="bg-gradient-to-br from-emerald-50 to-white border-emerald-200 shadow-xl hover:shadow-2xl transition-all duration-500">
+        <Card className="bg-gradient-to-br from-emerald-50 to-white border-emerald-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -447,7 +446,7 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
         </Card>
 
         {/* Status Distribution */}
-        <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-200 shadow-xl hover:shadow-2xl transition-all duration-500">
+        <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -468,7 +467,7 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
       </div>
 
       {/* Revenue vs Quoted Amounts Comparison */}
-      <Card className="bg-gradient-to-br from-indigo-50 to-white border-indigo-200 shadow-xl hover:shadow-2xl transition-all duration-500">
+      <Card className="bg-gradient-to-br from-indigo-50 to-white border-indigo-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">

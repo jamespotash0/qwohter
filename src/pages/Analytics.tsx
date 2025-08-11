@@ -115,7 +115,7 @@ const Analytics = () => {
 
             {/* Key Metrics Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
-              <Card className="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 border-0 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105 group">
+              <Card className="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 border-0 shadow-2xl hover:shadow-3xl transition-shadow duration-300 group">
                 <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
                 <CardContent className="relative p-6 text-white">
                   <div className="flex items-center justify-between">
@@ -134,7 +134,7 @@ const Analytics = () => {
                 </CardContent>
               </Card>
 
-              <Card className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 border-0 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105 group">
+              <Card className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 border-0 shadow-2xl hover:shadow-3xl transition-shadow duration-300 group">
                 <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
                 <CardContent className="relative p-6 text-white">
                   <div className="flex items-center justify-between">
@@ -153,7 +153,7 @@ const Analytics = () => {
                 </CardContent>
               </Card>
 
-              <Card className="relative overflow-hidden bg-gradient-to-br from-purple-500 to-purple-600 border-0 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105 group">
+              <Card className="relative overflow-hidden bg-gradient-to-br from-purple-500 to-purple-600 border-0 shadow-2xl hover:shadow-3xl transition-shadow duration-300 group">
                 <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
                 <CardContent className="relative p-6 text-white">
                   <div className="flex items-center justify-between">
@@ -172,7 +172,7 @@ const Analytics = () => {
                 </CardContent>
               </Card>
 
-              <Card className="relative overflow-hidden bg-gradient-to-br from-amber-500 to-orange-500 border-0 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105 group">
+              <Card className="relative overflow-hidden bg-gradient-to-br from-amber-500 to-orange-500 border-0 shadow-2xl hover:shadow-3xl transition-shadow duration-300 group">
                 <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
                 <CardContent className="relative p-6 text-white">
                   <div className="flex items-center justify-between">
