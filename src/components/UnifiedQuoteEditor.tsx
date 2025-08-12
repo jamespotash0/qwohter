@@ -86,9 +86,9 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         let className: string;
         if (sectionId === 'proposal-intro') {
           className = 'proposal-intro';
-        } else if (sectionId === 'pocket-doors-section') {
+        } else if (sectionId === 'pocket-doors') {
           className = 'pocket-doors-section';
-        } else if (sectionId === 'panel-doors-section') {
+        } else if (sectionId === 'panel-doors') {
           className = 'panel-doors-section';
         } else {
           // Standard pattern: sectionId + '-section'
@@ -401,6 +401,8 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
           onSectionClick={(sectionId, sectionData) => {
+            console.log('UnifiedQuoteEditor: onSectionClick called with:', sectionId, sectionData);
+            console.log('UnifiedQuoteEditor: Setting selectedSection to:', sectionData);
             setSelectedSection(sectionData);
           }}
         />

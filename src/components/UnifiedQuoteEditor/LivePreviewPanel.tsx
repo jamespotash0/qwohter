@@ -101,6 +101,7 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
     if (!onSectionClick) return;
 
     const target = event.target as HTMLElement;
+    console.log('LivePreviewPanel: Section clicked', target, target.className);
     
     // Find the closest section element or special clickable sections
     let sectionElement = target.closest('[class*="-section"]');
@@ -110,7 +111,11 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
     if (!sectionElement) {
       // Check for special clickable sections
       sectionElement = target.closest('.proposal-intro') || target.closest('.pocket-doors-section') || target.closest('.panel-doors-section');
-      if (!sectionElement) return;
+      console.log('LivePreviewPanel: Special section element found:', sectionElement);
+      if (!sectionElement) {
+        console.log('LivePreviewPanel: No section element found');
+        return;
+      }
       
       // Extract section ID from class name
       if (sectionElement.classList.contains('proposal-intro')) {
@@ -120,13 +125,29 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
       } else if (sectionElement.classList.contains('panel-doors-section')) {
         sectionId = 'panel-doors-section';
       } else {
+        console.log('LivePreviewPanel: Unknown special section type');
         return;
       }
+      console.log('LivePreviewPanel: Special section ID:', sectionId);
     } else {
       const className = sectionElement.className;
-      sectionMatch = className.match(/(\w+)-section/);
-      if (!sectionMatch) return;
-      sectionId = sectionMatch[1];
+      console.log('LivePreviewPanel: Element className:', className);
+      
+      // Find the class that ends with -section
+      const classes = className.split(' ');
+      const sectionClass = classes.find(cls => cls.endsWith('-section'));
+      console.log('LivePreviewPanel: Section class found:', sectionClass);
+      
+      if (!sectionClass) return;
+      
+      // For special multi-word sections, use the full class name
+      if (sectionClass === 'pocket-doors-section' || sectionClass === 'panel-doors-section') {
+        sectionId = sectionClass;
+      } else {
+        // For normal sections, extract the base name (remove -section suffix)
+        sectionId = sectionClass.replace('-section', '');
+      }
+      console.log('LivePreviewPanel: Final section ID:', sectionId);
     }
     
     // Skip read-only sections and billing/job info sections
@@ -137,8 +158,10 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
 
     // Find section data or create mock data for special sections
     let sectionData = sections.find(s => s.id === sectionId);
+    console.log('LivePreviewPanel: Found section data in sections array:', sectionData);
     
     if (!sectionData) {
+      console.log('LivePreviewPanel: Creating mock section data for:', sectionId);
       // Create mock section data for special clickable sections
       if (sectionId === 'proposal-intro') {
         const content = sectionElement?.outerHTML || '';
@@ -152,7 +175,7 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
       } else if (sectionId === 'pocket-doors-section') {
         const content = sectionElement?.outerHTML || '';
         sectionData = {
-          id: 'pocket-doors-section',
+          id: 'pocket-doors',
           title: 'Pocket Doors',
           content: content,
           isVisible: true,
@@ -161,20 +184,23 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
       } else if (sectionId === 'panel-doors-section') {
         const content = sectionElement?.outerHTML || '';
         sectionData = {
-          id: 'panel-doors-section',
+          id: 'panel-doors',
           title: 'Panel Doors',
           content: content,
           isVisible: true,
           isRequired: false
         };
       } else {
+        console.log('LivePreviewPanel: No mock data handler for section:', sectionId);
         return;
       }
+      console.log('LivePreviewPanel: Created mock section data:', sectionData);
     }
 
     event.preventDefault();
     event.stopPropagation();
     
+    console.log('LivePreviewPanel: Calling onSectionClick with:', sectionId, sectionData);
     onSectionClick(sectionId, sectionData);
   }, [onSectionClick, sections]);
 
