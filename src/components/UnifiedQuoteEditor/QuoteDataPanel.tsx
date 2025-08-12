@@ -1914,58 +1914,6 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
           </div>
         </div>
       </CollapsibleSection>
-
-      {/* General Notes and Terms */}
-      <CollapsibleSection
-        title="General Notes and Terms"
-        icon={<FileText className="w-4 h-4 text-gray-500" />}
-        isOpen={openSections.notes}
-        onToggle={() => toggleSection('notes')}
-      >
-        <div className="space-y-3">
-          <div>
-            <Label htmlFor="generalNotes" className="text-xs font-medium text-gray-600">
-              General Notes
-            </Label>
-            <Textarea
-              id="generalNotes"
-              value={data.quote_details?.generalNotes || ''}
-              onChange={(e) => handleFieldChange('quote_details', 'generalNotes', e.target.value)}
-              placeholder="Add any general notes or special instructions..."
-              className="text-sm resize-none"
-              rows={4}
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="terms" className="text-xs font-medium text-gray-600">
-              Terms and Conditions
-            </Label>
-            <Textarea
-              id="terms"
-              value={data.quote_details?.terms || ''}
-              onChange={(e) => handleFieldChange('quote_details', 'terms', e.target.value)}
-              placeholder="Add specific terms and conditions for this quote..."
-              className="text-sm resize-none"
-              rows={4}
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="warranty" className="text-xs font-medium text-gray-600">
-              Warranty Information
-            </Label>
-            <Textarea
-              id="warranty"
-              value={data.quote_details?.warranty || ''}
-              onChange={(e) => handleFieldChange('quote_details', 'warranty', e.target.value)}
-              placeholder="Add warranty terms and coverage details..."
-              className="text-sm resize-none"
-              rows={3}
-            />
-          </div>
-        </div>
-      </CollapsibleSection>
     </div>
   );
 };

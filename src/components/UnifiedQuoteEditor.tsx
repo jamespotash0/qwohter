@@ -122,13 +122,38 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         setIsLoading(true);
         
         const baseHTML = syncEngine.generateBaseHTML(quote);
-        const previewHTML = baseHTML; // No overrides initially
+        let previewHTML = baseHTML;
+        let sectionOverrides = new Map<string, string>();
+        
+        // Load existing customizations if they exist
+        if (quote.customization?.customSections) {
+          const customSections = quote.customization.customSections;
+          
+          // Convert custom sections to section overrides
+          customSections.forEach(section => {
+            if (section.content && section.isVisible) {
+              // Extract the inner content from the section (remove the wrapper div)
+              const innerContent = section.content
+                .replace(/<div class="[^"]*-section"[^>]*>/, '')
+                .replace(/<\/div>$/, '')
+                .trim();
+              
+              sectionOverrides.set(section.id, innerContent);
+            }
+          });
+          
+          // Apply the overrides to generate the preview
+          if (sectionOverrides.size > 0) {
+            previewHTML = syncEngine.applySectionOverrides(baseHTML, sectionOverrides);
+          }
+        }
         
         setState(prev => ({
           ...prev,
           rawData: quote,
           generatedHTML: baseHTML,
           previewHTML,
+          sectionOverrides,
           isDirty: false
         }));
         
@@ -401,8 +426,6 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
           onSectionClick={(sectionId, sectionData) => {
-            console.log('UnifiedQuoteEditor: onSectionClick called with:', sectionId, sectionData);
-            console.log('UnifiedQuoteEditor: Setting selectedSection to:', sectionData);
             setSelectedSection(sectionData);
           }}
         />

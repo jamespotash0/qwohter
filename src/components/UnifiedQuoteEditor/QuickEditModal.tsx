@@ -38,15 +38,12 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
 
   // Initialize content when section changes
   useEffect(() => {
-    console.log('QuickEditModal: useEffect called with section:', section, 'isOpen:', isOpen);
     if (section && isOpen) {
-      console.log('QuickEditModal: Processing section content:', section.content);
       // Extract clean content from section
       const cleanHTML = section.content
         .replace(/<div class=\"[^\"]*-section\"[^>]*>/, '')
         .replace(/<\/div>$/, '')
         .trim();
-      console.log('QuickEditModal: Cleaned HTML:', cleanHTML);
       
       setRichEditingContent(cleanHTML);
       
@@ -252,7 +249,7 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
                 <div
                   ref={richEditorRef}
                   contentEditable
-                  className="w-full min-h-64 p-4 border-2 rounded-lg bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-200 outline-none"
+                  className="w-full min-h-80 max-h-96 p-4 border-2 rounded-lg bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-200 outline-none overflow-y-auto"
                   style={{
                     fontFamily: '"Times New Roman", Times, serif',
                     fontSize: '14px',
