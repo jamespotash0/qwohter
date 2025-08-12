@@ -202,9 +202,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
 
   // Helper function to update wall field
   const handleWallFieldChange = (wallName: string, field: string, value: any) => {
-    console.log('handleWallFieldChange called:', { wallName, field, value });
     const currentWall = data.wall_details?.walls?.[wallName] || {};
-    console.log('Current wall before update:', currentWall);
     
     // Ensure all Glass Wall fields exist for proper dropdown functionality
     const wallWithDefaults = {
@@ -265,8 +263,6 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
       }
     };
     
-    console.log('Final wall with defaults:', wallWithDefaults);
-    console.log('Updated walls object:', updatedWalls);
     onChange('wall_details', updatedWalls);
   };
 
@@ -1056,8 +1052,6 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         key={`${wallName}-glasswallModel-${wall.glasswallModel}`}
                         value={wall.glasswallModel || ''}
                         onValueChange={(value) => {
-                          console.log('Glass Wall Model selected:', value, 'for wall:', wallName);
-                          console.log('Current wall data:', wall);
                           handleWallFieldChange(wallName, 'glasswallModel', value);
                           // Reset dependent fields
                           handleWallFieldChange(wallName, 'glasswallPanelConfiguration', '');

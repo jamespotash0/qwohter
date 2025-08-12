@@ -82,8 +82,21 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       let result = baseHTML;
       
       overrides.forEach((content, sectionId) => {
+        // Handle special sections that don't follow the standard pattern
+        let className: string;
+        if (sectionId === 'proposal-intro') {
+          className = 'proposal-intro';
+        } else if (sectionId === 'pocket-doors-section') {
+          className = 'pocket-doors-section';
+        } else if (sectionId === 'panel-doors-section') {
+          className = 'panel-doors-section';
+        } else {
+          // Standard pattern: sectionId + '-section'
+          className = `${sectionId}-section`;
+        }
+        
         const sectionPattern = new RegExp(
-          `(<div class="${sectionId}-section"[^>]*>)[\\s\\S]*?(<\\/div>)`,
+          `(<div class="${className}"[^>]*>)[\\s\\S]*?(<\\/div>)`,
           'g'
         );
         

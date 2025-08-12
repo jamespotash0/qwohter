@@ -115,17 +115,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     return `<div class="panels-section" style="line-height: 1.15;">
       <h2 class="section-header">PANELS:</h2>
       <p>${panelsSectionContent}</p>
-    </div>
-    
-    ${SmartQuoteHelper.conditionalText(
-      SmartQuoteHelper.hasValue(firstWall.passDoorPanels),
-      `<div class="panel-doors-section" style="line-height: 1.15; margin-top: 20px;">
-        <h2 class="section-header">PANEL DOORS:</h2>
-        <p>
-          A <strong>${firstWall.passDoorPanels}</strong> pass door panel is incorporated to allow for convenient access without disrupting the overall wall system.
-        </p>
-      </div>`
-    )}`;
+    </div>`;
   }
 
   generateTrackSection(data: QuoteData): string {
@@ -173,6 +163,15 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     // Base strategy for operable walls
     if (wallCount >= 3) {
       strategy.push({ breakAfterSection: 'panels-section', minimumHeight: 200 });
+    }
+
+    // Check for panel doors section  
+    const walls = data.wall_details?.walls || {};
+    const wallEntries = Object.entries(walls);
+    const firstWall = wallEntries[0]?.[1];
+    
+    if (firstWall?.passDoorPanels) {
+      strategy.push({ breakAfterSection: 'panel-doors-section', minimumHeight: 100 });
     }
 
     if (data.pocket_doors?.foldType) {

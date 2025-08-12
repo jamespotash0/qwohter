@@ -652,7 +652,7 @@ export const GoogleDocsSmartEditor: React.FC<GoogleDocsSmartEditorProps> = ({
                     <span className="text-sm text-gray-600">Rich Text Mode</span>
                     <Checkbox
                       checked={isRichTextMode}
-                      onCheckedChange={setIsRichTextMode}
+                      onCheckedChange={(checked) => setIsRichTextMode(checked === true)}
                       className="data-[state=checked]:bg-blue-500 data-[state=checked]:border-blue-500"
                     />
                   </div>

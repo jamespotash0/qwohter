@@ -53,16 +53,7 @@ export class AccordionWallTemplate extends BaseQuoteTemplate {
         This wall system utilizes the Kwik-Wall <strong>${firstWall.series || ''} Series Model ${firstWall.model || ''}</strong> configured with <strong>${firstWall.panelConfiguration || ''}</strong> designed for use with a <strong>${firstWall.trackType || ''} Layout</strong>, and includes ${this.helpers.isGLModel(firstWall.model) ? 'GL insulated' : 'non-GL insulated'} for enhanced acoustic performance.
         <br><br>The wall(s) consists of <strong>${this.helpers.getPanelConfigurationText(firstWall.panelCount)} ${firstWall.panelConfiguration || ''}</strong>, finished in an <strong>${firstWall.panelFinishCategory || ''}</strong> (as selected from the manufacturer's standard offerings). The wall stands <strong>${this.helpers.formatDimensions('0', '0', firstWall.heightFeet, firstWall.heightInches, false).split(' x ')[1]}</strong> in height, with panel lengths varying as needed. Each panel features a <strong>${firstWall.panelDesign || ''} </strong> design and is nominally <strong>${firstWall.panelThickness || ''}"</strong> thick, constructed with a 1/2" gypsum board laminated to a <strong>${firstWall.panelSkin}</strong>. The panels will be suspended from a <strong>${firstWall.trackSystem || ''}</strong> overhead track system, allowing for smooth and efficient movement. Acoustic performance is enhanced through <strong>${firstWall.verticalSeals || ''}</strong> vertical seals that create a continuous interlock, <strong>${firstWall.bottomSeals || ''}</strong> operable bottom seals, and <strong>${firstWall.topSeals}</strong> top seals. Adjustable seals are set at the time of installation and operable/retractable seals are user-adjustable for virtually effortless movement. The lead panel provides the initial closure using a <strong>${firstWall.initialClosureSystem || ''}</strong>, and the end panel uses a <strong>${firstWall.endPanelType || ''}</strong>, securing the system when fully deployed.
       </p>
-    </div>
-    
-    ${firstWall.passDoorPanels ? `
-    <div class="panel-doors-section" style="line-height: 1.15; margin-top: 20px;">
-      <h2 class="section-header">PANEL DOORS:</h2>
-      <p>
-        A <strong>${firstWall.passDoorPanels || ''}</strong> pass door panel is incorporated to allow for convenient access without disrupting the overall wall system.
-      </p>
-    </div>
-    ` : ''}`;
+    </div>`;
   }
 
   generateTrackSection(data: QuoteData): string {
@@ -110,6 +101,15 @@ export class AccordionWallTemplate extends BaseQuoteTemplate {
     // Base strategy for operable walls
     if (wallCount >= 3) {
       strategy.push({ breakAfterSection: 'panels-section', minimumHeight: 200 });
+    }
+
+    // Check for panel doors section  
+    const walls = data.wall_details?.walls || {};
+    const wallEntries = Object.entries(walls);
+    const firstWall = wallEntries[0]?.[1];
+    
+    if (firstWall?.passDoorPanels) {
+      strategy.push({ breakAfterSection: 'panel-doors-section', minimumHeight: 100 });
     }
 
     if (data.pocket_doors?.foldType) {

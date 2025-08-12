@@ -131,19 +131,40 @@ const Quotes = () => {
 
   const handleUnifiedQuoteSave = async (customizedQuote: SmartQuoteData) => {
     try {
-      if (editingQuote && customizedQuote.customSections) {
-        await saveQuoteCustomization(editingQuote.id, {
-          customSections: customizedQuote.customSections,
-          customHTML: customizedQuote.customHTML,
-          isCustomized: customizedQuote.isCustomized || true,
-          lastModified: new Date(),
-          version: 1
-        });
+      if (editingQuote) {
+        // First, save the form data changes to the main quote data
+        const { customSections, customHTML, isCustomized, ...formDataUpdates } = customizedQuote;
+        
+        // Ensure wall_details has required id field if it exists
+        const updates: Partial<Quote> = {
+          ...formDataUpdates,
+          ...(formDataUpdates.wall_details && {
+            wall_details: {
+              id: formDataUpdates.wall_details.id || editingQuote.wall_details?.id || '',
+              walls: formDataUpdates.wall_details.walls || {}
+            }
+          })
+        };
+        
+        // Update the main quote data with form changes
+        await updateQuote(editingQuote.id, updates);
+        
+        // Then, save customizations if they exist
+        if (customSections) {
+          await saveQuoteCustomization(editingQuote.id, {
+            customSections: customSections,
+            customHTML: customHTML,
+            isCustomized: isCustomized || true,
+            lastModified: new Date(),
+            version: 1
+          });
+        }
+        
         setEditingQuote(null);
         refreshQuotes();
       }
     } catch (error) {
-      // Error handling is done in saveQuoteCustomization
+      // Error handling is done in updateQuote and saveQuoteCustomization
     }
   };
 

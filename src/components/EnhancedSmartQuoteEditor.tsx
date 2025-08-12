@@ -306,7 +306,7 @@ export const EnhancedSmartQuoteEditor: React.FC<EnhancedSmartQuoteEditorProps> =
                         <div className="flex items-center gap-2">
                           <Checkbox
                             checked={section.isVisible}
-                            onCheckedChange={(checked) => toggleSection(section.id, checked as boolean)}
+                            onCheckedChange={(checked) => toggleSection(section.id, checked === true)}
                             disabled={section.isRequired}
                             className="data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
                             onClick={(e) => e.stopPropagation()}
@@ -402,7 +402,7 @@ export const EnhancedSmartQuoteEditor: React.FC<EnhancedSmartQuoteEditorProps> =
                   <Checkbox
                     id="textEditToggle"
                     checked={textEditingEnabled}
-                    onCheckedChange={setTextEditingEnabled}
+                    onCheckedChange={(checked) => setTextEditingEnabled(checked === true)}
                     className="data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
                   />
                 </div>

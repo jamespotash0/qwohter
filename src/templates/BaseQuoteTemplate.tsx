@@ -380,6 +380,12 @@ export abstract class BaseQuoteTemplate {
       ${this.generateWallTable(data)}
       ${this.generatePanelsSection(data)}`;
 
+    // Add panel doors section if it has content
+    const panelDoorsSection = this.generatePanelDoorsSection(data);
+    if (panelDoorsSection) {
+      html += panelDoorsSection;
+    }
+
     // Add conditional sections with page breaks
     if (data.pocket_doors?.foldType && data.pocket_doors?.foldStyle) {
       html += this.generatePocketDoorsSection(data);
@@ -411,6 +417,21 @@ export abstract class BaseQuoteTemplate {
       <p>
         <strong>${pocketFoldType}</strong> doors with an <strong>${pocketFoldStyle}</strong> style will be used to house the panels in the stack, offering a space-efficient and acoustically enhanced storage solution.
       </p>  
+    </div>`;
+  }
+
+  protected generatePanelDoorsSection(data: QuoteData): string {
+    const walls = data.wall_details?.walls || {};
+    const wallEntries = Object.entries(walls);
+    const firstWall = wallEntries[0]?.[1];
+    
+    if (!firstWall?.passDoorPanels) return '';
+
+    return `<div class="panel-doors-section" style="line-height: 1.15;">
+      <h2 class="section-header">PANEL DOORS:</h2>
+      <p>
+        A <strong>${firstWall.passDoorPanels}</strong> pass door panel is incorporated to allow for convenient access without disrupting the overall wall system.
+      </p>
     </div>`;
   }
 
