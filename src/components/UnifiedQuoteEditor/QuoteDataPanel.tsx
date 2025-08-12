@@ -1045,9 +1045,9 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                   <>
                     <div className="space-y-2">
                       <Label>Glass Wall Model</Label>
-                      <div className="text-xs text-gray-500 mb-1">
+                      {/* <div className="text-xs text-gray-500 mb-1">
                         Current value: "{wall.glasswallModel || 'empty'}"
-                      </div>
+                      </div> */}
                       <Select
                         key={`${wallName}-glasswallModel-${wall.glasswallModel}`}
                         value={wall.glasswallModel || ''}
@@ -1071,7 +1071,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Glass Wall Panel Configuration</Label>
+                      <Label>Panel Configuration</Label>
                       <Select
                         value={wall.glasswallPanelConfiguration || ''}
                         onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallPanelConfiguration', value)}
@@ -1115,7 +1115,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Glass Wall Operation</Label>
+                      <Label>Operation</Label>
                       <Select
                         value={wall.glasswallOperation || ''}
                         onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallOperation', value)}
@@ -1139,8 +1139,8 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Glass Wall Panel Face</Label>
+                    {/* <div className="space-y-2">
+                      <Label>Panel Face</Label>
                       <Select
                         value={wall.glasswallPanelFace || ''}
                         onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallPanelFace', value)}
@@ -1155,9 +1155,9 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                           <SelectItem className="text-left" value="Low-E Glass">Low-E Glass</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Glass Wall Frame Finish</Label>
+                    </div> */}
+                    {/* <div className="space-y-2">
+                      <Label>Frame Finish Options</Label>
                       <Select
                         value={wall.glasswallFrameFinish || ''}
                         onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallFrameFinish', value)}
@@ -1171,21 +1171,82 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                           <SelectItem className="text-left" value="Stainless Steel">Stainless Steel</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
+                    </div> */}
                     <div className="space-y-2">
-                      <Label>Glass Wall STC Rating</Label>
+                      <Label>STC Rating</Label>
                       <Select
                         value={wall.glasswallSTCRating || ''}
                         onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallSTCRating', value)}
+                        disabled={!wall.glasswallModel}
                       >
                         <SelectTrigger className="text-xs h-8">
-                          <SelectValue placeholder="Select STC" />
+                          <SelectValue placeholder={wall.glasswallModel ? "Select STC" : "Select model first"} />
                         </SelectTrigger>
                         <SelectContent className="text-left">
-                          <SelectItem className="text-left" value="35">35</SelectItem>
-                          <SelectItem className="text-left" value="40">40</SelectItem>
-                          <SelectItem className="text-left" value="45">45</SelectItem>
-                          <SelectItem className="text-left" value="50">50</SelectItem>
+                          {wall.glasswallModel === "Stella" && (
+                            <>
+                              <SelectItem className="text-left" value="44">44</SelectItem>
+                              <SelectItem className="text-left" value="50">50</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Luna" && (
+                            <SelectItem className="text-left" value="43">43</SelectItem>
+                          )}
+                          {wall.glasswallModel === "Illona" && (
+                            <SelectItem className="text-left" value="33">33</SelectItem>
+                          )}
+                          {(wall.glasswallModel === "Ava" || wall.glasswallModel === "Mata") && (
+                            <SelectItem className="text-left" value="Non-Acoustic">Non-Acoustic</SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Glass Type</Label>
+                      <Select
+                        value={wall.glasswallGlassType || ''}
+                        onValueChange={(value) => handleWallFieldChange(wallName, 'glasswallGlassType', value)}
+                        disabled={!wall.glasswallModel}
+                      >
+                        <SelectTrigger className="text-xs h-8">
+                          <SelectValue placeholder={wall.glasswallModel ? "Select glass type" : "Select model first"} />
+                        </SelectTrigger>
+                        <SelectContent className="text-left">
+                          {wall.glasswallModel === "Stella" && (
+                            <>
+                              <SelectItem className="text-left" value="Tempered Glass">Tempered Glass</SelectItem>
+                              <SelectItem className="text-left" value="Laminated Glass">Laminated Glass</SelectItem>
+                              <SelectItem className="text-left" value="Switchable Glass">Switchable Glass</SelectItem>
+                              <SelectItem className="text-left" value="Child-Safe Glass">Child-Safe Glass</SelectItem>
+                              <SelectItem className="text-left" value="Fully Back-Painted Glass">Fully Back-Painted Glass</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Luna" && (
+                            <>
+                              <SelectItem className="text-left" value="Tempered Glass">Tempered Glass</SelectItem>
+                              <SelectItem className="text-left" value="Laminated Glass">Laminated Glass</SelectItem>
+                              <SelectItem className="text-left" value="Switchable Glass">Switchable Glass</SelectItem>
+                              <SelectItem className="text-left" value="Child-Safe Glass">Child-Safe Glass</SelectItem>
+                              <SelectItem className="text-left" value="Fully Back-Painted Glass">Fully Back-Painted Glass</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Illona" && (
+                            <>
+                              <SelectItem className="text-left" value="Tempered Glass">Tempered Glass</SelectItem>
+                              <SelectItem className="text-left" value="Laminated Glass">Laminated Glass</SelectItem>
+                              <SelectItem className="text-left" value="Back-Painted Glass">Back-Painted Glass</SelectItem>
+                            </>
+                          )}
+                          {wall.glasswallModel === "Ava" && (
+                            <SelectItem className="text-left" value="1/2&quot; Tempered Glass">1/2" Tempered Glass</SelectItem>
+                          )}
+                          {wall.glasswallModel === "Mata" && (
+                            <>
+                              <SelectItem className="text-left" value="1/4&quot; Tempered Glass">1/4" Tempered Glass</SelectItem>
+                              <SelectItem className="text-left" value="5/16&quot; Frosted Laminated Glass">5/16" Frosted Laminated Glass</SelectItem>
+                              <SelectItem className="text-left" value="Custom Glass Options">Custom Glass Options</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>

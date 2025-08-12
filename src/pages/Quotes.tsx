@@ -174,19 +174,9 @@ const Quotes = () => {
     try {
       const quoteName = editingQuote.project_name || editingQuote.proposal_number || 'quote';
       
-      // Apply dynamic page breaks to the HTML content
-      const { PageBreakManager } = await import('@/utils/pageBreakManager');
-      const manager = new PageBreakManager();
-      let pagedHTML = manager.processHTMLContent(html);
-      
-      // If no page structure was created, force create a single page wrapper
-      if (!pagedHTML.includes('class="page"')) {
-        pagedHTML = `<div class="page" data-page="1"><div class="page-content">${html}</div></div>`;
-      }
-      
-      // Create temp div with exactly the same styling as standard PDF download
+      // Use simple approach without page breaks for unified editor download
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = pagedHTML;
+      tempDiv.innerHTML = html;
       tempDiv.style.cssText = `
         font-family: "Times New Roman", serif;
         font-size: 12pt;
@@ -390,133 +380,54 @@ const Quotes = () => {
       document.body.appendChild(tempDiv);
 
       try {
-        // Use the exact same rendering logic as standard downloadPDF
+        // Use simple single-canvas approach for unified editor download
         const html2canvas = (await import('html2canvas')).default;
         
-        // Check if content has page structure
-        const pageElements = tempDiv.querySelectorAll('.page');
-        
-        if (pageElements.length > 0) {
-          // Handle multi-page content
-          const pdf = new jsPDF('p', 'mm', 'a4');
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = pdf.internal.pageSize.getHeight();
-          
-          for (let i = 0; i < pageElements.length; i++) {
-            const pageElement = pageElements[i] as HTMLElement;
-            
-            const canvas = await html2canvas(pageElement, {
-              scale: 2,
-              useCORS: true,
-              backgroundColor: '#ffffff',
-              width: 816, // 8.5 inches at 96 DPI
-              height: 1056 // 11 inches at 96 DPI
-            });
+        const canvas = await html2canvas(tempDiv, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          width: tempDiv.scrollWidth,
+          height: tempDiv.scrollHeight,
+          allowTaint: true,
+          foreignObjectRendering: true
+        });
 
-            const imgData = canvas.toDataURL('image/png');
-            const imgWidth = pdfWidth - 20;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pdfWidth - 20;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-            if (i > 0) {
-              pdf.addPage();
-            }
+        // If content is too tall for one page, split across multiple pages
+        if (imgHeight > pdfHeight - 20) {
+          const totalPages = Math.ceil(imgHeight / (pdfHeight - 20));
+          for (let page = 0; page < totalPages; page++) {
+            if (page > 0) pdf.addPage();
             
-            pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pdfHeight - 20));
+            const yPosition = -(page * (pdfHeight - 20));
+            pdf.addImage(imgData, 'PNG', 10, yPosition + 10, imgWidth, imgHeight);
           }
-          
-          // Use consistent naming with version tracking
-          const currentVersion = editingQuote.version || 1;
-          const today = new Date();
-          const dateStr = today.toLocaleDateString('en-CA');
-          
-          const fileName = `${quoteName}_v${currentVersion}_${dateStr}_customized.pdf`;
-          pdf.save(fileName);
         } else {
-          // Single page fallback (same as standard)
-          const canvas = await html2canvas(tempDiv, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: '#ffffff',
-            width: tempDiv.scrollWidth,
-            height: tempDiv.scrollHeight
-          });
-
-          const imgData = canvas.toDataURL('image/png');
-          const pdf = new jsPDF('p', 'mm', 'a4');
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = pdf.internal.pageSize.getHeight();
-          const imgWidth = pdfWidth - 20;
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-          let heightLeft = imgHeight;
-          let position = 10;
-
-          pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-          heightLeft -= pdfHeight - 20;
-
-          while (heightLeft >= 0) {
-            position = heightLeft - imgHeight + 10;
-            pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-            heightLeft -= pdfHeight - 20;
-          }
-
-          // Use consistent naming with version tracking
-          const currentVersion = editingQuote.version || 1;
-          const today = new Date();
-          const dateStr = today.toLocaleDateString('en-CA');
-          
-          const fileName = `${quoteName}_v${currentVersion}_${dateStr}_customized.pdf`;
-          pdf.save(fileName);
+          pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
         }
-      } catch (canvasError) {
-        console.error('Canvas rendering failed, falling back to text PDF:', canvasError);
-        
-        // Same fallback logic as standard downloadPDF
-        const doc = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: 'a4'
-        });
-        
-        const plainText = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
-        const splitText = doc.splitTextToSize(plainText, 180);
-        doc.setFontSize(10);
-        let y = 20;
-        const lineHeight = 5;
-        
-        splitText.forEach((line: string) => {
-          if (y > 280) {
-            doc.addPage();
-            y = 20;
-          }
-          doc.text(line, 15, y);
-          y += lineHeight;
-        });
-        
+
+        // Use consistent naming with version tracking
         const currentVersion = editingQuote.version || 1;
         const today = new Date();
         const dateStr = today.toLocaleDateString('en-CA');
         
-        doc.setFontSize(8);
-        doc.setTextColor(128, 128, 128);
-        doc.text(`Version: ${currentVersion} (Customized)`, 15, 290);
-        
         const fileName = `${quoteName}_v${currentVersion}_${dateStr}_customized.pdf`;
-        doc.save(fileName);
+        pdf.save(fileName);
+
+        // Update download tracking
+        await markAsDownloaded(editingQuote.id);
+      } finally {
+        // Clean up DOM elements
+        document.body.removeChild(tempDiv);
+        document.head.removeChild(style);
       }
-      
-      // Clean up DOM elements
-      document.body.removeChild(tempDiv);
-      document.head.removeChild(style);
-      
-      // Mark as downloaded (consistent with standard download)
-      await markAsDownloaded(editingQuote.id);
-      
-      toast({
-        title: "PDF Downloaded",
-        description: `Customized quote ${editingQuote.proposal_number} has been downloaded successfully.`,
-      });
       
     } catch (error) {
       console.error('Download failed:', error);
