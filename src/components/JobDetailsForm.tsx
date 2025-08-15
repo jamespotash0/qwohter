@@ -33,24 +33,24 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="mb-4">
-        <h2 className="text-xl font-semibold mb-1">Job Details</h2>
-        <p className="text-sm text-muted-foreground">Enter project information and client details</p>
-      </div>
-      
+    <div className="p-1">
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="space-y-1">
             <Label htmlFor="date" className="text-sm font-medium">Date *</Label>
-            <Input
-              id="date"
-              type="date"
-              value={data.date}
-              onChange={(e) => handleChange("date", e.target.value)}
-              required
-              className="h-9"
-            />
+            <div className="relative">
+              <Input
+                id="date"
+                type="date"
+                value={data.date}
+                onChange={(e) => handleChange("date", e.target.value)}
+                required
+                className="h-10 pr-8 sm:pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-1 sm:[&::-webkit-calendar-picker-indicator]:right-2 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:bg-transparent [&::-webkit-calendar-picker-indicator]:hover:bg-gray-100 [&::-webkit-calendar-picker-indicator]:rounded [&::-webkit-calendar-picker-indicator]:p-0.5 sm:[&::-webkit-calendar-picker-indicator]:p-1 [&::-webkit-calendar-picker-indicator]:w-5 [&::-webkit-calendar-picker-indicator]:h-5 sm:[&::-webkit-calendar-picker-indicator]:w-6 sm:[&::-webkit-calendar-picker-indicator]:h-4"
+                style={{
+                  colorScheme: 'light'
+                }}
+              />
+            </div>
           </div>
           
           <div className="space-y-1">
@@ -62,7 +62,7 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
               placeholder="Enter proposal number"
               required
               readOnly
-              className="h-9 bg-muted text-muted-foreground"
+              className="h-10 bg-muted text-muted-foreground"
             />
           </div>
           
@@ -90,7 +90,7 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
                 onChange={(e) => handleBilledToChange("name", e.target.value)}
                 placeholder="Client name"
                 required
-                className="h-9"
+                className="h-10"
               />
             </div>
             
@@ -102,7 +102,7 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
                 onChange={(e) => handleBilledToChange("company", e.target.value)}
                 placeholder="Company name"
                 required
-                className="h-9"
+                className="h-10"
               />
             </div>
             

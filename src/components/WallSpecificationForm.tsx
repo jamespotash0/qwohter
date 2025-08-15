@@ -312,7 +312,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                             }}
                             onClick={(e) => e.stopPropagation()}
                             placeholder="1"
-                            className="w-16 h-8 text-center"
+                            className="w-16 h-10 text-center"
                           />
                         </div>
                       </>

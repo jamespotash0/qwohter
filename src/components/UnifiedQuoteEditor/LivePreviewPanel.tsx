@@ -430,7 +430,7 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
   `;
 
   return (
-    <div className={`flex-1 overflow-auto ${className}`}>
+    <div data-testid="live-preview-panel" className={`flex-1 overflow-auto ${className}`}>
       {/* Preview Controls */}
       <div className="sticky top-0 bg-white border-b border-gray-200 p-3 z-10">
         <div className="flex items-center justify-between">

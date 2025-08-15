@@ -229,7 +229,7 @@ const QuoteCreatorWizard = ({
       label: "Wall Systems", 
       icon: Square, 
       isValid: isWallSpecValid(),
-      description: "Wall specifications and dimensions"
+      description: "Wall specs and dimensions"
     },
     { 
       id: "pockets", 
@@ -243,21 +243,21 @@ const QuoteCreatorWizard = ({
       label: "Structure", 
       icon: Building, 
       isValid: isSupportStructureValid(),
-      description: "Mounting and support systems"
+      description: "Mounting & Support"
     },
     { 
       id: "delivery", 
       label: "Delivery & Labor", 
       icon: Truck, 
       isValid: isDeliveryLaborValid(),
-      description: "Timeline and labor requirements"
+      description: "Timeline & Labor reqs"
     },
     { 
       id: "pricing", 
       label: "Pricing", 
       icon: DollarSign, 
       isValid: isPricingValid(),
-      description: "Cost breakdown and payment terms"
+      description: "Pricing and payment terms"
     }
   ];
 
@@ -373,10 +373,10 @@ const QuoteCreatorWizard = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
+    <div className="h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30 flex flex-col overflow-hidden">
       {/* Compact Header */}
       <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-white/20 shadow-lg flex-shrink-0">
-        <div className="max-w-7xl mx-auto px-4 py-3">
+        <div className="max-w-full mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
             {/* Left - Back button */}
             <Button
@@ -451,18 +451,18 @@ const QuoteCreatorWizard = ({
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex w-full max-w-7xl mx-auto">
+      <div className="flex-1 flex overflow-hidden h-full">
+        <div className="flex w-full max-w-full mx-auto px-4 h-full">
           {/* Compact Step Navigation */}
-          <div className="w-72 flex-shrink-0 p-4">
-            <Card className="bg-white/80 backdrop-blur-sm border border-white/50 shadow-xl h-full flex flex-col">
+          <div className="w-80 flex-shrink-0 p-4 h-full">
+            <Card className="bg-white/80 backdrop-blur-sm border border-white/50 shadow-xl h-full flex flex-col min-h-0">
               <CardHeader className="pb-3 flex-shrink-0">
                 <CardTitle className="flex items-center gap-2 text-slate-900 text-lg">
                   <Zap className="w-4 h-4 text-indigo-500" />
                   Quote Wizard
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex-1 space-y-1 overflow-y-auto">
+              <CardContent className="flex-1 space-y-1 overflow-y-auto min-h-0">
                 {steps.map((step, index) => {
                   const isActive = index === activeStep;
                   const isCompleted = step.isValid;
@@ -521,8 +521,8 @@ const QuoteCreatorWizard = ({
           </div>
 
           {/* Compact Main Content */}
-          <div className="flex-1 p-4 pl-2 flex flex-col overflow-hidden">
-            <Card className="bg-white/90 backdrop-blur-sm border border-white/50 shadow-2xl flex-1 flex flex-col overflow-hidden focus-within:ring-0">
+          <div className="flex-1 p-4 pl-2 flex flex-col overflow-hidden h-full">
+            <Card className="bg-white/90 backdrop-blur-sm border border-white/50 shadow-2xl flex-1 flex flex-col overflow-hidden focus-within:ring-0 h-full">
               <CardHeader className="pb-4 border-b border-slate-100 flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -545,9 +545,9 @@ const QuoteCreatorWizard = ({
                 </div>
               </CardHeader>
               
-              <CardContent className="flex-1 p-8 overflow-hidden">
+              <CardContent className="flex-1 px-10 pt-4 pb-10 overflow-hidden min-h-0">
                 <div className="h-full overflow-y-auto">
-                  <div className="pr-6 pb-4">
+                  <div className="pr-8 pb-6 min-h-full">
                     {renderStepContent()}
                   </div>
                 </div>

@@ -297,7 +297,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
           
           <div>
             <Label htmlFor="contactEmail" className="text-xs font-medium text-gray-600">
-              Email
+              Contact Email
             </Label>
             <Input
               id="contactEmail"
@@ -412,7 +412,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
           
           <div>
             <Label htmlFor="clientCompany" className="text-xs font-medium text-gray-600">
-              Company
+              Client Company
             </Label>
             <Input
               id="clientCompany"
@@ -445,7 +445,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
           
           <div>
             <Label htmlFor="projectDate" className="text-xs font-medium text-gray-600">
-              Project Date
+              Date
             </Label>
             <Input
               id="projectDate"
@@ -467,7 +467,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
       >
         <div className="space-y-4">
           {Object.entries(data.wall_details?.walls || {}).map(([wallName, wall]) => (
-            <Card key={`${wallName}-${wall.wallSystemType}-${wall.glasswallModel}`} className="p-3 bg-gray-50">
+            <Card key={`${wallName}-${wall.wallSystemType}-${wall.glasswallModel}`} data-testid={`wall-card-${wallName.replace(/\s+/g, '-').toLowerCase()}`} className="p-3 bg-gray-50">
               <div className="flex justify-between items-center mb-3">
                 <h4 className="font-medium text-sm">{wallName}</h4>
                 <Button
@@ -1717,6 +1717,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
             variant="outline"
             size="sm"
             onClick={addWall}
+            data-testid="add-wall-button"
             className="w-full"
           >
             + Add Wall
@@ -1859,7 +1860,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label htmlFor="trackDelivery" className="text-xs font-medium text-gray-600">
-                Track Delivery (weeks)
+                Track Delivery (Weeks)
               </Label>
               <Input
                 id="trackDelivery"
@@ -1872,7 +1873,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
             
             <div>
               <Label htmlFor="panelDelivery" className="text-xs font-medium text-gray-600">
-                Panel Delivery (weeks)
+                Panel Delivery (Weeks)
               </Label>
               <Input
                 id="panelDelivery"
@@ -1887,7 +1888,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label htmlFor="trackInstall" className="text-xs font-medium text-gray-600">
-                Track Install (days)
+                Track Install (Days)
               </Label>
               <Input
                 id="trackInstall"
@@ -1900,7 +1901,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
             
             <div>
               <Label htmlFor="panelInstall" className="text-xs font-medium text-gray-600">
-                Panel Install (days)
+                Panel Install (Days)
               </Label>
               <Input
                 id="panelInstall"
@@ -1924,7 +1925,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
         <div className="space-y-3">
           <div>
             <Label htmlFor="basePrice" className="text-xs font-medium text-gray-600">
-              Base Price
+              Base Price ($)
             </Label>
             <Input
               id="basePrice"
@@ -1938,11 +1939,11 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
           
           <div>
             <Label htmlFor="freight" className="text-xs font-medium text-gray-600">
-              Freight Cost
+              Estimated Freight + Delivery ($)
             </Label>
             <Input
               id="freight"
-              type="number"
+              // type="number"
               value={data.price_details?.freight || ''}
               onChange={(e) => handleFieldChange('price_details', 'freight', e.target.value)}
               placeholder="0.00"
@@ -1952,11 +1953,10 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
           
           <div>
             <Label htmlFor="total" className="text-xs font-medium text-gray-600">
-              Total (Auto-calculated)
+              Total $ (Auto-calculated)
             </Label>
             <Input
               id="total"
-              type="number"
               value={data.price_details?.total || ''}
               readOnly
               placeholder="0.00"

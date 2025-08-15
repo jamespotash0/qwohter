@@ -314,7 +314,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   }
 
   return (
-    <div className={`min-h-screen bg-[#f8f9fa] ${className}`}>
+    <div data-testid="unified-quote-editor" className={`min-h-screen bg-[#f8f9fa] ${className}`}>
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="px-6 py-3">

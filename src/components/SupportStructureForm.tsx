@@ -17,8 +17,7 @@ const SupportStructureForm = ({ data, onUpdate }: SupportStructureFormProps) => 
   };
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold mb-4">Support Structure</h2>
+    <div className="p-1">
       <div className="grid grid-cols-1 gap-3">
         <div className="space-y-2">
           <Label htmlFor="mountingTrack">Mounting Track *</Label>
@@ -26,7 +25,7 @@ const SupportStructureForm = ({ data, onUpdate }: SupportStructureFormProps) => 
             value={data.mountingTrack}
             onValueChange={(value) => handleChange("mountingTrack", value)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-10">
               <SelectValue placeholder="Select mounting track type" />
             </SelectTrigger>
             <SelectContent className="bg-white">

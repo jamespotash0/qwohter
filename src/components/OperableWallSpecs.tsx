@@ -255,7 +255,7 @@ const OperableWallSpecs = ({ wall, wallName, onWallChange }: OperableWallSpecsPr
             <SelectContent className="bg-background border z-50">
               {getSTCRatingOptions(wall.model, wall.panelSkin).map((rating) => (
                 <SelectItem key={rating} value={rating}>
-                  STC {rating}
+                  {rating}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -1062,7 +1062,7 @@ const Quotes = () => {
       <div className="h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
         <AppSidebar user={user.email || ""} onLogout={handleLogout} />
         
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main data-testid="quotes-page" className="flex-1 flex flex-col overflow-hidden">
           {/* Floating Header */}
           <div className="p-6 pb-0">
             <header className="bg-white/80 backdrop-blur-sm border border-slate-200/50 shadow-lg rounded-[22px] px-6 py-4 animate-fade-in">
