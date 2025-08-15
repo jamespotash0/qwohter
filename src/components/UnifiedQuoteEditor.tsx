@@ -187,16 +187,30 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
     }
   }, [state.rawData, state.sectionOverrides, syncEngine, isLoading]);
 
+  // Update document title when project name or proposal number changes
+  useEffect(() => {
+    const newTitle = state.rawData?.project_name || state.rawData?.proposal_number || 'Quote Document';
+    setDocumentTitle(newTitle);
+  }, [state.rawData?.project_name, state.rawData?.proposal_number]);
+
   // Handle form data changes
   const handleFormDataChange = useCallback((section: string, value: any) => {
-    setState(prev => ({
-      ...prev,
-      rawData: {
-        ...prev.rawData,
-        [section]: value
-      },
-      isDirty: true
-    }));
+    console.log(`🔄 UnifiedQuoteEditor handleFormDataChange - section: "${section}"`);
+    console.log(`🔄 Value received:`, value);
+    
+    setState(prev => {
+      const newState = {
+        ...prev,
+        rawData: {
+          ...prev.rawData,
+          [section]: value
+        },
+        isDirty: true
+      };
+      
+      console.log(`🔄 Updated rawData for section "${section}":`, newState.rawData[section]);
+      return newState;
+    });
   }, []);
 
   // Handle section content overrides
@@ -308,12 +322,9 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
             {/* Left: Title and Status */}
             <div className="flex items-center gap-4">
               <FileText className="w-6 h-6 text-blue-500" />
-              <Input
-                value={documentTitle}
-                onChange={(e) => setDocumentTitle(e.target.value)}
-                className="text-lg font-medium border-none shadow-none focus:ring-0 px-2 bg-transparent"
-                placeholder="Untitled document"
-              />
+              <div className="text-lg font-medium px-2 py-1">
+                {documentTitle || 'Untitled document'}
+              </div>
               {state.isDirty && (
                 <span className="text-sm text-amber-600 bg-amber-50 px-3 py-1 rounded whitespace-nowrap">
                   Unsaved Changes

@@ -453,7 +453,7 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="frameThickness">Frame Thickness (Auto-calculated)</Label>
+            <Label htmlFor="frameThickness">Frame Thickness</Label>
             <Input 
               value={getFrameThickness(selectedModel)}
               readOnly
@@ -462,7 +462,7 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="panelWidth">Panel Width (Auto-calculated)</Label>
+            <Label htmlFor="panelWidth">Panel Width</Label>
             <Input 
               value={getPanelWidth(selectedModel)}
               readOnly

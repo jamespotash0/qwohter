@@ -378,7 +378,7 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Frame Thickness (Auto-calculated)</Label>
+              <Label className="text-sm font-medium">Frame Thickness</Label>
               <Input 
                 value={getFrameThickness(selectedModel)}
                 readOnly
@@ -387,7 +387,7 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="panelWidth">Panel Width (Auto-calculated)</Label>
+              <Label htmlFor="panelWidth">Panel Width</Label>
               <Input 
                 value={getPanelWidth(selectedModel)}
                 readOnly

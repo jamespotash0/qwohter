@@ -12,8 +12,9 @@ export class GlassWallTemplate extends BaseQuoteTemplate {
           ${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
             const dimensions = this.helpers.formatDimensions(wall.lengthFeet, wall.lengthInches, wall.heightFeet, wall.heightInches, true);
             const panelCount = wall.panelCount || '';
-              const frameType = wall.glasswallPanelConfiguration || 'Standard Frame';
+            const frameType = wall.glasswallPanelConfiguration || 'Standard Frame';
             const quantity = wall.quantity || '1';
+            
 
             return `
               <tr>

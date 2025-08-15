@@ -115,12 +115,35 @@ export abstract class BaseQuoteTemplate {
         includeLabels = true
       ) => {
         const wf = parseInt(lengthFeet || '0');
-        const wi = parseInt(lengthInches || '0');
         const hf = parseInt(heightFeet || '0');
-        const hi = parseInt(heightInches || '0');
+        
+        // Handle fractional inches - preserve the original string if it contains fractions
+        const wi = lengthInches || '0';
+        const hi = heightInches || '0';
+        
+        // Format inches to handle both whole numbers and fractions
+        const formatInches = (inches: string) => {
+          const trimmed = inches.trim();
+          
+          // If it's just a whole number, return it as is
+          if (/^\d+$/.test(trimmed)) {
+            return trimmed;
+          }
+          
+          // If it contains fractions like "7 1/2" or "7-1/2", preserve it
+          if (trimmed.includes('/')) {
+            return trimmed;
+          }
+          
+          // Default to the original value, or '0' if empty
+          return trimmed || '0';
+        };
 
-        const length = `${wf}'-${wi}"${includeLabels ? ' L' : ''}`;
-        const height = `${hf}'-${hi}"${includeLabels ? ' H' : ''}`;
+        const formattedWi = formatInches(wi);
+        const formattedHi = formatInches(hi);
+
+        const length = `${wf}'-${formattedWi}"${includeLabels ? ' L' : ''}`;
+        const height = `${hf}'-${formattedHi}"${includeLabels ? ' H' : ''}`;
         return `${length} x ${height}`;
       },
 

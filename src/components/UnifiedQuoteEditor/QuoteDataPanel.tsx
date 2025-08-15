@@ -202,6 +202,10 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
 
   // Helper function to update wall field
   const handleWallFieldChange = (wallName: string, field: string, value: any) => {
+    // Debug logging for wall field changes
+    console.log(`🔧 Updating ${wallName} field "${field}" to "${value}"`);
+    console.log(`🔍 Current wall data:`, data.wall_details?.walls?.[wallName]);
+    
     const currentWall = data.wall_details?.walls?.[wallName] || {};
     
     // Ensure all Glass Wall fields exist for proper dropdown functionality
@@ -263,7 +267,9 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
       }
     };
     
+    console.log(`📤 Calling onChange with updated walls:`, updatedWalls);
     onChange('wall_details', updatedWalls);
+    console.log(`✅ onChange called for wall_details`);
   };
 
   return (
@@ -664,7 +670,7 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Panel Thickness (Auto-calculated)</Label>
+                      <Label>Panel Thickness</Label>
                       <Input
                         value={(() => {
                           const series = wall.series;
@@ -1278,17 +1284,24 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                     </div>
                     
                     <div className="space-y-2">
-                      <Label>Frame Thickness (Auto-calculated)</Label>
+                      <Label>Frame Thickness</Label>
                       <Input
                         value={(() => {
                           const model = wall.glasswallModel;
                           const stc = wall.glasswallSTCRating;
-                          if (model === 'Stella') return stc === '44' ? '4-1/2"' : '4-11/16"';
-                          if (model === 'Luna') return '2-3/4"';
-                          if (model === 'Illona') return '1-3/8"';
-                          if (model === 'Ava') return '1-7/16"';
-                          if (model === 'Mata') return '1-3/4"';
-                          return 'N/A';
+                          let thickness = '';
+                          if (model === 'Stella') thickness = stc === '44' ? '4-1/2"' : '4-11/16"';
+                          if (model === 'Luna') thickness = '2-3/4"';
+                          if (model === 'Illona') thickness = '1-3/8"';
+                          if (model === 'Ava') thickness = '1-7/16"';
+                          if (model === 'Mata') thickness = '1-3/4"';
+                          
+                          // Save calculated value to database
+                          if (thickness && thickness !== wall.glasswallFrameThickness) {
+                            handleWallFieldChange(wallName, 'glasswallFrameThickness', thickness);
+                          }
+                          
+                          return thickness || 'N/A';
                         })()}
                         readOnly
                         className="text-xs h-8 bg-muted text-muted-foreground"
@@ -1296,16 +1309,23 @@ export const QuoteDataPanel: React.FC<QuoteDataPanelProps> = ({
                     </div>
                     
                     <div className="space-y-2">
-                      <Label>Panel Width (Auto-calculated)</Label>
+                      <Label>Panel Width</Label>
                       <Input
                         value={(() => {
                           const model = wall.glasswallModel;
-                          if (model === 'Stella') return '51"';
-                          if (model === 'Luna') return '41-3/8"';
-                          if (model === 'Illona') return '39-3/8"';
-                          if (model === 'Ava') return '48"';
-                          if (model === 'Mata') return '48"';
-                          return 'N/A';
+                          let width = '';
+                          if (model === 'Stella') width = '51"';
+                          if (model === 'Luna') width = '41-3/8"';
+                          if (model === 'Illona') width = '39-3/8"';
+                          if (model === 'Ava') width = '48"';
+                          if (model === 'Mata') width = '48"';
+                          
+                          // Save calculated value to database
+                          if (width && width !== wall.glasswallPanelWidth) {
+                            handleWallFieldChange(wallName, 'glasswallPanelWidth', width);
+                          }
+                          
+                          return width || 'N/A';
                         })()}
                         readOnly
                         className="text-xs h-8 bg-muted text-muted-foreground"
