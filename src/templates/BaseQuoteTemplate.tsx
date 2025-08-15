@@ -130,9 +130,10 @@ export abstract class BaseQuoteTemplate {
             return trimmed;
           }
           
-          // If it contains fractions like "7 1/2" or "7-1/2", preserve it
+          // If it contains fractions, format them properly
           if (trimmed.includes('/')) {
-            return trimmed;
+            // Convert "x-x/y" format to "x x/y" format
+            return trimmed.replace(/-(\d+\/\d+)/, ' $1');
           }
           
           // Default to the original value, or '0' if empty
