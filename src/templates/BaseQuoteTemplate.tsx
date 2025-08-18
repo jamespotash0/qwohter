@@ -19,6 +19,7 @@ export interface QuoteData {
   price_details?: any;
   proposal_number?: string;
   project_name?: string;
+  customization?: any;
   created_at?: string;
 }
 
@@ -362,12 +363,13 @@ export abstract class BaseQuoteTemplate {
         <li>8.  Any additional requirements or unforeseen conditions may be subject to <strong>revised pricing or additional charges</strong>.</li>
         <li>9.  Panel colors and finishes are available<strong> as per the manufacturer's current standard offerings</strong>.</li>
         <li>10. A <strong>10-year factory warranty</strong> is provided on all operable wall systems.</li>
-        <li>11.<strong> Payment Terms:</strong>
-          <div style="padding-left: 2rem;">
-            <div>– <strong>${paymentUponDrawings}%</strong> due upon approval of shop drawings</div>
-            <div>– <strong>${paymentUponTrackInstallation}%</strong> due upon track installation</div>
-            <div>– Remaining balance due upon final completion</div>
-          </div>
+        <li>
+          11. <strong> Payment Terms:</strong>
+          <ul style="padding-left: 2rem; list-style: none;">
+            <li>– <strong>${paymentUponDrawings}%</strong> due upon approval of shop drawings</li>
+            <li>– <strong>${paymentUponTrackInstallation}%</strong> due upon track installation</li>
+            <li>– Remaining balance due upon final completion</li>
+          </ul>
         </li>
       </ol>
     </div>

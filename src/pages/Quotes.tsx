@@ -25,6 +25,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import CreateQuoteDialog from "@/components/CreateQuoteDialog";
 import jsPDF from 'jspdf';
+// No imports needed for pandoc approach
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuotes, Quote } from "@/hooks/useQuotes";
@@ -487,6 +488,335 @@ const Quotes = () => {
     }
   };
 
+  // Smart PDF generation that avoids page boundary content duplication
+  const downloadSmartPDF = async (quote: Quote) => {
+    if (!quote.quote_details?.quoteName && !quote.project_name) {
+      toast({
+        title: "PDF Download Failed",
+        description: "Quote name is required for PDF generation",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
+      
+      const rawQuoteText = generateQuoteText(quote);
+      
+      // Use existing PAGE BREAK MANAGER but render in two smart chunks
+      const { PageBreakManager } = await import('@/utils/pageBreakManager');
+      const manager = new PageBreakManager();
+      let quoteText = manager.processHTMLContent(rawQuoteText);
+      
+      if (!quoteText.includes('class="page"')) {
+        quoteText = rawQuoteText; // Use original if no page processing
+      }
+
+      // Create the styled container exactly like your working PDF
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = quoteText;
+      tempDiv.style.cssText = `
+        font-family: "Times New Roman", serif;
+        font-size: 12pt;
+        line-height: 1.15;
+        width: 7in;
+        margin: 0 auto;
+        padding: 20px;
+        color: black;
+        background: white;
+      `;
+
+      // Use the EXACT same styles as your working PDF
+      const style = document.createElement('style');
+      style.textContent = `
+        .quote-container {
+          font-family: "Times New Roman", serif;
+          font-size: 12pt;
+          line-height: 1.15;
+          width: 7in;
+          margin: 0 auto;
+          color: black;
+        }
+        .header-section {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 30px;
+          padding-bottom: 20px;
+        }
+        .company-info {
+          flex: 1;
+          max-width: 40%;
+        }
+        .company-logo {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+        }
+        .contact-details {
+          flex: 1;
+          max-width: 55%;
+          text-align: right;
+        }
+        .contact-row {
+          margin-bottom: 2px;
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          line-height: 1.1;
+        }
+        .contact-row .label {
+          font-weight: bold;
+          margin-right: 8px;
+          min-width: 80px;
+          text-align: right;
+        }
+        .contact-row .value {
+          text-align: left;
+          flex: 1;
+        }
+        .billing-job-container {
+          display: flex;
+          gap: 40px;
+          align-items: flex-start;
+          margin-top: -40px;
+          margin-bottom: 30px;
+        }
+        .billing-table {
+          width: 30%;
+        }
+        .job-info-section {
+          flex-grow: 1;
+          margin-left: 175px;
+        }
+        h2.section-header {
+          font-weight: bold;
+          font-size: 12pt;
+          margin-top: 1.5em;
+          margin-bottom: 0.5em;
+        }
+        table {
+          border-collapse: collapse;
+          width: 100%;
+          margin-bottom: 1em;
+        }
+        table td, table th {
+          border: 0.5px solid black;
+          padding: 8px;
+          text-align: left;
+        }
+        .pricing-section {
+          margin-top: 10px;
+        }
+        .pricing-section table {
+          width: 90%;
+        }
+        .terms-section {
+          margin-top: 2em;
+        }
+        .terms-section ol {
+          margin: 0;
+          padding-left: 20px;
+        }
+        .terms-section li {
+          margin-bottom: 4px;
+        }
+        .proposal-intro {
+          line-height: 1.2;
+          margin-top: 12px;
+          margin-bottom: 1em;
+        }
+        .wall-specifications-list {
+          line-height: 1.15;
+          margin-top: 10px;
+          margin-bottom: 1em;
+        }
+        .panels-section, .track-section, .support-section, .general-section {
+          line-height: 1.15;
+          margin-bottom: 1em;
+        }
+        .acceptance-section {
+          font-size: 9pt;
+          font-style: italic;
+          margin-top: 2em;
+          line-height: 1.2;
+        }
+        .signature-section {
+          margin-top: 1em;
+        }
+        strong {
+          font-weight: bold;
+        }
+      `;
+      
+      document.head.appendChild(style);
+      document.body.appendChild(tempDiv);
+
+      const html2canvas = (await import('html2canvas')).default;
+      
+      // Measure total content height to decide where to break
+      const totalHeight = tempDiv.scrollHeight;
+      const pageHeight = 1056; // 11 inches at 96 DPI
+      
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      if (totalHeight <= pageHeight) {
+        // Fits on one page
+        const canvas = await html2canvas(tempDiv, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          width: tempDiv.scrollWidth,
+          height: tempDiv.scrollHeight
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = pdfWidth - 20;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pdfHeight - 20));
+      } else {
+        // Smart two-page split with content preservation
+        let content = tempDiv.innerHTML;
+        
+        // Debug: Log the content to ensure all sections are present
+        console.log('🔍 Smart PDF Raw Content Preview:', content.substring(0, 500) + '...');
+        
+        // Check for critical sections
+        const hasProposalIntro = content.includes('proposal-intro') || content.includes('Thank you for considering');
+        const hasWallTable = content.includes('wall-specifications') || content.includes('Specifications as follows');
+        const hasAcceptanceSection = content.includes('acceptance-section') || content.includes('ACCEPTANCE OF PROPOSAL');
+        
+        console.log('🔍 Content check:', { hasProposalIntro, hasWallTable, hasAcceptanceSection });
+        
+        // If content is missing critical sections, regenerate
+        if (!hasProposalIntro || !hasWallTable || !hasAcceptanceSection) {
+          console.warn('⚠️ Missing critical sections, regenerating quote content...');
+          const { generateQuoteText: freshGenerateQuoteText } = await import('@/components/QuoteTextGenerator');
+          const freshQuoteText = freshGenerateQuoteText(quote);
+          tempDiv.innerHTML = freshQuoteText;
+          content = tempDiv.innerHTML;
+        }
+        
+        // Find logical break points for 2-page split
+        const sections = [
+          'header-section',
+          'billing-job-container', 
+          'proposal-intro',
+          'wall-specifications',
+          'panels-section',
+          'track-section',
+          'support-section',
+          'general-section',
+          'pricing-section',
+          'terms-section',
+          'acceptance-section'
+        ];
+        
+        // Split content intelligently around pricing section (good break point)
+        const pricingSectionIndex = content.indexOf('pricing-section');
+        let page1Content = document.createElement('div');
+        let page2Content = document.createElement('div');
+        
+        // Copy styles to new containers
+        page1Content.style.cssText = tempDiv.style.cssText;
+        page2Content.style.cssText = tempDiv.style.cssText;
+        
+        if (pricingSectionIndex > 0) {
+          // Split at pricing section - everything before goes to page 1, pricing and after goes to page 2
+          const beforePricing = content.substring(0, pricingSectionIndex);
+          const fromPricing = content.substring(pricingSectionIndex);
+          
+          // Find the start of the pricing div
+          const pricingDivStart = fromPricing.indexOf('<div class="pricing-section"');
+          if (pricingDivStart >= 0) {
+            const page1HTML = beforePricing + fromPricing.substring(0, pricingDivStart);
+            const page2HTML = fromPricing.substring(pricingDivStart);
+            
+            page1Content.innerHTML = page1HTML;
+            page2Content.innerHTML = page2HTML;
+            
+            console.log('📄 Page 1 content length:', page1HTML.length);
+            console.log('📄 Page 2 content length:', page2HTML.length);
+            console.log('📄 Page 1 has acceptance:', page1HTML.includes('ACCEPTANCE OF PROPOSAL'));
+            console.log('📄 Page 2 has acceptance:', page2HTML.includes('ACCEPTANCE OF PROPOSAL'));
+          } else {
+            // Fallback: split roughly in half
+            const midPoint = Math.floor(content.length / 2);
+            page1Content.innerHTML = content.substring(0, midPoint);
+            page2Content.innerHTML = content.substring(midPoint);
+          }
+        } else {
+          // Fallback: split roughly in half if no pricing section found
+          const midPoint = Math.floor(content.length / 2);
+          page1Content.innerHTML = content.substring(0, midPoint);
+          page2Content.innerHTML = content.substring(midPoint);
+        }
+
+        // Render page 1
+        document.body.appendChild(page1Content);
+        const canvas1 = await html2canvas(page1Content, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          width: page1Content.scrollWidth,
+          height: Math.min(page1Content.scrollHeight, pageHeight)
+        });
+        const imgData1 = canvas1.toDataURL('image/png');
+        const imgWidth = pdfWidth - 20;
+        const imgHeight1 = (canvas1.height * imgWidth) / canvas1.width;
+        pdf.addImage(imgData1, 'PNG', 10, 10, imgWidth, Math.min(imgHeight1, pdfHeight - 20));
+        document.body.removeChild(page1Content);
+
+        // Render page 2
+        pdf.addPage();
+        document.body.appendChild(page2Content);
+        const canvas2 = await html2canvas(page2Content, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          width: page2Content.scrollWidth,
+          height: Math.min(page2Content.scrollHeight, pageHeight)
+        });
+        const imgData2 = canvas2.toDataURL('image/png');
+        const imgHeight2 = (canvas2.height * imgWidth) / canvas2.width;
+        pdf.addImage(imgData2, 'PNG', 10, 10, imgWidth, Math.min(imgHeight2, pdfHeight - 20));
+        document.body.removeChild(page2Content);
+      }
+      
+      // Clean up
+      document.body.removeChild(tempDiv);
+      document.head.removeChild(style);
+
+      // Save PDF
+      const currentVersion = quote.version || 1;
+      const today = new Date();
+      const dateStr = today.toLocaleDateString('en-CA');
+      const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
+      
+      const fileName = `${quoteName}_v${currentVersion}_${dateStr}_smart.pdf`;
+      pdf.save(fileName);
+      
+      await markAsDownloaded(quote.id);
+      
+      toast({
+        title: "Smart PDF Downloaded",
+        description: `Quote ${quote.proposal_number} generated with intelligent page breaks.`,
+      });
+
+    } catch (error) {
+      console.error('Smart PDF generation failed:', error);
+      toast({
+        title: "PDF Download Failed",
+        description: "Unable to generate smart PDF. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const downloadPDF = async (quote: Quote) => {
     if (!quote.quote_details?.quoteName && !quote.project_name) {
       toast({
@@ -920,6 +1250,595 @@ const Quotes = () => {
       }
     }
   };
+
+  // Helper function to analyze HTML layout structure
+  const analyzeHTMLLayout = (element: HTMLElement) => {
+    const analysis = {
+      header: null as any,
+      billing: null as any,
+      sections: [] as any[],
+      tables: [] as any[],
+      pricing: null as any,
+      terms: null as any
+    };
+
+    // Analyze header section
+    const headerSection = element.querySelector('.header-section');
+    if (headerSection) {
+      const companyInfo = headerSection.querySelector('.company-info');
+      const contactDetails = headerSection.querySelector('.contact-details');
+      analysis.header = {
+        company: companyInfo?.textContent?.trim() || '',
+        contact: Array.from(contactDetails?.querySelectorAll('.contact-row') || []).map(row => ({
+          label: row.querySelector('.label')?.textContent?.trim() || '',
+          value: row.querySelector('.value')?.textContent?.trim() || ''
+        }))
+      };
+    }
+
+    // Analyze billing/job info
+    const billingContainer = element.querySelector('.billing-job-container');
+    if (billingContainer) {
+      const billingTable = billingContainer.querySelector('.billing-table');
+      const jobInfo = billingContainer.querySelector('.job-info-section');
+      analysis.billing = {
+        billedTo: Array.from(billingTable?.querySelectorAll('td') || []).map(td => td.textContent?.trim() || ''),
+        jobInfo: Array.from(jobInfo?.querySelectorAll('tr') || []).map(tr => ({
+          label: tr.querySelector('td:first-child')?.textContent?.trim() || '',
+          value: tr.querySelector('td:last-child')?.textContent?.trim() || ''
+        }))
+      };
+    }
+
+    // Analyze section headers and content
+    const sectionHeaders = element.querySelectorAll('h2.section-header, .section-header');
+    sectionHeaders.forEach(header => {
+      let content = '';
+      let nextElement = header.nextElementSibling;
+      while (nextElement && !nextElement.matches('h2.section-header, .section-header')) {
+        content += nextElement.textContent || '';
+        nextElement = nextElement.nextElementSibling;
+      }
+      analysis.sections.push({
+        title: header.textContent?.trim() || '',
+        content: content.trim()
+      });
+    });
+
+    // Analyze tables
+    const tables = element.querySelectorAll('table');
+    tables.forEach(table => {
+      const rows = Array.from(table.querySelectorAll('tr')).map(tr => 
+        Array.from(tr.querySelectorAll('td, th')).map(cell => cell.textContent?.trim() || '')
+      );
+      analysis.tables.push({ rows });
+    });
+
+    // Analyze pricing section
+    const pricingSection = element.querySelector('.pricing-section');
+    if (pricingSection) {
+      const pricingTable = pricingSection.querySelector('table');
+      if (pricingTable) {
+        analysis.pricing = {
+          rows: Array.from(pricingTable.querySelectorAll('tr')).map(tr => 
+            Array.from(tr.querySelectorAll('td')).map(cell => cell.textContent?.trim() || '')
+          )
+        };
+      }
+    }
+
+    // Analyze terms section
+    const termsSection = element.querySelector('.terms-section');
+    if (termsSection) {
+      const listItems = Array.from(termsSection.querySelectorAll('li')).map(li => li.textContent?.trim() || '');
+      analysis.terms = { items: listItems };
+    }
+
+    return analysis;
+  };
+
+  // Helper function to create DOCX elements from layout analysis
+  const createDOCXFromLayout = async (layout: any, docx: any, rawHTML: string) => {
+    const elements = [];
+
+    // Create header section with proper layout
+    if (layout.header) {
+      // Company info (left side)
+      elements.push(new docx.Paragraph({
+        children: [new docx.TextRun({
+          text: "Contemporary Wall Systems",
+          font: "Times New Roman",
+          size: 28,
+          bold: true
+        })]
+      }));
+
+      // Contact details (right-aligned)
+      layout.header.contact.forEach((contact: any) => {
+        elements.push(new docx.Paragraph({
+          alignment: docx.AlignmentType.RIGHT,
+          children: [
+            new docx.TextRun({
+              text: `${contact.label} `,
+              font: "Times New Roman",
+              size: 24,
+              bold: true
+            }),
+            new docx.TextRun({
+              text: contact.value,
+              font: "Times New Roman",
+              size: 24
+            })
+          ]
+        }));
+      });
+
+      elements.push(new docx.Paragraph({ children: [new docx.TextRun("")] })); // Spacing
+    }
+
+    // Create billing/job info section
+    if (layout.billing) {
+      // Billed To section
+      elements.push(new docx.Paragraph({
+        children: [new docx.TextRun({
+          text: "BILLED TO:",
+          font: "Times New Roman",
+          size: 24,
+          bold: true
+        })]
+      }));
+
+      layout.billing.billedTo.forEach((line: string) => {
+        if (line.trim()) {
+          elements.push(new docx.Paragraph({
+            children: [new docx.TextRun({
+              text: line,
+              font: "Times New Roman",
+              size: 24
+            })],
+            border: {
+              bottom: {
+                color: "000000",
+                size: 1,
+                style: docx.BorderStyle.SINGLE
+              }
+            }
+          }));
+        }
+      });
+
+      // Job info section (right side)
+      layout.billing.jobInfo.forEach((info: any) => {
+        if (info.label && info.value) {
+          elements.push(new docx.Paragraph({
+            alignment: docx.AlignmentType.RIGHT,
+            children: [
+              new docx.TextRun({
+                text: `${info.label} `,
+                font: "Times New Roman",
+                size: 24,
+                bold: true
+              }),
+              new docx.TextRun({
+                text: info.value,
+                font: "Times New Roman",
+                size: 24
+              })
+            ],
+            border: {
+              bottom: {
+                color: "000000",
+                size: 1,
+                style: docx.BorderStyle.SINGLE
+              }
+            }
+          }));
+        }
+      });
+
+      elements.push(new docx.Paragraph({ children: [new docx.TextRun("")] })); // Spacing
+    }
+
+    // Create section headers and content
+    layout.sections.forEach((section: any) => {
+      elements.push(new docx.Paragraph({
+        children: [new docx.TextRun({
+          text: section.title,
+          font: "Times New Roman",
+          size: 24,
+          bold: true
+        })],
+        spacing: { before: 360, after: 180 }
+      }));
+
+      if (section.content) {
+        elements.push(new docx.Paragraph({
+          children: [new docx.TextRun({
+            text: section.content,
+            font: "Times New Roman",
+            size: 24
+          })],
+          spacing: { before: 120, after: 120 }
+        }));
+      }
+    });
+
+    // Create tables with proper borders
+    layout.tables.forEach((tableData: any) => {
+      if (tableData.rows.length > 0) {
+        const table = new docx.Table({
+          rows: tableData.rows.map((rowData: string[]) => new docx.TableRow({
+            children: rowData.map(cellData => new docx.TableCell({
+              children: [new docx.Paragraph({
+                children: [new docx.TextRun({
+                  text: cellData,
+                  font: "Times New Roman",
+                  size: 24
+                })]
+              })],
+              borders: {
+                top: { style: docx.BorderStyle.SINGLE, size: 1, color: "000000" },
+                bottom: { style: docx.BorderStyle.SINGLE, size: 1, color: "000000" },
+                left: { style: docx.BorderStyle.SINGLE, size: 1, color: "000000" },
+                right: { style: docx.BorderStyle.SINGLE, size: 1, color: "000000" }
+              }
+            }))
+          }))
+        });
+        elements.push(table);
+        elements.push(new docx.Paragraph({ children: [new docx.TextRun("")] })); // Spacing
+      }
+    });
+
+    // Create pricing section as table
+    if (layout.pricing) {
+      const pricingTable = new docx.Table({
+        width: { size: 90, type: docx.WidthType.PERCENTAGE },
+        rows: layout.pricing.rows.map((rowData: string[]) => new docx.TableRow({
+          children: rowData.map((cellData, index) => new docx.TableCell({
+            children: [new docx.Paragraph({
+              children: [new docx.TextRun({
+                text: cellData,
+                font: "Times New Roman",
+                size: 24,
+                bold: true
+              })],
+              alignment: index === rowData.length - 1 ? docx.AlignmentType.RIGHT : docx.AlignmentType.LEFT
+            })],
+            borders: {
+              top: { style: docx.BorderStyle.SINGLE, size: 1, color: "000000" },
+              bottom: { style: docx.BorderStyle.SINGLE, size: 1, color: "000000" },
+              left: { style: docx.BorderStyle.SINGLE, size: 1, color: "000000" },
+              right: { style: docx.BorderStyle.SINGLE, size: 1, color: "000000" }
+            }
+          }))
+        }))
+      });
+      elements.push(pricingTable);
+      elements.push(new docx.Paragraph({ children: [new docx.TextRun("")] })); // Spacing
+    }
+
+    // Create terms section as numbered list
+    if (layout.terms) {
+      elements.push(new docx.Paragraph({
+        children: [new docx.TextRun({
+          text: "General Notes and Terms:",
+          font: "Times New Roman",
+          size: 24,
+          bold: true
+        })],
+        spacing: { before: 360, after: 180 }
+      }));
+
+      layout.terms.items.forEach((item: string, index: number) => {
+        elements.push(new docx.Paragraph({
+          children: [new docx.TextRun({
+            text: `${index + 1}. ${item}`,
+            font: "Times New Roman",
+            size: 24
+          })],
+          indent: { left: 720 },
+          spacing: { after: 120 }
+        }));
+      });
+    }
+
+    return elements;
+  };
+
+  const downloadDOCX = async (quote: Quote) => {
+    if (!quote.quote_details?.quoteName && !quote.project_name) {
+      toast({
+        title: "DOCX Download Failed",
+        description: "Quote name is required for DOCX generation",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
+      
+      const rawQuoteText = generateQuoteText(quote);
+      
+      // Create enhanced HTML structure that matches PDF styling exactly
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Quote ${quote.proposal_number}</title>
+          <style>
+            @page {
+              size: A4;
+              margin: 1in 0.75in;
+            }
+            body {
+              font-family: "Times New Roman", serif;
+              font-size: 12pt;
+              line-height: 1.15;
+              color: black;
+              width: 7in;
+              margin: 0 auto;
+              padding: 0;
+            }
+            .header-section {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              margin-bottom: 30px;
+              padding-bottom: 20px;
+              page-break-inside: avoid;
+            }
+            .company-info {
+              flex: 1;
+              max-width: 40%;
+            }
+            .company-logo img {
+              height: 80px;
+              width: auto;
+              max-width: 200px;
+              object-fit: contain;
+            }
+            .contact-details {
+              flex: 1;
+              max-width: 55%;
+              text-align: right;
+              margin-left: 150px;
+            }
+            .contact-row {
+              margin-bottom: 2px;
+              display: flex;
+              justify-content: flex-end;
+              align-items: center;
+              line-height: 1.1;
+            }
+            .contact-row .label {
+              font-weight: bold;
+              margin-right: 8px;
+              min-width: 80px;
+              text-align: right;
+              display: inline-block;
+            }
+            .contact-row .value {
+              text-align: left;
+              flex: 1;
+            }
+            .billing-job-container {
+              display: flex;
+              gap: 40px;
+              align-items: flex-start;
+              margin-top: -40px;
+              margin-bottom: 30px;
+              page-break-inside: avoid;
+            }
+            .billing-table {
+              width: 30%;
+            }
+            .job-info-section {
+              flex-grow: 1;
+              margin-left: 175px;
+            }
+            h2.section-header {
+              font-weight: bold;
+              font-size: 12pt;
+              margin-top: 1.5em;
+              margin-bottom: 0.5em;
+              page-break-after: avoid;
+            }
+            table {
+              border-collapse: collapse;
+              width: 100%;
+              margin-bottom: 1em;
+              page-break-inside: avoid;
+            }
+            table td, table th {
+              border: 0.5px solid black;
+              padding: 8px;
+              text-align: left;
+              vertical-align: top;
+            }
+            .pricing-section {
+              margin-top: 10px;
+              page-break-inside: avoid;
+            }
+            .pricing-section table {
+              width: 90%;
+            }
+            .terms-section {
+              page-break-inside: avoid;
+            }
+            .terms-section ol {
+              margin: 0;
+              padding-left: 20px;
+            }
+            .terms-section li {
+              margin-bottom: 4px;
+              page-break-inside: avoid;
+            }
+            .acceptance-section {
+              font-size: 9pt;
+              font-style: italic;
+              margin-top: 2em;
+              line-height: 1.2;
+              page-break-inside: avoid;
+            }
+            .signature-section {
+              margin-top: 1em;
+              page-break-inside: avoid;
+            }
+            strong {
+              font-weight: bold;
+            }
+            .wall-specifications {
+              line-height: 1.15;
+              max-width: 7.25in;
+            }
+            .page-break-avoid {
+              page-break-inside: avoid;
+            }
+          </style>
+        </head>
+        <body>
+          ${rawQuoteText}
+        </body>
+        </html>
+      `;
+
+      // Create filename first
+      const currentVersion = quote.version || 1;
+      const today = new Date();
+      const dateStr = today.toLocaleDateString('en-CA');
+      const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
+      const fileName = `${quoteName}_v${currentVersion}_${dateStr}.docx`;
+
+      // TRUE HYBRID APPROACH: Generate PDF → Analyze Layout → Recreate in DOCX
+      try {
+        const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
+        const { PageBreakManager } = await import('@/utils/pageBreakManager');
+        
+        const rawQuoteText = generateQuoteText(quote);
+        const manager = new PageBreakManager();
+        let quoteText = manager.processHTMLContent(rawQuoteText);
+        
+        if (!quoteText.includes('class="page"')) {
+          quoteText = `<div class="page" data-page="1"><div class="page-content">${rawQuoteText}</div></div>`;
+        }
+
+        // Step 1: Generate PDF using your proven method
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = quoteText;
+        tempDiv.style.cssText = `
+          font-family: "Times New Roman", serif;
+          font-size: 12pt;
+          line-height: 1.15;
+          width: 7in;
+          margin: 0 auto;
+          padding: 20px;
+          color: black;
+          background: white;
+        `;
+
+        const style = document.createElement('style');
+        style.textContent = `
+          .quote-container { font-family: "Times New Roman", serif; font-size: 12pt; line-height: 1.15; width: 7in; margin: 0 auto; color: black; }
+          .header-section { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 20px; }
+          .contact-details { flex: 1; max-width: 55%; text-align: right; }
+          h2.section-header { font-weight: bold; font-size: 12pt; margin-top: 1.5em; margin-bottom: 0.5em; }
+          table { border-collapse: collapse; width: 100%; }
+          td { padding: 4px 8px; border: 0.5px solid black; }
+          strong { font-weight: bold; }
+        `;
+        
+        document.head.appendChild(style);
+        document.body.appendChild(tempDiv);
+
+        const html2canvas = (await import('html2canvas')).default;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        
+        const canvas = await html2canvas(tempDiv, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          width: tempDiv.scrollWidth,
+          height: tempDiv.scrollHeight
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pdfWidth - 20;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pdfHeight - 20));
+        const pdfBlob = pdf.output('blob');
+        
+        // Step 2: Analyze HTML structure for layout preservation
+        const layoutAnalysis = analyzeHTMLLayout(tempDiv);
+        
+        // Clean up DOM
+        document.body.removeChild(tempDiv);
+        document.head.removeChild(style);
+
+        // Step 3: Create DOCX with preserved layout structure
+        const docx = await import('docx');
+        const docElements = await createDOCXFromLayout(layoutAnalysis, docx, rawQuoteText);
+        
+        const doc = new docx.Document({
+          sections: [{
+            properties: {
+              page: {
+                margin: {
+                  top: 720,  // 0.5 inch
+                  right: 720,
+                  bottom: 720,
+                  left: 720,
+                },
+                size: {
+                  orientation: docx.PageOrientation.PORTRAIT,
+                  width: 12240, // 8.5 inches
+                  height: 15840, // 11 inches
+                },
+              },
+            },
+            children: docElements
+          }]
+        });
+
+        const docxBlob = await docx.Packer.toBlob(doc);
+        
+        // Download DOCX
+        const url = URL.createObjectURL(docxBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+      } catch (conversionError) {
+        console.error('Hybrid PDF-to-DOCX conversion failed:', conversionError);
+        throw conversionError;
+      }
+
+      // Mark as downloaded (will increment version for next download)
+      await markAsDownloaded(quote.id);
+
+      toast({
+        title: "DOCX Downloaded",
+        description: `Quote ${quote.proposal_number} has been converted from PDF to DOCX successfully.`,
+      });
+
+    } catch (error) {
+      console.error('Error downloading DOCX:', error);
+      toast({
+        title: "DOCX Download Failed",
+        description: "Unable to generate DOCX. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
   //     const tempDiv = document.createElement('div');
   //     tempDiv.innerHTML = quoteText;
   //     tempDiv.style.cssText = `
@@ -1242,9 +2161,13 @@ const Quotes = () => {
                                     <Edit3 className="mr-2 h-4 w-4" />
                                     Edit
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => downloadPDF(quote)}>
+                                  <DropdownMenuItem onClick={() => downloadSmartPDF(quote)}>
                                     <Download className="mr-2 h-4 w-4" />
-                                    Download PDF
+                                    Download Smart PDF
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => downloadDOCX(quote)}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Download DOCX
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem 

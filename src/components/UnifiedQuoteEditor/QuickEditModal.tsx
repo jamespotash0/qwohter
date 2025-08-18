@@ -39,11 +39,28 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
   // Initialize content when section changes
   useEffect(() => {
     if (section && isOpen) {
-      // Extract clean content from section
-      const cleanHTML = section.content
-        .replace(/<div class=\"[^\"]*-section\"[^>]*>/, '')
-        .replace(/<\/div>$/, '')
-        .trim();
+      // Extract clean content from section with better HTML handling
+      let cleanHTML = section.content;
+      
+      // Create a temporary div to parse the HTML properly
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = section.content;
+      
+      // Find the section wrapper div and extract its inner HTML
+      const sectionDiv = tempDiv.querySelector(`li, div[class*="${section.id}"], div[class*="section"]`);
+      if (sectionDiv) {
+        const container = document.createElement('div');
+        sectionDiv.childNodes.forEach(node => {
+          container.appendChild(node.cloneNode(true));
+        });
+        cleanHTML = container.innerHTML.trim();
+      } else {
+        // Fallback: remove only outermost div if exists
+        cleanHTML = section.content
+          .replace(/^<div[^>]*>/, '')
+          .replace(/<\/div>$/, '')
+          .trim();
+      }
       
       setRichEditingContent(cleanHTML);
       
@@ -53,9 +70,9 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
       }
       
       // For plain text mode, extract text content
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = cleanHTML;
-      const cleanText = tempDiv.textContent || tempDiv.innerText || '';
+      const textExtractor = document.createElement('div');
+      textExtractor.innerHTML = cleanHTML;
+      const cleanText = textExtractor.textContent || textExtractor.innerText || '';
       setEditingContent(cleanText);
     }
   }, [section, isOpen]);
