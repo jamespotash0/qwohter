@@ -2,8 +2,9 @@ import { QuoteData } from './BaseQuoteTemplate';
 import { OperableWallTemplate } from './OperableWallTemplate';
 import { GlassWallTemplate } from './GlassWallTemplate';
 import { AccordionWallTemplate } from './AccordionWallTemplate';
+import { MixedWallTemplate } from './MixedWallTemplate';
 
-export type WallSystemType = 'Operable Wall' | 'Glass Wall' | 'Accordion Partitions';
+export type WallSystemType = 'Operable Wall' | 'Glass Wall' | 'Accordion Partitions' | 'Mixed Wall';
 
 export class TemplateFactory {
   static getTemplate(data: QuoteData) {
@@ -14,6 +15,8 @@ export class TemplateFactory {
         return new AccordionWallTemplate();
       case 'Glass Wall':
         return new GlassWallTemplate();
+      case 'Mixed Wall':
+        return new MixedWallTemplate();
       case 'Operable Wall':
       default:
         return new OperableWallTemplate();
@@ -22,20 +25,28 @@ export class TemplateFactory {
 
   private static determineWallSystemType(data: QuoteData): WallSystemType {
     const walls = data.wall_details?.walls || {};
-    const firstWall = Object.values(walls)[0];
+    const wallTypes = Object.values(walls).map(wall => wall.wallSystemType?.toLowerCase() || '');
     
-    if (!firstWall || !firstWall.wallSystemType) return 'Operable Wall';
+    if (wallTypes.length === 0) return 'Operable Wall';
     
-    const type = firstWall.wallSystemType?.toLowerCase() || '';
-  
+    // Check for different wall types
+    const hasGlass = wallTypes.some(type => type.includes('glass'));
+    const hasOperable = wallTypes.some(type => !type.includes('glass') && !type.includes('accordion'));
+    const hasAccordion = wallTypes.some(type => type.includes('accordion'));
     
-    // Check for glass wall indicators
-    if (type.includes('glass')) { 
-      return 'Glass Wall';
+    // Count how many different types we have
+    const typeCount = [hasGlass, hasOperable, hasAccordion].filter(Boolean).length;
+    
+    // If mixed types, use mixed template
+    if (typeCount > 1) {
+      return 'Mixed Wall';
     }
-    if (type.includes('accordion')) {
-      return 'Accordion Partitions';
-    }
+    
+    // If all same type, use specific template
+    if (hasGlass) return 'Glass Wall';
+    if (hasAccordion) return 'Accordion Partitions';
+    
+    // Default to operable wall template
     return 'Operable Wall';
   }
 

@@ -18,6 +18,7 @@ export interface QuoteData {
   labor_details?: any;
   price_details?: any;
   proposal_number?: string;
+  project_name?: string;
   created_at?: string;
 }
 
@@ -65,11 +66,45 @@ export abstract class BaseQuoteTemplate {
       },
 
       formatCurrency: (amount?: number | string) => {
-        const num = typeof amount === 'string' ? parseFloat(amount) : (amount || 0);
-        return new Intl.NumberFormat('en-US', {
+        if (amount === null || amount === undefined || amount === '') return '$0.00';
+        
+        let num: number;
+        if (typeof amount === 'string') {
+          // Handle string currency values that might have formatting
+          // Remove everything except digits, decimal points, and minus signs
+          const cleanString = amount.replace(/[^0-9.-]/g, '');
+          if (cleanString === '' || cleanString === '-') return '$0.00';
+          num = parseFloat(cleanString);
+        } else {
+          num = amount;
+        }
+        
+        // Ensure we have a valid number
+        if (isNaN(num) || !isFinite(num)) return '$0.00';
+        
+        // Handle edge cases for very large numbers (up to 7 digits)
+        const absNum = Math.abs(num);
+        if (absNum >= 10000000) { // 7+ digits
+          console.warn('Currency value may be too large:', num);
+        }
+        
+        // Use Intl.NumberFormat for proper locale-specific formatting
+        const formatter = new Intl.NumberFormat('en-US', {
           style: 'currency',
-          currency: 'USD'
-        }).format(num);
+          currency: 'USD',
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+          useGrouping: true // Ensures comma separators for thousands
+        });
+        
+        const formatted = formatter.format(num);
+        
+        // Debug logging for development
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Currency formatting: ${amount} -> ${num} -> ${formatted}`);
+        }
+        
+        return formatted;
       },
 
       formatDimensions: (
@@ -80,12 +115,36 @@ export abstract class BaseQuoteTemplate {
         includeLabels = true
       ) => {
         const wf = parseInt(lengthFeet || '0');
-        const wi = parseInt(lengthInches || '0');
         const hf = parseInt(heightFeet || '0');
-        const hi = parseInt(heightInches || '0');
+        
+        // Handle fractional inches - preserve the original string if it contains fractions
+        const wi = lengthInches || '0';
+        const hi = heightInches || '0';
+        
+        // Format inches to handle both whole numbers and fractions
+        const formatInches = (inches: string) => {
+          const trimmed = inches.trim();
+          
+          // If it's just a whole number, return it as is
+          if (/^\d+$/.test(trimmed)) {
+            return trimmed;
+          }
+          
+          // If it contains fractions, format them properly
+          if (trimmed.includes('/')) {
+            // Convert "x-x/y" format to "x x/y" format
+            return trimmed.replace(/-(\d+\/\d+)/, ' $1');
+          }
+          
+          // Default to the original value, or '0' if empty
+          return trimmed || '0';
+        };
 
-        const length = `${wf}'-${wi}"${includeLabels ? ' L' : ''}`;
-        const height = `${hf}'-${hi}"${includeLabels ? ' H' : ''}`;
+        const formattedWi = formatInches(wi);
+        const formattedHi = formatInches(hi);
+
+        const length = `${wf}'-${formattedWi}"${includeLabels ? ' L' : ''}`;
+        const height = `${hf}'-${formattedHi}"${includeLabels ? ' H' : ''}`;
         return `${length} x ${height}`;
       },
 
@@ -226,9 +285,37 @@ export abstract class BaseQuoteTemplate {
   }
 
   protected generatePricingSection(data: QuoteData): string {
-    const basePrice = this.helpers.formatCurrency(data.price_details?.basePrice || data.price_details?.base_price);
-    const freight = this.helpers.formatCurrency(data.price_details?.freight);
-    const total = this.helpers.formatCurrency(data.price_details?.total);
+    const basePriceValue = data.price_details?.basePrice || data.price_details?.base_price;
+    const freightValue = data.price_details?.freight;
+    const totalValue = data.price_details?.total;
+
+    // Additional processing to ensure numeric values with better null handling
+    const parsedBasePrice = basePriceValue ? 
+      (typeof basePriceValue === 'string' ? parseFloat(basePriceValue.replace(/[^0-9.-]/g, '')) : basePriceValue) : 0;
+    const parsedFreight = freightValue ? 
+      (typeof freightValue === 'string' ? parseFloat(freightValue.replace(/[^0-9.-]/g, '')) : freightValue) : 0;
+    const parsedTotal = totalValue ? 
+      (typeof totalValue === 'string' ? parseFloat(totalValue.replace(/[^0-9.-]/g, '')) : totalValue) : 0;
+
+    const basePrice = this.helpers.formatCurrency(parsedBasePrice);
+    const freight = this.helpers.formatCurrency(parsedFreight);
+    const total = this.helpers.formatCurrency(parsedTotal);
+
+    // Enhanced debug pricing values to console for troubleshooting
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Pricing Debug:', { 
+        original: { basePriceValue, freightValue, totalValue },
+        parsed: { parsedBasePrice, parsedFreight, parsedTotal },
+        formatted: { basePrice, freight, total }
+      });
+      
+      // Test currency formatting for all digit lengths
+      const testValues = [12.34, 123.45, 1234.56, 12345.67, 123456.78, 1234567.89, 12345678.90];
+      console.log('Currency formatting tests:');
+      testValues.forEach(val => {
+        console.log(`${val} digits -> ${this.helpers.formatCurrency(val)}`);
+      });
+    }
 
     return `<div class="pricing-section" style="margin-top: 10px;">
       <table style="width: 90%; border-collapse: collapse; table-layout: fixed;">
@@ -267,7 +354,7 @@ export abstract class BaseQuoteTemplate {
       <ol>
         <li>1.  All materials are <strong>FOB factory</strong>, prepaid, and added to the final invoice.</li>
         <li>2.  <strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</li>
-        <li>3.  All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate} Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</li>
+        <li>3.  All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate ? wageRate + ' ' : ''}Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</li>
         <li>4.  <strong>Delivery includes drop-off to the Roof</strong> of the site, if applicable.</li>
         <li>5.  Pricing is <strong>exclusive of any applicable taxes</strong>, which will be added as required.</li>
         <li>6.  The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</li>
@@ -291,7 +378,9 @@ export abstract class BaseQuoteTemplate {
 
     <div class="acceptance-section">
       <h2 class="section-header">ACCEPTANCE OF PROPOSAL:</h2>
-      The above prices, specifications, and conditions are satisfactory and are hereby accepted. Any alteration or deviation from above specifications will be executed upon written approval and may/will be subject to additional costs over and above the estimate. All removal of packing material is the customer's responsibility. Electrical and H.V.A.C. installation(s) are not included. Visa, Mastercard and American Express (AMEX) are accepted. Payments by credit card will be charged a processing fee. Pricing subject to applicable sales tax unless otherwise noted. Late payments will be subject to a 1.5% finance charge per month. Cancellations will be subject to a restocking fee.
+      <p style="font-style: italic; font-size: 9pt; line-height: 1.2;">
+        The above prices, specifications, and conditions are satisfactory and are hereby accepted. Any alteration or deviation from above specifications will be executed upon written approval and may/will be subject to additional costs over and above the estimate. All removal of packing material is the customer's responsibility. Electrical and H.V.A.C. installation(s) are not included. Visa, Mastercard and American Express (AMEX) are accepted. Payments by credit card will be charged a processing fee. Pricing subject to applicable sales tax unless otherwise noted. Late payments will be subject to a 1.5% finance charge per month. Cancellations will be subject to a restocking fee.
+      </p>
     </div>`;
   }
 
@@ -314,6 +403,12 @@ export abstract class BaseQuoteTemplate {
       ${this.generateProposalIntro(data)}
       ${this.generateWallTable(data)}
       ${this.generatePanelsSection(data)}`;
+
+    // Add panel doors section if it has content
+    const panelDoorsSection = this.generatePanelDoorsSection(data);
+    if (panelDoorsSection) {
+      html += panelDoorsSection;
+    }
 
     // Add conditional sections with page breaks
     if (data.pocket_doors?.foldType && data.pocket_doors?.foldStyle) {
@@ -346,6 +441,21 @@ export abstract class BaseQuoteTemplate {
       <p>
         <strong>${pocketFoldType}</strong> doors with an <strong>${pocketFoldStyle}</strong> style will be used to house the panels in the stack, offering a space-efficient and acoustically enhanced storage solution.
       </p>  
+    </div>`;
+  }
+
+  protected generatePanelDoorsSection(data: QuoteData): string {
+    const walls = data.wall_details?.walls || {};
+    const wallEntries = Object.entries(walls);
+    const firstWall = wallEntries[0]?.[1];
+    
+    if (!firstWall?.passDoorPanels) return '';
+
+    return `<div class="panel-doors-section" style="line-height: 1.15;">
+      <h2 class="section-header">PANEL DOORS:</h2>
+      <p>
+        A <strong>${firstWall.passDoorPanels}</strong> pass door panel is incorporated to allow for convenient access without disrupting the overall wall system.
+      </p>
     </div>`;
   }
 

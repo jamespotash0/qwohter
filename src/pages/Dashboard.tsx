@@ -61,7 +61,6 @@ const DashboardPage = () => {
         user={user.email || ""} 
         userId={user.id}
         onLogout={handleLogout} 
-        onEditQuote={handleEditQuote}
       />
     );
   }

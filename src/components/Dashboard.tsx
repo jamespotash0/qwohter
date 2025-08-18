@@ -2,85 +2,42 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { 
   Building2, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  DollarSign, 
   FileText, 
   TrendingUp, 
   Calendar, 
   User,
-  Search,
   Mail,
-  Bell,
-  ArrowUpRight,
   Users,
-  Timer,
-  Play,
-  Square,
-  Settings,
   Crown,
   Shield
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import CreateQuoteDialog from "./CreateQuoteDialog";
 import { AppSidebar } from "./AppSidebar";
 
-import { MemberManagement } from "./MemberManagement";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useQuotes } from "@/hooks/useQuotes";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { supabase } from "@/integrations/supabase/client";
+import { AnalyticsCharts } from "./AnalyticsCharts";
 
-interface Quote {
-  id: string;
-  name: string;
-  createdDate: string;
-  totalCost: number;
-  status: string;
-}
 
 interface DashboardProps {
   user: string;
   userId: string;
   onLogout: () => void;
-  onEditQuote: (quoteName: string) => void;
 }
 
-const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
-  const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
-  const [showMemberManagement, setShowMemberManagement] = useState(false);
+const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
   
-  const { quotes, createQuote } = useQuotes();
+  const { quotes } = useQuotes();
   const {
     currentOrganization,
     members,
-    currentUserRole,
-    loading: orgLoading,
-    createOrganization,
-    inviteMember,
-    removeMember,
-    updateMemberRole,
-    approveMember,
-    rejectMember,
-    refreshOrganizations
+    currentUserRole
   } = useOrganizations();
   const { profile } = useUserProfile(userId);
 
-  const handleCreateQuote = async (quoteName: string) => {
-    try {
-      await createQuote({ quoteName });
-      onEditQuote(quoteName);
-      setShowNewQuoteDialog(false);
-    } catch (error) {
-      console.error('Error creating quote:', error);
-    }
-  };
 
   // Calculate basic stats from real quotes data
   // const totalQuotes = quotes.length;
@@ -134,11 +91,7 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
                 <p className="text-muted-foreground mt-2 text-lg">Plan, prioritize, and accomplish your tasks with ease.</p>
               </div>
               <div className="flex gap-3">
-                <CreateQuoteDialog 
-                  open={showNewQuoteDialog}
-                  onOpenChange={setShowNewQuoteDialog}
-                  onCreateQuote={handleCreateQuote} 
-                />
+                {/* Create quote button moved to Quick Actions section */}
               </div>
             </div>
 
@@ -294,125 +247,11 @@ const Dashboard = ({ user, userId, onLogout, onEditQuote }: DashboardProps) => {
               </Card>
             </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-              {/* Left Column - Analytics & Team */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Project Analytics */}
-                {/* <Card>
-                  <CardHeader>
-                    <CardTitle>Project Analytics</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-64 flex items-end justify-between px-4">
-                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
-                        <div key={day} className="flex flex-col items-center gap-2">
-                          <div 
-                            className={`w-12 rounded-t-lg ${index === 3 ? 'bg-primary h-32' : index === 2 || index === 1 ? 'bg-primary/70 h-24' : 'bg-slate-200 h-16'}`}
-                          />
-                          <span className="text-xs text-slate-500">{day}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card> */}
-
-                {/* Team Collaboration */}
-                {/* <Card>
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Team Collaboration</CardTitle>
-                    <Button variant="outline" size="sm">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Member
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {[
-                        { name: "Alexandra Deff", task: "Github Project Repository", status: "Completed" },
-                        { name: "Edwin Adenike", task: "Integrate User Authentication System", status: "In Progress" },
-                        { name: "Isaac Oluwatemilorun", task: "Develop Search and Filter Functionality", status: "Pending" },
-                        { name: "David Oshodi", task: "Responsive Layout for Homepage", status: "In Progress" }
-                      ].map((member, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-slate-300 rounded-full" />
-                            <div>
-                              <p className="font-medium text-sm">{member.name}</p>
-                              <p className="text-xs text-slate-500">Working on {member.task}</p>
-                            </div>
-                          </div>
-                          <Badge variant={member.status === "Completed" ? "default" : member.status === "In Progress" ? "secondary" : "outline"}>
-                            {member.status}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card> */}
-              </div>
-
-              {/* Right Column - Reminders, Projects, Progress, Timer */}
-              <div className="space-y-6">
-                {/* Reminders */}
-                <Card className="card-floating">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Bell className="w-5 h-5 text-primary" />
-                      Reminders
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="p-4 bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl border border-primary/20">
-                        <h4 className="font-medium text-foreground">Meeting with Arc Company</h4>
-                        <p className="text-sm text-muted-foreground mt-1">Time : 02:00 pm - 04:00 pm</p>
-                        <Button className="w-full mt-3 bg-gradient-to-r from-primary to-primary/90 btn-floating">
-                          <Play className="w-4 h-4 mr-2" />
-                          Start Meeting
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Project List */}
-                <Card className="card-floating">
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-primary" />
-                      Recent Projects
-                    </CardTitle>
-                    <Button variant="outline" size="sm" className="btn-floating">
-                      <Plus className="w-4 h-4 mr-1" />
-                      New
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {quotes.slice(0, 5).map((quote, index) => (
-                        <div key={quote.id} className="flex items-center gap-3 p-3 bg-secondary/30 rounded-lg hover:bg-secondary/50 transition-colors cursor-pointer"
-                             onClick={() => onEditQuote(quote.project_name || quote.proposal_number)}>
-                          <div className={`w-3 h-3 rounded-full ${index % 3 === 0 ? 'bg-primary' : index % 3 === 1 ? 'bg-accent' : 'bg-secondary-foreground'}`} />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-foreground">{quote.project_name || quote.proposal_number}</p>
-                            <p className="text-xs text-muted-foreground">Created: {new Date(quote.created_at).toLocaleDateString()}</p>
-                          </div>
-                          <ArrowUpRight className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                      ))}
-                      {quotes.length === 0 && (
-                        <div className="text-center py-8">
-                          <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                          <p className="text-sm text-muted-foreground">No quotes yet</p>
-                          <p className="text-xs text-muted-foreground mt-1">Create your first quote to get started</p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+            {/* Analytics Section */}
+            <div className="animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+              <AnalyticsCharts quotes={quotes} />
             </div>
+
           </div>
         </main>
       </div>

@@ -54,16 +54,12 @@ const PocketDoorsForm = ({ data, onUpdate }: PocketDoorsFormProps) => {
   const availableFoldStyles = getAvailableFoldStyles(foldType);
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Pocket Doors</h2>
-      </div>
-
+    <div className="p-1">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <Label htmlFor="foldType">Fold Type</Label>
           <Select value={foldType} onValueChange={handleFoldTypeChange}>
-            <SelectTrigger>
+            <SelectTrigger className="h-10">
               <SelectValue placeholder="Select fold type" />
             </SelectTrigger>
             <SelectContent>
@@ -82,7 +78,7 @@ const PocketDoorsForm = ({ data, onUpdate }: PocketDoorsFormProps) => {
             onValueChange={handleFoldStyleChange}
             disabled={!foldType || availableFoldStyles.length === 0}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-10">
               <SelectValue placeholder="Select fold style" />
             </SelectTrigger>
             <SelectContent>

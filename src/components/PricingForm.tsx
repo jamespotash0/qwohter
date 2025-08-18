@@ -55,8 +55,7 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
 
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold mb-6">Pricing Information</h2>
+    <div className="p-1">
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
@@ -66,7 +65,7 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
               value={data.basePrice}
               onChange={(value) => handleCurrencyChange("basePrice", value)}
               placeholder="$0.00"
-              className="w-full"
+              className="w-full h-10"
             />
           </div>
           
@@ -77,7 +76,7 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
               value={data.freight}
               onChange={(value) => handleCurrencyChange("freight", value)}
               placeholder="$0.00"
-              className="w-full"
+              className="w-full h-10"
             />
           </div>
         </div>
@@ -99,7 +98,7 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
                 }}
                 placeholder="33"
                 required
-                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="h-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
             
@@ -117,7 +116,7 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
                 }}
                 placeholder="33"
                 required
-                className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="h-10 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           </div>

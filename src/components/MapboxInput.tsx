@@ -57,8 +57,12 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
 
     try {
       console.log('Making Mapbox API call for:', inputValue);
+      // Use NY/NJ area coordinates for proximity bias (around Franklin Lakes, NJ)
+      const proximityLng = -74.2107; // Longitude for Franklin Lakes, NJ
+      const proximityLat = 41.0209;  // Latitude for Franklin Lakes, NJ
+      
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(inputValue)}.json?access_token=${mapboxToken}&types=poi,address&country=us&limit=5`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(inputValue)}.json?access_token=${mapboxToken}&types=poi,address&country=us&limit=8&proximity=${proximityLng},${proximityLat}`
       );
       
       console.log('Mapbox API response status:', response.status);
@@ -108,7 +112,7 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
         placeholder={placeholder}
         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
         required={required}
-        className="h-9"
+        className="h-10"
       />
       
       {showSuggestions && suggestions.length > 0 && (

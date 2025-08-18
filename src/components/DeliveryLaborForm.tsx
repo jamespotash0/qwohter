@@ -37,12 +37,9 @@ const DeliveryLaborForm = ({ data, onUpdate }: DeliveryLaborFormProps) => {
   };
 
   return (
-    <div>
-      <h2 className="text-xl font-semibold mb-6">Delivery & Labor</h2>
-      
+    <div className="p-1">
       {/* Delivery Section */}
       <div className="mb-8">
-        <h3 className="text-lg font-medium mb-4">Delivery Schedule</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label htmlFor="trackDelivery">Track Delivery (Weeks) *</Label>
@@ -52,6 +49,7 @@ const DeliveryLaborForm = ({ data, onUpdate }: DeliveryLaborFormProps) => {
               onChange={(e) => handleDeliveryChange("trackDeliveryWeeks", e.target.value)}
               placeholder="e.g., 1-2 or 3"
               required
+              className="h-10"
             />
           </div>
           
@@ -63,6 +61,7 @@ const DeliveryLaborForm = ({ data, onUpdate }: DeliveryLaborFormProps) => {
               onChange={(e) => handleDeliveryChange("panelDeliveryWeeks", e.target.value)}
               placeholder="e.g., 3-4 or 5"
               required
+              className="h-10"
             />
           </div>
           
@@ -74,6 +73,7 @@ const DeliveryLaborForm = ({ data, onUpdate }: DeliveryLaborFormProps) => {
               onChange={(e) => handleDeliveryChange("trackInstallationDays", e.target.value)}
               placeholder="e.g., 3-4 or 2"
               required
+              className="h-10"
             />
           </div>
           
@@ -85,6 +85,7 @@ const DeliveryLaborForm = ({ data, onUpdate }: DeliveryLaborFormProps) => {
               onChange={(e) => handleDeliveryChange("panelInstallationDays", e.target.value)}
               placeholder="e.g., 1 or 2-3"
               required
+              className="h-10"
             />
           </div>
         </div>
@@ -92,7 +93,6 @@ const DeliveryLaborForm = ({ data, onUpdate }: DeliveryLaborFormProps) => {
 
       {/* Labor Section */}
       <div className="border-t pt-6">
-        <h3 className="text-lg font-medium mb-4">Labor Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label htmlFor="laborType">Labor Type *</Label>
@@ -101,7 +101,7 @@ const DeliveryLaborForm = ({ data, onUpdate }: DeliveryLaborFormProps) => {
               onValueChange={(value) => handleLaborChange("laborType", value)}
               required
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-10">
                 <SelectValue placeholder="Select labor type" />
               </SelectTrigger>
               <SelectContent className="bg-white">
@@ -118,7 +118,7 @@ const DeliveryLaborForm = ({ data, onUpdate }: DeliveryLaborFormProps) => {
               onValueChange={(value) => handleLaborChange("wageRate", value)}
               required
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-10">
                 <SelectValue placeholder="Select wage rate" />
               </SelectTrigger>
               <SelectContent className="bg-white">

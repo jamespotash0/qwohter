@@ -6,18 +6,15 @@ export class GlassWallTemplate extends BaseQuoteTemplate {
     const walls = data.wall_details?.walls || {};
     const wallEntries = Object.entries(walls);
 
-    return `<div class="wall-specifications" style="line-height: 1.15; margin-top: 15px; padding-bottom: 10px;">
-      <strong>Glass Wall Specifications as follows:</strong>
-    </div>
-
-    <div class="wall-specifications-list" style="line-height: 1.15; margin-top: 10px;">
+    return `<div class="wall-specifications-list" style="line-height: 1.15; margin-top: 10px;">
       <table style="border-collapse: collapse; width: 100%;">
         <tbody>
           ${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
             const dimensions = this.helpers.formatDimensions(wall.lengthFeet, wall.lengthInches, wall.heightFeet, wall.heightInches, true);
             const panelCount = wall.panelCount || '';
-            const frameType = wall.panelConfiguration || 'Standard Frame';
+            const frameType = wall.glasswallPanelConfiguration || 'Standard Frame';
             const quantity = wall.quantity || '1';
+            
 
             return `
               <tr>
@@ -39,6 +36,7 @@ export class GlassWallTemplate extends BaseQuoteTemplate {
 
     return `<div class="proposal-intro" style="line-height: 1.2; margin-top: 12px;">
       Thank you for considering Contemporary Wall Systems for this project. As discussed, we are offering a proposal to furnish, deliver, and install, as noted, <strong>${wallCount === 1 ? 'ONE (1)' : wallCount === 2 ? 'TWO (2)' : wallCount === 3 ? 'THREE (3)' : wallCount === 4 ? 'FOUR (4)' : `${wallCount}`} Glass Wall System${wallCount > 1 ? 's' : ''}</strong> as specified below, at the above named project.
+      <br><br><strong>Glass Wall Specifications as follows:</strong>
     </div>`;
   }
 
@@ -53,7 +51,7 @@ export class GlassWallTemplate extends BaseQuoteTemplate {
       <h2 class="section-header">GLASS PANELS:</h2>
       <p>
         This glass wall system utilizes the Kwik-Wall <strong>${firstWall.series || 'Professional'} Series Model ${firstWall.model || ''}</strong> featuring high-performance glass panels designed for maximum transparency and acoustic control. The system is configured for <strong>${firstWall.trackType || ''} Layout</strong> operation.
-        <br><br>The wall consists of <strong>${this.helpers.getPanelConfigurationText(firstWall.panelCount)} glass panels</strong> with <strong>${firstWall.panelFinishCategory || 'Clear'}</strong> glass specification. Each panel stands <strong>${this.helpers.formatDimensions('0', '0', firstWall.heightFeet, firstWall.heightInches, false).split(' x ')[1]}</strong> in height with varying widths as required. The glass panels feature a <strong>${firstWall.panelDesign || 'Contemporary'}</strong> design with <strong>${firstWall.panelThickness || '1'}"</strong> thick insulated glass units for optimal thermal and acoustic performance. The system incorporates <strong>${firstWall.panelSkin || 'Aluminum'}</strong> framing for durability and aesthetic appeal. Glass panels are suspended from a <strong>${firstWall.trackSystem || 'Heavy-Duty'}</strong> overhead track system, ensuring smooth operation and precise alignment. Sealing is achieved through <strong>${firstWall.verticalSeals || 'Compression'}</strong> vertical seals, <strong>${firstWall.bottomSeals || 'Adjustable'}</strong> bottom seals, and <strong>${firstWall.topSeals || 'Fixed'}</strong> top seals for optimal acoustic separation.
+        <br><br>The wall consists of <strong>${this.helpers.getPanelConfigurationText(firstWall.panelCount)} glass panels</strong> with <strong>${firstWall.panelFinishCategory || ''}</strong> glass specification. Each panel stands <strong>${this.helpers.formatDimensions('0', '0', firstWall.heightFeet, firstWall.heightInches, false).split(' x ')[1]}</strong> in height with varying widths as required. The glass panels feature a <strong>${firstWall.panelDesign || 'Contemporary'}</strong> design with <strong>${firstWall.panelThickness || ''}"</strong> thick insulated glass units for optimal thermal and acoustic performance. The system incorporates <strong>${firstWall.panelSkin || ''}</strong> framing for durability and aesthetic appeal. Glass panels are suspended from a <strong>${firstWall.trackSystem || ''}</strong> overhead track system, ensuring smooth operation and precise alignment. Sealing is achieved through <strong>${firstWall.verticalSeals || ''}</strong> vertical seals, <strong>${firstWall.bottomSeals || ''}</strong> bottom seals, and <strong>${firstWall.topSeals || ''}</strong> top seals for optimal acoustic separation.
       </p>
     </div>`;
   }
@@ -66,7 +64,7 @@ export class GlassWallTemplate extends BaseQuoteTemplate {
     return `<div class="track-section" style="line-height: 1.15; margin-top: 0px;">
       <h2 class="section-header">TRACK SYSTEM:</h2>
       <p>
-        We will be using a <strong>${firstWall?.trackSystem || 'Heavy-Duty Glass'} Track System</strong> specifically designed for glass wall applications. This specialized track allows for <strong>${this.helpers.getMovementOnTrackText(firstWall?.panelConfiguration)}</strong> of the glass panels, providing smooth operation while maintaining structural integrity and acoustic performance. The track system includes integrated safety features and precise alignment mechanisms essential for glass panel operation.
+        We will be using a <strong>${firstWall?.trackSystem || ''} Track System</strong> specifically designed for glass wall applications. This specialized track allows for <strong>${this.helpers.getMovementOnTrackText(firstWall?.panelConfiguration)}</strong> of the glass panels, providing smooth operation while maintaining structural integrity and acoustic performance. The track system includes integrated safety features and precise alignment mechanisms essential for glass panel operation.
       </p>
     </div>`;
   }
