@@ -34,7 +34,7 @@ interface UnifiedQuoteState {
 interface UnifiedQuoteEditorProps {
   quote: QuoteData;
   onSave?: (data: SmartQuoteData) => void;
-  onDownload?: (html: string) => void;
+  onDownload?: (html: string, isSmartPDF?: boolean) => void;
   onBack?: () => void;
   className?: string;
 }
@@ -64,6 +64,8 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   const [zoomLevel, setZoomLevel] = useState(100);
   const [selectedSection, setSelectedSection] = useState<QuoteSection | null>(null);
   const [showDataPanel, setShowDataPanel] = useState(true);
+  // Smart PDF is now the only mode - no toggle needed
+  const showSmartPDFPreview = true;
 
   // Data sync engine
   const syncEngine = useMemo(() => ({
@@ -270,11 +272,12 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   // Unified download action
   const handleDownload = useCallback(async () => {
     try {
-      await onDownload?.(state.previewHTML);
+      // Pass both HTML and Smart PDF state to the download handler
+      await onDownload?.(state.previewHTML, showSmartPDFPreview);
       
       toast({
         title: "Download Started",
-        description: "Your quote PDF is being generated.",
+        description: "Your quote PDF (2 pages) is being generated.",
       });
       
     } catch (error) {
@@ -285,7 +288,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         variant: "destructive",
       });
     }
-  }, [state.previewHTML, onDownload, toast]);
+  }, [state.previewHTML, showSmartPDFPreview, onDownload, toast]);
 
   // Reset to original
   const handleReset = useCallback(() => {
@@ -439,6 +442,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           onSectionClick={(sectionId, sectionData) => {
             setSelectedSection(sectionData);
           }}
+          showSmartPDFPreview={showSmartPDFPreview}
         />
       </div>
 

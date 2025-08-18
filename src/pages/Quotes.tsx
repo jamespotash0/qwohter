@@ -169,8 +169,19 @@ const Quotes = () => {
     }
   };
 
-  const handleUnifiedQuoteDownload = async (html: string) => {
-    if (!editingQuote) return;
+  const handleUnifiedQuoteDownload = async (html: string, isSmartPDF: boolean = false) => {
+    console.log('🚀🚀🚀 handleUnifiedQuoteDownload START 🚀🚀🚀');
+    console.log('📋 Parameters:', { 
+      htmlLength: html?.length || 0, 
+      isSmartPDF: isSmartPDF,
+      htmlPreview: html?.substring(0, 100) + '...' || 'NO HTML',
+      editingQuote: !!editingQuote
+    });
+    
+    if (!editingQuote) {
+      console.error('❌ No editing quote available');
+      return;
+    }
     
     try {
       const quoteName = editingQuote.project_name || editingQuote.proposal_number || 'quote';
@@ -182,9 +193,9 @@ const Quotes = () => {
         font-family: "Times New Roman", serif;
         font-size: 12pt;
         line-height: 1.15;
-        width: 7in;
+        width: 8.5in;
         margin: 0 auto;
-        padding: 20px;
+        padding: 48px;
         color: black;
         background: white;
       `;
@@ -196,7 +207,7 @@ const Quotes = () => {
           font-family: "Times New Roman", serif;
           font-size: 12pt;
           line-height: 1.15;
-          width: 7in;
+          width: 8.5in;
           margin: 0 auto;
           color: black;
         }
@@ -346,88 +357,396 @@ const Quotes = () => {
         }
       `;
       
+      // Position tempDiv off-screen to avoid layout shifts in the live preview
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.top = '-9999px';
+      tempDiv.style.visibility = 'hidden';
+      
       document.head.appendChild(style);
       document.body.appendChild(tempDiv);
 
       try {
-        // Use the exact same rendering logic as standard downloadPDF
+        // Use Smart PDF logic if enabled, otherwise use standard rendering
         const html2canvas = (await import('html2canvas')).default;
         
-        // Check if content has page structure
-        const pageElements = tempDiv.querySelectorAll('.page');
+        console.log('🚀 handleUnifiedQuoteDownload called with isSmartPDF:', isSmartPDF);
         
-        if (pageElements.length > 0) {
-          // Handle multi-page content
-          const pdf = new jsPDF('p', 'mm', 'a4');
+        if (isSmartPDF) {
+          // Smart PDF mode - use the EXACT same processing as the live preview
+          console.log('🔥 Smart PDF Download: Recreating preview logic exactly');
+          console.log('📄 Input HTML length:', html.length);
+          console.log('📄 Input HTML preview:', html.substring(0, 300) + '...');
+          
+          // Recreate the EXACT same Smart PDF preview logic from LivePreviewPanel
+          const previewTempDiv = document.createElement('div');
+          previewTempDiv.innerHTML = html; // Use raw preview HTML directly like preview does
+          
+          const content = previewTempDiv.innerHTML;
+          const supportSectionIndex = content.indexOf('SUPPORT STRUCTURE (HEADER)');
+          
+          let page1HTML = '';
+          let page2HTML = '';
+          
+          if (supportSectionIndex > 0) {
+            // Find the COMPLETE Support Structure section including its content (SAME AS PREVIEW)
+            const supportSectionStart = content.lastIndexOf('<div', supportSectionIndex);
+            
+            // Look for the END of the Support Structure section to include it on page 1
+            let supportSectionEnd = supportSectionIndex;
+            let searchFrom = supportSectionIndex;
+            
+            // Find the closing div for Support Structure section
+            let openDivs = 1;
+            let pos = content.indexOf('>', supportSectionStart) + 1;
+            
+            while (pos < content.length && openDivs > 0) {
+              const nextOpenDiv = content.indexOf('<div', pos);
+              const nextCloseDiv = content.indexOf('</div>', pos);
+              
+              if (nextCloseDiv !== -1 && (nextOpenDiv === -1 || nextCloseDiv < nextOpenDiv)) {
+                openDivs--;
+                pos = nextCloseDiv + 6;
+                if (openDivs === 0) {
+                  supportSectionEnd = pos;
+                  break;
+                }
+              } else if (nextOpenDiv !== -1) {
+                openDivs++;
+                pos = nextOpenDiv + 4;
+              } else {
+                break;
+              }
+            }
+            
+            // Now find the next section after Support Structure for clean page 2 start
+            const nextSectionStart = content.indexOf('<div class=', supportSectionEnd);
+            const splitPoint = nextSectionStart > 0 ? nextSectionStart : supportSectionEnd;
+            
+            page1HTML = content.substring(0, splitPoint);
+            page2HTML = content.substring(splitPoint);
+            
+            // Debug: Count approximate lines in each page (SAME AS PREVIEW)
+            const page1Lines = (page1HTML.match(/<br>|<\/p>|<\/div>|<\/li>/g) || []).length;
+            const page2Lines = (page2HTML.match(/<br>|<\/p>|<\/div>|<\/li>/g) || []).length;
+            
+            console.log('📊 Smart PDF Download Content Analysis:');
+            console.log(`📄 Page 1: ~${page1Lines} line breaks, ${page1HTML.length} chars`);
+            console.log(`📄 Page 2: ~${page2Lines} line breaks, ${page2HTML.length} chars`);
+            console.log(`🎯 Split point: Support Structure INCLUDED on Page 1, next section starts Page 2`);
+            
+            // Check what sections are on each page
+            const sectionsOnPage1 = (page1HTML.match(/class="[^"]*-section"/g) || []).map(s => s.match(/class="([^"]*)"/)?.[1]).filter(Boolean);
+            const sectionsOnPage2 = (page2HTML.match(/class="[^"]*-section"/g) || []).map(s => s.match(/class="([^"]*)"/)?.[1]).filter(Boolean);
+            
+            console.log('📋 Download Page 1 sections:', sectionsOnPage1);
+            console.log('📋 Download Page 2 sections:', sectionsOnPage2);
+          } else {
+            // Fallback: split roughly in half
+            const midPoint = Math.floor(content.length / 2);
+            page1HTML = content.substring(0, midPoint);
+            page2HTML = content.substring(midPoint);
+            console.log('📄 Smart PDF Download Fallback split at midpoint');
+          }
+          
+          // Create PDF and render exactly like the preview - US Letter size
+          const pdf = new jsPDF('p', 'mm', 'letter');
           const pdfWidth = pdf.internal.pageSize.getWidth();
           const pdfHeight = pdf.internal.pageSize.getHeight();
           
-          for (let i = 0; i < pageElements.length; i++) {
-            const pageElement = pageElements[i] as HTMLElement;
+          // Render both pages using the split content
+          const pageContents = [page1HTML, page2HTML];
+          
+          for (let pageNum = 0; pageNum < 2; pageNum++) {
+            const pageHTML = pageContents[pageNum];
             
-            const canvas = await html2canvas(pageElement, {
-              scale: 2,
-              useCORS: true,
-              backgroundColor: '#ffffff',
-              width: 816, // 8.5 inches at 96 DPI
-              height: 1056 // 11 inches at 96 DPI
-            });
-
-            const imgData = canvas.toDataURL('image/png');
-            const imgWidth = pdfWidth - 20;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-            if (i > 0) {
+            console.log(`🔍 Smart PDF Page ${pageNum + 1} content length:`, pageHTML.length);
+            console.log(`🔍 Smart PDF Page ${pageNum + 1} preview:`, pageHTML.substring(0, 200) + '...');
+            
+            if (!pageHTML || pageHTML.trim().length === 0) {
+              console.error(`❌ Smart PDF Page ${pageNum + 1} has no content!`);
+              continue;
+            }
+            
+            // Create a container with the SAME styling approach as the preview
+            const pageContainer = document.createElement('div');
+            
+            // Create the exact same structure as the live preview
+            const documentContent = document.createElement('div');
+            documentContent.className = 'quote-document';
+            documentContent.innerHTML = pageHTML;
+            
+            // Apply page container styles to match preview dimensions
+            pageContainer.style.cssText = `
+              width: 816px;
+              height: 1056px;
+              margin: 0 auto;
+              background: white;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              overflow: visible;
+            `;
+            
+            // Apply document content styles to match preview exactly
+            documentContent.style.cssText = `
+              font-family: "Times New Roman", serif;
+              font-size: 12pt;
+              line-height: 1.15;
+              padding: 48px;
+              color: black;
+              background: white;
+              overflow: visible;
+              word-wrap: break-word;
+              width: 100%;
+              min-height: 100%;
+            `;
+            
+            // Append the document content to the page container
+            pageContainer.appendChild(documentContent);
+            
+            // Add the SAME custom styles that the live preview uses
+            const previewStyles = document.createElement('style');
+            previewStyles.textContent = `
+              /* Apply the EXACT same styles as LivePreviewPanel */
+              .quote-document {
+                font-family: 'Times New Roman', Times, serif;
+                font-size: 12pt;
+                line-height: 1.15;
+                color: #000;
+                background: transparent;
+              }
+              
+              .header-section {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 30px;
+                padding-bottom: 20px;
+              }
+              
+              .company-info { flex: 1; max-width: 40%; }
+              .company-logo { display: flex; align-items: center; gap: 15px; }
+              .logo-placeholder {
+                width: 60px; height: 60px;
+                background: linear-gradient(135deg, #3B82F6, #F59E0B);
+                color: white; display: flex;
+                align-items: center; justify-content: center;
+                font-weight: bold; font-size: 16pt; border-radius: 8px;
+              }
+              
+              .company-name { font-size: 14pt; font-weight: bold; color: #333; line-height: 1.2; }
+              .contact-details { flex: 1; max-width: 55%; text-align: right; }
+              .contact-row { margin-bottom: 2px; display: flex; justify-content: flex-end; align-items: center; line-height: 1.1; }
+              .contact-row .label { font-weight: bold; margin-right: 8px; min-width: 80px; text-align: right; }
+              .contact-row .value { text-align: left; flex: 1; }
+              .website-link { color: #3B82F6; text-decoration: underline; }
+              .billing-and-job-info { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; gap: 40px; }
+              .billing-section { flex: 1; max-width: 45%; }
+              .billed-to-details { margin-top: 10px; }
+              .billed-line { margin-bottom: 2px; min-height: 20px; padding-bottom: 4px; }
+              .underline { height: 1px; background-color: black; margin-bottom: 8px; width: 100%; }
+              .job-info-section { flex: 1; max-width: 50%; }
+              .job-row { display: flex; align-items: center; margin-bottom: 15px; position: relative; }
+              .job-label { font-weight: bold; margin-right: 20px; min-width: 120px; }
+              .job-value { flex: 1; padding-bottom: 2px; }
+              .job-underline { position: absolute; bottom: 0; right: 0; left: 140px; height: 1px; background-color: black; }
+              h2.section-header { font-weight: bold; font-size: 12pt; margin-top: 1.5em; margin-bottom: 0.5em; }
+              .wall-specifications { line-height: 1.15; }
+              .acceptance-section p { font-style: italic; font-size: 9pt; line-height: 1.2; }
+              .pricing-section { margin-top: 20px; }
+              .pricing-section table { width: 100%; border-collapse: collapse; }
+              .pricing-section td { border: 1px solid #000; padding: 8px; }
+              .terms-section { margin-top: 20px; }
+              .terms-section ol { padding-left: 20px; list-style-type: none; }
+              .terms-section li { margin-bottom: 4px; line-height: 1.1; display: list-item; }
+              .panels-section p { 
+                line-height: 1.15; 
+                word-spacing: normal; 
+                letter-spacing: normal; 
+                white-space: normal;
+              }
+              .signature-section { margin-top: 30px; }
+              .general-notes-section { margin-top: 20px; line-height: 1.0; }
+              .general-notes-section p { margin: 0; line-height: 1.0; }
+              .general-notes-section div { line-height: 1.0; }
+              .general-notes-section br { line-height: 1.0; }
+              .terms-section p { line-height: 1.1; margin-bottom: 4px; }
+              .terms-section div { line-height: 1.1; }
+              .terms-section ol li { visibility: visible; overflow: visible; }
+              .terms-section ol li div { margin-top: 2px; margin-bottom: 2px; }
+              .terms-section ol li div[style*="padding-left"] { 
+                display: block !important; 
+                visibility: visible !important; 
+              }
+              .terms-section ol li div[style*="padding-left"] div { 
+                display: block !important; 
+                visibility: visible !important; 
+                margin-bottom: 2px !important;
+                line-height: 1.1 !important;
+              }
+            `;
+            
+            // Create a completely isolated iframe to avoid any layout interference
+            const renderFrame = document.createElement('iframe');
+            renderFrame.style.cssText = `
+              position: absolute;
+              left: -9999px;
+              top: -9999px;
+              width: 816px;
+              height: 1056px;
+              visibility: hidden;
+              border: none;
+            `;
+            
+            document.body.appendChild(renderFrame);
+            
+            if (pageNum > 0) {
               pdf.addPage();
             }
             
-            pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pdfHeight - 20));
+            try {
+              // Wait for iframe to be ready
+              await new Promise(resolve => setTimeout(resolve, 50));
+              
+              const iframeDoc = renderFrame.contentDocument || renderFrame.contentWindow?.document;
+              if (!iframeDoc) throw new Error('Could not access iframe document');
+              
+              // Set up the iframe document with all necessary styles
+              iframeDoc.open();
+              iframeDoc.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { 
+                      font-family: "Times New Roman", serif;
+                      font-size: 12pt;
+                      line-height: 1.15;
+                      margin: 0;
+                      padding: 0;
+                      width: 816px;
+                      height: 1056px;
+                      background: white;
+                      overflow: hidden;
+                    }
+                    ${previewStyles.textContent}
+                  </style>
+                </head>
+                <body>
+                  ${pageContainer.outerHTML}
+                </body>
+                </html>
+              `);
+              iframeDoc.close();
+              
+              // Wait for content to render
+              await new Promise(resolve => setTimeout(resolve, 200));
+              
+              const canvas = await html2canvas(iframeDoc.body, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                width: 816,
+                height: 1056,
+                foreignObjectRendering: true
+              });
+              
+              const imgData = canvas.toDataURL('image/png');
+              const imgWidth = pdfWidth - 20;
+              const imgHeight = (canvas.height * imgWidth) / canvas.width;
+              
+              pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pdfHeight - 20));
+            } finally {
+              // Clean up iframe
+              document.body.removeChild(renderFrame);
+            }
           }
           
-          // Use consistent naming with version tracking
+          // Save Smart PDF with specific naming
           const currentVersion = editingQuote.version || 1;
           const today = new Date();
           const dateStr = today.toLocaleDateString('en-CA');
-          
-          const fileName = `${quoteName}_v${currentVersion}_${dateStr}_customized.pdf`;
+          const fileName = `${quoteName}_v${currentVersion}_${dateStr}_smart.pdf`;
           pdf.save(fileName);
+          
         } else {
-          // Single page fallback (same as standard)
-          const canvas = await html2canvas(tempDiv, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: '#ffffff',
-            width: tempDiv.scrollWidth,
-            height: tempDiv.scrollHeight
-          });
+          // Standard PDF mode - check if content has page structure
+          const pageElements = tempDiv.querySelectorAll('.page');
+          
+          if (pageElements.length > 0) {
+            // Handle multi-page content
+            const pdf = new jsPDF('p', 'mm', 'letter');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            
+            for (let i = 0; i < pageElements.length; i++) {
+              const pageElement = pageElements[i] as HTMLElement;
+              
+              const canvas = await html2canvas(pageElement, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                width: 816, // 8.5 inches at 96 DPI
+                height: 1056 // 11 inches at 96 DPI
+              });
 
-          const imgData = canvas.toDataURL('image/png');
-          const pdf = new jsPDF('p', 'mm', 'a4');
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = pdf.internal.pageSize.getHeight();
-          const imgWidth = pdfWidth - 20;
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
+              const imgData = canvas.toDataURL('image/png');
+              const imgWidth = pdfWidth - 20;
+              const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-          let heightLeft = imgHeight;
-          let position = 10;
+              if (i > 0) {
+                pdf.addPage();
+              }
+              
+              pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pdfHeight - 20));
+            }
+          
+            // Use consistent naming with version tracking
+            const currentVersion = editingQuote.version || 1;
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('en-CA');
+            
+            const fileName = `${quoteName}_v${currentVersion}_${dateStr}_customized.pdf`;
+            pdf.save(fileName);
+          } else {
+            // Single page fallback (same as standard)
+            const canvas = await html2canvas(tempDiv, {
+              scale: 2,
+              useCORS: true,
+              backgroundColor: '#ffffff',
+              width: tempDiv.scrollWidth,
+              height: tempDiv.scrollHeight
+            });
 
-          pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-          heightLeft -= pdfHeight - 20;
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'letter');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const imgWidth = pdfWidth - 20;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-          while (heightLeft >= 0) {
-            position = heightLeft - imgHeight + 10;
-            pdf.addPage();
+            let heightLeft = imgHeight;
+            let position = 10;
+
             pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
             heightLeft -= pdfHeight - 20;
-          }
 
-          // Use consistent naming with version tracking
-          const currentVersion = editingQuote.version || 1;
-          const today = new Date();
-          const dateStr = today.toLocaleDateString('en-CA');
-          
-          const fileName = `${quoteName}_v${currentVersion}_${dateStr}_customized.pdf`;
-          pdf.save(fileName);
+            while (heightLeft >= 0) {
+              position = heightLeft - imgHeight + 10;
+              pdf.addPage();
+              pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+              heightLeft -= pdfHeight - 20;
+            }
+
+            // Use consistent naming with version tracking
+            const currentVersion = editingQuote.version || 1;
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('en-CA');
+            
+            const fileName = `${quoteName}_v${currentVersion}_${dateStr}_customized.pdf`;
+            pdf.save(fileName);
+          }
         }
       } catch (canvasError) {
         console.error('Canvas rendering failed, falling back to text PDF:', canvasError);
@@ -488,334 +807,6 @@ const Quotes = () => {
     }
   };
 
-  // Smart PDF generation that avoids page boundary content duplication
-  const downloadSmartPDF = async (quote: Quote) => {
-    if (!quote.quote_details?.quoteName && !quote.project_name) {
-      toast({
-        title: "PDF Download Failed",
-        description: "Quote name is required for PDF generation",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
-      
-      const rawQuoteText = generateQuoteText(quote);
-      
-      // Use existing PAGE BREAK MANAGER but render in two smart chunks
-      const { PageBreakManager } = await import('@/utils/pageBreakManager');
-      const manager = new PageBreakManager();
-      let quoteText = manager.processHTMLContent(rawQuoteText);
-      
-      if (!quoteText.includes('class="page"')) {
-        quoteText = rawQuoteText; // Use original if no page processing
-      }
-
-      // Create the styled container exactly like your working PDF
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = quoteText;
-      tempDiv.style.cssText = `
-        font-family: "Times New Roman", serif;
-        font-size: 12pt;
-        line-height: 1.15;
-        width: 7in;
-        margin: 0 auto;
-        padding: 20px;
-        color: black;
-        background: white;
-      `;
-
-      // Use the EXACT same styles as your working PDF
-      const style = document.createElement('style');
-      style.textContent = `
-        .quote-container {
-          font-family: "Times New Roman", serif;
-          font-size: 12pt;
-          line-height: 1.15;
-          width: 7in;
-          margin: 0 auto;
-          color: black;
-        }
-        .header-section {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 30px;
-          padding-bottom: 20px;
-        }
-        .company-info {
-          flex: 1;
-          max-width: 40%;
-        }
-        .company-logo {
-          display: flex;
-          align-items: center;
-          gap: 15px;
-        }
-        .contact-details {
-          flex: 1;
-          max-width: 55%;
-          text-align: right;
-        }
-        .contact-row {
-          margin-bottom: 2px;
-          display: flex;
-          justify-content: flex-end;
-          align-items: center;
-          line-height: 1.1;
-        }
-        .contact-row .label {
-          font-weight: bold;
-          margin-right: 8px;
-          min-width: 80px;
-          text-align: right;
-        }
-        .contact-row .value {
-          text-align: left;
-          flex: 1;
-        }
-        .billing-job-container {
-          display: flex;
-          gap: 40px;
-          align-items: flex-start;
-          margin-top: -40px;
-          margin-bottom: 30px;
-        }
-        .billing-table {
-          width: 30%;
-        }
-        .job-info-section {
-          flex-grow: 1;
-          margin-left: 175px;
-        }
-        h2.section-header {
-          font-weight: bold;
-          font-size: 12pt;
-          margin-top: 1.5em;
-          margin-bottom: 0.5em;
-        }
-        table {
-          border-collapse: collapse;
-          width: 100%;
-          margin-bottom: 1em;
-        }
-        table td, table th {
-          border: 0.5px solid black;
-          padding: 8px;
-          text-align: left;
-        }
-        .pricing-section {
-          margin-top: 10px;
-        }
-        .pricing-section table {
-          width: 90%;
-        }
-        .terms-section {
-          margin-top: 2em;
-        }
-        .terms-section ol {
-          margin: 0;
-          padding-left: 20px;
-        }
-        .terms-section li {
-          margin-bottom: 4px;
-        }
-        .proposal-intro {
-          line-height: 1.2;
-          margin-top: 12px;
-          margin-bottom: 1em;
-        }
-        .wall-specifications-list {
-          line-height: 1.15;
-          margin-top: 10px;
-          margin-bottom: 1em;
-        }
-        .panels-section, .track-section, .support-section, .general-section {
-          line-height: 1.15;
-          margin-bottom: 1em;
-        }
-        .acceptance-section {
-          font-size: 9pt;
-          font-style: italic;
-          margin-top: 2em;
-          line-height: 1.2;
-        }
-        .signature-section {
-          margin-top: 1em;
-        }
-        strong {
-          font-weight: bold;
-        }
-      `;
-      
-      document.head.appendChild(style);
-      document.body.appendChild(tempDiv);
-
-      const html2canvas = (await import('html2canvas')).default;
-      
-      // Measure total content height to decide where to break
-      const totalHeight = tempDiv.scrollHeight;
-      const pageHeight = 1056; // 11 inches at 96 DPI
-      
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      if (totalHeight <= pageHeight) {
-        // Fits on one page
-        const canvas = await html2canvas(tempDiv, {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          width: tempDiv.scrollWidth,
-          height: tempDiv.scrollHeight
-        });
-
-        const imgData = canvas.toDataURL('image/png');
-        const imgWidth = pdfWidth - 20;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-        pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pdfHeight - 20));
-      } else {
-        // Smart two-page split with content preservation
-        let content = tempDiv.innerHTML;
-        
-        // Debug: Log the content to ensure all sections are present
-        console.log('🔍 Smart PDF Raw Content Preview:', content.substring(0, 500) + '...');
-        
-        // Check for critical sections
-        const hasProposalIntro = content.includes('proposal-intro') || content.includes('Thank you for considering');
-        const hasWallTable = content.includes('wall-specifications') || content.includes('Specifications as follows');
-        const hasAcceptanceSection = content.includes('acceptance-section') || content.includes('ACCEPTANCE OF PROPOSAL');
-        
-        console.log('🔍 Content check:', { hasProposalIntro, hasWallTable, hasAcceptanceSection });
-        
-        // If content is missing critical sections, regenerate
-        if (!hasProposalIntro || !hasWallTable || !hasAcceptanceSection) {
-          console.warn('⚠️ Missing critical sections, regenerating quote content...');
-          const { generateQuoteText: freshGenerateQuoteText } = await import('@/components/QuoteTextGenerator');
-          const freshQuoteText = freshGenerateQuoteText(quote);
-          tempDiv.innerHTML = freshQuoteText;
-          content = tempDiv.innerHTML;
-        }
-        
-        // Find logical break points for 2-page split
-        const sections = [
-          'header-section',
-          'billing-job-container', 
-          'proposal-intro',
-          'wall-specifications',
-          'panels-section',
-          'track-section',
-          'support-section',
-          'general-section',
-          'pricing-section',
-          'terms-section',
-          'acceptance-section'
-        ];
-        
-        // Split content intelligently around pricing section (good break point)
-        const pricingSectionIndex = content.indexOf('pricing-section');
-        let page1Content = document.createElement('div');
-        let page2Content = document.createElement('div');
-        
-        // Copy styles to new containers
-        page1Content.style.cssText = tempDiv.style.cssText;
-        page2Content.style.cssText = tempDiv.style.cssText;
-        
-        if (pricingSectionIndex > 0) {
-          // Split at pricing section - everything before goes to page 1, pricing and after goes to page 2
-          const beforePricing = content.substring(0, pricingSectionIndex);
-          const fromPricing = content.substring(pricingSectionIndex);
-          
-          // Find the start of the pricing div
-          const pricingDivStart = fromPricing.indexOf('<div class="pricing-section"');
-          if (pricingDivStart >= 0) {
-            const page1HTML = beforePricing + fromPricing.substring(0, pricingDivStart);
-            const page2HTML = fromPricing.substring(pricingDivStart);
-            
-            page1Content.innerHTML = page1HTML;
-            page2Content.innerHTML = page2HTML;
-            
-            console.log('📄 Page 1 content length:', page1HTML.length);
-            console.log('📄 Page 2 content length:', page2HTML.length);
-            console.log('📄 Page 1 has acceptance:', page1HTML.includes('ACCEPTANCE OF PROPOSAL'));
-            console.log('📄 Page 2 has acceptance:', page2HTML.includes('ACCEPTANCE OF PROPOSAL'));
-          } else {
-            // Fallback: split roughly in half
-            const midPoint = Math.floor(content.length / 2);
-            page1Content.innerHTML = content.substring(0, midPoint);
-            page2Content.innerHTML = content.substring(midPoint);
-          }
-        } else {
-          // Fallback: split roughly in half if no pricing section found
-          const midPoint = Math.floor(content.length / 2);
-          page1Content.innerHTML = content.substring(0, midPoint);
-          page2Content.innerHTML = content.substring(midPoint);
-        }
-
-        // Render page 1
-        document.body.appendChild(page1Content);
-        const canvas1 = await html2canvas(page1Content, {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          width: page1Content.scrollWidth,
-          height: Math.min(page1Content.scrollHeight, pageHeight)
-        });
-        const imgData1 = canvas1.toDataURL('image/png');
-        const imgWidth = pdfWidth - 20;
-        const imgHeight1 = (canvas1.height * imgWidth) / canvas1.width;
-        pdf.addImage(imgData1, 'PNG', 10, 10, imgWidth, Math.min(imgHeight1, pdfHeight - 20));
-        document.body.removeChild(page1Content);
-
-        // Render page 2
-        pdf.addPage();
-        document.body.appendChild(page2Content);
-        const canvas2 = await html2canvas(page2Content, {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          width: page2Content.scrollWidth,
-          height: Math.min(page2Content.scrollHeight, pageHeight)
-        });
-        const imgData2 = canvas2.toDataURL('image/png');
-        const imgHeight2 = (canvas2.height * imgWidth) / canvas2.width;
-        pdf.addImage(imgData2, 'PNG', 10, 10, imgWidth, Math.min(imgHeight2, pdfHeight - 20));
-        document.body.removeChild(page2Content);
-      }
-      
-      // Clean up
-      document.body.removeChild(tempDiv);
-      document.head.removeChild(style);
-
-      // Save PDF
-      const currentVersion = quote.version || 1;
-      const today = new Date();
-      const dateStr = today.toLocaleDateString('en-CA');
-      const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
-      
-      const fileName = `${quoteName}_v${currentVersion}_${dateStr}_smart.pdf`;
-      pdf.save(fileName);
-      
-      await markAsDownloaded(quote.id);
-      
-      toast({
-        title: "Smart PDF Downloaded",
-        description: `Quote ${quote.proposal_number} generated with intelligent page breaks.`,
-      });
-
-    } catch (error) {
-      console.error('Smart PDF generation failed:', error);
-      toast({
-        title: "PDF Download Failed",
-        description: "Unable to generate smart PDF. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
 
   const downloadPDF = async (quote: Quote) => {
     if (!quote.quote_details?.quoteName && !quote.project_name) {
@@ -847,9 +838,9 @@ const Quotes = () => {
         font-family: "Times New Roman", serif;
         font-size: 12pt;
         line-height: 1.15;
-        width: 7in;
+        width: 8.5in;
         margin: 0 auto;
-        padding: 20px;
+        padding: 48px;
         color: black;
         background: white;
       `;
@@ -861,7 +852,7 @@ const Quotes = () => {
           font-family: "Times New Roman", serif;
           font-size: 12pt;
           line-height: 1.15;
-          width: 7in;
+          width: 8.5in;
           margin: 0 auto;
           color: black;
         }
@@ -1578,7 +1569,7 @@ const Quotes = () => {
               font-size: 12pt;
               line-height: 1.15;
               color: black;
-              width: 7in;
+              width: 8.5in;
               margin: 0 auto;
               padding: 0;
             }
@@ -1732,9 +1723,9 @@ const Quotes = () => {
           font-family: "Times New Roman", serif;
           font-size: 12pt;
           line-height: 1.15;
-          width: 7in;
+          width: 8.5in;
           margin: 0 auto;
-          padding: 20px;
+          padding: 48px;
           color: black;
           background: white;
         `;
@@ -2160,14 +2151,6 @@ const Quotes = () => {
                                   <DropdownMenuItem onClick={() => editQuote(quote)}>
                                     <Edit3 className="mr-2 h-4 w-4" />
                                     Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => downloadSmartPDF(quote)}>
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Download Smart PDF
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => downloadDOCX(quote)}>
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Download DOCX
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem 

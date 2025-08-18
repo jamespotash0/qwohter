@@ -4,7 +4,7 @@ const authFile = 'playwright/.auth/user.json';
 
 setup('authenticate', async ({ page }) => {
   // Get test credentials from environment or use defaults
-  const testEmail = process.env.TEST_USER_EMAIL || 'test@example.com';
+  const testEmail = process.env.TEST_USER_EMAIL || 'test@tester.com';
   const testPassword = process.env.TEST_USER_PASSWORD || 'test';
   
   console.log('Setting up authentication for tests...');

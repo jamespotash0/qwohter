@@ -234,17 +234,17 @@ export abstract class BaseQuoteTemplate {
         <div style="font-weight: bold; margin-bottom: 4px;">BILLED TO:</div>
         <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
           <tr>
-            <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 16px 4px;">
+            <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 8px 4px;">
               ${billedToName}
             </td>
           </tr>
           <tr>
-            <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 16px 4px;">
+            <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 8px 4px;">
               ${billedToCompany}
             </td>
           </tr>
           <tr>
-            <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 16px 4px;">
+            <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 8px 4px;">
               ${billedToAddress}
             </td>
           </tr>

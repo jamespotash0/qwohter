@@ -14,6 +14,7 @@ interface LivePreviewPanelProps {
   onZoomOut: () => void;
   onSectionClick?: (sectionId: string, sectionData: QuoteSection) => void;
   className?: string;
+  showSmartPDFPreview?: boolean; // New prop for Smart PDF preview mode
 }
 
 interface DocumentPage {
@@ -28,7 +29,8 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
   onZoomIn,
   onZoomOut,
   onSectionClick,
-  className = ''
+  className = '',
+  showSmartPDFPreview = false
 }) => {
   const [pages, setPages] = useState<DocumentPage[]>([]);
   const [hoveredSectionId, setHoveredSectionId] = useState<string | null>(null);
@@ -44,10 +46,126 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
     }
   }, [previewHTML]);
 
+
   // Calculate pages for pagination with dynamic page breaks
   const calculatePages = useCallback(async () => {
     if (!previewHTML) return;
 
+    if (showSmartPDFPreview) {
+      // Smart PDF preview logic (inline to avoid circular dependency)
+      console.log('🚀 Smart PDF Preview Mode ACTIVATED');
+      try {
+        // Use EXACT same logic as Smart PDF download - work with raw HTML, not PageBreakManager processed
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = previewHTML; // Use raw preview HTML directly
+        
+        const newPages: DocumentPage[] = [];
+        
+        // Apply the EXACT same splitting logic as Smart PDF download
+        console.log('📄 Smart PDF Preview: Applying custom split at Support Structure');
+        
+        const content = tempDiv.innerHTML;
+        const supportSectionIndex = content.indexOf('SUPPORT STRUCTURE (HEADER)');
+        
+        if (supportSectionIndex > 0) {
+          // Find the COMPLETE Support Structure section including its content
+          const supportSectionStart = content.lastIndexOf('<div', supportSectionIndex);
+          
+          // Look for the END of the Support Structure section to include it on page 1
+          let supportSectionEnd = supportSectionIndex;
+          let searchFrom = supportSectionIndex;
+          
+          // Find the closing div for Support Structure section
+          let openDivs = 1;
+          let pos = content.indexOf('>', supportSectionStart) + 1;
+          
+          while (pos < content.length && openDivs > 0) {
+            const nextOpenDiv = content.indexOf('<div', pos);
+            const nextCloseDiv = content.indexOf('</div>', pos);
+            
+            if (nextCloseDiv !== -1 && (nextOpenDiv === -1 || nextCloseDiv < nextOpenDiv)) {
+              openDivs--;
+              pos = nextCloseDiv + 6;
+              if (openDivs === 0) {
+                supportSectionEnd = pos;
+                break;
+              }
+            } else if (nextOpenDiv !== -1) {
+              openDivs++;
+              pos = nextOpenDiv + 4;
+            } else {
+              break;
+            }
+          }
+          
+          // Now find the next section after Support Structure for clean page 2 start
+          const nextSectionStart = content.indexOf('<div class=', supportSectionEnd);
+          const splitPoint = nextSectionStart > 0 ? nextSectionStart : supportSectionEnd;
+          
+          const page1HTML = content.substring(0, splitPoint);
+          const page2HTML = content.substring(splitPoint);
+          
+          // Debug: Count approximate lines in each page
+          const page1Lines = (page1HTML.match(/<br>|<\/p>|<\/div>|<\/li>/g) || []).length;
+          const page2Lines = (page2HTML.match(/<br>|<\/p>|<\/div>|<\/li>/g) || []).length;
+          
+          console.log('📊 Smart PDF Content Analysis:');
+          console.log(`📄 Page 1: ~${page1Lines} line breaks, ${page1HTML.length} chars`);
+          console.log(`📄 Page 2: ~${page2Lines} line breaks, ${page2HTML.length} chars`);
+          console.log(`🎯 Split point: Support Structure INCLUDED on Page 1, next section starts Page 2`);
+          
+          // Check what sections are on each page
+          const sectionsOnPage1 = (page1HTML.match(/class="[^"]*-section"/g) || []).map(s => s.match(/class="([^"]*)"/)?.[1]).filter(Boolean);
+          const sectionsOnPage2 = (page2HTML.match(/class="[^"]*-section"/g) || []).map(s => s.match(/class="([^"]*)"/)?.[1]).filter(Boolean);
+          
+          console.log('📋 Page 1 sections:', sectionsOnPage1);
+          console.log('📋 Page 2 sections:', sectionsOnPage2);
+          
+          newPages.push({
+            id: 'smart-page-0',
+            content: page1HTML,
+            pageNumber: 1
+          });
+          
+          newPages.push({
+            id: 'smart-page-1', 
+            content: page2HTML,
+            pageNumber: 2
+          });
+          
+          console.log('📄 Smart PDF Split at Support Structure - Page 1:', page1HTML.length, 'chars, Page 2:', page2HTML.length, 'chars');
+        } else {
+          // Fallback: split roughly in half
+          const midPoint = Math.floor(content.length / 2);
+          newPages.push({
+            id: 'smart-page-0',
+            content: content.substring(0, midPoint),
+            pageNumber: 1
+          });
+          newPages.push({
+            id: 'smart-page-1',
+            content: content.substring(midPoint),
+            pageNumber: 2
+          });
+          console.log('📄 Smart PDF Fallback split at midpoint');
+        }
+
+        setPages(newPages);
+        return;
+      } catch (error) {
+        console.error('Error calculating Smart PDF pages:', error);
+        // Fallback to single page
+        setPages([{
+          id: 'smart-page-0',
+          content: previewHTML,
+          pageNumber: 1
+        }]);
+        return;
+      }
+    }
+
+    // Normal preview mode
+    console.log('📄 Normal Preview Mode ACTIVATED');
     try {
       // Apply dynamic page breaks to the HTML content
       const { enhanceWithPageBreaks } = await import('@/utils/pageBreakManager');
@@ -90,7 +208,7 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
         pageNumber: 1
       }]);
     }
-  }, [previewHTML]);
+  }, [previewHTML, showSmartPDFPreview]);
 
   useEffect(() => {
     calculatePages();
@@ -437,6 +555,9 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-blue-500" />
             <span className="text-sm font-medium">Live Preview</span>
+            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded font-medium">
+              📄 2-Page PDF Preview
+            </span>
             {hoveredSectionId && (
               <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
                 Hover: {hoveredSectionId.replace(/-/g, ' ')}
@@ -482,8 +603,8 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
               key={page.id}
               className="mx-auto mb-8 bg-white shadow-lg relative"
               style={{
-                width: `${720 * zoomLevel / 100}px`,
-                minHeight: `${932 * zoomLevel / 100}px`,
+                width: `${816 * zoomLevel / 100}px`,  // 8.5 inches at 96 DPI
+                minHeight: `${1056 * zoomLevel / 100}px`, // 11 inches at 96 DPI  
                 transform: `scale(${zoomLevel / 100})`,
                 transformOrigin: 'top center',
                 marginBottom: `${32 * zoomLevel / 100}px`
@@ -492,11 +613,12 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
               {/* Page Content */}
               <div
                 ref={index === 0 ? previewRef : undefined}
-                className="quote-document p-8 pb-16"
+                className="quote-document"
                 dangerouslySetInnerHTML={{ 
                   __html: page.content + customStyles
                 }}
                 style={{
+                  padding: '48px', // 0.5 inch margins on all sides
                   fontSize: `${12 * zoomLevel / 100}pt`,
                   lineHeight: 1.15,
                   overflow: 'visible',
