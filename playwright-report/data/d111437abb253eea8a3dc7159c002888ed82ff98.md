@@ -11,7 +11,7 @@
 - text: Email
 - textbox "Email": test@example.com
 - text: Password
-- textbox "Password": testpassword123
+- textbox "Password": test
 - button "Sign In":
   - img
   - text: Sign In
