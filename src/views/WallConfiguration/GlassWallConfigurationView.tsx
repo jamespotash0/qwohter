@@ -33,7 +33,7 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="model">Glass Wall Model *</Label>
-            <Select value={viewModel.model} onValueChange={viewModel.setModel}>
+            <Select value={viewModel.selectedModel} onValueChange={viewModel.setModel}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a model" />
               </SelectTrigger>
@@ -50,12 +50,12 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
           <div className="space-y-2">
             <Label htmlFor="configuration">Panel Configuration *</Label>
             <Select 
-              value={viewModel.configuration} 
+              value={viewModel.selectedConfiguration} 
               onValueChange={viewModel.setConfiguration}
-              disabled={!viewModel.model}
+              disabled={!viewModel.selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={viewModel.model ? "Select configuration" : "Select model first"} />
+                <SelectValue placeholder={"Select configuration"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {viewModel.availableConfigurations.map((config) => (
@@ -76,12 +76,12 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
           <div className="space-y-2">
             <Label htmlFor="operation">Operation Type *</Label>
             <Select 
-              value={viewModel.operation} 
+              value={viewModel.selectedOperation} 
               onValueChange={viewModel.setOperation}
-              disabled={!viewModel.model}
+              disabled={!viewModel.selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={viewModel.model ? "Select operation type" : "Select model first"} />
+                <SelectValue placeholder={viewModel.selectedModel ? "Select operation type" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {viewModel.availableOperations.map((operation) => (
@@ -96,12 +96,12 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
           <div className="space-y-2">
             <Label htmlFor="glassType">Glass Type *</Label>
             <Select 
-              value={viewModel.glassType} 
+              value={viewModel.selectedGlassType} 
               onValueChange={viewModel.setGlassType}
-              disabled={!viewModel.model}
+              disabled={!viewModel.selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={viewModel.model ? "Select glass type" : "Select model first"} />
+                <SelectValue placeholder={viewModel.selectedModel ? "Select glass type" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {viewModel.availableGlassTypes.map((glass) => (
@@ -116,12 +116,12 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
           <div className="space-y-2">
             <Label htmlFor="stcRating">STC Rating *</Label>
             <Select 
-              value={viewModel.stcRating} 
+              value={viewModel.selectedSTCRating} 
               onValueChange={viewModel.setSTCRating}
-              disabled={!viewModel.model}
+              disabled={!viewModel.selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={viewModel.model ? "Select STC rating" : "Select model first"} />
+                <SelectValue placeholder={viewModel.selectedModel ? "Select STC rating" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {viewModel.availableSTCRatings.map((rating) => (
@@ -139,12 +139,12 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
           <div className="space-y-2">
             <Label htmlFor="partitionSupport">Partition Support *</Label>
             <Select 
-              value={viewModel.partitionSupport} 
+              value={viewModel.selectedPartitionSupport} 
               onValueChange={viewModel.setPartitionSupport}
-              disabled={!viewModel.model}
+              disabled={!viewModel.selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={viewModel.model ? "Select partition support" : "Select model first"} />
+                <SelectValue placeholder={viewModel.selectedModel ? "Select partition support" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {viewModel.availablePartitionSupports.map((support) => (
@@ -180,12 +180,12 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
           <div className="space-y-2">
             <Label htmlFor="panelFace">Panel Face Options</Label>
             <Select 
-              value={viewModel.panelFace} 
+              value={viewModel.selectedPanelFace} 
               onValueChange={viewModel.setPanelFace}
-              disabled={!viewModel.model}
+              disabled={!viewModel.selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={viewModel.model ? "Select panel face" : "Select model first"} />
+                <SelectValue placeholder={viewModel.selectedModel ? "Select panel face" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {viewModel.availablePanelFaces.map((face) => (
@@ -200,12 +200,12 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
           <div className="space-y-2">
             <Label htmlFor="frameFinish">Frame Finish Options</Label>
             <Select 
-              value={viewModel.frameFinish} 
+              value={viewModel.selectedFrameFinish} 
               onValueChange={viewModel.setFrameFinish}
-              disabled={!viewModel.model}
+              disabled={!viewModel.selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={viewModel.model ? "Select frame finish" : "Select model first"} />
+                <SelectValue placeholder={viewModel.selectedModel ? "Select frame finish" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {viewModel.availableFrameFinishes.map((finish) => (
@@ -220,12 +220,12 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
           <div className="space-y-2">
             <Label htmlFor="hingeType">Hinge Type</Label>
             <Select 
-              value={viewModel.hingeType} 
+              value={viewModel.selectedHingeType} 
               onValueChange={viewModel.setHingeType}
-              disabled={!viewModel.model}
+              disabled={!viewModel.selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={viewModel.model ? "Select hinge type" : "Select model first"} />
+                <SelectValue placeholder={viewModel.selectedModel ? "Select hinge type" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {viewModel.availableHingeTypes.map((hinge) => (
@@ -243,12 +243,12 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
           <div className="space-y-2">
             <Label htmlFor="passDoorType">Pass Door Type</Label>
             <Select 
-              value={viewModel.passDoorType} 
+              value={viewModel.selectedPassDoorType} 
               onValueChange={viewModel.setPassDoorType}
-              disabled={!viewModel.model}
+              disabled={!viewModel.selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={viewModel.model ? "Select pass door type" : "Select model first"} />
+                <SelectValue placeholder={viewModel.selectedModel ? "Select pass door type" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {viewModel.availablePassDoorTypes.map((doorType) => (
@@ -263,12 +263,12 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
           <div className="space-y-2">
             <Label htmlFor="passDoorOption">Pass Door Option</Label>
             <Select 
-              value={viewModel.passDoorOption} 
+              value={viewModel.selectedPassDoorOption} 
               onValueChange={viewModel.setPassDoorOption}
-              disabled={!viewModel.model || !viewModel.passDoorType}
+              disabled={!viewModel.selectedModel || !viewModel.selectedPassDoorType}
             >
               <SelectTrigger>
-                <SelectValue placeholder={viewModel.passDoorType ? "Select pass door option" : "Select pass door type first"} />
+                <SelectValue placeholder={viewModel.selectedPassDoorType ? "Select pass door option" : "Select pass door type first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {viewModel.availablePassDoorOptions.map((option) => (
@@ -283,12 +283,12 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
           <div className="space-y-2">
             <Label htmlFor="finalClosure">Final Closure</Label>
             <Select 
-              value={viewModel.finalClosure} 
+              value={viewModel.selectedFinalClosure} 
               onValueChange={viewModel.setFinalClosure}
-              disabled={!viewModel.model}
+              disabled={!viewModel.selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={viewModel.model ? "Select final closure" : "Select model first"} />
+                <SelectValue placeholder={viewModel.selectedModel ? "Select final closure" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {viewModel.availableFinalClosures.map((closure) => (
@@ -306,12 +306,12 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
           <div className="space-y-2">
             <Label htmlFor="bottomSeals">Bottom Seals</Label>
             <Select 
-              value={viewModel.bottomSeals} 
+              value={viewModel.selectedBottomSeals} 
               onValueChange={viewModel.setBottomSeals}
-              disabled={!viewModel.model}
+              disabled={!viewModel.selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={viewModel.model ? "Select bottom seals" : "Select model first"} />
+                <SelectValue placeholder={viewModel.selectedModel ? "Select bottom seals" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {viewModel.availableBottomSeals.map((seal) => (
@@ -326,12 +326,12 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
           <div className="space-y-2">
             <Label htmlFor="topSeals">Top Seals</Label>
             <Select 
-              value={viewModel.topSeals} 
+              value={viewModel.selectedTopSeals} 
               onValueChange={viewModel.setTopSeals}
-              disabled={!viewModel.model}
+              disabled={!viewModel.selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={viewModel.model ? "Select top seals" : "Select model first"} />
+                <SelectValue placeholder={viewModel.selectedModel ? "Select top seals" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {viewModel.availableTopSeals.map((seal) => (
@@ -349,12 +349,12 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
           <div className="space-y-2">
             <Label htmlFor="trackType">Track Type *</Label>
             <Select 
-              value={viewModel.trackType} 
+              value={viewModel.selectedTrackType} 
               onValueChange={viewModel.setTrackType}
-              disabled={!viewModel.model}
+              disabled={!viewModel.selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={viewModel.model ? "Select track type" : "Select model first"} />
+                <SelectValue placeholder={viewModel.selectedModel ? "Select track type" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {viewModel.availableTrackTypes.map((track) => (
@@ -369,12 +369,12 @@ export const GlassWallConfigurationView: React.FC<GlassWallConfigurationViewProp
           <div className="space-y-2">
             <Label htmlFor="trackFinish">Track Finish</Label>
             <Select 
-              value={viewModel.trackFinish} 
+              value={viewModel.selectedTrackFinish} 
               onValueChange={viewModel.setTrackFinish}
-              disabled={!viewModel.model}
+              disabled={!viewModel.selectedModel}
             >
               <SelectTrigger>
-                <SelectValue placeholder={viewModel.model ? "Select track finish" : "Select model first"} />
+                <SelectValue placeholder={viewModel.selectedModel ? "Select track finish" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
                 {viewModel.availableTrackFinishes.map((finish) => (
