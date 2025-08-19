@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
+import { AppSidebar } from "@/components/common/layout";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -17,7 +17,7 @@ import {
 import { useQuotes } from "@/hooks/useQuotes";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { AnalyticsPageCharts } from "@/components/AnalyticsPageCharts";
+import { AnalyticsPageCharts } from "@/components/common/charts/AnalyticsPageCharts";
 
 const Analytics = () => {
   const navigate = useNavigate();

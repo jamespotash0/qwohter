@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import QuoteCreatorWizard from "@/components/QuoteCreatorWizard";
+import QuoteCreatorWizard from "@/components/features/quotes/creation/QuoteCreatorWizard";
 import { supabase } from "@/integrations/supabase/client";
 
 const NewQuote = () => {

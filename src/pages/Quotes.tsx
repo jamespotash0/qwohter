@@ -22,8 +22,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
-import CreateQuoteDialog from "@/components/CreateQuoteDialog";
+import { AppSidebar } from "@/components/common/layout";
+import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
 import jsPDF from 'jspdf';
 // No imports needed for pandoc approach
 import { useNavigate } from "react-router-dom";
@@ -33,7 +33,7 @@ import { useOrganizations } from "@/hooks/useOrganizations";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
 import { useToast } from "@/hooks/use-toast";
-import UnifiedQuoteEditor from "@/components/UnifiedQuoteEditor";
+import UnifiedQuoteEditor from "@/components/features/quotes/editing/UnifiedQuoteEditor";
 import { SmartQuoteData } from "@/templates/SmartQuoteTemplate";
 
 const Quotes = () => {
@@ -884,7 +884,7 @@ const Quotes = () => {
     }
 
     try {
-      const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
+      const { generateQuoteText } = await import('@/components/features/quotes/generation/QuoteTextGenerator');
       const { PageBreakManager } = await import('@/utils/pageBreakManager');
      
       const rawQuoteText = generateQuoteText(quote);
@@ -1245,7 +1245,7 @@ const Quotes = () => {
       
       // Final fallback to simple text PDF
     try {
-      const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
+      const { generateQuoteText } = await import('@/components/features/quotes/generation/QuoteTextGenerator');
       const { PageBreakManager } = await import('@/utils/pageBreakManager');
       const rawQuoteText = generateQuoteText(quote);
       const manager = new PageBreakManager();

@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
-import QuoteCreator from "@/components/QuoteCreator";
-import Dashboard from "@/components/Dashboard";
+import QuoteCreator from "@/components/features/quotes/creation/QuoteCreator";
+import Dashboard from "@/components/features/dashboard/Dashboard";
 
 const DashboardPage = () => {
   const [user, setUser] = useState<User | null>(null);

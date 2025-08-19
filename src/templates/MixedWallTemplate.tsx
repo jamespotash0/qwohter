@@ -17,8 +17,8 @@ export class MixedWallTemplate extends BaseQuoteTemplate {
             // Check if this specific wall is a glass wall
             const isGlassWall = wall.wallSystemType?.toLowerCase().includes('glass');
             const frameType = isGlassWall 
-              ? (wall.glasswallPanelConfiguration || 'Standard Frame')
-              : (wall.panelConfiguration || 'Standard Frame');
+              ? (wall.glasswallPanelConfiguration || '')
+              : (wall.panelConfiguration || '');
             const panelDescription = isGlassWall 
               ? `${this.helpers.toWords(panelCount)} (${panelCount}) Glass Panels`
               : `${this.helpers.toWords(panelCount)} (${panelCount}) Panels`;
