@@ -1,0 +1,93 @@
+import { QuoteData, TemplateHelpers, PageBreakStrategy } from './types';
+import { createTemplateHelpers } from './template-helpers';
+import { SectionGenerators } from './section-generators';
+import { PageBreakLogic } from './page-break-logic';
+
+export abstract class BaseQuoteTemplate {
+  protected helpers: TemplateHelpers;
+  private sectionGenerators: SectionGenerators;
+  private pageBreakLogic: PageBreakLogic;
+
+  constructor() {
+    this.helpers = createTemplateHelpers();
+    this.sectionGenerators = new SectionGenerators(this.helpers);
+    this.pageBreakLogic = new PageBreakLogic(this.helpers);
+  }
+
+  // Delegate to section generators
+  protected generateHeader(data: QuoteData): string {
+    return this.sectionGenerators.generateHeader(data);
+  }
+
+  protected generateBillingAndJobInfo(data: QuoteData): string {
+    return this.sectionGenerators.generateBillingAndJobInfo(data);
+  }
+
+  protected generatePricingSection(data: QuoteData): string {
+    return this.sectionGenerators.generatePricingSection(data);
+  }
+
+  protected generateTermsAndSignature(data: QuoteData): string {
+    return this.sectionGenerators.generateTermsAndSignature(data);
+  }
+
+  protected generatePocketDoorsSection(data: QuoteData): string {
+    return this.sectionGenerators.generatePocketDoorsSection(data);
+  }
+
+  protected generatePanelDoorsSection(data: QuoteData): string {
+    return this.sectionGenerators.generatePanelDoorsSection(data);
+  }
+
+  protected shouldAddPageBreak(data: QuoteData): { height: number; forceBreak: boolean } | null {
+    return this.pageBreakLogic.shouldAddPageBreak(data);
+  }
+
+  // Abstract methods that subclasses must implement
+  abstract generateWallTable(data: QuoteData): string;
+  abstract generateProposalIntro(data: QuoteData): string;
+  abstract generatePanelsSection(data: QuoteData): string;
+  abstract generateTrackSection(data: QuoteData): string;
+  abstract generateSupportSection(data: QuoteData): string;
+  abstract generateGeneralSection(data: QuoteData): string;
+  abstract getPageBreakStrategy(data: QuoteData): PageBreakStrategy[];
+
+  // Main generation method
+  public generate(data: QuoteData): string {
+    const pageBreaks = this.getPageBreakStrategy(data);
+    
+    let html = `<div class="quote-container" data-page-content="true">
+      ${this.generateHeader(data)}
+      ${this.generateBillingAndJobInfo(data)}
+      ${this.generateProposalIntro(data)}
+      ${this.generateWallTable(data)}
+      ${this.generatePanelsSection(data)}`;
+
+    // Add panel doors section if it has content
+    const panelDoorsSection = this.generatePanelDoorsSection(data);
+    if (panelDoorsSection) {
+      html += panelDoorsSection;
+    }
+
+    // Add conditional sections with page breaks
+    if (data.pocket_doors?.foldType && data.pocket_doors?.foldStyle) {
+      html += this.generatePocketDoorsSection(data);
+    }
+
+    // Add strategic page break based on content
+    const needsPageBreak = this.shouldAddPageBreak(data);
+    if (needsPageBreak) {
+      html += `<div class="dynamic-page-break" style="height: ${needsPageBreak.height}px; page-break-before: ${needsPageBreak.forceBreak ? 'always' : 'auto'};"></div>`;
+    }
+
+    html += `
+      ${this.generateTrackSection(data)}
+      ${this.generateSupportSection(data)}
+      ${this.generateGeneralSection(data)}
+      ${this.generatePricingSection(data)}
+      ${this.generateTermsAndSignature(data)}
+    </div>`;
+
+    return html;
+  }
+}

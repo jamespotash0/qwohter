@@ -1,0 +1,14 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:8080",
+      "localStorage": [
+        {
+          "name": "sb-piuwrlaoxuefmiisuamc-auth-token",
+          "value": "{\"access_token\":\"eyJhbGciOiJIUzI1NiIsImtpZCI6IjhuV3N2UTVDSDdMYjJRa08iLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3BpdXdybGFveHVlZm1paXN1YW1jLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJiZWViOWE3Ni0zM2I5LTQ4YzgtOGIyZS1lMjVmZGFlOWI5MGYiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzU1NTc2Mzg1LCJpYXQiOjE3NTU1NzI3ODUsImVtYWlsIjoidGVzdEB0ZXN0ZXIuY29tIiwicGhvbmUiOiIiLCJhcHBfbWV0YWRhdGEiOnsicHJvdmlkZXIiOiJlbWFpbCIsInByb3ZpZGVycyI6WyJlbWFpbCJdfSwidXNlcl9tZXRhZGF0YSI6eyJlbWFpbF92ZXJpZmllZCI6dHJ1ZX0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3NTU1NzI3ODV9XSwic2Vzc2lvbl9pZCI6IjZmYThjZWM1LTdmY2YtNDkyOS1iZTk1LTAwYzMzZGRhMDU4MyIsImlzX2Fub255bW91cyI6ZmFsc2V9.1LK6Zl-ti9IHnt30kymPeHmaz914YlusYvF9TP0SCWc\",\"token_type\":\"bearer\",\"expires_in\":3600,\"expires_at\":1755576385,\"refresh_token\":\"2l4itsute3nz\",\"user\":{\"id\":\"beeb9a76-33b9-48c8-8b2e-e25fdae9b90f\",\"aud\":\"authenticated\",\"role\":\"authenticated\",\"email\":\"test@tester.com\",\"email_confirmed_at\":\"2025-08-15T15:22:24.068776Z\",\"phone\":\"\",\"confirmed_at\":\"2025-08-15T15:22:24.068776Z\",\"last_sign_in_at\":\"2025-08-19T03:06:25.213305647Z\",\"app_metadata\":{\"provider\":\"email\",\"providers\":[\"email\"]},\"user_metadata\":{\"email_verified\":true},\"identities\":[{\"identity_id\":\"d4cc1d90-d66d-458e-b54a-4249468856f8\",\"id\":\"beeb9a76-33b9-48c8-8b2e-e25fdae9b90f\",\"user_id\":\"beeb9a76-33b9-48c8-8b2e-e25fdae9b90f\",\"identity_data\":{\"email\":\"test@tester.com\",\"email_verified\":false,\"phone_verified\":false,\"sub\":\"beeb9a76-33b9-48c8-8b2e-e25fdae9b90f\"},\"provider\":\"email\",\"last_sign_in_at\":\"2025-08-15T15:22:24.063143Z\",\"created_at\":\"2025-08-15T15:22:24.063201Z\",\"updated_at\":\"2025-08-15T15:22:24.063201Z\",\"email\":\"test@tester.com\"}],\"created_at\":\"2025-08-15T15:22:24.042639Z\",\"updated_at\":\"2025-08-19T03:06:25.225854Z\",\"is_anonymous\":false},\"weak_password\":{\"message\":\"Password should be at least 6 characters.\",\"reasons\":[\"length\"]}}"
+        }
+      ]
+    }
+  ]
+}
