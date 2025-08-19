@@ -188,7 +188,7 @@ export abstract class BaseQuoteTemplate {
     return `<div class="header-section">
       <div class="company-info">
         <div class="company-logo">
-          <img src="/lovable-uploads/f007c713-9d1a-427a-9453-d0b8ffb42da6.png" alt="Contemporary Wall Systems Logo" style="height: 80px; width: auto; max-width: 200px; object-fit: contain;"/>
+          <!-- Image temporarily removed for testing -->
         </div>
       </div>
       

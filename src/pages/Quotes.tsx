@@ -255,7 +255,7 @@ const Quotes = () => {
           display: flex;
           justify-content: flex-end;
           align-items: center;
-          line-height: 1.1;
+          line-height: 1.15;
         }
         .contact-row .label {
           font-weight: bold;
@@ -535,7 +535,7 @@ const Quotes = () => {
               
               .company-name { font-size: 14pt; font-weight: bold; color: #333; line-height: 1.2; }
               .contact-details { flex: 1; max-width: 55%; text-align: right; }
-              .contact-row { margin-bottom: 2px; display: flex; justify-content: flex-end; align-items: center; line-height: 1.1; }
+              .contact-row { margin-bottom: 2px; display: flex; justify-content: flex-end; align-items: center; line-height: 1.15; }
               .contact-row .label { font-weight: bold; margin-right: 8px; min-width: 80px; text-align: right; }
               .contact-row .value { text-align: left; flex: 1; }
               .website-link { color: #3B82F6; text-decoration: underline; }
@@ -557,7 +557,7 @@ const Quotes = () => {
               .pricing-section td { border: 1px solid #000; padding: 8px; }
               .terms-section { margin-top: 20px; }
               .terms-section ol { padding-left: 20px; list-style-type: none; }
-              .terms-section li { margin-bottom: 4px; line-height: 1.1; display: list-item; }
+              .terms-section li { margin-bottom: 4px; line-height: 1.15; display: list-item; }
               .panels-section p { 
                 line-height: 1.15; 
                 word-spacing: normal; 
@@ -565,12 +565,12 @@ const Quotes = () => {
                 white-space: normal;
               }
               .signature-section { margin-top: 30px; }
-              .general-notes-section { margin-top: 20px; line-height: 1.0; }
-              .general-notes-section p { margin: 0; line-height: 1.0; }
-              .general-notes-section div { line-height: 1.0; }
-              .general-notes-section br { line-height: 1.0; }
-              .terms-section p { line-height: 1.1; margin-bottom: 4px; }
-              .terms-section div { line-height: 1.1; }
+              .general-notes-section { margin-top: 20px; line-height: 1.15; }
+              .general-notes-section p { margin: 0; line-height: 1.15; }
+              .general-notes-section div { line-height: 1.15; }
+              .general-notes-section br { line-height: 1.15; }
+              .terms-section p { line-height: 1.15; margin-bottom: 4px; }
+              .terms-section div { line-height: 1.15; }
               .terms-section ol li { visibility: visible; overflow: visible; }
               .terms-section ol li div { margin-top: 2px; margin-bottom: 2px; }
               .terms-section ol li div[style*="padding-left"] { 
@@ -581,21 +581,28 @@ const Quotes = () => {
                 display: block !important; 
                 visibility: visible !important; 
                 margin-bottom: 2px !important;
-                line-height: 1.1 !important;
+                line-height: 1.15 !important;
               }
             `;
             
             // Create a completely isolated iframe to avoid any layout interference
             const renderFrame = document.createElement('iframe');
             renderFrame.style.cssText = `
-              position: absolute;
+              position: fixed;
               left: -9999px;
               top: -9999px;
               width: 816px;
               height: 1056px;
               visibility: hidden;
               border: none;
+              z-index: -9999;
+              pointer-events: none;
+              opacity: 0;
             `;
+            
+            // Additional isolation attributes
+            renderFrame.setAttribute('sandbox', 'allow-same-origin');
+            renderFrame.setAttribute('scrolling', 'no');
             
             document.body.appendChild(renderFrame);
             
@@ -610,15 +617,28 @@ const Quotes = () => {
               const iframeDoc = renderFrame.contentDocument || renderFrame.contentWindow?.document;
               if (!iframeDoc) throw new Error('Could not access iframe document');
               
-              // Set up the iframe document with all necessary styles
+              // Convert any relative image URLs to absolute URLs BEFORE putting in iframe
+              const tempContent = pageContainer.cloneNode(true) as HTMLElement;
+              const images = tempContent.querySelectorAll('img');
+              images.forEach(img => {
+                if (img.src && img.src.startsWith('/')) {
+                  img.src = window.location.origin + img.src;
+                }
+                // Also ensure the image has proper loading attributes
+                img.setAttribute('crossorigin', 'anonymous');
+                img.setAttribute('loading', 'eager');
+              });
+              
+              // Set up the iframe document with all necessary styles and absolute image URLs
               iframeDoc.open();
               iframeDoc.write(`
                 <!DOCTYPE html>
                 <html>
                 <head>
                   <style>
+                    /* Use the EXACT same CSS reset and structure as the live preview */
                     * { margin: 0; padding: 0; box-sizing: border-box; }
-                    body { 
+                    html, body { 
                       font-family: "Times New Roman", serif;
                       font-size: 12pt;
                       line-height: 1.15;
@@ -629,18 +649,61 @@ const Quotes = () => {
                       background: white;
                       overflow: hidden;
                     }
+                    
+                    /* Match the exact container structure from live preview */
+                    .quote-document {
+                      font-family: "Times New Roman", serif;
+                      font-size: 12pt;
+                      line-height: 1.15;
+                      padding: 48px;
+                      color: black;
+                      background: white;
+                      overflow: visible;
+                      word-wrap: break-word;
+                      width: 100%;
+                      min-height: 100%;
+                    }
+                    
+                    /* Prevent any interaction with parent document */
+                    img {
+                      max-width: 100%;
+                      height: auto;
+                      display: block;
+                    }
                     ${previewStyles.textContent}
                   </style>
                 </head>
                 <body>
-                  ${pageContainer.outerHTML}
+                  ${tempContent.outerHTML}
                 </body>
                 </html>
               `);
               iframeDoc.close();
               
-              // Wait for content to render
-              await new Promise(resolve => setTimeout(resolve, 200));
+              // Wait for content to render and images to load in the isolated iframe
+              await new Promise(resolve => setTimeout(resolve, 300));
+              
+              // Wait for all images in the iframe to load completely
+              const iframeImages = Array.from(iframeDoc.querySelectorAll('img'));
+              if (iframeImages.length > 0) {
+                await Promise.all(iframeImages.map(img => {
+                  return new Promise<void>((resolve) => {
+                    if (img.complete && img.naturalWidth > 0) {
+                      resolve();
+                    } else {
+                      const timeout = setTimeout(() => resolve(), 2000); // 2s timeout
+                      img.onload = () => {
+                        clearTimeout(timeout);
+                        resolve();
+                      };
+                      img.onerror = () => {
+                        clearTimeout(timeout);
+                        resolve();
+                      };
+                    }
+                  });
+                }));
+              }
               
               const canvas = await html2canvas(iframeDoc.body, {
                 scale: 2,
@@ -649,14 +712,16 @@ const Quotes = () => {
                 backgroundColor: '#ffffff',
                 width: 816,
                 height: 1056,
-                foreignObjectRendering: true
+                foreignObjectRendering: true,
+                imageTimeout: 0, // Don't wait for images in html2canvas since we already waited
+                removeContainer: false // Don't remove any containers
               });
               
               const imgData = canvas.toDataURL('image/png');
-              const imgWidth = pdfWidth - 20;
+              const imgWidth = pdfWidth;
               const imgHeight = (canvas.height * imgWidth) / canvas.width;
               
-              pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pdfHeight - 20));
+              pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pdfHeight));
             } finally {
               // Clean up iframe
               document.body.removeChild(renderFrame);
@@ -692,14 +757,14 @@ const Quotes = () => {
               });
 
               const imgData = canvas.toDataURL('image/png');
-              const imgWidth = pdfWidth - 20;
+              const imgWidth = pdfWidth;
               const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
               if (i > 0) {
                 pdf.addPage();
               }
               
-              pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pdfHeight - 20));
+              pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pdfHeight));
             }
           
             // Use consistent naming with version tracking
@@ -723,20 +788,20 @@ const Quotes = () => {
             const pdf = new jsPDF('p', 'mm', 'letter');
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = pdf.internal.pageSize.getHeight();
-            const imgWidth = pdfWidth - 20;
+            const imgWidth = pdfWidth;
             const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
             let heightLeft = imgHeight;
-            let position = 10;
+            let position = 0;
 
-            pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-            heightLeft -= pdfHeight - 20;
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pdfHeight;
 
             while (heightLeft >= 0) {
-              position = heightLeft - imgHeight + 10;
+              position = heightLeft - imgHeight;
               pdf.addPage();
-              pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-              heightLeft -= pdfHeight - 20;
+              pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+              heightLeft -= pdfHeight;
             }
 
             // Use consistent naming with version tracking
@@ -907,7 +972,7 @@ const Quotes = () => {
           display: flex;
           justify-content: flex-end;
           align-items: center;
-          line-height: 1.1;
+          line-height: 1.15;
         }
         
         .contact-row .label {
@@ -1058,14 +1123,14 @@ const Quotes = () => {
             });
 
             const imgData = canvas.toDataURL('image/png');
-            const imgWidth = pdfWidth - 20;
+            const imgWidth = pdfWidth;
             const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
             if (i > 0) {
               pdf.addPage();
             }
             
-            pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pdfHeight - 20));
+            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pdfHeight));
           }
           
           // Save the PDF
@@ -1095,20 +1160,20 @@ const Quotes = () => {
           const pdf = new jsPDF('p', 'mm', 'a4');
           const pdfWidth = pdf.internal.pageSize.getWidth();
           const pdfHeight = pdf.internal.pageSize.getHeight();
-          const imgWidth = pdfWidth - 20;
+          const imgWidth = pdfWidth;
           const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
           let heightLeft = imgHeight;
-          let position = 10;
+          let position = 0;
 
-          pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-          heightLeft -= pdfHeight - 20;
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pdfHeight;
 
           while (heightLeft >= 0) {
-            position = heightLeft - imgHeight + 10;
+            position = heightLeft - imgHeight;
             pdf.addPage();
-            pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-            heightLeft -= pdfHeight - 20;
+            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+            heightLeft -= pdfHeight;
           }
 
           // Use current version (starts at 1) and increment after download
@@ -1537,299 +1602,6 @@ const Quotes = () => {
     return elements;
   };
 
-  const downloadDOCX = async (quote: Quote) => {
-    if (!quote.quote_details?.quoteName && !quote.project_name) {
-      toast({
-        title: "DOCX Download Failed",
-        description: "Quote name is required for DOCX generation",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
-      
-      const rawQuoteText = generateQuoteText(quote);
-      
-      // Create enhanced HTML structure that matches PDF styling exactly
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Quote ${quote.proposal_number}</title>
-          <style>
-            @page {
-              size: A4;
-              margin: 1in 0.75in;
-            }
-            body {
-              font-family: "Times New Roman", serif;
-              font-size: 12pt;
-              line-height: 1.15;
-              color: black;
-              width: 8.5in;
-              margin: 0 auto;
-              padding: 0;
-            }
-            .header-section {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              margin-bottom: 30px;
-              padding-bottom: 20px;
-              page-break-inside: avoid;
-            }
-            .company-info {
-              flex: 1;
-              max-width: 40%;
-            }
-            .company-logo img {
-              height: 80px;
-              width: auto;
-              max-width: 200px;
-              object-fit: contain;
-            }
-            .contact-details {
-              flex: 1;
-              max-width: 55%;
-              text-align: right;
-              margin-left: 150px;
-            }
-            .contact-row {
-              margin-bottom: 2px;
-              display: flex;
-              justify-content: flex-end;
-              align-items: center;
-              line-height: 1.1;
-            }
-            .contact-row .label {
-              font-weight: bold;
-              margin-right: 8px;
-              min-width: 80px;
-              text-align: right;
-              display: inline-block;
-            }
-            .contact-row .value {
-              text-align: left;
-              flex: 1;
-            }
-            .billing-job-container {
-              display: flex;
-              gap: 40px;
-              align-items: flex-start;
-              margin-top: -40px;
-              margin-bottom: 30px;
-              page-break-inside: avoid;
-            }
-            .billing-table {
-              width: 30%;
-            }
-            .job-info-section {
-              flex-grow: 1;
-              margin-left: 175px;
-            }
-            h2.section-header {
-              font-weight: bold;
-              font-size: 12pt;
-              margin-top: 1.5em;
-              margin-bottom: 0.5em;
-              page-break-after: avoid;
-            }
-            table {
-              border-collapse: collapse;
-              width: 100%;
-              margin-bottom: 1em;
-              page-break-inside: avoid;
-            }
-            table td, table th {
-              border: 0.5px solid black;
-              padding: 8px;
-              text-align: left;
-              vertical-align: top;
-            }
-            .pricing-section {
-              margin-top: 10px;
-              page-break-inside: avoid;
-            }
-            .pricing-section table {
-              width: 90%;
-            }
-            .terms-section {
-              page-break-inside: avoid;
-            }
-            .terms-section ol {
-              margin: 0;
-              padding-left: 20px;
-            }
-            .terms-section li {
-              margin-bottom: 4px;
-              page-break-inside: avoid;
-            }
-            .acceptance-section {
-              font-size: 9pt;
-              font-style: italic;
-              margin-top: 2em;
-              line-height: 1.2;
-              page-break-inside: avoid;
-            }
-            .signature-section {
-              margin-top: 1em;
-              page-break-inside: avoid;
-            }
-            strong {
-              font-weight: bold;
-            }
-            .wall-specifications {
-              line-height: 1.15;
-              max-width: 7.25in;
-            }
-            .page-break-avoid {
-              page-break-inside: avoid;
-            }
-          </style>
-        </head>
-        <body>
-          ${rawQuoteText}
-        </body>
-        </html>
-      `;
-
-      // Create filename first
-      const currentVersion = quote.version || 1;
-      const today = new Date();
-      const dateStr = today.toLocaleDateString('en-CA');
-      const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
-      const fileName = `${quoteName}_v${currentVersion}_${dateStr}.docx`;
-
-      // TRUE HYBRID APPROACH: Generate PDF → Analyze Layout → Recreate in DOCX
-      try {
-        const { generateQuoteText } = await import('@/components/QuoteTextGenerator');
-        const { PageBreakManager } = await import('@/utils/pageBreakManager');
-        
-        const rawQuoteText = generateQuoteText(quote);
-        const manager = new PageBreakManager();
-        let quoteText = manager.processHTMLContent(rawQuoteText);
-        
-        if (!quoteText.includes('class="page"')) {
-          quoteText = `<div class="page" data-page="1"><div class="page-content">${rawQuoteText}</div></div>`;
-        }
-
-        // Step 1: Generate PDF using your proven method
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = quoteText;
-        tempDiv.style.cssText = `
-          font-family: "Times New Roman", serif;
-          font-size: 12pt;
-          line-height: 1.15;
-          width: 8.5in;
-          margin: 0 auto;
-          padding: 48px;
-          color: black;
-          background: white;
-        `;
-
-        const style = document.createElement('style');
-        style.textContent = `
-          .quote-container { font-family: "Times New Roman", serif; font-size: 12pt; line-height: 1.15; width: 7in; margin: 0 auto; color: black; }
-          .header-section { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; padding-bottom: 20px; }
-          .contact-details { flex: 1; max-width: 55%; text-align: right; }
-          h2.section-header { font-weight: bold; font-size: 12pt; margin-top: 1.5em; margin-bottom: 0.5em; }
-          table { border-collapse: collapse; width: 100%; }
-          td { padding: 4px 8px; border: 0.5px solid black; }
-          strong { font-weight: bold; }
-        `;
-        
-        document.head.appendChild(style);
-        document.body.appendChild(tempDiv);
-
-        const html2canvas = (await import('html2canvas')).default;
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        
-        const canvas = await html2canvas(tempDiv, {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          width: tempDiv.scrollWidth,
-          height: tempDiv.scrollHeight
-        });
-
-        const imgData = canvas.toDataURL('image/png');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = pdfWidth - 20;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-        pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pdfHeight - 20));
-        const pdfBlob = pdf.output('blob');
-        
-        // Step 2: Analyze HTML structure for layout preservation
-        const layoutAnalysis = analyzeHTMLLayout(tempDiv);
-        
-        // Clean up DOM
-        document.body.removeChild(tempDiv);
-        document.head.removeChild(style);
-
-        // Step 3: Create DOCX with preserved layout structure
-        const docx = await import('docx');
-        const docElements = await createDOCXFromLayout(layoutAnalysis, docx, rawQuoteText);
-        
-        const doc = new docx.Document({
-          sections: [{
-            properties: {
-              page: {
-                margin: {
-                  top: 720,  // 0.5 inch
-                  right: 720,
-                  bottom: 720,
-                  left: 720,
-                },
-                size: {
-                  orientation: docx.PageOrientation.PORTRAIT,
-                  width: 12240, // 8.5 inches
-                  height: 15840, // 11 inches
-                },
-              },
-            },
-            children: docElements
-          }]
-        });
-
-        const docxBlob = await docx.Packer.toBlob(doc);
-        
-        // Download DOCX
-        const url = URL.createObjectURL(docxBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-      } catch (conversionError) {
-        console.error('Hybrid PDF-to-DOCX conversion failed:', conversionError);
-        throw conversionError;
-      }
-
-      // Mark as downloaded (will increment version for next download)
-      await markAsDownloaded(quote.id);
-
-      toast({
-        title: "DOCX Downloaded",
-        description: `Quote ${quote.proposal_number} has been converted from PDF to DOCX successfully.`,
-      });
-
-    } catch (error) {
-      console.error('Error downloading DOCX:', error);
-      toast({
-        title: "DOCX Download Failed",
-        description: "Unable to generate DOCX. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
   //     const tempDiv = document.createElement('div');
   //     tempDiv.innerHTML = quoteText;
   //     tempDiv.style.cssText = `

@@ -290,6 +290,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
     }
   }, [state.previewHTML, showSmartPDFPreview, onDownload, toast]);
 
+
   // Reset to original
   const handleReset = useCallback(() => {
     setState(prev => ({
@@ -402,11 +403,11 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
               
               <Button
                 size="sm"
-                onClick={handleDownload}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={handleDownload}
               >
                 <Download className="w-4 h-4 mr-2" />
-                Download
+                Download PDF
               </Button>
             </div>
           </div>

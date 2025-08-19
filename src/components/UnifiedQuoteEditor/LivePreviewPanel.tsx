@@ -492,7 +492,7 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
       
       .company-name { font-size: 14pt; font-weight: bold; color: #333; line-height: 1.2; }
       .contact-details { flex: 1; max-width: 55%; text-align: right; }
-      .contact-row { margin-bottom: 2px; display: flex; justify-content: flex-end; align-items: center; line-height: 1.1; }
+      .contact-row { margin-bottom: 2px; display: flex; justify-content: flex-end; align-items: center; line-height: 1.15; }
       .contact-row .label { font-weight: bold; margin-right: 8px; min-width: 80px; text-align: right; }
       .contact-row .value { text-align: left; flex: 1; }
       .website-link { color: #3B82F6; text-decoration: underline; }
@@ -514,7 +514,7 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
       .pricing-section td { border: 1px solid #000; padding: 8px; }
       .terms-section { margin-top: 20px; }
       .terms-section ol { padding-left: 20px; list-style-type: none; }
-      .terms-section li { margin-bottom: 4px; line-height: 1.1; display: list-item; }
+      .terms-section li { margin-bottom: 4px; line-height: 1.15; display: list-item; }
       /* Ensure proper spacing in panels section */
       .panels-section p { 
         line-height: 1.15; 
@@ -523,13 +523,13 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
         white-space: normal;
       }
       .signature-section { margin-top: 30px; }
-      .general-notes-section { margin-top: 20px; line-height: 1.0; }
-      .general-notes-section p { margin: 0; line-height: 1.0; }
-      .general-notes-section div { line-height: 1.0; }
-      .general-notes-section br { line-height: 1.0; }
+      .general-notes-section { margin-top: 20px; line-height: 1.15; }
+      .general-notes-section p { margin: 0; line-height: 1.15; }
+      .general-notes-section div { line-height: 1.15; }
+      .general-notes-section br { line-height: 1.15; }
       /* Single spacing for general notes and terms content */
-      .terms-section p { line-height: 1.1; margin-bottom: 4px; }
-      .terms-section div { line-height: 1.1; }
+      .terms-section p { line-height: 1.15; margin-bottom: 4px; }
+      .terms-section div { line-height: 1.15; }
       /* Ensure all list items are visible and properly spaced */
       .terms-section ol li { visibility: visible; overflow: visible; }
       .terms-section ol li div { margin-top: 2px; margin-bottom: 2px; }
@@ -542,7 +542,7 @@ export const LivePreviewPanel: React.FC<LivePreviewPanelProps> = ({
         display: block !important; 
         visibility: visible !important; 
         margin-bottom: 2px !important;
-        line-height: 1.1 !important;
+        line-height: 1.15 !important;
       }
     </style>
   `;
