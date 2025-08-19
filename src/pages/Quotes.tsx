@@ -1719,7 +1719,7 @@ const Quotes = () => {
   const monthlyQuoteValueData = generateMonthlyQuoteValueData();
   const handleCreateQuote = (quoteName: string) => {
     setShowNewQuoteDialog(false);
-    navigate("/newquote");
+    navigate(`/newquote?name=${encodeURIComponent(quoteName)}`);
   };
 
   if (editingQuote) {
