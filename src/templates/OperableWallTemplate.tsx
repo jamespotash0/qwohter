@@ -13,13 +13,15 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
         <tbody>
           ${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
             const dimensions = this.helpers.formatDimensions(wall.lengthFeet, wall.lengthInches, wall.heightFeet, wall.heightInches, true);
+            const wallSystemType = wall.wallSystemType || '';
             const panelCount = wall.panelCount || '';
             const panelConfiguration = wall.panelConfiguration || '';
             const quantity = wall.quantity || '1';
 
             return `
               <tr>
-                <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black; font-weight: bold;">${wallName}</td>
+                <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black; font-weight: bold;">${wallName}</td><td>
+                <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${wallSystemType}</td>
                 <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${dimensions}</td>
                 <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${this.helpers.toWords(panelCount)} (${panelCount})</td>
                 <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black;">${panelConfiguration} </td>
@@ -33,14 +35,30 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
   }
 
   generateProposalIntro(data: QuoteData): string {
-    const wallCount = this.helpers.getWallCount(data);
-    const wallSystemType = this.helpers.getWallSystemType(data);
-
-    return `<div class="proposal-intro" style="line-height: 1.2; margin-top: 12px;">
-      Thank you for considering Contemporary Wall Systems for this project. As discussed, we are offering a proposal to furnish, deliver, and install, as noted, <strong>${wallCount === 1 ? 'ONE (1)' : wallCount === 2 ? 'TWO (2)' : wallCount === 3 ? 'THREE (3)' : wallCount === 4 ? 'FOUR (4)' : `${wallCount}`} ${wallSystemType}</strong> as specified below, at the above named project.
-      <br><br><strong>Specifications as follows:</strong>
-    </div>`;
+    // Get organization name from quote data, fallback to default if not available
+    const organizationName = data.quote_details?.organizationName?.trim() || 
+                             data.quote_details?.organization_name?.trim() || 
+                             data.quote_details?.company_name?.trim() ||
+                             '';
+    const walls = data.wall_details?.walls || {};
+    const wallCount = Object.keys(walls).length;
+    const systemText = wallCount > 1 ? "wall systems" : "wall system";
+    
+    return `
+      <div class="proposal-intro" style="line-height: 1.2; margin-top: 12px;">
+        Thank you for considering <strong>${organizationName}</strong> for this project. As discussed, we are offering a proposal to furnish, deliver, & install, the following ${systemText} as specified below, at the above named project.
+        <br><br><strong>Specifications as follows:</strong>
+      </div>
+    `;
   }
+    // const wallCount = this.helpers.getWallCount(data);
+    // const wallSystemType = this.helpers.getWallSystemType(data);
+
+    // return `<div class="proposal-intro" style="line-height: 1.2; margin-top: 12px;">
+    //   Thank you for considering Contemporary Wall Systems for this project. As discussed, we are offering a proposal to furnish, deliver, and install, as noted, <strong>${wallCount === 1 ? 'ONE (1)' : wallCount === 2 ? 'TWO (2)' : wallCount === 3 ? 'THREE (3)' : wallCount === 4 ? 'FOUR (4)' : `${wallCount}`} ${wallSystemType}</strong> as specified below, at the above named project.
+    //   <br><br><strong>Specifications as follows:</strong>
+    // </div>`;
+  // }
 
   generatePanelsSection(data: QuoteData): string {
     const walls = data.wall_details?.walls || {};
@@ -121,39 +139,70 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
   generateTrackSection(data: QuoteData): string {
     const walls = data.wall_details?.walls || {};
     const wallEntries = Object.entries(walls);
-    const firstWall = wallEntries[0]?.[1];
+    const trackParagraphs = wallEntries.map(([wallName, waller]) => {
+      return `<strong>${wallName}</strong>: ${waller.trackSystem || ""} Track System (${this.helpers.getMovementOnTrackText(waller?.panelConfiguration)} Panels)`;
+    });
 
-    return `<div class="track-section" style="line-height: 1.15; margin-top: 0px;">
-      <h2 class="section-header">TRACK:</h2>
-      <p>
-        We will be using an <strong>${firstWall?.trackSystem || ''} Track System</strong> to suspend the doors from above. This track allows for <strong>${this.helpers.getMovementOnTrackText(firstWall?.panelConfiguration)}</strong> of the panels, along the overhead track, enabling flexible operation and easy stacking when the wall is not in use.
-      </p>
-    </div>`;
+    const summary = 
+      wallEntries.length > 1 
+        ? `These track systems allow for the specified movement of the panels along the overhead track, enabling flexible operation and easy stacking when the walls are not in use.`
+        : `The track system allows for the specified movement of the panels along the overhead track, enabling flexible operation and easy stacking when the wall is not in use.`
+    return `
+      <div class="track-section" style="line-height: 1.15; margin-top: 0px;">
+        <h2 class="section-header">TRACK:</h2>
+        <p>
+          ${trackParagraphs.join("<br>")}<br><br>
+          ${summary}
+        </p>
+      </div>
+    `;
   }
 
   generateSupportSection(data: QuoteData): string {
-    const mountingTrack = data.support_structure?.mountingTrack || '';
-
-    return `<div class="support-section" style="line-height: 1.15;">
-      <h2 class="section-header">SUPPORT STRUCTURE (HEADER):</h2>
-      Doors will be hung from a <strong>${mountingTrack}</strong> above, to manufacturer's specs, as supplied by others. Soffits, if required, as supplied by others.
-    </div>`;
-  }
-
-  generateGeneralSection(data: QuoteData): string {
     const walls = data.wall_details?.walls || {};
     const wallEntries = Object.entries(walls);
-    const firstWall = wallEntries[0]?.[1];
     
+    // Display structure support for each wall individually (per-wall configuration)
+    const supportParagraphs = wallEntries.map(([wallName, wall]) => {
+      // Check for structure support - handle different possible values
+      let structureSupport = wall.structureSupport;
+      
+      // If not set or is 'None', try fallback to global structure support
+      if (!structureSupport || structureSupport === 'None' || structureSupport.trim() === '') {
+        structureSupport = data.support_structure?.mountingTrack || 'None Required';
+      }
+      
+      return `<strong>${wallName}</strong>: ${structureSupport}`;
+    });
+    
+    const summary = wallEntries.length > 1
+      ? `These doors will be hung from the above mounting structures to manufacturer's specs, as supplied by others. Soffits, if required, as supplied by others.`
+      : `The doors will be hung from the above mounting structure to manufacturer's specs, as supplied by others. Soffits, if required, as supplied by others.`;
+    
+    return `
+      <div class="support-section" style="line-height: 1.15;">
+        <h2 class="section-header">SUPPORT STRUCTURE (HEADER):</h2>
+        <p>
+          ${supportParagraphs.join("<br>")}<br><br>
+          ${summary}
+        </p>
+      </div>
+    `;
+  }
+ 
+  generateGeneralSection(data: QuoteData): string { //moving STC to panel details, add shop drawings as well
+    const shopDrawingDelivery = data.delivery_details?.shopDrawingWeeks || '';
     const trackDelivery = data.delivery_details?.trackDeliveryWeeks || '';
     const panelDelivery = data.delivery_details?.panelDeliveryWeeks || '';
     const trackInstallation = data.delivery_details?.trackInstallationDays || '';
     const panelInstallation = data.delivery_details?.panelInstallationDays || '';
 
-    return `<div class="general-section" style="line-height: 1.15; margin-bottom: 20px;">
-      <h2 class="section-header">GENERAL:</h2>
-      Each door will carry a minimum <strong>STC of ${firstWall?.stcRating || ''}</strong>${firstWall?.stcRating === '56' ? ' <strong>(Highest Available)</strong>' : ''}. Estimated delivery would be <strong>${trackDelivery} weeks</strong> after approval of shop drawings for tracks, & <strong>${panelDelivery} weeks</strong> for panels. Installation of tracks would take approximately <strong>${trackInstallation} working days</strong>, panels installation would take <strong>${panelInstallation} additional days</strong>.
-    </div>`;
+    return `
+      <div class="general-section" style="line-height: 1.15; margin-bottom: 20px;">
+        <h2 class="section-header">GENERAL:</h2>
+        Estimated delivery for shop drawings would be <strong>${shopDrawingDelivery} weeks</strong>, after which approval of them, delivery of tracks would be <strong>${trackDelivery} weeks</strong>, & panels <strong>${panelDelivery} weeks</strong>. Installation of tracks would take approximately <strong>${trackInstallation} working days</strong>, panels installation would take <strong>${panelInstallation} additional days</strong>.
+      </div>
+    `;
   }
 
   getPageBreakStrategy(data: QuoteData): { breakAfterSection: string; minimumHeight: number }[] {

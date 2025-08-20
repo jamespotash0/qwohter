@@ -259,8 +259,11 @@ export class SmartQuoteHelper {
     const dependencies: { [key: string]: string[] } = {
       'panel-doors': ['passDoorPanels'],
       'panel-doors-section': ['passDoorPanels'],
-      'pocket-doors': ['foldType', 'foldStyle'],
-      'pocket-doors-section': ['foldType', 'foldStyle']
+      'pocket-doors': ['pocketDoors.foldType', 'pocketDoors.foldStyle', 'pocket_doors.foldType'], // Support both per-wall and global
+      'pocket-doors-section': ['pocketDoors.foldType', 'pocketDoors.foldStyle', 'pocket_doors.foldType'],
+      'structure-support': ['structureSupport'],
+      'structure-support-section': ['structureSupport'],
+      'track-section': ['trackConfiguration.trackType', 'trackConfiguration.trackSystem', 'trackType', 'trackSystem'] // Support both new and legacy
     };
     
     return dependencies[id] || [];

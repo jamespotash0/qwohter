@@ -25,7 +25,9 @@ const operableWallFields: (keyof WallSpecification)[] = [
   'initialClosureSystem',
   'endPanelType',
   'trackType',
-  'trackSystem'
+  'trackSystem',
+  'structureSupport',
+  'pocketDoors'
 ];
 
 // Glass Wall fields  
@@ -53,7 +55,9 @@ const glassWallFields: (keyof WallSpecification)[] = [
   'glasswallTrackFinish',
   'glasswallFinalClosure',
   'glasswallBottomSeals',
-  'glasswallTopSeals'
+  'glasswallTopSeals',
+  'structureSupport',
+  'pocketDoors'
 ];
 
 // Accordion Wall fields
@@ -81,7 +85,9 @@ const accordionWallFields: (keyof WallSpecification)[] = [
   'initialClosureSystem',
   'endPanelType',
   'trackType',
-  'trackSystem'
+  'trackSystem',
+  'structureSupport',
+  'pocketDoors'
 ];
 
 export function filterWallDataByType(wallSpec: WallSpecification): WallSpecification {

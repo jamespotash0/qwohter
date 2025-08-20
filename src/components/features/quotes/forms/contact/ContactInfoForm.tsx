@@ -12,6 +12,7 @@ interface ContactInfoData {
   phone: string;
   fax: string;
   website: string;
+  organizationName?: string;
 }
 
 interface ContactInfoFormProps {
@@ -20,7 +21,7 @@ interface ContactInfoFormProps {
 }
 
 const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
-  const { members, loading } = useOrganizations();
+  const { currentOrganization, members, loading } = useOrganizations();
   const [showCustomNameInput, setShowCustomNameInput] = useState(false);
   const [showCustomEmailInput, setShowCustomEmailInput] = useState(false);
   const [customName, setCustomName] = useState("");
@@ -29,6 +30,13 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
   const handleChange = (field: keyof ContactInfoData, value: string) => {
     onUpdate({ ...data, [field]: value });
   };
+
+  // Automatically set organization name when organization loads
+  useEffect(() => {
+    if (currentOrganization && !data.organizationName) {
+      handleChange('organizationName', currentOrganization.name);
+    }
+  }, [currentOrganization, data.organizationName]);
 
   // Get active members from the organization
   const activeMembers = members.filter(member => member.status === 'active');

@@ -166,14 +166,47 @@ export const useEditorState = () => {
   const updateSectionVisibilityFromData = useCallback((quoteData: any) => {
     setState(prev => {
       const updatedSections = prev.sections.map(section => {
+        const walls = quoteData?.wall_details?.walls || {};
+        
         // Handle panel-doors section visibility based on pass door configuration
         if (section.id === 'panel-doors' || section.id === 'panel-doors-section') {
-          const walls = quoteData?.wall_details?.walls || {};
-          const firstWall = Object.values(walls)[0] as any;
+          const shouldBeVisible = Object.values(walls).some((wall: any) => 
+            wall?.passDoorPanels && 
+            wall.passDoorPanels.toLowerCase().trim() !== 'none' &&
+            wall.passDoorPanels.trim() !== ''
+          );
           
-          const shouldBeVisible = firstWall?.passDoorPanels && 
-                                  firstWall.passDoorPanels.toLowerCase().trim() !== 'none' &&
-                                  firstWall.passDoorPanels.trim() !== '';
+          if (section.isVisible !== shouldBeVisible) {
+            return { ...section, isVisible: shouldBeVisible };
+          }
+        }
+        
+        // Handle pocket-doors section visibility based on per-wall or global configuration
+        if (section.id === 'pocket-doors' || section.id === 'pocket-doors-section') {
+          // Check per-wall configurations first
+          const hasPerWallPockets = Object.values(walls).some((wall: any) => 
+            wall?.pocketDoors?.foldType && 
+            wall.pocketDoors.foldType.toLowerCase().trim() !== 'none' &&
+            wall.pocketDoors.foldType.trim() !== ''
+          );
+          
+          // Fallback to global configuration for backward compatibility
+          const hasGlobalPockets = !hasPerWallPockets && quoteData?.pocket_doors?.foldType;
+          
+          const shouldBeVisible = hasPerWallPockets || hasGlobalPockets;
+          
+          if (section.isVisible !== shouldBeVisible) {
+            return { ...section, isVisible: shouldBeVisible };
+          }
+        }
+        
+        // Handle structure-support section visibility
+        if (section.id === 'structure-support' || section.id === 'structure-support-section') {
+          const shouldBeVisible = Object.values(walls).some((wall: any) => 
+            wall?.structureSupport && 
+            wall.structureSupport.toLowerCase().trim() !== 'none' &&
+            wall.structureSupport.trim() !== ''
+          );
           
           if (section.isVisible !== shouldBeVisible) {
             return { ...section, isVisible: shouldBeVisible };

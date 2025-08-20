@@ -57,8 +57,14 @@ export class MixedWallTemplate extends BaseQuoteTemplate {
       ? systemTypes.slice(0, -1).join(', ') + ' and ' + systemTypes[systemTypes.length - 1] + ' Systems'
       : systemTypes[0] + ' Systems';
 
+    // Get organization name from quote data, fallback to default if not available
+    const organizationName = data.quote_details?.organizationName || 
+                             data.quote_details?.organization_name || 
+                             data.quote_details?.company_name ||
+                             'Contemporary Wall Systems';
+
     return `<div class="proposal-intro" style="line-height: 1.2; margin-top: 12px;">
-      Thank you for considering Contemporary Wall Systems for this project. As discussed, we are offering a proposal to furnish, deliver, and install, as noted, <strong>${wallCount === 1 ? 'ONE (1)' : wallCount === 2 ? 'TWO (2)' : wallCount === 3 ? 'THREE (3)' : wallCount === 4 ? 'FOUR (4)' : `${wallCount}`} Mixed Wall System${wallCount > 1 ? 's' : ''}</strong> consisting of ${systemDescription} as specified below, at the above named project.
+      Thank you for considering <strong>${organizationName}</strong> for this project. As discussed, we are offering a proposal to furnish, deliver, and install, as noted, <strong>${wallCount === 1 ? 'ONE (1)' : wallCount === 2 ? 'TWO (2)' : wallCount === 3 ? 'THREE (3)' : wallCount === 4 ? 'FOUR (4)' : `${wallCount}`} Mixed Wall System${wallCount > 1 ? 's' : ''}</strong> consisting of ${systemDescription} as specified below, at the above named project.
       <br><br><strong>Mixed Wall System Specifications as follows:</strong>
     </div>`;
   }

@@ -216,14 +216,57 @@ export class SectionGenerators {
   }
 
   generatePocketDoorsSection(data: QuoteData): string {
-    const pocketFoldType = data.pocket_doors?.foldType || '';
-    const pocketFoldStyle = data.pocket_doors?.foldStyle || '';
+    const walls = data.wall_details?.walls || {};
+    
+    // Check both old global format and new per-wall format
+    const wallsWithPockets = Object.entries(walls)
+      .filter(([_, wall]) => {
+        // Check per-wall configuration first
+        if (wall.pocketDoors?.foldType && 
+            wall.pocketDoors.foldType.toLowerCase().trim() !== 'none') {
+          return true;
+        }
+        return false;
+      })
+      .map(([name, wall]) => ({ 
+        name, 
+        type: wall.pocketDoors!.foldType,
+        style: wall.pocketDoors!.foldStyle || ''
+      }));
+
+    // Fallback to global pocket_doors if no per-wall configs found (backward compatibility)
+    if (wallsWithPockets.length === 0 && data.pocket_doors?.foldType) {
+      const { foldType, foldStyle } = data.pocket_doors;
+      return `<div class="pocket-doors-section" style="line-height: 1.15;">
+        <h2 class="section-header">POCKET DOORS:</h2>
+        <p>
+          <strong>${foldType}</strong> doors with an <strong>${foldStyle || ''}</strong> style will be used to house the panels in the stack, offering a space-efficient and acoustically enhanced storage solution.
+        </p>  
+      </div>`;
+    }
+
+    if (wallsWithPockets.length === 0) return '';
+
+    // Group by configuration type for cleaner display
+    const configGroups = wallsWithPockets.reduce((acc, wall) => {
+      const key = `${wall.type}-${wall.style}`;
+      if (!acc[key]) acc[key] = { type: wall.type, style: wall.style, walls: [] };
+      acc[key].walls.push(wall.name);
+      return acc;
+    }, {} as Record<string, { type: string, style: string, walls: string[] }>);
+
+    const descriptions = Object.values(configGroups)
+      .map(config => 
+        `<li><strong>${config.type} ${config.style}:</strong> ${config.walls.join(', ')}</li>`
+      ).join('');
 
     return `<div class="pocket-doors-section" style="line-height: 1.15;">
       <h2 class="section-header">POCKET DOORS:</h2>
-      <p>
-        <strong>${pocketFoldType}</strong> doors with an <strong>${pocketFoldStyle}</strong> style will be used to house the panels in the stack, offering a space-efficient and acoustically enhanced storage solution.
-      </p>  
+      <p>Pocket door configurations for panel storage:</p>
+      <ul style="margin-left: 20px; margin-bottom: 10px;">
+        ${descriptions}
+      </ul>
+      <p>All pocket doors provide space-efficient and acoustically enhanced storage solutions.</p>
     </div>`;
   }
 
@@ -244,6 +287,38 @@ export class SectionGenerators {
       <p>
         A <strong>${firstWall.passDoorPanels}</strong> pass door panel is incorporated to allow for convenient access without disrupting the overall wall system.
       </p>
+    </div>`;
+  }
+
+  generateStructureSupportSection(data: QuoteData): string {
+    const walls = data.wall_details?.walls || {};
+    const wallsWithSupport = Object.entries(walls)
+      .filter(([_, wall]) => wall.structureSupport && 
+               wall.structureSupport.toLowerCase().trim() !== 'none' &&
+               wall.structureSupport.trim() !== '')
+      .map(([name, wall]) => ({ name, type: wall.structureSupport! }));
+
+    if (wallsWithSupport.length === 0) return '';
+
+    // Group by support type for cleaner display
+    const supportByType = wallsWithSupport.reduce((acc, wall) => {
+      if (!acc[wall.type]) acc[wall.type] = [];
+      acc[wall.type].push(wall.name);
+      return acc;
+    }, {} as Record<string, string[]>);
+
+    const descriptions = Object.entries(supportByType)
+      .map(([type, wallNames]) => 
+        `<li><strong>${type}:</strong> ${wallNames.join(', ')}</li>`
+      ).join('');
+
+    return `<div class="structure-support-section" style="line-height: 1.15;">
+      <h2 class="section-header">STRUCTURE SUPPORT:</h2>
+      <p>The following structural support configurations are required:</p>
+      <ul style="margin-left: 20px; margin-bottom: 10px;">
+        ${descriptions}
+      </ul>
+      <p>All structural modifications will be coordinated with the general contractor and structural engineer as required.</p>
     </div>`;
   }
 }

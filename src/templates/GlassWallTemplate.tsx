@@ -33,9 +33,14 @@ export class GlassWallTemplate extends BaseQuoteTemplate {
 
   generateProposalIntro(data: QuoteData): string {
     const wallCount = this.helpers.getWallCount(data);
+    // Get organization name from quote data, fallback to default if not available
+    const organizationName = data.quote_details?.organizationName || 
+                             data.quote_details?.organization_name || 
+                             data.quote_details?.company_name ||
+                             'Contemporary Wall Systems';
 
     return `<div class="proposal-intro" style="line-height: 1.2; margin-top: 12px;">
-      Thank you for considering Contemporary Wall Systems for this project. As discussed, we are offering a proposal to furnish, deliver, and install, as noted, <strong>${wallCount === 1 ? 'ONE (1)' : wallCount === 2 ? 'TWO (2)' : wallCount === 3 ? 'THREE (3)' : wallCount === 4 ? 'FOUR (4)' : `${wallCount}`} Glass Wall System${wallCount > 1 ? 's' : ''}</strong> as specified below, at the above named project.
+      Thank you for considering <strong>${organizationName}</strong> for this project. As discussed, we are offering a proposal to furnish, deliver, and install, as noted, <strong>${wallCount === 1 ? 'ONE (1)' : wallCount === 2 ? 'TWO (2)' : wallCount === 3 ? 'THREE (3)' : wallCount === 4 ? 'FOUR (4)' : `${wallCount}`} Glass Wall System${wallCount > 1 ? 's' : ''}</strong> as specified below, at the above named project.
       <br><br><strong>Glass Wall Specifications as follows:</strong>
     </div>`;
   }
@@ -83,6 +88,7 @@ export class GlassWallTemplate extends BaseQuoteTemplate {
     const wallEntries = Object.entries(walls);
     const firstWall = wallEntries[0]?.[1];
     
+    const shopDrawingDelivery = data.delivery_details?.shopDrawingWeeks || '';
     const trackDelivery = data.delivery_details?.trackDeliveryWeeks || '';
     const panelDelivery = data.delivery_details?.panelDeliveryWeeks || '';
     const trackInstallation = data.delivery_details?.trackInstallationDays || '';
@@ -90,7 +96,7 @@ export class GlassWallTemplate extends BaseQuoteTemplate {
 
     return `<div class="general-section" style="line-height: 1.15; margin-bottom: 20px;">
       <h2 class="section-header">GENERAL:</h2>
-      Each glass wall will provide acoustic performance with an <strong>STC rating of ${firstWall?.stcRating || '45'}</strong> while maintaining visual transparency. Estimated delivery would be <strong>${trackDelivery || '6-8'} weeks</strong> after approval of shop drawings for tracks, & <strong>${panelDelivery || '8-10'} weeks</strong> for glass panels. Installation of tracks would take approximately <strong>${trackInstallation || '3-5'} working days</strong>, glass panel installation would take <strong>${panelInstallation || '2-3'} additional days</strong>. <strong>Special handling and installation procedures are required for glass panels.</strong>
+      Each glass wall will provide acoustic performance with an <strong>STC rating of ${firstWall?.stcRating || '45'}</strong> while maintaining visual transparency. Estimated delivery for shop drawings would be <strong>${shopDrawingDelivery} weeks</strong>, after which approval of them, delivery of tracks would be <strong>${trackDelivery || '6-8'} weeks</strong>, & glass panels <strong>${panelDelivery || '8-10'} weeks</strong>. Installation of tracks would take approximately <strong>${trackInstallation || '3-5'} working days</strong>, glass panel installation would take <strong>${panelInstallation || '2-3'} additional days</strong>. <strong>Special handling and installation procedures are required for glass panels.</strong>
     </div>`;
   }
 

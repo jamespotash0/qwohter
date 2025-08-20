@@ -24,6 +24,17 @@ export interface GlassWallConfiguration {
   topSeals: string;
 }
 
+// Per-wall configuration interfaces
+export interface PocketDoorConfig {
+  foldType: string; // 'Bi-fold' | 'Tri-fold' | 'None'
+  foldStyle: string; // 'Flush' | 'Recessed' | ''
+}
+
+export interface TrackConfig {
+  trackType: string; // 'Top-Supported' | 'Floor-Supported'
+  trackSystem: string; // 'Multi-directional' | 'Single-Point'
+}
+
 export interface WallSpecification {
   wallSystemType: string;
   lengthFeet: string;
@@ -49,6 +60,12 @@ export interface WallSpecification {
   endPanelType: string;
   trackType: string;
   trackSystem: string;
+  
+  // NEW: Per-wall configurations
+  pocketDoors?: PocketDoorConfig;
+  trackConfiguration?: TrackConfig;
+  structureSupport?: string; // 'Pre-Drilled' | 'Existing Steel Beam' | 'Custom Support' | 'None'
+  
   // Glass Wall specific fields
   glasswallModel?: string;
   glasswallOperation?: string;
@@ -78,6 +95,7 @@ export interface WallDetails {
   };
 }
 
+// @deprecated - Use per-wall pocketDoors configuration in WallSpecification instead
 export interface PocketDoorsData {
   foldType: string;
   foldStyle: string;

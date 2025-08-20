@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 interface DeliveryLaborData {
   delivery: {
+    shopDrawingWeeks: string;
     trackDeliveryWeeks: string;
     panelDeliveryWeeks: string;
     trackInstallationDays: string;
@@ -40,7 +41,19 @@ const DeliveryLaborForm = ({ data, onUpdate }: DeliveryLaborFormProps) => {
     <div className="p-1">
       {/* Delivery Section */}
       <div className="mb-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="shopDrawing">Shop Drawing Delivery (Weeks) *</Label>
+            <Input
+              id="shopDrawing"
+              value={data.delivery.shopDrawingWeeks}
+              onChange={(e) => handleDeliveryChange("shopDrawingWeeks", e.target.value)}
+              placeholder="e.g., 1-2 or 2"
+              required
+              className="h-10"
+            />
+          </div>
+          
           <div className="space-y-2">
             <Label htmlFor="trackDelivery">Track Delivery (Weeks) *</Label>
             <Input

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,8 +21,8 @@ import {
 import ContactInfoForm from "@/components/features/quotes/forms/contact/ContactInfoForm";
 import JobDetailsForm from "@/components/features/quotes/forms/contact/JobDetailsForm";
 import WallSpecificationForm from "@/components/features/quotes/forms/walls/WallSpecificationForm";
-import PocketDoorsForm from "@/components/features/quotes/forms/walls/PocketDoorsForm";
-import SupportStructureForm from "@/components/features/quotes/forms/walls/SupportStructureForm";
+import PerWallPocketDoorsForm from "@/components/features/quotes/forms/walls/PerWallPocketDoorsForm";
+import PerWallStructureForm from "@/components/features/quotes/forms/walls/PerWallStructureForm";
 import DeliveryLaborForm from "@/components/features/quotes/forms/delivery/DeliveryLaborForm";
 import PricingForm from "@/components/features/quotes/forms/pricing/PricingForm";
 import { toast } from "sonner";
@@ -37,12 +37,10 @@ interface QuoteCreatorWizardProps {
   quoteName: string;
   onBackToDashboard: () => void;
   onQuoteNameChange?: (newName: string) => void;
-  existingQuote?: any;
+  existingQuote?: Record<string, unknown>;
 }
 
 const QuoteCreatorWizard = ({ 
-  user, 
-  onLogout, 
   quoteName, 
   onBackToDashboard, 
   onQuoteNameChange, 
@@ -54,24 +52,31 @@ const QuoteCreatorWizard = ({
   const [localQuoteName, setLocalQuoteName] = useState(quoteName);
 
   // Helper function to migrate wall_details to the new format
-  const migrateWallDetails = (wallDetails: any): WallDetails => {
-    if (wallDetails && wallDetails.id && wallDetails.walls) {
-      return wallDetails;
+  const migrateWallDetails = (wallDetails: unknown): WallDetails => {
+    // Check if already in correct format
+    if (wallDetails && typeof wallDetails === 'object' && wallDetails !== null) {
+      const wd = wallDetails as Record<string, unknown>;
+      if (wd.id && wd.walls) {
+        return wallDetails as WallDetails;
+      }
+      
+      // If it's an object but without id (previous migration), wrap it
+      if (!Array.isArray(wallDetails) && !wd.id) {
+        return {
+          id: crypto.randomUUID(),
+          walls: wallDetails as { [key: string]: WallSpecification }
+        };
+      }
     }
     
-    if (wallDetails && typeof wallDetails === 'object' && !Array.isArray(wallDetails) && !wallDetails.id) {
-      return {
-        id: crypto.randomUUID(),
-        walls: wallDetails
-      };
-    }
-    
+    // If it's an array (old format), convert to new format
     if (Array.isArray(wallDetails)) {
       const wallsObject: { [key: string]: WallSpecification } = {};
-      wallDetails.forEach((wall: any, index: number) => {
-        const wallName = wall.name || `Wall ${index + 1}`;
-        const { id, name, ...wallSpec } = wall;
-        wallsObject[wallName] = wallSpec;
+      wallDetails.forEach((wall: unknown, index: number) => {
+        const wallData = wall as Record<string, unknown>;
+        const wallName = (wallData.name as string) || `Wall ${index + 1}`;
+        const { id, name, ...wallSpec } = wallData;
+        wallsObject[wallName] = wallSpec as unknown as WallSpecification;
       });
       return {
         id: crypto.randomUUID(),
@@ -79,63 +84,114 @@ const QuoteCreatorWizard = ({
       };
     }
     
+    // Default empty structure
     return {
       id: crypto.randomUUID(),
       walls: {}
     };
   };
   
+  // Helper function to safely get nested properties
+  const getNestedProperty = (obj: unknown, path: string): unknown => {
+    if (!obj || typeof obj !== 'object') return undefined;
+    return path.split('.').reduce((current: unknown, key: string) => {
+      if (current && typeof current === 'object' && key in current) {
+        return (current as Record<string, unknown>)[key];
+      }
+      return undefined;
+    }, obj);
+  };
+
   // Form data states
-  const [quoteStatus, setQuoteStatus] = useState(existingQuote?.status || "Draft");
+  const existingQuoteData = existingQuote as Record<string, unknown> | undefined;
+  const quoteDetails = getNestedProperty(existingQuoteData, 'quote_details') as Record<string, unknown> | undefined;
+  const jobDetailsData = getNestedProperty(existingQuoteData, 'job_details') as Record<string, unknown> | undefined;
+  const pocketDoorsData = getNestedProperty(existingQuoteData, 'pocket_doors') as Record<string, unknown> | undefined;
+  const supportStructureData = getNestedProperty(existingQuoteData, 'support_structure') as Record<string, unknown> | undefined;
+  const deliveryDetailsData = getNestedProperty(existingQuoteData, 'delivery_details') as Record<string, unknown> | undefined;
+  const laborDetailsData = getNestedProperty(existingQuoteData, 'labor_details') as Record<string, unknown> | undefined;
+  const priceDetailsData = getNestedProperty(existingQuoteData, 'price_details') as Record<string, unknown> | undefined;
+
+  const [quoteStatus, setQuoteStatus] = useState((existingQuoteData?.status as string) || "Draft");
   const [contactInfo, setContactInfo] = useState({
-    contactName: existingQuote?.quote_details?.contactName || "",
-    contactEmail: existingQuote?.quote_details?.contactEmail || "",
-    address: existingQuote?.quote_details?.address || "",
-    phone: existingQuote?.quote_details?.phone || "",
-    fax: existingQuote?.quote_details?.fax || "",
-    website: existingQuote?.quote_details?.website || ""
+    contactName: (quoteDetails?.contactName as string) || "",
+    contactEmail: (quoteDetails?.contactEmail as string) || "",
+    address: (quoteDetails?.address as string) || "",
+    phone: (quoteDetails?.phone as string) || "",
+    fax: (quoteDetails?.fax as string) || "",
+    website: (quoteDetails?.website as string) || ""
   });
 
   const [jobDetails, setJobDetails] = useState({
-    date: existingQuote?.job_details?.date || new Date().toISOString().split('T')[0],
-    proposalNumber: existingQuote?.proposal_number || `P${Date.now().toString().slice(-6)}`,
-    jobLocation: existingQuote?.job_details?.job_location || "",
+    date: (jobDetailsData?.date as string) || new Date().toISOString().split('T')[0],
+    proposalNumber: (existingQuoteData?.proposal_number as string) || `P${Date.now().toString().slice(-6)}`,
+    jobLocation: (jobDetailsData?.job_location as string) || "",
     billedTo: {
-      name: existingQuote?.job_details?.client_name || "",
-      company: existingQuote?.job_details?.client_company || "",
-      address: existingQuote?.job_details?.client_address || ""
+      name: (jobDetailsData?.client_name as string) || "",
+      company: (jobDetailsData?.client_company as string) || "",
+      address: (jobDetailsData?.client_address as string) || ""
     }
   });
 
-  const [walls, setWalls] = useState<WallDetails>(migrateWallDetails(existingQuote?.wall_details));
-  const [pocketDoors, setPocketDoors] = useState({
-    foldType: existingQuote?.pocket_doors?.foldType || "",
-    foldStyle: existingQuote?.pocket_doors?.foldStyle || ""
+  const [walls, setWalls] = useState<WallDetails>(migrateWallDetails(existingQuoteData?.wall_details));
+  
+  // Legacy global state - kept for backward compatibility in quote saving
+  const [pocketDoors] = useState({
+    foldType: (pocketDoorsData?.foldType as string) || "",
+    foldStyle: (pocketDoorsData?.foldStyle as string) || ""
   });
-  const [supportStructure, setSupportStructure] = useState({
-    mountingTrack: existingQuote?.support_structure?.mountingTrack || ""
+  const [supportStructure] = useState({
+    mountingTrack: (supportStructureData?.mountingTrack as string) || ""
   });
   
   const [deliveryLabor, setDeliveryLabor] = useState({
     delivery: {
-      trackDeliveryWeeks: existingQuote?.delivery_details?.trackDeliveryWeeks || "",
-      panelDeliveryWeeks: existingQuote?.delivery_details?.panelDeliveryWeeks || "",
-      trackInstallationDays: existingQuote?.delivery_details?.trackInstallationDays || "",
-      panelInstallationDays: existingQuote?.delivery_details?.panelInstallationDays || ""
+      shopDrawingWeeks: (deliveryDetailsData?.shopDrawingWeeks as string) || "",
+      trackDeliveryWeeks: (deliveryDetailsData?.trackDeliveryWeeks as string) || "",
+      panelDeliveryWeeks: (deliveryDetailsData?.panelDeliveryWeeks as string) || "",
+      trackInstallationDays: (deliveryDetailsData?.trackInstallationDays as string) || "",
+      panelInstallationDays: (deliveryDetailsData?.panelInstallationDays as string) || ""
     },
     labor: {
-      laborType: existingQuote?.labor_details?.laborType || "",
-      wageRate: existingQuote?.labor_details?.wageRate || ""
+      laborType: (laborDetailsData?.laborType as string) || "",
+      wageRate: (laborDetailsData?.wageRate as string) || ""
     }
   });
 
   const [pricing, setPricing] = useState({
-    basePrice: existingQuote?.price_details?.base_price || 0,
-    freight: existingQuote?.price_details?.freight || 0,
-    total: existingQuote?.price_details?.total || "",
-    paymentUponDrawings: existingQuote?.price_details?.payment_upon_drawings || "",
-    paymentUponTrackInstallation: existingQuote?.price_details?.payment_upon_track_installation || ""
+    basePrice: (priceDetailsData?.base_price as number) || 0,
+    freight: (priceDetailsData?.freight as number) || 0,
+    total: (priceDetailsData?.total as string) || "",
+    paymentUponDrawings: (priceDetailsData?.payment_upon_drawings as string) || "",
+    paymentUponTrackInstallation: (priceDetailsData?.payment_upon_track_installation as string) || ""
   });
+
+  // Per-wall update handlers
+  const handleWallPocketDoorsUpdate = (wallName: string, pocketDoorsConfig: { foldType: string; foldStyle: string }) => {
+    setWalls(prev => ({
+      ...prev,
+      walls: {
+        ...prev.walls,
+        [wallName]: {
+          ...prev.walls[wallName],
+          pocketDoors: pocketDoorsConfig
+        }
+      }
+    }));
+  };
+
+  const handleWallStructureSupportUpdate = (wallName: string, structureSupport: string) => {
+    setWalls(prev => ({
+      ...prev,
+      walls: {
+        ...prev.walls,
+        [wallName]: {
+          ...prev.walls[wallName],
+          structureSupport
+        }
+      }
+    }));
+  };
 
   // Validation functions
   const isContactInfoValid = () => {
@@ -161,7 +217,7 @@ const QuoteCreatorWizard = ({
     
     if (wallEntries.length === 0) return false;
     
-    for (const [wallName, wall] of wallEntries) {
+    for (const [, wall] of wallEntries) {
       if (!wall.lengthFeet || !wall.heightFeet || !wall.panelCount || !wall.wallSystemType) {
         return false;
       }
@@ -183,19 +239,37 @@ const QuoteCreatorWizard = ({
   };
 
   const isPocketDoorsValid = () => {
-    const { foldType, foldStyle } = pocketDoors;
-    if (!foldType || foldType === 'None') {
-      return true;
-    }
-    return !!foldStyle;
+    // Per-wall validation: all walls should have pocket doors configured
+    const wallEntries = Object.entries(walls.walls);
+    if (wallEntries.length === 0) return false;
+    
+    return wallEntries.every(([, wall]) => {
+      const foldType = wall.pocketDoors?.foldType;
+      const foldStyle = wall.pocketDoors?.foldStyle;
+      
+      // If no fold type or "None", it's valid
+      if (!foldType || foldType === 'None') {
+        return true;
+      }
+      
+      // If fold type is specified, fold style should also be specified
+      return !!foldStyle;
+    });
   };
 
   const isSupportStructureValid = () => {
-    return supportStructure.mountingTrack !== "";
+    // Per-wall validation: all walls should have structure support configured
+    const wallEntries = Object.entries(walls.walls);
+    if (wallEntries.length === 0) return false;
+    
+    return wallEntries.every(([, wall]) => {
+      return wall.structureSupport && wall.structureSupport.trim() !== '';
+    });
   };
 
   const isDeliveryLaborValid = () => {
-    return deliveryLabor.delivery.trackDeliveryWeeks && 
+    return deliveryLabor.delivery.shopDrawingWeeks &&
+           deliveryLabor.delivery.trackDeliveryWeeks && 
            deliveryLabor.delivery.panelDeliveryWeeks && 
            deliveryLabor.delivery.trackInstallationDays && 
            deliveryLabor.delivery.panelInstallationDays && 
@@ -289,7 +363,7 @@ const QuoteCreatorWizard = ({
 
     try {
       if (existingQuote) {
-        await updateQuote(existingQuote.id, {
+        await updateQuote((existingQuoteData?.id as string), {
           project_name: localQuoteName,
           quote_details: contactInfo,
           job_details: {
@@ -354,9 +428,9 @@ const QuoteCreatorWizard = ({
       case "walls":
         return <WallSpecificationForm walls={walls} onUpdate={setWalls} />;
       case "pockets":
-        return <PocketDoorsForm data={pocketDoors} onUpdate={setPocketDoors} />;
+        return <PerWallPocketDoorsForm walls={walls.walls} onWallUpdate={handleWallPocketDoorsUpdate} />;
       case "support":
-        return <SupportStructureForm data={supportStructure} onUpdate={setSupportStructure} />;
+        return <PerWallStructureForm walls={walls.walls} onWallUpdate={handleWallStructureSupportUpdate} />;
       case "delivery":
         return <DeliveryLaborForm data={deliveryLabor} onUpdate={setDeliveryLabor} />;
       case "pricing":
