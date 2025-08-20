@@ -232,7 +232,12 @@ export class SectionGenerators {
     const wallEntries = Object.entries(walls);
     const firstWall = wallEntries[0]?.[1];
     
-    if (!firstWall?.passDoorPanels) return '';
+    // Check if passDoorPanels exists and is not "None" (case-insensitive)
+    if (!firstWall?.passDoorPanels || 
+        firstWall.passDoorPanels.toLowerCase().trim() === 'none' ||
+        firstWall.passDoorPanels.trim() === '') {
+      return '';
+    }
 
     return `<div class="panel-doors-section" style="line-height: 1.15;">
       <h2 class="section-header">PANEL DOORS:</h2>

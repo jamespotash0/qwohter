@@ -100,7 +100,8 @@ export class SmartQuoteHelper {
         title: this.formatSectionTitle(id),
         content: match[0], // Include the full div
         isVisible: true,
-        isRequired: this.isRequiredSection(id)
+        isRequired: this.isRequiredSection(id),
+        dependencies: this.getSectionDependencies(id)
       });
     }
     
@@ -123,7 +124,8 @@ export class SmartQuoteHelper {
         title,
         content: `<h2 class="section-header">${headerMatch[1]}</h2>${content}`,
         isVisible: true,
-        isRequired: this.isRequiredSection(id)
+        isRequired: this.isRequiredSection(id),
+        dependencies: this.getSectionDependencies(id)
       });
     }
     
@@ -149,7 +151,8 @@ export class SmartQuoteHelper {
           title,
           content: structMatch[0],
           isVisible: true,
-          isRequired: this.isRequiredSection(name)
+          isRequired: this.isRequiredSection(name),
+          dependencies: this.getSectionDependencies(name)
         });
       }
     });
@@ -201,20 +204,38 @@ export class SmartQuoteHelper {
     
     sections.forEach(section => {
       if (!section.isVisible) {
-        // Remove the section from HTML
-        const sectionPattern = new RegExp(
-          `<div class="${section.id}-section"[^>]*>[\\s\\S]*?<\\/div>`,
-          'g'
-        );
-        reconstructed = reconstructed.replace(sectionPattern, '');
+        // Remove the section from HTML - try multiple patterns
+        const patterns = [
+          new RegExp(`<div class="${section.id}-section"[^>]*>[\\s\\S]*?<\\/div>`, 'g'),
+          new RegExp(`<div class="${section.id}"[^>]*>[\\s\\S]*?<\\/div>`, 'g'),
+          new RegExp(`<h2[^>]*class="section-header"[^>]*>${section.title}[\\s\\S]*?(?=<h2[^>]*class="section-header"|<div class="[^"]*section"|$)`, 'gi')
+        ];
+        
+        patterns.forEach(pattern => {
+          reconstructed = reconstructed.replace(pattern, '');
+        });
       } else if (section.content) {
-        // Replace with updated content
-        const sectionPattern = new RegExp(
-          `(<div class="${section.id}-section"[^>]*>)[\\s\\S]*?(<\\/div>)`,
-          'g'
-        );
-        const innerContent = section.content.replace(/<div class="[^"]*-section"[^>]*>/, '').replace(/<\/div>$/, '');
-        reconstructed = reconstructed.replace(sectionPattern, `$1${innerContent}$2`);
+        // Replace with updated content - try multiple patterns
+        const patterns = [
+          {
+            match: new RegExp(`(<div class="${section.id}-section"[^>]*>)[\\s\\S]*?(<\\/div>)`, 'g'),
+            replace: (match: string, start: string, end: string) => {
+              const innerContent = section.content.replace(/<div class="[^"]*-section"[^>]*>/, '').replace(/<\/div>$/, '');
+              return `${start}${innerContent}${end}`;
+            }
+          },
+          {
+            match: new RegExp(`(<div class="${section.id}"[^>]*>)[\\s\\S]*?(<\\/div>)`, 'g'),
+            replace: (match: string, start: string, end: string) => {
+              const innerContent = section.content.replace(/<div class="[^"]*"[^>]*>/, '').replace(/<\/div>$/, '');
+              return `${start}${innerContent}${end}`;
+            }
+          }
+        ];
+        
+        patterns.forEach(pattern => {
+          reconstructed = reconstructed.replace(pattern.match, pattern.replace);
+        });
       }
     });
     
@@ -231,6 +252,18 @@ export class SmartQuoteHelper {
   private static isRequiredSection(id: string): boolean {
     const requiredSections = ['header', 'billing', 'billing-job', 'wall-specifications', 'specifications', 'pricing'];
     return requiredSections.includes(id);
+  }
+
+  private static getSectionDependencies(id: string): string[] {
+    // Define dependencies for sections that depend on form field values
+    const dependencies: { [key: string]: string[] } = {
+      'panel-doors': ['passDoorPanels'],
+      'panel-doors-section': ['passDoorPanels'],
+      'pocket-doors': ['foldType', 'foldStyle'],
+      'pocket-doors-section': ['foldType', 'foldStyle']
+    };
+    
+    return dependencies[id] || [];
   }
 }
 
