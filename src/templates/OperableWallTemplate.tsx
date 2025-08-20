@@ -20,7 +20,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
 
             return `
               <tr>
-                <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black; font-weight: bold;">${wallName}</td><td>
+                <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black; font-weight: bold;">${wallName}</td>
                 <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${wallSystemType}</td>
                 <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${dimensions}</td>
                 <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${this.helpers.toWords(panelCount)} (${panelCount})</td>
@@ -142,7 +142,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     
     // Create inline sentence describing each wall's track system
     const wallDescriptions = wallEntries.map(([wallName, wall]) => {
-      return `<strong>${wallName}</strong> utilizes <strong>${wall.trackSystem || ""} Track System</strong> (${this.helpers.getMovementOnTrackText(wall?.panelConfiguration)} Panels)`;
+      return `<strong>${wallName}</strong> utilizes a <strong>${wall.trackSystem || ""} Track System</strong> (${this.helpers.getMovementOnTrackText(wall?.panelConfiguration)} Panels)`;
     }).join(', and ');
 
     const summary = 
@@ -200,7 +200,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     return `
       <div class="general-section" style="line-height: 1.15; margin-bottom: 20px;">
         <h2 class="section-header">GENERAL:</h2>
-        Estimated delivery for shop drawings would be <strong>${shopDrawingDelivery} weeks</strong>, after which approval of them, delivery of tracks would be <strong>${trackDelivery} weeks</strong>, & panels <strong>${panelDelivery} weeks</strong>. Installation of tracks would take approximately <strong>${trackInstallation} working days</strong>, panels installation would take <strong>${panelInstallation} additional days</strong>.
+        Estimated delivery for shop drawings would be <strong>${shopDrawingDelivery} weeks</strong>, after which approval of them, tracks would be delivered in <strong>${trackDelivery} weeks</strong>, & panels delivered in <strong>${panelDelivery} weeks</strong>. Installation of tracks would take approximately <strong>${trackInstallation} working days</strong> and installation of panels would take <strong>${panelInstallation} additional days</strong>.
       </div>
     `;
   }

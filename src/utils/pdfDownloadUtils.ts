@@ -2,16 +2,26 @@ import jsPDF from 'jspdf';
 import { Quote } from '@/hooks/useQuotes';
 
 export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: string) => Promise<any>) => {
+  console.log('🔍 Starting PDF generation for quote:', quote.proposal_number);
+  
   if (!quote.quote_details?.quoteName && !quote.project_name) {
+    console.error('❌ Quote name is missing');
     throw new Error('Quote name is required for PDF generation');
   }
 
-  const { generateQuoteText } = await import('@/components/features/quotes/generation/QuoteTextGenerator');
-  const { PageBreakManager } = await import('@/utils/pageBreakManager');
- 
-  const rawQuoteText = generateQuoteText(quote);
-  const manager = new PageBreakManager();
-  let quoteText = manager.processHTMLContent(rawQuoteText);
+  try {
+    console.log('📝 Importing quote generation modules...');
+    const { generateQuoteText } = await import('@/components/features/quotes/generation/QuoteTextGenerator');
+    const { PageBreakManager } = await import('@/utils/pageBreakManager');
+   
+    console.log('🔨 Generating quote text...');
+    const rawQuoteText = generateQuoteText(quote);
+    console.log('✅ Raw quote text generated, length:', rawQuoteText.length);
+    console.log('📄 First 200 chars:', rawQuoteText.substring(0, 200));
+    
+    const manager = new PageBreakManager();
+    let quoteText = manager.processHTMLContent(rawQuoteText);
+    console.log('✅ Page break processing complete, final length:', quoteText.length);
   
   // If no page structure was created, force create a single page wrapper
   if (!quoteText.includes('class="page"')) {
@@ -29,6 +39,11 @@ export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: stri
     padding: 48px;
     color: black;
     background: white;
+    position: absolute;
+    left: -9999px;
+    top: 0px;
+    visibility: visible;
+    pointer-events: none;
   `;
 
   // Add enhanced styles for the header layout
@@ -238,9 +253,12 @@ export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: stri
         const canvas = await html2canvas(pageElement, {
           scale: 2,
           useCORS: true,
+          allowTaint: true,
           backgroundColor: '#ffffff',
-          width: 816, // 8.5 inches at 96 DPI
-          height: 1056 // 11 inches at 96 DPI
+          width: pageElement.scrollWidth,
+          height: pageElement.scrollHeight,
+          logging: true,
+          removeContainer: false
         });
 
         const imgData = canvas.toDataURL('image/png');
@@ -268,9 +286,12 @@ export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: stri
       const canvas = await html2canvas(tempDiv, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: '#ffffff',
         width: tempDiv.scrollWidth,
-        height: tempDiv.scrollHeight
+        height: tempDiv.scrollHeight,
+        logging: true,
+        removeContainer: false
       });
 
       const imgData = canvas.toDataURL('image/png');
@@ -303,7 +324,7 @@ export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: stri
       pdf.save(fileName);
     }
   } catch (canvasError) {
-    console.error('Canvas rendering failed, falling back to text PDF:', canvasError);
+    console.error('❌ Canvas rendering failed, falling back to text PDF:', canvasError);
     
     // Fallback to text-based PDF if HTML rendering fails
     const doc = new jsPDF({
@@ -344,6 +365,14 @@ export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: stri
   document.body.removeChild(tempDiv);
   document.head.removeChild(style);
   
+  console.log('✅ PDF generation completed successfully');
+  
   // Mark as downloaded (will increment version for next download)
   await markAsDownloaded(quote.id);
+  
+  } catch (error) {
+    console.error('❌ PDF generation failed with error:', error);
+    console.error('Error stack:', error.stack);
+    throw error;
+  }
 };

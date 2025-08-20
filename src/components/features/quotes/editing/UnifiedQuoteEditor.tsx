@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Save, 
@@ -16,6 +15,7 @@ import {
 import { generateQuoteText } from '@/components/features/quotes/generation/QuoteTextGenerator';
 import { SmartQuoteHelper, QuoteSection, SmartQuoteData } from '@/templates/SmartQuoteTemplate';
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
+import { Quote } from '@/hooks/useQuotes';
 import { QuoteDataPanelCore as QuoteDataPanel } from './UnifiedQuoteEditor/QuoteDataPanel/QuoteDataPanelCore';
 import LivePreviewPanel from './UnifiedQuoteEditor/LivePreviewPanel';
 import QuickEditModal from './UnifiedQuoteEditor/QuickEditModal';
@@ -32,7 +32,7 @@ interface UnifiedQuoteState {
 }
 
 interface UnifiedQuoteEditorProps {
-  quote: QuoteData;
+  quote: Quote;
   onSave?: (data: SmartQuoteData) => void;
   onDownload?: (html: string, isSmartPDF?: boolean) => void;
   onBack?: () => void;

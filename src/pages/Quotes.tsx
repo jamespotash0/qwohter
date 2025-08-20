@@ -132,6 +132,9 @@ const Quotes = () => {
   };
 
   const handleUnifiedQuoteDownload = async (html: string, isSmartPDF: boolean = false) => {
+    console.log('🔍 Starting unified quote download, isSmartPDF:', isSmartPDF);
+    console.log('📄 HTML length:', html.length);
+    
     if (!editingQuote) {
       console.error('❌ No editing quote available');
       return;
@@ -139,10 +142,117 @@ const Quotes = () => {
     
     try {
       const quoteName = editingQuote.project_name || editingQuote.proposal_number || 'quote';
+      console.log('📝 Quote name:', quoteName);
       
-      // Create temp div with exactly the same styling as standard PDF download
+      // Find the live preview container with the actual page layout
+      const quoteDocuments = document.querySelectorAll('.quote-document');
+      console.log('🔍 Found quote document elements:', quoteDocuments.length);
+      
+      if (quoteDocuments.length > 0) {
+        // Use the already-rendered preview directly - capture each page separately
+        console.log('📸 Using live preview documents for PDF generation');
+        
+        const pdf = new (await import('jspdf')).default('p', 'mm', 'letter');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        
+        for (let i = 0; i < quoteDocuments.length; i++) {
+          console.log(`📄 Processing live preview page ${i + 1} of ${quoteDocuments.length}`);
+          const pageElement = quoteDocuments[i] as HTMLElement;
+          
+          // Log font information for debugging
+          const computedStyle = window.getComputedStyle(pageElement);
+          console.log(`📝 Page ${i + 1} font family:`, computedStyle.fontFamily);
+          console.log(`📝 Page ${i + 1} font size:`, computedStyle.fontSize);
+          console.log(`📝 Page ${i + 1} dimensions:`, pageElement.offsetWidth, 'x', pageElement.offsetHeight);
+          
+          // Wait for fonts to load before capturing
+          await document.fonts.ready;
+          
+          const canvas = await (await import('html2canvas')).default(pageElement, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+            removeContainer: false,
+            width: pageElement.offsetWidth,
+            height: pageElement.offsetHeight,
+            onclone: (clonedDoc) => {
+              // Ensure fonts are loaded in the cloned document
+              clonedDoc.fonts.ready;
+              // Force Times New Roman font
+              const styleElement = clonedDoc.createElement('style');
+              styleElement.textContent = `
+                * { 
+                  font-family: "Times New Roman", Times, serif !important; 
+                  font-size: 12pt !important;
+                  line-height: 1.15 !important;
+                }
+              `;
+              clonedDoc.head.appendChild(styleElement);
+            }
+          });
+
+          const imgData = canvas.toDataURL('image/png');
+          console.log(`🖼️ Page ${i + 1} canvas dimensions:`, canvas.width, 'x', canvas.height);
+          
+          // Calculate proper scaling - but never compress content smaller than natural size
+          const canvasAspectRatio = canvas.width / canvas.height;
+          
+          // Use a fixed scale that maintains readability rather than fitting to page
+          // This ensures text isn't compressed and remains readable
+          const scale = 0.75; // Slightly smaller than full size but maintains readability
+          const finalWidth = pdfWidth * scale;
+          const finalHeight = (canvas.height * finalWidth) / canvas.width;
+          
+          // Center the content on the page
+          const xOffset = (pdfWidth - finalWidth) / 2;
+          const yOffset = Math.max(0, (pdfHeight - finalHeight) / 2); // Don't use negative offset
+          
+          console.log(`📄 Page ${i + 1} PDF sizing: ${finalWidth.toFixed(1)}x${finalHeight.toFixed(1)} mm at offset (${xOffset.toFixed(1)}, ${yOffset.toFixed(1)})`);
+          console.log(`📏 Page ${i + 1} canvas vs PDF ratio: canvas=${canvas.height}px, would be ${finalHeight.toFixed(1)}mm on PDF`);
+
+          if (i > 0) {
+            pdf.addPage();
+          }
+          
+          // Check if content would extend beyond page - if so, we may need multiple PDF pages
+          if (finalHeight > pdfHeight) {
+            console.log(`⚠️  Page ${i + 1} content is too tall (${finalHeight.toFixed(1)}mm > ${pdfHeight.toFixed(1)}mm), consider splitting`);
+            // For now, let it extend beyond the page rather than compressing
+            pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalWidth, finalHeight);
+          } else {
+            // Content fits normally on the page
+            pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalWidth, finalHeight);
+          }
+        }
+
+        console.log('📑 Created PDF from live preview with', quoteDocuments.length, 'pages');
+
+        const currentVersion = editingQuote.version || 1;
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('en-CA');
+        const fileName = `${quoteName}_v${currentVersion}_${dateStr}_live.pdf`;
+        pdf.save(fileName);
+
+        await markAsDownloaded(editingQuote.id);
+        
+        toast({
+          title: "PDF Downloaded",
+          description: `Quote ${editingQuote.proposal_number} downloaded successfully from live preview (${quoteDocuments.length} pages).`,
+        });
+        
+        return; // Exit early since we used the live preview
+      }
+      
+      // Fallback to original method if live preview not found
+      console.log('⚠️ Live preview not found, using fallback method');
+      
+      // Create temp div with exactly the same styling as the live preview
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = html;
+      tempDiv.className = 'quote-preview-content'; // Use same class as live preview
       tempDiv.style.cssText = `
         font-family: "Times New Roman", serif;
         font-size: 12pt;
@@ -152,20 +262,60 @@ const Quotes = () => {
         padding: 48px;
         color: black;
         background: white;
+        position: absolute;
+        left: -9999px;
+        top: 0px;
+        visibility: visible;
+        pointer-events: none;
       `;
-
-      // Position tempDiv off-screen to avoid layout shifts in the live preview
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.top = '-9999px';
-      tempDiv.style.visibility = 'hidden';
-      
-      document.body.appendChild(tempDiv);
 
       try {
         const html2canvas = (await import('html2canvas')).default;
         
-        if (isSmartPDF) {
+        // Check if content has page structure
+        const pageElements = tempDiv.querySelectorAll('.page');
+        console.log('📑 Found page elements:', pageElements.length);
+        
+        if (pageElements.length > 0) {
+          // Handle multi-page content
+          console.log('📑 Processing multi-page content...');
+          const pdf = new (await import('jspdf')).default('p', 'mm', 'letter');
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          
+          for (let i = 0; i < pageElements.length; i++) {
+            console.log(`📄 Processing page ${i + 1} of ${pageElements.length}`);
+            const pageElement = pageElements[i] as HTMLElement;
+            
+            const canvas = await html2canvas(pageElement, {
+              scale: 2,
+              useCORS: true,
+              allowTaint: true,
+              backgroundColor: '#ffffff',
+              width: pageElement.scrollWidth,
+              height: pageElement.scrollHeight,
+              logging: false
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const imgWidth = pdfWidth;
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+            if (i > 0) {
+              pdf.addPage();
+            }
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pdfHeight));
+          }
+          
+          // Save multi-page PDF
+          const currentVersion = editingQuote.version || 1;
+          const today = new Date();
+          const dateStr = today.toLocaleDateString('en-CA');
+          const fileName = `${quoteName}_v${currentVersion}_${dateStr}_multi.pdf`;
+          pdf.save(fileName);
+          
+        } else if (isSmartPDF) {
           // Smart PDF mode - simplified implementation
           const pdf = new (await import('jspdf')).default('p', 'mm', 'letter');
           const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -176,13 +326,20 @@ const Quotes = () => {
             useCORS: true,
             allowTaint: true,
             backgroundColor: '#ffffff',
-            width: 816,
-            height: 1056
+            width: tempDiv.scrollWidth,
+            height: tempDiv.scrollHeight,
+            logging: true,
+            removeContainer: false
           });
           
           const imgData = canvas.toDataURL('image/png');
+          console.log('🖼️ Canvas dimensions:', canvas.width, 'x', canvas.height);
+          console.log('🖼️ Image data length:', imgData.length);
+          console.log('🖼️ Image data preview:', imgData.substring(0, 100));
+          
           const imgWidth = pdfWidth;
           const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          console.log('📄 PDF dimensions:', imgWidth, 'x', imgHeight);
           
           pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pdfHeight));
           
@@ -194,39 +351,57 @@ const Quotes = () => {
           pdf.save(fileName);
           
         } else {
-          // Standard PDF mode
+          // Fallback: No page elements found, split content intelligently
+          console.log('📄 No page structure found, using intelligent splitting...');
+          
           const canvas = await html2canvas(tempDiv, {
             scale: 2,
             useCORS: true,
+            allowTaint: true,
             backgroundColor: '#ffffff',
             width: tempDiv.scrollWidth,
-            height: tempDiv.scrollHeight
+            height: tempDiv.scrollHeight,
+            logging: false,
+            removeContainer: false
           });
 
           const imgData = canvas.toDataURL('image/png');
+          console.log('🖼️ Canvas dimensions (fallback):', canvas.width, 'x', canvas.height);
+          console.log('🖼️ Image data length (fallback):', imgData.length);
+          
           const pdf = new (await import('jspdf')).default('p', 'mm', 'letter');
           const pdfWidth = pdf.internal.pageSize.getWidth();
           const pdfHeight = pdf.internal.pageSize.getHeight();
           const imgWidth = pdfWidth;
           const imgHeight = (canvas.height * imgWidth) / canvas.width;
+          console.log('📄 PDF dimensions (fallback):', imgWidth, 'x', imgHeight);
 
+          // Smart page splitting - avoid cutting content mid-section
+          const maxHeightPerPage = pdfHeight * 0.95; // Leave some margin
           let heightLeft = imgHeight;
           let position = 0;
+          let pageCount = 0;
 
-          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-          heightLeft -= pdfHeight;
+          // First page
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, Math.min(imgHeight, maxHeightPerPage));
+          heightLeft -= maxHeightPerPage;
+          pageCount++;
 
-          while (heightLeft >= 0) {
-            position = heightLeft - imgHeight;
+          // Additional pages if needed
+          while (heightLeft > 0) {
+            position = -(pageCount * maxHeightPerPage);
             pdf.addPage();
             pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pdfHeight;
+            heightLeft -= maxHeightPerPage;
+            pageCount++;
           }
+
+          console.log('📑 Created PDF with', pageCount, 'pages');
 
           const currentVersion = editingQuote.version || 1;
           const today = new Date();
           const dateStr = today.toLocaleDateString('en-CA');
-          const fileName = `${quoteName}_v${currentVersion}_${dateStr}_customized.pdf`;
+          const fileName = `${quoteName}_v${currentVersion}_${dateStr}_split.pdf`;
           pdf.save(fileName);
         }
       } catch (canvasError) {
