@@ -82,7 +82,7 @@ export const PerWallStructureForm: React.FC<PerWallStructureFormProps> = ({
                       onValueChange={(value) => handleStructureSupportChange(wallName, value)}
                     >
                       <SelectTrigger className={!status.isComplete ? 'border-amber-300' : ''}>
-                        <SelectValue placeholder="Select structure support type" />
+                        <SelectValue placeholder="Select structure type" />
                       </SelectTrigger>
                       <SelectContent>
                         {STRUCTURE_SUPPORT_OPTIONS.map((option) => (

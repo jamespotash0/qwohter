@@ -64,22 +64,47 @@ export class GlassWallTemplate extends BaseQuoteTemplate {
   generateTrackSection(data: QuoteData): string {
     const walls = data.wall_details?.walls || {};
     const wallEntries = Object.entries(walls);
-    const firstWall = wallEntries[0]?.[1];
+    
+    // Create inline sentence describing each wall's track system
+    const wallDescriptions = wallEntries.map(([wallName, wall]) => {
+      return `<strong>${wallName}</strong> utilizes <strong>${wall.trackSystem || ""} Track System</strong> (${this.helpers.getMovementOnTrackText(wall?.panelConfiguration)} Panels)`;
+    }).join(', and ');
 
+    const summary = 
+      wallEntries.length > 1 
+        ? `These specialized track systems are designed for glass wall applications, providing smooth operation while maintaining structural integrity and acoustic performance. The track systems include integrated safety features and precise alignment mechanisms essential for glass panel operation.`
+        : `This specialized track system is designed for glass wall applications, providing smooth operation while maintaining structural integrity and acoustic performance. The track system includes integrated safety features and precise alignment mechanisms essential for glass panel operation.`
+    
     return `<div class="track-section" style="line-height: 1.15; margin-top: 0px;">
       <h2 class="section-header">TRACK SYSTEM:</h2>
       <p>
-        We will be using a <strong>${firstWall?.trackSystem || ''} Track System</strong> specifically designed for glass wall applications. This specialized track allows for <strong>${this.helpers.getMovementOnTrackText(firstWall?.panelConfiguration)}</strong> of the glass panels, providing smooth operation while maintaining structural integrity and acoustic performance. The track system includes integrated safety features and precise alignment mechanisms essential for glass panel operation.
+        ${wallDescriptions}. ${summary}
       </p>
     </div>`;
   }
 
   generateSupportSection(data: QuoteData): string {
-    const mountingTrack = data.support_structure?.mountingTrack || 'Structural Steel Header';
-
+    const walls = data.wall_details?.walls || {};
+    const wallEntries = Object.entries(walls);
+    
+    // Create inline sentence describing each wall's structure support
+    const wallDescriptions = wallEntries.map(([wallName, wall]) => {
+      // Check for structure support - handle different possible values
+      let structureSupport = wall.structureSupport;
+      
+      // If not set or is 'None', try fallback to global structure support
+      if (!structureSupport || structureSupport === 'None' || structureSupport.trim() === '') {
+        structureSupport = data.support_structure?.mountingTrack || 'Structural Steel Header';
+      }
+      
+      return `<strong>${wallName}</strong> will be suspended from <strong>${structureSupport}</strong>`;
+    }).join(', and ');
+    
     return `<div class="support-section" style="line-height: 1.15;">
       <h2 class="section-header">SUPPORT STRUCTURE (HEADER):</h2>
-      Glass panels will be suspended from a <strong>${mountingTrack}</strong> engineered to support the additional weight and dynamic loads of glass wall systems, to manufacturer's specifications, as supplied by others. Structural adequacy verification and soffits, if required, are supplied by others. <strong>Note: Glass wall systems require enhanced structural support compared to standard operable walls.</strong>
+      <p>
+        ${wallDescriptions} engineered to support the additional weight and dynamic loads of glass wall systems, to manufacturer's specifications, as supplied by others. Structural adequacy verification and soffits, if required, are supplied by others. <strong>Note: Glass wall systems require enhanced structural support compared to standard operable walls.</strong>
+      </p>
     </div>`;
   }
 

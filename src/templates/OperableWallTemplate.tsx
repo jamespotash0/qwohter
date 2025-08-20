@@ -139,20 +139,21 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
   generateTrackSection(data: QuoteData): string {
     const walls = data.wall_details?.walls || {};
     const wallEntries = Object.entries(walls);
-    const trackParagraphs = wallEntries.map(([wallName, waller]) => {
-      return `<strong>${wallName}</strong>: ${waller.trackSystem || ""} Track System (${this.helpers.getMovementOnTrackText(waller?.panelConfiguration)} Panels)`;
-    });
+    
+    // Create inline sentence describing each wall's track system
+    const wallDescriptions = wallEntries.map(([wallName, wall]) => {
+      return `<strong>${wallName}</strong> utilizes <strong>${wall.trackSystem || ""} Track System</strong> (${this.helpers.getMovementOnTrackText(wall?.panelConfiguration)} Panels)`;
+    }).join(', and ');
 
     const summary = 
       wallEntries.length > 1 
-        ? `These track systems allow for the specified movement of the panels along the overhead track, enabling flexible operation and easy stacking when the walls are not in use.`
-        : `The track system allows for the specified movement of the panels along the overhead track, enabling flexible operation and easy stacking when the wall is not in use.`
+        ? `These track systems allow for the specified movement of the panels, as noted in parentheses, along the overhead track, enabling flexible operation and easy stacking when the walls are not in use.`
+        : `The track system allows for the specified movement of the panels, as noted in parentheses, along the overhead track, enabling flexible operation and easy stacking when the wall is not in use.`
     return `
       <div class="track-section" style="line-height: 1.15; margin-top: 0px;">
         <h2 class="section-header">TRACK:</h2>
         <p>
-          ${trackParagraphs.join("<br>")}<br><br>
-          ${summary}
+          ${wallDescriptions}. ${summary}
         </p>
       </div>
     `;
@@ -162,8 +163,8 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     const walls = data.wall_details?.walls || {};
     const wallEntries = Object.entries(walls);
     
-    // Display structure support for each wall individually (per-wall configuration)
-    const supportParagraphs = wallEntries.map(([wallName, wall]) => {
+    // Create inline sentence describing each wall's structure support
+    const wallDescriptions = wallEntries.map(([wallName, wall]) => {
       // Check for structure support - handle different possible values
       let structureSupport = wall.structureSupport;
       
@@ -172,19 +173,18 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
         structureSupport = data.support_structure?.mountingTrack || 'None Required';
       }
       
-      return `<strong>${wallName}</strong>: ${structureSupport}`;
-    });
+      return `<strong>${wallName}</strong> will be hung from <strong>${structureSupport}</strong>`;
+    }).join(', and ');
     
     const summary = wallEntries.length > 1
-      ? `These doors will be hung from the above mounting structures to manufacturer's specs, as supplied by others. Soffits, if required, as supplied by others.`
-      : `The doors will be hung from the above mounting structure to manufacturer's specs, as supplied by others. Soffits, if required, as supplied by others.`;
+      ? `to manufacturer's specs, as supplied by others. Soffits, if required, as supplied by others.`
+      : `to manufacturer's specs, as supplied by others. Soffits, if required, as supplied by others.`;
     
     return `
       <div class="support-section" style="line-height: 1.15;">
         <h2 class="section-header">SUPPORT STRUCTURE (HEADER):</h2>
         <p>
-          ${supportParagraphs.join("<br>")}<br><br>
-          ${summary}
+          ${wallDescriptions} ${summary}
         </p>
       </div>
     `;

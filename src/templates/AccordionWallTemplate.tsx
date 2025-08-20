@@ -64,22 +64,47 @@ export class AccordionWallTemplate extends BaseQuoteTemplate {
   generateTrackSection(data: QuoteData): string {
     const walls = data.wall_details?.walls || {};
     const wallEntries = Object.entries(walls);
-    const firstWall = wallEntries[0]?.[1];
+    
+    // Create inline sentence describing each wall's track system
+    const wallDescriptions = wallEntries.map(([wallName, wall]) => {
+      return `<strong>${wallName}</strong> utilizes <strong>${wall.trackSystem || ""} Track System</strong> (${this.helpers.getMovementOnTrackText(wall?.panelConfiguration)} Panels)`;
+    }).join(', and ');
 
+    const summary = 
+      wallEntries.length > 1 
+        ? `These track systems allow for the specified movement of the panels along the overhead track, enabling flexible operation and easy stacking when the walls are not in use.`
+        : `The track system allows for the specified movement of the panels along the overhead track, enabling flexible operation and easy stacking when the wall is not in use.`
+    
     return `<div class="track-section" style="line-height: 1.15; margin-top: 0px;">
       <h2 class="section-header">TRACK:</h2>
       <p>
-        We will be using an <strong>${firstWall?.trackSystem || ''} Track System</strong> to suspend the doors from above. This track allows for <strong>${this.helpers.getMovementOnTrackText(firstWall?.panelConfiguration)}</strong> of the panels, along the overhead track, enabling flexible operation and easy stacking when the wall is not in use.
+        ${wallDescriptions}. ${summary}
       </p>
     </div>`;
   }
 
   generateSupportSection(data: QuoteData): string {
-    const mountingTrack = data.support_structure?.mountingTrack || '';
-
+    const walls = data.wall_details?.walls || {};
+    const wallEntries = Object.entries(walls);
+    
+    // Create inline sentence describing each wall's structure support
+    const wallDescriptions = wallEntries.map(([wallName, wall]) => {
+      // Check for structure support - handle different possible values
+      let structureSupport = wall.structureSupport;
+      
+      // If not set or is 'None', try fallback to global structure support
+      if (!structureSupport || structureSupport === 'None' || structureSupport.trim() === '') {
+        structureSupport = data.support_structure?.mountingTrack || 'None Required';
+      }
+      
+      return `<strong>${wallName}</strong> will be hung from <strong>${structureSupport}</strong>`;
+    }).join(', and ');
+    
     return `<div class="support-section" style="line-height: 1.15;">
       <h2 class="section-header">SUPPORT STRUCTURE (HEADER):</h2>
-      Doors will be hung from a <strong>${mountingTrack}</strong> above, to manufacturer's specs, as supplied by others. Soffits, if required, as supplied by others.
+      <p>
+        ${wallDescriptions} above, to manufacturer's specs, as supplied by others. Soffits, if required, as supplied by others.
+      </p>
     </div>`;
   }
 

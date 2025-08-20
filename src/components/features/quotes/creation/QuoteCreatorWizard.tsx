@@ -315,7 +315,7 @@ const QuoteCreatorWizard = ({
     },
     { 
       id: "support", 
-      label: "Structure", 
+      label: "Support Structure", 
       icon: Building, 
       isValid: isSupportStructureValid(),
       description: "Mounting & Support"
