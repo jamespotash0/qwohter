@@ -133,18 +133,18 @@ export class SectionGenerators {
 
     // Enhanced debug pricing values to console for troubleshooting
     if (process.env.NODE_ENV === 'development') {
-      console.log('Pricing Debug:', { 
-        original: { basePriceValue, freightValue, totalValue },
-        parsed: { parsedBasePrice, parsedFreight, parsedTotal },
-        formatted: { basePrice, freight, total }
-      });
+      // console.log('Pricing Debug:', { 
+      //   original: { basePriceValue, freightValue, totalValue },
+      //   parsed: { parsedBasePrice, parsedFreight, parsedTotal },
+      //   formatted: { basePrice, freight, total }
+      // });
       
       // Test currency formatting for all digit lengths
-      const testValues = [12.34, 123.45, 1234.56, 12345.67, 123456.78, 1234567.89, 12345678.90];
-      console.log('Currency formatting tests:');
-      testValues.forEach(val => {
-        console.log(`${val} digits -> ${this.helpers.formatCurrency(val)}`);
-      });
+      // const testValues = [12.34, 123.45, 1234.56, 12345.67, 123456.78, 1234567.89, 12345678.90];
+      // console.log('Currency formatting tests:');
+      // testValues.forEach(val => {
+      //   console.log(`${val} digits -> ${this.helpers.formatCurrency(val)}`);
+      // });
     }
 
     return `<div class="pricing-section" style="margin-top: 10px;">

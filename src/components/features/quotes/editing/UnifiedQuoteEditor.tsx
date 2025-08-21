@@ -208,8 +208,8 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
 
   // Handle form data changes
   const handleFormDataChange = useCallback((section: string, value: any) => {
-    console.log(`🔄 UnifiedQuoteEditor handleFormDataChange - section: "${section}"`);
-    console.log(`🔄 Value received:`, value);
+    // console.log(`🔄 UnifiedQuoteEditor handleFormDataChange - section: "${section}"`);
+    // console.log(`🔄 Value received:`, value);
     
     setState(prev => {
       const newState = {
@@ -221,7 +221,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         isDirty: true
       };
       
-      console.log(`🔄 Updated rawData for section "${section}":`, newState.rawData[section]);
+      // console.log(`🔄 Updated rawData for section "${section}":`, newState.rawData[section]);
       return newState;
     });
   }, []);

@@ -51,15 +51,15 @@ export class TemplateFactory {
   }
 
   static generateQuote(data: QuoteData): string {
-    console.log('🏭 TemplateFactory: Starting quote generation');
-    console.log('📊 Quote data keys:', Object.keys(data));
+    // console.log('🏭 TemplateFactory: Starting quote generation');
+    // console.log('📊 Quote data keys:', Object.keys(data));
     
     const template = this.getTemplate(data);
-    console.log('🎯 Selected template:', template.constructor.name);
+    // console.log('🎯 Selected template:', template.constructor.name);
     
     const result = template.generate(data);
-    console.log('✅ Template generated HTML, length:', result.length);
-    console.log('📄 First 300 chars:', result.substring(0, 300));
+    // console.log('✅ Template generated HTML, length:', result.length);
+    // console.log('📄 First 300 chars:', result.substring(0, 300));
     
     return result;
   }

@@ -144,67 +144,135 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
 
   const handleFieldChange = (field: string, value: any) => {
     const actualValue = value === "None" ? "" : value;
+    
+    // Apply the main field change first
     onFieldChange(wallName, field, actualValue);
 
-    // Cascading logic
+    // Cascading logic - reset all dependent fields
+    if (field === "wallSystemType") {
+      // Reset all dependent fields when wall system type changes
+      setTimeout(() => {
+        onFieldChange(wallName, 'panelConfiguration', '');
+        onFieldChange(wallName, 'series', '');
+        onFieldChange(wallName, 'model', '');
+        onFieldChange(wallName, 'panelThickness', '');
+        onFieldChange(wallName, 'panelSkin', '');
+        onFieldChange(wallName, 'panelDesign', '');
+        onFieldChange(wallName, 'stcRating', '');
+        onFieldChange(wallName, 'trackType', '');
+        onFieldChange(wallName, 'trackSystem', '');
+        onFieldChange(wallName, 'initialClosureSystem', '');
+        onFieldChange(wallName, 'endPanelType', '');
+        onFieldChange(wallName, 'verticalSeals', '');
+        onFieldChange(wallName, 'bottomSeals', '');
+        onFieldChange(wallName, 'topSeals', '');
+        onFieldChange(wallName, 'passDoorPanels', '');
+        onFieldChange(wallName, 'passDoorQuantity', '');
+        onFieldChange(wallName, 'panelFinishCategory', '');
+        onFieldChange(wallName, 'panelFinishSpecificItem', '');
+      }, 0);
+    }
+
     if (field === "panelConfiguration") {
-      onFieldChange(wallName, 'series', '');
-      onFieldChange(wallName, 'model', '');
-      onFieldChange(wallName, 'panelThickness', '');
-      onFieldChange(wallName, 'panelSkin', '');
-      onFieldChange(wallName, 'panelDesign', '');
-      onFieldChange(wallName, 'stcRating', '');
-      onFieldChange(wallName, 'trackType', '');
-      onFieldChange(wallName, 'trackSystem', '');
-      onFieldChange(wallName, 'initialClosureSystem', '');
+      // Reset all dependent fields when configuration changes
+      setTimeout(() => {
+        onFieldChange(wallName, 'series', '');
+        onFieldChange(wallName, 'model', '');
+        onFieldChange(wallName, 'panelThickness', '');
+        onFieldChange(wallName, 'panelSkin', '');
+        onFieldChange(wallName, 'panelDesign', '');
+        onFieldChange(wallName, 'stcRating', '');
+        onFieldChange(wallName, 'trackType', '');
+        onFieldChange(wallName, 'trackSystem', '');
+        onFieldChange(wallName, 'initialClosureSystem', '');
+        onFieldChange(wallName, 'endPanelType', '');
+        onFieldChange(wallName, 'verticalSeals', '');
+        onFieldChange(wallName, 'bottomSeals', '');
+        onFieldChange(wallName, 'topSeals', '');
+        onFieldChange(wallName, 'passDoorPanels', '');
+        onFieldChange(wallName, 'passDoorQuantity', '');
+        onFieldChange(wallName, 'panelFinishCategory', '');
+        onFieldChange(wallName, 'panelFinishSpecificItem', '');
+      }, 0);
     }
 
     if (field === "series") {
       // Auto-update panel thickness based on series
       const thickness = actualValue === "2000" ? "3\"" : actualValue === "3000" ? "4\"" : actualValue === "Hufcor: 600" ? "4\"" : "";
-      onFieldChange(wallName, 'panelThickness', thickness);
-      onFieldChange(wallName, 'model', '');
-      onFieldChange(wallName, 'panelSkin', '');
-      onFieldChange(wallName, 'panelDesign', '');
-      onFieldChange(wallName, 'stcRating', '');
-      onFieldChange(wallName, 'initialClosureSystem', '');
+      setTimeout(() => {
+        onFieldChange(wallName, 'panelThickness', thickness);
+        onFieldChange(wallName, 'model', '');
+        onFieldChange(wallName, 'panelSkin', '');
+        onFieldChange(wallName, 'panelDesign', '');
+        onFieldChange(wallName, 'stcRating', '');
+        onFieldChange(wallName, 'trackType', '');
+        onFieldChange(wallName, 'trackSystem', '');
+        onFieldChange(wallName, 'initialClosureSystem', '');
+        onFieldChange(wallName, 'endPanelType', '');
+        onFieldChange(wallName, 'verticalSeals', '');
+        onFieldChange(wallName, 'bottomSeals', '');
+        onFieldChange(wallName, 'topSeals', '');
+        onFieldChange(wallName, 'passDoorPanels', '');
+        onFieldChange(wallName, 'passDoorQuantity', '');
+        onFieldChange(wallName, 'panelFinishCategory', '');
+        onFieldChange(wallName, 'panelFinishSpecificItem', '');
+      }, 0);
     }
 
     if (field === "model") {
       // Auto-update track type based on model
       const trackType = getTrackTypeByModel(actualValue);
-      onFieldChange(wallName, 'trackType', trackType);
-      onFieldChange(wallName, 'trackSystem', '');
-      onFieldChange(wallName, 'panelSkin', '');
-      onFieldChange(wallName, 'panelDesign', '');
-      onFieldChange(wallName, 'stcRating', '');
-      onFieldChange(wallName, 'initialClosureSystem', '');
+      setTimeout(() => {
+        onFieldChange(wallName, 'trackType', trackType);
+        onFieldChange(wallName, 'trackSystem', '');
+        onFieldChange(wallName, 'panelSkin', '');
+        onFieldChange(wallName, 'panelDesign', '');
+        onFieldChange(wallName, 'stcRating', '');
+        onFieldChange(wallName, 'initialClosureSystem', '');
+        onFieldChange(wallName, 'endPanelType', '');
+        onFieldChange(wallName, 'verticalSeals', '');
+        onFieldChange(wallName, 'bottomSeals', '');
+        onFieldChange(wallName, 'topSeals', '');
+        onFieldChange(wallName, 'passDoorPanels', '');
+        onFieldChange(wallName, 'passDoorQuantity', '');
+        onFieldChange(wallName, 'panelFinishCategory', '');
+        onFieldChange(wallName, 'panelFinishSpecificItem', '');
+      }, 0);
     }
 
     if (field === "panelSkin") {
-      onFieldChange(wallName, 'stcRating', '');
+      setTimeout(() => {
+        onFieldChange(wallName, 'stcRating', '');
+      }, 0);
     }
 
     if (field === "trackType") {
-      onFieldChange(wallName, 'trackSystem', '');
+      setTimeout(() => {
+        onFieldChange(wallName, 'trackSystem', '');
+      }, 0);
     }
 
     if (field === "passDoorPanels") {
-      if (actualValue === "" || actualValue === "None") {
-        onFieldChange(wallName, 'passDoorQuantity', '');
+      if (actualValue === "None") {
+        setTimeout(() => {
+          onFieldChange(wallName, 'passDoorQuantity', '');
+        }, 0);
       }
     }
 
     if (field === "panelFinishCategory") {
       const categoriesWithoutSpecificItems = ["Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
-      onFieldChange(wallName, 'panelFinishSpecificItem', categoriesWithoutSpecificItems.includes(value) ? "" : "");
+      setTimeout(() => {
+        onFieldChange(wallName, 'panelFinishSpecificItem', categoriesWithoutSpecificItems.includes(value) ? "" : "");
+      }, 0);
     }
   };
 
   return (
-    <>
-      <div className="space-y-2">
-        <Label>Panel Configuration</Label>
+    <div className="space-y-2">
+      {/* Panel Configuration - Full width */}
+      <div className="space-y-1">
+        <Label className="text-xs">Panel Configuration</Label>
         <Select
           value={wall.panelConfiguration || ''}
           onValueChange={(value) => handleFieldChange('panelConfiguration', value)}
@@ -219,296 +287,321 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
           </SelectContent>
         </Select>
       </div>
-      <div className="space-y-2">
-        <Label>Series</Label>
-        <Select
-          value={wall.series || ''}
-          onValueChange={(value) => handleFieldChange('series', value)}
-          disabled={!wall.panelConfiguration}
-        >
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="Select series" />
-          </SelectTrigger>
-          <SelectContent className="text-left">
-            {getSeriesByPanelConfiguration(wall.panelConfiguration).map((series) => (
-              <SelectItem key={series} className="text-left" value={series}>
-                {series}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Model</Label>
-        <Select
-          value={wall.model || ''}
-          onValueChange={(value) => handleFieldChange('model', value)}
-          disabled={!wall.series}
-        >
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="Select model" />
-          </SelectTrigger>
-          <SelectContent className="text-left">
-            {getModelsByPanelConfigurationAndSeries(wall.panelConfiguration, wall.series).map((model) => (
-              <SelectItem key={model} className="text-left" value={model}>
-                {model}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Panel Thickness</Label>
-        <Input
-          value={wall.panelThickness || ''}
-          readOnly
-          className="text-xs h-8 bg-muted text-muted-foreground"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Panel Design</Label>
-        <Select
-          value={wall.panelDesign || ''}
-          onValueChange={(value) => handleFieldChange('panelDesign', value)}
-        >
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="Select design" />
-          </SelectTrigger>
-          <SelectContent className="text-left">
-            <SelectItem className="text-left" value="Trimless U Capped">Trimless U Capped</SelectItem>
-            <SelectItem className="text-left" value="U-Capped Trim">U-Capped Trim</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Panel Skin</Label>
-        <Select
-          value={wall.panelSkin || ''}
-          onValueChange={(value) => handleFieldChange('panelSkin', value)}
-          disabled={!wall.model}
-        >
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="Select skin" />
-          </SelectTrigger>
-          <SelectContent className="text-left">
-            {getPanelSkinOptions(wall.model).map((skin) => (
-              <SelectItem key={skin} className="text-left" value={skin}>
-                {skin}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>STC Rating</Label>
-        <Select
-          value={wall.stcRating || ''}
-          onValueChange={(value) => handleFieldChange('stcRating', value)}
-          disabled={!wall.model || !wall.panelSkin}
-        >
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="Select STC" />
-          </SelectTrigger>
-          <SelectContent className="text-left">
-            {getSTCRatingOptions(wall.model, wall.panelSkin).map((rating) => (
-              <SelectItem key={rating} className="text-left" value={rating}>
-                {rating}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Panel Finish Category</Label>
-        <Select
-          value={wall.panelFinishCategory || ''}
-          onValueChange={(value) => handleFieldChange('panelFinishCategory', value)}
-        >
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="Select finish" />
-          </SelectTrigger>
-          <SelectContent className="text-left">
-            <SelectItem className="text-left" value="None">None</SelectItem>
-            <SelectItem className="text-left" value="Koroseal Standard Vinyl">Koroseal Standard Vinyl</SelectItem>
-            <SelectItem className="text-left" value="Koroseal Upgrade Vinyl">Koroseal Upgrade Vinyl</SelectItem>
-            <SelectItem className="text-left" value="Shaw Standard Carpet">Shaw Standard Carpet</SelectItem>
-            <SelectItem className="text-left" value="HyTex Upgrade Carpet">HyTex Upgrade Carpet</SelectItem>
-            <SelectItem className="text-left" value="HyTex Standard Fabric">HyTex Standard Fabric</SelectItem>
-            <SelectItem className="text-left" value="HyTex Upgrade Fabric">HyTex Upgrade Fabric</SelectItem>
-            <SelectItem className="text-left" value="Standard Wood Veneer">Standard Wood Veneer</SelectItem>
-            <SelectItem className="text-left" value="Wilsonart High Pressure Laminate (HPL)">Wilsonart High Pressure Laminate (HPL)</SelectItem>
-            <SelectItem className="text-left" value="Full Height Marker (Tack) Board">Full Height Marker (Tack) Board</SelectItem>
-            <SelectItem className="text-left" value="Uncovered">Uncovered</SelectItem>
-            <SelectItem className="text-left" value="C.O.M. Material">C.O.M. Material</SelectItem>
-            <SelectItem className="text-left" value="Field Painting by Others">Field Painting by Others</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      {getPanelFinishSpecificItems(wall.panelFinishCategory).length > 0 && (
-        <div className="space-y-2">
-          <Label>Panel Finish Specific Item</Label>
+
+      {/* 2x2 Grid Layout for Wall System Fields */}
+      <div className="grid grid-cols-2 gap-2">
+        {/* Row 1 */}
+        <div className="space-y-1">
+          <Label className="text-xs">Series</Label>
           <Select
-            value={wall.panelFinishSpecificItem || ''}
-            onValueChange={(value) => handleFieldChange('panelFinishSpecificItem', value)}
-            disabled={!wall.panelFinishCategory}
+            value={wall.series || ''}
+            onValueChange={(value) => handleFieldChange('series', value)}
+            disabled={!wall.panelConfiguration}
           >
             <SelectTrigger className="text-xs h-8">
-              <SelectValue placeholder="Select specific item" />
+              <SelectValue placeholder="Select series" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {getPanelFinishSpecificItems(wall.panelFinishCategory).map((item) => (
-                <SelectItem key={item} className="text-left" value={item}>
-                  {item}
+              {getSeriesByPanelConfiguration(wall.panelConfiguration).map((series) => (
+                <SelectItem key={series} className="text-left" value={series}>
+                  {series}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-      )}
-      <div className="space-y-2">
-        <Label>Vertical Seals</Label>
-        <Select
-          value={wall.verticalSeals || ''}
-          onValueChange={(value) => handleFieldChange('verticalSeals', value)}
-        >
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="Select seals" />
-          </SelectTrigger>
-          <SelectContent className="text-left">
-            <SelectItem className="text-left" value="None">None</SelectItem>
-            <SelectItem className="text-left" value="Tongue-and-Groove">Tongue-and-Groove</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="space-y-1">
+          <Label className="text-xs">Model</Label>
+          <Select
+            value={wall.model || ''}
+            onValueChange={(value) => handleFieldChange('model', value)}
+            disabled={!wall.series}
+          >
+            <SelectTrigger className="text-xs h-8">
+              <SelectValue placeholder="Select model" />
+            </SelectTrigger>
+            <SelectContent className="text-left">
+              {getModelsByPanelConfigurationAndSeries(wall.panelConfiguration, wall.series).map((model) => (
+                <SelectItem key={model} className="text-left" value={model}>
+                  {model}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Row 2 */}
+        <div className="space-y-1">
+          <Label className="text-xs">Panel Thickness</Label>
+          <Input
+            value={wall.panelThickness || ''}
+            readOnly
+            className="text-xs h-8 bg-muted text-muted-foreground"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">STC Rating</Label>
+          <Select
+            value={wall.stcRating || ''}
+            onValueChange={(value) => handleFieldChange('stcRating', value)}
+            disabled={!wall.model || !wall.panelSkin}
+          >
+            <SelectTrigger className="text-xs h-8">
+              <SelectValue placeholder="Select STC" />
+            </SelectTrigger>
+            <SelectContent className="text-left">
+              {getSTCRatingOptions(wall.model, wall.panelSkin).map((rating) => (
+                <SelectItem key={rating} className="text-left" value={rating}>
+                  {rating}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Row 3 */}
+        <div className="space-y-1">
+          <Label className="text-xs">Panel Design</Label>
+          <Select
+            value={wall.panelDesign || ''}
+            onValueChange={(value) => handleFieldChange('panelDesign', value)}
+          >
+            <SelectTrigger className="text-xs h-8">
+              <SelectValue placeholder="Select design" />
+            </SelectTrigger>
+            <SelectContent className="text-left">
+              <SelectItem className="text-left" value="Trimless U Capped">Trimless U Capped</SelectItem>
+              <SelectItem className="text-left" value="U-Capped Trim">U-Capped Trim</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Panel Skin</Label>
+          <Select
+            value={wall.panelSkin || ''}
+            onValueChange={(value) => handleFieldChange('panelSkin', value)}
+            disabled={!wall.model}
+          >
+            <SelectTrigger className="text-xs h-8">
+              <SelectValue placeholder="Select skin" />
+            </SelectTrigger>
+            <SelectContent className="text-left">
+              {getPanelSkinOptions(wall.model).map((skin) => (
+                <SelectItem key={skin} className="text-left" value={skin}>
+                  {skin}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Row 4 */}
+        <div className="space-y-1">
+          <Label className="text-xs">Panel Finish Category</Label>
+          <Select
+            value={wall.panelFinishCategory || ''}
+            onValueChange={(value) => handleFieldChange('panelFinishCategory', value)}
+          >
+            <SelectTrigger className="text-xs h-8">
+              <SelectValue placeholder="Select finish" />
+            </SelectTrigger>
+            <SelectContent className="text-left">
+              <SelectItem className="text-left" value="None">None</SelectItem>
+              <SelectItem className="text-left" value="Koroseal Standard Vinyl">Koroseal Standard Vinyl</SelectItem>
+              <SelectItem className="text-left" value="Koroseal Upgrade Vinyl">Koroseal Upgrade Vinyl</SelectItem>
+              <SelectItem className="text-left" value="Shaw Standard Carpet">Shaw Standard Carpet</SelectItem>
+              <SelectItem className="text-left" value="HyTex Upgrade Carpet">HyTex Upgrade Carpet</SelectItem>
+              <SelectItem className="text-left" value="HyTex Standard Fabric">HyTex Standard Fabric</SelectItem>
+              <SelectItem className="text-left" value="HyTex Upgrade Fabric">HyTex Upgrade Fabric</SelectItem>
+              <SelectItem className="text-left" value="Standard Wood Veneer">Standard Wood Veneer</SelectItem>
+              <SelectItem className="text-left" value="Wilsonart High Pressure Laminate (HPL)">Wilsonart High Pressure Laminate (HPL)</SelectItem>
+              <SelectItem className="text-left" value="Full Height Marker (Tack) Board">Full Height Marker (Tack) Board</SelectItem>
+              <SelectItem className="text-left" value="Uncovered">Uncovered</SelectItem>
+              <SelectItem className="text-left" value="C.O.M. Material">C.O.M. Material</SelectItem>
+              <SelectItem className="text-left" value="Field Painting by Others">Field Painting by Others</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {getPanelFinishSpecificItems(wall.panelFinishCategory).length > 0 ? (
+          <div className="space-y-1">
+            <Label className="text-xs">Panel Finish Specific Item</Label>
+            <Select
+              value={wall.panelFinishSpecificItem || ''}
+              onValueChange={(value) => handleFieldChange('panelFinishSpecificItem', value)}
+              disabled={!wall.panelFinishCategory}
+            >
+              <SelectTrigger className="text-xs h-8">
+                <SelectValue placeholder="Select specific item" />
+              </SelectTrigger>
+              <SelectContent className="text-left">
+                {getPanelFinishSpecificItems(wall.panelFinishCategory).map((item) => (
+                  <SelectItem key={item} className="text-left" value={item}>
+                    {item}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <div></div>
+        )}
+
+        {/* Row 5 */}
+        <div className="space-y-1">
+          <Label className="text-xs">Vertical Seals</Label>
+          <Select
+            value={wall.verticalSeals || ''}
+            onValueChange={(value) => handleFieldChange('verticalSeals', value)}
+          >
+            <SelectTrigger className="text-xs h-8">
+              <SelectValue placeholder="Select seals" />
+            </SelectTrigger>
+            <SelectContent className="text-left">
+              <SelectItem className="text-left" value="None">None</SelectItem>
+              <SelectItem className="text-left" value="Tongue-and-Groove">Tongue-and-Groove</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Bottom Seals</Label>
+          <Select
+            value={wall.bottomSeals || ''}
+            onValueChange={(value) => handleFieldChange('bottomSeals', value)}
+          >
+            <SelectTrigger className="text-xs h-8">
+              <SelectValue placeholder="Select seals" />
+            </SelectTrigger>
+            <SelectContent className="text-left">
+              <SelectItem className="text-left" value="None">None</SelectItem>
+              <SelectItem className="text-left" value="Retractable">Retractable</SelectItem>
+              <SelectItem className="text-left" value="Automatic">Automatic</SelectItem>
+              <SelectItem className="text-left" value="Adjustable">Adjustable</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Row 6 */}
+        <div className="space-y-1">
+          <Label className="text-xs">Top Seals</Label>
+          <Select
+            value={wall.topSeals || ''}
+            onValueChange={(value) => handleFieldChange('topSeals', value)}
+          >
+            <SelectTrigger className="text-xs h-8">
+              <SelectValue placeholder="Select seals" />
+            </SelectTrigger>
+            <SelectContent className="text-left">
+              <SelectItem className="text-left" value="None">None</SelectItem>
+              <SelectItem className="text-left" value="Fixed">Fixed</SelectItem>
+              <SelectItem className="text-left" value="Adjustable">Adjustable</SelectItem>
+              <SelectItem className="text-left" value="Operable">Operable</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Initial Closure System</Label>
+          <Select
+            value={wall.initialClosureSystem || ''}
+            onValueChange={(value) => handleFieldChange('initialClosureSystem', value)}
+          >
+            <SelectTrigger className="text-xs h-8">
+              <SelectValue placeholder="Select closure" />
+            </SelectTrigger>
+            <SelectContent className="text-left">
+              <SelectItem className="text-left" value="None">None</SelectItem>
+              <SelectItem className="text-left" value="Standard Bulb">Standard Bulb</SelectItem>
+              <SelectItem className="text-left" value="Optional Fixed Starter Jamb">Optional Fixed Starter Jamb</SelectItem>
+              <SelectItem className="text-left" value="Optional Adjustable Starter Jamb">Optional Adjustable Starter Jamb</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Row 7 - End Panel Type spans full width */}
+        <div className="col-span-2 space-y-1">
+          <Label className="text-xs">End Panel Type</Label>
+          <Select
+            value={wall.endPanelType || ''}
+            onValueChange={(value) => handleFieldChange('endPanelType', value)}
+          >
+            <SelectTrigger className="text-xs h-8">
+              <SelectValue placeholder="Select end panel" />
+            </SelectTrigger>
+            <SelectContent className="text-left">
+              <SelectItem className="text-left" value="None">None</SelectItem>
+              <SelectItem className="text-left" value="Standard Expander Panel Closure">Standard Expander Panel Closure</SelectItem>
+              <SelectItem className="text-left" value="Optional Hinged Panel(s) Closure">Optional Hinged Panel(s) Closure</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Row 8 */}
+        <div className="space-y-1">
+          <Label className="text-xs">Pass Door Panels</Label>
+          <Select
+            value={wall.passDoorPanels || ''}
+            onValueChange={(value) => handleFieldChange('passDoorPanels', value)}
+          >
+            <SelectTrigger className="text-xs h-8">
+              <SelectValue placeholder="Select pass door" />
+            </SelectTrigger>
+            <SelectContent className="text-left">
+              <SelectItem className="text-left" value="None">None</SelectItem>
+              <SelectItem className="text-left" value="Single">Single</SelectItem>
+              <SelectItem className="text-left" value="Double">Double</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Pass Door Quantity</Label>
+          <Select
+            value={wall.passDoorQuantity || ''}
+            onValueChange={(value) => handleFieldChange('passDoorQuantity', value)}
+            disabled={!wall.passDoorPanels || wall.passDoorPanels === "None"}
+          >
+            <SelectTrigger className="text-xs h-8">
+              <SelectValue placeholder="Select quantity" />
+            </SelectTrigger>
+            <SelectContent className="text-left">
+              <SelectItem className="text-left" value="1">1</SelectItem>
+              <SelectItem className="text-left" value="2">2</SelectItem>
+              <SelectItem className="text-left" value="3">3</SelectItem>
+              <SelectItem className="text-left" value="4">4</SelectItem>
+              <SelectItem className="text-left" value="5">5</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Row 9 - Track Type spans full width */}
+        <div className="col-span-2 space-y-1">
+          <Label className="text-xs">Track Type</Label>
+          <Input
+            value={wall.trackType || ''}
+            readOnly
+            className="text-xs h-8 bg-muted text-muted-foreground"
+          />
+        </div>
+
+        {/* Row 10 - Track System spans full width */}
+        <div className="col-span-2 space-y-1">
+          <Label className="text-xs">Track System</Label>
+          <Select
+            value={wall.trackSystem || ''}
+            onValueChange={(value) => handleFieldChange('trackSystem', value)}
+            disabled={!wall.trackType && !wall.model}
+          >
+            <SelectTrigger className="text-xs h-8">
+              <SelectValue placeholder="Select system" />
+            </SelectTrigger>
+            <SelectContent className="text-left">
+              {getTrackSystemsByTrackType(wall.trackType, wall.model).map((system) => (
+                <SelectItem key={system} className="text-left" value={system}>
+                  {system}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
-      <div className="space-y-2">
-        <Label>Bottom Seals</Label>
-        <Select
-          value={wall.bottomSeals || ''}
-          onValueChange={(value) => handleFieldChange('bottomSeals', value)}
-        >
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="Select seals" />
-          </SelectTrigger>
-          <SelectContent className="text-left">
-            <SelectItem className="text-left" value="None">None</SelectItem>
-            <SelectItem className="text-left" value="Retractable">Retractable</SelectItem>
-            <SelectItem className="text-left" value="Automatic">Automatic</SelectItem>
-            <SelectItem className="text-left" value="Adjustable">Adjustable</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Top Seals</Label>
-        <Select
-          value={wall.topSeals || ''}
-          onValueChange={(value) => handleFieldChange('topSeals', value)}
-        >
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="Select seals" />
-          </SelectTrigger>
-          <SelectContent className="text-left">
-            <SelectItem className="text-left" value="None">None</SelectItem>
-            <SelectItem className="text-left" value="Fixed">Fixed</SelectItem>
-            <SelectItem className="text-left" value="Adjustable">Adjustable</SelectItem>
-            <SelectItem className="text-left" value="Operable">Operable</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Initial Closure System</Label>
-        <Select
-          value={wall.initialClosureSystem || ''}
-          onValueChange={(value) => handleFieldChange('initialClosureSystem', value)}
-        >
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="Select closure" />
-          </SelectTrigger>
-          <SelectContent className="text-left">
-            <SelectItem className="text-left" value="None">None</SelectItem>
-            <SelectItem className="text-left" value="Standard Bulb">Standard Bulb</SelectItem>
-            <SelectItem className="text-left" value="Optional Fixed Starter Jamb">Optional Fixed Starter Jamb</SelectItem>
-            <SelectItem className="text-left" value="Optional Adjustable Starter Jamb">Optional Adjustable Starter Jamb</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>End Panel Type</Label>
-        <Select
-          value={wall.endPanelType || ''}
-          onValueChange={(value) => handleFieldChange('endPanelType', value)}
-        >
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="Select end panel" />
-          </SelectTrigger>
-          <SelectContent className="text-left">
-            <SelectItem className="text-left" value="None">None</SelectItem>
-            <SelectItem className="text-left" value="Standard Expander Panel Closure">Standard Expander Panel Closure</SelectItem>
-            <SelectItem className="text-left" value="Optional Hinged Panel(s) Closure">Optional Hinged Panel(s) Closure</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Pass Door Panels</Label>
-        <Select
-          value={wall.passDoorPanels || ''}
-          onValueChange={(value) => handleFieldChange('passDoorPanels', value)}
-        >
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="Select pass door" />
-          </SelectTrigger>
-          <SelectContent className="text-left">
-            <SelectItem className="text-left" value="None">None</SelectItem>
-            <SelectItem className="text-left" value="Single">Single</SelectItem>
-            <SelectItem className="text-left" value="Double">Double</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Pass Door Quantity</Label>
-        <Select
-          value={wall.passDoorQuantity || ''}
-          onValueChange={(value) => handleFieldChange('passDoorQuantity', value)}
-          disabled={!wall.passDoorPanels || wall.passDoorPanels === "None"}
-        >
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="Select quantity" />
-          </SelectTrigger>
-          <SelectContent className="text-left">
-            <SelectItem className="text-left" value="1">1</SelectItem>
-            <SelectItem className="text-left" value="2">2</SelectItem>
-            <SelectItem className="text-left" value="3">3</SelectItem>
-            <SelectItem className="text-left" value="4">4</SelectItem>
-            <SelectItem className="text-left" value="5">5</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Track Type</Label>
-        <Input
-          value={wall.trackType || ''}
-          readOnly
-          className="text-xs h-8 bg-muted text-muted-foreground"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Track System</Label>
-        <Select
-          value={wall.trackSystem || ''}
-          onValueChange={(value) => handleFieldChange('trackSystem', value)}
-          disabled={!wall.trackType && !wall.model}
-        >
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="Select system" />
-          </SelectTrigger>
-          <SelectContent className="text-left">
-            {getTrackSystemsByTrackType(wall.trackType, wall.model).map((system) => (
-              <SelectItem key={system} className="text-left" value={system}>
-                {system}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </>
+    </div>
   );
 };

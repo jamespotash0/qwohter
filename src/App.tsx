@@ -11,6 +11,7 @@ import Team from "./pages/Team";
 import NewQuote from "./pages/NewQuote";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import QuoteEdit from "./pages/QuoteEdit";
 // import 'styles.css';
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/quotes" element={<Quotes />} />
+          <Route path="/quotes/edit/:proposalNumber/:versionDownloaded" element={<QuoteEdit />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/team" element={<Team />} />
           <Route path="/newquote" element={<NewQuote />} />

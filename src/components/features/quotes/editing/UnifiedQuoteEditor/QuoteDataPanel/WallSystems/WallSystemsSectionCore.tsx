@@ -100,12 +100,12 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
         }
       }
     };
-    console.log('WallSystems: Updating wall field', { wallName, field, value, updatedWalls });
+    // console.log('WallSystems: Updating wall field', { wallName, field, value, updatedWalls });
     onChange('wall_details', updatedWalls);
   };
 
   // Debug current wall data
-  console.log('WallSystems: Current wall data:', data.wall_details?.walls);
+  // console.log('WallSystems: Current wall data:', data.wall_details?.walls);
 
   return (
     <CollapsibleSection

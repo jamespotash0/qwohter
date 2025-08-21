@@ -31,8 +31,8 @@ export const WallCard: React.FC<WallCardProps> = ({
     </div>
     
     <div className="grid grid-cols-2 gap-2 text-xs">
-      <div>
-        <Label htmlFor={`${wallName}-lengthFeet`}>Length (ft)</Label>
+      <div className="space-y-2">
+        <Label htmlFor={`${wallName}-lengthFeet`} className="text-xs">Length (ft)</Label>
         <Input
           id={`${wallName}-lengthFeet`}
           value={wall.lengthFeet || ''}
@@ -41,8 +41,8 @@ export const WallCard: React.FC<WallCardProps> = ({
           className="text-xs h-8"
         />
       </div>
-      <div>
-        <Label htmlFor={`${wallName}-lengthInches`}>Length (in)</Label>
+      <div className="space-y-2">
+        <Label htmlFor={`${wallName}-lengthInches`} className="text-xs">Length (in)</Label>
         <Input
           id={`${wallName}-lengthInches`}
           value={wall.lengthInches || ''}
@@ -51,8 +51,8 @@ export const WallCard: React.FC<WallCardProps> = ({
           className="text-xs h-8"
         />
       </div>
-      <div>
-        <Label htmlFor={`${wallName}-heightFeet`}>Height (ft)</Label>
+      <div className="space-y-2">
+        <Label htmlFor={`${wallName}-heightFeet`} className="text-xs">Height (ft)</Label>
         <Input
           id={`${wallName}-heightFeet`}
           value={wall.heightFeet || ''}
@@ -61,8 +61,8 @@ export const WallCard: React.FC<WallCardProps> = ({
           className="text-xs h-8"
         />
       </div>
-      <div>
-        <Label htmlFor={`${wallName}-heightInches`}>Height (in)</Label>
+      <div className="space-y-2">
+        <Label htmlFor={`${wallName}-heightInches`} className="text-xs">Height (in)</Label>
         <Input
           id={`${wallName}-heightInches`}
           value={wall.heightInches || ''}
@@ -71,8 +71,8 @@ export const WallCard: React.FC<WallCardProps> = ({
           className="text-xs h-8"
         />
       </div>
-      <div>
-        <Label htmlFor={`${wallName}-panelCount`}>Panel Count</Label>
+      <div className="space-y-2">
+        <Label htmlFor={`${wallName}-panelCount`} className="text-xs">Panel Count</Label>
         <Input
           id={`${wallName}-panelCount`}
           value={wall.panelCount || ''}
@@ -81,8 +81,8 @@ export const WallCard: React.FC<WallCardProps> = ({
           className="text-xs h-8"
         />
       </div>
-      <div>
-        <Label htmlFor={`${wallName}-quantity`}>Quantity</Label>
+      <div className="space-y-2">
+        <Label htmlFor={`${wallName}-quantity`} className="text-xs">Quantity</Label>
         <Input
           id={`${wallName}-quantity`}
           value={wall.quantity || ''}
@@ -91,11 +91,18 @@ export const WallCard: React.FC<WallCardProps> = ({
           className="text-xs h-8"
         />
       </div>
-      <div className="space-y-2">
-        <Label htmlFor={`${wallName}-wallSystemType`}>Wall System Type</Label>
+      <div className="space-y-2 grid col-span-2">
+        <Label htmlFor={`${wallName}-wallSystemType`} className="text-xs">Wall System Type</Label>
         <Select
           value={wall.wallSystemType || ''}
-          onValueChange={(value) => onFieldChange(wallName, 'wallSystemType', value)}
+          onValueChange={(value) => {
+            try {
+              console.log('Wall system type changing:', { wallName, value, currentWall: wall });
+              onFieldChange(wallName, 'wallSystemType', value);
+            } catch (error) {
+              console.error('Error in wall system type change:', error);
+            }
+          }}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select type" />
@@ -111,27 +118,33 @@ export const WallCard: React.FC<WallCardProps> = ({
 
     {/* Wall Type Specific Forms */}
     {wall.wallSystemType === "Operable Wall" && (
-      <OperableWallForm
-        wallName={wallName}
-        wall={wall}
-        onFieldChange={onFieldChange}
-      />
+      <div className="mt-2">
+        <OperableWallForm
+          wallName={wallName}
+          wall={wall}
+          onFieldChange={onFieldChange}
+        />
+      </div>
     )}
 
     {wall.wallSystemType === "Glass Wall" && (
-      <GlassWallForm
-        wallName={wallName}
-        wall={wall}
-        onFieldChange={onFieldChange}
-      />
+      <div className="mt-2">
+        <GlassWallForm
+          wallName={wallName}
+          wall={wall}
+          onFieldChange={onFieldChange}
+        />
+      </div>
     )}
 
     {wall.wallSystemType === "Accordion Partitions" && (
-      <AccordionPartitionForm
-        wallName={wallName}
-        wall={wall}
-        onFieldChange={onFieldChange}
-      />
+      <div className="mt-2">
+        <AccordionPartitionForm
+          wallName={wallName}
+          wall={wall}
+          onFieldChange={onFieldChange}
+        />
+      </div>
     )}
   </Card>
 );

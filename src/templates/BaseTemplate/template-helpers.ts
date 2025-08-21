@@ -57,9 +57,9 @@ export const createTemplateHelpers = (): TemplateHelpers => ({
     const formatted = formatter.format(num);
     
     // Debug logging for development
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`Currency formatting: ${amount} -> ${num} -> ${formatted}`);
-    }
+    // if (process.env.NODE_ENV === 'development') {
+    //   console.log(`Currency formatting: ${amount} -> ${num} -> ${formatted}`);
+    // }
     
     return formatted;
   },

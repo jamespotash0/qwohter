@@ -163,7 +163,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const getTrackTypeByModel = (model: string): string => {
     if (["Hufcor 641", "2010", "2010GL", "3010", "3010GL"].includes(model)) {
       return "Curve & Diverter (Individual) Track";
-    } else if (["Hufcor 641", "2020", "2020GL", "3020", "3020GL"].includes(model)) {
+    } else if (["2020", "2020GL", "3020", "3020GL"].includes(model)) {
       return "Multi-Directional Track";
     } else if (["2050e", "3050e", "3030", "3030GL", "2030", "2030GL"].includes(model)) {
       return "Hinged-Pair (Straight Line) Track";
