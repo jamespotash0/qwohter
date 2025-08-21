@@ -26,7 +26,7 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
     isOpen={isOpen}
     onToggle={onToggle}
   >
-    <div className="space-y-3">
+    <div className="grid grid-cols-2 gap-2">
       <div>
         <Label htmlFor="laborType" className="text-xs font-medium text-gray-600">
           Labor Type
@@ -41,7 +41,6 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
           <SelectContent className="text-left">
             <SelectItem value="Union">Union</SelectItem>
             <SelectItem value="Non-Union">Non-Union</SelectItem>
-            {/* <SelectItem value="Mixed">Mixed</SelectItem> */}
           </SelectContent>
         </Select>
       </div>
@@ -60,65 +59,77 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
           <SelectContent className="text-left">
             <SelectItem value="Prevailing">Prevailing</SelectItem>
             <SelectItem value="Standard">Standard</SelectItem>
-            {/* <SelectItem value="Fixed">Fixed</SelectItem> */}
           </SelectContent>
         </Select>
       </div>
+    </div>
       
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <Label htmlFor="trackDelivery" className="text-xs font-medium text-gray-600">
-            Track Delivery (Weeks)
-          </Label>
-          <Input
-            id="trackDelivery"
-            value={data.delivery_details?.trackDeliveryWeeks || ''}
-            onChange={(e) => onFieldChange('delivery_details', 'trackDeliveryWeeks', e.target.value)}
-            placeholder="4"
-            className="text-sm"
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="panelDelivery" className="text-xs font-medium text-gray-600">
-            Panel Delivery (Weeks)
-          </Label>
-          <Input
-            id="panelDelivery"
-            value={data.delivery_details?.panelDeliveryWeeks || ''}
-            onChange={(e) => onFieldChange('delivery_details', 'panelDeliveryWeeks', e.target.value)}
-            placeholder="8"
-            className="text-sm"
-          />
-        </div>
+    <div className="grid grid-cols-3 gap-2">
+      <div>
+        <Label htmlFor="shopDrawing" className="text-xs font-medium text-gray-600">
+          Shop Drawing (Weeks)
+        </Label>
+        <Input
+          id="shopDrawing"
+          value={data.delivery_details?.shopDrawingWeeks || ''}
+          onChange={(e) => onFieldChange('delivery_details', 'shopDrawingWeeks', e.target.value)}
+          placeholder="2"
+          className="text-sm"
+        />
       </div>
       
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <Label htmlFor="trackInstall" className="text-xs font-medium text-gray-600">
-            Track Install (Days)
-          </Label>
-          <Input
-            id="trackInstall"
-            value={data.delivery_details?.trackInstallationDays || ''}
-            onChange={(e) => onFieldChange('delivery_details', 'trackInstallationDays', e.target.value)}
-            placeholder="2"
-            className="text-sm"
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="panelInstall" className="text-xs font-medium text-gray-600">
-            Panel Install (Days)
-          </Label>
-          <Input
-            id="panelInstall"
-            value={data.delivery_details?.panelInstallationDays || ''}
-            onChange={(e) => onFieldChange('delivery_details', 'panelInstallationDays', e.target.value)}
-            placeholder="3"
-            className="text-sm"
-          />
-        </div>
+      <div>
+        <Label htmlFor="trackDelivery" className="text-xs font-medium text-gray-600">
+          Track Delivery (Weeks)
+        </Label>
+        <Input
+          id="trackDelivery"
+          value={data.delivery_details?.trackDeliveryWeeks || ''}
+          onChange={(e) => onFieldChange('delivery_details', 'trackDeliveryWeeks', e.target.value)}
+          placeholder="4"
+          className="text-sm"
+        />
+      </div>
+      
+      <div>
+        <Label htmlFor="panelDelivery" className="text-xs font-medium text-gray-600">
+          Panel Delivery (Weeks)
+        </Label>
+        <Input
+          id="panelDelivery"
+          value={data.delivery_details?.panelDeliveryWeeks || ''}
+          onChange={(e) => onFieldChange('delivery_details', 'panelDeliveryWeeks', e.target.value)}
+          placeholder="8"
+          className="text-sm"
+        />
+      </div>
+    </div>
+      
+    <div className="grid grid-cols-2 gap-2">
+      <div>
+        <Label htmlFor="trackInstall" className="text-xs font-medium text-gray-600">
+          Track Install (Days)
+        </Label>
+        <Input
+          id="trackInstall"
+          value={data.delivery_details?.trackInstallationDays || ''}
+          onChange={(e) => onFieldChange('delivery_details', 'trackInstallationDays', e.target.value)}
+          placeholder="2"
+          className="text-sm"
+        />
+      </div>
+      
+      <div>
+        <Label htmlFor="panelInstall" className="text-xs font-medium text-gray-600">
+          Panel Install (Days)
+        </Label>
+        <Input
+          id="panelInstall"
+          value={data.delivery_details?.panelInstallationDays || ''}
+          onChange={(e) => onFieldChange('delivery_details', 'panelInstallationDays', e.target.value)}
+          placeholder="3"
+          className="text-sm"
+        />
       </div>
     </div>
   </CollapsibleSection>

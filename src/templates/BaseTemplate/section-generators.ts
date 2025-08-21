@@ -219,8 +219,9 @@ export class SectionGenerators {
     
     // Check both old global format and new per-wall format
     const wallsWithPockets = Object.entries(walls)
-      .filter(([_, wall]) => {
+      .filter(([wallName, wall]) => {
         // Check per-wall configuration first
+        
         if (wall.pocketDoors?.foldType && 
             wall.pocketDoors.foldType.toLowerCase().trim() !== 'none') {
           return true;
@@ -232,6 +233,7 @@ export class SectionGenerators {
         type: wall.pocketDoors!.foldType,
         style: wall.pocketDoors!.foldStyle || ''
       }));
+
 
     // Fallback to global pocket_doors if no per-wall configs found (backward compatibility)
     if (wallsWithPockets.length === 0 && data.pocket_doors?.foldType) {
@@ -248,13 +250,17 @@ export class SectionGenerators {
 
     // Create inline sentence describing each wall's pocket doors
     const wallDescriptions = wallsWithPockets
-      .map(wall => `<strong>${wall.name}</strong> has <strong>${wall.type} ${wall.style}</strong> doors`)
+      .map(wall => `<strong>${wall.name}</strong> will use <strong>${wall.type} ${wall.style}</strong> pocket doors`)
       .join(', and ');
+
+    const summary = wallsWithPockets.length > 1
+      ? "These pocket doors are designed to house the panels within the stack, offering space-efficient storage and acoustically enhanced performance."
+      : "This pocket door is designed to house the panels within the stack, offering space-efficient storage and acoustically enhanced performance.";
 
     return `<div class="pocket-doors-section" style="line-height: 1.15;">
       <h2 class="section-header">POCKET DOORS:</h2>
       <p>
-        ${wallDescriptions} will be used to house the panels in the stack, offering space-efficient and acoustically enhanced storage solutions.
+        ${wallDescriptions}. ${summary}
       </p>
     </div>`;
   }

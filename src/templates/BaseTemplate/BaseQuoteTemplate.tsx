@@ -70,8 +70,9 @@ export abstract class BaseQuoteTemplate {
     }
 
     // Add conditional sections with page breaks
-    if (data.pocket_doors?.foldType && data.pocket_doors?.foldStyle) {
-      html += this.generatePocketDoorsSection(data);
+    const pocketDoorsSection = this.generatePocketDoorsSection(data);
+    if (pocketDoorsSection) {
+      html += pocketDoorsSection;
     }
 
     // Add strategic page break based on content

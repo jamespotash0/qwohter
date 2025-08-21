@@ -401,7 +401,13 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <Label>Pass Door Panels</Label>
         <Select
           value={wall.passDoorPanels || ''}
-          onValueChange={(value) => onFieldChange(wallName, 'passDoorPanels', value)}
+          onValueChange={(value) => {
+            onFieldChange(wallName, 'passDoorPanels', value);
+            // Reset quantity when pass doors is set to "None"
+            if (value === "None") {
+              onFieldChange(wallName, 'passDoorQuantity', '');
+            }
+          }}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select pass door" />
@@ -412,6 +418,43 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
             <SelectItem className="text-left" value="Double">Double</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>Pass Door Quantity</Label>
+        <Select
+          value={wall.passDoorQuantity || ''}
+          onValueChange={(value) => onFieldChange(wallName, 'passDoorQuantity', value)}
+          disabled={!wall.passDoorPanels || wall.passDoorPanels === "None"}
+        >
+          <SelectTrigger className="text-xs h-8">
+            <SelectValue placeholder="Select quantity" />
+          </SelectTrigger>
+          <SelectContent className="text-left">
+            <SelectItem className="text-left" value="1">1</SelectItem>
+            <SelectItem className="text-left" value="2">2</SelectItem>
+            <SelectItem className="text-left" value="3">3</SelectItem>
+            <SelectItem className="text-left" value="4">4</SelectItem>
+            <SelectItem className="text-left" value="5">5</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>Track Type</Label>
+        <Input
+          value={(() => {
+            const model = wall.model;
+            if (["Hufcor 641", "2010", "2010GL", "3010", "3010GL"].includes(model || '')) {
+              return "Curve & Diverter (Individual) Track";
+            } else if (["2020", "2020GL", "3020", "3020GL"].includes(model || '')) {
+              return "Multi-Directional Track";
+            } else if (["2050e", "3050e", "3030", "3030GL", "2030", "2030GL"].includes(model || '')) {
+              return "Hinged-Pair (Straight Line) Track";
+            }
+            return "";
+          })()}
+          readOnly
+          className="text-xs h-8 bg-muted text-muted-foreground"
+        />
       </div>
       <div className="space-y-2">
         <Label>Track System</Label>

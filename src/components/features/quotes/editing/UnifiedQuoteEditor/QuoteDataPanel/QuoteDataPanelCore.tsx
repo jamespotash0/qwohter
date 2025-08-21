@@ -78,6 +78,7 @@ export const QuoteDataPanelCore: React.FC<QuoteDataPanelProps> = ({
         isOpen={openSections.pocketDoors}
         onToggle={() => toggleSection('pocketDoors')}
         onFieldChange={handleFieldChange}
+        onChange={onChange}
       />
 
       <MountingTrackSection
@@ -85,6 +86,7 @@ export const QuoteDataPanelCore: React.FC<QuoteDataPanelProps> = ({
         isOpen={openSections.mountingTrack}
         onToggle={() => toggleSection('mountingTrack')}
         onFieldChange={handleFieldChange}
+        onChange={onChange}
       />
 
       <LaborDeliverySection
