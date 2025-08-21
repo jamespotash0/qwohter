@@ -278,7 +278,7 @@ export class SectionGenerators {
       .map(wall => {
         const qty = parseInt(wall.quantity) || 0;
         const quantityText = qty === 1 ? 'One' : qty === 2 ? 'Two' : `${qty}`;
-        return `<strong>${wall.name}</strong> has <strong>${quantityText} ${wall.type} Door</strong> panel${qty > 1 ? 's' : ''}`;
+        return `<strong>${wall.name}</strong> has <strong>${quantityText} ${wall.type} Pass Door</strong> panel${qty > 1 ? 's' : ''}`;
       })
       .join(', and ');
 
