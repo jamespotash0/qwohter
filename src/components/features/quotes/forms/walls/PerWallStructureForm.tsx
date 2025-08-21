@@ -59,7 +59,7 @@ export const PerWallStructureForm: React.FC<PerWallStructureFormProps> = ({
       <div className="space-y-4">
         {Object.entries(walls).map(([wallName, wall]) => {
           const status = getWallCompletionStatus(wall);
-          const currentValue = wall.structureSupport || 'None';
+          const currentValue = wall.structureSupport || '';
           
           return (
             <Card 
@@ -82,7 +82,7 @@ export const PerWallStructureForm: React.FC<PerWallStructureFormProps> = ({
                       onValueChange={(value) => handleStructureSupportChange(wallName, value)}
                     >
                       <SelectTrigger className={!status.isComplete ? 'border-amber-300' : ''}>
-                        <SelectValue placeholder="Select structure type" />
+                        <SelectValue placeholder="Select structure support" />
                       </SelectTrigger>
                       <SelectContent>
                         {STRUCTURE_SUPPORT_OPTIONS.map((option) => (

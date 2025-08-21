@@ -144,6 +144,7 @@ const OperableWallSpecs = ({ wall, wallName, onWallChange }: OperableWallSpecsPr
   const topSeals = ["Fixed", "Adjustable", "Operable"];
   const endPanelTypes = ["Standard Expander Panel Closure", "Optional Hinged Panel(s) Closure"];
   const initialClosureSystem = ["Standard Bulb", "Optional Fixed Starter Jamb", "Optional Adjustable Starter Jamb"];
+  const structureSupportOptions = ["Pre-Drilled", "Existing Steel Beam", "Custom Support", "None Required"];
 
   return (
     <div>
@@ -304,6 +305,24 @@ const OperableWallSpecs = ({ wall, wallName, onWallChange }: OperableWallSpecsPr
         </div>
 
         <div className="space-y-2">
+          <Label className="text-sm font-medium">Pass Door Quantity</Label>
+          <Select
+            value={wall.passDoorQuantity || ""}
+            onValueChange={(value) => onWallChange(wallName, "passDoorQuantity", value)}
+            disabled={!wall.passDoorPanels || wall.passDoorPanels === "None"}
+          >
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder="Select quantity" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border z-50">
+              <SelectItem value="1">1</SelectItem>
+              <SelectItem value="2">2</SelectItem>
+              <SelectItem value="3">3</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
           <Label className="text-sm font-medium">Vertical Seals</Label>
           <Select
             value={wall.verticalSeals}
@@ -317,28 +336,6 @@ const OperableWallSpecs = ({ wall, wallName, onWallChange }: OperableWallSpecsPr
               {verticalSeals.map((sealant) => (
                 <SelectItem key={sealant} value={sealant}>
                   {sealant}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Initial Closure System</Label>
-          <Select
-            value={wall.initialClosureSystem}
-            onValueChange={(value) => onWallChange(wallName, "initialClosureSystem", value)}
-          >
-            <SelectTrigger className="bg-background">
-              <SelectValue placeholder="Select initial closure system" />
-            </SelectTrigger>
-            <SelectContent className="bg-background border z-50">
-              <SelectItem value="None">None</SelectItem>
-              {initialClosureSystem.map((seal) => (
-                <SelectItem key={seal} value={seal}>
-                  {seal}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -379,6 +376,48 @@ const OperableWallSpecs = ({ wall, wallName, onWallChange }: OperableWallSpecsPr
               {topSeals.map((seal) => (
                 <SelectItem key={seal} value={seal}>
                   {seal}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Initial Closure System</Label>
+          <Select
+            value={wall.initialClosureSystem}
+            onValueChange={(value) => onWallChange(wallName, "initialClosureSystem", value)}
+          >
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder="Select initial closure system" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border z-50">
+              <SelectItem value="None">None</SelectItem>
+              {initialClosureSystem.map((seal) => (
+                <SelectItem key={seal} value={seal}>
+                  {seal}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">End Panel Type</Label>
+          <Select
+            value={wall.endPanelType}
+            onValueChange={(value) => onWallChange(wallName, "endPanelType", value)}
+          >
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder="Select end panel type" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border z-50">
+              <SelectItem value="None">None</SelectItem>
+              {endPanelTypes.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -428,26 +467,6 @@ const OperableWallSpecs = ({ wall, wallName, onWallChange }: OperableWallSpecsPr
             </Select>
           </div>
         )}
-
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">End Panel Type</Label>
-          <Select
-            value={wall.endPanelType}
-            onValueChange={(value) => onWallChange(wallName, "endPanelType", value)}
-          >
-            <SelectTrigger className="bg-background">
-              <SelectValue placeholder="Select end panel type" />
-            </SelectTrigger>
-            <SelectContent className="bg-background border z-50">
-              <SelectItem value="None">None</SelectItem>
-              {endPanelTypes.map((type) => (
-                <SelectItem key={type} value={type}>
-                  {type}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -475,6 +494,27 @@ const OperableWallSpecs = ({ wall, wallName, onWallChange }: OperableWallSpecsPr
               {getTrackSystemsByTrackType(wall.trackType, wall.model).map((system) => (
                 <SelectItem key={system} value={system}>
                   {system}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-6">
+        <div className="space-y-2">
+          <Label className="text-sm font-medium">Structure Support Type *</Label>
+          <Select
+            value={wall.structureSupport || ""}
+            onValueChange={(value) => onWallChange(wallName, "structureSupport", value)}
+          >
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder="Select structure support type" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border z-50">
+              {structureSupportOptions.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {option}
                 </SelectItem>
               ))}
             </SelectContent>

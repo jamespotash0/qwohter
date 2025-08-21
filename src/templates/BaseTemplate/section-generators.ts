@@ -182,18 +182,17 @@ export class SectionGenerators {
     <div class="terms-section">
       <h2 class="section-header">General Notes and Terms:</h2>
       <ol>
-        <li>1.  All materials are <strong>FOB factory</strong>, prepaid, and added to the final invoice.</li>
-        <li>2.  <strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</li>
-        <li>3.  All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate ? wageRate + ' ' : ''}Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</li>
-        <li>4.  <strong>Delivery includes drop-off to the Roof</strong> of the site, if applicable.</li>
-        <li>5.  Pricing is <strong>exclusive of any applicable taxes</strong>, which will be added as required.</li>
-        <li>6.  The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</li>
-        <li>7.  Final pricing is <strong>subject to site inspection and verification</strong> of all dimensions and conditions by our installation team.</li>
-        <li>8.  Any additional requirements or unforeseen conditions may be subject to <strong>revised pricing or additional charges</strong>.</li>
-        <li>9.  Panel colors and finishes are available<strong> as per the manufacturer's current standard offerings</strong>.</li>
-        <li>10. A <strong>10-year factory warranty</strong> is provided on all operable wall systems.</li>
+        <li>1.  <strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</li>
+        <li>2.  All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate ? wageRate + ' ' : ''}Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</li>
+        <li>3.  <strong>Delivery includes drop-off to the Roof</strong> of the site, if applicable.</li>
+        <li>4.  Pricing is <strong>exclusive of any applicable taxes</strong>, which will be added as required.</li>
+        <li>5.  The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</li>
+        <li>6.  Final pricing is <strong>subject to site inspection and verification</strong> of all dimensions and conditions by our installation team.</li>
+        <li>7.  Any additional requirements or unforeseen conditions may be subject to <strong>revised pricing or additional charges</strong>.</li>
+        <li>8.  Panel colors and finishes are available<strong> as per the manufacturer's current standard offerings</strong>.</li>
+        <li>9. A <strong>10-year factory warranty</strong> is provided on all operable wall systems.</li>
         <li>
-          11. <strong> Payment Terms:</strong>
+          10. <strong> Payment Terms:</strong>
           <ul style="padding-left: 2rem; list-style: none;">
             <li>– <strong>${paymentUponDrawings}%</strong> due upon approval of shop drawings</li>
             <li>– <strong>${paymentUponTrackInstallation}%</strong> due upon track installation</li>
@@ -260,27 +259,35 @@ export class SectionGenerators {
     </div>`;
   }
 
-  generatePanelDoorsSection(data: QuoteData): string {
+  generatePassDoorsSection(data: QuoteData): string {
     const walls = data.wall_details?.walls || {};
-    const wallsWithPanelDoors = Object.entries(walls)
+    const wallsWithPassDoors = Object.entries(walls)
       .filter(([_, wall]) => wall.passDoorPanels && 
                wall.passDoorPanels.toLowerCase().trim() !== 'none' &&
                wall.passDoorPanels.trim() !== '')
-      .map(([name, wall]) => ({ name, type: wall.passDoorPanels! }));
+      .map(([name, wall]) => ({ 
+        name, 
+        type: wall.passDoorPanels!, 
+        quantity: wall.passDoorQuantity || '0'
+      }));
 
-    if (wallsWithPanelDoors.length === 0) return '';
+    if (wallsWithPassDoors.length === 0) return '';
 
-    // Create inline sentence describing each wall's panel doors
-    const wallDescriptions = wallsWithPanelDoors
-      .map(wall => `<strong>${wall.name}</strong> has <strong>${wall.type} Door</strong> panels`)
+    // Create inline sentence describing each wall's pass doors with quantity
+    const wallDescriptions = wallsWithPassDoors
+      .map(wall => {
+        const qty = parseInt(wall.quantity) || 0;
+        const quantityText = qty === 1 ? 'One' : qty === 2 ? 'Two' : `${qty}`;
+        return `<strong>${wall.name}</strong> has <strong>${quantityText} ${wall.type} Door</strong> panel${qty > 1 ? 's' : ''}`;
+      })
       .join(', and ');
 
-    const summary = wallsWithPanelDoors.length > 1
+    const summary = wallsWithPassDoors.length > 1
       ? "These pass door panels are incorporated to allow for convenient access without disrupting the overall wall systems."
       : "This pass door panel is incorporated to allow for convenient access without disrupting the overall wall system.";
 
-    return `<div class="panel-doors-section" style="line-height: 1.15;">
-      <h2 class="section-header">PANEL DOORS:</h2>
+    return `<div class="pass-doors-section" style="line-height: 1.15;">
+      <h2 class="section-header">PASS DOORS:</h2>
       <p>
         ${wallDescriptions}. ${summary}
       </p>

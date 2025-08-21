@@ -48,6 +48,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         panelSkin: "",
         stcRating: "",
         passDoorPanels: "",
+        passDoorQuantity: "",
         panelFinishCategory: "",
         panelFinishSpecificItem: "",
         trackType: "",
@@ -135,6 +136,16 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       };
     }
     
+    if (field === "passDoorPanels") {
+      // Reset quantity when pass doors is set to "None" or empty
+      if (actualValue === "" || actualValue === "None") {
+        updatedWalls.walls[wallName] = {
+          ...updatedWalls.walls[wallName],
+          passDoorQuantity: "",
+        };
+      }
+    }
+    
     if (field === "panelFinishCategory") {
       // Reset specific item when category changes
       // Clear the field entirely if the category doesn't need specific items
@@ -189,6 +200,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       panelDesign: "",
       stcRating: "",
       passDoorPanels: "",
+      passDoorQuantity: "",
       panelFinishCategory: "",
       panelFinishSpecificItem: "",
       verticalSeals: "",

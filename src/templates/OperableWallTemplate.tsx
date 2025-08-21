@@ -51,14 +51,6 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
       </div>
     `;
   }
-    // const wallCount = this.helpers.getWallCount(data);
-    // const wallSystemType = this.helpers.getWallSystemType(data);
-
-    // return `<div class="proposal-intro" style="line-height: 1.2; margin-top: 12px;">
-    //   Thank you for considering Contemporary Wall Systems for this project. As discussed, we are offering a proposal to furnish, deliver, and install, as noted, <strong>${wallCount === 1 ? 'ONE (1)' : wallCount === 2 ? 'TWO (2)' : wallCount === 3 ? 'THREE (3)' : wallCount === 4 ? 'FOUR (4)' : `${wallCount}`} ${wallSystemType}</strong> as specified below, at the above named project.
-    //   <br><br><strong>Specifications as follows:</strong>
-    // </div>`;
-  // }
 
   generatePanelsSection(data: QuoteData): string {
     const walls = data.wall_details?.walls || {};
@@ -214,13 +206,13 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
       strategy.push({ breakAfterSection: 'panels-section', minimumHeight: 200 });
     }
 
-    // Check for panel doors section  
+    // Check for pass doors section  
     const walls = data.wall_details?.walls || {};
     const wallEntries = Object.entries(walls);
     const firstWall = wallEntries[0]?.[1];
     
     if (firstWall?.passDoorPanels) {
-      strategy.push({ breakAfterSection: 'panel-doors-section', minimumHeight: 100 });
+      strategy.push({ breakAfterSection: 'pass-doors-section', minimumHeight: 100 });
     }
 
     if (data.pocket_doors?.foldType) {

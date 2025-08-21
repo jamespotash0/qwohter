@@ -134,7 +134,7 @@ export class AccordionWallTemplate extends BaseQuoteTemplate {
       strategy.push({ breakAfterSection: 'panels-section', minimumHeight: 200 });
     }
 
-    // Check for panel doors section  
+    // Check for pass doors section  
     const walls = data.wall_details?.walls || {};
     const wallEntries = Object.entries(walls);
     const firstWall = wallEntries[0]?.[1];

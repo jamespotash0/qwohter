@@ -35,8 +35,8 @@ export abstract class BaseQuoteTemplate {
     return this.sectionGenerators.generatePocketDoorsSection(data);
   }
 
-  protected generatePanelDoorsSection(data: QuoteData): string {
-    return this.sectionGenerators.generatePanelDoorsSection(data);
+  protected generatePassDoorsSection(data: QuoteData): string {
+    return this.sectionGenerators.generatePassDoorsSection(data);
   }
 
   protected shouldAddPageBreak(data: QuoteData): { height: number; forceBreak: boolean } | null {
@@ -64,9 +64,9 @@ export abstract class BaseQuoteTemplate {
       ${this.generatePanelsSection(data)}`;
 
     // Add panel doors section if it has content
-    const panelDoorsSection = this.generatePanelDoorsSection(data);
-    if (panelDoorsSection) {
-      html += panelDoorsSection;
+    const passDoorsSection = this.generatePassDoorsSection(data);
+    if (passDoorsSection) {
+      html += passDoorsSection;
     }
 
     // Add conditional sections with page breaks
