@@ -9,18 +9,205 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
   wall,
   onFieldChange
 }) => {
+  // Helper functions from original OperableWallSpecs
+  const getSeriesByPanelConfiguration = (panelConfiguration: string): string[] => {
+    switch (panelConfiguration) {
+      case "Individual Panels":
+        return ["2000", "3000", "Hufcor: 600"];
+      case "Hinged-Paired Panels":
+        return ["2000", "3000"];
+      case "Continuously-Hinged Panels":
+        return ["2000", "3000"];
+      default:
+        return [];
+    }
+  };
+
+  const getModelsByPanelConfigurationAndSeries = (panelConfiguration: string, series: string): string[] => {
+    if (panelConfiguration === "Individual Panels") {
+      if (series === "2000") return ["2010", "2020", "2010GL", "2020GL"];
+      if (series === "3000") return ["3010", "3020", "3010GL", "3020GL"];
+      if (series === "Hufcor: 600") return ["Hufcor 641"];
+    } else if (panelConfiguration === "Continuously-Hinged Panels") {
+      if (series === "2000") return ["2050e"];
+      if (series === "3000") return ["3050e"];
+    } else if (panelConfiguration === "Hinged-Paired Panels") {
+      if (series === "2000") return ["2030", "2030GL"];
+      if (series === "3000") return ["3030", "3030GL"];
+    }
+    return [];
+  };
+
+  const getPanelSkinOptions = (model: string): string[] => {
+    if (["Hufcor 641"].includes(model)) {
+      return ["Steel"];
+    }
+    if (["3010", "3020", "3030"].includes(model)) {
+      return ["Standard Steel Skin", "Optional Acoustical Substrate", "Optional Wood Veneer", "Optional High-Pressure Laminate"];
+    }
+    if (["3050e", "3010GL", "3020GL", "3030GL"].includes(model)) {
+      return ["Standard Steel Skin", "Optional Acoustical Substrate"];
+    }
+    if (["2010", "2020", "2030"].includes(model)) {
+      return ["Standard Acoustical Substrate", "Optional Steel Skin", "Optional Wood Veneer", "Optional High-Pressure Laminate"];
+    }
+    if (["2050e", "2010GL", "2020GL", "2030GL"].includes(model)) {
+      return ["Standard Acoustical Substrate", "Optional Steel Skin"];
+    }
+    return [];
+  };
+
+  const getSTCRatingOptions = (model: string, panelSkin: string): string[] => {
+    if (!model || !panelSkin) return [];
+    if (["Hufcor 641"].includes(model)) {
+      return ["43", "47", "49", "52", "54", "56"];
+    }
+    if (["2010GL", "2020GL", "2030GL"].includes(model)) {
+      return ["38"];
+    }
+    if (["3010GL", "3020GL", "3030GL"].includes(model)) {
+      return ["43", "48"];
+    }
+    if (["2010", "2020", "2030", "2050e"].includes(model)) {
+      if (panelSkin.includes("Acoustical Substrate")) {
+        return ["42", "45", "49", "50"];
+      }
+      if (panelSkin.includes("Steel")) {
+        return ["49", "51"];
+      }
+    }
+    if (["3010", "3020", "3030", "3050e"].includes(model)) {
+      if (panelSkin.includes("Steel")) {
+        return ["46", "50", "52", "56"];
+      }
+      if (panelSkin.includes("Acoustical Substrate")) {
+        return ["43", "46", "48", "50"];
+      }
+    }
+    return [];
+  };
+
+  const getTrackSystemsByTrackType = (trackType: string, model?: string): string[] => {
+    if (model === "Hufcor 641") {
+      return ["Type 26 Clear Satin-Anodized Aluminum", "Type 36 Clear Satin-Anodized Aluminum", "Type 57 Clear Anodized Aluminum", "Type 11L Powder Coated Off-White Steel", "Type 11 Powder Coated Off-White Steel"];
+    }
+    switch (trackType) {
+      case "Multi-Directional Track":
+        return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
+      case "Hinged-Pair (Straight Line) Track":
+        return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
+      case "Curve & Diverter (Individual) Track":
+        return ["Type 850 Powder Coated Off-White Steel"];
+      default:
+        return [];
+    }
+  };
+
+  const getPanelFinishSpecificItems = (category: string): string[] => {
+    const categoriesWithoutSpecificItems = ["Uncovered", "C.O.M. Material", "Field Painting by Others"];
+    if (categoriesWithoutSpecificItems.includes(category)) {
+      return [];
+    }
+    
+    switch (category) {
+      case "Koroseal Standard Vinyl":
+        return ["Unknown", "Silver Fan", "Dover Gray", "Rectory", "Skylight", "Frost", "Surfside", "Mesh", "Nettle", "Fused", "Tangle", "Spun", "Rolled", "Inscription", "Joie de Vivre", "Zydeco", "Fine Silver", "Beignet", "French Quarter", "Mink", "Tuxedo", "Truffle", "Ionic Grey", "Inkwell", "Magnolia", "Hemline", "Clothesline", "Draperie", "Cotton", "Silk", "Cloth", "Stitch", "Origin", "Artisan", "Linen", "Bone", "Eggshell"];
+      case "Koroseal Upgrade Vinyl":
+        return ["Unknown", "Ash", "Jacobean", "Mocha", "Prairie", "Rustic", "Sedona", "Slate", "Vintage", "Willow", "Origin", "Heir", "Heritage", "Generation", "Pedigree", "Descent", "Illusion", "Mottled", "Opalescence", "Enchanted", "Melded", "Fascination", "Earnest", "Baroness", "Poplar", "Hope", "Expectation", "Smoke"];
+      case "Shaw Standard Carpet":
+        return ["Unknown", "Moonscape", "Whitewood", "Almond", "Pelican", "Teak", "Del Sol", "Mohair", "Pottery Glaze", "Mink", "Hazelnut", "Citrus Leaf", "Mineral Green", "Malachite", "Sierra", "Expresso", "Eclipse", "Antique Silver", "Riverboat", "Seacliff", "Snake Skin", "Flint", "PierPointe", "Lakeland", "Blooms Berry", "Ink", "Exotic Clay", "Red Velvet", "Roasted Pepper", "Black Nickel", "Onynx"];
+      case "HyTex Upgrade Carpet":
+        return ["Unknown", "Ghost", "Porcelain", "Parchment", "Beach", "Cinnabar", "Almond", "Abalone", "Lace", "Curry", "Scarlet", "Marble", "Linen", "Taffy", "Hunter", "Ruby", "Flagstone", "Taupe", "Mocha", "Teal", "Marine", "Gunmetal Grey", "Sepia", "Sumatra", "Danube", "Navy", "Black", "Charcoal", "Juniper", "Cerulean", "Verdigris"];
+      case "HyTex Standard Fabric":
+        return ["Unknown", "Cepheus", "Cassiopeia", "Pegasus", "Phoenix", "Hydrus", "Pyxis", "Monoceros", "Aquila", "Orion", "Pisces", "Snow", "Linen", "Sand", "Mocha", "Graphite", "Black", "Cottage", "Mist", "Starlight", "Parchment", "Plaster", "Gray", "Sand", "Discover", "Bahamas", "Olive Grove", "Graphite", "Silverado", "Glacier", "Element", "Gated", "Casarina", "Armor", "Wilderness", "Truffle", "Pepper", "Laguna"];
+      case "HyTex Upgrade Fabric":
+        return ["Unknown", "Eggshell", "Linen", "Flan", "Light Beige", "Husky Gray", "Primavera", "Dovetail", "Pigeon", "Magnetic", "Deep Navy", "Raisin", "Knight", "Mirage", "Triton", "Rock", "Metal", "Basket", "Coriander", "Greige", "Phoron", "Sand Dollar", "Silouhette", "Nightingale", "Buttercup", "Topaz", "Jade", "Palmwood", "Palm Dessert", "Beach Glass", "Harvest", "Morning Dove", "Boulder", "Bravado", "Saddle Brown", "Earl Gray", "Golden (Echo)", "White (Echo)", "Tan (Echo)", "Ice (Echo)", "Silver (Echo)", "Stone (Echo)", "Lake (Echo)", "Smokey Blue (Echo)"];
+      case "Standard Wood Veneer":
+        return ["Unknown", "Unfinished Flat Cut White Maple", "Unfinished Flat Cut White Oak", "Unfinished Flat Cut Walnut", "Unfinished Flat Cut Cherry", "Unfinished Flat Cut Red Oak"];
+      case "Wilsonart High Pressure Laminate (HPL)":
+        return ["Unknown", "Beigewood", "Raw Chestnut", "Fusion Maple", "Manitoba Maple", "Bannister Oak", "Limber Maple", "Solar Oak", "Fonthill Pear", "Wild Cherry", "Grey Glace", "Neutral Glace", "Shadow Zephyr", "Canyon Zephyr", "Grey Pampas", "Almond Leather", "Beige Pampas", "Miste Zephyr", "Twilight Zephyr", "Desert Zephyr", "Cloud Zephyr", "Burnished Chestnut", "Windswept Pewter", "Titanium Ev", "Carbon Ev", "Cloud Nebula", "White Nebula", "Grey Nebula", "Graphite Nebula", "White Tigris", "Evening Tigris", "Natural Tigris", "Bronze Legacy", "Navy Legacy", "Pewter Brush", "Woolamai Brush", "Grey", "Beige", "White", "Antique White", "Frosty White", "Black", "Graphite", "Regimental Red", "Atlantis", "Natural Almond", "Khaki Brown", "Pewter", "North Sea", "Slate Grey", "Dove Grey", "Shadow", "Hollyberry", "Platinum", "Brittany Blue", "Pepperdust", "Designer White", "Indigo", "Fashion Grey", "Crystal", "White Sand", "Lapis Blue", "Linen Alabaster", "Wallaby", "Coffee Bean", "Island", "Ocean", "Cement", "Fossil Shale", "Midnight", "Beachwalk", "Pebble Piazza", "Milan Quartz", "Mystique Dawn", "Kalahari Topaz"];
+      default:
+        return [];
+    }
+  };
+
+  const getTrackTypeByModel = (model: string): string => {
+    if (["Hufcor 641", "2010", "2010GL", "3010", "3010GL"].includes(model)) {
+      return "Curve & Diverter (Individual) Track";
+    } else if (["2020", "2020GL", "3020", "3020GL"].includes(model)) {
+      return "Multi-Directional Track";
+    } else if (["2050e", "3050e", "3030", "3030GL", "2030", "2030GL"].includes(model)) {
+      return "Hinged-Pair (Straight Line) Track";
+    }
+    return "";
+  };
+
+  const handleFieldChange = (field: string, value: any) => {
+    const actualValue = value === "None" ? "" : value;
+    onFieldChange(wallName, field, actualValue);
+
+    // Cascading logic
+    if (field === "panelConfiguration") {
+      onFieldChange(wallName, 'series', '');
+      onFieldChange(wallName, 'model', '');
+      onFieldChange(wallName, 'panelThickness', '');
+      onFieldChange(wallName, 'panelSkin', '');
+      onFieldChange(wallName, 'panelDesign', '');
+      onFieldChange(wallName, 'stcRating', '');
+      onFieldChange(wallName, 'trackType', '');
+      onFieldChange(wallName, 'trackSystem', '');
+      onFieldChange(wallName, 'initialClosureSystem', '');
+    }
+
+    if (field === "series") {
+      // Auto-update panel thickness based on series
+      const thickness = actualValue === "2000" ? "3\"" : actualValue === "3000" ? "4\"" : actualValue === "Hufcor: 600" ? "4\"" : "";
+      onFieldChange(wallName, 'panelThickness', thickness);
+      onFieldChange(wallName, 'model', '');
+      onFieldChange(wallName, 'panelSkin', '');
+      onFieldChange(wallName, 'panelDesign', '');
+      onFieldChange(wallName, 'stcRating', '');
+      onFieldChange(wallName, 'initialClosureSystem', '');
+    }
+
+    if (field === "model") {
+      // Auto-update track type based on model
+      const trackType = getTrackTypeByModel(actualValue);
+      onFieldChange(wallName, 'trackType', trackType);
+      onFieldChange(wallName, 'trackSystem', '');
+      onFieldChange(wallName, 'panelSkin', '');
+      onFieldChange(wallName, 'panelDesign', '');
+      onFieldChange(wallName, 'stcRating', '');
+      onFieldChange(wallName, 'initialClosureSystem', '');
+    }
+
+    if (field === "panelSkin") {
+      onFieldChange(wallName, 'stcRating', '');
+    }
+
+    if (field === "trackType") {
+      onFieldChange(wallName, 'trackSystem', '');
+    }
+
+    if (field === "passDoorPanels") {
+      if (actualValue === "" || actualValue === "None") {
+        onFieldChange(wallName, 'passDoorQuantity', '');
+      }
+    }
+
+    if (field === "panelFinishCategory") {
+      const categoriesWithoutSpecificItems = ["Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
+      onFieldChange(wallName, 'panelFinishSpecificItem', categoriesWithoutSpecificItems.includes(value) ? "" : "");
+    }
+  };
+
   return (
     <>
       <div className="space-y-2">
         <Label>Panel Configuration</Label>
         <Select
           value={wall.panelConfiguration || ''}
-          onValueChange={(value) => {
-            onFieldChange(wallName, 'panelConfiguration', value);
-            // Reset dependent fields when configuration changes
-            onFieldChange(wallName, 'series', '');
-            onFieldChange(wallName, 'model', '');
-          }}
+          onValueChange={(value) => handleFieldChange('panelConfiguration', value)}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select config" />
@@ -36,30 +223,18 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <Label>Series</Label>
         <Select
           value={wall.series || ''}
-          onValueChange={(value) => {
-            onFieldChange(wallName, 'series', value);
-            // Reset model when series changes
-            onFieldChange(wallName, 'model', '');
-          }}
+          onValueChange={(value) => handleFieldChange('series', value)}
           disabled={!wall.panelConfiguration}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select series" />
           </SelectTrigger>
           <SelectContent className="text-left">
-            {wall.panelConfiguration === "Individual Panels" && (
-              <>
-                <SelectItem className="text-left" value="2000">2000</SelectItem>
-                <SelectItem className="text-left" value="3000">3000</SelectItem>
-                <SelectItem className="text-left" value="Hufcor: 600">Hufcor: 600</SelectItem>
-              </>
-            )}
-            {(wall.panelConfiguration === "Hinged-Paired Panels" || wall.panelConfiguration === "Continuously-Hinged Panels") && (
-              <>
-                <SelectItem className="text-left" value="2000">2000</SelectItem>
-                <SelectItem className="text-left" value="3000">3000</SelectItem>
-              </>
-            )}
+            {getSeriesByPanelConfiguration(wall.panelConfiguration).map((series) => (
+              <SelectItem key={series} className="text-left" value={series}>
+                {series}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -67,68 +242,25 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <Label>Model</Label>
         <Select
           value={wall.model || ''}
-          onValueChange={(value) => {
-            onFieldChange(wallName, 'model', value);
-            // Reset dependent fields
-            onFieldChange(wallName, 'panelSkin', '');
-            onFieldChange(wallName, 'stcRating', '');
-          }}
+          onValueChange={(value) => handleFieldChange('model', value)}
           disabled={!wall.series}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select model" />
           </SelectTrigger>
           <SelectContent className="text-left">
-            {wall.panelConfiguration === "Individual Panels" && wall.series === "2000" && (
-              <>
-                <SelectItem className="text-left" value="2010">2010</SelectItem>
-                <SelectItem className="text-left" value="2020">2020</SelectItem>
-                <SelectItem className="text-left" value="2010GL">2010GL</SelectItem>
-                <SelectItem className="text-left" value="2020GL">2020GL</SelectItem>
-              </>
-            )}
-            {wall.panelConfiguration === "Individual Panels" && wall.series === "3000" && (
-              <>
-                <SelectItem className="text-left" value="3010">3010</SelectItem>
-                <SelectItem className="text-left" value="3020">3020</SelectItem>
-                <SelectItem className="text-left" value="3010GL">3010GL</SelectItem>
-                <SelectItem className="text-left" value="3020GL">3020GL</SelectItem>
-              </>
-            )}
-            {wall.panelConfiguration === "Individual Panels" && wall.series === "Hufcor: 600" && (
-              <SelectItem className="text-left" value="Hufcor 641">Hufcor 641</SelectItem>
-            )}
-            {wall.panelConfiguration === "Continuously-Hinged Panels" && wall.series === "2000" && (
-              <SelectItem className="text-left" value="2050e">2050e</SelectItem>
-            )}
-            {wall.panelConfiguration === "Continuously-Hinged Panels" && wall.series === "3000" && (
-              <SelectItem className="text-left" value="3050e">3050e</SelectItem>
-            )}
-            {wall.panelConfiguration === "Hinged-Paired Panels" && wall.series === "2000" && (
-              <>
-                <SelectItem className="text-left" value="2030">2030</SelectItem>
-                <SelectItem className="text-left" value="2030GL">2030GL</SelectItem>
-              </>
-            )}
-            {wall.panelConfiguration === "Hinged-Paired Panels" && wall.series === "3000" && (
-              <>
-                <SelectItem className="text-left" value="3030">3030</SelectItem>
-                <SelectItem className="text-left" value="3030GL">3030GL</SelectItem>
-              </>
-            )}
+            {getModelsByPanelConfigurationAndSeries(wall.panelConfiguration, wall.series).map((model) => (
+              <SelectItem key={model} className="text-left" value={model}>
+                {model}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
       <div className="space-y-2">
         <Label>Panel Thickness</Label>
         <Input
-          value={(() => {
-            const series = wall.series;
-            if (series === "2000") return "3\"";
-            if (series === "3000") return "4\"";
-            if (series === "Hufcor: 600") return "4\"";
-            return "";
-          })()}
+          value={wall.panelThickness || ''}
           readOnly
           className="text-xs h-8 bg-muted text-muted-foreground"
         />
@@ -137,7 +269,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <Label>Panel Design</Label>
         <Select
           value={wall.panelDesign || ''}
-          onValueChange={(value) => onFieldChange(wallName, 'panelDesign', value)}
+          onValueChange={(value) => handleFieldChange('panelDesign', value)}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select design" />
@@ -152,48 +284,18 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <Label>Panel Skin</Label>
         <Select
           value={wall.panelSkin || ''}
-          onValueChange={(value) => {
-            onFieldChange(wallName, 'panelSkin', value);
-            // Reset STC rating when skin changes
-            onFieldChange(wallName, 'stcRating', '');
-          }}
+          onValueChange={(value) => handleFieldChange('panelSkin', value)}
           disabled={!wall.model}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select skin" />
           </SelectTrigger>
           <SelectContent className="text-left">
-            {wall.model === "Hufcor 641" && (
-              <SelectItem className="text-left" value="Steel">Steel</SelectItem>
-            )}
-            {["3010", "3020", "3030"].includes(wall.model || '') && (
-              <>
-                <SelectItem className="text-left" value="Standard Steel Skin">Standard Steel Skin</SelectItem>
-                <SelectItem className="text-left" value="Optional Acoustical Substrate">Optional Acoustical Substrate</SelectItem>
-                <SelectItem className="text-left" value="Optional Wood Veneer">Optional Wood Veneer</SelectItem>
-                <SelectItem className="text-left" value="Optional High-Pressure Laminate">Optional High-Pressure Laminate</SelectItem>
-              </>
-            )}
-            {["3050e", "3010GL", "3020GL", "3030GL"].includes(wall.model || '') && (
-              <>
-                <SelectItem className="text-left" value="Standard Steel Skin">Standard Steel Skin</SelectItem>
-                <SelectItem className="text-left" value="Optional Acoustical Substrate">Optional Acoustical Substrate</SelectItem>
-              </>
-            )}
-            {["2010", "2020", "2030"].includes(wall.model || '') && (
-              <>
-                <SelectItem className="text-left" value="Standard Acoustical Substrate">Standard Acoustical Substrate</SelectItem>
-                <SelectItem className="text-left" value="Optional Steel Skin">Optional Steel Skin</SelectItem>
-                <SelectItem className="text-left" value="Optional Wood Veneer">Optional Wood Veneer</SelectItem>
-                <SelectItem className="text-left" value="Optional High-Pressure Laminate">Optional High-Pressure Laminate</SelectItem>
-              </>
-            )}
-            {["2050e", "2010GL", "2020GL", "2030GL"].includes(wall.model || '') && (
-              <>
-                <SelectItem className="text-left" value="Standard Acoustical Substrate">Standard Acoustical Substrate</SelectItem>
-                <SelectItem className="text-left" value="Optional Steel Skin">Optional Steel Skin</SelectItem>
-              </>
-            )}
+            {getPanelSkinOptions(wall.model).map((skin) => (
+              <SelectItem key={skin} className="text-left" value={skin}>
+                {skin}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -201,62 +303,18 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <Label>STC Rating</Label>
         <Select
           value={wall.stcRating || ''}
-          onValueChange={(value) => onFieldChange(wallName, 'stcRating', value)}
+          onValueChange={(value) => handleFieldChange('stcRating', value)}
           disabled={!wall.model || !wall.panelSkin}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select STC" />
           </SelectTrigger>
           <SelectContent className="text-left">
-            {wall.model === "Hufcor 641" && (
-              <>
-                <SelectItem className="text-left" value="43">43</SelectItem>
-                <SelectItem className="text-left" value="47">47</SelectItem>
-                <SelectItem className="text-left" value="49">49</SelectItem>
-                <SelectItem className="text-left" value="52">52</SelectItem>
-                <SelectItem className="text-left" value="54">54</SelectItem>
-                <SelectItem className="text-left" value="56">56</SelectItem>
-              </>
-            )}
-            {["2010GL", "2020GL", "2030GL"].includes(wall.model || '') && (
-              <SelectItem className="text-left" value="38">38</SelectItem>
-            )}
-            {["3010GL", "3020GL", "3030GL"].includes(wall.model || '') && (
-              <>
-                <SelectItem className="text-left" value="43">43</SelectItem>
-                <SelectItem className="text-left" value="48">48</SelectItem>
-              </>
-            )}
-            {["2010", "2020", "2030", "2050e"].includes(wall.model || '') && wall.panelSkin?.includes("Acoustical Substrate") && (
-              <>
-                <SelectItem className="text-left" value="42">42</SelectItem>
-                <SelectItem className="text-left" value="45">45</SelectItem>
-                <SelectItem className="text-left" value="49">49</SelectItem>
-                <SelectItem className="text-left" value="50">50</SelectItem>
-              </>
-            )}
-            {["2010", "2020", "2030", "2050e"].includes(wall.model || '') && wall.panelSkin?.includes("Steel") && (
-              <>
-                <SelectItem className="text-left" value="49">49</SelectItem>
-                <SelectItem className="text-left" value="51">51</SelectItem>
-              </>
-            )}
-            {["3010", "3020", "3030", "3050e"].includes(wall.model || '') && wall.panelSkin?.includes("Steel") && (
-              <>
-                <SelectItem className="text-left" value="46">46</SelectItem>
-                <SelectItem className="text-left" value="50">50</SelectItem>
-                <SelectItem className="text-left" value="52">52</SelectItem>
-                <SelectItem className="text-left" value="56">56</SelectItem>
-              </>
-            )}
-            {["3010", "3020", "3030", "3050e"].includes(wall.model || '') && wall.panelSkin?.includes("Acoustical Substrate") && (
-              <>
-                <SelectItem className="text-left" value="43">43</SelectItem>
-                <SelectItem className="text-left" value="46">46</SelectItem>
-                <SelectItem className="text-left" value="48">48</SelectItem>
-                <SelectItem className="text-left" value="50">50</SelectItem>
-              </>
-            )}
+            {getSTCRatingOptions(wall.model, wall.panelSkin).map((rating) => (
+              <SelectItem key={rating} className="text-left" value={rating}>
+                {rating}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -264,16 +322,13 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <Label>Panel Finish Category</Label>
         <Select
           value={wall.panelFinishCategory || ''}
-          onValueChange={(value) => {
-            onFieldChange(wallName, 'panelFinishCategory', value);
-            // Reset specific item when category changes
-            onFieldChange(wallName, 'panelFinishSpecificItem', '');
-          }}
+          onValueChange={(value) => handleFieldChange('panelFinishCategory', value)}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select finish" />
           </SelectTrigger>
           <SelectContent className="text-left">
+            <SelectItem className="text-left" value="None">None</SelectItem>
             <SelectItem className="text-left" value="Koroseal Standard Vinyl">Koroseal Standard Vinyl</SelectItem>
             <SelectItem className="text-left" value="Koroseal Upgrade Vinyl">Koroseal Upgrade Vinyl</SelectItem>
             <SelectItem className="text-left" value="Shaw Standard Carpet">Shaw Standard Carpet</SelectItem>
@@ -289,28 +344,23 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
           </SelectContent>
         </Select>
       </div>
-      {!["Uncovered", "C.O.M. Material", "Field Painting by Others"].includes(wall.panelFinishCategory || '') && wall.panelFinishCategory && (
-        <div>
+      {getPanelFinishSpecificItems(wall.panelFinishCategory).length > 0 && (
+        <div className="space-y-2">
           <Label>Panel Finish Specific Item</Label>
           <Select
             value={wall.panelFinishSpecificItem || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'panelFinishSpecificItem', value)}
+            onValueChange={(value) => handleFieldChange('panelFinishSpecificItem', value)}
             disabled={!wall.panelFinishCategory}
           >
             <SelectTrigger className="text-xs h-8">
               <SelectValue placeholder="Select specific item" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {wall.panelFinishCategory === "Standard Wood Veneer" && (
-                <>
-                  <SelectItem className="text-left" value="Unfinished Flat Cut White Maple">Unfinished Flat Cut White Maple</SelectItem>
-                  <SelectItem className="text-left" value="Unfinished Flat Cut White Oak">Unfinished Flat Cut White Oak</SelectItem>
-                  <SelectItem className="text-left" value="Unfinished Flat Cut Walnut">Unfinished Flat Cut Walnut</SelectItem>
-                  <SelectItem className="text-left" value="Unfinished Flat Cut Cherry">Unfinished Flat Cut Cherry</SelectItem>
-                  <SelectItem className="text-left" value="Unfinished Flat Cut Red Oak">Unfinished Flat Cut Red Oak</SelectItem>
-                </>
-              )}
-              {/* Additional specific items can be added here for other finish categories */}
+              {getPanelFinishSpecificItems(wall.panelFinishCategory).map((item) => (
+                <SelectItem key={item} className="text-left" value={item}>
+                  {item}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -319,7 +369,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <Label>Vertical Seals</Label>
         <Select
           value={wall.verticalSeals || ''}
-          onValueChange={(value) => onFieldChange(wallName, 'verticalSeals', value)}
+          onValueChange={(value) => handleFieldChange('verticalSeals', value)}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select seals" />
@@ -334,7 +384,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <Label>Bottom Seals</Label>
         <Select
           value={wall.bottomSeals || ''}
-          onValueChange={(value) => onFieldChange(wallName, 'bottomSeals', value)}
+          onValueChange={(value) => handleFieldChange('bottomSeals', value)}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select seals" />
@@ -351,7 +401,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <Label>Top Seals</Label>
         <Select
           value={wall.topSeals || ''}
-          onValueChange={(value) => onFieldChange(wallName, 'topSeals', value)}
+          onValueChange={(value) => handleFieldChange('topSeals', value)}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select seals" />
@@ -368,7 +418,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <Label>Initial Closure System</Label>
         <Select
           value={wall.initialClosureSystem || ''}
-          onValueChange={(value) => onFieldChange(wallName, 'initialClosureSystem', value)}
+          onValueChange={(value) => handleFieldChange('initialClosureSystem', value)}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select closure" />
@@ -385,7 +435,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <Label>End Panel Type</Label>
         <Select
           value={wall.endPanelType || ''}
-          onValueChange={(value) => onFieldChange(wallName, 'endPanelType', value)}
+          onValueChange={(value) => handleFieldChange('endPanelType', value)}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select end panel" />
@@ -401,13 +451,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <Label>Pass Door Panels</Label>
         <Select
           value={wall.passDoorPanels || ''}
-          onValueChange={(value) => {
-            onFieldChange(wallName, 'passDoorPanels', value);
-            // Reset quantity when pass doors is set to "None"
-            if (value === "None") {
-              onFieldChange(wallName, 'passDoorQuantity', '');
-            }
-          }}
+          onValueChange={(value) => handleFieldChange('passDoorPanels', value)}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select pass door" />
@@ -423,7 +467,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <Label>Pass Door Quantity</Label>
         <Select
           value={wall.passDoorQuantity || ''}
-          onValueChange={(value) => onFieldChange(wallName, 'passDoorQuantity', value)}
+          onValueChange={(value) => handleFieldChange('passDoorQuantity', value)}
           disabled={!wall.passDoorPanels || wall.passDoorPanels === "None"}
         >
           <SelectTrigger className="text-xs h-8">
@@ -441,17 +485,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
       <div className="space-y-2">
         <Label>Track Type</Label>
         <Input
-          value={(() => {
-            const model = wall.model;
-            if (["Hufcor 641", "2010", "2010GL", "3010", "3010GL"].includes(model || '')) {
-              return "Curve & Diverter (Individual) Track";
-            } else if (["2020", "2020GL", "3020", "3020GL"].includes(model || '')) {
-              return "Multi-Directional Track";
-            } else if (["2050e", "3050e", "3030", "3030GL", "2030", "2030GL"].includes(model || '')) {
-              return "Hinged-Pair (Straight Line) Track";
-            }
-            return "";
-          })()}
+          value={wall.trackType || ''}
           readOnly
           className="text-xs h-8 bg-muted text-muted-foreground"
         />
@@ -460,31 +494,18 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <Label>Track System</Label>
         <Select
           value={wall.trackSystem || ''}
-          onValueChange={(value) => onFieldChange(wallName, 'trackSystem', value)}
+          onValueChange={(value) => handleFieldChange('trackSystem', value)}
           disabled={!wall.trackType && !wall.model}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select system" />
           </SelectTrigger>
           <SelectContent className="text-left">
-            {wall.model === "Hufcor 641" && (
-              <>
-                <SelectItem className="text-left" value="Type 26 Clear Satin-Anodized Aluminum">Type 26 Clear Satin-Anodized Aluminum</SelectItem>
-                <SelectItem className="text-left" value="Type 36 Clear Satin-Anodized Aluminum">Type 36 Clear Satin-Anodized Aluminum</SelectItem>
-                <SelectItem className="text-left" value="Type 57 Clear Anodized Aluminum">Type 57 Clear Anodized Aluminum</SelectItem>
-                <SelectItem className="text-left" value="Type 11L Powder Coated Off-White Steel">Type 11L Powder Coated Off-White Steel</SelectItem>
-                <SelectItem className="text-left" value="Type 11 Powder Coated Off-White Steel">Type 11 Powder Coated Off-White Steel</SelectItem>
-              </>
-            )}
-            {(wall.trackType === "Multi-Directional Track" || wall.trackType === "Hinged-Pair (Straight Line) Track") && (
-              <>
-                <SelectItem className="text-left" value="Type 425 Clear Satin-Anodized Aluminum">Type 425 Clear Satin-Anodized Aluminum</SelectItem>
-                <SelectItem className="text-left" value="Type 850 Clear Satin-Anodized Aluminum">Type 850 Clear Satin-Anodized Aluminum</SelectItem>
-              </>
-            )}
-            {wall.trackType === "Curve & Diverter (Individual) Track" && (
-              <SelectItem className="text-left" value="Type 850 Powder Coated Off-White Steel">Type 850 Powder Coated Off-White Steel</SelectItem>
-            )}
+            {getTrackSystemsByTrackType(wall.trackType, wall.model).map((system) => (
+              <SelectItem key={system} className="text-left" value={system}>
+                {system}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
