@@ -100,7 +100,8 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
         }
       }
     };
-    // console.log('WallSystems: Updating wall field', { wallName, field, value, updatedWalls });
+    
+    
     onChange('wall_details', updatedWalls);
   };
 
@@ -117,7 +118,7 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
       <div className="space-y-4">
         {Object.entries(data.wall_details?.walls || {}).map(([wallName, wall]) => (
           <WallCard
-            key={`${wallName}-${wall.wallSystemType}-${wall.glasswallModel}`}
+            key={wallName}
             wallName={wallName}
             wall={wall}
             onRemove={removeWall}

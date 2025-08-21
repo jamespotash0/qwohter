@@ -14,6 +14,45 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
   wall,
   onFieldChange
 }) => {
+  const handleFieldChange = (field: string, value: any) => {
+    const actualValue = value === "None" ? "" : value;
+    
+    // Apply the main field change first
+    onFieldChange(wallName, field, actualValue);
+
+    // Cascading logic - reset all dependent fields
+
+    if (field === "glasswallModel") {
+      // Reset dependent fields when model changes
+      setTimeout(() => {
+        onFieldChange(wallName, 'glasswallOperation', '');
+        onFieldChange(wallName, 'glasswallPanelConfiguration', '');
+        onFieldChange(wallName, 'glasswallSTCRating', '');
+        onFieldChange(wallName, 'glasswallGlassType', '');
+        onFieldChange(wallName, 'glasswallPartitionSupport', '');
+        onFieldChange(wallName, 'glasswallFrameThickness', '');
+        onFieldChange(wallName, 'glasswallPanelWidth', '');
+        onFieldChange(wallName, 'glasswallPanelFace', '');
+        onFieldChange(wallName, 'glasswallFrameFinish', '');
+        onFieldChange(wallName, 'glasswallHingeType', '');
+        onFieldChange(wallName, 'glasswallTrackType', '');
+        onFieldChange(wallName, 'glasswallTrackFinish', '');
+        onFieldChange(wallName, 'glasswallFloorGuide', '');
+        onFieldChange(wallName, 'glasswallPassDoorType', '');
+        onFieldChange(wallName, 'glasswallPassDoorOption', '');
+        onFieldChange(wallName, 'glasswallFinalClosure', '');
+        onFieldChange(wallName, 'glasswallBottomSeals', '');
+        onFieldChange(wallName, 'glasswallTopSeals', '');
+      }, 0);
+    }
+
+    if (field === "glasswallPassDoorType") {
+      setTimeout(() => {
+        onFieldChange(wallName, 'glasswallPassDoorOption', '');
+      }, 0);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Glass Wall Model - Full width */}
@@ -22,12 +61,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
         <Select
           key={`${wallName}-glasswallModel-${wall.glasswallModel}`}
           value={wall.glasswallModel || ''}
-          onValueChange={(value) => {
-            onFieldChange(wallName, 'glasswallModel', value);
-            // Reset dependent fields
-            onFieldChange(wallName, 'glasswallPanelConfiguration', '');
-            onFieldChange(wallName, 'glasswallOperation', '');
-          }}
+          onValueChange={(value) => handleFieldChange('glasswallModel', value)}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select model" />
@@ -48,10 +82,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">Panel Configuration</Label>
           <Select
             value={wall.glasswallPanelConfiguration || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'glasswallPanelConfiguration', value)}
+            onValueChange={(value) => handleFieldChange('glasswallPanelConfiguration', value)}
             disabled={!wall.glasswallModel}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select config" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -92,10 +126,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">Operation</Label>
           <Select
             value={wall.glasswallOperation || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'glasswallOperation', value)}
+            onValueChange={(value) => handleFieldChange('glasswallOperation', value)}
             disabled={!wall.glasswallModel}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select operation" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -119,10 +153,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">STC Rating</Label>
           <Select
             value={wall.glasswallSTCRating || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'glasswallSTCRating', value)}
+            onValueChange={(value) => handleFieldChange('glasswallSTCRating', value)}
             disabled={!wall.glasswallModel}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select STC" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -148,10 +182,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">Glass Type</Label>
           <Select
             value={wall.glasswallGlassType || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'glasswallGlassType', value)}
+            onValueChange={(value) => handleFieldChange('glasswallGlassType', value)}
             disabled={!wall.glasswallModel}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select glass type" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -199,10 +233,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">Partition Support</Label>
           <Select
             value={wall.glasswallPartitionSupport || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'glasswallPartitionSupport', value)}
+            onValueChange={(value) => handleFieldChange('glasswallPartitionSupport', value)}
             disabled={!wall.glasswallModel}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select support" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -272,10 +306,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">Panel Face Options</Label>
           <Select
             value={wall.glasswallPanelFace || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'glasswallPanelFace', value)}
+            onValueChange={(value) => handleFieldChange('glasswallPanelFace', value)}
             disabled={!wall.glasswallModel}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select panel face" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -318,10 +352,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">Frame Finish</Label>
           <Select
             value={wall.glasswallFrameFinish || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'glasswallFrameFinish', value)}
+            onValueChange={(value) => handleFieldChange('glasswallFrameFinish', value)}
             disabled={!wall.glasswallModel}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select frame finish" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -373,10 +407,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">Hinge Type</Label>
           <Select
             value={wall.glasswallHingeType || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'glasswallHingeType', value)}
+            onValueChange={(value) => handleFieldChange('glasswallHingeType', value)}
             disabled={!wall.glasswallModel}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select hinge type" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -395,10 +429,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">Glass Wall Track Type</Label>
           <Select
             value={wall.glasswallTrackType || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'glasswallTrackType', value)}
+            onValueChange={(value) => handleFieldChange('glasswallTrackType', value)}
             disabled={!wall.glasswallModel}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select track type" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -423,10 +457,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">Track Finish</Label>
           <Select
             value={wall.glasswallTrackFinish || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'glasswallTrackFinish', value)}
+            onValueChange={(value) => handleFieldChange('glasswallTrackFinish', value)}
             disabled={!wall.glasswallModel}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select track finish" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -467,10 +501,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">Floor Guide</Label>
           <Select
             value={wall.glasswallFloorGuide || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'glasswallFloorGuide', value)}
+            onValueChange={(value) => handleFieldChange('glasswallFloorGuide', value)}
             disabled={!wall.glasswallModel}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select floor guide" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -489,13 +523,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">Pass Door Type</Label>
           <Select
             value={wall.glasswallPassDoorType || ''}
-            onValueChange={(value) => {
-              onFieldChange(wallName, 'glasswallPassDoorType', value);
-              onFieldChange(wallName, 'glasswallPassDoorOption', '');
-            }}
+            onValueChange={(value) => handleFieldChange('glasswallPassDoorType', value)}
             disabled={!wall.glasswallModel}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select door type" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -515,10 +546,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">Pass Door Option</Label>
           <Select
             value={wall.glasswallPassDoorOption || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'glasswallPassDoorOption', value)}
+            onValueChange={(value) => handleFieldChange('glasswallPassDoorOption', value)}
             disabled={!wall.glasswallModel || !wall.glasswallPassDoorType}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select door option" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -537,10 +568,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">Final Closure</Label>
           <Select
             value={wall.glasswallFinalClosure || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'glasswallFinalClosure', value)}
+            onValueChange={(value) => handleFieldChange('glasswallFinalClosure', value)}
             disabled={!wall.glasswallModel}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select closure" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -578,10 +609,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">Bottom Seals</Label>
           <Select
             value={wall.glasswallBottomSeals || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'glasswallBottomSeals', value)}
+            onValueChange={(value) => handleFieldChange('glasswallBottomSeals', value)}
             disabled={!wall.glasswallModel}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select bottom seals" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -613,10 +644,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           <Label className="text-xs">Top Seals</Label>
           <Select
             value={wall.glasswallTopSeals || ''}
-            onValueChange={(value) => onFieldChange(wallName, 'glasswallTopSeals', value)}
+            onValueChange={(value) => handleFieldChange('glasswallTopSeals', value)}
             disabled={!wall.glasswallModel}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select top seals" />
             </SelectTrigger>
             <SelectContent className="text-left">

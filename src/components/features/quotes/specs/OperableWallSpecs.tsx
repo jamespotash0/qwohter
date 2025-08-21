@@ -144,7 +144,7 @@ const OperableWallSpecs = ({ wall, wallName, onWallChange }: OperableWallSpecsPr
   const topSeals = ["Fixed", "Adjustable", "Operable"];
   const endPanelTypes = ["Standard Expander Panel Closure", "Optional Hinged Panel(s) Closure"];
   const initialClosureSystem = ["Standard Bulb", "Optional Fixed Starter Jamb", "Optional Adjustable Starter Jamb"];
-  const structureSupportOptions = ["Pre-Drilled", "Existing Steel Beam", "Custom Support", "None Required"];
+  // const structureSupportOptions = ["Pre-Drilled", "Existing Steel Beam", "Custom Support", "None Required"];
 
   return (
     <div>
@@ -501,7 +501,7 @@ const OperableWallSpecs = ({ wall, wallName, onWallChange }: OperableWallSpecsPr
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-6">
+      {/* <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-6">
         <div className="space-y-2">
           <Label className="text-sm font-medium">Structure Support Type *</Label>
           <Select
@@ -520,7 +520,7 @@ const OperableWallSpecs = ({ wall, wallName, onWallChange }: OperableWallSpecsPr
             </SelectContent>
           </Select>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

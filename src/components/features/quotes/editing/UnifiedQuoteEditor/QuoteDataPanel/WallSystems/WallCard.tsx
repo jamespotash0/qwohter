@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { WallCardProps } from './types';
 import { OperableWallForm } from './OperableWallForm';
 import { GlassWallForm } from './GlassWallForm';
-import { AccordionPartitionForm } from './AccordionPartitionForm';
 
 export const WallCard: React.FC<WallCardProps> = ({
   wallName,
@@ -15,7 +14,7 @@ export const WallCard: React.FC<WallCardProps> = ({
   onRemove,
   onFieldChange
 }) => (
-  <Card key={`${wallName}-${wall.wallSystemType}-${wall.glasswallModel}`} 
+  <Card key={wallName} 
         data-testid={`wall-card-${wallName.replace(/\s+/g, '-').toLowerCase()}`} 
         className="p-3 bg-gray-50">
     <div className="flex justify-between items-center mb-3">
@@ -32,7 +31,7 @@ export const WallCard: React.FC<WallCardProps> = ({
     
     <div className="grid grid-cols-2 gap-2 text-xs">
       <div className="space-y-2">
-        <Label htmlFor={`${wallName}-lengthFeet`} className="text-xs">Length (ft)</Label>
+        <Label htmlFor={`${wallName}-lengthFeet`} className="text-xs">Length (ft) *</Label>
         <Input
           id={`${wallName}-lengthFeet`}
           value={wall.lengthFeet || ''}
@@ -52,7 +51,7 @@ export const WallCard: React.FC<WallCardProps> = ({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor={`${wallName}-heightFeet`} className="text-xs">Height (ft)</Label>
+        <Label htmlFor={`${wallName}-heightFeet`} className="text-xs">Height (ft) *</Label>
         <Input
           id={`${wallName}-heightFeet`}
           value={wall.heightFeet || ''}
@@ -72,7 +71,7 @@ export const WallCard: React.FC<WallCardProps> = ({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor={`${wallName}-panelCount`} className="text-xs">Panel Count</Label>
+        <Label htmlFor={`${wallName}-panelCount`} className="text-xs">Panel Count *</Label>
         <Input
           id={`${wallName}-panelCount`}
           value={wall.panelCount || ''}
@@ -92,25 +91,32 @@ export const WallCard: React.FC<WallCardProps> = ({
         />
       </div>
       <div className="space-y-2 grid col-span-2">
-        <Label htmlFor={`${wallName}-wallSystemType`} className="text-xs">Wall System Type</Label>
+        <Label htmlFor={`${wallName}-wallSystemType`} className="text-xs">Wall System Type *</Label>
         <Select
           value={wall.wallSystemType || ''}
           onValueChange={(value) => {
             try {
               console.log('Wall system type changing:', { wallName, value, currentWall: wall });
               onFieldChange(wallName, 'wallSystemType', value);
+              
+              // Only reset common fields - let individual forms handle their own cascading logic
+              setTimeout(() => {
+                onFieldChange(wallName, 'panelConfiguration', '');
+                onFieldChange(wallName, 'series', '');
+                onFieldChange(wallName, 'model', '');
+                onFieldChange(wallName, 'panelThickness', '');
+              }, 50);
             } catch (error) {
               console.error('Error in wall system type change:', error);
             }
           }}
         >
-          <SelectTrigger className="text-xs h-8">
+          <SelectTrigger className="text-xs h-8 text-left">
             <SelectValue placeholder="Select type" />
           </SelectTrigger>
           <SelectContent className="text-left">
             <SelectItem className="text-left" value="Operable Wall">Operable Wall</SelectItem>
             <SelectItem className="text-left" value="Glass Wall">Glass Wall</SelectItem>
-            <SelectItem className="text-left" value="Accordion Partitions">Accordion Partitions</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -137,14 +143,5 @@ export const WallCard: React.FC<WallCardProps> = ({
       </div>
     )}
 
-    {wall.wallSystemType === "Accordion Partitions" && (
-      <div className="mt-2">
-        <AccordionPartitionForm
-          wallName={wallName}
-          wall={wall}
-          onFieldChange={onFieldChange}
-        />
-      </div>
-    )}
   </Card>
 );

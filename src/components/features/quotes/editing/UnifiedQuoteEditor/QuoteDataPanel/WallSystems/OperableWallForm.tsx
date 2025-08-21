@@ -104,7 +104,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
   };
 
   const getPanelFinishSpecificItems = (category: string): string[] => {
-    const categoriesWithoutSpecificItems = ["Uncovered", "C.O.M. Material", "Field Painting by Others"];
+    const categoriesWithoutSpecificItems = ["", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
     if (categoriesWithoutSpecificItems.includes(category)) {
       return [];
     }
@@ -145,98 +145,72 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
   const handleFieldChange = (field: string, value: any) => {
     const actualValue = value === "None" ? "" : value;
     
+    
     // Apply the main field change first
     onFieldChange(wallName, field, actualValue);
 
     // Cascading logic - reset all dependent fields
-    if (field === "wallSystemType") {
-      // Reset all dependent fields when wall system type changes
-      setTimeout(() => {
-        onFieldChange(wallName, 'panelConfiguration', '');
-        onFieldChange(wallName, 'series', '');
-        onFieldChange(wallName, 'model', '');
-        onFieldChange(wallName, 'panelThickness', '');
-        onFieldChange(wallName, 'panelSkin', '');
-        onFieldChange(wallName, 'panelDesign', '');
-        onFieldChange(wallName, 'stcRating', '');
-        onFieldChange(wallName, 'trackType', '');
-        onFieldChange(wallName, 'trackSystem', '');
-        onFieldChange(wallName, 'initialClosureSystem', '');
-        onFieldChange(wallName, 'endPanelType', '');
-        onFieldChange(wallName, 'verticalSeals', '');
-        onFieldChange(wallName, 'bottomSeals', '');
-        onFieldChange(wallName, 'topSeals', '');
-        onFieldChange(wallName, 'passDoorPanels', '');
-        onFieldChange(wallName, 'passDoorQuantity', '');
-        onFieldChange(wallName, 'panelFinishCategory', '');
-        onFieldChange(wallName, 'panelFinishSpecificItem', '');
-      }, 0);
-    }
 
     if (field === "panelConfiguration") {
-      // Reset all dependent fields when configuration changes
+      // In edit mode, only reset fields that would be invalid for the new configuration
+      // Don't reset everything to allow manual editing
+      const currentSeries = wall.series;
+      const validSeries = getSeriesByPanelConfiguration(actualValue);
+      
       setTimeout(() => {
-        onFieldChange(wallName, 'series', '');
-        onFieldChange(wallName, 'model', '');
-        onFieldChange(wallName, 'panelThickness', '');
-        onFieldChange(wallName, 'panelSkin', '');
-        onFieldChange(wallName, 'panelDesign', '');
-        onFieldChange(wallName, 'stcRating', '');
-        onFieldChange(wallName, 'trackType', '');
-        onFieldChange(wallName, 'trackSystem', '');
-        onFieldChange(wallName, 'initialClosureSystem', '');
-        onFieldChange(wallName, 'endPanelType', '');
-        onFieldChange(wallName, 'verticalSeals', '');
-        onFieldChange(wallName, 'bottomSeals', '');
-        onFieldChange(wallName, 'topSeals', '');
-        onFieldChange(wallName, 'passDoorPanels', '');
-        onFieldChange(wallName, 'passDoorQuantity', '');
-        onFieldChange(wallName, 'panelFinishCategory', '');
-        onFieldChange(wallName, 'panelFinishSpecificItem', '');
+        // Only reset series if current series is not valid for new configuration
+        if (currentSeries && !validSeries.includes(currentSeries)) {
+          onFieldChange(wallName, 'series', '');
+          onFieldChange(wallName, 'model', '');
+          onFieldChange(wallName, 'panelThickness', '');
+          onFieldChange(wallName, 'panelSkin', '');
+          onFieldChange(wallName, 'stcRating', '');
+          onFieldChange(wallName, 'trackType', '');
+          onFieldChange(wallName, 'trackSystem', '');
+        }
+        // Reset auto-calculated fields
+        const thickness = currentSeries === "2000" ? "3\"" : currentSeries === "3000" ? "4\"" : currentSeries === "Hufcor: 600" ? "4\"" : "";
+        if (thickness && thickness !== wall.panelThickness) {
+          onFieldChange(wallName, 'panelThickness', thickness);
+        }
       }, 0);
     }
 
     if (field === "series") {
       // Auto-update panel thickness based on series
       const thickness = actualValue === "2000" ? "3\"" : actualValue === "3000" ? "4\"" : actualValue === "Hufcor: 600" ? "4\"" : "";
+      const currentModel = wall.model;
+      const validModels = getModelsByPanelConfigurationAndSeries(wall.panelConfiguration, actualValue);
+      
       setTimeout(() => {
         onFieldChange(wallName, 'panelThickness', thickness);
-        onFieldChange(wallName, 'model', '');
-        onFieldChange(wallName, 'panelSkin', '');
-        onFieldChange(wallName, 'panelDesign', '');
-        onFieldChange(wallName, 'stcRating', '');
-        onFieldChange(wallName, 'trackType', '');
-        onFieldChange(wallName, 'trackSystem', '');
-        onFieldChange(wallName, 'initialClosureSystem', '');
-        onFieldChange(wallName, 'endPanelType', '');
-        onFieldChange(wallName, 'verticalSeals', '');
-        onFieldChange(wallName, 'bottomSeals', '');
-        onFieldChange(wallName, 'topSeals', '');
-        onFieldChange(wallName, 'passDoorPanels', '');
-        onFieldChange(wallName, 'passDoorQuantity', '');
-        onFieldChange(wallName, 'panelFinishCategory', '');
-        onFieldChange(wallName, 'panelFinishSpecificItem', '');
+        
+        // Only reset model if current model is not valid for new series
+        if (currentModel && !validModels.includes(currentModel)) {
+          onFieldChange(wallName, 'model', '');
+          onFieldChange(wallName, 'panelSkin', '');
+          onFieldChange(wallName, 'stcRating', '');
+          onFieldChange(wallName, 'trackType', '');
+          onFieldChange(wallName, 'trackSystem', '');
+        }
       }, 0);
     }
 
     if (field === "model") {
       // Auto-update track type based on model
       const trackType = getTrackTypeByModel(actualValue);
+      const currentPanelSkin = wall.panelSkin;
+      const validPanelSkins = getPanelSkinOptions(actualValue);
+      
       setTimeout(() => {
         onFieldChange(wallName, 'trackType', trackType);
-        onFieldChange(wallName, 'trackSystem', '');
-        onFieldChange(wallName, 'panelSkin', '');
-        onFieldChange(wallName, 'panelDesign', '');
-        onFieldChange(wallName, 'stcRating', '');
-        onFieldChange(wallName, 'initialClosureSystem', '');
-        onFieldChange(wallName, 'endPanelType', '');
-        onFieldChange(wallName, 'verticalSeals', '');
-        onFieldChange(wallName, 'bottomSeals', '');
-        onFieldChange(wallName, 'topSeals', '');
-        onFieldChange(wallName, 'passDoorPanels', '');
-        onFieldChange(wallName, 'passDoorQuantity', '');
-        onFieldChange(wallName, 'panelFinishCategory', '');
-        onFieldChange(wallName, 'panelFinishSpecificItem', '');
+        onFieldChange(wallName, 'trackSystem', ''); // Always reset track system since it depends on track type
+        
+        // Only reset panel skin if current skin is not valid for new model
+        if (currentPanelSkin && !validPanelSkins.includes(currentPanelSkin)) {
+          onFieldChange(wallName, 'panelSkin', '');
+          onFieldChange(wallName, 'stcRating', ''); // STC depends on panel skin, so reset if skin changes
+        }
       }, 0);
     }
 
@@ -261,18 +235,43 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
     }
 
     if (field === "panelFinishCategory") {
-      const categoriesWithoutSpecificItems = ["Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
-      setTimeout(() => {
-        onFieldChange(wallName, 'panelFinishSpecificItem', categoriesWithoutSpecificItems.includes(value) ? "" : "");
-      }, 0);
+      const categoriesWithoutSpecificItems = ["", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
+      
+      // Clear panelFinishSpecificItem when category doesn't support specific items
+      if (categoriesWithoutSpecificItems.includes(actualValue)) {
+        setTimeout(() => {
+          onFieldChange(wallName, 'panelFinishSpecificItem', "");
+        }, 10);
+      }
     }
   };
+
 
   return (
     <div className="space-y-2">
       {/* Panel Configuration - Full width */}
       <div className="space-y-1">
-        <Label className="text-xs">Panel Configuration</Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Panel Configuration *</Label>
+          {/* {wall.panelConfiguration && (
+            <button
+              type="button"
+              onClick={() => {
+                onFieldChange(wallName, 'panelConfiguration', '');
+                onFieldChange(wallName, 'series', '');
+                onFieldChange(wallName, 'model', '');
+                onFieldChange(wallName, 'panelThickness', '');
+                onFieldChange(wallName, 'panelSkin', '');
+                onFieldChange(wallName, 'stcRating', '');
+                onFieldChange(wallName, 'trackType', '');
+                onFieldChange(wallName, 'trackSystem', '');
+              }}
+              className="text-xs text-gray-500 hover:text-red-600 underline"
+            >
+              Clear & Reset
+            </button>
+          )} */}
+        </div>
         <Select
           value={wall.panelConfiguration || ''}
           onValueChange={(value) => handleFieldChange('panelConfiguration', value)}
@@ -292,13 +291,32 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
       <div className="grid grid-cols-2 gap-2">
         {/* Row 1 */}
         <div className="space-y-1">
-          <Label className="text-xs">Series</Label>
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Series *</Label>
+            {/* {wall.series && (
+              <button
+                type="button"
+                onClick={() => {
+                  onFieldChange(wallName, 'series', '');
+                  onFieldChange(wallName, 'model', '');
+                  onFieldChange(wallName, 'panelThickness', '');
+                  onFieldChange(wallName, 'panelSkin', '');
+                  onFieldChange(wallName, 'stcRating', '');
+                  onFieldChange(wallName, 'trackType', '');
+                  onFieldChange(wallName, 'trackSystem', '');
+                }}
+                className="text-xs text-gray-500 hover:text-red-600 underline"
+              >
+                Clear
+              </button>
+            )} */}
+          </div>
           <Select
             value={wall.series || ''}
             onValueChange={(value) => handleFieldChange('series', value)}
             disabled={!wall.panelConfiguration}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select series" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -311,13 +329,30 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
           </Select>
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Model</Label>
+          <div className="flex items-center justify-between">
+            <Label className="text-xs">Model *</Label>
+            {/* {wall.model && (
+              <button
+                type="button"
+                onClick={() => {
+                  onFieldChange(wallName, 'model', '');
+                  onFieldChange(wallName, 'panelSkin', '');
+                  onFieldChange(wallName, 'stcRating', '');
+                  onFieldChange(wallName, 'trackType', '');
+                  onFieldChange(wallName, 'trackSystem', '');
+                }}
+                className="text-xs text-gray-500 hover:text-red-600 underline"
+              >
+                Clear
+              </button>
+            )} */}
+          </div>
           <Select
             value={wall.model || ''}
             onValueChange={(value) => handleFieldChange('model', value)}
             disabled={!wall.series}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select model" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -340,13 +375,13 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">STC Rating</Label>
+          <Label className="text-xs">STC Rating *</Label>
           <Select
             value={wall.stcRating || ''}
             onValueChange={(value) => handleFieldChange('stcRating', value)}
             disabled={!wall.model || !wall.panelSkin}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select STC" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -361,12 +396,12 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
 
         {/* Row 3 */}
         <div className="space-y-1">
-          <Label className="text-xs">Panel Design</Label>
+          <Label className="text-xs">Panel Design *</Label>
           <Select
             value={wall.panelDesign || ''}
             onValueChange={(value) => handleFieldChange('panelDesign', value)}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select design" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -376,13 +411,13 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
           </Select>
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Panel Skin</Label>
+          <Label className="text-xs">Panel Skin *</Label>
           <Select
             value={wall.panelSkin || ''}
             onValueChange={(value) => handleFieldChange('panelSkin', value)}
             disabled={!wall.model}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select skin" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -402,11 +437,10 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
             value={wall.panelFinishCategory || ''}
             onValueChange={(value) => handleFieldChange('panelFinishCategory', value)}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select finish" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              <SelectItem className="text-left" value="None">None</SelectItem>
               <SelectItem className="text-left" value="Koroseal Standard Vinyl">Koroseal Standard Vinyl</SelectItem>
               <SelectItem className="text-left" value="Koroseal Upgrade Vinyl">Koroseal Upgrade Vinyl</SelectItem>
               <SelectItem className="text-left" value="Shaw Standard Carpet">Shaw Standard Carpet</SelectItem>
@@ -422,29 +456,31 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
             </SelectContent>
           </Select>
         </div>
-        {getPanelFinishSpecificItems(wall.panelFinishCategory).length > 0 ? (
-          <div className="space-y-1">
-            <Label className="text-xs">Panel Finish Specific Item</Label>
-            <Select
-              value={wall.panelFinishSpecificItem || ''}
-              onValueChange={(value) => handleFieldChange('panelFinishSpecificItem', value)}
-              disabled={!wall.panelFinishCategory}
-            >
-              <SelectTrigger className="text-xs h-8">
-                <SelectValue placeholder="Select specific item" />
-              </SelectTrigger>
-              <SelectContent className="text-left">
-                {getPanelFinishSpecificItems(wall.panelFinishCategory).map((item) => (
-                  <SelectItem key={item} className="text-left" value={item}>
-                    {item}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        ) : (
-          <div></div>
-        )}
+        <div className="space-y-1">
+          {getPanelFinishSpecificItems(wall.panelFinishCategory).length > 0 ? (
+            <>
+              <Label className="text-xs">Panel Finish Specific Item</Label>
+              <Select
+                value={wall.panelFinishSpecificItem || ''}
+                onValueChange={(value) => handleFieldChange('panelFinishSpecificItem', value)}
+                disabled={!wall.panelFinishCategory}
+              >
+                <SelectTrigger className="text-xs h-8 text-left">
+                  <SelectValue placeholder="Select specific item" />
+                </SelectTrigger>
+                <SelectContent className="text-left">
+                  {getPanelFinishSpecificItems(wall.panelFinishCategory).map((item) => (
+                    <SelectItem key={item} className="text-left" value={item}>
+                      {item}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          ) : (
+            <div className="h-8"></div>
+          )}
+        </div>
 
         {/* Row 5 */}
         <div className="space-y-1">
@@ -453,7 +489,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
             value={wall.verticalSeals || ''}
             onValueChange={(value) => handleFieldChange('verticalSeals', value)}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select seals" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -468,7 +504,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
             value={wall.bottomSeals || ''}
             onValueChange={(value) => handleFieldChange('bottomSeals', value)}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select seals" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -487,7 +523,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
             value={wall.topSeals || ''}
             onValueChange={(value) => handleFieldChange('topSeals', value)}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select seals" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -504,7 +540,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
             value={wall.initialClosureSystem || ''}
             onValueChange={(value) => handleFieldChange('initialClosureSystem', value)}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select closure" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -523,7 +559,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
             value={wall.endPanelType || ''}
             onValueChange={(value) => handleFieldChange('endPanelType', value)}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select end panel" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -541,7 +577,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
             value={wall.passDoorPanels || ''}
             onValueChange={(value) => handleFieldChange('passDoorPanels', value)}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select pass door" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -558,7 +594,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
             onValueChange={(value) => handleFieldChange('passDoorQuantity', value)}
             disabled={!wall.passDoorPanels || wall.passDoorPanels === "None"}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select quantity" />
             </SelectTrigger>
             <SelectContent className="text-left">
@@ -573,7 +609,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
 
         {/* Row 9 - Track Type spans full width */}
         <div className="col-span-2 space-y-1">
-          <Label className="text-xs">Track Type</Label>
+          <Label className="text-xs">Track Type *</Label>
           <Input
             value={wall.trackType || ''}
             readOnly
@@ -583,13 +619,13 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
 
         {/* Row 10 - Track System spans full width */}
         <div className="col-span-2 space-y-1">
-          <Label className="text-xs">Track System</Label>
+          <Label className="text-xs">Track System *</Label>
           <Select
             value={wall.trackSystem || ''}
             onValueChange={(value) => handleFieldChange('trackSystem', value)}
             disabled={!wall.trackType && !wall.model}
           >
-            <SelectTrigger className="text-xs h-8">
+            <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select system" />
             </SelectTrigger>
             <SelectContent className="text-left">
