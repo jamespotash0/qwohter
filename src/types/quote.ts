@@ -26,8 +26,8 @@ export interface GlassWallConfiguration {
 
 // Per-wall configuration interfaces
 export interface PocketDoorConfig {
-  foldType: string; // 'Bi-fold' | 'Tri-fold' | 'None'
-  foldStyle: string; // 'Flush' | 'Recessed' | ''
+  foldType: string; 
+  foldStyle: string; 
 }
 
 export interface TrackConfig {
@@ -65,7 +65,7 @@ export interface WallSpecification {
   // NEW: Per-wall configurations
   pocketDoors?: PocketDoorConfig;
   trackConfiguration?: TrackConfig;
-  structureSupport?: string; // 'Pre-Drilled' | 'Existing Steel Beam' | 'Custom Support' | 'None'
+  structureSupport?: string; // 'Pre-Drilled Steel Beam' | 'Existing Steel Beam' | 'Custom Support' | 'None'
   
   // Glass Wall specific fields
   glasswallModel?: string;
