@@ -1,7 +1,7 @@
 import { QuoteData } from './BaseQuoteTemplate';
 import { OperableWallTemplate } from './OperableWallTemplate';
 import { GlassWallTemplate } from './GlassWallTemplate';
-import { AccordionWallTemplate } from './AccordionWallTemplate';
+// import { AccordionWallTemplate } from './AccordionWallTemplate';
 import { MixedWallTemplate } from './MixedWallTemplate';
 
 export type WallSystemType = 'Operable Wall' | 'Glass Wall' | 'Accordion Partitions' | 'Mixed Wall';
@@ -11,8 +11,8 @@ export class TemplateFactory {
     const wallSystemType = this.determineWallSystemType(data);
     
     switch (wallSystemType) {
-      case 'Accordion Partitions':
-        return new AccordionWallTemplate();
+      // case 'Accordion Partitions':
+      //   return new AccordionWallTemplate();
       case 'Glass Wall':
         return new GlassWallTemplate();
       case 'Mixed Wall':

@@ -92,7 +92,7 @@ export const WallCard: React.FC<WallCardProps> = ({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor={`${wallName}-wallSystemType`}>System Type</Label>
+        <Label htmlFor={`${wallName}-wallSystemType`}>Wall System Type</Label>
         <Select
           value={wall.wallSystemType || ''}
           onValueChange={(value) => onFieldChange(wallName, 'wallSystemType', value)}

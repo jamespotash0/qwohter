@@ -219,7 +219,7 @@ export class SectionGenerators {
     
     // Check both old global format and new per-wall format
     const wallsWithPockets = Object.entries(walls)
-      .filter(([wallName, wall]) => {
+      .filter(([_, wall]) => {
         // Check per-wall configuration first
         
         if (wall.pocketDoors?.foldType && 
