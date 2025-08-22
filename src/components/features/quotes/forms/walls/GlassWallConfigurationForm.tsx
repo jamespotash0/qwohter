@@ -687,4 +687,5 @@ export const GlassWallConfigurationForm: React.FC<GlassWallConfigurationFormProp
     </Card>
   );
 };
+
 export default GlassWallConfigurationForm;
