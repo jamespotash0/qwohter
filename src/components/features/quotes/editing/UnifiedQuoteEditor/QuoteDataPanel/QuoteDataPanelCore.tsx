@@ -11,7 +11,9 @@ import { PricingSection } from './PricingSection';
 export const QuoteDataPanelCore: React.FC<QuoteDataPanelProps> = ({
   data,
   onChange,
-  className = ''
+  className = '',
+  onDatabaseSave,
+  onUpdateWallSystem
 }) => {
   const [openSections, setOpenSections] = useState<SectionState>({
     contactInfo: false,
@@ -71,6 +73,8 @@ export const QuoteDataPanelCore: React.FC<QuoteDataPanelProps> = ({
         isOpen={openSections.wallSystems}
         onToggle={() => toggleSection('wallSystems')}
         onChange={onChange}
+        onDatabaseSave={onDatabaseSave}
+        onUpdateWallSystem={onUpdateWallSystem}
       />
 
       <PocketDoorsSection

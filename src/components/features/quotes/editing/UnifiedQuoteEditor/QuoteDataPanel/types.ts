@@ -4,6 +4,8 @@ export interface QuoteDataPanelProps {
   data: QuoteData;
   onChange: (section: string, value: any) => void;
   className?: string;
+  onDatabaseSave?: () => Promise<void>; // Function to save to database
+  onUpdateWallSystem?: (wallName: string, wallData: any) => Promise<any>; // Function to update specific wall system
 }
 
 export interface CollapsibleSectionProps {

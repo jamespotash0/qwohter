@@ -7,9 +7,8 @@ import UnifiedQuoteEditor from "@/components/features/quotes/editing/UnifiedQuot
 import { SmartQuoteData } from "@/templates/SmartQuoteTemplate";
 
 const QuoteEdit = () => {
-  const { proposalNumber, versionDownloaded } = useParams<{
+  const { proposalNumber } = useParams<{
     proposalNumber: string;
-    versionDownloaded: string;
   }>();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -19,6 +18,7 @@ const QuoteEdit = () => {
   
   const {
     updateQuote,
+    updateWallSystem,
     markAsDownloaded,
     saveQuoteCustomization,
     refreshQuotes
@@ -40,17 +40,18 @@ const QuoteEdit = () => {
   // Load quote based on URL parameters
   useEffect(() => {
     const loadQuote = async () => {
-      if (!proposalNumber || !versionDownloaded || !user) return;
+      if (!proposalNumber || !user) return;
 
       try {
         setIsLoading(true);
         
-        // Query for the quote based on proposal number and version
+        // Query for the quote based on proposal number only (get the latest version)
         const { data: quotes, error } = await supabase
           .from('quotes')
           .select('*')
           .eq('proposal_number', proposalNumber)
-          .eq('version', parseInt(versionDownloaded) || 1);
+          .order('version', { ascending: false })
+          .limit(1);
 
         if (error) {
           throw error;
@@ -59,7 +60,7 @@ const QuoteEdit = () => {
         if (!quotes || quotes.length === 0) {
           toast({
             title: "Quote Not Found",
-            description: `Quote with proposal number ${proposalNumber} and version ${versionDownloaded} not found.`,
+            description: `Quote with proposal number ${proposalNumber} not found.`,
             variant: "destructive",
           });
           navigate("/quotes");
@@ -93,7 +94,7 @@ const QuoteEdit = () => {
     };
 
     loadQuote();
-  }, [proposalNumber, versionDownloaded, user, navigate, toast]);
+  }, [proposalNumber, user, navigate, toast]);
 
   const handleUnifiedQuoteSave = async (customizedQuote: SmartQuoteData) => {
     if (!quote) return;
@@ -464,6 +465,7 @@ const QuoteEdit = () => {
       onSave={handleUnifiedQuoteSave}
       onDownload={handleUnifiedQuoteDownload}
       onBack={handleBack}
+      onUpdateWallSystem={updateWallSystem}
     />
   );
 };

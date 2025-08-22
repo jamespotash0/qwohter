@@ -36,6 +36,7 @@ interface UnifiedQuoteEditorProps {
   onSave?: (data: SmartQuoteData) => void;
   onDownload?: (html: string, isSmartPDF?: boolean) => void;
   onBack?: () => void;
+  onUpdateWallSystem?: (quoteId: string, wallName: string, wallData: any) => Promise<any>;
   className?: string;
 }
 
@@ -44,6 +45,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   onSave,
   onDownload,
   onBack,
+  onUpdateWallSystem,
   className = ''
 }) => {
   const { toast } = useToast();
@@ -189,7 +191,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         generatedHTML: syncEngine.generateBaseHTML(state.rawData)
       }));
     }
-  }, [state.rawData, state.sectionOverrides, syncEngine, isLoading]);
+  }, [JSON.stringify(state.rawData), state.sectionOverrides, syncEngine, isLoading]);
 
   // Update document title when project name or proposal number changes
   useEffect(() => {
@@ -208,22 +210,16 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
 
   // Handle form data changes
   const handleFormDataChange = useCallback((section: string, value: any) => {
-    // console.log(`🔄 UnifiedQuoteEditor handleFormDataChange - section: "${section}"`);
-    // console.log(`🔄 Value received:`, value);
-    
-    setState(prev => {
-      const newState = {
-        ...prev,
-        rawData: {
-          ...prev.rawData,
-          [section]: value
-        },
-        isDirty: true
-      };
-      
-      // console.log(`🔄 Updated rawData for section "${section}":`, newState.rawData[section]);
-      return newState;
-    });
+    setState(prev => ({
+      ...prev,
+      rawData: {
+        ...prev.rawData,
+        [section]: value
+      },
+      // Clear section overrides when form data changes to ensure live preview reflects current form data
+      sectionOverrides: new Map(),
+      isDirty: true
+    }));
   }, []);
 
   // Handle section content overrides
@@ -498,6 +494,8 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
                 <QuoteDataPanel 
                   data={state.rawData}
                   onChange={handleFormDataChange}
+                  onDatabaseSave={handleSave}
+                  onUpdateWallSystem={onUpdateWallSystem ? (wallName: string, wallData: any) => onUpdateWallSystem(quote.id, wallName, wallData) : undefined}
                 />
               </div>
             </div>

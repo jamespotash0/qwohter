@@ -7,7 +7,8 @@ import { WallTypeFormProps } from './types';
 export const OperableWallForm: React.FC<WallTypeFormProps> = ({
   wallName,
   wall,
-  onFieldChange
+  onFieldChange,
+  hideHierarchicalFields = false
 }) => {
   // Helper functions from original OperableWallSpecs
   const getSeriesByPanelConfiguration = (panelConfiguration: string): string[] => {
@@ -145,7 +146,6 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
   const handleFieldChange = (field: string, value: any) => {
     const actualValue = value === "None" ? "" : value;
     
-    
     // Apply the main field change first
     onFieldChange(wallName, field, actualValue);
 
@@ -235,13 +235,9 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
     }
 
     if (field === "panelFinishCategory") {
-      const categoriesWithoutSpecificItems = ["", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
-      
-      // Clear panelFinishSpecificItem when category doesn't support specific items
-      if (categoriesWithoutSpecificItems.includes(actualValue)) {
-        setTimeout(() => {
-          onFieldChange(wallName, 'panelFinishSpecificItem', "");
-        }, 10);
+      // Only reset panelFinishSpecificItem if it has a value and the category actually changed
+      if (wall.panelFinishSpecificItem && wall.panelFinishCategory !== actualValue) {
+        onFieldChange(wallName, 'panelFinishSpecificItem', "");
       }
     }
   };
@@ -249,153 +245,9 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
 
   return (
     <div className="space-y-2">
-      {/* Panel Configuration - Full width */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between">
-          <Label className="text-xs">Panel Configuration *</Label>
-          {/* {wall.panelConfiguration && (
-            <button
-              type="button"
-              onClick={() => {
-                onFieldChange(wallName, 'panelConfiguration', '');
-                onFieldChange(wallName, 'series', '');
-                onFieldChange(wallName, 'model', '');
-                onFieldChange(wallName, 'panelThickness', '');
-                onFieldChange(wallName, 'panelSkin', '');
-                onFieldChange(wallName, 'stcRating', '');
-                onFieldChange(wallName, 'trackType', '');
-                onFieldChange(wallName, 'trackSystem', '');
-              }}
-              className="text-xs text-gray-500 hover:text-red-600 underline"
-            >
-              Clear & Reset
-            </button>
-          )} */}
-        </div>
-        <Select
-          value={wall.panelConfiguration || ''}
-          onValueChange={(value) => handleFieldChange('panelConfiguration', value)}
-        >
-          <SelectTrigger className="text-xs h-8">
-            <SelectValue placeholder="Select config" />
-          </SelectTrigger>
-          <SelectContent className="text-left">
-            <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
-            <SelectItem className="text-left" value="Hinged-Paired Panels">Hinged-Paired Panels</SelectItem>
-            <SelectItem className="text-left" value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* 2x2 Grid Layout for Wall System Fields */}
       <div className="grid grid-cols-2 gap-2">
-        {/* Row 1 */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">Series *</Label>
-            {/* {wall.series && (
-              <button
-                type="button"
-                onClick={() => {
-                  onFieldChange(wallName, 'series', '');
-                  onFieldChange(wallName, 'model', '');
-                  onFieldChange(wallName, 'panelThickness', '');
-                  onFieldChange(wallName, 'panelSkin', '');
-                  onFieldChange(wallName, 'stcRating', '');
-                  onFieldChange(wallName, 'trackType', '');
-                  onFieldChange(wallName, 'trackSystem', '');
-                }}
-                className="text-xs text-gray-500 hover:text-red-600 underline"
-              >
-                Clear
-              </button>
-            )} */}
-          </div>
-          <Select
-            value={wall.series || ''}
-            onValueChange={(value) => handleFieldChange('series', value)}
-            disabled={!wall.panelConfiguration}
-          >
-            <SelectTrigger className="text-xs h-8 text-left">
-              <SelectValue placeholder="Select series" />
-            </SelectTrigger>
-            <SelectContent className="text-left">
-              {getSeriesByPanelConfiguration(wall.panelConfiguration).map((series) => (
-                <SelectItem key={series} className="text-left" value={series}>
-                  {series}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">Model *</Label>
-            {/* {wall.model && (
-              <button
-                type="button"
-                onClick={() => {
-                  onFieldChange(wallName, 'model', '');
-                  onFieldChange(wallName, 'panelSkin', '');
-                  onFieldChange(wallName, 'stcRating', '');
-                  onFieldChange(wallName, 'trackType', '');
-                  onFieldChange(wallName, 'trackSystem', '');
-                }}
-                className="text-xs text-gray-500 hover:text-red-600 underline"
-              >
-                Clear
-              </button>
-            )} */}
-          </div>
-          <Select
-            value={wall.model || ''}
-            onValueChange={(value) => handleFieldChange('model', value)}
-            disabled={!wall.series}
-          >
-            <SelectTrigger className="text-xs h-8 text-left">
-              <SelectValue placeholder="Select model" />
-            </SelectTrigger>
-            <SelectContent className="text-left">
-              {getModelsByPanelConfigurationAndSeries(wall.panelConfiguration, wall.series).map((model) => (
-                <SelectItem key={model} className="text-left" value={model}>
-                  {model}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Row 2 */}
-        <div className="space-y-1">
-          <Label className="text-xs">Panel Thickness</Label>
-          <Input
-            value={wall.panelThickness || ''}
-            readOnly
-            className="text-xs h-8 bg-muted text-muted-foreground"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">STC Rating *</Label>
-          <Select
-            value={wall.stcRating || ''}
-            onValueChange={(value) => handleFieldChange('stcRating', value)}
-            disabled={!wall.model || !wall.panelSkin}
-          >
-            <SelectTrigger className="text-xs h-8 text-left">
-              <SelectValue placeholder="Select STC" />
-            </SelectTrigger>
-            <SelectContent className="text-left">
-              {getSTCRatingOptions(wall.model, wall.panelSkin).map((rating) => (
-                <SelectItem key={rating} className="text-left" value={rating}>
-                  {rating}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Row 3 */}
-        <div className="space-y-1">
+        {/* Row 1 - Panel Design (full width) */}
+        <div className="col-span-2 space-y-1">
           <Label className="text-xs">Panel Design *</Label>
           <Select
             value={wall.panelDesign || ''}
@@ -410,27 +262,8 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Panel Skin *</Label>
-          <Select
-            value={wall.panelSkin || ''}
-            onValueChange={(value) => handleFieldChange('panelSkin', value)}
-            disabled={!wall.model}
-          >
-            <SelectTrigger className="text-xs h-8 text-left">
-              <SelectValue placeholder="Select skin" />
-            </SelectTrigger>
-            <SelectContent className="text-left">
-              {getPanelSkinOptions(wall.model).map((skin) => (
-                <SelectItem key={skin} className="text-left" value={skin}>
-                  {skin}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
 
-        {/* Row 4 */}
+        {/* Row 2 - Panel Finish Category */}
         <div className="space-y-1">
           <Label className="text-xs">Panel Finish Category</Label>
           <Select
@@ -482,7 +315,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
           )}
         </div>
 
-        {/* Row 5 */}
+        {/* Row 2 - Seals */}
         <div className="space-y-1">
           <Label className="text-xs">Vertical Seals</Label>
           <Select
@@ -516,7 +349,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
           </Select>
         </div>
 
-        {/* Row 6 */}
+        {/* Row 3 - More Seals & Closure */}
         <div className="space-y-1">
           <Label className="text-xs">Top Seals</Label>
           <Select
@@ -552,7 +385,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
           </Select>
         </div>
 
-        {/* Row 7 - End Panel Type spans full width */}
+        {/* Row 4 - End Panel Type spans full width */}
         <div className="col-span-2 space-y-1">
           <Label className="text-xs">End Panel Type</Label>
           <Select
@@ -570,7 +403,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
           </Select>
         </div>
 
-        {/* Row 8 */}
+        {/* Row 5 - Pass Door */}
         <div className="space-y-1">
           <Label className="text-xs">Pass Door Panels</Label>
           <Select
@@ -607,36 +440,46 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
           </Select>
         </div>
 
-        {/* Row 9 - Track Type spans full width */}
-        <div className="col-span-2 space-y-1">
-          <Label className="text-xs">Track Type *</Label>
-          <Input
-            value={wall.trackType || ''}
-            readOnly
-            className="text-xs h-8 bg-muted text-muted-foreground"
-          />
-        </div>
+        {/* Row 6 & 7 - Track Type and Track System (hidden when hideHierarchicalFields is true) */}
+        {!hideHierarchicalFields && (
+          <>
+            {/* Row 6 - Track Type spans full width */}
+            <div className="col-span-2 space-y-1">
+              <Label className="text-xs">Track Type *</Label>
+              <Input
+                value={wall.trackType || ''}
+                readOnly
+                className="text-xs h-8 bg-muted text-muted-foreground"
+              />
+            </div>
 
-        {/* Row 10 - Track System spans full width */}
-        <div className="col-span-2 space-y-1">
-          <Label className="text-xs">Track System *</Label>
-          <Select
-            value={wall.trackSystem || ''}
-            onValueChange={(value) => handleFieldChange('trackSystem', value)}
-            disabled={!wall.trackType && !wall.model}
-          >
-            <SelectTrigger className="text-xs h-8 text-left">
-              <SelectValue placeholder="Select system" />
-            </SelectTrigger>
-            <SelectContent className="text-left">
-              {getTrackSystemsByTrackType(wall.trackType, wall.model).map((system) => (
-                <SelectItem key={system} className="text-left" value={system}>
-                  {system}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            {/* Row 7 - Track System spans full width */}
+            <div className="col-span-2 space-y-1">
+              <Label className="text-xs">Track System *</Label>
+              {!wall.trackType && !wall.model ? (
+                <div className="text-xs h-8 px-3 py-2 bg-muted text-muted-foreground border rounded-md">
+                  Use "Edit Wall System" to configure track system
+                </div>
+              ) : (
+                <Select
+                  value={wall.trackSystem || ''}
+                  onValueChange={(value) => handleFieldChange('trackSystem', value)}
+                >
+                  <SelectTrigger className="text-xs h-8 text-left">
+                    <SelectValue placeholder="Select system" />
+                  </SelectTrigger>
+                  <SelectContent className="text-left">
+                    {getTrackSystemsByTrackType(wall.trackType, wall.model).map((system) => (
+                      <SelectItem key={system} className="text-left" value={system}>
+                        {system}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

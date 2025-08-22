@@ -87,8 +87,7 @@ const Quotes = () => {
 
   const editQuote = (quote: Quote) => {
     const proposalNumber = quote.proposal_number;
-    const versionDownloaded = quote.version || 1;
-    navigate(`/quotes/edit/${proposalNumber}/${versionDownloaded}`);
+    navigate(`/quotes/edit/${proposalNumber}`);
   };
 
 

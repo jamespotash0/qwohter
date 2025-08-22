@@ -292,6 +292,65 @@ export const useQuotes = () => {
     }
   };
 
+  // Dedicated function for updating wall systems
+  const updateWallSystem = async (quoteId: string, wallName: string, wallData: WallSpecification) => {
+    try {
+      // Get the current quote
+      const { data: currentQuote, error: fetchError } = await supabase
+        .from('quotes')
+        .select('wall_details')
+        .eq('id', quoteId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update the specific wall in the wall_details
+      const currentWallDetails = migrateWallDetails(currentQuote.wall_details);
+      const updatedWallDetails = {
+        ...currentWallDetails,
+        walls: {
+          ...currentWallDetails.walls,
+          [wallName]: wallData
+        }
+      };
+
+      // Filter the wall details before saving
+      const filteredWallDetails = filterWallDetailsForSave(updatedWallDetails);
+
+      // Update only the wall_details field
+      const { data, error } = await supabase
+        .from('quotes')
+        .update({ 
+          wall_details: filteredWallDetails,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', quoteId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update local state
+      setQuotes(prev => prev.map(quote => 
+        quote.id === quoteId ? { ...quote, ...convertRowToQuote(data) } : quote
+      ));
+
+      toast({
+        title: "Wall system updated",
+        description: `${wallName} has been updated successfully.`,
+      });
+
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Error updating wall system",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   useEffect(() => {
     fetchQuotes();
   }, []);
@@ -301,6 +360,7 @@ export const useQuotes = () => {
     loading,
     createQuote,
     updateQuote,
+    updateWallSystem,
     deleteQuote,
     markAsDownloaded,
     saveQuoteCustomization,

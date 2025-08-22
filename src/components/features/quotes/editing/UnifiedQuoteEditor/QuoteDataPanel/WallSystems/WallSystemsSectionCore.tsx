@@ -9,7 +9,9 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
   data,
   onChange,
   isOpen,
-  onToggle
+  onToggle,
+  onDatabaseSave,
+  onUpdateWallSystem
 }) => {
   // Helper function to add a new wall
   const addWall = () => {
@@ -101,7 +103,6 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
       }
     };
     
-    
     onChange('wall_details', updatedWalls);
   };
 
@@ -123,6 +124,8 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
             wall={wall}
             onRemove={removeWall}
             onFieldChange={handleWallFieldChange}
+            onDatabaseSave={onDatabaseSave}
+            onUpdateWallSystem={onUpdateWallSystem}
           />
         ))}
         
