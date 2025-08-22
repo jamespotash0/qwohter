@@ -9,22 +9,34 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
 
     return `<div class="wall-specifications-list" style="line-height: 1.15; margin-top: 10px;">
       <table style="border-collapse: collapse; width: 100%;">
-       
         <tbody>
           ${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
             const dimensions = this.helpers.formatDimensions(wall.lengthFeet, wall.lengthInches, wall.heightFeet, wall.heightInches, true);
             const wallSystemType = wall.wallSystemType || '';
             const panelCount = wall.panelCount || '';
-            const panelConfiguration = wall.panelConfiguration || '';
             const quantity = wall.quantity || '1';
+            
+            // Check if this is a glass wall
+            const isGlassWall = wall.wallSystemType?.toLowerCase().includes('glass');
+            
+            // Use appropriate configuration field based on wall type
+            const panelConfiguration = isGlassWall 
+              ? (wall.glasswallPanelConfiguration || '')
+              : (wall.panelConfiguration || '');
+            
+            // Use appropriate panel description based on wall type
+            // const panelDescription = isGlassWall
+            //   ? `${this.helpers.toWords(panelCount)} (${panelCount}) Glass Panels`
+            //   : `${this.helpers.toWords(panelCount)} (${panelCount})`;
+            const panelDescription = `${this.helpers.toWords(panelCount)} (${panelCount})`;
 
             return `
               <tr>
                 <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black; font-weight: bold;">${wallName}</td>
                 <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${wallSystemType}</td>
                 <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${dimensions}</td>
-                <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${this.helpers.toWords(panelCount)} (${panelCount})</td>
-                <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black;">${panelConfiguration} </td>
+                <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${panelDescription}</td>
+                <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; border-right: 0.5px solid black;">${panelConfiguration}</td>
                 <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">${quantity} Each</td>
               </tr>
             `;
@@ -60,29 +72,54 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
 
     // Generate per-wall descriptions as bullet points
     const wallBullets = wallEntries.map(([wallName, wall]) => {
+      // Check if this is a glass wall
+      const isGlassWall = wall.wallSystemType?.toLowerCase().includes('glass');
+      
       const panelCountText = wall.panelCount && parseInt(wall.panelCount) > 1 ? 'Multiple' : 'Single';
       const heightText = this.helpers.formatDimensions('0', '0', wall.heightFeet, wall.heightInches, false).split(' x ')[1];
       
-      const wallDescription = SmartQuoteHelper.buildSentence([
-        { text: `<strong>${wallName}</strong> utilizes the Kwik-Wall` },
-        { text: `<strong>${wall.series} series</strong>`, condition: SmartQuoteHelper.hasValue(wall.series) },
-        { text: `<strong>Model ${wall.model}</strong>`, condition: SmartQuoteHelper.hasValue(wall.model) },
-        { text: `configured with <strong>${panelCountText} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
-        { text: `for use on a <strong>${wall.trackType} Layout</strong>.`, condition: SmartQuoteHelper.hasValue(wall.trackType) },
-        { text: `The wall is <strong>${heightText}</strong> in height, with panel lengths varying as required`, condition: SmartQuoteHelper.hasAllValues(wall.heightFeet, wall.heightInches) },
-        { text: `Each panel features a <strong>${wall.panelDesign}</strong> design`, condition: SmartQuoteHelper.hasValue(wall.panelDesign) },
-        { text: `is <strong>${wall.panelThickness}"</strong> thick`, condition: SmartQuoteHelper.hasValue(wall.panelThickness) },
-        { text: `and constructed with a <strong>${wall.panelSkin}</strong> panel skin.`, condition: SmartQuoteHelper.hasValue(wall.panelSkin) },
-        { text: `Panels are finished in <strong>${wall.panelFinishCategory}${wall.panelFinishSpecificItem && wall.panelFinishSpecificItem !== 'Unknown' ? ` - ${wall.panelFinishSpecificItem}` : ''}</strong> (from the manufacturer's standard offerings)`, condition: SmartQuoteHelper.hasValue(wall.panelFinishCategory) },
-        { text: `and achieve a minimum STC rating of <strong>${wall.stcRating}</strong>.`, condition: SmartQuoteHelper.hasValue(wall.stcRating) },
-        { text: `For acoustic performance, panels use <strong>${wall.verticalSeals}</strong> vertical seals,`, condition: SmartQuoteHelper.hasValue(wall.verticalSeals) },
-        { text: `${wall.bottomSeals === "Retractable" ? "<strong>Retractable</strong> operable" : `<strong>${wall.bottomSeals}</strong>`} bottom seals,`, condition: SmartQuoteHelper.hasValue(wall.bottomSeals) },
-        { text: `and <strong>${wall.topSeals}</strong> top seals.`, condition: SmartQuoteHelper.hasValue(wall.topSeals) },
-        { text: `The lead panel provides closure with a <strong>${wall.initialClosureSystem} Seal</strong>`, condition: SmartQuoteHelper.hasValue(wall.initialClosureSystem) },
-        { text: `while the end panel secures the system with a <strong>${wall.endPanelType}</strong>`, condition: SmartQuoteHelper.hasValue(wall.endPanelType) }
-      ]);
-      
-      return `<li style="margin-bottom: 8px;">${wallDescription}</li>`;
+      if (isGlassWall) {
+        // Glass wall description using glass-specific fields
+        const wallDescription = SmartQuoteHelper.buildSentence([
+          { text: `<strong>${wallName}</strong> utilizes the Kwik-Wall Glass Wall System` },
+          { text: `<strong>Model ${wall.glasswallModel}</strong>`, condition: SmartQuoteHelper.hasValue(wall.glasswallModel) },
+          { text: `featuring <strong>${wall.glasswallOperation}</strong> operation`, condition: SmartQuoteHelper.hasValue(wall.glasswallOperation) },
+          { text: `configured with <strong>${panelCountText} ${wall.glasswallPanelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.glasswallPanelConfiguration) },
+          { text: `for use on a <strong>${wall.glasswallTrackType || wall.trackType} Layout</strong>.`, condition: SmartQuoteHelper.hasValue(wall.glasswallTrackType) },
+          { text: `The wall is <strong>${heightText}</strong> in height, with glass panel lengths at ${wall.glasswallPanelWidth}`, condition: SmartQuoteHelper.hasAllValues(wall.heightFeet, wall.heightInches, wall.glasswallPanelWidth) },
+          { text: `Each glass panel features <strong>${wall.glasswallGlassType || 'insulated glass units'}</strong>`, condition: SmartQuoteHelper.hasValue(wall.glasswallGlassType) },
+          { text: `with <strong>${wall.glasswallFrameThickness}"</strong> thick framing`, condition: SmartQuoteHelper.hasValue(wall.glasswallFrameThickness) },
+          { text: `and <strong>${wall.glasswallFrameFinish}</strong> frame finish.`, condition: SmartQuoteHelper.hasValue(wall.glasswallFrameFinish) },
+          { text: `The system achieves a minimum STC rating of <strong>${wall.glasswallSTCRating}</strong>`, condition: SmartQuoteHelper.hasValue(wall.glasswallSTCRating) },
+          { text: `while maintaining visual transparency. For acoustic performance, glass panels use <strong>${wall.glasswallBottomSeals}</strong> bottom seals`, condition: SmartQuoteHelper.hasValue(wall.glasswallBottomSeals) },
+          { text: `and <strong>${wall.glasswallTopSeals}</strong> top seals.`, condition: SmartQuoteHelper.hasValue(wall.glasswallTopSeals) },
+          { text: `The system provides closure with <strong>${wall.glasswallFinalClosure}</strong>`, condition: SmartQuoteHelper.hasValue(wall.glasswallFinalClosure) }
+        ]);
+        
+        return `<li style="margin-bottom: 8px;">${wallDescription}</li>`;
+      } else {
+        // Operable wall description using standard fields
+        const wallDescription = SmartQuoteHelper.buildSentence([
+          { text: `<strong>${wallName}</strong> utilizes the Kwik-Wall` },
+          { text: `<strong>${wall.series} series</strong>`, condition: SmartQuoteHelper.hasValue(wall.series) },
+          { text: `<strong>Model ${wall.model}</strong>`, condition: SmartQuoteHelper.hasValue(wall.model) },
+          { text: `configured with <strong>${panelCountText} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
+          { text: `for use on a <strong>${wall.trackType} Layout</strong>.`, condition: SmartQuoteHelper.hasValue(wall.trackType) },
+          { text: `The wall is <strong>${heightText}</strong> in height, with panel lengths varying as required`, condition: SmartQuoteHelper.hasAllValues(wall.heightFeet, wall.heightInches) },
+          { text: `Each panel features a <strong>${wall.panelDesign}</strong> design`, condition: SmartQuoteHelper.hasValue(wall.panelDesign) },
+          { text: `is <strong>${wall.panelThickness}"</strong> thick`, condition: SmartQuoteHelper.hasValue(wall.panelThickness) },
+          { text: `and constructed with a <strong>${wall.panelSkin}</strong> panel skin.`, condition: SmartQuoteHelper.hasValue(wall.panelSkin) },
+          { text: `Panels are finished in <strong>${wall.panelFinishCategory}${wall.panelFinishSpecificItem && wall.panelFinishSpecificItem !== 'Unknown' ? ` - ${wall.panelFinishSpecificItem}` : ''}</strong> (from the manufacturer's standard offerings)`, condition: SmartQuoteHelper.hasValue(wall.panelFinishCategory) },
+          { text: `and achieve a minimum STC rating of <strong>${wall.stcRating}</strong>.`, condition: SmartQuoteHelper.hasValue(wall.stcRating) },
+          { text: `For acoustic performance, panels use <strong>${wall.verticalSeals}</strong> vertical seals,`, condition: SmartQuoteHelper.hasValue(wall.verticalSeals) },
+          { text: `${wall.bottomSeals === "Retractable" ? "<strong>Retractable</strong> operable" : `<strong>${wall.bottomSeals}</strong>`} bottom seals,`, condition: SmartQuoteHelper.hasValue(wall.bottomSeals) },
+          { text: `and <strong>${wall.topSeals}</strong> top seals.`, condition: SmartQuoteHelper.hasValue(wall.topSeals) },
+          { text: `The lead panel provides closure with a <strong>${wall.initialClosureSystem} Seal</strong>`, condition: SmartQuoteHelper.hasValue(wall.initialClosureSystem) },
+          { text: `while the end panel secures the system with a <strong>${wall.endPanelType}</strong>`, condition: SmartQuoteHelper.hasValue(wall.endPanelType) }
+        ]);
+        
+        return `<li style="margin-bottom: 8px;">${wallDescription}</li>`;
+      }
     }).join('');
 
     return `<div class="panels-section" style="line-height: 1.15;">
@@ -99,7 +136,18 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     
     // Create inline sentence describing each wall's track system
     const wallDescriptions = wallEntries.map(([wallName, wall]) => {
-      return `<strong>${wallName}</strong> utilizes a <strong>${wall.trackSystem || ""}</strong> Track System (${this.helpers.getMovementOnTrackText(wall?.panelConfiguration)} Panels)`;
+      // Check if this is a glass wall
+      const isGlassWall = wall.wallSystemType?.toLowerCase().includes('glass');
+      
+      if (isGlassWall) {
+        // For glass walls, always use the specified track system
+        const trackSystem = 'Architectural Grade Extruded Aluminum Alloy 6063-T6';
+        const panelConfiguration = wall.glasswallPanelConfiguration;
+        return `<strong>${wallName}</strong> utilizes a <strong>${trackSystem}</strong> Track System (${this.helpers.getMovementOnTrackText(panelConfiguration)} Panels)`;
+      } else {
+        // For operable walls, use the configured track system
+        return `<strong>${wallName}</strong> utilizes a <strong>${wall.trackSystem}</strong> Track System (${this.helpers.getMovementOnTrackText(wall?.panelConfiguration)} Panels)`;
+      }
     }).join(', and ');
 
     const summary = 
@@ -127,7 +175,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
       
       // If not set or is 'None', try fallback to global structure support
       if (!structureSupport || structureSupport === 'None' || structureSupport.trim() === '') {
-        structureSupport = data.support_structure?.mountingTrack || 'None Required';
+        structureSupport = data.support_structure?.mountingTrack;
       }
       
       return `<strong>${wallName}</strong> will be hung from <strong>${structureSupport}</strong>`;
