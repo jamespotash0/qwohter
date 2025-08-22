@@ -6,6 +6,7 @@ export interface QuoteDataPanelProps {
   className?: string;
   onDatabaseSave?: () => Promise<void>; // Function to save to database
   onUpdateWallSystem?: (wallName: string, wallData: any) => Promise<any>; // Function to update specific wall system
+  onRemoveWallSystem?: (wallName: string) => Promise<any>; // Function to remove wall system with database update
 }
 
 export interface CollapsibleSectionProps {

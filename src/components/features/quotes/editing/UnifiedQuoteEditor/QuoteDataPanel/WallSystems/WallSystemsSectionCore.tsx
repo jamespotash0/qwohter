@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Square } from 'lucide-react';
 import { CollapsibleSection } from '../CollapsibleSection';
 import { WallCard } from './WallCard';
 import { WallSystemsSectionProps } from './types';
+import { AddWallDialog } from '../../../WallSystemEditor/AddWallDialog';
 
 export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
   data,
@@ -11,68 +12,23 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
   isOpen,
   onToggle,
   onDatabaseSave,
-  onUpdateWallSystem
+  onUpdateWallSystem,
+  onRemoveWallSystem
 }) => {
-  // Helper function to add a new wall
+  const [isAddWallDialogOpen, setIsAddWallDialogOpen] = useState(false);
+
+  // Helper function to add a new wall (now opens dialog)
   const addWall = () => {
-    const wallsCount = Object.keys(data.wall_details?.walls || {}).length;
-    const newWallName = `Wall ${wallsCount + 1}`;
-    
+    setIsAddWallDialogOpen(true);
+  };
+
+  // Helper function to handle wall addition from dialog
+  const handleAddWall = (wallName: string, wallData: any) => {
     const updatedWalls = {
       id: data.wall_details?.id || crypto.randomUUID(),
       walls: {
         ...(data.wall_details?.walls || {}),
-        [newWallName]: {
-          wallSystemType: '',
-          lengthFeet: '',
-          lengthInches: '',
-          heightFeet: '',
-          heightInches: '',
-          quantity: '1',
-          panelConfiguration: '',
-          panelCount: '',
-          series: '',
-          model: '',
-          panelThickness: '',
-          panelDesign: '',
-          panelSkin: '',
-          stcRating: '',
-          passDoorPanels: '',
-          passDoorQuantity: '',
-          panelFinishCategory: '',
-          panelFinishSpecificItem: '',
-          verticalSeals: '',
-          bottomSeals: '',
-          topSeals: '',
-          initialClosureSystem: '',
-          endPanelType: '',
-          trackType: '',
-          trackSystem: '',
-          // Per-wall configurations
-          structureSupport: '',
-          pocketDoors: {
-            foldType: '',
-            foldStyle: ''
-          },
-          // Glass Wall specific fields
-          glasswallModel: '',
-          glasswallOperation: '',
-          glasswallPanelConfiguration: '',
-          glasswallPanelFace: '',
-          glasswallFrameFinish: '',
-          glasswallGlassType: '',
-          glasswallSTCRating: '',
-          glasswallPartitionSupport: '',
-          glasswallPassDoorType: '',
-          glasswallPassDoorOption: '',
-          glasswallHingeType: '',
-          glasswallFrameThickness: '',
-          glasswallTrackType: '',
-          glasswallTrackFinish: '',
-          glasswallFinalClosure: '',
-          glasswallBottomSeals: '',
-          glasswallTopSeals: ''
-        }
+        [wallName]: wallData
       }
     };
     onChange('wall_details', updatedWalls);
@@ -126,6 +82,7 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
             onFieldChange={handleWallFieldChange}
             onDatabaseSave={onDatabaseSave}
             onUpdateWallSystem={onUpdateWallSystem}
+            onRemoveWallSystem={onRemoveWallSystem}
           />
         ))}
         
@@ -141,6 +98,14 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
           </Button>
         </div>
       </div>
+
+      {/* Add Wall Dialog */}
+      <AddWallDialog
+        isOpen={isAddWallDialogOpen}
+        onClose={() => setIsAddWallDialogOpen(false)}
+        onSave={handleAddWall}
+        onDatabaseSave={onDatabaseSave}
+      />
     </CollapsibleSection>
   );
 };

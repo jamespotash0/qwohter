@@ -37,6 +37,7 @@ interface UnifiedQuoteEditorProps {
   onDownload?: (html: string, isSmartPDF?: boolean) => void;
   onBack?: () => void;
   onUpdateWallSystem?: (quoteId: string, wallName: string, wallData: any) => Promise<any>;
+  onRemoveWallSystem?: (quoteId: string, wallName: string) => Promise<any>;
   className?: string;
 }
 
@@ -46,6 +47,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   onDownload,
   onBack,
   onUpdateWallSystem,
+  onRemoveWallSystem,
   className = ''
 }) => {
   const { toast } = useToast();
@@ -496,6 +498,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
                   onChange={handleFormDataChange}
                   onDatabaseSave={handleSave}
                   onUpdateWallSystem={onUpdateWallSystem ? (wallName: string, wallData: any) => onUpdateWallSystem(quote.id, wallName, wallData) : undefined}
+                  onRemoveWallSystem={onRemoveWallSystem ? (wallName: string) => onRemoveWallSystem(quote.id, wallName) : undefined}
                 />
               </div>
             </div>

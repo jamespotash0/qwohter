@@ -19,6 +19,7 @@ const QuoteEdit = () => {
   const {
     updateQuote,
     updateWallSystem,
+    removeWallSystem,
     markAsDownloaded,
     saveQuoteCustomization,
     refreshQuotes
@@ -466,6 +467,7 @@ const QuoteEdit = () => {
       onDownload={handleUnifiedQuoteDownload}
       onBack={handleBack}
       onUpdateWallSystem={updateWallSystem}
+      onRemoveWallSystem={removeWallSystem}
     />
   );
 };

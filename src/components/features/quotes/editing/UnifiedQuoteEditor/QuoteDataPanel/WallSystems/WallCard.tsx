@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { WallCardProps } from './types';
 import { OperableWallForm } from './OperableWallForm';
 import { GlassWallForm } from './GlassWallForm';
@@ -16,9 +16,11 @@ export const WallCard: React.FC<WallCardProps> = ({
   onRemove,
   onFieldChange,
   onDatabaseSave,
-  onUpdateWallSystem
+  onUpdateWallSystem,
+  onRemoveWallSystem
 }) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [showRemoveConfirmation, setShowRemoveConfirmation] = useState(false);
 
   const handleSaveWallSystem = async (_editedWallName: string, updatedWall: any) => {
     // If we have the dedicated wall system update function, use it
@@ -46,6 +48,24 @@ export const WallCard: React.FC<WallCardProps> = ({
     }
   };
 
+  const handleConfirmRemove = async () => {
+    // Use database removal function if available for direct database updates
+    if (onRemoveWallSystem) {
+      try {
+        await onRemoveWallSystem(wallName);
+        console.log('✅ WallCard: Wall removed via database removal function');
+        // Reload the page to refresh all data
+        window.location.reload();
+      } catch (error) {
+        console.error('❌ WallCard: Wall removal failed:', error);
+      }
+    } else {
+      // Fallback to local state removal
+      onRemove(wallName);
+    }
+    setShowRemoveConfirmation(false);
+  };
+
   return (
   <Card key={wallName} 
         data-testid={`wall-card-${wallName.replace(/\s+/g, '-').toLowerCase()}`} 
@@ -65,7 +85,7 @@ export const WallCard: React.FC<WallCardProps> = ({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => onRemove(wallName)}
+          onClick={() => setShowRemoveConfirmation(true)}
           className="text-red-600 hover:text-red-700"
         >
           Remove
@@ -173,6 +193,24 @@ export const WallCard: React.FC<WallCardProps> = ({
       onSave={handleSaveWallSystem}
       onDatabaseSave={onDatabaseSave}
     />
+
+    {/* Remove Wall Confirmation Dialog */}
+    <AlertDialog open={showRemoveConfirmation} onOpenChange={setShowRemoveConfirmation}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remove Wall</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to remove "{wallName}"? This action will permanently delete the wall from your quote and renumber any remaining walls (e.g., Wall B becomes Wall A). This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleConfirmRemove} className="bg-red-600 hover:bg-red-700">
+            Remove Wall
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
 
   </Card>
   );

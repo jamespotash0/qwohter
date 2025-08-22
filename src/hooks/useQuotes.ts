@@ -1,4 +1,4 @@
-import { useState, useEffect, ButtonHTMLAttributes } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
@@ -351,6 +351,80 @@ export const useQuotes = () => {
     }
   };
 
+  // Dedicated function for removing wall systems with renaming logic
+  const removeWallSystem = async (quoteId: string, wallNameToRemove: string) => {
+    try {
+      // Get the current quote
+      const { data: currentQuote, error: fetchError } = await supabase
+        .from('quotes')
+        .select('wall_details')
+        .eq('id', quoteId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Get current wall details and migrate if needed
+      const currentWallDetails = migrateWallDetails(currentQuote.wall_details);
+      const currentWalls = { ...currentWallDetails.walls };
+
+      // Remove the specified wall
+      delete currentWalls[wallNameToRemove];
+
+      // Get all remaining wall names and sort them alphabetically for consistent renaming
+      const remainingWallNames = Object.keys(currentWalls).sort();
+
+      // Create renaming map for remaining walls
+      const renamedWalls: { [key: string]: WallSpecification } = {};
+      const wallLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+
+      remainingWallNames.forEach((oldWallName, index) => {
+        const newWallName = `Wall ${wallLabels[index]}`;
+        renamedWalls[newWallName] = currentWalls[oldWallName];
+      });
+
+      // Update the wall details with renamed walls
+      const updatedWallDetails = {
+        ...currentWallDetails,
+        walls: renamedWalls
+      };
+
+      // Filter the wall details before saving
+      const filteredWallDetails = filterWallDetailsForSave(updatedWallDetails);
+
+      // Update the database
+      const { data, error } = await supabase
+        .from('quotes')
+        .update({ 
+          wall_details: filteredWallDetails,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', quoteId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update local state
+      setQuotes(prev => prev.map(quote => 
+        quote.id === quoteId ? { ...quote, ...convertRowToQuote(data) } : quote
+      ));
+
+      toast({
+        title: "Wall removed successfully",
+        description: `${wallNameToRemove} has been removed and remaining walls have been renumbered.`,
+      });
+
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Error removing wall system",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   useEffect(() => {
     fetchQuotes();
   }, []);
@@ -361,6 +435,7 @@ export const useQuotes = () => {
     createQuote,
     updateQuote,
     updateWallSystem,
+    removeWallSystem,
     deleteQuote,
     markAsDownloaded,
     saveQuoteCustomization,

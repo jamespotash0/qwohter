@@ -13,7 +13,8 @@ export const QuoteDataPanelCore: React.FC<QuoteDataPanelProps> = ({
   onChange,
   className = '',
   onDatabaseSave,
-  onUpdateWallSystem
+  onUpdateWallSystem,
+  onRemoveWallSystem
 }) => {
   const [openSections, setOpenSections] = useState<SectionState>({
     contactInfo: false,
@@ -75,6 +76,7 @@ export const QuoteDataPanelCore: React.FC<QuoteDataPanelProps> = ({
         onChange={onChange}
         onDatabaseSave={onDatabaseSave}
         onUpdateWallSystem={onUpdateWallSystem}
+        onRemoveWallSystem={onRemoveWallSystem}
       />
 
       <PocketDoorsSection
