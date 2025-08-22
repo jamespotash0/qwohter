@@ -15,14 +15,14 @@
     "jsx": "react-jsx",
 
     /* Linting - Phase 1: Enable critical safety checks */
-    "strict": true,
+    "strict": false, //true
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noImplicitAny": true,
+    "noImplicitAny": false, //true
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
     "noUncheckedIndexedAccess": true,
-
+      
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

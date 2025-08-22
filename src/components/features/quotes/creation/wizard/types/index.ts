@@ -3,7 +3,6 @@
  * Centralized type definitions for the Quote Creator Wizard system
  */
 
-import { ReactElement } from 'react';
 import { LucideIcon } from 'lucide-react';
 
 /**

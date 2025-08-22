@@ -7,9 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   Plus, 
-  FileText, 
-  Sparkles, 
-  Zap, 
+  Sparkles,
   Star, 
   Building2, 
   Rocket,

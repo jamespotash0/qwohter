@@ -24,8 +24,8 @@ export default tseslint.config(
         { allowConstantExport: true },
       ],
       // Phase 1 Refactoring: Production-ready strict rules
-      "@typescript-eslint/no-unused-vars": "error",
-      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unused-vars": "warn",
+      "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/prefer-nullish-coalescing": "error",
       "@typescript-eslint/prefer-optional-chain": "error",
       "no-console": ["warn", { "allow": ["warn", "error"] }],

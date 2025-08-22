@@ -13,7 +13,6 @@ import {
   SidebarMenuButton,
   SidebarProvider,
   SidebarInset,
-  SidebarTrigger
 } from "@/components/ui/sidebar";
 import ContactInfoForm from "@/components/features/quotes/forms/contact/ContactInfoForm";
 import JobDetailsForm from "@/components/features/quotes/forms/contact/JobDetailsForm";

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/common/layout";
 import { 
@@ -11,8 +11,6 @@ import {
   Target,
   Building2,
   User,
-  Zap,
-  Activity
 } from "lucide-react";
 import { useQuotes } from "@/hooks/useQuotes";
 import { useOrganizations } from "@/hooks/useOrganizations";

@@ -5,8 +5,6 @@ import {
   Download,
   Undo2,
   Eye,
-  EyeOff,
-  Edit3,
   FileText,
   Bold,
   Italic,
