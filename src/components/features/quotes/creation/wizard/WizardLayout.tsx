@@ -65,9 +65,9 @@ export const WizardLayout: React.FC<WizardLayoutProps> = ({
                   Quote Name
                 </label>
                 <QuoteNameInput
-                  quoteName={quoteName}
-                  onQuoteNameChange={onQuoteNameChange}
-                  className="min-w-[300px]"
+                  value={quoteName}
+                  onChange={(e) => onQuoteNameChange?.(e.target.value)}
+                  onSave={() => {}}
                 />
               </div>
             </div>

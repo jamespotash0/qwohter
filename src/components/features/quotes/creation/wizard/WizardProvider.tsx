@@ -9,7 +9,7 @@ interface WizardContextType {
   // State
   activeStep: number;
   steps: WizardStep[];
-  currentStep: WizardStep;
+  currentStep: WizardStep | undefined;
   
   // Navigation
   setActiveStep: (step: number) => void;

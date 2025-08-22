@@ -67,7 +67,13 @@ const migrateWallDetails = (wallDetails: any): WallDetails => {
 const convertRowToQuote = (row: QuoteRow): Quote => {
   return {
     ...row,
-    wall_details: migrateWallDetails(row.wall_details),
+    wall_details: (() => {
+      const migrated = migrateWallDetails(row.wall_details);
+      return {
+        ...migrated,
+        id: migrated.id || crypto.randomUUID()
+      };
+    })(),
     project_name: row.project_name || undefined,
     date_last_downloaded: row.date_last_downloaded || undefined,
     status: row.status || 'Draft',

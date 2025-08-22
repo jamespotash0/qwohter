@@ -34,9 +34,8 @@ export const ContactInfoStep: React.FC<ContactInfoStepProps> = ({
       description="Enter your company contact details and information"
     >
       <ContactInfoForm
-        contactInfo={data}
-        setContactInfo={onChange}
-        validationErrors={{}} // TODO: Add validation
+        data={data}
+        onUpdate={onChange}
       />
     </WizardStep>
   );

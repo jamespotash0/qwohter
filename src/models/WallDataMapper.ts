@@ -89,6 +89,8 @@ export function getEmptyGlassWallFields(): Partial<WallSpecification> {
  * Creates a default wall specification with basic required fields
  */
 export function createDefaultWallSpec(wallSystemType: string = ""): WallSpecification {
+  const glassWallFields = getEmptyGlassWallFields();
+  
   return {
     wallSystemType,
     lengthFeet: "",
@@ -116,8 +118,8 @@ export function createDefaultWallSpec(wallSystemType: string = ""): WallSpecific
     trackType: "",
     trackSystem: "",
     // Initialize all glass wall fields as empty
-    ...getEmptyGlassWallFields(),
-  };
+    ...(glassWallFields as Partial<WallSpecification>),
+  } as WallSpecification;
 }
 
 /**

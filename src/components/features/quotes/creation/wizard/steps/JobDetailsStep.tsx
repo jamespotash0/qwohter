@@ -34,9 +34,8 @@ export const JobDetailsStep: React.FC<JobDetailsStepProps> = ({
       description="Provide job location, client information, and project specifics"
     >
       <JobDetailsForm
-        jobDetails={data}
-        setJobDetails={onChange}
-        validationErrors={{}} // TODO: Add validation
+        data={data}
+        onUpdate={onChange}
       />
     </WizardStep>
   );
