@@ -70,7 +70,7 @@ const convertRowToQuote = (row: QuoteRow): Quote => {
     wall_details: migrateWallDetails(row.wall_details),
     project_name: row.project_name || undefined,
     date_last_downloaded: row.date_last_downloaded || undefined,
-    status: row.status || undefined
+    status: row.status || 'Draft',
   };
 };
 
@@ -379,7 +379,7 @@ export const useQuotes = () => {
 
       remainingWallNames.forEach((oldWallName, index) => {
         const newWallName = `Wall ${wallLabels[index]}`;
-        renamedWalls[newWallName] = currentWalls[oldWallName];
+        renamedWalls[newWallName] = currentWalls[oldWallName] as WallSpecification; //wallSpecification
       });
 
       // Update the wall details with renamed walls

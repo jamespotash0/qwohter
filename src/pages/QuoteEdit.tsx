@@ -5,6 +5,7 @@ import { useQuotes, Quote } from "@/hooks/useQuotes";
 import { useToast } from "@/hooks/use-toast";
 import UnifiedQuoteEditor from "@/components/features/quotes/editing/UnifiedQuoteEditor";
 import { SmartQuoteData } from "@/templates/SmartQuoteTemplate";
+import { WallDetails } from "@/types/quote";
 
 const QuoteEdit = () => {
   const { proposalNumber } = useParams<{
@@ -70,6 +71,10 @@ const QuoteEdit = () => {
 
         const rawQuote = quotes[0];
         
+        if (!rawQuote) {
+          throw new Error('Quote not found');
+        }
+        
         // Convert the database quote to the proper Quote type
         const loadedQuote: Quote = {
           ...rawQuote,
@@ -104,16 +109,17 @@ const QuoteEdit = () => {
       // First, save the form data changes to the main quote data
       const { customSections, customHTML, isCustomized, ...formDataUpdates } = customizedQuote;
       
-      // Ensure wall_details has required id field if it exists
+      // Ensure wall_details has required id field if it exists  
       const updates: Partial<Quote> = {
-        ...formDataUpdates,
-        ...(formDataUpdates.wall_details && {
-          wall_details: {
-            id: formDataUpdates.wall_details.id || quote.wall_details?.id || '',
-            walls: formDataUpdates.wall_details.walls || {}
-          }
-        })
+        ...formDataUpdates
       };
+      
+      if (formDataUpdates.wall_details) {
+        updates.wall_details = {
+          id: formDataUpdates.wall_details.id || quote.wall_details?.id || crypto.randomUUID(),
+          walls: formDataUpdates.wall_details.walls || {}
+        } as WallDetails;
+      }
       
       // Update the main quote data with form changes
       await updateQuote(quote.id, updates);

@@ -195,7 +195,7 @@ export const useQuotesStore = create<QuotesState>()(
 
         // Update quote
         updateQuote: async (id: string, updates: Partial<Quote>) => {
-          const { quotes, currentQuote, _setQuotes, _setLoading, _setError } = get();
+          const { _setLoading, _setError } = get();
           
           try {
             _setLoading(true);
@@ -325,7 +325,10 @@ export const useQuotesStore = create<QuotesState>()(
           
           remainingWallNames.forEach((oldWallName, index) => {
             const newWallName = `Wall ${wallLabels[index]}`;
-            renamedWalls[newWallName] = currentWalls[oldWallName];
+            const wallSpec = currentWalls[oldWallName];
+            if (wallSpec) {
+              renamedWalls[newWallName] = wallSpec;
+            }
           });
           
           const updatedWallDetails = {

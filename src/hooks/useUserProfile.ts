@@ -5,7 +5,7 @@ export interface UserProfile {
   id: string;
   full_name: string | null;
   email: string;
-  organization_id: string;
+  organization_id: string | null;
   role: string;
   created_at: string;
   updated_at: string;

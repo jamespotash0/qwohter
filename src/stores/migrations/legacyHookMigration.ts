@@ -6,8 +6,7 @@
  */
 
 import { useQuotesStore, useAuthStore } from '../index';
-import type { Quote } from '@/hooks/useQuotes';
-import type { UserProfile } from '@/hooks/useUserProfile';
+import React from 'react';
 
 /**
  * Migrated useQuotes hook - maintains API compatibility
@@ -155,10 +154,10 @@ export const migrationUtils = {
       return (props: P) => {
         if (process.env.NODE_ENV === 'development') {
           console.info(
-            `⚡ Legacy component wrapper active for ${Component.name}. Consider migrating to global state.`
+            `⚡ Legacy component wrapper active for ${Component.displayName || Component.name}. Consider migrating to global state.`
           );
         }
-        return <Component {...props} />;
+        return React.createElement(Component, props);
       };
     },
     

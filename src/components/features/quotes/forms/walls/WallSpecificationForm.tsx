@@ -24,12 +24,18 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     // Convert "None" to empty string to reset to placeholder state
     const actualValue = value === "None" ? "" : value;
     
+    const currentWall = walls.walls[wallName];
+    if (!currentWall) {
+      console.error(`Wall ${wallName} not found`);
+      return;
+    }
+    
     const updatedWalls = {
       ...walls,
       walls: {
         ...walls.walls,
         [wallName]: {
-          ...walls.walls[wallName],
+          ...currentWall,
           [field]: actualValue,
         },
       },
@@ -80,8 +86,9 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     
     if (field === "panelConfiguration") {
       // Reset dependent fields
+      const currentWallData = updatedWalls.walls[wallName];
       updatedWalls.walls[wallName] = {
-        ...updatedWalls.walls[wallName],
+        ...currentWallData,
         series: "",
         model: "",
         panelThickness: "",
@@ -96,53 +103,58 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     
     if (field === "series") {
       // Auto-update panel thickness based on series
+      const currentWallData = updatedWalls.walls[wallName];
       updatedWalls.walls[wallName] = {
-        ...updatedWalls.walls[wallName],
+        ...currentWallData,
         panelThickness: value === "2000" ? "3" : value === "3000" ? "4" : value === "Hufcor: 600" ? "4" : "",
         model: "",
         panelSkin: "",
         panelDesign: "",
         stcRating: "",
         initialClosureSystem: "",
-      };
+      } as WallSpecification;
     }
     
     if (field === "model") {
       // Auto-update track type based on model
+      const currentWallData = updatedWalls.walls[wallName];
       updatedWalls.walls[wallName] = {
-        ...updatedWalls.walls[wallName],
+        ...currentWallData,
         trackType: getTrackTypeByModel(value),
         trackSystem: "",
         panelSkin: "",
         panelDesign: "",
         stcRating: "",
         initialClosureSystem: "",
-      };
+      } as WallSpecification;
     }
     
     if (field === "panelSkin" || field === "model") {
       // Reset STC rating when model or panel skin changes
+      const currentWallData = updatedWalls.walls[wallName];
       updatedWalls.walls[wallName] = {
-        ...updatedWalls.walls[wallName],
+        ...currentWallData,
         stcRating: "",
-      };
+      } as WallSpecification;
     }
     
     if (field === "trackType") {
       // Reset track system when track type changes
+      const currentWallData = updatedWalls.walls[wallName];
       updatedWalls.walls[wallName] = {
-        ...updatedWalls.walls[wallName],
+        ...currentWallData,
         trackSystem: "",
-      };
+      } as WallSpecification;
     }
     
     if (field === "passDoorPanels") {
       // Reset quantity when pass doors is set to "None" or empty
       if (actualValue === "" || actualValue === "None") {
+        const currentWallData = updatedWalls.walls[wallName];
         updatedWalls.walls[wallName] = {
-          ...updatedWalls.walls[wallName],
+          ...currentWallData,
           passDoorQuantity: "",
-        };
+        } as WallSpecification;
       }
     }
     
@@ -150,13 +162,16 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       // Reset specific item when category changes
       // Clear the field entirely if the category doesn't need specific items
       const categoriesWithoutSpecificItems = ["Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
+      const currentWallData = updatedWalls.walls[wallName];
       updatedWalls.walls[wallName] = {
-        ...updatedWalls.walls[wallName],
+        ...currentWallData,
         panelFinishSpecificItem: categoriesWithoutSpecificItems.includes(value) ? "" : "",
-      };
+      } as WallSpecification;
     }
     
-    onUpdate(updatedWalls);
+    if (onUpdate) {
+      onUpdate(updatedWalls);
+    }
   };
 
 
@@ -222,14 +237,17 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
 
   const renameWall = (oldName: string, newName: string) => {
     if (newName && newName !== oldName && !walls.walls[newName]) {
-      const { [oldName]: wallData, ...otherWalls } = walls.walls;
-      onUpdate({
-        ...walls,
-        walls: {
-          ...otherWalls,
-          [newName]: wallData,
-        }
-      });
+      const wallData = walls.walls[oldName];
+      if (wallData) {
+        const { [oldName]: removedWall, ...otherWalls } = walls.walls;
+        onUpdate({
+          ...walls,
+          walls: {
+            ...otherWalls,
+            [newName]: wallData,
+          }
+        });
+      }
     }
     setEditingWallName(null);
     setNewWallName("");
@@ -279,6 +297,11 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       {wallNames.map((wallName) => {
         const wall = walls.walls[wallName];
         const isCollapsed = collapsedWalls.has(wallName);
+        
+        if (!wall) {
+          return null;
+        }
+        
         return (
           <Collapsible key={wallName} open={!isCollapsed} onOpenChange={() => toggleWallCollapse(wallName)}>
             <Card className="shadow-sm border">
@@ -317,7 +340,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         <div className="flex items-center gap-2 ml-4">
                           <Label className="text-sm font-medium">Qty:</Label>
                           <Input
-                            value={wall.quantity}
+                            value={wall.quantity || ''}
                             onChange={(e) => {
                               e.stopPropagation();
                               handleWallChange(wallName, "quantity", e.target.value);

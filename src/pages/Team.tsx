@@ -26,7 +26,7 @@ import {
   UserCheck,
   UserX,
   Calendar,
-  Activity
+  // Activity
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
@@ -144,7 +144,7 @@ const Team = () => {
   const { data: orgData, error: orgError } = await supabase
     .from('organizations')
     .select('organization_code')
-    .eq('id', userData.organization_id)
+    .eq('id', userData.organization_id!)
     .single();
 
   if (orgError || !orgData) {
@@ -158,7 +158,7 @@ const Team = () => {
   const copyOrganizationCode = async () => {
     // TODO: Get organization code from database when available
     // const orgCode = await getOrgCode(userId); // Placeholder
-    navigator.clipboard.writeText(orgCode);
+    navigator.clipboard.writeText(orgCode!);
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
     toast({

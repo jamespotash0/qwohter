@@ -105,6 +105,7 @@ export function createDefaultWallSpec(wallSystemType: string = ""): WallSpecific
     panelSkin: "",
     stcRating: "",
     passDoorPanels: "",
+    passDoorQuantity: "",
     panelFinishCategory: "",
     panelFinishSpecificItem: "",
     verticalSeals: "",
