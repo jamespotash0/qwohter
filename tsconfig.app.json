@@ -15,11 +15,13 @@
     "jsx": "react-jsx",
 
     /* Linting */
-    "strict": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "noImplicitAny": false,
-    "noFallthroughCasesInSwitch": false,
+    "strict": false, //true causes many issues
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitAny": false, //pages/index.tsx
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true,
 
     "baseUrl": ".",
     "paths": {

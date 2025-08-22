@@ -1,7 +1,6 @@
-import { useState } from "react";
-import { BarChart3, Calendar, Home, Settings, HelpCircle, LogOut, Users, FileText, Building2, Menu } from "lucide-react";
+import { BarChart3, Home, Settings, LogOut, Users, FileText, Building2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarFooter, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 interface AppSidebarProps {
   user: string;
   onLogout: () => void;

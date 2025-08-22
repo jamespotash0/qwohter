@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
@@ -11,16 +10,12 @@ import {
   EyeOff, 
   RefreshCw, 
   Save, 
-  Edit3, 
   FileText,
   Download,
   Undo2
 } from 'lucide-react';
 import { generateQuoteText } from '../generation/QuoteTextGenerator';
 import { SmartQuoteHelper, QuoteSection, SmartQuoteData } from '@/templates/SmartQuoteTemplate';
-// import { PageContainer } from './PageContainer';
-import { PageContainer } from '@/components/common/layout';
-import { DynamicPageBreakManager } from '@/utils/dynamicPageBreakManager';
 
 interface SmartQuoteEditorProps {
   quote: any;

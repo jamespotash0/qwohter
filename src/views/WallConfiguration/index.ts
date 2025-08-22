@@ -2,7 +2,7 @@
 // Provides clean imports for consuming components
 
 export { GlassWallConfigurationView } from './GlassWallConfigurationView';
-// export { WallSpecificationView } from './WallSpecificationView';
+
 
 // Form Sections
 export { BasicWallInfo } from './WallFormSections/BasicWallInfo';
