@@ -31,33 +31,37 @@ export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: stri
 
   const tempDiv = document.createElement('div');
   sanitizeHTML.setInnerHTML(tempDiv, sanitizeHTML.cleanForPDF(quoteText));
+  tempDiv.className = 'quote-document';
   tempDiv.style.cssText = `
-    font-family: 'Times New Roman', Times, serif;
-    font-size: 12pt;
-    line-height: 1.15;
-    color: #000;
+    width: 816px;
+    height: 1056px;
     background: white;
-    margin: 0;
-    padding: 1in;
-    width: 8.5in;
-    min-height: 11in;
+    padding: 48px;
     box-sizing: border-box;
     position: absolute;
     left: -9999px;
     top: 0px;
     visibility: visible;
     pointer-events: none;
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 12pt;
+    line-height: 1.15;
+    color: #000;
+    overflow: visible;
+    word-wrap: break-word;
   `;
 
-  // Add enhanced styles for the header layout
+  // Add styles matching live preview exactly
   const style = document.createElement('style');
   style.textContent = `
+
+    .quote-document,
     .quote-container {
-      font-family: "Times New Roman", serif;
+      font-family: 'Times New Roman', Times, serif;
       font-size: 12pt;
       line-height: 1.15;
-      width: 8.5in;
-      margin: 0 auto;
+      width: 100%;
+      margin: 0;
       color: black;
     }
     
@@ -241,91 +245,46 @@ export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: stri
     // Try HTML-to-canvas rendering first with enhanced page support
     const html2canvas = (await import('html2canvas')).default;
     
-    // Check if content has page structure
-    const pageElements = tempDiv.querySelectorAll('.page');
-    
-    if (pageElements.length > 0) {
-      // Handle multi-page content - use US Letter to match CSS
-      const pdf = new jsPDF('p', 'in', 'letter');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      for (let i = 0; i < pageElements.length; i++) {
-        const pageElement = pageElements[i] as HTMLElement;
-        
-        const canvas = await html2canvas(pageElement, {
-          scale: 1,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff',
-          width: 816,  // 8.5 inches * 96 DPI
-          height: 1056, // 11 inches * 96 DPI
-          logging: false,
-          removeContainer: false
-        });
+    // Render directly with simplified structure matching live preview
+    const canvas = await html2canvas(tempDiv, {
+      scale: 1,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      width: 816,  // 8.5 inches * 96 DPI (matches DocumentCanvas)
+      height: 1056, // 11 inches * 96 DPI (matches DocumentCanvas)
+      logging: false,
+      removeContainer: false
+    });
 
-        const imgData = canvas.toDataURL('image/png');
-        const imgWidth = pdfWidth;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'in', 'letter');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const imgWidth = pdfWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-        if (i > 0) {
-          pdf.addPage();
-        }
-        
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, Math.min(imgHeight, pdfHeight));
-      }
-      
-      // Save the PDF
-      const currentVersion = quote.version || 1;
-      const today = new Date();
-      const dateStr = today.toLocaleDateString('en-CA');
-      const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
-      
-      const fileName = `${quoteName}_v${currentVersion}_${dateStr}.pdf`;
-      pdf.save(fileName);
-      
-    } else {
-      // Single page fallback
-      const canvas = await html2canvas(tempDiv, {
-        scale: 1,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: 816,  // 8.5 inches * 96 DPI
-        height: 1056, // 11 inches * 96 DPI
-        logging: false,
-        removeContainer: false
-      });
+    let heightLeft = imgHeight;
+    let position = 0;
 
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'in', 'letter');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pdfHeight;
 
-      let heightLeft = imgHeight;
-      let position = 0;
-
+    while (heightLeft >= 0) {
+      position = heightLeft - imgHeight;
+      pdf.addPage();
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
       heightLeft -= pdfHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight;
-      }
-
-      // Use current version (starts at 1) and increment after download
-      const currentVersion = quote.version || 1;
-      const today = new Date();
-      const dateStr = today.toLocaleDateString('en-CA');
-      const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
-      
-      const fileName = `${quoteName}_v${currentVersion}_${dateStr}.pdf`;
-      pdf.save(fileName);
     }
+
+    // Use current version (starts at 1) and increment after download
+    const currentVersion = quote.version || 1;
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-CA');
+    const quoteName = quote.quote_details?.quoteName || quote.project_name || quote.proposal_number;
+    
+    const fileName = `${quoteName}_v${currentVersion}_${dateStr}.pdf`;
+    pdf.save(fileName);
   } catch (canvasError) {
     console.error('❌ Canvas rendering failed, falling back to text PDF:', canvasError);
     
