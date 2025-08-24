@@ -23,7 +23,7 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
   };
 
   // Helper function to handle wall addition from dialog
-  const handleAddWall = (wallName: string, wallData: any) => {
+  const handleAddWall = async (wallName: string, wallData: any) => {
     const updatedWalls = {
       id: data.wall_details?.id || crypto.randomUUID(),
       walls: {
@@ -32,6 +32,15 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
       }
     };
     onChange('wall_details', updatedWalls);
+    
+    // Save to database immediately after updating local state
+    if (onDatabaseSave) {
+      try {
+        await onDatabaseSave();
+      } catch (error) {
+        console.error('Error saving wall to database:', error);
+      }
+    }
   };
 
   // Helper function to remove a wall

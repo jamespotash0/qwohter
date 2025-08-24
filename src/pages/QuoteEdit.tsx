@@ -107,18 +107,19 @@ const QuoteEdit = () => {
 
     try {
       // First, save the form data changes to the main quote data
-      const { customSections, customHTML, isCustomized, ...formDataUpdates } = customizedQuote;
+      const { customSections, customHTML, isCustomized, wall_details, ...formDataUpdates } = customizedQuote;
       
-      // Ensure wall_details has required id field if it exists  
+      // Create updates object excluding wall_details first
       const updates: Partial<Quote> = {
         ...formDataUpdates
       };
       
-      if (formDataUpdates.wall_details) {
+      // Handle wall_details separately to ensure proper typing
+      if (wall_details) {
         updates.wall_details = {
-          id: formDataUpdates.wall_details.id || quote.wall_details?.id || crypto.randomUUID(),
-          walls: formDataUpdates.wall_details.walls || {}
-        } as WallDetails;
+          id: wall_details.id || quote.wall_details?.id || crypto.randomUUID(),
+          walls: wall_details.walls || {}
+        };
       }
       
       // Update the main quote data with form changes
