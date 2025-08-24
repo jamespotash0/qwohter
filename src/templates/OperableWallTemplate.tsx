@@ -173,9 +173,9 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
       // Check for structure support - handle different possible values
       let structureSupport = wall.structureSupport;
       
-      // If not set or is 'None', try fallback to global structure support
+      // Legacy fallback removed - structure support now only per-wall
       if (!structureSupport || structureSupport === 'None' || structureSupport.trim() === '') {
-        structureSupport = data.support_structure?.mountingTrack;
+        structureSupport = 'standard support'; // Default fallback
       }
       
       return `<strong>${wallName}</strong> will be hung from <strong>${structureSupport}</strong>`;
@@ -228,7 +228,11 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
       strategy.push({ breakAfterSection: 'pass-doors-section', minimumHeight: 100 });
     }
 
-    if (data.pocket_doors?.foldType) {
+    // Check if any walls have pocket doors (new per-wall approach)
+    const hasPocketDoors = wallEntries.some(([, wall]) => 
+      wall.pocketDoors?.foldType && wall.pocketDoors?.foldType !== 'None'
+    );
+    if (hasPocketDoors) {
       strategy.push({ breakAfterSection: 'pocket-doors-section', minimumHeight: 150 });
     }
 

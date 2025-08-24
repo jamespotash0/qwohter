@@ -235,16 +235,7 @@ export class SectionGenerators {
       }));
 
 
-    // Fallback to global pocket_doors if no per-wall configs found (backward compatibility)
-    if (wallsWithPockets.length === 0 && data.pocket_doors?.foldType) {
-      const { foldType, foldStyle } = data.pocket_doors;
-      return `<div class="pocket-doors-section" style="line-height: 1.15;">
-        <h2 class="section-header">POCKET DOORS:</h2>
-        <p>
-          <strong>${foldType}</strong> doors with an <strong>${foldStyle || ''}</strong> style will be used to house the panels in the stack, offering a space-efficient and acoustically enhanced storage solution.
-        </p>  
-      </div>`;
-    }
+    // Legacy fallback removed - pocket doors now only stored per-wall
 
     if (wallsWithPockets.length === 0) return '';
 

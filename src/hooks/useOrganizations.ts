@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 export interface Organization {
   id: string;
   name: string;
-  created_by: string;
+  organization_code: string;
   created_at: string;
   updated_at: string;
 }
@@ -51,7 +51,7 @@ export const useOrganizations = () => {
         // If user has an organization, try to fetch it
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
-          .select('id, name, created_at, updated_at, created_by')
+          .select('id, name, organization_code, created_at, updated_at')
           .eq('id', profileData.organization_id)
           .single();
 
@@ -127,7 +127,6 @@ export const useOrganizations = () => {
         .from('organizations')
         .insert({
           name,
-          created_by: user.id,
           organization_code: orgCode
         })
         .select()

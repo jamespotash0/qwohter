@@ -9,7 +9,11 @@ export class PageBreakLogic {
 
   shouldAddPageBreak(data: QuoteData): { height: number; forceBreak: boolean } | null {
     const wallCount = this.helpers.getWallCount(data);
-    const hasPocketDoors = !!(data.pocket_doors?.foldType && data.pocket_doors?.foldStyle);
+    // Check if any walls have pocket doors (new per-wall approach)
+    const hasPocketDoors = !!(data.wall_details?.walls && 
+      Object.values(data.wall_details.walls).some(wall => 
+        wall.pocketDoors?.foldType && wall.pocketDoors?.foldType !== 'None'
+      ));
     
     // Calculate estimated content height
     let estimatedHeight = 400; // Base content height

@@ -17,7 +17,6 @@ export type Database = {
       organizations: {
         Row: {
           created_at: string
-          created_by: string
           id: string
           name: string
           organization_code: string
@@ -25,7 +24,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          created_by: string
           id?: string
           name: string
           organization_code: string
@@ -33,7 +31,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          created_by?: string
           id?: string
           name?: string
           organization_code?: string
@@ -97,13 +94,11 @@ export type Database = {
           job_details: Json
           labor_details: Json
           organization_id: string
-          pocket_doors: Json
           price_details: Json
           project_name: string | null
           proposal_number: string
           quote_details: Json
           status: string
-          support_structure: Json
           updated_at: string
           user_id: string
           version: number
@@ -117,13 +112,11 @@ export type Database = {
           job_details?: Json
           labor_details?: Json
           organization_id: string
-          pocket_doors?: Json
           price_details?: Json
           project_name?: string | null
           proposal_number: string
           quote_details?: Json
           status?: string
-          support_structure?: Json
           updated_at?: string
           user_id: string
           version?: number
@@ -137,13 +130,11 @@ export type Database = {
           job_details?: Json
           labor_details?: Json
           organization_id?: string
-          pocket_doors?: Json
           price_details?: Json
           project_name?: string | null
           proposal_number?: string
           quote_details?: Json
           status?: string
-          support_structure?: Json
           updated_at?: string
           user_id?: string
           version?: number

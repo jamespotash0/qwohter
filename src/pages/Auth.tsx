@@ -172,7 +172,6 @@ const Auth = () => {
           .from('organizations')
           .insert({
             name: orgName,
-            created_by: userId,
             organization_code: orgCode
           })
           .select()

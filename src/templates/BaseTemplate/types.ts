@@ -9,11 +9,7 @@ export interface QuoteData {
       [wallName: string]: WallSpecification;
     };
   };
-  pocket_doors?: {
-    foldType?: string;
-    foldStyle?: string;
-  };
-  support_structure?: any;
+  // Legacy fields removed - now stored in wall_details.walls[].pocketDoors and wall_details.walls[].structureSupport
   delivery_details?: any;
   labor_details?: any;
   price_details?: any;
