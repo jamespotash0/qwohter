@@ -32,14 +32,16 @@ export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: stri
   const tempDiv = document.createElement('div');
   sanitizeHTML.setInnerHTML(tempDiv, sanitizeHTML.cleanForPDF(quoteText));
   tempDiv.style.cssText = `
-    font-family: "Times New Roman", serif;
+    font-family: 'Times New Roman', Times, serif;
     font-size: 12pt;
     line-height: 1.15;
-    width: 8.5in;
-    margin: 0 auto;
-    padding: 48px;
-    color: black;
+    color: #000;
     background: white;
+    margin: 0;
+    padding: 1in;
+    width: 8.5in;
+    min-height: 11in;
+    box-sizing: border-box;
     position: absolute;
     left: -9999px;
     top: 0px;
@@ -243,8 +245,8 @@ export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: stri
     const pageElements = tempDiv.querySelectorAll('.page');
     
     if (pageElements.length > 0) {
-      // Handle multi-page content
-      const pdf = new jsPDF('p', 'mm', 'a4');
+      // Handle multi-page content - use US Letter to match CSS
+      const pdf = new jsPDF('p', 'in', 'letter');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
@@ -252,13 +254,13 @@ export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: stri
         const pageElement = pageElements[i] as HTMLElement;
         
         const canvas = await html2canvas(pageElement, {
-          scale: 2,
+          scale: 1,
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
-          width: pageElement.scrollWidth,
-          height: pageElement.scrollHeight,
-          logging: true,
+          width: 816,  // 8.5 inches * 96 DPI
+          height: 1056, // 11 inches * 96 DPI
+          logging: false,
           removeContainer: false
         });
 
@@ -285,18 +287,18 @@ export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: stri
     } else {
       // Single page fallback
       const canvas = await html2canvas(tempDiv, {
-        scale: 2,
+        scale: 1,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
-        width: tempDiv.scrollWidth,
-        height: tempDiv.scrollHeight,
-        logging: true,
+        width: 816,  // 8.5 inches * 96 DPI
+        height: 1056, // 11 inches * 96 DPI
+        logging: false,
         removeContainer: false
       });
 
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdf = new jsPDF('p', 'in', 'letter');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const imgWidth = pdfWidth;

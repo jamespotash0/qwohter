@@ -272,14 +272,16 @@ const QuoteEdit = () => {
       sanitizeHTML.setInnerHTML(tempDiv, sanitizeHTML.cleanForPDF(html));
       tempDiv.className = 'quote-preview-content'; // Use same class as live preview
       tempDiv.style.cssText = `
-        font-family: "Times New Roman", serif;
+        font-family: 'Times New Roman', Times, serif;
         font-size: 12pt;
         line-height: 1.15;
-        width: 8.5in;
-        margin: 0 auto;
-        padding: 48px;
-        color: black;
+        color: #000;
         background: white;
+        margin: 0;
+        padding: 1in;
+        width: 8.5in;
+        min-height: 11in;
+        box-sizing: border-box;
         position: absolute;
         left: -9999px;
         top: 0px;
