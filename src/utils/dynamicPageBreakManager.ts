@@ -1,4 +1,5 @@
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
+import { sanitizeHTML } from './security';
 
 export interface PageBreakRule {
   sectionClass: string;
@@ -14,7 +15,13 @@ export class DynamicPageBreakManager {
   private getPageBreakRules(data: QuoteData): PageBreakRule[] {
     const wallCount = this.getWallCount(data);
     const hasMultipleWalls = wallCount > 1;
-    const hasPocketDoors = !!(data.pocket_doors?.foldType && data.pocket_doors?.foldStyle);
+    const hasPocketDoors = 
+      // Check legacy pocket_doors field (if still exists)
+      !!(data as any).pocket_doors?.foldType ||
+      // Check individual walls for pocket doors
+      (data.wall_details && Object.values(data.wall_details.walls || {}).some(
+        (wall: any) => wall.pocketDoors?.foldType && wall.pocketDoors.foldType.toLowerCase() !== 'none'
+      ));
     
     const rules: PageBreakRule[] = [
       {
@@ -85,7 +92,7 @@ export class DynamicPageBreakManager {
     tempContainer.style.left = '-9999px';
     tempContainer.style.width = '794px'; // A4 width at scale 2
     tempContainer.style.visibility = 'hidden';
-    tempContainer.innerHTML = htmlContent;
+    sanitizeHTML.setInnerHTML(tempContainer, sanitizeHTML.cleanForPDF(htmlContent));
     document.body.appendChild(tempContainer);
 
     try {

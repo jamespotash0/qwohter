@@ -5,6 +5,55 @@
  * proper security practices are followed throughout the application.
  */
 
+import DOMPurify from 'dompurify';
+
+/**
+ * HTML sanitization utilities
+ */
+export const sanitizeHTML = {
+  /**
+   * Sanitize HTML content to prevent XSS attacks
+   */
+  clean: (html: string): string => {
+    if (typeof html !== 'string') return '';
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'u', 'p', 'br', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'tbody', 'thead'],
+      ALLOWED_ATTR: ['class', 'style'],
+      ALLOW_DATA_ATTR: false,
+      FORBID_TAGS: ['script', 'object', 'embed', 'iframe', 'form', 'input', 'textarea', 'select', 'button'],
+      KEEP_CONTENT: true
+    });
+  },
+  
+  /**
+   * Sanitize HTML for PDF generation (more permissive but still safe)
+   */
+  cleanForPDF: (html: string): string => {
+    if (typeof html !== 'string') return '';
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'u', 'p', 'br', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'tbody', 'thead', 'img'],
+      ALLOWED_ATTR: ['class', 'style', 'src', 'alt', 'width', 'height'],
+      ALLOW_DATA_ATTR: false,
+      FORBID_TAGS: ['script', 'object', 'embed', 'iframe', 'form', 'input', 'textarea', 'select', 'button', 'link'],
+      KEEP_CONTENT: true
+    });
+  },
+
+  /**
+   * Safe way to set innerHTML with sanitization
+   */
+  setInnerHTML: (element: HTMLElement, html: string): void => {
+    if (!element || typeof html !== 'string') return;
+    element.innerHTML = DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['b', 'strong', 'i', 'em', 'u', 'p', 'br', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'tbody', 'thead'],
+      ALLOWED_ATTR: ['class', 'style'],
+      ALLOW_DATA_ATTR: false,
+      FORBID_TAGS: ['script', 'object', 'embed', 'iframe'],
+      KEEP_CONTENT: true
+    });
+  }
+};
+
 /**
  * Input sanitization utilities
  */
@@ -95,14 +144,16 @@ export const validateSecurity = {
 export const securityHeaders = {
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'", // Note: Consider removing unsafe-inline for production
-    "style-src 'self' 'unsafe-inline'",
+    "script-src 'self' 'nonce-RANDOM_NONCE'", // Use nonce instead of unsafe-inline
+    "style-src 'self' 'nonce-RANDOM_NONCE'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https://*.supabase.co",
+    "connect-src 'self' https://*.supabase.co https://*.supabase.net",
     "frame-ancestors 'none'",
     "base-uri 'self'",
-    "form-action 'self'"
+    "form-action 'self'",
+    "object-src 'none'",
+    "media-src 'self'"
   ].join('; '),
   
   'X-Frame-Options': 'DENY',

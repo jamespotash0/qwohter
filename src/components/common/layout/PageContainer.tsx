@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { enhanceWithPageBreaks } from '@/utils/pageBreakManager';
 import '@/styles/pages.css';
+import { sanitizeHTML } from '@/utils/security';
 
 interface PageContainerProps {
   children: React.ReactNode;
@@ -58,7 +59,7 @@ export const PageContainer: React.FC<PageContainerProps> = ({
       
       // Create a temporary container to parse the paged HTML
       const tempPageContainer = document.createElement('div');
-      tempPageContainer.innerHTML = pagedHTML;
+      sanitizeHTML.setInnerHTML(tempPageContainer, sanitizeHTML.clean(pagedHTML));
       
       // Check if the content already has page structure
       const existingPages = tempPageContainer.querySelectorAll('.page');
@@ -93,7 +94,7 @@ export const PageContainer: React.FC<PageContainerProps> = ({
     
     const pageContent = document.createElement('div');
     pageContent.className = 'page-content';
-    pageContent.innerHTML = content;
+    sanitizeHTML.setInnerHTML(pageContent, sanitizeHTML.clean(content));
     
     pageElement.appendChild(pageContent);
     

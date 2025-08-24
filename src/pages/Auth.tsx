@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Building2, LogIn, UserPlus, Users, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { sanitizeInput, authRateLimiter } from "@/utils/security";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -48,6 +49,16 @@ const Auth = () => {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
+
+    // Rate limiting check
+    if (!authRateLimiter.isAllowed(email)) {
+      toast({
+        title: "Too many attempts",
+        description: "Please wait before trying again.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -336,7 +347,7 @@ const Auth = () => {
                       id="email" 
                       type="email" 
                       value={email} 
-                      onChange={(e) => setEmail(e.target.value)} 
+                      onChange={(e) => setEmail(sanitizeInput.email(e.target.value))} 
                       placeholder="Enter your email" 
                       required 
                       className="bg-secondary/50 border-border h-12 transition-all duration-200 focus:ring-2 focus:ring-primary/20" 
@@ -351,7 +362,7 @@ const Auth = () => {
                       id="password" 
                       type="password" 
                       value={password} 
-                      onChange={(e) => setPassword(e.target.value)} 
+                      onChange={(e) => setPassword(sanitizeInput.string(e.target.value))} 
                       placeholder="Enter your password" 
                       required 
                       className="bg-secondary/50 border-border h-12 transition-all duration-200 focus:ring-2 focus:ring-primary/20" 

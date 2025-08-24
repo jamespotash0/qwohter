@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { Quote } from '@/hooks/useQuotes';
+import { sanitizeHTML } from './security';
 
 export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: string) => Promise<any>) => {
   console.log('🔍 Starting PDF generation for quote:', quote.proposal_number);
@@ -29,7 +30,7 @@ export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: stri
   }
 
   const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = quoteText;
+  sanitizeHTML.setInnerHTML(tempDiv, sanitizeHTML.cleanForPDF(quoteText));
   tempDiv.style.cssText = `
     font-family: "Times New Roman", serif;
     font-size: 12pt;

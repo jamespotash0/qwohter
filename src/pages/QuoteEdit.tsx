@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import UnifiedQuoteEditor from "@/components/features/quotes/editing/UnifiedQuoteEditor";
 import { SmartQuoteData } from "@/templates/SmartQuoteTemplate";
 import { WallDetails } from "@/types/quote";
+import { sanitizeHTML } from "@/utils/security";
 
 const QuoteEdit = () => {
   const { proposalNumber } = useParams<{
@@ -268,7 +269,7 @@ const QuoteEdit = () => {
       
       // Create temp div with exactly the same styling as the live preview
       const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = html;
+      sanitizeHTML.setInnerHTML(tempDiv, sanitizeHTML.cleanForPDF(html));
       tempDiv.className = 'quote-preview-content'; // Use same class as live preview
       tempDiv.style.cssText = `
         font-family: "Times New Roman", serif;

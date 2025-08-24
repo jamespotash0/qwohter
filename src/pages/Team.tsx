@@ -10,6 +10,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/common/layout";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { sanitizeInput } from "@/utils/security";
 import { 
   Users, 
   UserPlus, 
@@ -343,7 +344,7 @@ const Team = () => {
                               type="email"
                               placeholder="Enter email address"
                               value={inviteEmail}
-                              onChange={(e) => setInviteEmail(e.target.value)}
+                              onChange={(e) => setInviteEmail(sanitizeInput.email(e.target.value))}
                               className="bg-secondary/50"
                             />
                           </div>

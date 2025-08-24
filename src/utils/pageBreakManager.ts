@@ -3,6 +3,8 @@
  * Builds upon existing smartPageBreak functionality
  */
 
+import { sanitizeHTML } from './security';
+
 interface PageBreakConfig {
   pageHeight: number; // Page height in pixels
   pageWidth: number; // Page width in pixels  
@@ -158,7 +160,7 @@ export class PageBreakManager {
     tempDiv.style.left = '-9999px';
     tempDiv.style.width = `${this.config.pageWidth - this.config.marginLeft - this.config.marginRight}px`;
     tempDiv.style.visibility = 'hidden';
-    tempDiv.innerHTML = htmlContent;
+    sanitizeHTML.setInnerHTML(tempDiv, sanitizeHTML.cleanForPDF(htmlContent));
     document.body.appendChild(tempDiv);
     return tempDiv;
   }
