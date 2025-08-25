@@ -39,10 +39,6 @@ const DashboardPage = () => {
     navigate("/auth");
   };
 
-  // const handleEditQuote = (quoteName: string) => {
-  //   setCurrentQuote(quoteName);
-  // };
-
   const handleQuoteNameChange = (newName: string) => {
     setCurrentQuote(newName);
   };

@@ -158,12 +158,12 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ quotes }) => {
     ],
   };
 
-  // Weekly Activity Bar Chart
+  // Weekly Quote Activity Bar Chart
   const weeklyActivityData = {
     labels: chartData.weeklyData.map(d => d.day),
     datasets: [
       {
-        label: 'Daily Activity',
+        label: 'Daily Quote Activity',
         data: chartData.weeklyData.map(d => d.count),
         backgroundColor: 'rgba(168, 85, 247, 0.8)',
         borderColor: 'rgb(168, 85, 247)',
@@ -219,13 +219,22 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ quotes }) => {
   const doughnutOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    layout: {
+      padding: {
+        top: 20,
+        bottom: 20,
+        left: 20,
+        right: 20,
+      },
+    },
     plugins: {
       legend: {
         position: 'bottom' as const,
         labels: {
-          padding: 20,
+          padding: 15,
           usePointStyle: true,
           color: '#64748b',
+          boxWidth: 12,
         },
       },
       tooltip: {
@@ -266,7 +275,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ quotes }) => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-64">
+          <div className="h-72">
             <Doughnut data={statusData} options={doughnutOptions} />
           </div>
         </CardContent>
@@ -300,17 +309,31 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ quotes }) => {
         </CardContent>
       </Card>
 
-      {/* Weekly Activity */}
+      {/* Weekly Quote Activity */}
       <Card className="card-elevated hover:shadow-medium transition-all duration-300">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-purple-600" />
-            Weekly Activity
+            Weekly Quote Activity
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-64">
-            <Bar data={weeklyActivityData} options={chartOptions} />
+            <Bar data={weeklyActivityData} options={{
+              ...chartOptions,
+              scales: {
+                ...chartOptions.scales,
+                y: {
+                  ...chartOptions.scales.y,
+                  ticks: {
+                    ...chartOptions.scales.y.ticks,
+                    stepSize: 1,
+                    precision: 0,
+                  },
+                  beginAtZero: true,
+                },
+              },
+            }} />
           </div>
         </CardContent>
       </Card>
