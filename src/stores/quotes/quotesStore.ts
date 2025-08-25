@@ -160,7 +160,6 @@ export const useQuotesStore = create<QuotesState>()(
                   date: quoteData.jobDetails.date
                 },
                 wall_details: filterWallDetailsForSave(quoteData.walls || {}),
-                pocket_doors: quoteData.pocketDoors || {},
                 price_details: {
                   base_price: quoteData.pricing.basePrice,
                   freight: quoteData.pricing.freight,
@@ -168,7 +167,6 @@ export const useQuotesStore = create<QuotesState>()(
                   payment_upon_drawings: quoteData.pricing.paymentUponDrawings,
                   payment_upon_track_installation: quoteData.pricing.paymentUponTrackInstallation
                 },
-                support_structure: quoteData.supportStructure || {},
                 delivery_details: quoteData.deliveryLabor.delivery || {},
                 labor_details: quoteData.deliveryLabor.labor || {},
                 status: quoteData.status || 'Draft',

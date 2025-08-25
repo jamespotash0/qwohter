@@ -13,7 +13,7 @@ const QuoteNameInput = ({
   onChange, 
   maxChars = 35, 
   onSave,
-  className 
+  // className 
 }: QuoteNameInputProps) => {
   const spanRef = useRef(null);
   const inputRef = useRef(null);

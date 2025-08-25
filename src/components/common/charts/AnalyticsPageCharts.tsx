@@ -16,7 +16,6 @@ import {
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
-  TrendingUp, 
   BarChart3, 
   PieChart,
   Target

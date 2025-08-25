@@ -98,7 +98,7 @@ export class DynamicPageBreakManager {
     try {
       const rules = this.getPageBreakRules(data);
       let processedContent = htmlContent;
-      let currentPageHeight = 0;
+      // let currentPageHeight = 0;
 
       // Process each section according to rules
       rules.forEach(rule => {

@@ -31,7 +31,6 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
         onFieldChange(wallName, 'glasswallGlassType', '');
         onFieldChange(wallName, 'glasswallPartitionSupport', '');
         onFieldChange(wallName, 'glasswallFrameThickness', '');
-        onFieldChange(wallName, 'glasswallPanelWidth', '');
         onFieldChange(wallName, 'glasswallPanelFace', '');
         onFieldChange(wallName, 'glasswallFrameFinish', '');
         onFieldChange(wallName, 'glasswallHingeType', '');
@@ -55,8 +54,8 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Glass Wall Model - Full width */}
-      <div className="space-y-1">
+      {/* Glass Wall Model - Hidden in quick edit */}
+      <div className="space-y-1 hidden">
         <Label className="text-xs">Glass Wall Model</Label>
         <Select
           key={`${wallName}-glasswallModel-${wall.glasswallModel}`}
@@ -78,7 +77,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
 
       {/* 2x2 Grid Layout for Glass Wall Fields */}
       <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
+        <div className="space-y-1 hidden">
           <Label className="text-xs">Panel Configuration</Label>
           <Select
             value={wall.glasswallPanelConfiguration || ''}
@@ -122,7 +121,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 hidden">
           <Label className="text-xs">Operation</Label>
           <Select
             value={wall.glasswallOperation || ''}
@@ -149,7 +148,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
         </div>
 
         {/* Row 2 */}
-        <div className="space-y-1">
+        <div className="space-y-1 hidden">
           <Label className="text-xs">STC Rating</Label>
           <Select
             value={wall.glasswallSTCRating || ''}
@@ -279,29 +278,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
           />
         </div>
 
-        {/* Row 4 */}
-        <div className="space-y-1">
-          <Label className="text-xs">Panel Width</Label>
-          <Input
-            value={(() => {
-              const model = wall.glasswallModel;
-              let width = '';
-              if (model === 'Stella') width = '51"';
-              if (model === 'Luna') width = '41-3/8"';
-              if (model === 'Illona') width = '39-3/8"';
-              if (model === 'Ava') width = '48"';
-              if (model === 'Mata') width = '48"';
-              
-              if (width && width !== wall.glasswallPanelWidth) {
-                onFieldChange(wallName, 'glasswallPanelWidth', width);
-              }
-              
-              return width || 'N/A';
-            })()}
-            readOnly
-            className="text-xs h-8 bg-muted text-muted-foreground"
-          />
-        </div>
+        {/* Row 4 - Panel Width removed */}
         <div className="space-y-1">
           <Label className="text-xs">Panel Face Options</Label>
           <Select
@@ -315,6 +292,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             <SelectContent className="text-left">
               {wall.glasswallModel === "Stella" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Solid Face">Solid Face</SelectItem>
                   <SelectItem className="text-left" value="MDF-Backed Melamine">MDF-Backed Melamine</SelectItem>
                   <SelectItem className="text-left" value="High Pressure Laminate">High Pressure Laminate</SelectItem>
@@ -324,6 +302,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
               )}
               {wall.glasswallModel === "Luna" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Solid Face">Solid Face</SelectItem>
                   <SelectItem className="text-left" value="MDF-Backed Melamine">MDF-Backed Melamine</SelectItem>
                   <SelectItem className="text-left" value="High Pressure Laminate">High Pressure Laminate</SelectItem>
@@ -332,13 +311,17 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
                 </>
               )}
               {wall.glasswallModel === "Illona" && (
-                <SelectItem className="text-left" value="Surface-Mounted Muntins">Surface-Mounted Muntins</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="Surface-Mounted Muntins">Surface-Mounted Muntins</SelectItem>
+                </>
               )}
               {wall.glasswallModel === "Ava" && (
                 <SelectItem className="text-left" value="None">None</SelectItem>
               )}
               {wall.glasswallModel === "Mata" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Wood Insert">Wood Insert</SelectItem>
                   <SelectItem className="text-left" value="Mullions & Surface-Mounted Muntins">Mullions & Surface-Mounted Muntins</SelectItem>
                 </>
@@ -361,6 +344,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             <SelectContent className="text-left">
               {wall.glasswallModel === "Stella" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Clear Anodized">Clear Anodized</SelectItem>
                   <SelectItem className="text-left" value="Black">Black</SelectItem>
                   <SelectItem className="text-left" value="White">White</SelectItem>
@@ -370,6 +354,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
               )}
               {wall.glasswallModel === "Luna" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
                   <SelectItem className="text-left" value="Custom RAL Powder Coat">Custom RAL Powder Coat</SelectItem>
                   <SelectItem className="text-left" value="Sublimation Wood Look">Sublimation Wood Look</SelectItem>
@@ -377,6 +362,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
               )}
               {wall.glasswallModel === "Illona" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
                   <SelectItem className="text-left" value="White Powder Coat">White Powder Coat</SelectItem>
                   <SelectItem className="text-left" value="Custom RAL Powder Coat">Custom RAL Powder Coat</SelectItem>
@@ -385,6 +371,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
               )}
               {wall.glasswallModel === "Ava" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Clear Anodized">Clear Anodized</SelectItem>
                   <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
                   <SelectItem className="text-left" value="Custom RAL Color Options">Custom RAL Color Options</SelectItem>
@@ -392,6 +379,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
               )}
               {wall.glasswallModel === "Mata" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Stained Fruitwood Dark Oak">Stained Fruitwood Dark Oak</SelectItem>
                   <SelectItem className="text-left" value="Stained Wheat">Stained Wheat</SelectItem>
                   <SelectItem className="text-left" value="Stained Cordovan">Stained Cordovan</SelectItem>
@@ -415,10 +403,16 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             </SelectTrigger>
             <SelectContent className="text-left">
               {["Stella", "Luna", "Illona"].includes(wall.glasswallModel || '') && (
-                <SelectItem className="text-left" value="Invisible Hinges">Invisible Hinges</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="Invisible Hinges">Invisible Hinges</SelectItem>
+                </>
               )}
               {["Ava", "Mata"].includes(wall.glasswallModel || '') && (
-                <SelectItem className="text-left" value="Full-Leaf Butt Hinges">Full-Leaf Butt Hinges</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="Full-Leaf Butt Hinges">Full-Leaf Butt Hinges</SelectItem>
+                </>
               )}
             </SelectContent>
           </Select>
@@ -466,6 +460,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             <SelectContent className="text-left">
               {wall.glasswallModel === "Stella" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Clear Anodized">Clear Anodized</SelectItem>
                   <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
                   <SelectItem className="text-left" value="White Powder Coat">White Powder Coat</SelectItem>
@@ -474,6 +469,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
               )}
               {["Luna", "Illona"].includes(wall.glasswallModel || '') && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
                   <SelectItem className="text-left" value="Clear Anodized">Clear Anodized</SelectItem>
                   <SelectItem className="text-left" value="White Powder Coat">White Powder Coat</SelectItem>
@@ -482,6 +478,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
               )}
               {wall.glasswallModel === "Ava" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
                   <SelectItem className="text-left" value="Clear Anodized">Clear Anodized</SelectItem>
                   <SelectItem className="text-left" value="Custom RAL Color Option">Custom RAL Color Option</SelectItem>
@@ -489,6 +486,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
               )}
               {wall.glasswallModel === "Mata" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
                   <SelectItem className="text-left" value="Clear Anodized">Clear Anodized</SelectItem>
                   <SelectItem className="text-left" value="Custom RAL Option">Custom RAL Option</SelectItem>
@@ -509,7 +507,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             </SelectTrigger>
             <SelectContent className="text-left">
               {["Luna", "Illona"].includes(wall.glasswallModel || '') && (
-                <SelectItem className="text-left" value="Optional">Optional</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="Optional">Optional</SelectItem>
+                </>
               )}
               {["Ava", "Mata"].includes(wall.glasswallModel || '') && (
                 <SelectItem className="text-left" value="None">None</SelectItem>
@@ -532,12 +533,16 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             <SelectContent className="text-left">
               {wall.glasswallModel === "Stella" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Full-Height">Full-Height</SelectItem>
                   <SelectItem className="text-left" value="Inset">Inset</SelectItem>
                 </>
               )}
               {["Luna", "Illona", "Ava", "Mata"].includes(wall.glasswallModel || '') && (
-                <SelectItem className="text-left" value="Full-Height">Full-Height</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="Full-Height">Full-Height</SelectItem>
+                </>
               )}
             </SelectContent>
           </Select>
@@ -555,6 +560,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             <SelectContent className="text-left">
               {wall.glasswallPassDoorType && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Single">Single</SelectItem>
                   <SelectItem className="text-left" value="Double">Double</SelectItem>
                 </>
@@ -577,6 +583,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             <SelectContent className="text-left">
               {wall.glasswallModel === "Stella" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Panel-Mounted Telescoping Jamb">Panel-Mounted Telescoping Jamb</SelectItem>
                   <SelectItem className="text-left" value="Wall-Mounted Telescoping Jamb">Wall-Mounted Telescoping Jamb</SelectItem>
                   <SelectItem className="text-left" value="Full-Height Door">Full-Height Door</SelectItem>
@@ -584,12 +591,14 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
               )}
               {["Luna", "Illona"].includes(wall.glasswallModel || '') && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Hinged Closure Panel">Hinged Closure Panel</SelectItem>
                   <SelectItem className="text-left" value="Full-Height Door">Full-Height Door</SelectItem>
                 </>
               )}
               {wall.glasswallModel === "Ava" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Fixed Pivot Panel">Fixed Pivot Panel</SelectItem>
                   <SelectItem className="text-left" value="Fixed Swing Panel">Fixed Swing Panel</SelectItem>
                 </>
@@ -618,6 +627,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             <SelectContent className="text-left">
               {wall.glasswallModel === "Stella" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Electric">Electric</SelectItem>
                   <SelectItem className="text-left" value="Automatic">Automatic</SelectItem>
                   <SelectItem className="text-left" value="Semi-Automatic">Semi-Automatic</SelectItem>
@@ -627,15 +637,22 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
               )}
               {wall.glasswallModel === "Luna" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Floor Supported Fixed Bulb">Floor Supported Fixed Bulb</SelectItem>
                   <SelectItem className="text-left" value="Top Supported Fixed Brush">Top Supported Fixed Brush</SelectItem>
                 </>
               )}
               {["Illona", "Ava"].includes(wall.glasswallModel || '') && (
-                <SelectItem className="text-left" value="Fixed Brush">Fixed Brush</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="Fixed Brush">Fixed Brush</SelectItem>
+                </>
               )}
               {wall.glasswallModel === "Mata" && (
-                <SelectItem className="text-left" value="Fixed Flexible Vinyl">Fixed Flexible Vinyl</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="Fixed Flexible Vinyl">Fixed Flexible Vinyl</SelectItem>
+                </>
               )}
             </SelectContent>
           </Select>
@@ -653,6 +670,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             <SelectContent className="text-left">
               {wall.glasswallModel === "Stella" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Electric">Electric</SelectItem>
                   <SelectItem className="text-left" value="Automatic">Automatic</SelectItem>
                   <SelectItem className="text-left" value="Semi-Automatic">Semi-Automatic</SelectItem>
@@ -662,15 +680,22 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
               )}
               {wall.glasswallModel === "Luna" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Floor Supported Fixed Bulb">Floor Supported Fixed Bulb</SelectItem>
                   <SelectItem className="text-left" value="Top Supported Fixed Brush">Top Supported Fixed Brush</SelectItem>
                 </>
               )}
               {["Illona", "Ava"].includes(wall.glasswallModel || '') && (
-                <SelectItem className="text-left" value="Fixed Brush">Fixed Brush</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="Fixed Brush">Fixed Brush</SelectItem>
+                </>
               )}
               {wall.glasswallModel === "Mata" && (
-                <SelectItem className="text-left" value="Fixed Flexible Vinyl">Fixed Flexible Vinyl</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="Fixed Flexible Vinyl">Fixed Flexible Vinyl</SelectItem>
+                </>
               )}
             </SelectContent>
           </Select>

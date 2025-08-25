@@ -107,10 +107,10 @@ export const GlassWallFormRefactored: React.FC<GlassWallConfigurationFormProps> 
             selectedSTCRating={selectedSTCRating}
             label="Frame Thickness"
           />
-          <PanelWidthField
+          {/* <PanelWidthField
             selectedModel={selectedModel}
             label="Panel Width"
-          />
+          /> */}
         </FormRow>
 
         {/* Row 4: Panel Face Options, Frame Finish Options, Hinge Type */}

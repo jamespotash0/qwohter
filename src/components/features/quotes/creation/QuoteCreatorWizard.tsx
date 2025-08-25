@@ -374,7 +374,7 @@ const QuoteCreatorWizard = ({
             date: jobDetails.date
           },
           wall_details: walls,
-          pocket_doors: pocketDoors,
+          // pocket_doors: pocketDoors,
           price_details: {
             base_price: pricing.basePrice,
             freight: pricing.freight,
@@ -382,7 +382,7 @@ const QuoteCreatorWizard = ({
             payment_upon_drawings: pricing.paymentUponDrawings,
             payment_upon_track_installation: pricing.paymentUponTrackInstallation
           },
-          support_structure: supportStructure,
+          // support_structure: supportStructure,
           delivery_details: deliveryLabor.delivery,
           labor_details: deliveryLabor.labor,
           proposal_number: jobDetails.proposalNumber,

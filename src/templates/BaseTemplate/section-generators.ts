@@ -9,7 +9,7 @@ export class SectionGenerators {
 
   generateHeader(data: QuoteData): string {
     const contactName = data.quote_details?.contactName || 'Ed Michinski';
-    const address = data.quote_details?.address || '567 Commerce St,<br> Franklin&nbsp;Lakes, NJ, 07417';
+    const address = data.quote_details?.address || '567 Commerce St,<br> Franklin Lakes, NJ, 07417';
     const phone = data.quote_details?.phone || '(973) 884-0474';
     const fax = data.quote_details?.fax || '(973) 884-1606';
     const website = data.quote_details?.website || 'contemporarywalls.com';

@@ -36,13 +36,6 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
   } = useOrganizations();
   const { profile } = useUserProfile(userId);
 
-
-  // Calculate basic stats from real quotes data
-  // const totalQuotes = quotes.length;
-  // const draftQuotes = quotes.filter(q => q.status === "draft").length;
-  // const pendingQuotes = quotes.filter(q => q.status === "pending").length;
-  // const completedQuotes = quotes.filter(q => q.status === "completed").length;
-
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
@@ -89,84 +82,8 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
                 <p className="text-muted-foreground mt-2 text-lg">Plan, prioritize, and accomplish your tasks with ease.</p>
               </div>
               <div className="flex gap-3">
-                {/* Create quote button moved to Quick Actions section */}
               </div>
             </div>
-
-            {/* Stats Cards */}
-            {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card className="bg-primary text-primary-foreground">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm opacity-90">Total Quotes</p>
-                      <p className="text-3xl font-bold">{totalQuotes}</p>
-                      <div className="flex items-center gap-1 mt-2">
-                        <TrendingUp className="w-3 h-3" />
-                        <span className="text-xs opacity-75">All time</span>
-                      </div>
-                    </div>
-                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                      <FileText className="w-5 h-5" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-slate-600">Draft Quotes</p>
-                      <p className="text-3xl font-bold text-slate-900">{draftQuotes}</p>
-                      <div className="flex items-center gap-1 mt-2">
-                        <Edit className="w-3 h-3 text-slate-400" />
-                        <span className="text-xs text-slate-500">In progress</span>
-                      </div>
-                    </div>
-                    <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                      <Edit className="w-5 h-5 text-slate-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-slate-600">Pending Quotes</p>
-                      <p className="text-3xl font-bold text-slate-900">{pendingQuotes}</p>
-                      <div className="flex items-center gap-1 mt-2">
-                        <Timer className="w-3 h-3 text-slate-400" />
-                        <span className="text-xs text-slate-500">Awaiting response</span>
-                      </div>
-                    </div>
-                    <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                      <Timer className="w-5 h-5 text-slate-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-slate-600">Completed Quotes</p>
-                      <p className="text-3xl font-bold text-slate-900">{completedQuotes}</p>
-                      <div className="flex items-center gap-1 mt-2">
-                        <Square className="w-3 h-3 text-slate-400" />
-                        <span className="text-xs text-slate-500">Finished</span>
-                      </div>
-                    </div>
-                    <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                      <Square className="w-5 h-5 text-slate-600" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div> */}
 
             {/* Quick Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>

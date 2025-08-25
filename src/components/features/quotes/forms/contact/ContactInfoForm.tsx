@@ -95,7 +95,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
   // Auto-set single-option fields
   useEffect(() => {
     const autoSetFields = {
-      address: "567 Commerce St, Franklin&nbsp;Lakes NJ, 07417",
+      address: "567 Commerce St, Franklin Lakes NJ, 07417",
       phone: "(973) 884-0474",
       fax: "(973) 884-1606",
       website: "www.contemporarywalls.com"

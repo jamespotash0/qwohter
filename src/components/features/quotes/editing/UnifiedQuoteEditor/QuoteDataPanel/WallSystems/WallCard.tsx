@@ -3,7 +3,9 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ValidatedInput } from '@/components/ui/validated-input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useFormValidation } from '@/hooks/useFormValidation';
 import { WallCardProps } from './types';
 import { OperableWallForm } from './OperableWallForm';
 import { GlassWallForm } from './GlassWallForm';
@@ -21,6 +23,7 @@ export const WallCard: React.FC<WallCardProps> = ({
 }) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [showRemoveConfirmation, setShowRemoveConfirmation] = useState(false);
+  const { validateAndUpdate, getFieldError, isFieldValid, markFieldTouched } = useFormValidation();
 
   const handleSaveWallSystem = async (_editedWallName: string, updatedWall: any) => {
     // If we have the dedicated wall system update function, use it
@@ -103,62 +106,104 @@ export const WallCard: React.FC<WallCardProps> = ({
     <div className="grid grid-cols-2 gap-2 text-xs">
       <div className="space-y-2">
         <Label htmlFor={`${wallName}-lengthFeet`} className="text-xs">Length (ft) *</Label>
-        <Input
+        <ValidatedInput
           id={`${wallName}-lengthFeet`}
+          validationType="numbersOnly"
           value={wall.lengthFeet || ''}
-          onChange={(e) => onFieldChange(wallName, 'lengthFeet', e.target.value)}
+          onValueChange={(value: string) => {
+            const sanitized = validateAndUpdate(`${wallName}-lengthFeet`, value, 'numbersOnly');
+            onFieldChange(wallName, 'lengthFeet', sanitized);
+          }}
+          onBlur={() => markFieldTouched(`${wallName}-lengthFeet`)}
           placeholder="0"
           className="text-xs h-8"
+          errorMessage={getFieldError(`${wallName}-lengthFeet`)}
+          isValid={isFieldValid(`${wallName}-lengthFeet`)}
         />
       </div>
       <div className="space-y-2">
         <Label htmlFor={`${wallName}-lengthInches`} className="text-xs">Length (in)</Label>
-        <Input
+        <ValidatedInput
           id={`${wallName}-lengthInches`}
+          validationType="numbersWithFractions"
           value={wall.lengthInches || ''}
-          onChange={(e) => onFieldChange(wallName, 'lengthInches', e.target.value)}
-          placeholder="0"
+          onValueChange={(value: string) => {
+            const sanitized = validateAndUpdate(`${wallName}-lengthInches`, value, 'numbersWithFractions');
+            onFieldChange(wallName, 'lengthInches', sanitized);
+          }}
+          onBlur={() => markFieldTouched(`${wallName}-lengthInches`)}
+          placeholder="0 or 6.5 or 3/4"
           className="text-xs h-8"
+          errorMessage={getFieldError(`${wallName}-lengthInches`)}
+          isValid={isFieldValid(`${wallName}-lengthInches`)}
         />
       </div>
       <div className="space-y-2">
         <Label htmlFor={`${wallName}-heightFeet`} className="text-xs">Height (ft) *</Label>
-        <Input
+        <ValidatedInput
           id={`${wallName}-heightFeet`}
+          validationType="numbersOnly"
           value={wall.heightFeet || ''}
-          onChange={(e) => onFieldChange(wallName, 'heightFeet', e.target.value)}
+          onValueChange={(value: string) => {
+            const sanitized = validateAndUpdate(`${wallName}-heightFeet`, value, 'numbersOnly');
+            onFieldChange(wallName, 'heightFeet', sanitized);
+          }}
+          onBlur={() => markFieldTouched(`${wallName}-heightFeet`)}
           placeholder="0"
           className="text-xs h-8"
+          errorMessage={getFieldError(`${wallName}-heightFeet`)}
+          isValid={isFieldValid(`${wallName}-heightFeet`)}
         />
       </div>
       <div className="space-y-2">
         <Label htmlFor={`${wallName}-heightInches`} className="text-xs">Height (in)</Label>
-        <Input
+        <ValidatedInput
           id={`${wallName}-heightInches`}
+          validationType="numbersWithFractions"
           value={wall.heightInches || ''}
-          onChange={(e) => onFieldChange(wallName, 'heightInches', e.target.value)}
-          placeholder="0"
+          onValueChange={(value: string) => {
+            const sanitized = validateAndUpdate(`${wallName}-heightInches`, value, 'numbersWithFractions');
+            onFieldChange(wallName, 'heightInches', sanitized);
+          }}
+          onBlur={() => markFieldTouched(`${wallName}-heightInches`)}
+          placeholder="0 or 6.5 or 3/4"
           className="text-xs h-8"
+          errorMessage={getFieldError(`${wallName}-heightInches`)}
+          isValid={isFieldValid(`${wallName}-heightInches`)}
         />
       </div>
       <div className="space-y-2">
         <Label htmlFor={`${wallName}-panelCount`} className="text-xs">Panel Count *</Label>
-        <Input
+        <ValidatedInput
           id={`${wallName}-panelCount`}
+          validationType="numbersOnly"
           value={wall.panelCount || ''}
-          onChange={(e) => onFieldChange(wallName, 'panelCount', e.target.value)}
+          onValueChange={(value: string) => {
+            const sanitized = validateAndUpdate(`${wallName}-panelCount`, value, 'numbersOnly');
+            onFieldChange(wallName, 'panelCount', sanitized);
+          }}
+          onBlur={() => markFieldTouched(`${wallName}-panelCount`)}
           placeholder="0"
           className="text-xs h-8"
+          errorMessage={getFieldError(`${wallName}-panelCount`)}
+          isValid={isFieldValid(`${wallName}-panelCount`)}
         />
       </div>
       <div className="space-y-2">
         <Label htmlFor={`${wallName}-quantity`} className="text-xs">Quantity</Label>
-        <Input
+        <ValidatedInput
           id={`${wallName}-quantity`}
+          validationType="numbersOnly"
           value={wall.quantity || ''}
-          onChange={(e) => onFieldChange(wallName, 'quantity', e.target.value)}
+          onValueChange={(value: string) => {
+            const sanitized = validateAndUpdate(`${wallName}-quantity`, value, 'numbersOnly');
+            onFieldChange(wallName, 'quantity', sanitized);
+          }}
+          onBlur={() => markFieldTouched(`${wallName}-quantity`)}
           placeholder="1"
           className="text-xs h-8"
+          errorMessage={getFieldError(`${wallName}-quantity`)}
+          isValid={isFieldValid(`${wallName}-quantity`)}
         />
       </div>
     </div>

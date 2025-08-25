@@ -2,10 +2,12 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ValidatedInput } from '@/components/ui/validated-input';
 import { Truck } from 'lucide-react';
 import { CollapsibleSection } from './CollapsibleSection';
 import { FieldChangeHandler } from './types';
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
+import { useFormValidation } from '@/hooks/useFormValidation';
 
 interface LaborDeliverySectionProps {
   data: QuoteData;
@@ -19,7 +21,20 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
   isOpen,
   onToggle,
   onFieldChange
-}) => (
+}) => {
+  const { validateAndUpdate, getFieldError, isFieldValid, markFieldTouched } = useFormValidation();
+  
+  const handleValidatedDeliveryChange = (field: string, value: string, validationType?: string) => {
+    const sanitizedValue = validateAndUpdate(field, value, validationType);
+    onFieldChange('delivery_details', field, sanitizedValue);
+  };
+
+  const handleValidatedLaborChange = (field: string, value: string, validationType?: string) => {
+    const sanitizedValue = validateAndUpdate(field, value, validationType);
+    onFieldChange('labor_details', field, sanitizedValue);
+  };
+
+  return (
   <CollapsibleSection
     title="Labor & Delivery"
     icon={<Truck className="w-4 h-4 text-orange-500" />}
@@ -69,12 +84,16 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
         <Label htmlFor="shopDrawing" className="text-xs font-medium text-gray-600">
           Shop Drawing (Weeks)
         </Label>
-        <Input
+        <ValidatedInput
           id="shopDrawing"
+          validationType="numbersWithHyphen"
           value={data.delivery_details?.shopDrawingWeeks || ''}
-          onChange={(e) => onFieldChange('delivery_details', 'shopDrawingWeeks', e.target.value)}
-          placeholder="2"
+          onValueChange={(value: string) => handleValidatedDeliveryChange('shopDrawingWeeks', value, 'shopDrawingWeeks')}
+          onBlur={() => markFieldTouched('shopDrawingWeeks')}
+          placeholder="2 or 7-11"
           className="text-sm"
+          errorMessage={getFieldError('shopDrawingWeeks')}
+          isValid={isFieldValid('shopDrawingWeeks')}
         />
       </div>
       
@@ -82,12 +101,16 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
         <Label htmlFor="trackDelivery" className="text-xs font-medium text-gray-600">
           Track Delivery (Weeks)
         </Label>
-        <Input
+        <ValidatedInput
           id="trackDelivery"
+          validationType="numbersWithHyphen"
           value={data.delivery_details?.trackDeliveryWeeks || ''}
-          onChange={(e) => onFieldChange('delivery_details', 'trackDeliveryWeeks', e.target.value)}
-          placeholder="4"
+          onValueChange={(value: string) => handleValidatedDeliveryChange('trackDeliveryWeeks', value, 'trackDeliveryWeeks')}
+          onBlur={() => markFieldTouched('trackDeliveryWeeks')}
+          placeholder="4 or 7-11"
           className="text-sm"
+          errorMessage={getFieldError('trackDeliveryWeeks')}
+          isValid={isFieldValid('trackDeliveryWeeks')}
         />
       </div>
       
@@ -95,12 +118,16 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
         <Label htmlFor="panelDelivery" className="text-xs font-medium text-gray-600">
           Panel Delivery (Weeks)
         </Label>
-        <Input
+        <ValidatedInput
           id="panelDelivery"
+          validationType="numbersWithHyphen"
           value={data.delivery_details?.panelDeliveryWeeks || ''}
-          onChange={(e) => onFieldChange('delivery_details', 'panelDeliveryWeeks', e.target.value)}
-          placeholder="8"
+          onValueChange={(value: string) => handleValidatedDeliveryChange('panelDeliveryWeeks', value, 'panelDeliveryWeeks')}
+          onBlur={() => markFieldTouched('panelDeliveryWeeks')}
+          placeholder="8 or 7-11"
           className="text-sm"
+          errorMessage={getFieldError('panelDeliveryWeeks')}
+          isValid={isFieldValid('panelDeliveryWeeks')}
         />
       </div>
     </div>
@@ -110,12 +137,16 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
         <Label htmlFor="trackInstall" className="text-xs font-medium text-gray-600">
           Track Install (Days)
         </Label>
-        <Input
+        <ValidatedInput
           id="trackInstall"
+          validationType="numbersWithHyphen"
           value={data.delivery_details?.trackInstallationDays || ''}
-          onChange={(e) => onFieldChange('delivery_details', 'trackInstallationDays', e.target.value)}
-          placeholder="2"
+          onValueChange={(value: string) => handleValidatedDeliveryChange('trackInstallationDays', value, 'trackInstallationDays')}
+          onBlur={() => markFieldTouched('trackInstallationDays')}
+          placeholder="2 or 7-11"
           className="text-sm"
+          errorMessage={getFieldError('trackInstallationDays')}
+          isValid={isFieldValid('trackInstallationDays')}
         />
       </div>
       
@@ -123,14 +154,19 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
         <Label htmlFor="panelInstall" className="text-xs font-medium text-gray-600">
           Panel Install (Days)
         </Label>
-        <Input
+        <ValidatedInput
           id="panelInstall"
+          validationType="numbersWithHyphen"
           value={data.delivery_details?.panelInstallationDays || ''}
-          onChange={(e) => onFieldChange('delivery_details', 'panelInstallationDays', e.target.value)}
-          placeholder="3"
+          onValueChange={(value: string) => handleValidatedDeliveryChange('panelInstallationDays', value, 'panelInstallationDays')}
+          onBlur={() => markFieldTouched('panelInstallationDays')}
+          placeholder="3 or 7-11"
           className="text-sm"
+          errorMessage={getFieldError('panelInstallationDays')}
+          isValid={isFieldValid('panelInstallationDays')}
         />
       </div>
     </div>
   </CollapsibleSection>
-);
+  );
+};

@@ -55,7 +55,7 @@ const Team = () => {
     updateMemberRole,
     approveMember,
     rejectMember,
-    refreshOrganizations
+    // refreshOrganizations
   } = useOrganizations();
 
   const { profile } = useUserProfile(userId);
@@ -174,16 +174,16 @@ const Team = () => {
     }
   };
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'active':
-        return "default";
-      case 'pending':
-        return "secondary";
-      default:
-        return "outline";
-    }
-  };
+  // const getStatusBadgeVariant = (status: string) => {
+  //   switch (status) {
+  //     case 'active':
+  //       return "default";
+  //     case 'pending':
+  //       return "secondary";
+  //     default:
+  //       return "outline";
+  //   }
+  // };
 
   const activeMembersCount = members.filter(m => m.status === 'active').length;
   const pendingMembersCount = members.filter(m => m.status === 'pending').length;

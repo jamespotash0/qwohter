@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2, LogIn, UserPlus, Users, Plus } from "lucide-react";
+import { Building2, LogIn, UserPlus, Users, Plus, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { sanitizeInput, authRateLimiter } from "@/utils/security";
@@ -22,6 +22,7 @@ const Auth = () => {
   const [step, setStep] = useState<"auth" | "verify-otp" | "profile" | "organization">("auth");
   const [otpCode, setOtpCode] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -358,15 +359,30 @@ const Auth = () => {
                     <Label htmlFor="password" className="text-foreground font-medium text-sm">
                       Password
                     </Label>
-                    <Input 
-                      id="password" 
-                      type="password" 
-                      value={password} 
-                      onChange={(e) => setPassword(sanitizeInput.string(e.target.value))} 
-                      placeholder="Enter your password" 
-                      required 
-                      className="bg-secondary/50 border-border h-12 transition-all duration-200 focus:ring-2 focus:ring-primary/20" 
-                    />
+                    <div className="relative">
+                      <Input 
+                        id="password" 
+                        type={showPassword ? "text" : "password"} 
+                        value={password} 
+                        onChange={(e) => setPassword(sanitizeInput.string(e.target.value))} 
+                        placeholder="Enter your password" 
+                        required 
+                        className="bg-secondary/50 border-border h-12 pr-12 transition-all duration-200 focus:ring-2 focus:ring-primary/20" 
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-0 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
 
                   <Button 

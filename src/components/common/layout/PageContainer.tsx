@@ -9,10 +9,10 @@ interface PageContainerProps {
   className?: string;
 }
 
-interface Page {
-  id: string;
-  content: HTMLElement[];
-}
+// interface Page {
+//   id: string;
+//   content: HTMLElement[];
+// }
 
 export const PageContainer: React.FC<PageContainerProps> = ({ 
   children, 
@@ -20,7 +20,7 @@ export const PageContainer: React.FC<PageContainerProps> = ({
   className = '' 
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [pages, setPages] = useState<Page[]>([]);
+  // const [pages, setPages] = useState<Page[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export const PageContainer: React.FC<PageContainerProps> = ({
       
       if (existingPages.length > 0) {
         // Content already has page structure, use it directly
-        existingPages.forEach((page, index) => {
+        existingPages.forEach((page, /*index*/) => {
           const pageElement = page.cloneNode(true) as HTMLElement;
           pageElement.classList.add(showMarginGuides ? 'show-guides' : '');
           container.appendChild(pageElement);
@@ -107,49 +107,49 @@ export const PageContainer: React.FC<PageContainerProps> = ({
     container.appendChild(pageElement);
   };
 
-  const getElementHeight = (element: HTMLElement): number => {
-    // Create a temporary clone to measure height
-    const clone = element.cloneNode(true) as HTMLElement;
-    clone.style.position = 'absolute';
-    clone.style.left = '-9999px';
-    clone.style.width = '612px'; // 8.5 inches at 72 DPI
-    clone.style.visibility = 'hidden';
+  // const getElementHeight = (element: HTMLElement): number => {
+  //   // Create a temporary clone to measure height
+  //   const clone = element.cloneNode(true) as HTMLElement;
+  //   clone.style.position = 'absolute';
+  //   clone.style.left = '-9999px';
+  //   clone.style.width = '612px'; // 8.5 inches at 72 DPI
+  //   clone.style.visibility = 'hidden';
     
-    document.body.appendChild(clone);
-    const height = clone.offsetHeight;
-    document.body.removeChild(clone);
+  //   document.body.appendChild(clone);
+  //   const height = clone.offsetHeight;
+  //   document.body.removeChild(clone);
     
-    return height;
-  };
+  //   return height;
+  // };
 
-  const renderPages = (pageList: Page[]) => {
-    if (!containerRef.current) return;
+  // const renderPages = (pageList: Page[]) => {
+  //   if (!containerRef.current) return;
 
-    const container = containerRef.current;
+  //   const container = containerRef.current;
     
-    pageList.forEach((page, index) => {
-      const pageElement = document.createElement('div');
-      pageElement.className = `page ${showMarginGuides ? 'show-guides' : ''}`;
-      pageElement.setAttribute('data-page', (index + 1).toString());
+  //   pageList.forEach((page, index) => {
+  //     const pageElement = document.createElement('div');
+  //     pageElement.className = `page ${showMarginGuides ? 'show-guides' : ''}`;
+  //     pageElement.setAttribute('data-page', (index + 1).toString());
       
-      const pageContent = document.createElement('div');
-      pageContent.className = 'page-content';
+  //     const pageContent = document.createElement('div');
+  //     pageContent.className = 'page-content';
       
-      page.content.forEach(element => {
-        pageContent.appendChild(element);
-      });
+  //     page.content.forEach(element => {
+  //       pageContent.appendChild(element);
+  //     });
       
-      pageElement.appendChild(pageContent);
+  //     pageElement.appendChild(pageContent);
       
-      if (showMarginGuides) {
-        const guides = document.createElement('div');
-        guides.className = 'margin-guides';
-        pageElement.appendChild(guides);
-      }
+  //     if (showMarginGuides) {
+  //       const guides = document.createElement('div');
+  //       guides.className = 'margin-guides';
+  //       pageElement.appendChild(guides);
+  //     }
       
-      container.appendChild(pageElement);
-    });
-  };
+  //     container.appendChild(pageElement);
+  //   });
+  // };
 
   return (
     <div ref={containerRef} className={`page-container ${className}`}>

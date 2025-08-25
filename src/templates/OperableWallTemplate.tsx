@@ -86,7 +86,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
           { text: `featuring <strong>${wall.glasswallOperation}</strong> operation`, condition: SmartQuoteHelper.hasValue(wall.glasswallOperation) },
           { text: `configured with <strong>${panelCountText} ${wall.glasswallPanelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.glasswallPanelConfiguration) },
           { text: `for use on a <strong>${wall.glasswallTrackType || wall.trackType} Layout</strong>.`, condition: SmartQuoteHelper.hasValue(wall.glasswallTrackType) },
-          { text: `The wall is <strong>${heightText}</strong> in height, with glass panel lengths at ${wall.glasswallPanelWidth}`, condition: SmartQuoteHelper.hasAllValues(wall.heightFeet, wall.heightInches, wall.glasswallPanelWidth) },
+          { text: `The wall is <strong>${heightText}</strong> in height`, condition: SmartQuoteHelper.hasAllValues(wall.heightFeet, wall.heightInches) },
           { text: `Each glass panel features <strong>${wall.glasswallGlassType || 'insulated glass units'}</strong>`, condition: SmartQuoteHelper.hasValue(wall.glasswallGlassType) },
           { text: `with <strong>${wall.glasswallFrameThickness}"</strong> thick framing`, condition: SmartQuoteHelper.hasValue(wall.glasswallFrameThickness) },
           { text: `and <strong>${wall.glasswallFrameFinish}</strong> frame finish.`, condition: SmartQuoteHelper.hasValue(wall.glasswallFrameFinish) },

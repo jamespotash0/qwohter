@@ -54,7 +54,7 @@ export abstract class BaseQuoteTemplate {
 
   // Main generation method
   public generate(data: QuoteData): string {
-    const pageBreaks = this.getPageBreakStrategy(data);
+    // const pageBreaks = this.getPageBreakStrategy(data);
     
     let html = `<div class="quote-container" data-page-content="true">
       ${this.generateHeader(data)}

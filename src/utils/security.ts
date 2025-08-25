@@ -72,15 +72,17 @@ export const sanitizeInput = {
   },
 
   /**
-   * Sanitize email input
+   * Sanitize email input - allow typing but filter dangerous characters
    */
   email: (email: string): string => {
     if (typeof email !== 'string') return '';
     
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const sanitized = email.toLowerCase().trim();
-    
-    return emailRegex.test(sanitized) ? sanitized : '';
+    // Allow email characters while typing, but filter dangerous ones
+    return email
+      .replace(/[<>;"'\\]/g, '') // Remove dangerous characters
+      .replace(/\s+/g, '') // Remove spaces
+      .toLowerCase()
+      .slice(0, 254); // Max email length
   },
 
   /**

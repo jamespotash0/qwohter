@@ -59,8 +59,8 @@ const Analytics = () => {
 
   const wonQuotes = quotes.filter(q => q.status === 'Won').length;
   const rejectedQuotes = quotes.filter(q => q.status === 'Rejected').length;
-  const pendingQuotes = quotes.filter(q => q.status === 'Pending').length;
-  const draftQuotes = quotes.filter(q => q.status === 'Draft').length;
+  // const pendingQuotes = quotes.filter(q => q.status === 'Pending').length;
+  // const draftQuotes = quotes.filter(q => q.status === 'Draft').length;
   
   const averageRevenuePerQuote = wonQuotes > 0 ? totalRevenue / wonQuotes : 0;
   const conversionRate = totalQuotes > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;

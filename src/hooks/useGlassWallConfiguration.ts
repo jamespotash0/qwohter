@@ -73,7 +73,6 @@ export function useGlassWallConfiguration({
     
     // Computed properties
     frameThickness: viewModel.frameThickness,
-    panelWidth: viewModel.panelWidth,
     isInitialized: viewModel.initialized,
     
     // Available options

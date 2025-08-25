@@ -10,20 +10,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuotes, Quote } from "@/hooks/useQuotes";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { useToast } from "@/hooks/use-toast";
+// import { useToast } from "@/hooks/use-toast";
 import { QuotesTable, QuoteFilters, QuotePagination } from "@/components/features/quotes/table";
 
 const Quotes = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  // const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
   const {
     quotes,
     updateQuote,
     deleteQuote: deleteQuoteFromDB,
-    markAsDownloaded,
-    saveQuoteCustomization,
-    refreshQuotes
+    // markAsDownloaded,
+    // saveQuoteCustomization,
+    // refreshQuotes
   } = useQuotes();
 
   const { currentOrganization } = useOrganizations();
