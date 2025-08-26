@@ -259,14 +259,40 @@ export class SectionGenerators {
   generatePassDoorsSection(data: QuoteData): string {
     const walls = data.wall_details?.walls || {};
     const wallsWithPassDoors = Object.entries(walls)
-      .filter(([_, wall]) => wall.passDoorPanels && 
-               wall.passDoorPanels.toLowerCase().trim() !== 'none' &&
-               wall.passDoorPanels.trim() !== '')
-      .map(([name, wall]) => ({ 
-        name, 
-        type: wall.passDoorPanels!, 
-        quantity: wall.passDoorQuantity || '0'
-      }));
+      .filter(([_, wall]) => {
+        // Check for operable wall pass doors
+        const hasOperablePassDoors = wall.passDoorPanels && 
+                                    wall.passDoorPanels.toLowerCase().trim() !== 'none' &&
+                                    wall.passDoorPanels.trim() !== '';
+        
+        // Check for glass wall pass doors
+        const hasGlassPassDoors = wall.glasswallPassDoorType && 
+                                 wall.glasswallPassDoorType.toLowerCase().trim() !== 'none' &&
+                                 wall.glasswallPassDoorType.trim() !== '';
+        
+        return hasOperablePassDoors || hasGlassPassDoors;
+      })
+      .map(([name, wall]) => {
+        // Determine pass door details based on wall type
+        const isGlassWall = wall.wallSystemType?.toLowerCase().includes('glass');
+        
+        if (isGlassWall && wall.glasswallPassDoorType) {
+          return {
+            name, 
+            type: wall.glasswallPassDoorType,
+            option: wall.glasswallPassDoorOption, 
+            quantity: '1', // Glass walls typically have 1 pass door per configuration
+            isGlassWall: true
+          };
+        } else {
+          return {
+            name, 
+            type: wall.passDoorPanels!, 
+            quantity: wall.passDoorQuantity || '0',
+            isGlassWall: false
+          };
+        }
+      });
 
     if (wallsWithPassDoors.length === 0) return '';
 
@@ -275,7 +301,17 @@ export class SectionGenerators {
       .map(wall => {
         const qty = parseInt(wall.quantity) || 0;
         const quantityText = qty === 1 ? 'One' : qty === 2 ? 'Two' : `${qty}`;
-        return `<strong>${wall.name}</strong> has <strong>${quantityText} ${wall.type} Pass Door</strong> panel${qty > 1 ? 's' : ''}`;
+        
+        if (wall.isGlassWall) {
+          // For glass walls, show both option and type if both exist
+          const passDescription = wall.option && wall.option !== wall.type 
+            ? `<strong>${wall.type} ${wall.option}</strong>` 
+            : `<strong>${wall.type}</strong>`;
+          return `<strong>${wall.name}</strong> has <strong>${quantityText}</strong> ${passDescription} <strong>Pass Door</strong>`;
+        } else {
+          // For operable walls, use the standard format
+          return `<strong>${wall.name}</strong> has <strong>${quantityText} ${wall.type} Pass Door</strong> panel${qty > 1 ? 's' : ''}`;
+        }
       })
       .join(', and ');
 

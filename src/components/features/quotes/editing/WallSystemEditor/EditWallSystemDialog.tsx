@@ -476,6 +476,7 @@ export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
                 wall={editedWall}
                 wallName={wallName}
                 onFieldChange={handleFieldChange}
+                showFullFields={true}
               />
             </div>
           )}

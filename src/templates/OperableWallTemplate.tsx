@@ -88,7 +88,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
           { text: `for use on a <strong>${wall.glasswallTrackType || wall.trackType} Layout</strong>.`, condition: SmartQuoteHelper.hasValue(wall.glasswallTrackType) },
           { text: `The wall is <strong>${heightText}</strong> in height`, condition: SmartQuoteHelper.hasAllValues(wall.heightFeet, wall.heightInches) },
           { text: `Each glass panel features <strong>${wall.glasswallGlassType || 'insulated glass units'}</strong>`, condition: SmartQuoteHelper.hasValue(wall.glasswallGlassType) },
-          { text: `with <strong>${wall.glasswallFrameThickness}"</strong> thick framing`, condition: SmartQuoteHelper.hasValue(wall.glasswallFrameThickness) },
+          { text: `with <strong>${wall.glasswallFrameThickness}</strong> thick framing`, condition: SmartQuoteHelper.hasValue(wall.glasswallFrameThickness) },
           { text: `and <strong>${wall.glasswallFrameFinish}</strong> frame finish.`, condition: SmartQuoteHelper.hasValue(wall.glasswallFrameFinish) },
           { text: `The system achieves a minimum STC rating of <strong>${wall.glasswallSTCRating}</strong>`, condition: SmartQuoteHelper.hasValue(wall.glasswallSTCRating) },
           { text: `while maintaining visual transparency. For acoustic performance, glass panels use <strong>${wall.glasswallBottomSeals}</strong> bottom seals`, condition: SmartQuoteHelper.hasValue(wall.glasswallBottomSeals) },

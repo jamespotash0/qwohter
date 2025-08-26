@@ -7,12 +7,14 @@ interface GlassWallFormProps {
   wallName: string;
   wall: any;
   onFieldChange: (wallName: string, field: string, value: any) => void;
+  showFullFields?: boolean;
 }
 
 export const GlassWallForm: React.FC<GlassWallFormProps> = ({
   wallName,
   wall,
-  onFieldChange
+  onFieldChange,
+  showFullFields = false
 }) => {
   const handleFieldChange = (field: string, value: any) => {
     const actualValue = value === "None" ? "" : value;
@@ -54,8 +56,8 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Glass Wall Model - Hidden in quick edit */}
-      <div className="space-y-1 hidden">
+      {/* Glass Wall Model */}
+      <div className={`space-y-1 ${showFullFields ? '' : 'hidden'}`}>
         <Label className="text-xs">Glass Wall Model</Label>
         <Select
           key={`${wallName}-glasswallModel-${wall.glasswallModel}`}
@@ -77,7 +79,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
 
       {/* 2x2 Grid Layout for Glass Wall Fields */}
       <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1 hidden">
+        <div className={`space-y-1 ${showFullFields ? '' : 'hidden'}`}>
           <Label className="text-xs">Panel Configuration</Label>
           <Select
             value={wall.glasswallPanelConfiguration || ''}
@@ -121,7 +123,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1 hidden">
+        <div className={`space-y-1 ${showFullFields ? '' : 'hidden'}`}>
           <Label className="text-xs">Operation</Label>
           <Select
             value={wall.glasswallOperation || ''}
@@ -148,7 +150,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
         </div>
 
         {/* Row 2 */}
-        <div className="space-y-1 hidden">
+        <div className={`space-y-1 ${showFullFields ? '' : 'hidden'}`}>
           <Label className="text-xs">STC Rating</Label>
           <Select
             value={wall.glasswallSTCRating || ''}

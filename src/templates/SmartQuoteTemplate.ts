@@ -258,8 +258,10 @@ export class SmartQuoteHelper {
   private static getSectionDependencies(id: string): string[] {
     // Define dependencies for sections that depend on form field values
     const dependencies: { [key: string]: string[] } = {
-      'panel-doors': ['passDoorPanels'],
-      'panel-doors-section': ['passDoorPanels'],
+      'panel-doors': ['passDoorPanels', 'glasswallPassDoorType'],
+      'panel-doors-section': ['passDoorPanels', 'glasswallPassDoorType'],
+      'pass-doors': ['passDoorPanels', 'glasswallPassDoorType'],
+      'pass-doors-section': ['passDoorPanels', 'glasswallPassDoorType'],
       'pocket-doors': ['pocketDoors.foldType', 'pocketDoors.foldStyle', 'pocket_doors.foldType'], // Support both per-wall and global
       'pocket-doors-section': ['pocketDoors.foldType', 'pocketDoors.foldStyle', 'pocket_doors.foldType'],
       'structure-support': ['structureSupport'],
