@@ -217,7 +217,6 @@ export class SectionGenerators {
   generatePocketDoorsSection(data: QuoteData): string {
     const walls = data.wall_details?.walls || {};
     
-    // Check both old global format and new per-wall format
     const wallsWithPockets = Object.entries(walls)
       .filter(([_, wall]) => {
         // Check per-wall configuration first
@@ -235,7 +234,6 @@ export class SectionGenerators {
       }));
 
 
-    // Legacy fallback removed - pocket doors now only stored per-wall
 
     if (wallsWithPockets.length === 0) return '';
 

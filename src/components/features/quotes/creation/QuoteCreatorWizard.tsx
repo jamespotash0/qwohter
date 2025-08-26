@@ -70,20 +70,6 @@ const QuoteCreatorWizard = ({
       }
     }
     
-    // If it's an array (old format), convert to new format
-    if (Array.isArray(wallDetails)) {
-      const wallsObject: { [key: string]: WallSpecification } = {};
-      wallDetails.forEach((wall: unknown, index: number) => {
-        const wallData = wall as Record<string, unknown>;
-        const wallName = (wallData.name as string) || `Wall ${index + 1}`;
-        const { id, name, ...wallSpec } = wallData;
-        wallsObject[wallName] = wallSpec as unknown as WallSpecification;
-      });
-      return {
-        id: crypto.randomUUID(),
-        walls: wallsObject
-      };
-    }
     
     // Default empty structure
     return {

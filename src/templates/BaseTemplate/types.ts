@@ -9,7 +9,6 @@ export interface QuoteData {
       [wallName: string]: WallSpecification;
     };
   };
-  // Legacy fields removed - now stored in wall_details.walls[].pocketDoors and wall_details.walls[].structureSupport
   delivery_details?: any;
   labor_details?: any;
   price_details?: any;

@@ -17,7 +17,6 @@ export interface Quote {
   wall_details: WallDetails;
   price_details: any;
   delivery_details: any;
-  // Legacy fields removed: pocket_doors, support_structure
   labor_details: any;
   status: string;
   date_last_downloaded?: string;

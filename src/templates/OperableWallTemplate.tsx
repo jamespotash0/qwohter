@@ -173,7 +173,6 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
       // Check for structure support - handle different possible values
       let structureSupport = wall.structureSupport;
       
-      // Legacy fallback removed - structure support now only per-wall
       if (!structureSupport || structureSupport === 'None' || structureSupport.trim() === '') {
         structureSupport = 'standard support'; // Default fallback
       }

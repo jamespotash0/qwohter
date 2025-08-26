@@ -16,8 +16,6 @@ export class DynamicPageBreakManager {
     const wallCount = this.getWallCount(data);
     const hasMultipleWalls = wallCount > 1;
     const hasPocketDoors = 
-      // Check legacy pocket_doors field (if still exists)
-      !!(data as any).pocket_doors?.foldType ||
       // Check individual walls for pocket doors
       (data.wall_details && Object.values(data.wall_details.walls || {}).some(
         (wall: any) => wall.pocketDoors?.foldType && wall.pocketDoors.foldType.toLowerCase() !== 'none'
