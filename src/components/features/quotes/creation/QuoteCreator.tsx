@@ -114,7 +114,8 @@ const QuoteCreator = ({ user, onLogout, quoteName, onBackToDashboard, onQuoteNam
 
   const [jobDetails, setJobDetails] = useState({
     date: (jobDetailsData?.date as string) || new Date().toISOString().split('T')[0],
-    proposalNumber: (existingQuoteData?.proposal_number as string) || `P${Date.now().toString().slice(-6)}`,
+    // proposalNumber: (existingQuoteData?.proposal_number as string) || `P${Date.now().toString().slice(-6)}`,
+    proposalNumber: (existingQuoteData?.proposal_number as string) || "P123456",
     jobLocation: (jobDetailsData?.job_location as string) || "",
     billedTo: {
       name: (jobDetailsData?.client_name as string) || "",

@@ -510,7 +510,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           zoomLevel={zoomLevel}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
-          onSectionClick={(sectionId, sectionData) => {
+          onSectionClick={(/*sectionId,*/_, sectionData) => {
             setSelectedSection(sectionData);
           }}
           showSmartPDFPreview={showSmartPDFPreview}

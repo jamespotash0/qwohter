@@ -35,7 +35,7 @@ export const QuotesTable: React.FC<QuotesTableProps> = ({
   onStatusChange
 }) => {
   return (
-    <div className="overflow-auto max-h-96">
+    <div className="overflow-auto max-h-[608px]"> {/* Adjust max height as needed */}
       <Table>
         <colgroup>
           <col className="w-24" />
