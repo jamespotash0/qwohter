@@ -20,6 +20,7 @@ const Quotes = () => {
   const {
     quotes,
     updateQuote,
+    createQuoteVersion,
     deleteQuote: deleteQuoteFromDB,
     // markAsDownloaded,
     // saveQuoteCustomization,
@@ -96,6 +97,15 @@ const Quotes = () => {
     navigate(`/newquote?name=${encodeURIComponent(quoteName)}`);
   };
 
+  const handleCreateVersion = async (quoteId: string) => {
+    try {
+      const newQuote = await createQuoteVersion(quoteId);
+      navigate(`/quotes/edit/${newQuote.proposal_number}`);
+    } catch (error) {
+      console.error('Error creating quote version:', error);
+    }
+  };
+
 
   if (!user) return null;
 
@@ -146,6 +156,7 @@ const Quotes = () => {
                   onEditQuote={editQuote}
                   onDeleteQuote={(id) => setDeleteQuoteId(id)}
                   onStatusChange={updateQuoteStatus}
+                  onCreateVersion={handleCreateVersion}
                 />
                 
                 <QuotePagination

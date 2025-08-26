@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Quote } from '@/hooks/useQuotes';
 import type { WallSpecification, WallDetails } from '@/types/quote';
 import { filterWallDetailsForSave } from '@/utils/wallDataFilter';
+import { ProposalNumberGenerator } from '@/utils/proposalNumberGenerator';
 
 interface QuotesState {
   // State
@@ -28,6 +29,7 @@ interface QuotesState {
   initialize: () => Promise<void>;
   fetchQuotes: (options?: { refresh?: boolean }) => Promise<void>;
   createQuote: (quoteData: any) => Promise<Quote>;
+  createQuoteVersion: (existingQuoteId: string) => Promise<Quote>;
   updateQuote: (id: string, updates: Partial<Quote>) => Promise<Quote>;
   deleteQuote: (id: string) => Promise<void>;
   setCurrentQuote: (quote: Quote | null) => void;
@@ -146,10 +148,13 @@ export const useQuotesStore = create<QuotesState>()(
               throw new Error('User not assigned to an organization');
             }
             
+            // Generate proposal number
+            const proposalInfo = await ProposalNumberGenerator.getNextProposalNumber();
+            
             const { data, error } = await supabase
               .from('quotes')
               .insert({
-                proposal_number: quoteData.jobDetails.proposalNumber,
+                proposal_number: proposalInfo.fullNumber,
                 project_name: quoteData.quoteName || quoteData.project_name,
                 quote_details: quoteData.contactInfo || {},
                 job_details: {
@@ -185,6 +190,59 @@ export const useQuotesStore = create<QuotesState>()(
           } catch (error) {
             console.error('Create quote error:', error);
             _setError(error instanceof Error ? error.message : 'Failed to create quote');
+            throw error;
+          } finally {
+            _setLoading(false);
+          }
+        },
+
+        // Create new quote version
+        createQuoteVersion: async (existingQuoteId: string) => {
+          const { quotes, _setQuotes, _setLoading, _setError } = get();
+          
+          try {
+            _setLoading(true);
+            _setError(null);
+            
+            // Get the existing quote
+            const { data: existingQuote, error: fetchError } = await supabase
+              .from('quotes')
+              .select('*')
+              .eq('id', existingQuoteId)
+              .single();
+
+            if (fetchError) throw fetchError;
+
+            // Generate new version number
+            const proposalInfo = await ProposalNumberGenerator.getNextProposalNumber(existingQuote.proposal_number);
+
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('User not authenticated');
+
+            // Create new quote with incremented version
+            const { data, error } = await supabase
+              .from('quotes')
+              .insert({
+                ...existingQuote,
+                id: undefined,
+                proposal_number: proposalInfo.fullNumber,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                date_last_downloaded: null,
+                version: proposalInfo.version
+              })
+              .select()
+              .single();
+
+            if (error) throw error;
+
+            const newQuote = convertRowToQuote(data);
+            _setQuotes([newQuote, ...quotes]);
+            
+            return newQuote;
+          } catch (error) {
+            console.error('Create quote version error:', error);
+            _setError(error instanceof Error ? error.message : 'Failed to create quote version');
             throw error;
           } finally {
             _setLoading(false);
@@ -472,6 +530,7 @@ export const useFilteredQuotes = () => useQuotesStore((state) => state.getFilter
 export const useQuotesActions = () => useQuotesStore((state) => ({
   fetchQuotes: state.fetchQuotes,
   createQuote: state.createQuote,
+  createQuoteVersion: state.createQuoteVersion,
   updateQuote: state.updateQuote,
   deleteQuote: state.deleteQuote,
   setCurrentQuote: state.setCurrentQuote,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +30,7 @@ import { QuoteNameInput } from "@/components/common/inputs";
 
 import { WallDetails, WallSpecification } from "@/types/quote";
 import { useQuotes } from "@/hooks/useQuotes";
+import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 
 interface QuoteCreatorWizardProps {
   user: string;
@@ -124,8 +125,7 @@ const QuoteCreatorWizard = ({
 
   const [jobDetails, setJobDetails] = useState({
     date: (jobDetailsData?.date as string) || new Date().toISOString().split('T')[0],
-    // proposalNumber: (existingQuoteData?.proposal_number as string) || `P${Date.now().toString().slice(-6)}`,
-    proposalNumber: (existingQuoteData?.proposal_number as string) || "P0",
+    proposalNumber: (existingQuoteData?.proposal_number as string) || "",
     jobLocation: (jobDetailsData?.job_location as string) || "",
     billedTo: {
       name: (jobDetailsData?.client_name as string) || "",
@@ -133,6 +133,25 @@ const QuoteCreatorWizard = ({
       address: (jobDetailsData?.client_address as string) || ""
     }
   });
+
+  // Generate proposal number on component mount if creating new quote
+  useEffect(() => {
+    const generateProposalNumber = async () => {
+      if (!existingQuote && !jobDetails.proposalNumber) {
+        try {
+          const proposalInfo = await ProposalNumberGenerator.getNextProposalNumber();
+          setJobDetails(prev => ({
+            ...prev,
+            proposalNumber: proposalInfo.fullNumber
+          }));
+        } catch (error) {
+          console.error('Error generating proposal number:', error);
+        }
+      }
+    };
+
+    generateProposalNumber();
+  }, [existingQuote, jobDetails.proposalNumber]);
 
   const [walls, setWalls] = useState<WallDetails>(migrateWallDetails(existingQuoteData?.wall_details));
   
