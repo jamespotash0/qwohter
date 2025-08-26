@@ -68,6 +68,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   const [selectedSection, setSelectedSection] = useState<QuoteSection | null>(null);
   const [showDataPanel, setShowDataPanel] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [hoveredSectionId, setHoveredSectionId] = useState<string | null>(null);
   // Smart PDF is now the only mode - no toggle needed
   const showSmartPDFPreview = true;
 
@@ -473,6 +474,11 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
                   })()}
                 </span>
               ) : null}
+              {hoveredSectionId && (
+                <span className="text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded whitespace-nowrap">
+                  Hover: {hoveredSectionId.replace(/-/g, ' ')}
+                </span>
+              )}
             </div>
 
             {/* Center: Zoom Controls */}
@@ -555,22 +561,28 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
 
       {/* Main Layout */}
       <div className="flex">
-        {/* Data Panel */}
+        {/* Data Panel - Floating Design */}
         {showDataPanel && (
-          <div className="w-96 bg-white border-r border-gray-200 h-screen sticky top-[73px] overflow-y-auto">
-            <div className="p-4 min-h-full">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <Edit3 className="w-4 h-4" />
-                Quote Data
-              </h3>
-              <div className="pb-20">
-                <QuoteDataPanel 
-                  data={state.rawData}
-                  onChange={handleFormDataChange}
-                  onDatabaseSave={handleSave}
-                  onUpdateWallSystem={onUpdateWallSystem ? (wallName: string, wallData: any) => onUpdateWallSystem(quote.id, wallName, wallData) : undefined}
-                  onRemoveWallSystem={onRemoveWallSystem ? (wallName: string) => onRemoveWallSystem(quote.id, wallName) : undefined}
-                />
+          <div className="w-[400px] relative">
+            <div className="fixed top-[90px] left-4 bottom-4 w-[360px] bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-xl shadow-lg shadow-slate-200/50 overflow-hidden z-40">
+              <div className="h-full flex flex-col">
+                <div className="px-4 py-3 bg-white/60 backdrop-blur-sm border-b border-slate-200/50">
+                  <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <Edit3 className="w-4 h-4" />
+                    Quote Data
+                  </h3>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  <div className="p-4 pb-20">
+                    <QuoteDataPanel 
+                      data={state.rawData}
+                      onChange={handleFormDataChange}
+                      onDatabaseSave={handleSave}
+                      onUpdateWallSystem={onUpdateWallSystem ? (wallName: string, wallData: any) => onUpdateWallSystem(quote.id, wallName, wallData) : undefined}
+                      onRemoveWallSystem={onRemoveWallSystem ? (wallName: string) => onRemoveWallSystem(quote.id, wallName) : undefined}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -585,6 +597,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           onSectionClick={(/*sectionId,*/_, sectionData) => {
             setSelectedSection(sectionData);
           }}
+          onSectionHover={setHoveredSectionId}
           showSmartPDFPreview={showSmartPDFPreview}
         />
       </div>

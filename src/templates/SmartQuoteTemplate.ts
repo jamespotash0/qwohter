@@ -132,10 +132,9 @@ export class SmartQuoteHelper {
     
     // Pattern 3: Major structural sections (but exclude problematic ones)
     const structuralSections = [
-      { pattern: /<div class="header-section"[^>]*>([\s\S]*?)<\/div>/g, name: 'header', title: 'Header' },
       { pattern: /<div class="billing-and-job-info"[^>]*>([\s\S]*?)<\/div>/g, name: 'billing-job', title: 'Billing & Job Info' },
       { pattern: /<div class="wall-specifications"[^>]*>([\s\S]*?)<\/div>/g, name: 'specifications', title: 'Wall Specifications' },
-      { pattern: /<div class="acceptance-section"[^>]*>([\s\S]*?)<\/div>/g, name: 'acceptance', title: 'Acceptance' }
+      { pattern: /<div class="signature-acceptance-section"[^>]*>([\s\S]*?)<\/div>/g, name: 'signature-acceptance', title: 'Signature & Acceptance' }
     ];
     
     structuralSections.forEach(({ pattern, name, title }) => {
@@ -161,7 +160,6 @@ export class SmartQuoteHelper {
     return sections.sort((a, b) => {
       // Define the proper order based on PDF template generation sequence
       const sectionOrder = [
-        'header',
         'billing-job', 'billing-and-job-info', 'billing',
         'proposal-intro',
         'wall-specifications', 'specifications',
@@ -174,8 +172,7 @@ export class SmartQuoteHelper {
         'pricing',
         'statement',
         'terms',
-        'signature',
-        'acceptance'
+        'signature-acceptance'
       ];
       
       const getOrderIndex = (id: string) => {

@@ -1,5 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { enhanceWithPageBreaks } from '@/utils/pageBreakManager';
+import React, { useEffect, useRef } from 'react';
 import '@/styles/pages.css';
 import { sanitizeHTML } from '@/utils/security';
 
@@ -20,91 +19,45 @@ export const PageContainer: React.FC<PageContainerProps> = ({
   className = '' 
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  // const [pages, setPages] = useState<Page[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (containerRef.current) {
-      processContentIntoPages();
+      processContent();
     }
   }, [children]);
 
-  const processContentIntoPages = () => {
-    if (!containerRef.current || isProcessing) return;
-
-    setIsProcessing(true);
+  const processContent = () => {
+    if (!containerRef.current) return;
     
     const container = containerRef.current;
     const tempDiv = container.querySelector('.temp-content') as HTMLDivElement;
-    if (!tempDiv) {
-      setIsProcessing(false);
-      return;
-    }
+    if (!tempDiv) return;
 
-    // Clear existing pages
-    const pageElements = container.querySelectorAll('.page');
-    pageElements.forEach(page => page.remove());
+    // Clear existing content
+    const existingContent = container.querySelectorAll('.css-paginated-content');
+    existingContent.forEach(el => el.remove());
 
-    // Get the HTML content and process it with page breaks
+    // Get the HTML content
     const htmlContent = tempDiv.innerHTML;
     
-    if (!htmlContent.trim()) {
-      setIsProcessing(false);
-      return;
-    }
+    if (!htmlContent.trim()) return;
 
-    // Use the enhanced page break manager to create proper page structure
-    try {
-      const pagedHTML = enhanceWithPageBreaks(htmlContent);
-      
-      // Create a temporary container to parse the paged HTML
-      const tempPageContainer = document.createElement('div');
-      sanitizeHTML.setInnerHTML(tempPageContainer, sanitizeHTML.clean(pagedHTML));
-      
-      // Check if the content already has page structure
-      const existingPages = tempPageContainer.querySelectorAll('.page');
-      
-      if (existingPages.length > 0) {
-        // Content already has page structure, use it directly
-        existingPages.forEach((page, /*index*/) => {
-          const pageElement = page.cloneNode(true) as HTMLElement;
-          pageElement.classList.add(showMarginGuides ? 'show-guides' : '');
-          container.appendChild(pageElement);
-        });
-      } else {
-        // Fall back to simple single page layout
-        createSinglePage(tempPageContainer.innerHTML);
-      }
-    } catch (error) {
-      console.error('Error processing pages:', error);
-      // Fallback to simple layout
-      createSinglePage(htmlContent);
-    }
+    // Create CSS-paginated content container
+    const contentContainer = document.createElement('div');
+    contentContainer.className = `css-paginated-content ${showMarginGuides ? 'show-guides' : ''}`;
     
-    setIsProcessing(false);
-  };
-
-  const createSinglePage = (content: string) => {
-    if (!containerRef.current) return;
-
-    const container = containerRef.current;
-    const pageElement = document.createElement('div');
-    pageElement.className = `page ${showMarginGuides ? 'show-guides' : ''}`;
-    pageElement.setAttribute('data-page', '1');
+    // Apply CSS pagination styling and insert content
+    sanitizeHTML.setInnerHTML(contentContainer, sanitizeHTML.clean(htmlContent));
     
-    const pageContent = document.createElement('div');
-    pageContent.className = 'page-content';
-    sanitizeHTML.setInnerHTML(pageContent, sanitizeHTML.clean(content));
-    
-    pageElement.appendChild(pageContent);
-    
+    // Add margin guides overlay if requested
     if (showMarginGuides) {
       const guides = document.createElement('div');
-      guides.className = 'margin-guides';
-      pageElement.appendChild(guides);
+      guides.className = 'margin-guides-overlay';
+      contentContainer.appendChild(guides);
     }
     
-    container.appendChild(pageElement);
+    container.appendChild(contentContainer);
+    console.log('📄 CSS-based pagination applied - content will break naturally using CSS rules');
   };
 
   // const getElementHeight = (element: HTMLElement): number => {

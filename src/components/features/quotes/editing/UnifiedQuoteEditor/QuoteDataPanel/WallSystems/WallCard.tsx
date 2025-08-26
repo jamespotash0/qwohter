@@ -82,8 +82,8 @@ export const WallCard: React.FC<WallCardProps> = ({
           onClick={() => setIsEditDialogOpen(true)}
           className="text-blue-600 hover:text-blue-700"
         >
-          <Settings className="w-3 h-3 mr-1" />
-          Edit Wall System
+          {/* <Settings className="w-3 h-3 mr-1" /> */}
+          Edit Wall
         </Button>
         <Button
           variant="outline"
@@ -99,7 +99,7 @@ export const WallCard: React.FC<WallCardProps> = ({
     <div className="col-span-2 pt-2 border-t border-gray-200">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-gray-500 font-medium">Quick Edit Area - Basic Fields Only</span>
-        <span className="text-xs text-blue-600">Use "Edit Wall System" for advanced configuration</span>
+        <span className="text-xs text-blue-600">Use "Edit Wall" for advanced configuration</span>
       </div>
     </div>
     

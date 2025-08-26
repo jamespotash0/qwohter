@@ -41,20 +41,20 @@ export const getPreviewStyles = (): string => {
         outline-offset: 2px;
       }
       
-      /* Section hover and click styles */
-      .quote-document [class*="-section"]:not(.wall-specifications-list):not(.pricing-section):not(.billing-job-container):not(.job-info-section):not(.billing-table) {
+      /* Section hover and click styles - exclude non-editable sections */
+      .quote-document [class*="-section"]:not(.wall-specifications-list):not(.pricing-section):not(.billing-job-container):not(.job-info-section):not(.billing-table):not(.header-section) {
         transition: all 0.2s ease;
         cursor: pointer;
         border-radius: 4px;
         position: relative;
       }
       
-      .quote-document [class*="-section"]:not(.wall-specifications-list):not(.pricing-section):not(.billing-job-container):not(.job-info-section):not(.billing-table):hover {
+      .quote-document [class*="-section"]:not(.wall-specifications-list):not(.pricing-section):not(.billing-job-container):not(.job-info-section):not(.billing-table):not(.header-section):hover {
         background-color: rgba(59, 130, 246, 0.05);
         box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
       }
       
-      .quote-document [class*="-section"]:not(.wall-specifications-list):not(.pricing-section):not(.billing-job-container):not(.job-info-section):not(.billing-table):hover::after {
+      .quote-document [class*="-section"]:not(.wall-specifications-list):not(.pricing-section):not(.billing-job-container):not(.job-info-section):not(.billing-table):not(.header-section):hover::after {
         content: "✏️ Click to edit";
         position: absolute;
         top: -25px;
@@ -69,6 +69,37 @@ export const getPreviewStyles = (): string => {
         z-index: 10;
         pointer-events: none;
       }
+      
+      /* Make signature-acceptance section editable */
+      .quote-document .signature-acceptance-section {
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border-radius: 4px;
+        position: relative;
+      }
+      
+      .quote-document .signature-acceptance-section:hover {
+        background-color: rgba(59, 130, 246, 0.05);
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+      }
+      
+      .quote-document .signature-acceptance-section:hover::after {
+        content: "✏️ Click to edit";
+        position: absolute;
+        top: -25px;
+        right: 0;
+        background: rgba(59, 130, 246, 0.9);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 500;
+        white-space: nowrap;
+        z-index: 10;
+        pointer-events: none;
+      }
+      
+      /* REMOVED: Non-interactive styles - now using consistent not-allowed cursor treatment */
       
       /* Make proposal intro, pocket doors, and pass doors sections hoverable */
       .quote-document .proposal-intro,
@@ -106,21 +137,27 @@ export const getPreviewStyles = (): string => {
       }
       
       .quote-document .wall-specifications-list,
-      .quote-document .pricing-section {
+      .quote-document .pricing-section,
+      .quote-document .header-section,
+      .quote-document .job-info-section,
+      .quote-document .billing-job-container {
         cursor: not-allowed;
         opacity: 0.8;
       }
       
       .quote-document .wall-specifications-list:hover,
-      .quote-document .pricing-section:hover {
+      .quote-document .pricing-section:hover,
+      .quote-document .header-section:hover,
+      .quote-document .job-info-section:hover,
+      .quote-document .billing-job-container:hover {
         background-color: rgba(156, 163, 175, 0.1);
       }
       
-      /* Google Docs-like styling */
+      /* Google Docs-like styling using CSS variables */
       .quote-document {
-        font-family: 'Times New Roman', Times, serif;
-        font-size: 12pt;
-        line-height: 1.15;
+        font-family: var(--page-font-family, 'Times New Roman', Times, serif);
+        font-size: var(--page-font-size, 12pt);
+        line-height: var(--page-line-height, 1.15);
         color: #000;
         background: transparent;
       }
@@ -149,16 +186,43 @@ export const getPreviewStyles = (): string => {
       .contact-row .label { font-weight: bold; margin-right: 8px; min-width: 80px; text-align: right; }
       .contact-row .value { text-align: left; flex: 1; }
       .website-link { color: #3B82F6; text-decoration: underline; }
-      .billing-and-job-info { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; gap: 40px; }
-      .billing-section { flex: 1; max-width: 45%; }
-      .billed-to-details { margin-top: 10px; }
-      .billed-line { margin-bottom: 2px; min-height: 20px; padding-bottom: 4px; }
-      .underline { height: 1px; background-color: black; margin-bottom: 8px; width: 100%; }
-      .job-info-section { flex: 1; max-width: 50%; }
+      .billing-job-container { 
+        display: flex !important; 
+        justify-content: flex-start !important; 
+        align-items: flex-start !important; 
+        margin-bottom: 30px; 
+        gap: 120px !important; 
+        width: 100% !important;
+        margin-top: -40px !important;
+      }
+      .billing-table { 
+        width: 200px !important; 
+        flex-shrink: 0 !important;
+      }
+      .job-info-section { 
+        flex-shrink: 0 !important;
+        width: 350px !important;
+        margin-left: auto !important;
+      }
       .job-row { display: flex; align-items: center; margin-bottom: 15px; position: relative; }
       .job-label { font-weight: bold; margin-right: 20px; min-width: 120px; }
       .job-value { flex: 1; padding-bottom: 2px; }
       .job-underline { position: absolute; bottom: 0; right: 0; left: 140px; height: 1px; background-color: black; }
+      
+      /* Ensure billing container tables display properly */
+      .billing-job-container table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+      }
+      
+      .billing-table table {
+        table-layout: fixed !important;
+      }
+      
+      .job-info-section table {
+        width: 100% !important;
+        margin-left: 0 !important;
+      }
       h2.section-header { font-weight: bold; font-size: 12pt; margin-top: 1.5em; margin-bottom: 0.5em; }
       .wall-specifications { line-height: 1.15; }
       .acceptance-section p { font-style: italic; font-size: 9pt; line-height: 1.2; }

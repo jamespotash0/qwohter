@@ -19,16 +19,18 @@ export class SectionInteractions {
 
       if (!sectionElement) {
         // Check for special clickable sections
-        sectionElement = target.closest('.proposal-intro') || target.closest('.pocket-doors-section') || target.closest('.panel-doors-section');
+        sectionElement = target.closest('.proposal-intro') || target.closest('.pocket-doors-section') || target.closest('.pass-doors-section') || target.closest('.panel-doors-section');
         if (!sectionElement) return;
         
         // Extract section ID from class name
         if (sectionElement.classList.contains('proposal-intro')) {
           sectionId = 'proposal-intro';
         } else if (sectionElement.classList.contains('pocket-doors-section')) {
-          sectionId = 'pocket-doors-section';
+          sectionId = 'pocket-doors';
+        } else if (sectionElement.classList.contains('pass-doors-section')) {
+          sectionId = 'pass-doors';
         } else if (sectionElement.classList.contains('panel-doors-section')) {
-          sectionId = 'panel-doors-section';
+          sectionId = 'panel-doors';
         } else {
           return;
         }
@@ -41,9 +43,15 @@ export class SectionInteractions {
         
         if (!sectionClass) return;
         
-        // For special multi-word sections, use the full class name
-        if (sectionClass === 'pocket-doors-section' || sectionClass === 'panel-doors-section') {
-          sectionId = sectionClass;
+        // Handle special multi-word sections that should keep their full names
+        if (sectionClass === 'pocket-doors-section') {
+          sectionId = 'pocket-doors';
+        } else if (sectionClass === 'pass-doors-section') {
+          sectionId = 'pass-doors';
+        } else if (sectionClass === 'panel-doors-section') {
+          sectionId = 'panel-doors';
+        } else if (sectionClass === 'signature-acceptance-section') {
+          sectionId = 'signature-acceptance';
         } else {
           // For normal sections, extract the base name (remove -section suffix)
           sectionId = sectionClass.replace('-section', '');
@@ -111,20 +119,36 @@ export class SectionInteractions {
       
       if (sectionElement) {
         const className = sectionElement.className;
-        const sectionMatch = className.match(/(\w+)-section/);
-        if (sectionMatch) {
-          sectionId = sectionMatch[1];
+        const classes = className.split(' ');
+        const sectionClass = classes.find(cls => cls.endsWith('-section'));
+        
+        if (sectionClass) {
+          // Handle special multi-word sections that should keep their full names
+          if (sectionClass === 'pocket-doors-section') {
+            sectionId = 'pocket-doors';
+          } else if (sectionClass === 'pass-doors-section') {
+            sectionId = 'pass-doors';
+          } else if (sectionClass === 'panel-doors-section') {
+            sectionId = 'panel-doors';
+          } else if (sectionClass === 'signature-acceptance-section') {
+            sectionId = 'signature-acceptance';
+          } else {
+            // For regular sections, remove -section suffix
+            sectionId = sectionClass.replace('-section', '');
+          }
         }
       } else {
-        // Check for special clickable sections
-        sectionElement = target.closest('.proposal-intro') || target.closest('.pocket-doors-section') || target.closest('.panel-doors-section');
+        // Check for special clickable sections without -section suffix
+        sectionElement = target.closest('.proposal-intro') || target.closest('.pocket-doors-section') || target.closest('.pass-doors-section') || target.closest('.panel-doors-section');
         if (sectionElement) {
           if (sectionElement.classList.contains('proposal-intro')) {
             sectionId = 'proposal-intro';
           } else if (sectionElement.classList.contains('pocket-doors-section')) {
-            sectionId = 'pocket-doors-section';
+            sectionId = 'pocket-doors';
+          } else if (sectionElement.classList.contains('pass-doors-section')) {
+            sectionId = 'pass-doors';
           } else if (sectionElement.classList.contains('panel-doors-section')) {
-            sectionId = 'panel-doors-section';
+            sectionId = 'panel-doors';
           }
         }
       }

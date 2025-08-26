@@ -14,12 +14,14 @@ export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: stri
     console.log('📝 Quote name:', quoteName);
     
     // Find the live preview container with the actual page layout
-    const quoteDocuments = document.querySelectorAll('.quote-document');
-    console.log('🔍 Found quote document elements:', quoteDocuments.length);
+    // Support legacy, pagination pages, and new CSS-based pagination
+    const quoteDocuments = document.querySelectorAll('.quote-document, .page, .page-preview, .css-paginated-content');
+    console.log('🔍 Found quote document/page elements:', quoteDocuments.length);
     
     if (quoteDocuments.length > 0) {
       // Use the already-rendered preview directly - capture each page separately
-      console.log('📸 Using live preview documents for PDF generation');
+      // Works with both legacy quote-document and new line-based pagination
+      console.log('📸 Using live preview documents/pages for PDF generation');
       
       const pdf = new jsPDF('p', 'mm', 'letter');
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -92,7 +94,7 @@ export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: stri
         }
       }
       
-      console.log('📑 Created PDF from live preview with', quoteDocuments.length, 'pages');
+      console.log('📑 Created PDF from live preview with', quoteDocuments.length, 'pages (line-based pagination)');
       const currentVersion = quote.version || 1;
       const today = new Date();
       const dateStr = today.toLocaleDateString('en-CA');

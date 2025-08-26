@@ -17,7 +17,8 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
   showFullFields = false
 }) => {
   const handleFieldChange = (field: string, value: any) => {
-    const actualValue = value === "None" ? "" : value;
+    // Allow "None" as a valid value, only convert to empty for other null/undefined cases
+    const actualValue = value === "" || value === null || value === undefined ? "" : value;
     
     // Apply the main field change first
     onFieldChange(wallName, field, actualValue);
@@ -544,6 +545,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Full-Height">Full-Height</SelectItem>
+                  <SelectItem className="text-left" value="Inset">Inset</SelectItem>
                 </>
               )}
             </SelectContent>

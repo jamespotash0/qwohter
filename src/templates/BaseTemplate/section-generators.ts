@@ -202,12 +202,10 @@ export class SectionGenerators {
       </ol>
     </div>
 
-    <div class="signature-section">
+    <div class="signature-acceptance-section">
       <br><strong>Signed By:</strong> ___________________________________________&nbsp;&nbsp;&nbsp;<strong>Date:</strong> _____________________
-    </div>
-
-    <div class="acceptance-section">
-      <h2 class="section-header">ACCEPTANCE OF PROPOSAL:</h2>
+      
+      <h2 class="section-header" style="margin-top: 20px;">ACCEPTANCE OF PROPOSAL:</h2>
       <p style="font-style: italic; font-size: 9pt; line-height: 1.2;">
         The above prices, specifications, and conditions are satisfactory and are hereby accepted. Any alteration or deviation from above specifications will be executed upon written approval and may/will be subject to additional costs over and above the estimate. All removal of packing material is the customer's responsibility. Electrical and H.V.A.C. installation(s) are not included. Visa, Mastercard and American Express (AMEX) are accepted. Payments by credit card will be charged a processing fee. Pricing subject to applicable sales tax unless otherwise noted. Late payments will be subject to a 1.5% finance charge per month. Cancellations will be subject to a restocking fee.
       </p>
