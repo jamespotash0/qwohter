@@ -2,7 +2,7 @@
 // Extracted from WallSpecificationForm.tsx for better maintainability and testability
 
 import { WallSpecification, GlassWallConfiguration } from '@/types/quote';
-
+// import { WallSpecification, GlassWallConfiguration, BaseWallSpecification } from '@/lib/types/walls';
 /**
  * Maps GlassWallConfiguration (form format) to WallSpecification (database format)
  * 

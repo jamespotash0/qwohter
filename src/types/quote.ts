@@ -96,10 +96,10 @@ export interface WallDetails {
 }
 
 // @deprecated - Use per-wall pocketDoors configuration in WallSpecification instead
-export interface PocketDoorsData {
-  foldType: string;
-  foldStyle: string;
-}
+// export interface PocketDoorsData {
+//   foldType: string;
+//   foldStyle: string;
+// }
 
 export interface PricingData {
   basePrice: number;
