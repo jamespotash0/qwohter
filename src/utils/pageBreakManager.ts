@@ -205,6 +205,16 @@ export class PageBreakManager {
       'img'
     ];
 
+    // Special handling for panels section - allow individual list items to break
+    if (element.matches('.panels-section')) {
+      return true; // Allow the panels section to break between wall descriptions
+    }
+
+    // Special handling for terms section - allow numbered items to break, but keep #10 with bullets
+    if (element.matches('.terms-section')) {
+      return true; // Allow the terms section to break between numbered items
+    }
+
     return !nonBreakableSelectors.some(selector => 
       element.matches(selector) || element.querySelector(selector)
     );
@@ -215,13 +225,133 @@ export class PageBreakManager {
     if (element.matches('.header-section')) return 200;
     if (element.matches('table')) return 100;
     if (element.matches('.section-header')) return 50;
+    
+    // Special handling for terms section item #10 with nested bullets
+    if (element.matches('li') && element.textContent?.includes('Payment Terms:')) {
+      return 150; // Keep item #10 and its bullet points together
+    }
+    
+    // Individual panel descriptions can be kept together but allow breaking between them
+    if (element.matches('.panels-section li')) {
+      return 80; // Keep individual wall descriptions together
+    }
+    
     return 30;
   }
 
   private fragmentLargeSection(section: ContentSection, availableHeight: number): HTMLElement[] {
-    // For now, return the original element
-    // This can be enhanced to actually split large text blocks
+    const element = section.element;
+    
+    // Handle panels section - break between individual wall descriptions (li elements)
+    if (element.matches('.panels-section')) {
+      return this.fragmentPanelsSection(element);
+    }
+    
+    // Handle terms section - break between numbered items but keep #10 with bullets together
+    if (element.matches('.terms-section')) {
+      return this.fragmentTermsSection(element);
+    }
+    
+    // For other elements, return the original element
     return [section.element];
+  }
+
+  private fragmentPanelsSection(element: HTMLElement): HTMLElement[] {
+    const fragments: HTMLElement[] = [];
+    const listItems = element.querySelectorAll('li');
+    
+    if (listItems.length <= 1) {
+      return [element]; // No need to fragment if only one wall
+    }
+    
+    // Create fragments with individual wall descriptions
+    listItems.forEach((li, index) => {
+      const fragment = document.createElement('div');
+      fragment.className = 'panels-section page-fragment';
+      fragment.style.cssText = element.style.cssText;
+      
+      // Add header only to first fragment
+      if (index === 0) {
+        const header = element.querySelector('h2.section-header');
+        if (header) {
+          fragment.appendChild(header.cloneNode(true));
+        }
+      }
+      
+      // Create ul with single li
+      const ul = document.createElement('ul');
+      ul.style.cssText = element.querySelector('ul')?.style.cssText || 'margin-left: 0px; padding-left: 0;';
+      ul.appendChild(li.cloneNode(true));
+      fragment.appendChild(ul);
+      
+      fragments.push(fragment);
+    });
+    
+    return fragments;
+  }
+
+  private fragmentTermsSection(element: HTMLElement): HTMLElement[] {
+    const fragments: HTMLElement[] = [];
+    const listItems = element.querySelectorAll('ol > li');
+    
+    if (listItems.length <= 3) {
+      return [element]; // No need to fragment if only a few terms
+    }
+    
+    let currentFragment = this.createTermsFragment(element, true); // Include header
+    let currentFragmentItems = 0;
+    const maxItemsPerPage = 6;
+    
+    listItems.forEach((li, index) => {
+      const itemNumber = index + 1;
+      
+      // Special handling for item #10 - keep it with its bullets together
+      if (itemNumber === 10) {
+        // If current fragment is almost full, start a new one for item #10
+        if (currentFragmentItems >= 4) {
+          fragments.push(currentFragment);
+          currentFragment = this.createTermsFragment(element, false);
+          currentFragmentItems = 0;
+        }
+      } else if (currentFragmentItems >= maxItemsPerPage) {
+        // Start new fragment for regular items
+        fragments.push(currentFragment);
+        currentFragment = this.createTermsFragment(element, false);
+        currentFragmentItems = 0;
+      }
+      
+      const ol = currentFragment.querySelector('ol');
+      if (ol) {
+        ol.appendChild(li.cloneNode(true));
+        currentFragmentItems++;
+      }
+    });
+    
+    // Add final fragment if it has content
+    if (currentFragmentItems > 0) {
+      fragments.push(currentFragment);
+    }
+    
+    return fragments.length > 0 ? fragments : [element];
+  }
+
+  private createTermsFragment(originalElement: HTMLElement, includeHeader: boolean): HTMLElement {
+    const fragment = document.createElement('div');
+    fragment.className = 'terms-section page-fragment';
+    fragment.style.cssText = originalElement.style.cssText;
+    
+    if (includeHeader) {
+      const header = originalElement.querySelector('h2.section-header');
+      if (header) {
+        fragment.appendChild(header.cloneNode(true));
+      }
+    }
+    
+    const ol = document.createElement('ol');
+    ol.style.cssText = originalElement.querySelector('ol')?.style.cssText || '';
+    fragment.appendChild(ol);
+    
+    return fragment;
   }
 }
 

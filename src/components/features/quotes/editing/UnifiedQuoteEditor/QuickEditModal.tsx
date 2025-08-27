@@ -42,16 +42,29 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = section.content;
       
-      // Find the section wrapper div and extract its inner HTML
+      // Find the section wrapper div and extract content properly
       const sectionDiv = tempDiv.querySelector(`li, div[class*="${section.id}"], div[class*="section"]`);
       if (sectionDiv) {
-        const container = document.createElement('div');
-        sectionDiv.childNodes.forEach(node => {
-          container.appendChild(node.cloneNode(true));
-        });
-        cleanHTML = container.innerHTML.trim();
+        // For panels section, get all paragraph content
+        if (section.id === 'panels') {
+          const paragraphs = sectionDiv.querySelectorAll('p');
+          if (paragraphs.length > 0) {
+            cleanHTML = Array.from(paragraphs).map(p => p.innerHTML).join('<br><br>');
+          } else {
+            cleanHTML = sectionDiv.innerHTML.trim();
+          }
+        } else {
+          // For other sections, use the existing logic
+          const container = document.createElement('div');
+          sectionDiv.childNodes.forEach(node => {
+            if (node.nodeType === Node.TEXT_NODE || node.nodeType === Node.ELEMENT_NODE) {
+              container.appendChild(node.cloneNode(true));
+            }
+          });
+          cleanHTML = container.innerHTML.trim();
+        }
       } else {
-        // Fallback: remove only outermost div if exists
+        // Fallback: remove only outermost div wrapper if exists
         cleanHTML = section.content
           .replace(/^<div[^>]*>/, '')
           .replace(/<\/div>$/, '')
@@ -114,6 +127,42 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
   const handleCancel = useCallback(() => {
     onClose();
   }, [onClose]);
+
+  // Handle key events to fix Enter key behavior
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Handle Enter key to force line breaks instead of div creation
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      
+      // Insert a line break at cursor position
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const br = document.createElement('br');
+        range.deleteContents();
+        range.insertNode(br);
+        
+        // Move cursor after the br element
+        range.setStartAfter(br);
+        range.setEndAfter(br);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        // Update the content state
+        if (richEditorRef.current) {
+          setRichEditingContent(richEditorRef.current.innerHTML);
+        }
+      }
+      return;
+    }
+    
+    // Handle Escape key to close modal
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      handleCancel();
+      return;
+    }
+  }, [handleCancel]);
 
   if (!isOpen || !section) return null;
 
@@ -239,6 +288,7 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
                   lineHeight: '1.5'
                 }}
                 onInput={handleRichTextInput}
+                onKeyDown={handleKeyDown}
                 suppressContentEditableWarning={true}
               />
               

@@ -114,6 +114,7 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
         onClose={() => setIsAddWallDialogOpen(false)}
         onSave={handleAddWall}
         onDatabaseSave={onDatabaseSave}
+        existingWalls={data.wall_details?.walls || {}}
       />
     </CollapsibleSection>
   );

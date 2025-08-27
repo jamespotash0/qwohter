@@ -3,22 +3,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-interface GlassWallFormProps {
+interface GlassWallEditFormProps {
   wallName: string;
   wall: any;
   onFieldChange: (wallName: string, field: string, value: any) => void;
   showFullFields?: boolean;
 }
 
-export const GlassWallForm: React.FC<GlassWallFormProps> = ({
+export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
   wallName,
   wall,
   onFieldChange,
   showFullFields = false
 }) => {
   const handleFieldChange = (field: string, value: any) => {
-    // Allow "None" as a valid value, only convert to empty for other null/undefined cases
-    const actualValue = value === "" || value === null || value === undefined ? "" : value;
+    // Convert "None" to empty string to reset field, allow other values as-is
+    const actualValue = value === "None" ? "" : value;
     
     // Apply the main field change first
     onFieldChange(wallName, field, actualValue);
@@ -69,6 +69,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             <SelectValue placeholder="Select model" />
           </SelectTrigger>
           <SelectContent className="text-left">
+            <SelectItem className="text-left" value="None">None</SelectItem>
             <SelectItem className="text-left" value="Stella">Stella</SelectItem>
             <SelectItem className="text-left" value="Luna">Luna</SelectItem>
             <SelectItem className="text-left" value="Illona">Illona</SelectItem>
@@ -92,16 +93,21 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             </SelectTrigger>
             <SelectContent className="text-left">
               {wall.glasswallModel === "Stella" && (
-                <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
+                </>
               )}
               {wall.glasswallModel === "Luna" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
                   <SelectItem className="text-left" value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
                 </>
               )}
               {wall.glasswallModel === "Illona" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
                   <SelectItem className="text-left" value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
                   <SelectItem className="text-left" value="Pivoting Individual Panels">Pivoting Individual Panels</SelectItem>
@@ -110,12 +116,14 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
               )}
               {wall.glasswallModel === "Ava" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
                   <SelectItem className="text-left" value="Hinged-Paired Panels">Hinged-Paired Panels</SelectItem>
                 </>
               )}
               {wall.glasswallModel === "Mata" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
                   <SelectItem className="text-left" value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
                   <SelectItem className="text-left" value="Single & Telescoping Slider Panels">Single & Telescoping Slider Panels</SelectItem>
@@ -137,6 +145,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             <SelectContent className="text-left">
               {wall.glasswallModel === "Stella" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Manual">Manual</SelectItem>
                   <SelectItem className="text-left" value="Automated">Automated</SelectItem>
                   <SelectItem className="text-left" value="Programmable Self-Driving">Programmable Self-Driving</SelectItem>
@@ -144,7 +153,10 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
                 </>
               )}
               {["Luna", "Illona", "Ava", "Mata"].includes(wall.glasswallModel || '') && (
-                <SelectItem className="text-left" value="Manual">Manual</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="Manual">Manual</SelectItem>
+                </>
               )}
             </SelectContent>
           </Select>
@@ -164,18 +176,28 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             <SelectContent className="text-left">
               {wall.glasswallModel === "Stella" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="44">44</SelectItem>
                   <SelectItem className="text-left" value="50">50</SelectItem>
                 </>
               )}
               {wall.glasswallModel === "Luna" && (
-                <SelectItem className="text-left" value="43">43</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="43">43</SelectItem>
+                </>
               )}
               {wall.glasswallModel === "Illona" && (
-                <SelectItem className="text-left" value="33">33</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="33">33</SelectItem>
+                </>
               )}
               {(wall.glasswallModel === "Ava" || wall.glasswallModel === "Mata") && (
-                <SelectItem className="text-left" value="Non-Acoustic">Non-Acoustic</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="Non-Acoustic">Non-Acoustic</SelectItem>
+                </>
               )}
             </SelectContent>
           </Select>
@@ -243,16 +265,23 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
             </SelectTrigger>
             <SelectContent className="text-left">
               {wall.glasswallModel === "Stella" && (
-                <SelectItem className="text-left" value="Top-Supported">Top-Supported</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="Top-Supported">Top-Supported</SelectItem>
+                </>
               )}
               {wall.glasswallModel === "Luna" && (
                 <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Top-Supported">Top-Supported</SelectItem>
                   <SelectItem className="text-left" value="Floor-Supported">Floor-Supported</SelectItem>
                 </>
               )}
               {["Illona", "Ava", "Mata"].includes(wall.glasswallModel || '') && (
-                <SelectItem className="text-left" value="Top-Supported">Top-Supported</SelectItem>
+                <>
+                  <SelectItem className="text-left" value="None">None</SelectItem>
+                  <SelectItem className="text-left" value="Top-Supported">Top-Supported</SelectItem>
+                </>
               )}
             </SelectContent>
           </Select>

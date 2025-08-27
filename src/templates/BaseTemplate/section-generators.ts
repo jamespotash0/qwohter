@@ -181,25 +181,25 @@ export class SectionGenerators {
 
     <div class="terms-section">
       <h2 class="section-header">General Notes and Terms:</h2>
-      <ol>
-        <li>1.  <strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</li>
-        <li>2.  All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate ? wageRate + ' ' : ''}Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</li>
-        <li>3.  <strong>Delivery includes drop-off to the Roof</strong> of the site, if applicable.</li>
-        <li>4.  Pricing is <strong>exclusive of any applicable taxes</strong>, which will be added as required.</li>
-        <li>5.  The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</li>
-        <li>6.  Final pricing is <strong>subject to site inspection and verification</strong> of all dimensions and conditions by our installation team.</li>
-        <li>7.  Any additional requirements or unforeseen conditions may be subject to <strong>revised pricing or additional charges</strong>.</li>
-        <li>8.  Panel colors and finishes are available<strong> as per the manufacturer's current standard offerings</strong>.</li>
-        <li>9. A <strong>10-year factory warranty</strong> is provided on all operable wall systems.</li>
-        <li>
+      <div class="terms-list">
+        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">1. <strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</div>
+        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">2. All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate ? wageRate + ' ' : ''}Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</div>
+        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">3. <strong>Delivery includes drop-off to the Roof</strong> of the site, if applicable.</div>
+        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">4. Pricing is <strong>exclusive of any applicable taxes</strong>, which will be added as required.</div>
+        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">5. The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</div>
+        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">6. Final pricing is <strong>subject to site inspection and verification</strong> of all dimensions and conditions by our installation team.</div>
+        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">7. Any additional requirements or unforeseen conditions may be subject to <strong>revised pricing or additional charges</strong>.</div>
+        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">8. Panel colors and finishes are available<strong> as per the manufacturer's current standard offerings</strong>.</div>
+        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">9. A <strong>10-year factory warranty</strong> is provided on all operable wall systems.</div>
+        <div class="term-item payment-terms-item" style="break-inside: avoid; margin-bottom: 4px;">
           10. <strong> Payment Terms:</strong>
-          <ul style="padding-left: 2rem; list-style: none;">
-            <li>– <strong>${paymentUponDrawings}%</strong> due upon approval of shop drawings</li>
-            <li>– <strong>${paymentUponTrackInstallation}%</strong> due upon track installation</li>
-            <li>– Remaining balance due upon final completion</li>
-          </ul>
-        </li>
-      </ol>
+          <div style="padding-left: 2rem; margin-top: 4px;">
+            <div>– <strong>${paymentUponDrawings}%</strong> due upon approval of shop drawings</div>
+            <div>– <strong>${paymentUponTrackInstallation}%</strong> due upon track installation</div>
+            <div>– Remaining balance due upon final completion</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="signature-acceptance-section">
@@ -217,10 +217,14 @@ export class SectionGenerators {
     
     const wallsWithPockets = Object.entries(walls)
       .filter(([_, wall]) => {
-        // Check per-wall configuration first
+        // Check per-wall configuration - require both fold type AND fold style
         
         if (wall.pocketDoors?.foldType && 
-            wall.pocketDoors.foldType.toLowerCase().trim() !== 'none') {
+            wall.pocketDoors.foldType.toLowerCase().trim() !== 'none' &&
+            wall.pocketDoors.foldType.trim() !== '' &&
+            wall.pocketDoors?.foldStyle &&
+            wall.pocketDoors.foldStyle.toLowerCase().trim() !== 'none' &&
+            wall.pocketDoors.foldStyle.trim() !== '') {
           return true;
         }
         return false;
@@ -237,7 +241,7 @@ export class SectionGenerators {
 
     // Create inline sentence describing each wall's pocket doors
     const wallDescriptions = wallsWithPockets
-      .map(wall => `<strong>${wall.name}</strong> will use <strong>${wall.type} ${wall.style}</strong> pocket doors`)
+      .map(wall => `<strong>${wall.name.replace(/\s+/g, '&nbsp;')}</strong> will use <strong>${wall.type} ${wall.style}</strong> pocket doors`)
       .join(', and ');
 
     const summary = wallsWithPockets.length > 1
@@ -259,12 +263,17 @@ export class SectionGenerators {
         // Check for operable wall pass doors
         const hasOperablePassDoors = wall.passDoorPanels && 
                                     wall.passDoorPanels.toLowerCase().trim() !== 'none' &&
-                                    wall.passDoorPanels.trim() !== '';
+                                    wall.passDoorPanels.trim() !== '' &&
+                                    wall.passDoorQuantity && 
+                                    wall.passDoorQuantity !== '0';
         
-        // Check for glass wall pass doors
+        // Check for glass wall pass doors - require both type and option to be set
         const hasGlassPassDoors = wall.glasswallPassDoorType && 
                                  wall.glasswallPassDoorType.toLowerCase().trim() !== 'none' &&
-                                 wall.glasswallPassDoorType.trim() !== '';
+                                 wall.glasswallPassDoorType.trim() !== '' &&
+                                 wall.glasswallPassDoorOption &&
+                                 wall.glasswallPassDoorOption.toLowerCase().trim() !== 'none' &&
+                                 wall.glasswallPassDoorOption.trim() !== '';
         
         return hasOperablePassDoors || hasGlassPassDoors;
       })
@@ -303,10 +312,10 @@ export class SectionGenerators {
           const passDescription = wall.option && wall.option !== wall.type 
             ? `<strong>${wall.type} ${wall.option}</strong>` 
             : `<strong>${wall.type}</strong>`;
-          return `<strong>${wall.name}</strong> has <strong>${quantityText}</strong> ${passDescription} <strong>Pass Door</strong>`;
+          return `<strong>${wall.name.replace(/\s+/g, '&nbsp;')}</strong> has <strong>${quantityText}</strong> ${passDescription} <strong>Pass Door</strong>`;
         } else {
           // For operable walls, use the standard format
-          return `<strong>${wall.name}</strong> has <strong>${quantityText} ${wall.type} Pass Door</strong> panel${qty > 1 ? 's' : ''}`;
+          return `<strong>${wall.name.replace(/\s+/g, '&nbsp;')}</strong> has <strong>${quantityText} ${wall.type} Pass Door</strong> panel${qty > 1 ? 's' : ''}`;
         }
       })
       .join(', and ');

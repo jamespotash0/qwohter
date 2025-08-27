@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EditWallSystemDialogProps } from './types';
-import { OperableWallForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/OperableWallEditForm';
-import { GlassWallForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/GlassWallEditForm';
+import { OperableWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/OperableWallEditForm';
+import { GlassWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/GlassWallEditForm';
 
 export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
   isOpen,
@@ -460,7 +460,7 @@ export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
               </div>
 
               {/* Use the existing OperableWallForm for the remaining fields */}
-              <OperableWallForm
+              <OperableWallEditForm
                 wall={editedWall}
                 wallName={wallName}
                 onFieldChange={handleFieldChange}
@@ -472,7 +472,7 @@ export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
           {editedWall.wallSystemType === "Glass Wall" && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Glass Wall Specifications</h3>
-              <GlassWallForm
+              <GlassWallEditForm
                 wall={editedWall}
                 wallName={wallName}
                 onFieldChange={handleFieldChange}

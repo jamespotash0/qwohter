@@ -5,22 +5,55 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { OperableWallForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/OperableWallEditForm';
-import { GlassWallForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/GlassWallEditForm';
+import { OperableWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/OperableWallEditForm';
+import { GlassWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/GlassWallEditForm';
 
 interface AddWallDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (wallName: string, wallData: any) => Promise<void> | void;
   onDatabaseSave?: () => Promise<void>;
+  existingWalls?: Record<string, any>;
 }
 
 export const AddWallDialog: React.FC<AddWallDialogProps> = ({
   isOpen,
   onClose,
   onSave,
-  onDatabaseSave
+  onDatabaseSave,
+  existingWalls = {}
 }) => {
+  // Function to generate the next wall name using A, B, C... convention
+  const generateNextWallName = () => {
+    const existingNames = Object.keys(existingWalls || {});
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    
+    console.log('Generating wall name. Existing walls:', existingNames);
+    
+    // If no existing walls, start with 'Wall A'
+    if (existingNames.length === 0) {
+      console.log('No existing walls, returning Wall A');
+      return 'Wall A';
+    }
+    
+    // Find the next available letter
+    for (let i = 0; i < letters.length; i++) {
+      const letter = `Wall ${letters[i]}`;
+      if (!existingNames.includes(letter)) {
+        console.log('Next available letter:', letter);
+        return letter;
+      }
+    }
+    
+    // Fallback to numbers if all letters are used
+    let counter = 1;
+    while (existingNames.includes(`Wall ${counter}`)) {
+      counter++;
+    }
+    console.log('Using numbered fallback:', `Wall ${counter}`);
+    return `Wall ${counter}`;
+  };
+
   // Empty wall template
   const emptyWall = {
     wallSystemType: '',
@@ -77,6 +110,22 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
   const [wallName, setWallName] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  // Set initial wall name when component mounts
+  useEffect(() => {
+    const newName = generateNextWallName();
+    console.log('Setting initial wall name to:', newName);
+    setWallName(newName);
+  }, [existingWalls]);
+
+  // Regenerate wall name when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      const newName = generateNextWallName();
+      console.log('Setting wall name on dialog open to:', newName);
+      setWallName(newName);
+    }
+  }, [isOpen]);
 
   // Helper functions for cascading logic (copied from EditWallSystemDialog)
   const getSeriesByPanelConfiguration = (panelConfiguration: string): string[] => {
@@ -191,8 +240,8 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
   useEffect(() => {
     if (isOpen) {
       setNewWall(emptyWall);
-      setWallName('');
       setHasChanges(false);
+      // Don't reset wallName here - let the other useEffect handle it
     }
   }, [isOpen]);
 
@@ -205,15 +254,12 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
   };
 
   const handleSave = () => {
-    if (!wallName.trim()) {
-      alert('Please enter a wall name');
-      return;
-    }
     setShowConfirmDialog(true);
   };
 
   const handleConfirmSave = async () => {
     try {
+      console.log('Saving wall with name:', wallName, 'and data:', newWall);
       // Save wall data - database save is now handled by the parent component
       await onSave(wallName, newWall);
       
@@ -246,12 +292,12 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
           <div className="space-y-6">
             {/* Wall Name */}
             <div className="space-y-2">
-              <Label className="text-xs">Wall Name *</Label>
+              <Label className="text-xs">Wall Name</Label>
               <Input 
-                className="text-xs h-8"
+                className="text-xs h-8 bg-muted text-muted-foreground"
                 value={wallName}
-                onChange={(e) => setWallName(e.target.value)}
-                placeholder="Enter wall name (e.g., Wall 1)"
+                readOnly
+                placeholder="Auto-generated wall name"
               />
             </div>
 
@@ -534,7 +580,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                 </div>
 
                 {/* Use the existing OperableWallForm for the remaining fields */}
-                <OperableWallForm
+                <OperableWallEditForm
                   wall={newWall}
                   wallName={wallName}
                   onFieldChange={handleFieldChange}
@@ -545,7 +591,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
 
             {newWall.wallSystemType === "Glass Wall" && (
               <div className="space-y-4">
-                <GlassWallForm
+                <GlassWallEditForm
                   wall={newWall}
                   wallName={wallName}
                   onFieldChange={handleFieldChange}

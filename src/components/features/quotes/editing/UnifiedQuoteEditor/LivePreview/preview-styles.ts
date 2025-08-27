@@ -41,6 +41,46 @@ export const getPreviewStyles = (): string => {
         outline-offset: 2px;
       }
       
+      /* Page fragment styles for sectioned content */
+      .page-fragment {
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      
+      .page-fragment + .page-fragment {
+        margin-top: 0;
+        page-break-before: auto;
+      }
+      
+      /* Individual wall panel descriptions */
+      .panel-wall-item {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      
+      /* Individual term items */
+      .term-item {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      
+      /* Payment terms with bullets - keep together */
+      .payment-terms-item {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        keep-together: always;
+      }
+      
+      /* Prevent wall names from breaking across lines */
+      .wall-specifications-list strong:first-child,
+      .panel-wall-item strong:first-child,
+      .track-section strong,
+      .support-section strong,
+      .pocket-doors-section strong,
+      .pass-doors-section strong {
+        white-space: nowrap;
+      }
+      
       /* Section hover and click styles - exclude non-editable sections */
       .quote-document [class*="-section"]:not(.wall-specifications-list):not(.pricing-section):not(.billing-job-container):not(.job-info-section):not(.billing-table):not(.header-section) {
         transition: all 0.2s ease;

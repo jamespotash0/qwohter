@@ -149,23 +149,46 @@ const QuoteEdit = () => {
     }
   };
 
-  const handleUnifiedQuoteDownload = async (/*html: string, isSmartPDF: boolean = false*/) => {
-    console.log('🔍 Starting unified quote download, delegating to pdfDownloadUtils');
+  const handleUnifiedQuoteDownload = async (html: string, isSmartPDF: boolean = false) => {
+    console.log('🔍 Starting unified quote download with live preview HTML');
     
     if (!quote) {
       console.error('❌ No quote available');
       return;
     }
     
-    try {
-      // Use the centralized PDF generation utility
-      const { generateQuotePDF } = await import('@/utils/pdfDownloadUtils');
-      await generateQuotePDF(quote, markAsDownloaded);
-      
+    if (!html) {
+      console.error('❌ No HTML content provided for PDF generation');
       toast({
-        title: "PDF Downloaded",
-        description: `Quote ${quote.proposal_number} downloaded successfully.`,
+        title: "Download failed",
+        description: "No preview content available. Please wait for the preview to load.",
+        variant: "destructive",
       });
+      return;
+    }
+    
+    try {
+      // Create a temporary container with the exact live preview HTML
+      const tempContainer = document.createElement('div');
+      tempContainer.style.position = 'absolute';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.visibility = 'hidden';
+      tempContainer.innerHTML = html;
+      document.body.appendChild(tempContainer);
+      
+      try {
+        // Use the centralized PDF generation utility
+        const { generateQuotePDF } = await import('@/utils/pdfDownloadUtils');
+        await generateQuotePDF(quote, markAsDownloaded);
+        
+        toast({
+          title: "PDF Downloaded",
+          description: `Quote ${quote.proposal_number} downloaded successfully.`,
+        });
+      } finally {
+        // Clean up the temporary container
+        document.body.removeChild(tempContainer);
+      }
       
     } catch (error) {
       console.error('❌ PDF download failed:', error);

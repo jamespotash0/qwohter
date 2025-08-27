@@ -18,6 +18,7 @@ const modelConfigurations = {
     frameFinishes: ['Clear Anodized', 'Black', 'White', 'Custom RAL Powder Coat', 'Sublimation Wood Look'],
     trackType: ['Top-Supported Multi-directional & Single-Point'],
     trackFinish: ['Clear Anodized', 'Black Powder Coat', 'White Powder Coat', 'Custom RAL Option'],
+    floorGuide: ['None'],
     finalClosure: ['Panel-Mounted Telescoping Jamb', 'Wall-Mounted Telescoping Jamb', 'Full-Height Door'],
     bottomSeals: ['Electric', 'Automatic', 'Semi-Automatic', 'Manual', 'Operable'],
     topSeals: ['Electric', 'Automatic', 'Semi-Automatic', 'Manual', 'Operable']
@@ -96,13 +97,13 @@ const modelConfigurations = {
   }
 };
 
-interface GlassWallSpecsProps {
+interface GlassWallCreationFormProps {
   wall: WallSpecification;
   wallName: string;
   onWallChange: (wallName: string, field: keyof WallSpecification, value: string) => void;
 }
 
-const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) => {
+const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreationFormProps) => {
   const [selectedModel, setSelectedModel] = useState<string>(wall.glasswallModel || '');
   const [selectedConfiguration, setSelectedConfiguration] = useState<string>(wall.glasswallPanelConfiguration || '');
   const [selectedOperation, setSelectedOperation] = useState<string>(wall.glasswallOperation || '');
@@ -123,9 +124,10 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
   const prevModelRef = useRef<string>('');
   const prevConfigRef = useRef<string>('');
 
-  const getAvailableOptions = (field: keyof typeof modelConfigurations.Stella) => {
+  const getAvailableOptions = (field: string) => {
     if (!selectedModel || !(selectedModel in modelConfigurations)) return [];
-    return modelConfigurations[selectedModel as keyof typeof modelConfigurations][field] || [];
+    const modelConfig = modelConfigurations[selectedModel as keyof typeof modelConfigurations];
+    return (modelConfig as any)[field] || [];
   };
 
   const getFrameThickness = (model: string) => {
@@ -149,40 +151,45 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
 
 
   const handleFieldChange = (field: keyof WallSpecification, value: string) => {
-    onWallChange(wallName, field, value);
+    // Convert "none" to empty string to reset field to placeholder
+    const actualValue = value === "none" ? "" : value;
+    onWallChange(wallName, field, actualValue);
+    
+    // Convert "none" to empty string for display state as well
+    const displayValue = value === "none" ? "" : value;
     
     if (field === 'glasswallModel') {
-      setSelectedModel(value);
+      setSelectedModel(displayValue);
     } else if (field === 'glasswallPanelConfiguration') {
-      setSelectedConfiguration(value);
+      setSelectedConfiguration(displayValue);
     } else if (field === 'glasswallOperation') {
-      setSelectedOperation(value);
+      setSelectedOperation(displayValue);
     } else if (field === 'glasswallGlassType') {
-      setSelectedGlassType(value);
+      setSelectedGlassType(displayValue);
     } else if (field === 'glasswallSTCRating') {
-      setSelectedSTCRating(value);
+      setSelectedSTCRating(displayValue);
     } else if (field === 'glasswallPartitionSupport') {
-      setSelectedPartitionSupport(value);
+      setSelectedPartitionSupport(displayValue);
     } else if (field === 'glasswallPassDoorType') {
-      setSelectedPassDoorType(value);
+      setSelectedPassDoorType(displayValue);
     } else if (field === 'glasswallPassDoorOption') {
-      setSelectedPassDoorOption(value);
+      setSelectedPassDoorOption(displayValue);
     } else if (field === 'glasswallPanelFace') {
-      setSelectedPanelFace(value);
+      setSelectedPanelFace(displayValue);
     } else if (field === 'glasswallHingeType') {
-      setSelectedHingeType(value);
+      setSelectedHingeType(displayValue);
     } else if (field === 'glasswallFrameFinish') {
-      setSelectedFrameFinish(value);
+      setSelectedFrameFinish(displayValue);
     } else if (field === 'glasswallTrackType') {
-      setSelectedTrackType(value);
+      setSelectedTrackType(displayValue);
     } else if (field === 'glasswallTrackFinish') {
-      setSelectedTrackFinish(value);
+      setSelectedTrackFinish(displayValue);
     } else if (field === 'glasswallFinalClosure') {
-      setSelectedFinalClosure(value);
+      setSelectedFinalClosure(displayValue);
     } else if (field === 'glasswallBottomSeals') {
-      setSelectedBottomSeals(value);
+      setSelectedBottomSeals(displayValue);
     } else if (field === 'glasswallTopSeals') {
-      setSelectedTopSeals(value);
+      setSelectedTopSeals(displayValue);
     }
   };
 
@@ -232,7 +239,7 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
       setSelectedPassDoorOption('');
       onWallChange(wallName, 'glasswallPassDoorOption', '');
     }
-  }, [selectedPassDoorType, wall.glasswallPassDoorType, wallName, onWallChange]);
+  }, [selectedPassDoorType, wall.glasswallPassDoorType, wallName]);
 
   return (
     <div>
@@ -339,7 +346,7 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="space-y-2">
               <Label className="text-sm font-medium">Partition Support *</Label>
               <Select 
@@ -385,6 +392,7 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
                   <SelectValue placeholder={"Select panel face options"} />
                 </SelectTrigger>
                 <SelectContent className="bg-background border z-50">
+                  <SelectItem value="none">None</SelectItem>
                   {getAvailableOptions('panelFaces').map((face) => (
                     <SelectItem key={face} value={face}>
                       {face}
@@ -405,6 +413,7 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
                   <SelectValue placeholder={selectedModel ? "Select frame finish" : "Select model first"} />
                 </SelectTrigger>
                 <SelectContent className="bg-background border z-50">
+                  <SelectItem value="none">None</SelectItem>
                   {getAvailableOptions('frameFinishes').map((finish) => (
                     <SelectItem key={finish} value={finish}>
                       {finish}
@@ -425,6 +434,7 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
                   <SelectValue placeholder={selectedModel ? "Select hinge type" : "Select model first"} />
                 </SelectTrigger>
                 <SelectContent className="bg-background border z-50">
+                  <SelectItem value="none">None</SelectItem>
                   {getAvailableOptions('hinging').map((hinge) => (
                     <SelectItem key={hinge} value={hinge}>
                       {hinge}
@@ -447,6 +457,7 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
                   <SelectValue placeholder={selectedModel ? "Select pass door type" : "Select model first"} />
                 </SelectTrigger>
                 <SelectContent className="bg-background border z-50">
+                  <SelectItem value="none">None</SelectItem>
                   {getAvailableOptions('passDoorType').map((doorType) => (
                     <SelectItem key={doorType} value={doorType}>
                       {doorType}
@@ -467,6 +478,7 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
                   <SelectValue placeholder={selectedPassDoorType ? "Select pass door option" : "Select pass door type first"} />
                 </SelectTrigger>
                 <SelectContent className="bg-background border z-50">
+                  <SelectItem value="none">None</SelectItem>
                   {getAvailableOptions('passDoorOption').map((option) => (
                     <SelectItem key={option} value={option}>
                       {option}
@@ -489,6 +501,7 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
                   <SelectValue placeholder={selectedModel ? "Select final closure" : "Select model first"} />
                 </SelectTrigger>
                 <SelectContent className="bg-background border z-50">
+                  <SelectItem value="none">None</SelectItem>
                   {getAvailableOptions('finalClosure').map((closure) => (
                     <SelectItem key={closure} value={closure}>
                       {closure}
@@ -508,6 +521,7 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
                   <SelectValue placeholder={selectedModel ? "Select bottom seals" : "Select model first"} />
                 </SelectTrigger>
                 <SelectContent className="bg-background border z-50">
+                  <SelectItem value="none">None</SelectItem>
                   {getAvailableOptions('bottomSeals').map((seal) => (
                     <SelectItem key={seal} value={seal}>
                       {seal}
@@ -528,6 +542,7 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
                   <SelectValue placeholder={selectedModel ? "Select top seals" : "Select model first"} />
                 </SelectTrigger>
                 <SelectContent className="bg-background border z-50">
+                  <SelectItem value="none">None</SelectItem>
                   {getAvailableOptions('topSeals').map((seal) => (
                     <SelectItem key={seal} value={seal}>
                       {seal}
@@ -570,6 +585,7 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
                   <SelectValue placeholder={selectedModel ? "Select track finish" : "Select model first"} />
                 </SelectTrigger>
                 <SelectContent className="bg-background border z-50">
+                  <SelectItem value="none">None</SelectItem>
                   {getAvailableOptions('trackFinish').map((finish) => (
                     <SelectItem key={finish} value={finish}>
                       {finish}
@@ -585,4 +601,4 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
   );
 };
 
-export default GlassWallSpecs;
+export default GlassWallCreationForm;

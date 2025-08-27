@@ -4,7 +4,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WallTypeFormProps } from './types';
 
-export const OperableWallForm: React.FC<WallTypeFormProps> = ({
+export const OperableWallEditForm: React.FC<WallTypeFormProps> = ({
   wallName,
   wall,
   onFieldChange,

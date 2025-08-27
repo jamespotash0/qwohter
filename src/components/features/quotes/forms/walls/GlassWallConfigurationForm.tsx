@@ -1,6 +1,6 @@
 // COMMENTED OUT - Potentially redundant glass wall configuration form
 // This file appears to be unused in the current workflow. 
-// The main glass wall functionality is handled by GlassWallForm.tsx and GlassWallSpecs.tsx
+// The main glass wall functionality is handled by GlassWallEditForm.tsx and GlassWallCreationForm.tsx
 // Keeping commented for potential future reference.
 
 // Placeholder export to prevent build errors

@@ -9,7 +9,7 @@ interface BaseSpecsProps {
   onWallChange: (wallName: string, field: keyof WallSpecification, value: string) => void;
 }
 
-const BaseSpecs = ({ wall, wallName, onWallChange }: BaseSpecsProps) => {
+const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseSpecsProps) => {
   const wallSystemTypes = ["Operable Wall", "Glass Wall", "Accordion Partitions", "Unispan Support", "FlexTact"];
 
   return (
@@ -110,4 +110,4 @@ const BaseSpecs = ({ wall, wallName, onWallChange }: BaseSpecsProps) => {
   );
 };
 
-export default BaseSpecs;
+export default BaseCreationForm;

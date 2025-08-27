@@ -7,8 +7,8 @@ import { ValidatedInput } from '@/components/ui/validated-input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useFormValidation } from '@/hooks/useFormValidation';
 import { WallCardProps } from './types';
-import { OperableWallForm } from './OperableWallEditForm';
-import { GlassWallForm } from './GlassWallEditForm';
+import { OperableWallEditForm } from './OperableWallEditForm';
+import { GlassWallEditForm } from './GlassWallEditForm';
 import { EditWallSystemDialog } from '../../../WallSystemEditor/EditWallSystemDialog';
 import { Settings } from 'lucide-react';
 
@@ -211,7 +211,7 @@ export const WallCard: React.FC<WallCardProps> = ({
     {/* Wall Type Specific Forms */}
     {wall.wallSystemType === "Operable Wall" && (
       <div className="mt-2">
-        <OperableWallForm
+        <OperableWallEditForm
           wallName={wallName}
           wall={wall}
           onFieldChange={onFieldChange}
@@ -221,7 +221,7 @@ export const WallCard: React.FC<WallCardProps> = ({
 
     {wall.wallSystemType === "Glass Wall" && (
       <div className="mt-2">
-        <GlassWallForm
+        <GlassWallEditForm
           wallName={wallName}
           wall={wall}
           onFieldChange={onFieldChange}

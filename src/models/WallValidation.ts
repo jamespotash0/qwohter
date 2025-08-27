@@ -1,7 +1,7 @@
 // Wall Validation Logic
 // Centralized validation rules extracted from form components
 
-import { WallSpecification, WallDetails, GlassWallConfiguration } from '@/types/quote';
+import { WallSpecification, WallDetails } from '@/types/quote';
 import { isValidConfiguration } from '@/models/constants/modelConfigurations';
 import { GlassWallModel } from '@/types/quote';
 

@@ -51,40 +51,39 @@ export const MountingTrackSection: React.FC<MountingTrackSectionProps> = ({
         {/* Per-Wall Structure Support */}
         <div>
           {wallEntries.length === 0 ? (
-            <div className="text-xs text-gray-500 text-center py-4 bg-gray-50 rounded">
+            <div className="text-xs text-gray-500 text-center py-4">
               No walls configured. Add walls in the Wall Systems section first.
             </div>
           ) : (
-            <div className="space-y-2">
-              {wallEntries.map(([wallName, wall]) => (
-                <Card key={wallName} className="p-3 bg-gray-50">
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm text-gray-700">{wallName}</h4>
-                    
-                    <div>
-                      <Label htmlFor={`${wallName}-structureSupport`} className="text-xs font-medium text-gray-600">
-                        Structure Support Type
-                      </Label>
-                      <Select
-                        value={wall.structureSupport || ''}
-                        onValueChange={(value) => handleWallStructureSupportChange(wallName, value)}
-                      >
-                        <SelectTrigger className="text-xs h-8">
-                          <SelectValue placeholder="Select structure support" />
-                        </SelectTrigger>
-                        <SelectContent className="text-left">
-                          <SelectItem value="Pre-Drilled Steel Beam">Pre-Drilled Steel Beam</SelectItem>
-                          <SelectItem value="Existing Steel Beam">Existing Steel Beam</SelectItem>
-                          <SelectItem value="Secured to Concrete">Secured to Concrete</SelectItem>
-                          <SelectItem value="Secured to Wood Header">Secured to Wood Header</SelectItem>
-                          <SelectItem value="Unispan Truss System">Unispan Truss System</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+            wallEntries.map(([wallName, wall]) => (
+              <Card key={wallName} className="p-3 bg-gray-50">
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm text-gray-700">{wallName}</h4>
+                  
+                  <div>
+                    <Label htmlFor={`${wallName}-structureSupport`} className="text-xs font-medium text-gray-600">
+                      Structure Support Type
+                    </Label>
+                    <Select
+                      value={wall.structureSupport || ''}
+                      onValueChange={(value) => handleWallStructureSupportChange(wallName, value)}
+                    >
+                      <SelectTrigger className="text-xs h-8">
+                        <SelectValue placeholder="Select structure support" />
+                      </SelectTrigger>
+                      <SelectContent className="text-left">
+                        {/* <SelectItem value="None">None</SelectItem> */}
+                        <SelectItem value="Pre-Drilled Steel Beam">Pre-Drilled Steel Beam</SelectItem>
+                        <SelectItem value="Existing Steel Beam">Existing Steel Beam</SelectItem>
+                        <SelectItem value="Secured to Concrete">Secured to Concrete</SelectItem>
+                        <SelectItem value="Secured to Wood Header">Secured to Wood Header</SelectItem>
+                        <SelectItem value="Unispan Truss System">Unispan Truss System</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                </Card>
-              ))}
-            </div>
+                </div>
+              </Card>
+            ))
           )}
         </div>
       </div>

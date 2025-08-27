@@ -7,7 +7,7 @@ import { Trash2, Edit, ChevronDown, ChevronUp } from "lucide-react";
 import { WallSpecification, WallDetails } from "@/types/quote";
 import { useState } from "react";
 import BaseSpecs from "@/components/features/quotes/specs/BaseCreationForm";
-import GlassWallSpecs from "@/components/features/quotes/specs/GlassWallCreationForm";
+import GlassWallCreationForm from "@/components/features/quotes/specs/GlassWallCreationForm";
 import OperableWallSpecs from "@/components/features/quotes/specs/OperableWallCreationForm";
 
 interface WallSpecificationFormProps {
@@ -21,8 +21,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const [collapsedWalls, setCollapsedWalls] = useState<Set<string>>(new Set());
 
   const handleWallChange = (wallName: string, field: keyof WallSpecification, value: string) => {
-    // Convert "None" to empty string to reset to placeholder state
-    const actualValue = value === "None" ? "" : value;
     
     const currentWall = walls.walls[wallName];
     if (!currentWall) {
@@ -36,7 +34,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         ...walls.walls,
         [wallName]: {
           ...currentWall,
-          [field]: actualValue,
+          [field]: value,
         },
       },
     };
@@ -149,7 +147,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     
     if (field === "passDoorPanels") {
       // Reset quantity when pass doors is set to "None" or empty
-      if (actualValue === "" || actualValue === "None") {
+      if (value === "" || value === "None") {
         const currentWallData = updatedWalls.walls[wallName];
         updatedWalls.walls[wallName] = {
           ...currentWallData,
@@ -390,7 +388,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                     )}
 
                     {wall.wallSystemType === "Glass Wall" && (
-                      <GlassWallSpecs 
+                      <GlassWallCreationForm 
                         wall={wall} 
                         wallName={wallName} 
                         onWallChange={handleWallChange} 

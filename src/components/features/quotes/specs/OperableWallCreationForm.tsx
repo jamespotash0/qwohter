@@ -3,13 +3,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WallSpecification } from "@/types/quote";
 
-interface OperableWallSpecsProps {
+interface OperableWallCreationFormProps {
   wall: WallSpecification;
   wallName: string;
   onWallChange: (wallName: string, field: keyof WallSpecification, value: string) => void;
 }
 
-const OperableWallSpecs = ({ wall, wallName, onWallChange }: OperableWallSpecsProps) => {
+const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWallCreationFormProps) => {
   const getSeriesByPanelConfiguration = (panelConfiguration: string): string[] => {
     switch (panelConfiguration) {
       case "Individual Panels":
@@ -504,4 +504,4 @@ const OperableWallSpecs = ({ wall, wallName, onWallChange }: OperableWallSpecsPr
   );
 };
 
-export default OperableWallSpecs;
+export default OperableWallCreationForm;
