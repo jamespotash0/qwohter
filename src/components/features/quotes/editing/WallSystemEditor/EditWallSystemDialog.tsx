@@ -6,8 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EditWallSystemDialogProps } from './types';
-import { OperableWallForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/OperableWallForm';
-import { GlassWallForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/GlassWallForm';
+import { OperableWallForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/OperableWallEditForm';
+import { GlassWallForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/GlassWallEditForm';
 
 export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
   isOpen,

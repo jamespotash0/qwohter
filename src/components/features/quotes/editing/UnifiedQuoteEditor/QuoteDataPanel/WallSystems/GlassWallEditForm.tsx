@@ -526,6 +526,7 @@ export const GlassWallForm: React.FC<GlassWallFormProps> = ({
         <div className="space-y-1">
           <Label className="text-xs">Pass Door Type</Label>
           <Select
+            key={`${wallName}-glasswallPassDoorType-${wall.glasswallPassDoorType}`}
             value={wall.glasswallPassDoorType || ''}
             onValueChange={(value) => handleFieldChange('glasswallPassDoorType', value)}
             disabled={!wall.glasswallModel}

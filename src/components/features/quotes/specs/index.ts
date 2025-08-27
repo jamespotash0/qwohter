@@ -1,3 +1,3 @@
-export { default as BaseSpecs } from './BaseSpecs';
-export { default as GlassWallSpecs } from './GlassWallSpecs';
-export { default as OperableWallSpecs } from './OperableWallSpecs';
+export { default as BaseSpecs } from './BaseCreationForm';
+export { default as GlassWallSpecs } from './GlassWallCreationForm';
+export { default as OperableWallSpecs } from './OperableWallCreationForm';

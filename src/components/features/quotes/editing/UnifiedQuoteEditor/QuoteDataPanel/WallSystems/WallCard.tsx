@@ -7,8 +7,8 @@ import { ValidatedInput } from '@/components/ui/validated-input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useFormValidation } from '@/hooks/useFormValidation';
 import { WallCardProps } from './types';
-import { OperableWallForm } from './OperableWallForm';
-import { GlassWallForm } from './GlassWallForm';
+import { OperableWallForm } from './OperableWallEditForm';
+import { GlassWallForm } from './GlassWallEditForm';
 import { EditWallSystemDialog } from '../../../WallSystemEditor/EditWallSystemDialog';
 import { Settings } from 'lucide-react';
 

@@ -6,9 +6,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Trash2, Edit, ChevronDown, ChevronUp } from "lucide-react";
 import { WallSpecification, WallDetails } from "@/types/quote";
 import { useState } from "react";
-import BaseSpecs from "@/components/features/quotes/specs/BaseSpecs";
-import GlassWallSpecs from "@/components/features/quotes/specs/GlassWallSpecs";
-import OperableWallSpecs from "@/components/features/quotes/specs/OperableWallSpecs";
+import BaseSpecs from "@/components/features/quotes/specs/BaseCreationForm";
+import GlassWallSpecs from "@/components/features/quotes/specs/GlassWallCreationForm";
+import OperableWallSpecs from "@/components/features/quotes/specs/OperableWallCreationForm";
 
 interface WallSpecificationFormProps {
   walls: WallDetails;

@@ -6,6 +6,6 @@ export type { WallSystemsSectionProps, WallCardProps, WallTypeFormProps, WallSys
 
 // Individual component exports (for testing or advanced usage)
 export { WallCard } from './WallCard';
-export { OperableWallForm } from './OperableWallForm';
-export { GlassWallForm } from './GlassWallForm';
+export { OperableWallForm } from './OperableWallEditForm';
+export { GlassWallForm } from './GlassWallEditForm';
 export { AccordionPartitionForm } from './AccordionPartitionForm';
