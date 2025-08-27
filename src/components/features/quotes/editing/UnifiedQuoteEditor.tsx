@@ -234,9 +234,10 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         ...prev,
         previewHTML: newPreview,
         generatedHTML: syncEngine.generateBaseHTML(state.rawData)
+        // Preserve isDirty state during preview updates
       }));
     }
-  }, [JSON.stringify(state.rawData), syncEngine, isLoading]);
+  }, [JSON.stringify(state.rawData), state.sectionOverrides, syncEngine, isLoading]);
 
 
   // Update document title when project name or proposal number changes
@@ -256,15 +257,21 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
 
   // Handle form data changes
   const handleFormDataChange = useCallback((section: string, value: any) => {
-    setState(prev => ({
-      ...prev,
-      rawData: {
-        ...prev.rawData,
-        [section]: value
-      },
-      // Keep section overrides when form data changes - they should persist independently
-      isDirty: true
-    }));
+    setState(prev => {
+      // Check if the value has actually changed to avoid unnecessary dirty state
+      const currentValue = prev.rawData[section];
+      const hasChanged = JSON.stringify(currentValue) !== JSON.stringify(value);
+      
+      return {
+        ...prev,
+        rawData: {
+          ...prev.rawData,
+          [section]: value
+        },
+        // Only set dirty if value actually changed
+        isDirty: prev.isDirty || hasChanged
+      };
+    });
   }, []);
 
   // Handle section content overrides
@@ -272,6 +279,15 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
     console.log('Section override triggered:', { sectionId, content: content.substring(0, 100) + '...' });
     
     setState(prev => {
+      // Check if the section content has actually changed
+      const currentContent = prev.sectionOverrides.get(sectionId);
+      const hasChanged = currentContent !== content;
+      
+      if (!hasChanged) {
+        console.log('Section content unchanged, skipping update');
+        return prev;
+      }
+      
       const newOverrides = new Map(prev.sectionOverrides);
       newOverrides.set(sectionId, content);
       
