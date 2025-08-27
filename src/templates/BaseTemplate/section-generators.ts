@@ -9,7 +9,7 @@ export class SectionGenerators {
 
   generateHeader(data: QuoteData): string {
     const contactName = data.quote_details?.contactName || 'Ed Michinski';
-    const address = data.quote_details?.address || '567 Commerce St,<br> Franklin&nbsp;Lakes, NJ, 07417';
+    const address = data.quote_details?.address || '567 Commerce St,<br> Franklin Lakes, NJ, 07417';
     const phone = data.quote_details?.phone || '(973) 884-0474';
     const fax = data.quote_details?.fax || '(973) 884-1606';
     const website = data.quote_details?.website || 'contemporarywalls.com';
@@ -202,12 +202,10 @@ export class SectionGenerators {
       </ol>
     </div>
 
-    <div class="signature-section">
+    <div class="signature-acceptance-section">
       <br><strong>Signed By:</strong> ___________________________________________&nbsp;&nbsp;&nbsp;<strong>Date:</strong> _____________________
-    </div>
-
-    <div class="acceptance-section">
-      <h2 class="section-header">ACCEPTANCE OF PROPOSAL:</h2>
+      
+      <h2 class="section-header" style="margin-top: 20px;">ACCEPTANCE OF PROPOSAL:</h2>
       <p style="font-style: italic; font-size: 9pt; line-height: 1.2;">
         The above prices, specifications, and conditions are satisfactory and are hereby accepted. Any alteration or deviation from above specifications will be executed upon written approval and may/will be subject to additional costs over and above the estimate. All removal of packing material is the customer's responsibility. Electrical and H.V.A.C. installation(s) are not included. Visa, Mastercard and American Express (AMEX) are accepted. Payments by credit card will be charged a processing fee. Pricing subject to applicable sales tax unless otherwise noted. Late payments will be subject to a 1.5% finance charge per month. Cancellations will be subject to a restocking fee.
       </p>
@@ -217,7 +215,6 @@ export class SectionGenerators {
   generatePocketDoorsSection(data: QuoteData): string {
     const walls = data.wall_details?.walls || {};
     
-    // Check both old global format and new per-wall format
     const wallsWithPockets = Object.entries(walls)
       .filter(([_, wall]) => {
         // Check per-wall configuration first
@@ -235,16 +232,6 @@ export class SectionGenerators {
       }));
 
 
-    // Fallback to global pocket_doors if no per-wall configs found (backward compatibility)
-    if (wallsWithPockets.length === 0 && data.pocket_doors?.foldType) {
-      const { foldType, foldStyle } = data.pocket_doors;
-      return `<div class="pocket-doors-section" style="line-height: 1.15;">
-        <h2 class="section-header">POCKET DOORS:</h2>
-        <p>
-          <strong>${foldType}</strong> doors with an <strong>${foldStyle || ''}</strong> style will be used to house the panels in the stack, offering a space-efficient and acoustically enhanced storage solution.
-        </p>  
-      </div>`;
-    }
 
     if (wallsWithPockets.length === 0) return '';
 
@@ -268,14 +255,40 @@ export class SectionGenerators {
   generatePassDoorsSection(data: QuoteData): string {
     const walls = data.wall_details?.walls || {};
     const wallsWithPassDoors = Object.entries(walls)
-      .filter(([_, wall]) => wall.passDoorPanels && 
-               wall.passDoorPanels.toLowerCase().trim() !== 'none' &&
-               wall.passDoorPanels.trim() !== '')
-      .map(([name, wall]) => ({ 
-        name, 
-        type: wall.passDoorPanels!, 
-        quantity: wall.passDoorQuantity || '0'
-      }));
+      .filter(([_, wall]) => {
+        // Check for operable wall pass doors
+        const hasOperablePassDoors = wall.passDoorPanels && 
+                                    wall.passDoorPanels.toLowerCase().trim() !== 'none' &&
+                                    wall.passDoorPanels.trim() !== '';
+        
+        // Check for glass wall pass doors
+        const hasGlassPassDoors = wall.glasswallPassDoorType && 
+                                 wall.glasswallPassDoorType.toLowerCase().trim() !== 'none' &&
+                                 wall.glasswallPassDoorType.trim() !== '';
+        
+        return hasOperablePassDoors || hasGlassPassDoors;
+      })
+      .map(([name, wall]) => {
+        // Determine pass door details based on wall type
+        const isGlassWall = wall.wallSystemType?.toLowerCase().includes('glass');
+        
+        if (isGlassWall && wall.glasswallPassDoorType) {
+          return {
+            name, 
+            type: wall.glasswallPassDoorType,
+            option: wall.glasswallPassDoorOption, 
+            quantity: '1', // Glass walls typically have 1 pass door per configuration
+            isGlassWall: true
+          };
+        } else {
+          return {
+            name, 
+            type: wall.passDoorPanels!, 
+            quantity: wall.passDoorQuantity || '0',
+            isGlassWall: false
+          };
+        }
+      });
 
     if (wallsWithPassDoors.length === 0) return '';
 
@@ -284,7 +297,17 @@ export class SectionGenerators {
       .map(wall => {
         const qty = parseInt(wall.quantity) || 0;
         const quantityText = qty === 1 ? 'One' : qty === 2 ? 'Two' : `${qty}`;
-        return `<strong>${wall.name}</strong> has <strong>${quantityText} ${wall.type} Pass Door</strong> panel${qty > 1 ? 's' : ''}`;
+        
+        if (wall.isGlassWall) {
+          // For glass walls, show both option and type if both exist
+          const passDescription = wall.option && wall.option !== wall.type 
+            ? `<strong>${wall.type} ${wall.option}</strong>` 
+            : `<strong>${wall.type}</strong>`;
+          return `<strong>${wall.name}</strong> has <strong>${quantityText}</strong> ${passDescription} <strong>Pass Door</strong>`;
+        } else {
+          // For operable walls, use the standard format
+          return `<strong>${wall.name}</strong> has <strong>${quantityText} ${wall.type} Pass Door</strong> panel${qty > 1 ? 's' : ''}`;
+        }
       })
       .join(', and ');
 

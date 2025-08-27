@@ -500,27 +500,6 @@ const OperableWallSpecs = ({ wall, wallName, onWallChange }: OperableWallSpecsPr
           </Select>
         </div>
       </div>
-
-      {/* <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-6">
-        <div className="space-y-2">
-          <Label className="text-sm font-medium">Structure Support Type *</Label>
-          <Select
-            value={wall.structureSupport || ""}
-            onValueChange={(value) => onWallChange(wallName, "structureSupport", value)}
-          >
-            <SelectTrigger className="bg-background">
-              <SelectValue placeholder="Select structure support type" />
-            </SelectTrigger>
-            <SelectContent className="bg-background border z-50">
-              {structureSupportOptions.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div> */}
     </div>
   );
 };

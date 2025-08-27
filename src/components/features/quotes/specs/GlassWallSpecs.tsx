@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import /*React,*/ { useState, useEffect, useRef } from 'react';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -147,22 +147,6 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
     }
   };
 
-  const getPanelWidth = (model: string) => {
-    switch (model) {
-      case 'Stella':
-        return '51"';
-      case 'Luna':
-        return '41-3/8"';
-      case 'Illona':
-        return '39-3/8"';
-      case 'Ava':
-        return '48"';
-      case 'Mata':
-        return '48"';
-      default:
-        return 'N/A';
-    }
-  };
 
   const handleFieldChange = (field: keyof WallSpecification, value: string) => {
     onWallChange(wallName, field, value);
@@ -385,14 +369,8 @@ const GlassWallSpecs = ({ wall, wallName, onWallChange }: GlassWallSpecsProps) =
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="panelWidth">Panel Width</Label>
-              <Input 
-                value={getPanelWidth(selectedModel)}
-                readOnly
-                className="bg-muted text-muted-foreground"
-              />
-            </div>
+            {/* Panel Width removed */}
+            <div></div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

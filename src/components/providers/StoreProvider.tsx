@@ -5,18 +5,6 @@ interface StoreProviderProps {
   children: React.ReactNode;
 }
 
-/**
- * Store Provider Component
- * 
- * Initializes the global state management system and provides
- * application-wide state to all child components.
- * 
- * Features:
- * - Initializes all Zustand stores
- * - Handles application bootstrap
- * - Manages loading states during initialization
- * - Error boundary for store-related failures
- */
 export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
   const [initError, setInitError] = useState<string | null>(null);
   const isInitialized = useAppStore((state) => state.isInitialized);

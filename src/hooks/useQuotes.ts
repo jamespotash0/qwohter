@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
 import { WallDetails, WallSpecification, QuoteCustomization } from "@/types/quote";
 import { filterWallDetailsForSave } from "@/utils/wallDataFilter";
+import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 
 type QuoteRow = Database['public']['Tables']['quotes']['Row'];
 
@@ -14,9 +15,7 @@ export interface Quote {
   quote_details: any;
   job_details: any;
   wall_details: WallDetails;
-  pocket_doors?: any;
   price_details: any;
-  support_structure: any;
   delivery_details: any;
   labor_details: any;
   status: string;
@@ -67,10 +66,16 @@ const migrateWallDetails = (wallDetails: any): WallDetails => {
 const convertRowToQuote = (row: QuoteRow): Quote => {
   return {
     ...row,
-    wall_details: migrateWallDetails(row.wall_details),
+    wall_details: (() => {
+      const migrated = migrateWallDetails(row.wall_details);
+      return {
+        ...migrated,
+        id: migrated.id || crypto.randomUUID()
+      };
+    })(),
     project_name: row.project_name || undefined,
     date_last_downloaded: row.date_last_downloaded || undefined,
-    status: row.status || undefined
+    status: row.status || 'Draft',
   };
 };
 
@@ -115,10 +120,13 @@ export const useQuotes = () => {
       if (profileError) throw profileError;
       if (!profileData?.organization_id) throw new Error('User not assigned to an organization');
       
+      // Generate proposal number
+      const proposalInfo = await ProposalNumberGenerator.getNextProposalNumber();
+      
       const { data, error } = await supabase
         .from('quotes')
         .insert({
-          proposal_number: quoteData.jobDetails.proposalNumber,
+          proposal_number: proposalInfo.fullNumber,
           project_name: quoteData.quoteName || quoteData.project_name,
           quote_details: quoteData.contactInfo || {},
           job_details: {
@@ -129,7 +137,6 @@ export const useQuotes = () => {
             date: quoteData.jobDetails.date
            },
           wall_details: filterWallDetailsForSave(quoteData.walls || {}),
-          pocket_doors: quoteData.pocketDoors || {},
           price_details: {
             base_price: quoteData.pricing.basePrice,
             freight: quoteData.pricing.freight,
@@ -137,7 +144,6 @@ export const useQuotes = () => {
             payment_upon_drawings: quoteData.pricing.paymentUponDrawings,
             payment_upon_track_installation: quoteData.pricing.paymentUponTrackInstallation
           },
-          support_structure: quoteData.supportStructure || {},
           delivery_details: quoteData.deliveryLabor.delivery || {},
           labor_details: quoteData.deliveryLabor.labor || {},
           status: quoteData.status || 'Draft',
@@ -150,10 +156,6 @@ export const useQuotes = () => {
       if (error) throw error;
       
       setQuotes(prev => [convertRowToQuote(data), ...prev]);
-      // toast({
-      //   title: "Quote created",
-      //   description: `Quote ${quoteData.proposal_number} has been created successfully.`,
-      // });
       
       return data;
     } catch (error: any) {
@@ -379,7 +381,7 @@ export const useQuotes = () => {
 
       remainingWallNames.forEach((oldWallName, index) => {
         const newWallName = `Wall ${wallLabels[index]}`;
-        renamedWalls[newWallName] = currentWalls[oldWallName];
+        renamedWalls[newWallName] = currentWalls[oldWallName] as WallSpecification; //wallSpecification
       });
 
       // Update the wall details with renamed walls
@@ -429,10 +431,58 @@ export const useQuotes = () => {
     fetchQuotes();
   }, []);
 
+  const createQuoteVersion = async (existingQuoteId: string) => {
+    try {
+      // Get the existing quote
+      const { data: existingQuote, error: fetchError } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('id', existingQuoteId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Generate new version number
+      const proposalInfo = await ProposalNumberGenerator.getNextProposalNumber(existingQuote.proposal_number);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Create new quote with incremented version
+      const { data, error } = await supabase
+        .from('quotes')
+        .insert({
+          ...existingQuote,
+          id: undefined, // Let Supabase generate new ID
+          proposal_number: proposalInfo.fullNumber,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          date_last_downloaded: null,
+          version: proposalInfo.version
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setQuotes(prev => [convertRowToQuote(data), ...prev]);
+      
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Error creating quote version",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   return {
     quotes,
     loading,
     createQuote,
+    createQuoteVersion,
     updateQuote,
     updateWallSystem,
     removeWallSystem,

@@ -68,6 +68,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   const [selectedSection, setSelectedSection] = useState<QuoteSection | null>(null);
   const [showDataPanel, setShowDataPanel] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [hoveredSectionId, setHoveredSectionId] = useState<string | null>(null);
   // Smart PDF is now the only mode - no toggle needed
   const showSmartPDFPreview = true;
 
@@ -86,6 +87,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
     // Apply section overrides to base HTML
     applySectionOverrides: (baseHTML: string, overrides: Map<string, string>): string => {
       let result = baseHTML;
+      console.log('Applying section overrides:', Object.fromEntries(overrides));
       
       overrides.forEach((content, sectionId) => {
         // Handle special sections that don't follow the standard pattern
@@ -101,13 +103,41 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           className = `${sectionId}-section`;
         }
         
-        const sectionPattern = new RegExp(
-          `(<div class="${className}"[^>]*>)[\\s\\S]*?(<\\/div>)`,
-          'g'
-        );
+        console.log(`Looking for section with class: ${className}`);
         
-        if (result.match(sectionPattern)) {
-          result = result.replace(sectionPattern, `$1${content}$2`);
+        // Try multiple patterns to find the section
+        const patterns = [
+          // Pattern 1: class="exact-match"
+          new RegExp(`(<div[^>]*class="${className}"[^>]*>)[\\s\\S]*?(<\\/div>)`, 'g'),
+          // Pattern 2: class="other-classes target-class more-classes"  
+          new RegExp(`(<div[^>]*class="[^"]*${className}[^"]*"[^>]*>)[\\s\\S]*?(<\\/div>)`, 'g'),
+          // Pattern 3: class='single quotes'
+          new RegExp(`(<div[^>]*class='[^']*${className}[^']*'[^>]*>)[\\s\\S]*?(<\\/div>)`, 'g')
+        ];
+        
+        let patternMatched = false;
+        
+        // Try each pattern until one matches
+        for (const pattern of patterns) {
+          const matches = result.match(pattern);
+          console.log(`Pattern ${patterns.indexOf(pattern) + 1}: Found ${matches ? matches.length : 0} matches for ${className}`);
+          
+          if (matches) {
+            const originalSection = matches[0];
+            console.log(`Original section: ${originalSection.substring(0, 200)}...`);
+            
+            result = result.replace(pattern, `$1${content}$2`);
+            console.log(`Applied override for ${sectionId} using pattern ${patterns.indexOf(pattern) + 1}`);
+            patternMatched = true;
+            break;
+          }
+        }
+        
+        if (!patternMatched) {
+          console.log(`No section found with class: ${className} using any pattern`);
+          // Let's try to see what sections actually exist
+          const allDivs = result.match(/<div[^>]*class="[^"]*-section[^"]*"[^>]*>/g);
+          console.log('Available sections in HTML:', allDivs);
         }
       });
       
@@ -134,15 +164,27 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         // Load existing customizations if they exist
         if (quote.customization?.customSections) {
           const customSections = quote.customization.customSections;
+          console.log('Loading existing customizations:', customSections);
           
           // Convert custom sections to section overrides
           customSections.forEach(section => {
             if (section.content && section.isVisible) {
-              // Extract the inner content from the section (remove the wrapper div)
-              const innerContent = section.content
-                .replace(/<div class="[^"]*-section"[^>]*>/, '')
-                .replace(/<\/div>$/, '')
-                .trim();
+              console.log(`Loading section ${section.id} with content:`, section.content.substring(0, 100) + '...');
+              
+              // Check if content already has wrapper div or is just inner content
+              let innerContent = section.content;
+              
+              // If it looks like it has a wrapper div, extract inner content
+              if (section.content.includes(`class="${section.id}-section"`) || 
+                  section.content.includes(`class="`) && section.content.includes(`-section"`)) {
+                innerContent = section.content
+                  .replace(/<div class="[^"]*-section"[^>]*>/, '')
+                  .replace(/<\/div>$/, '')
+                  .trim();
+                console.log(`Extracted inner content for ${section.id}:`, innerContent.substring(0, 100) + '...');
+              } else {
+                console.log(`Using content as-is for ${section.id}`);
+              }
               
               sectionOverrides.set(section.id, innerContent);
             }
@@ -184,7 +226,9 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   // Real-time preview updates when data changes
   useEffect(() => {
     if (!isLoading) {
+      console.log('Regenerating preview with overrides:', Object.fromEntries(state.sectionOverrides));
       const newPreview = syncEngine.generateUnifiedPreview(state.rawData, state.sectionOverrides);
+      console.log('Generated new preview HTML length:', newPreview.length);
       
       setState(prev => ({
         ...prev,
@@ -192,7 +236,8 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         generatedHTML: syncEngine.generateBaseHTML(state.rawData)
       }));
     }
-  }, [JSON.stringify(state.rawData), state.sectionOverrides, syncEngine, isLoading]);
+  }, [JSON.stringify(state.rawData), syncEngine, isLoading]);
+
 
   // Update document title when project name or proposal number changes
   useEffect(() => {
@@ -217,25 +262,33 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         ...prev.rawData,
         [section]: value
       },
-      // Clear section overrides when form data changes to ensure live preview reflects current form data
-      sectionOverrides: new Map(),
+      // Keep section overrides when form data changes - they should persist independently
       isDirty: true
     }));
   }, []);
 
   // Handle section content overrides
   const handleSectionOverride = useCallback((sectionId: string, content: string) => {
+    console.log('Section override triggered:', { sectionId, content: content.substring(0, 100) + '...' });
+    
     setState(prev => {
       const newOverrides = new Map(prev.sectionOverrides);
       newOverrides.set(sectionId, content);
       
+      console.log('Updated overrides map:', Object.fromEntries(newOverrides));
+      
+      // Immediately regenerate preview with new overrides
+      const newPreview = syncEngine.generateUnifiedPreview(prev.rawData, newOverrides);
+      console.log('Generated new preview after section override');
+      
       return {
         ...prev,
         sectionOverrides: newOverrides,
+        previewHTML: newPreview,
         isDirty: true
       };
     });
-  }, []);
+  }, [syncEngine]);
 
   // Zoom controls
   const handleZoomIn = () => setZoomLevel(prev => Math.min(200, prev + 10));
@@ -245,7 +298,27 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   const handleSave = useCallback(async () => {
     try {
       // Convert section overrides to the expected format
-      const sections = SmartQuoteHelper.extractSections(state.previewHTML);
+      let sections: QuoteSection[] = [];
+      
+      // If we have section overrides, create custom sections from them
+      if (state.sectionOverrides.size > 0) {
+        console.log('Saving with section overrides:', Object.fromEntries(state.sectionOverrides));
+        sections = Array.from(state.sectionOverrides.entries()).map(([sectionId, content]) => ({
+          id: sectionId,
+          title: sectionId.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          content: content,
+          isEditable: true,
+          isRequired: false,
+          isVisible: true,
+          dependencies: []
+        }));
+      } else {
+        console.log('No section overrides found, extracting from preview HTML');
+        // No custom overrides, extract sections from current preview HTML
+        sections = SmartQuoteHelper.extractSections(state.previewHTML);
+      }
+      
+      console.log('Final sections being saved:', sections);
       
       const unifiedData: SmartQuoteData = {
         ...state.rawData,
@@ -401,6 +474,11 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
                   })()}
                 </span>
               ) : null}
+              {hoveredSectionId && (
+                <span className="text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded whitespace-nowrap">
+                  Hover: {hoveredSectionId.replace(/-/g, ' ')}
+                </span>
+              )}
             </div>
 
             {/* Center: Zoom Controls */}
@@ -483,22 +561,28 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
 
       {/* Main Layout */}
       <div className="flex">
-        {/* Data Panel */}
+        {/* Data Panel - Floating Design */}
         {showDataPanel && (
-          <div className="w-96 bg-white border-r border-gray-200 h-screen sticky top-[73px] overflow-y-auto">
-            <div className="p-4 min-h-full">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <Edit3 className="w-4 h-4" />
-                Quote Data
-              </h3>
-              <div className="pb-20">
-                <QuoteDataPanel 
-                  data={state.rawData}
-                  onChange={handleFormDataChange}
-                  onDatabaseSave={handleSave}
-                  onUpdateWallSystem={onUpdateWallSystem ? (wallName: string, wallData: any) => onUpdateWallSystem(quote.id, wallName, wallData) : undefined}
-                  onRemoveWallSystem={onRemoveWallSystem ? (wallName: string) => onRemoveWallSystem(quote.id, wallName) : undefined}
-                />
+          <div className="w-[400px] relative">
+            <div className="fixed top-[90px] left-4 bottom-4 w-[360px] bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-xl shadow-lg shadow-slate-200/50 overflow-hidden z-40">
+              <div className="h-full flex flex-col">
+                <div className="px-4 py-3 bg-white/60 backdrop-blur-sm border-b border-slate-200/50">
+                  <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <Edit3 className="w-4 h-4" />
+                    Quote Data
+                  </h3>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  <div className="p-4 pb-20">
+                    <QuoteDataPanel 
+                      data={state.rawData}
+                      onChange={handleFormDataChange}
+                      onDatabaseSave={handleSave}
+                      onUpdateWallSystem={onUpdateWallSystem ? (wallName: string, wallData: any) => onUpdateWallSystem(quote.id, wallName, wallData) : undefined}
+                      onRemoveWallSystem={onRemoveWallSystem ? (wallName: string) => onRemoveWallSystem(quote.id, wallName) : undefined}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -510,9 +594,10 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           zoomLevel={zoomLevel}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
-          onSectionClick={(sectionId, sectionData) => {
+          onSectionClick={(/*sectionId,*/_, sectionData) => {
             setSelectedSection(sectionData);
           }}
+          onSectionHover={setHoveredSectionId}
           showSmartPDFPreview={showSmartPDFPreview}
         />
       </div>

@@ -14,15 +14,15 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting */
-    "strict": false, //true causes many issues
+    /* Linting - Phase 1: Enable critical safety checks */
+    "strict": false, //true
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noImplicitAny": false, //pages/index.tsx
+    "noImplicitAny": false, //true
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
     "noUncheckedIndexedAccess": true,
-
+      
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

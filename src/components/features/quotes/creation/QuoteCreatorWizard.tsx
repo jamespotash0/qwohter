@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +30,7 @@ import { QuoteNameInput } from "@/components/common/inputs";
 
 import { WallDetails, WallSpecification } from "@/types/quote";
 import { useQuotes } from "@/hooks/useQuotes";
+import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 
 interface QuoteCreatorWizardProps {
   user: string;
@@ -69,20 +70,6 @@ const QuoteCreatorWizard = ({
       }
     }
     
-    // If it's an array (old format), convert to new format
-    if (Array.isArray(wallDetails)) {
-      const wallsObject: { [key: string]: WallSpecification } = {};
-      wallDetails.forEach((wall: unknown, index: number) => {
-        const wallData = wall as Record<string, unknown>;
-        const wallName = (wallData.name as string) || `Wall ${index + 1}`;
-        const { id, name, ...wallSpec } = wallData;
-        wallsObject[wallName] = wallSpec as unknown as WallSpecification;
-      });
-      return {
-        id: crypto.randomUUID(),
-        walls: wallsObject
-      };
-    }
     
     // Default empty structure
     return {
@@ -124,7 +111,7 @@ const QuoteCreatorWizard = ({
 
   const [jobDetails, setJobDetails] = useState({
     date: (jobDetailsData?.date as string) || new Date().toISOString().split('T')[0],
-    proposalNumber: (existingQuoteData?.proposal_number as string) || `P${Date.now().toString().slice(-6)}`,
+    proposalNumber: (existingQuoteData?.proposal_number as string) || "",
     jobLocation: (jobDetailsData?.job_location as string) || "",
     billedTo: {
       name: (jobDetailsData?.client_name as string) || "",
@@ -132,6 +119,25 @@ const QuoteCreatorWizard = ({
       address: (jobDetailsData?.client_address as string) || ""
     }
   });
+
+  // Generate proposal number on component mount if creating new quote
+  useEffect(() => {
+    const generateProposalNumber = async () => {
+      if (!existingQuote && !jobDetails.proposalNumber) {
+        try {
+          const proposalInfo = await ProposalNumberGenerator.getNextProposalNumber();
+          setJobDetails(prev => ({
+            ...prev,
+            proposalNumber: proposalInfo.fullNumber
+          }));
+        } catch (error) {
+          console.error('Error generating proposal number:', error);
+        }
+      }
+    };
+
+    generateProposalNumber();
+  }, [existingQuote, jobDetails.proposalNumber]);
 
   const [walls, setWalls] = useState<WallDetails>(migrateWallDetails(existingQuoteData?.wall_details));
   
@@ -374,7 +380,7 @@ const QuoteCreatorWizard = ({
             date: jobDetails.date
           },
           wall_details: walls,
-          pocket_doors: pocketDoors,
+          // pocket_doors: pocketDoors,
           price_details: {
             base_price: pricing.basePrice,
             freight: pricing.freight,
@@ -382,7 +388,7 @@ const QuoteCreatorWizard = ({
             payment_upon_drawings: pricing.paymentUponDrawings,
             payment_upon_track_installation: pricing.paymentUponTrackInstallation
           },
-          support_structure: supportStructure,
+          // support_structure: supportStructure,
           delivery_details: deliveryLabor.delivery,
           labor_details: deliveryLabor.labor,
           proposal_number: jobDetails.proposalNumber,

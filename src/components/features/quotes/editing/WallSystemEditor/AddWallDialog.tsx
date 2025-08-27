@@ -11,7 +11,7 @@ import { GlassWallForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/
 interface AddWallDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (wallName: string, wallData: any) => void;
+  onSave: (wallName: string, wallData: any) => Promise<void> | void;
   onDatabaseSave?: () => Promise<void>;
 }
 
@@ -213,12 +213,16 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
   };
 
   const handleConfirmSave = async () => {
-    onSave(wallName, newWall);
-    if (onDatabaseSave) {
-      await onDatabaseSave();
+    try {
+      // Save wall data - database save is now handled by the parent component
+      await onSave(wallName, newWall);
+      
+      setShowConfirmDialog(false);
+      onClose();
+    } catch (error) {
+      console.error('Error saving wall:', error);
+      // Keep dialog open if save fails
     }
-    setShowConfirmDialog(false);
-    onClose();
   };
 
   const handleClose = () => {

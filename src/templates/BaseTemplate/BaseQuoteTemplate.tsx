@@ -52,10 +52,13 @@ export abstract class BaseQuoteTemplate {
   abstract generateGeneralSection(data: QuoteData): string;
   abstract getPageBreakStrategy(data: QuoteData): PageBreakStrategy[];
 
-  // Main generation method
+  // Main generation method - now uses simple CSS-based pagination
   public generate(data: QuoteData): string {
-    const pageBreaks = this.getPageBreakStrategy(data);
-    
+    return this.generateWithCSSPagination(data);
+  }
+
+  // CSS-based pagination generation (simple and reliable)
+  public generateWithCSSPagination(data: QuoteData): string {
     let html = `<div class="quote-container" data-page-content="true">
       ${this.generateHeader(data)}
       ${this.generateBillingAndJobInfo(data)}
@@ -69,13 +72,45 @@ export abstract class BaseQuoteTemplate {
       html += passDoorsSection;
     }
 
-    // Add conditional sections with page breaks
+    // Add conditional sections
     const pocketDoorsSection = this.generatePocketDoorsSection(data);
     if (pocketDoorsSection) {
       html += pocketDoorsSection;
     }
 
-    // Add strategic page break based on content
+    html += `
+      ${this.generateTrackSection(data)}
+      ${this.generateSupportSection(data)}
+      ${this.generateGeneralSection(data)}
+      ${this.generatePricingSection(data)}
+      ${this.generateTermsAndSignature(data)}
+    </div>`;
+
+    // Return simple HTML - CSS page breaks will handle pagination automatically
+    console.log('📄 Generated HTML with CSS pagination classes - Playwright will handle page breaks');
+    return html;
+  }
+
+  // Legacy generation method (for compatibility)
+  public generateLegacy(data: QuoteData): string {
+    let html = `<div class="quote-container" data-page-content="true">
+      ${this.generateHeader(data)}
+      ${this.generateBillingAndJobInfo(data)}
+      ${this.generateProposalIntro(data)}
+      ${this.generateWallTable(data)}
+      ${this.generatePanelsSection(data)}`;
+
+    const passDoorsSection = this.generatePassDoorsSection(data);
+    if (passDoorsSection) {
+      html += passDoorsSection;
+    }
+
+    const pocketDoorsSection = this.generatePocketDoorsSection(data);
+    if (pocketDoorsSection) {
+      html += pocketDoorsSection;
+    }
+
+    // Add strategic page break based on content (old system)
     const needsPageBreak = this.shouldAddPageBreak(data);
     if (needsPageBreak) {
       html += `<div class="dynamic-page-break" style="height: ${needsPageBreak.height}px; page-break-before: ${needsPageBreak.forceBreak ? 'always' : 'auto'};"></div>`;

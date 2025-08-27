@@ -87,6 +87,7 @@ export class SmartQuoteHelper {
     
     while ((match = sectionPattern.exec(html)) !== null) {
       const className = match[1];
+      if (!className) continue;
       const id = className.replace('-section', '');
       
       // Skip read-only sections like wall-specifications-list (Wall A table) 
@@ -110,8 +111,8 @@ export class SmartQuoteHelper {
     let headerMatch;
     
     while ((headerMatch = headerPattern.exec(html)) !== null) {
-      const title = headerMatch[1].replace(/<[^>]*>/g, '').trim(); // Remove HTML tags
-      const content = headerMatch[2].trim();
+      const title = headerMatch[1]?.replace(/<[^>]*>/g, '').trim() || ''; // Remove HTML tags
+      const content = headerMatch[2]?.trim() || '';
       const id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
       
       // Skip sections that are already handled or should be read-only
@@ -131,10 +132,9 @@ export class SmartQuoteHelper {
     
     // Pattern 3: Major structural sections (but exclude problematic ones)
     const structuralSections = [
-      { pattern: /<div class="header-section"[^>]*>([\s\S]*?)<\/div>/g, name: 'header', title: 'Header' },
       { pattern: /<div class="billing-and-job-info"[^>]*>([\s\S]*?)<\/div>/g, name: 'billing-job', title: 'Billing & Job Info' },
       { pattern: /<div class="wall-specifications"[^>]*>([\s\S]*?)<\/div>/g, name: 'specifications', title: 'Wall Specifications' },
-      { pattern: /<div class="acceptance-section"[^>]*>([\s\S]*?)<\/div>/g, name: 'acceptance', title: 'Acceptance' }
+      { pattern: /<div class="signature-acceptance-section"[^>]*>([\s\S]*?)<\/div>/g, name: 'signature-acceptance', title: 'Signature & Acceptance' }
     ];
     
     structuralSections.forEach(({ pattern, name, title }) => {
@@ -160,7 +160,6 @@ export class SmartQuoteHelper {
     return sections.sort((a, b) => {
       // Define the proper order based on PDF template generation sequence
       const sectionOrder = [
-        'header',
         'billing-job', 'billing-and-job-info', 'billing',
         'proposal-intro',
         'wall-specifications', 'specifications',
@@ -173,8 +172,7 @@ export class SmartQuoteHelper {
         'pricing',
         'statement',
         'terms',
-        'signature',
-        'acceptance'
+        'signature-acceptance'
       ];
       
       const getOrderIndex = (id: string) => {
@@ -219,14 +217,14 @@ export class SmartQuoteHelper {
         const patterns = [
           {
             match: new RegExp(`(<div class="${section.id}-section"[^>]*>)[\\s\\S]*?(<\\/div>)`, 'g'),
-            replace: (match: string, start: string, end: string) => {
+            replace: (_match: string, start: string, end: string) => {
               const innerContent = section.content.replace(/<div class="[^"]*-section"[^>]*>/, '').replace(/<\/div>$/, '');
               return `${start}${innerContent}${end}`;
             }
           },
           {
             match: new RegExp(`(<div class="${section.id}"[^>]*>)[\\s\\S]*?(<\\/div>)`, 'g'),
-            replace: (match: string, start: string, end: string) => {
+            replace: (_match: string, start: string, end: string) => {
               const innerContent = section.content.replace(/<div class="[^"]*"[^>]*>/, '').replace(/<\/div>$/, '');
               return `${start}${innerContent}${end}`;
             }
@@ -257,8 +255,10 @@ export class SmartQuoteHelper {
   private static getSectionDependencies(id: string): string[] {
     // Define dependencies for sections that depend on form field values
     const dependencies: { [key: string]: string[] } = {
-      'panel-doors': ['passDoorPanels'],
-      'panel-doors-section': ['passDoorPanels'],
+      'panel-doors': ['passDoorPanels', 'glasswallPassDoorType'],
+      'panel-doors-section': ['passDoorPanels', 'glasswallPassDoorType'],
+      'pass-doors': ['passDoorPanels', 'glasswallPassDoorType'],
+      'pass-doors-section': ['passDoorPanels', 'glasswallPassDoorType'],
       'pocket-doors': ['pocketDoors.foldType', 'pocketDoors.foldStyle', 'pocket_doors.foldType'], // Support both per-wall and global
       'pocket-doors-section': ['pocketDoors.foldType', 'pocketDoors.foldStyle', 'pocket_doors.foldType'],
       'structure-support': ['structureSupport'],

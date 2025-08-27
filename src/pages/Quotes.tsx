@@ -10,20 +10,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuotes, Quote } from "@/hooks/useQuotes";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { useToast } from "@/hooks/use-toast";
+// import { useToast } from "@/hooks/use-toast";
 import { QuotesTable, QuoteFilters, QuotePagination } from "@/components/features/quotes/table";
 
 const Quotes = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  // const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
   const {
     quotes,
     updateQuote,
+    createQuoteVersion,
     deleteQuote: deleteQuoteFromDB,
-    markAsDownloaded,
-    saveQuoteCustomization,
-    refreshQuotes
+    // markAsDownloaded,
+    // saveQuoteCustomization,
+    // refreshQuotes
   } = useQuotes();
 
   const { currentOrganization } = useOrganizations();
@@ -96,6 +97,15 @@ const Quotes = () => {
     navigate(`/newquote?name=${encodeURIComponent(quoteName)}`);
   };
 
+  const handleCreateVersion = async (quoteId: string) => {
+    try {
+      const newQuote = await createQuoteVersion(quoteId);
+      navigate(`/quotes/edit/${newQuote.proposal_number}`);
+    } catch (error) {
+      console.error('Error creating quote version:', error);
+    }
+  };
+
 
   if (!user) return null;
 
@@ -146,6 +156,7 @@ const Quotes = () => {
                   onEditQuote={editQuote}
                   onDeleteQuote={(id) => setDeleteQuoteId(id)}
                   onStatusChange={updateQuoteStatus}
+                  onCreateVersion={handleCreateVersion}
                 />
                 
                 <QuotePagination

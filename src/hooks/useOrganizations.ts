@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 export interface Organization {
   id: string;
   name: string;
-  created_by: string;
+  organization_code: string;
   created_at: string;
   updated_at: string;
 }
@@ -51,7 +51,7 @@ export const useOrganizations = () => {
         // If user has an organization, try to fetch it
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
-          .select('id, name, created_at, updated_at, created_by')
+          .select('id, name, organization_code, created_at, updated_at')
           .eq('id', profileData.organization_id)
           .single();
 
@@ -96,13 +96,13 @@ export const useOrganizations = () => {
         .filter(profile => profile && profile.id) // Filter out null/undefined profiles
         .map(profile => ({
           id: profile.id,
-          organization_id: profile.organization_id,
+          organization_id: profile.organization_id || '',
           role: (profile.role as 'owner' | 'admin' | 'member') || 'member',
           status: (profile.status as 'pending' | 'active' | 'suspended') || 'active',
-          invited_by: profile.invited_by || null,
+          invited_by: profile.invited_by || undefined,
           joined_at: profile.joined_at || new Date().toISOString(),
           email: profile.email || '',
-          full_name: profile.full_name || null
+          full_name: profile.full_name || undefined
         }));
 
       setMembers(transformedData);
@@ -127,7 +127,6 @@ export const useOrganizations = () => {
         .from('organizations')
         .insert({
           name,
-          created_by: user.id,
           organization_code: orgCode
         })
         .select()
@@ -225,7 +224,7 @@ export const useOrganizations = () => {
       const { error } = await supabase
         .from('profiles')
         .update({
-          organization_id: null,
+          organization_id: '',
           role: 'member',
           invited_by: null,
           joined_at: null

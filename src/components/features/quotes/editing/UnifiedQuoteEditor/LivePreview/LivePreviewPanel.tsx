@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { SmartQuoteHelper } from '@/templates/SmartQuoteTemplate';
 import { LivePreviewPanelProps, DocumentPage } from './types';
-import { PageCalculator } from './page-calculator';
 import { SectionInteractions } from './section-interactions';
-import { PreviewControls } from './PreviewControls';
-import { DocumentCanvas } from './DocumentCanvas';
+// REMOVED: PreviewControls - sticky header moved to main control panel
+import { ContentSplitter } from './ContentSplitter';
+import { getPreviewStyles } from './preview-styles';
 
 export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
   previewHTML,
@@ -12,8 +12,9 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
   onZoomIn,
   onZoomOut,
   onSectionClick,
+  onSectionHover,
   className = '',
-  showSmartPDFPreview = false
+  // showSmartPDFPreview = false
 }) => {
   const [pages, setPages] = useState<DocumentPage[]>([]);
   const [hoveredSectionId, setHoveredSectionId] = useState<string | null>(null);
@@ -29,20 +30,37 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
     }
   }, [previewHTML]);
 
-  // Calculate pages for pagination with dynamic page breaks
+  // Calculate pages using intelligent content splitting
   const calculatePages = useCallback(async () => {
     if (!previewHTML) return;
 
-    let newPages: DocumentPage[];
-
-    if (showSmartPDFPreview) {
-      newPages = await PageCalculator.calculateSmartPDFPages(previewHTML);
-    } else {
-      newPages = await PageCalculator.calculateNormalPages(previewHTML);
+    console.log('🔄 Starting intelligent content-aware pagination');
+    
+    try {
+      // Use ContentSplitter to properly split content across pages
+      const splitPages = ContentSplitter.splitContent(previewHTML);
+      
+      // Convert to DocumentPage format
+      const newPages: DocumentPage[] = splitPages.map(page => ({
+        id: page.id,
+        content: page.content,
+        pageNumber: page.pageNumber
+      }));
+      
+      console.log(`✅ ContentSplitter created ${newPages.length} pages with proper content distribution`);
+      setPages(newPages);
+      
+    } catch (error) {
+      console.error('❌ Error in content splitting:', error);
+      
+      // Fallback to single page
+      setPages([{
+        id: 'fallback-page-1',
+        content: previewHTML,
+        pageNumber: 1
+      }]);
     }
-
-    setPages(newPages);
-  }, [previewHTML, showSmartPDFPreview]);
+  }, [previewHTML]);
 
   useEffect(() => {
     calculatePages();
@@ -55,35 +73,69 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
   );
 
   const handleSectionHover = useCallback(
-    SectionInteractions.createSectionHoverHandler(setHoveredSectionId),
-    []
+    SectionInteractions.createSectionHoverHandler((sectionId) => {
+      setHoveredSectionId(sectionId);
+      onSectionHover?.(sectionId);
+    }),
+    [onSectionHover]
   );
 
   const handleSectionLeave = useCallback(
-    SectionInteractions.createSectionLeaveHandler(setHoveredSectionId),
-    []
+    SectionInteractions.createSectionLeaveHandler((sectionId) => {
+      setHoveredSectionId(sectionId);
+      onSectionHover?.(sectionId);
+    }),
+    [onSectionHover]
   );
 
   return (
     <div data-testid="live-preview-panel" className={`flex-1 overflow-auto ${className}`}>
-      {/* Preview Controls */}
-      <PreviewControls
-        zoomLevel={zoomLevel}
-        onZoomIn={onZoomIn}
-        onZoomOut={onZoomOut}
-        hoveredSectionId={hoveredSectionId}
-        sectionsCount={sections.length}
-      />
+      {/* Split Page Content */}
+      <div className="py-8 px-4 pb-20">
+        <div className="max-w-none mx-auto">
+          {pages.map((page, index) => (
+            <div
+              key={page.id}
+              className="split-page-content"
+              style={{
+                transform: `scale(${zoomLevel / 100})`,
+                transformOrigin: 'top center',
+                marginBottom: `${32 * zoomLevel / 100}px`
+              }}
+            >
+              {/* Page Number */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '0.5in',
+                  right: '0.75in',
+                  fontSize: '10px',
+                  color: '#666',
+                  fontFamily: 'Arial, sans-serif',
+                  zIndex: 10
+                }}
+              >
+                {page.pageNumber}
+              </div>
 
-      {/* Document Canvas */}
-      <DocumentCanvas
-        pages={pages}
-        zoomLevel={zoomLevel}
-        previewRef={previewRef}
-        onSectionClick={handleSectionClick}
-        onSectionHover={handleSectionHover}
-        onSectionLeave={handleSectionLeave}
-      />
+              {/* Page Content with Styles */}
+              <div
+                ref={index === 0 ? previewRef : undefined}
+                className="quote-document"
+                dangerouslySetInnerHTML={{ __html: page.content + getPreviewStyles() }}
+                onClick={handleSectionClick}
+                onMouseMove={handleSectionHover}
+                onMouseLeave={handleSectionLeave}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  overflow: 'visible'
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Hidden measuring element */}
       <div ref={measureRef} className="absolute -left-[9999px] top-0 opacity-0 pointer-events-none" />

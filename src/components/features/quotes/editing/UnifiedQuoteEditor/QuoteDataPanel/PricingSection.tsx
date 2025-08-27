@@ -1,10 +1,12 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ValidatedInput } from '@/components/ui/validated-input';
 import { DollarSign } from 'lucide-react';
 import { CollapsibleSection } from './CollapsibleSection';
 import { FieldChangeHandler } from './types';
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
+import { useFormValidation } from '@/hooks/useFormValidation';
 
 interface PricingSectionProps {
   data: QuoteData;
@@ -18,7 +20,15 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   isOpen,
   onToggle,
   onFieldChange
-}) => (
+}) => {
+  const { validateAndUpdate, getFieldError, isFieldValid, markFieldTouched } = useFormValidation();
+  
+  const handleValidatedChange = (field: string, value: string, validationType?: string) => {
+    const sanitizedValue = validateAndUpdate(field, value, validationType);
+    onFieldChange('price_details', field, sanitizedValue);
+  };
+
+  return (
   <CollapsibleSection
     title="Pricing"
     icon={<DollarSign className="w-4 h-4 text-green-500" />}
@@ -30,13 +40,16 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
         <Label htmlFor="basePrice" className="text-xs font-medium text-gray-600">
           Base Price ($)
         </Label>
-        <Input
+        <ValidatedInput
           id="basePrice"
-          type="number"
+          validationType="currency"
           value={data.price_details?.basePrice || data.price_details?.base_price || ''}
-          onChange={(e) => onFieldChange('price_details', 'basePrice', e.target.value)}
+          onValueChange={(value) => handleValidatedChange('basePrice', value, 'basePrice')}
+          onBlur={() => markFieldTouched('basePrice')}
           placeholder="0.00"
           className="text-sm"
+          errorMessage={getFieldError('basePrice')}
+          isValid={isFieldValid('basePrice')}
         />
       </div>
       
@@ -44,13 +57,16 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
         <Label htmlFor="freight" className="text-xs font-medium text-gray-600">
           Estimated Freight + Delivery ($)
         </Label>
-        <Input
+        <ValidatedInput
           id="freight"
-          // type="number"
+          validationType="currency"
           value={data.price_details?.freight || ''}
-          onChange={(e) => onFieldChange('price_details', 'freight', e.target.value)}
+          onValueChange={(value) => handleValidatedChange('freight', value, 'freight')}
+          onBlur={() => markFieldTouched('freight')}
           placeholder="0.00"
           className="text-sm"
+          errorMessage={getFieldError('freight')}
+          isValid={isFieldValid('freight')}
         />
       </div>
       
@@ -72,13 +88,16 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           <Label htmlFor="paymentDrawings" className="text-xs font-medium text-gray-600">
             Payment on Drawings (%)
           </Label>
-          <Input
+          <ValidatedInput
             id="paymentDrawings"
-            type="number"
+            validationType="percentage"
             value={data.price_details?.payment_upon_drawings || ''}
-            onChange={(e) => onFieldChange('price_details', 'payment_upon_drawings', e.target.value)}
+            onValueChange={(value: string) => handleValidatedChange('payment_upon_drawings', value, 'paymentPercentage')}
+            onBlur={() => markFieldTouched('payment_upon_drawings')}
             placeholder="33"
             className="text-sm"
+            errorMessage={getFieldError('payment_upon_drawings')}
+            isValid={isFieldValid('payment_upon_drawings')}
           />
         </div>
         
@@ -86,16 +105,20 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           <Label htmlFor="paymentTrack" className="text-xs font-medium text-gray-600">
             Payment on Track (%)
           </Label>
-          <Input
+          <ValidatedInput
             id="paymentTrack"
-            type="number"
+            validationType="percentage"
             value={data.price_details?.payment_upon_track_installation || ''}
-            onChange={(e) => onFieldChange('price_details', 'payment_upon_track_installation', e.target.value)}
+            onValueChange={(value: string) => handleValidatedChange('payment_upon_track_installation', value, 'paymentPercentage')}
+            onBlur={() => markFieldTouched('payment_upon_track_installation')}
             placeholder="33"
             className="text-sm"
+            errorMessage={getFieldError('payment_upon_track_installation')}
+            isValid={isFieldValid('payment_upon_track_installation')}
           />
         </div>
       </div>
     </div>
   </CollapsibleSection>
-);
+  );
+};

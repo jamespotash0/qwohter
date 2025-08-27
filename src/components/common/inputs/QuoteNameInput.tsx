@@ -5,13 +5,15 @@ interface QuoteNameInputProps {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   maxChars?: number;
   onSave: () => void;
+  className?: string;
 }
 
 const QuoteNameInput = ({ 
   value, 
   onChange, 
   maxChars = 35, 
-  onSave 
+  onSave,
+  // className 
 }: QuoteNameInputProps) => {
   const spanRef = useRef(null);
   const inputRef = useRef(null);

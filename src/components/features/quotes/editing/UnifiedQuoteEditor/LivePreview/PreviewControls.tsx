@@ -27,9 +27,9 @@ export const PreviewControls: React.FC<PreviewControlsProps> = ({
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-blue-500" />
           <span className="text-sm font-medium">Live Preview</span>
-          <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded font-medium">
+          {/* <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded font-medium">
             📄 2-Page PDF Preview
-          </span>
+          </span> */}
           {hoveredSectionId && (
             <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
               Hover: {hoveredSectionId.replace(/-/g, ' ')}

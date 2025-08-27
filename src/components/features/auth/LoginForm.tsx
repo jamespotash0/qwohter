@@ -65,12 +65,8 @@ const LoginForm = ({
                 Sign In to Dashboard
               </Button>
             </form>
-
-            {/* Features section */}
-            
           </CardContent>
         </Card>
-
         {/* Footer */}
         <div className="text-center mt-8">
           <p className="text-slate-500 text-sm">

@@ -1,7 +1,6 @@
 import * as React from "react";
 import type { SidebarContext as SidebarContextType } from "./types";
 
-
 /**
  * Sidebar Context
  * Provides sidebar state and actions to child components

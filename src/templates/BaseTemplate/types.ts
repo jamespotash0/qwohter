@@ -9,11 +9,6 @@ export interface QuoteData {
       [wallName: string]: WallSpecification;
     };
   };
-  pocket_doors?: {
-    foldType?: string;
-    foldStyle?: string;
-  };
-  support_structure?: any;
   delivery_details?: any;
   labor_details?: any;
   price_details?: any;

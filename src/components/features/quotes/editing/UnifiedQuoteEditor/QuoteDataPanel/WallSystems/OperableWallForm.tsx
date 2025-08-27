@@ -292,7 +292,7 @@ export const OperableWallForm: React.FC<WallTypeFormProps> = ({
         <div className="space-y-1">
           {getPanelFinishSpecificItems(wall.panelFinishCategory).length > 0 ? (
             <>
-              <Label className="text-xs">Panel Finish Specific Item</Label>
+              <Label className="text-xs">Panel Finish Item</Label>
               <Select
                 value={wall.panelFinishSpecificItem || ''}
                 onValueChange={(value) => handleFieldChange('panelFinishSpecificItem', value)}

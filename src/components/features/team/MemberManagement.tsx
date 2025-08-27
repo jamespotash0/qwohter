@@ -8,9 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useOrganizations, OrganizationMember, Organization } from "@/hooks/useOrganizations";
-// import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { /*useOrganizations,*/ OrganizationMember, Organization } from "@/hooks/useOrganizations";
+// import { useToast } from "@/hooks/use-toast";
 
 interface MemberManagementProps {
   organization: Organization;
@@ -46,23 +45,23 @@ const getRoleBadgeVariant = (role: string) => {
 };
 
 export const MemberManagement = ({
-  organization,
+  // organization,
   members,
   onInviteMember,
   onRemoveMember,
   onUpdateRole,
-  onApproveMember,
-  onRejectMember,
-  onRefresh
+  // onApproveMember,
+  // onRejectMember,
+  // onRefresh
 }: MemberManagementProps) => {
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
   const [isInviting, setIsInviting] = useState(false);
-  const { toast } = useToast();
+  // const { toast } = useToast();
 
-  const activeMembers = members.filter(m => m.status === 'active');
-  const pendingMembers = members.filter(m => m.status === 'pending');
+  // const activeMembers = members.filter(m => m.status === 'active');
+  // const pendingMembers = members.filter(m => m.status === 'pending');
 
   const handleInviteMember = async () => {
     if (!inviteEmail.trim()) return;

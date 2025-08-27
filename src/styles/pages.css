@@ -1,3 +1,21 @@
+/* Unified Pagination System - Single Source of Truth */
+:root {
+  --page-width: 8.5in;
+  --page-height: 11in;
+  --page-margin-top: 0.75in;
+  --page-margin-bottom: 0.75in;
+  --page-margin-left: 0.75in;
+  --page-margin-right: 0.75in;
+  --page-font-family: "Times New Roman", Times, serif;
+  --page-font-size: 12pt;
+  --page-line-height: 1.15;
+}
+
+@page {
+  size: letter;
+  margin: var(--page-margin-top) var(--page-margin-right) var(--page-margin-bottom) var(--page-margin-left);
+}
+
 /* Page Container Styles */
 .page-container {
   width: 100%;
@@ -6,158 +24,90 @@
   box-sizing: border-box;
 }
 
-/* Individual Page Styles */
-.page {
-  width: 8.5in;
-  height: 11in;
+/* Content-aware page break rules */
+.header-section, 
+.job-info-section {
+  break-inside: avoid;
+  break-after: avoid;
+}
+
+.wall-specifications-list,
+.pricing-section,
+.signature-section,
+.acceptance-section {
+  break-inside: avoid;
+}
+
+.panels-section,
+.pass-doors-section,
+.pocket-doors-section,
+.track-section,
+.support-section {
+  break-before: auto;
+  break-inside: avoid;
+}
+
+.general-section,
+.statement-section,
+.terms-section {
+  break-inside: avoid;
+}
+
+/* Tables should never be split */
+table {
+  break-inside: avoid;
+}
+
+/* Force page breaks when content gets too long */
+.force-page-break {
+  break-before: always;
+}
+
+/* Unified page content container */
+.split-page-content {
+  width: var(--page-width);
+  height: var(--page-height);
+  max-width: 100%;
   background: white;
   margin: 0 auto 20px auto;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1), 0 6px 20px rgba(0, 0, 0, 0.05);
+  padding: var(--page-margin-top) var(--page-margin-right) var(--page-margin-bottom) var(--page-margin-left);
+  box-sizing: border-box;
+  font-family: var(--page-font-family);
+  font-size: var(--page-font-size);
+  line-height: var(--page-line-height);
+  color: #000;
+  position: relative;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid #e0e0e0;
-  position: relative;
   overflow: hidden;
-  box-sizing: border-box;
-  page-break-after: always;
 }
 
-.page:last-child {
-  margin-bottom: 0;
-}
+/* REMOVED: Old css-paginated-content guides - now using split-page-content */
 
-/* Page Content Area */
-.page-content {
-  padding: 0.75in;
-  width: 100%;
-  height: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
-  font-family: Arial, sans-serif;
-  font-size: 12px;
-  line-height: 1.4;
-  color: #333;
-}
+/* REMOVED: Old css-paginated-content print rules - now using unified CSS variables */
 
-/* Margin Guides (visible only when enabled) */
-.page.show-guides::before {
-  content: '';
-  position: absolute;
-  top: 0.75in;
-  left: 0.75in;
-  right: 0.75in;
-  bottom: 0.75in;
-  border: 1px dashed #ccc;
-  pointer-events: none;
-  z-index: 1;
-}
+/* REMOVED: Conflicting legacy page styles that used 0.75in margins
+   All pagination now uses unified .split-page-content with CSS variables */
 
-.page.show-guides .page-content {
-  position: relative;
-  z-index: 2;
-}
+/* REMOVED: Legacy .page and .page-content styles - now using .split-page-content */
 
-/* Page Number (for print/export) */
-.page::after {
-  content: attr(data-page);
-  position: absolute;
-  bottom: 0.5in;
-  right: 0.75in;
-  font-size: 10px;
-  color: #666;
-  font-family: Arial, sans-serif;
-}
+/* REMOVED: Legacy responsive and print styles for .page - now handled by CSS variables */
 
-/* Quote-specific content styling */
-.page-content .quote-container {
-  width: 100%;
-  margin: 0;
-  padding: 0;
-}
-
-.page-content .header-section {
-  display: flex;
-  align-items: flex-start;
-  margin-bottom: 20px;
-  gap: 20px;
-}
-
-.page-content .company-info {
-  flex-shrink: 0;
-}
-
-.page-content .contact-details {
-  flex-grow: 1;
-}
-
-.page-content .section-header {
-  font-weight: bold;
-  font-size: 14px;
-  margin: 20px 0 10px 0;
-  color: #333;
-}
-
-.page-content table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 10px 0;
-}
-
-.page-content td {
-  padding: 8px;
-  vertical-align: top;
-}
-
-/* Responsive Design for smaller screens */
-@media screen and (max-width: 1024px) {
-  .page {
-    width: 100%;
-    max-width: 8.5in;
-    height: auto;
-    min-height: 11in;
-  }
-  
-  .page-container {
-    padding: 10px;
-  }
-}
-
-@media screen and (max-width: 768px) {
-  .page-content {
-    padding: 0.5in;
-    font-size: 11px;
-  }
-  
-  .page-container {
-    padding: 5px;
-  }
-}
-
-/* Print Styles */
+/* Print Styles for new system */
 @media print {
-  .page-container {
-    background: none;
-    padding: 0;
-  }
-  
-  .page {
-    width: 8.5in;
-    height: 11in;
-    margin: 0;
+  .split-page-content {
     box-shadow: none;
     border: none;
     page-break-after: always;
   }
   
-  .page:last-child {
+  .split-page-content:last-child {
     page-break-after: auto;
-  }
-  
-  .page.show-guides::before {
-    display: none;
   }
 }
 
 /* Animation for page transitions */
-.page {
+.split-page-content {
   animation: fadeIn 0.3s ease-in-out;
 }
 

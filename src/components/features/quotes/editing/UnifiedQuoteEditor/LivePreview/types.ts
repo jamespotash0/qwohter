@@ -6,6 +6,7 @@ export interface LivePreviewPanelProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onSectionClick?: (sectionId: string, sectionData: QuoteSection) => void;
+  onSectionHover?: (sectionId: string | null) => void;
   className?: string;
   showSmartPDFPreview?: boolean; // New prop for Smart PDF preview mode
 }

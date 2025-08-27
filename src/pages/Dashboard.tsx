@@ -2,12 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
-import QuoteCreator from "@/components/features/quotes/creation/QuoteCreator";
 import Dashboard from "@/components/features/dashboard/Dashboard";
 
 const DashboardPage = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [currentQuote, setCurrentQuote] = useState<string>("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -39,39 +37,15 @@ const DashboardPage = () => {
     navigate("/auth");
   };
 
-  const handleEditQuote = (quoteName: string) => {
-    setCurrentQuote(quoteName);
-  };
-
-  const handleQuoteNameChange = (newName: string) => {
-    setCurrentQuote(newName);
-  };
-
-  const handleBackToDashboard = () => {
-    setCurrentQuote("");
-  };
-
   if (!user) {
     return null; // Will redirect to auth
   }
 
-  if (!currentQuote) {
-    return (
-      <Dashboard 
-        user={user.email || ""} 
-        userId={user.id}
-        onLogout={handleLogout} 
-      />
-    );
-  }
-
   return (
-    <QuoteCreator 
+    <Dashboard 
       user={user.email || ""} 
+      userId={user.id}
       onLogout={handleLogout} 
-      quoteName={currentQuote}
-      onBackToDashboard={handleBackToDashboard}
-      onQuoteNameChange={handleQuoteNameChange}
     />
   );
 };

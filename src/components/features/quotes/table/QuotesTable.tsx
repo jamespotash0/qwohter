@@ -3,14 +3,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Edit3, Trash2, MoreHorizontal } from "lucide-react";
+import { Edit3, Trash2, MoreHorizontal, Copy } from "lucide-react";
 import { Quote } from "@/hooks/useQuotes";
+import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 
 interface QuotesTableProps {
   quotes: Quote[];
   onEditQuote: (quote: Quote) => void;
   onDeleteQuote: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
+  onCreateVersion?: (id: string) => void;
 }
 
 const statusColors = {
@@ -32,10 +34,11 @@ export const QuotesTable: React.FC<QuotesTableProps> = ({
   quotes,
   onEditQuote,
   onDeleteQuote,
-  onStatusChange
+  onStatusChange,
+  onCreateVersion
 }) => {
   return (
-    <div className="overflow-auto max-h-96">
+    <div className="overflow-auto max-h-[608px]"> {/* Adjust max height as needed */}
       <Table>
         <colgroup>
           <col className="w-24" />
@@ -64,9 +67,11 @@ export const QuotesTable: React.FC<QuotesTableProps> = ({
             const total = quote.price_details?.total || 0;
             const projectLocation = quote.job_details?.job_location || "";
 
+            const proposalInfo = ProposalNumberGenerator.parseProposalNumber(quote.proposal_number);
+            
             return (
               <TableRow key={quote.id} className="hover:bg-slate-50/50 transition-colors h-14">
-                <TableCell className="font-medium py-2 text-sm">{quote.proposal_number}</TableCell>
+                <TableCell className="font-medium py-2 text-sm">{proposalInfo.displayNumber}</TableCell>
                 <TableCell className="py-2">
                   <div>
                     <div className="font-medium text-sm truncate">{projectName}</div>
@@ -106,6 +111,12 @@ export const QuotesTable: React.FC<QuotesTableProps> = ({
                         <Edit3 className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
+                      {onCreateVersion && (
+                        <DropdownMenuItem onClick={() => onCreateVersion(quote.id)}>
+                          <Copy className="mr-2 h-4 w-4" />
+                          Create Version
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
                         onClick={() => onDeleteQuote(quote.id)}

@@ -21,22 +21,15 @@ const menuItems = [{
   title: "Team",
   icon: Users,
   path: "/team"
-},
-// {
-//   title: "Calendar",
-//   icon: Calendar,
-//   path: "/calendar"
-// }
-// { title: "Team", icon: Users, path: "/team" },
+}
 ];
 const generalItems = [{
   title: "Settings",
   icon: Settings
 }
-// { title: "Help", icon: HelpCircle },
 ];
 export function AppSidebar({
-  user,
+  // user,
   onLogout
 }: AppSidebarProps) {
   const {

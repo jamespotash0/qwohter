@@ -2,10 +2,12 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { ValidatedInput } from '@/components/ui/validated-input';
 import { Contact } from 'lucide-react';
 import { CollapsibleSection } from './CollapsibleSection';
 import { QuoteDataPanelProps, FieldChangeHandler } from './types';
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
+import { useFormValidation } from '@/hooks/useFormValidation';
 
 interface ContactInfoSectionProps {
   data: QuoteData;
@@ -19,7 +21,15 @@ export const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
   isOpen,
   onToggle,
   onFieldChange
-}) => (
+}) => {
+  const { validateAndUpdate, getFieldError, isFieldValid, markFieldTouched } = useFormValidation();
+  
+  const handleValidatedChange = (field: string, value: string, validationType?: string) => {
+    const sanitizedValue = validateAndUpdate(field, value, validationType);
+    onFieldChange('quote_details', field, sanitizedValue);
+  };
+
+  return (
   <CollapsibleSection
     title="Contact Info"
     icon={<Contact className="w-4 h-4 text-blue-500" />}
@@ -44,12 +54,16 @@ export const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
         <Label htmlFor="contactEmail" className="text-xs font-medium text-gray-600">
           Contact Email
         </Label>
-        <Input
+        <ValidatedInput
           id="contactEmail"
+          validationType="email"
           value={data.quote_details?.contactEmail || data.quote_details?.email || ''}
-          onChange={(e) => onFieldChange('quote_details', 'contactEmail', e.target.value)}
+          onValueChange={(value) => handleValidatedChange('contactEmail', value, 'email')}
+          onBlur={() => markFieldTouched('contactEmail')}
           placeholder="contact@company.com"
           className="text-sm"
+          errorMessage={getFieldError('contactEmail')}
+          isValid={isFieldValid('contactEmail')}
         />
       </div>
       
@@ -57,12 +71,16 @@ export const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
         <Label htmlFor="phone" className="text-xs font-medium text-gray-600">
           Phone
         </Label>
-        <Input
+        <ValidatedInput
           id="phone"
+          validationType="phone"
           value={data.quote_details?.phone || ''}
-          onChange={(e) => onFieldChange('quote_details', 'phone', e.target.value)}
+          onValueChange={(value) => handleValidatedChange('phone', value, 'phone')}
+          onBlur={() => markFieldTouched('phone')}
           placeholder="(973) 884-0474"
           className="text-sm"
+          errorMessage={getFieldError('phone')}
+          isValid={isFieldValid('phone')}
         />
       </div>
       
@@ -83,12 +101,16 @@ export const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
         <Label htmlFor="website" className="text-xs font-medium text-gray-600">
           Website
         </Label>
-        <Input
+        <ValidatedInput
           id="website"
+          validationType="website"
           value={data.quote_details?.website || ''}
-          onChange={(e) => onFieldChange('quote_details', 'website', e.target.value)}
-          placeholder="contemporarywalls.com"
+          onValueChange={(value) => handleValidatedChange('website', value, 'website')}
+          onBlur={() => markFieldTouched('website')}
+          placeholder="www.contemporarywalls.com"
           className="text-sm"
+          errorMessage={getFieldError('website')}
+          isValid={isFieldValid('website')}
         />
       </div>
       
@@ -107,4 +129,5 @@ export const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
       </div>
     </div>
   </CollapsibleSection>
-);
+  );
+};

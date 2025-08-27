@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/common/layout";
 import { 
@@ -11,8 +11,6 @@ import {
   Target,
   Building2,
   User,
-  Zap,
-  Activity
 } from "lucide-react";
 import { useQuotes } from "@/hooks/useQuotes";
 import { useOrganizations } from "@/hooks/useOrganizations";
@@ -61,8 +59,8 @@ const Analytics = () => {
 
   const wonQuotes = quotes.filter(q => q.status === 'Won').length;
   const rejectedQuotes = quotes.filter(q => q.status === 'Rejected').length;
-  const pendingQuotes = quotes.filter(q => q.status === 'Pending').length;
-  const draftQuotes = quotes.filter(q => q.status === 'Draft').length;
+  // const pendingQuotes = quotes.filter(q => q.status === 'Pending').length;
+  // const draftQuotes = quotes.filter(q => q.status === 'Draft').length;
   
   const averageRevenuePerQuote = wonQuotes > 0 ? totalRevenue / wonQuotes : 0;
   const conversionRate = totalQuotes > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;
