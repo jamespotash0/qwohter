@@ -1,15 +1,19 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { WallSpecification } from "@/types/quote";
+import { WallSpecification, isOperableWall, OperableWallSpecification } from "@/lib/types";
 
 interface OperableWallCreationFormProps {
   wall: WallSpecification;
   wallName: string;
-  onWallChange: (wallName: string, field: keyof WallSpecification, value: string) => void;
+  onWallChange: (wallName: string, field: string, value: string) => void;
 }
 
 const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWallCreationFormProps) => {
+  // Early return if not an operable wall
+  if (!isOperableWall(wall)) {
+    return <div>This form is only for Operable Walls</div>;
+  }
   const getSeriesByPanelConfiguration = (panelConfiguration: string): string[] => {
     switch (panelConfiguration) {
       case "Individual Panels":

@@ -28,7 +28,7 @@ import PricingForm from "@/components/features/quotes/forms/pricing/PricingForm"
 import { toast } from "sonner";
 import { QuoteNameInput } from "@/components/common/inputs";
 
-import { WallDetails, WallSpecification } from "@/types/quote";
+import { WallDetails, WallSpecification, isOperableWall } from "@/lib/types";
 import { useQuotes } from "@/hooks/useQuotes";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 
@@ -236,7 +236,7 @@ const QuoteCreatorWizard = ({
         }
       }
       
-      if (wall.panelFinishCategory && !wall.panelFinishSpecificItem) {
+      if (isOperableWall(wall) && wall.panelFinishCategory && !wall.panelFinishSpecificItem) {
         return false;
       }
     }

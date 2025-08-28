@@ -1,4 +1,5 @@
 import { QuoteData, TemplateHelpers } from './types';
+import { isGlassWall, isOperableWall } from '../../lib/types';
 
 export class SectionGenerators {
   private helpers: TemplateHelpers;
@@ -131,22 +132,6 @@ export class SectionGenerators {
     const freight = this.helpers.formatCurrency(parsedFreight);
     const total = this.helpers.formatCurrency(parsedTotal);
 
-    // Enhanced debug pricing values to console for troubleshooting
-    if (process.env.NODE_ENV === 'development') {
-      // console.log('Pricing Debug:', { 
-      //   original: { basePriceValue, freightValue, totalValue },
-      //   parsed: { parsedBasePrice, parsedFreight, parsedTotal },
-      //   formatted: { basePrice, freight, total }
-      // });
-      
-      // Test currency formatting for all digit lengths
-      // const testValues = [12.34, 123.45, 1234.56, 12345.67, 123456.78, 1234567.89, 12345678.90];
-      // console.log('Currency formatting tests:');
-      // testValues.forEach(val => {
-      //   console.log(`${val} digits -> ${this.helpers.formatCurrency(val)}`);
-      // });
-    }
-
     return `<div class="pricing-section" style="margin-top: 10px;">
       <table style="width: 90%; border-collapse: collapse; table-layout: fixed;">
         <colgroup>
@@ -261,39 +246,51 @@ export class SectionGenerators {
     const wallsWithPassDoors = Object.entries(walls)
       .filter(([_, wall]) => {
         // Check for operable wall pass doors
-        const hasOperablePassDoors = wall.passDoorPanels && 
-                                    wall.passDoorPanels.toLowerCase().trim() !== 'none' &&
-                                    wall.passDoorPanels.trim() !== '' &&
-                                    wall.passDoorQuantity && 
-                                    wall.passDoorQuantity !== '0';
+        if (isOperableWall(wall)) {
+          const hasOperablePassDoors = wall.passDoorPanels && 
+                                      wall.passDoorPanels.toLowerCase().trim() !== 'none' &&
+                                      wall.passDoorPanels.trim() !== '' &&
+                                      wall.passDoorQuantity && 
+                                      wall.passDoorQuantity !== '0';
+          return hasOperablePassDoors;
+        }
         
         // Check for glass wall pass doors - require both type and option to be set
-        const hasGlassPassDoors = wall.glasswallPassDoorType && 
-                                 wall.glasswallPassDoorType.toLowerCase().trim() !== 'none' &&
-                                 wall.glasswallPassDoorType.trim() !== '' &&
-                                 wall.glasswallPassDoorOption &&
-                                 wall.glasswallPassDoorOption.toLowerCase().trim() !== 'none' &&
-                                 wall.glasswallPassDoorOption.trim() !== '';
+        if (isGlassWall(wall)) {
+          const hasGlassPassDoors = wall.passDoorType && 
+                                   wall.passDoorType.toLowerCase().trim() !== 'none' &&
+                                   wall.passDoorType.trim() !== '' &&
+                                   wall.passDoorOption &&
+                                   wall.passDoorOption.toLowerCase().trim() !== 'none' &&
+                                   wall.passDoorOption.trim() !== '';
+          return hasGlassPassDoors;
+        }
         
-        return hasOperablePassDoors || hasGlassPassDoors;
+        return false;
       })
       .map(([name, wall]) => {
         // Determine pass door details based on wall type
-        const isGlassWall = wall.wallSystemType?.toLowerCase().includes('glass');
-        
-        if (isGlassWall && wall.glasswallPassDoorType) {
+        if (isGlassWall(wall)) {
           return {
             name, 
-            type: wall.glasswallPassDoorType,
-            option: wall.glasswallPassDoorOption, 
+            type: wall.passDoorType,
+            option: wall.passDoorOption, 
             quantity: '1', // Glass walls typically have 1 pass door per configuration
             isGlassWall: true
           };
-        } else {
+        } else if (isOperableWall(wall)) {
           return {
             name, 
             type: wall.passDoorPanels!, 
             quantity: wall.passDoorQuantity || '0',
+            isGlassWall: false
+          };
+        } else {
+          // Fallback for other wall types
+          return {
+            name, 
+            type: '', 
+            quantity: '0',
             isGlassWall: false
           };
         }

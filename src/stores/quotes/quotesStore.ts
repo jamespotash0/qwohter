@@ -3,8 +3,8 @@ import { subscribeWithSelector, devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { supabase } from '@/integrations/supabase/client';
 import type { Quote } from '@/hooks/useQuotes';
-import type { WallSpecification, WallDetails } from '@/types/quote';
-import { filterWallDetailsForSave } from '@/utils/wallDataFilter';
+import type { WallSpecification, WallDetails } from '@/lib/types';
+// Note: filterWallDetailsForSave removed - discriminated union types now prevent invalid data
 import { ProposalNumberGenerator } from '@/utils/proposalNumberGenerator';
 
 interface QuotesState {
@@ -164,7 +164,7 @@ export const useQuotesStore = create<QuotesState>()(
                   client_address: quoteData.jobDetails.billedTo.address || '',
                   date: quoteData.jobDetails.date
                 },
-                wall_details: filterWallDetailsForSave(quoteData.walls || {}),
+                wall_details: quoteData.walls || {},
                 price_details: {
                   base_price: quoteData.pricing.basePrice,
                   freight: quoteData.pricing.freight,
@@ -257,11 +257,8 @@ export const useQuotesStore = create<QuotesState>()(
             _setLoading(true);
             _setError(null);
             
-            // Process wall details if included
+            // Note: wall_details filtering removed - discriminated unions ensure type safety
             let processedUpdates = { ...updates };
-            if (updates.wall_details) {
-              processedUpdates.wall_details = filterWallDetailsForSave(updates.wall_details);
-            }
             
             const { data, error } = await supabase
               .from('quotes')

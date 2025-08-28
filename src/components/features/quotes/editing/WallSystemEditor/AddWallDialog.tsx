@@ -362,7 +362,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                 <Select
                   value={newWall.wallSystemType || ''}
                   onValueChange={(value) => {
-                    // When changing wall system type, reset wall-specific fields but keep basic fields
+                    // When changing wall system type, reset wall-specific fields but keep basic dimensions
                     const resetWall = {
                       ...newWall,
                       wallSystemType: value,
@@ -375,7 +375,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                       panelThickness: '',
                       panelDesign: '',
                       trackType: '',
-                      trackSystem: ''
+                      trackSystem: value === 'Glass Wall' ? 'Architectural Grade Extruded Aluminum Alloy 6063-T6' : ''
                     };
                     setNewWall(resetWall);
                     setHasChanges(true);
@@ -387,6 +387,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                   <SelectContent>
                     <SelectItem value="Operable Wall">Operable Wall</SelectItem>
                     <SelectItem value="Glass Wall">Glass Wall</SelectItem>
+                    <SelectItem value="Accordion Wall">Accordion Wall</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

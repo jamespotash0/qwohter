@@ -1,4 +1,4 @@
-import { WallSpecification } from '@/types/quote';
+import { WallSpecification } from '@/lib/types';
 
 export interface EditWallSystemDialogProps {
   isOpen: boolean;
