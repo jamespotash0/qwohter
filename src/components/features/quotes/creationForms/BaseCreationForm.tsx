@@ -6,7 +6,7 @@ import { WallSpecification } from "@/lib/types";
 interface BaseSpecsProps {
   wall: WallSpecification;
   wallName: string;
-  onWallChange: (wallName: string, field: keyof WallSpecification, value: string) => void;
+  onWallChange: (wallName: string, field: string, value: string) => void;
 }
 
 const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseSpecsProps) => {

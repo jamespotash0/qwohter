@@ -24,9 +24,9 @@ export interface ModelConfiguration {
 
 export interface GlassWallSpecification extends BaseWallSpecification {
   wallSystemType: 'Glass Wall';
-  // model: string;
+  model: string;
   operation: string;
-  // panelConfiguration: string;
+  panelConfiguration: string;
   panelFace: string;
   frameFinish: string;
   glassType: string;
@@ -42,7 +42,7 @@ export interface GlassWallSpecification extends BaseWallSpecification {
 }
 
 export interface GlassWallConfiguration {
-  // model: string;
+  model: string;
   configurationType: string;
   operationType: string;
   glassType: string;

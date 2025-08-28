@@ -2,9 +2,9 @@ import { BaseWallSpecification } from './base';
 
 export interface OperableWallSpecification extends BaseWallSpecification {
   wallSystemType: 'Operable Wall';
-  // panelConfiguration: string;
+  panelConfiguration: string;
   series: string;
-  // model: string;
+  model: string;
   panelThickness: string;
   panelDesign: string;
   panelSkin: string;

@@ -12,8 +12,8 @@ export interface TrackConfig {
 
 export interface BaseWallSpecification {
   wallSystemType: WallSystemType;
-  model: string;
-  panelConfiguration: string;
+  // model: string;
+  // panelConfiguration: string;
   lengthFeet: string;
   lengthInches: string;
   heightFeet: string;

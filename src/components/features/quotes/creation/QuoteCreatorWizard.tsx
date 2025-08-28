@@ -141,6 +141,7 @@ const QuoteCreatorWizard = ({
 
   const [walls, setWalls] = useState<WallDetails>(migrateWallDetails(existingQuoteData?.wall_details));
   
+  
   // Legacy global state - kept for backward compatibility in quote saving
   const [pocketDoors] = useState({
     foldType: (pocketDoorsData?.foldType as string) || "",
@@ -228,7 +229,7 @@ const QuoteCreatorWizard = ({
         return false;
       }
       
-      if (wall.wallSystemType === "Operable Wall") {
+      if (isOperableWall(wall)) {
         if (!wall.panelConfiguration || !wall.series || !wall.model || 
             !wall.panelSkin || !wall.stcRating || !wall.panelDesign || 
             !wall.trackType || !wall.trackSystem) {
