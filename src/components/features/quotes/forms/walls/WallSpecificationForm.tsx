@@ -4,13 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Trash2, Edit, ChevronDown, ChevronUp } from "lucide-react";
-import { WallSpecification, WallDetails } from "@/lib/types";
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { WallSpecification, WallDetails } from "@/types/quote";
 import { useState } from "react";
-import BaseSpecs from "@/components/features/quotes/creationForms/BaseCreationForm";
-import GlassWallCreationForm from "@/components/features/quotes/creationForms/GlassWallCreationForm";
-import OperableWallCreationForm from "@/components/features/quotes/creationForms/OperableWallCreationForm";
+import BaseSpecs from "@/components/features/quotes/specs/BaseCreationForm";
+import GlassWallCreationForm from "@/components/features/quotes/specs/GlassWallCreationForm";
+import OperableWallSpecs from "@/components/features/quotes/specs/OperableWallCreationForm";
 
 interface WallSpecificationFormProps {
   walls: WallDetails;
@@ -22,7 +20,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const [newWallName, setNewWallName] = useState("");
   const [collapsedWalls, setCollapsedWalls] = useState<Set<string>>(new Set());
 
-  const handleWallChange = (wallName: string, field: string, value: string) => {
+  const handleWallChange = (wallName: string, field: keyof WallSpecification, value: string) => {
     
     const currentWall = walls.walls[wallName];
     if (!currentWall) {
@@ -44,66 +42,48 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     // Cascading logic
     if (field === "wallSystemType") {
       // Reset all dependent fields when wall system type changes
-      // Create a new wall specification based on the new wall system type
-      if (value === "Operable Wall") {
-        updatedWalls.walls[wallName] = {
-          ...updatedWalls.walls[wallName],
-          wallSystemType: "Operable Wall" as const,
-          panelConfiguration: "",
-          series: "",
-          model: "",
-          panelThickness: "",
-          panelDesign: "",
-          panelSkin: "",
-          stcRating: "",
-          passDoorPanels: "",
-          passDoorQuantity: "",
-          panelFinishCategory: "",
-          panelFinishSpecificItem: "",
-          trackType: "",
-          trackSystem: "",
-          verticalSeals: "",
-          bottomSeals: "",
-          topSeals: "",
-          initialClosureSystem: "",
-          endPanelType: "",
-        } as WallSpecification;
-      } else if (value === "Glass Wall") {
-        updatedWalls.walls[wallName] = {
-          ...updatedWalls.walls[wallName],
-          wallSystemType: "Glass Wall" as const,
-          model: "",
-          operation: "",
-          panelConfiguration: "",
-          panelFace: "",
-          frameFinish: "",
-          glassType: "",
-          stcRating: "",
-          partitionSupport: "",
-          passDoorType: "",
-          passDoorOption: "",
-          hingeType: "",
-          frameThickness: "",
-          trackType: "",
-          trackFinish: "",
-          finalClosure: "",
-          bottomSeals: "",
-          topSeals: "",
-        } as WallSpecification;
-      } else if (value === "Accordion Wall") {
-        updatedWalls.walls[wallName] = {
-          ...updatedWalls.walls[wallName],
-          wallSystemType: "Accordion Wall" as const,
-          panelMaterial: "",
-          foldConfiguration: "",
-          acousticRating: "",
-          finishType: "",
-        } as WallSpecification;
-      }
+      updatedWalls.walls[wallName] = {
+        ...updatedWalls.walls[wallName],
+        panelConfiguration: "",
+        series: "",
+        model: "",
+        panelThickness: "",
+        panelDesign: "",
+        panelSkin: "",
+        stcRating: "",
+        passDoorPanels: "",
+        passDoorQuantity: "",
+        panelFinishCategory: "",
+        panelFinishSpecificItem: "",
+        trackType: "",
+        trackSystem: "",
+        verticalSeals: "",
+        bottomSeals: "",
+        topSeals: "",
+        initialClosureSystem: "",
+        endPanelType: "",
+        // Clear glass wall specific fields too
+        glasswallModel: "",
+        glasswallOperation: "",
+        glasswallPanelFace: "",
+        glasswallFrameFinish: "",
+        glasswallGlassType: "",
+        glasswallSTCRating: "",
+        glasswallPartitionSupport: "",
+        glasswallPassDoorType: "",
+        glasswallPassDoorOption: "",
+        glasswallHingeType: "",
+        glasswallFrameThickness: "",
+        glasswallTrackType: "",
+        glasswallTrackFinish: "",
+        glasswallFinalClosure: "",
+        glasswallBottomSeals: "",
+        glasswallTopSeals: "",
+      };
     }
     
-    if (field === "panelConfiguration" && currentWall.wallSystemType === "Operable Wall") {
-      // Reset dependent fields for operable walls
+    if (field === "panelConfiguration") {
+      // Reset dependent fields
       const currentWallData = updatedWalls.walls[wallName];
       updatedWalls.walls[wallName] = {
         ...currentWallData,
@@ -116,11 +96,11 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         trackType: "",
         trackSystem: "",
         initialClosureSystem: "",
-      } as WallSpecification;
+      };
     }
     
-    if (field === "series" && currentWall.wallSystemType === "Operable Wall") {
-      // Auto-update panel thickness based on series for operable walls
+    if (field === "series") {
+      // Auto-update panel thickness based on series
       const currentWallData = updatedWalls.walls[wallName];
       updatedWalls.walls[wallName] = {
         ...currentWallData,
@@ -133,8 +113,8 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       } as WallSpecification;
     }
     
-    if (field === "model" && currentWall.wallSystemType === "Operable Wall") {
-      // Auto-update track type based on model for operable walls
+    if (field === "model") {
+      // Auto-update track type based on model
       const currentWallData = updatedWalls.walls[wallName];
       updatedWalls.walls[wallName] = {
         ...currentWallData,
@@ -147,8 +127,8 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       } as WallSpecification;
     }
     
-    if ((field === "panelSkin" || field === "model") && currentWall.wallSystemType === "Operable Wall") {
-      // Reset STC rating when model or panel skin changes for operable walls
+    if (field === "panelSkin" || field === "model") {
+      // Reset STC rating when model or panel skin changes
       const currentWallData = updatedWalls.walls[wallName];
       updatedWalls.walls[wallName] = {
         ...currentWallData,
@@ -165,8 +145,8 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       } as WallSpecification;
     }
     
-    if (field === "passDoorPanels" && currentWall.wallSystemType === "Operable Wall") {
-      // Reset quantity when pass doors is set to "None" or empty for operable walls
+    if (field === "passDoorPanels") {
+      // Reset quantity when pass doors is set to "None" or empty
       if (value === "" || value === "None") {
         const currentWallData = updatedWalls.walls[wallName];
         updatedWalls.walls[wallName] = {
@@ -176,8 +156,8 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
       }
     }
     
-    if (field === "panelFinishCategory" && currentWall.wallSystemType === "Operable Wall") {
-      // Reset specific item when category changes for operable walls
+    if (field === "panelFinishCategory") {
+      // Reset specific item when category changes
       // Clear the field entirely if the category doesn't need specific items
       const categoriesWithoutSpecificItems = ["Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
       const currentWallData = updatedWalls.walls[wallName];
@@ -214,74 +194,36 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     });
   };
 
-  const createWallWithType = (wallSystemType: string) => {
+  const addNewWall = () => {
     const wallCount = Object.keys(walls.walls).length;
     const newWallName = `Wall ${String.fromCharCode(65 + wallCount)}`;
-    
-    let newWall: WallSpecification;
-    
-    if (wallSystemType === "Operable Wall") {
-      newWall = {
-        wallSystemType: "Operable Wall" as const,
-        lengthFeet: "",
-        lengthInches: "",
-        heightFeet: "",
-        heightInches: "",
-        quantity: "1",
-        panelCount: "",
-        panelConfiguration: "",
-        series: "",
-        model: "",
-        panelThickness: "",
-        panelDesign: "",
-        panelSkin: "",
-        stcRating: "",
-        passDoorPanels: "",
-        passDoorQuantity: "",
-        panelFinishCategory: "",
-        panelFinishSpecificItem: "",
-        verticalSeals: "",
-        bottomSeals: "",
-        topSeals: "",
-        initialClosureSystem: "",
-        endPanelType: "",
-        trackType: "",
-        trackSystem: ""
-      };
-    } else if (wallSystemType === "Glass Wall") {
-      newWall = {
-        wallSystemType: "Glass Wall" as const,
-        lengthFeet: "",
-        lengthInches: "",
-        heightFeet: "",
-        heightInches: "",
-        quantity: "1",
-        panelCount: "",
-        model: "",
-        operation: "",
-        panelConfiguration: "",
-        panelFace: "",
-        frameFinish: "",
-        glassType: "",
-        stcRating: "",
-        floorGuide: "",
-        partitionSupport: "",
-        passDoorType: "",
-        passDoorOption: "",
-        hingeType: "",
-        frameThickness: "",
-        trackType: "",
-        trackSystem: "Architectural Grade Extruded Aluminum Alloy 6063-T6",
-        trackFinish: "",
-        finalClosure: "",
-        bottomSeals: "",
-        topSeals: "",
-        // verticalSeals: ""
-      };
-    } else {
-      return; // Invalid wall type
-    }
-    
+    const newWall: WallSpecification = {
+      wallSystemType: "",
+      lengthFeet: "",
+      lengthInches: "",
+      heightFeet: "",
+      heightInches: "",
+      quantity: "1",
+      panelCount: "",
+      panelConfiguration: "",
+      series: "",
+      model: "",
+      panelThickness: "",
+      panelSkin: "",
+      panelDesign: "",
+      stcRating: "",
+      passDoorPanels: "",
+      passDoorQuantity: "",
+      panelFinishCategory: "",
+      panelFinishSpecificItem: "",
+      verticalSeals: "",
+      bottomSeals: "",
+      topSeals: "",
+      initialClosureSystem: "",
+      endPanelType: "",
+      trackType: "",
+      trackSystem: ""
+    };
     onUpdate({
       ...walls,
       walls: {
@@ -289,13 +231,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         [newWallName]: newWall,
       }
     });
-    setShowWallTypeSelector(false);
-  };
-
-  const [showWallTypeSelector, setShowWallTypeSelector] = useState(false);
-  
-  const addNewWall = () => {
-    setShowWallTypeSelector(true);
   };
 
   const renameWall = (oldName: string, newName: string) => {
@@ -445,7 +380,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                     />
 
                     {wall.wallSystemType === "Operable Wall" && (
-                      <OperableWallCreationForm 
+                      <OperableWallSpecs 
                         wall={wall} 
                         wallName={wallName} 
                         onWallChange={handleWallChange} 
@@ -466,51 +401,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           </Collapsible>
         );
       })}
-      
-      {/* Wall Type Selector Dialog */}
-      <Dialog open={showWallTypeSelector} onOpenChange={setShowWallTypeSelector}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Select Wall Type</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-muted-foreground">
-              Choose the type of wall system you want to add:
-            </p>
-            <div className="space-y-2">
-              <Button
-                onClick={() => createWallWithType("Operable Wall")}
-                className="w-full justify-start"
-                variant="outline"
-              >
-                Operable Wall
-              </Button>
-              <Button
-                onClick={() => createWallWithType("Glass Wall")}
-                className="w-full justify-start"
-                variant="outline"
-              >
-                Glass Wall
-              </Button>
-              <Button
-                onClick={() => createWallWithType("Accordion Wall")}
-                className="w-full justify-start"
-                variant="outline"
-              >
-                Accordion Wall
-              </Button>
-            </div>
-            <div className="flex justify-end">
-              <Button
-                onClick={() => setShowWallTypeSelector(false)}
-                variant="ghost"
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

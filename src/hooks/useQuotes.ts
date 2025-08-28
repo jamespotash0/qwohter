@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
-import { WallDetails, WallSpecification, QuoteCustomization } from "@/lib/types";
-// Note: filterWallDetailsForSave removed - discriminated union types now prevent invalid data
+import { WallDetails, WallSpecification, QuoteCustomization } from "@/types/quote";
+import { filterWallDetailsForSave } from "@/utils/wallDataFilter";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 
 type QuoteRow = Database['public']['Tables']['quotes']['Row'];
@@ -136,7 +136,7 @@ export const useQuotes = () => {
             client_address: quoteData.jobDetails.billedTo.address || '',
             date: quoteData.jobDetails.date
            },
-          wall_details: quoteData.walls || {},
+          wall_details: filterWallDetailsForSave(quoteData.walls || {}),
           price_details: {
             base_price: quoteData.pricing.basePrice,
             freight: quoteData.pricing.freight,
@@ -170,8 +170,11 @@ export const useQuotes = () => {
 
   const updateQuote = async (id: string, updates: Partial<Quote>) => {
     try {
-      // Note: wall_details filtering removed - discriminated unions ensure type safety
+      // Filter wall_details based on wall system type before saving
       let processedUpdates = { ...updates };
+      if (updates.wall_details) {
+        processedUpdates.wall_details = filterWallDetailsForSave(updates.wall_details);
+      }
 
       const { data, error } = await supabase
         .from('quotes')
@@ -313,11 +316,14 @@ export const useQuotes = () => {
         }
       };
 
+      // Filter the wall details before saving
+      const filteredWallDetails = filterWallDetailsForSave(updatedWallDetails);
+
       // Update only the wall_details field
       const { data, error } = await supabase
         .from('quotes')
         .update({ 
-          wall_details: updatedWallDetails as any,
+          wall_details: filteredWallDetails,
           updated_at: new Date().toISOString()
         })
         .eq('id', quoteId)
@@ -384,11 +390,14 @@ export const useQuotes = () => {
         walls: renamedWalls
       };
 
+      // Filter the wall details before saving
+      const filteredWallDetails = filterWallDetailsForSave(updatedWallDetails);
+
       // Update the database
       const { data, error } = await supabase
         .from('quotes')
         .update({ 
-          wall_details: updatedWallDetails as any,
+          wall_details: filteredWallDetails,
           updated_at: new Date().toISOString()
         })
         .eq('id', quoteId)

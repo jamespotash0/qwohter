@@ -1,5 +1,5 @@
 import { TemplateHelpers, QuoteData } from './types';
-import { WallSpecification } from '@/lib/types';
+import { WallSpecification } from '@/types/quote';
 
 export const createTemplateHelpers = (): TemplateHelpers => ({
   formatDate: (dateString?: string) => {
