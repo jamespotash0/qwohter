@@ -1,5 +1,5 @@
 import React from 'react';
-import { WallSpecification } from '@/types/quote';
+import { WallSpecification, isOperableWall } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,8 +38,8 @@ export const WallCompletionModal: React.FC<WallCompletionModalProps> = ({
   const getWallConfigurations = (wall: WallSpecification): WallConfigItem[] => [
     {
       name: 'Pass Doors',
-      value: wall.passDoorPanels,
-      configured: wall.passDoorPanels && wall.passDoorPanels !== 'None' && wall.passDoorPanels !== '',
+      value: isOperableWall(wall) ? wall.passDoorPanels : undefined,
+      configured: isOperableWall(wall) && wall.passDoorPanels && wall.passDoorPanels !== 'None' && wall.passDoorPanels !== '',
       required: false
     },
     {

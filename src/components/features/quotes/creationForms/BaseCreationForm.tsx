@@ -1,7 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { WallSpecification } from "@/types/quote";
+import { WallSpecification } from "@/lib/types";
 
 interface BaseSpecsProps {
   wall: WallSpecification;

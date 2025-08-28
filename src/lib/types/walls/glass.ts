@@ -1,5 +1,4 @@
-// Glass Wall Model Configurations
-// Extracted from GlassWallConfigurationForm.tsx for better maintainability
+import { BaseWallSpecification } from './base';
 
 export type GlassWallModel = 'Stella' | 'Luna' | 'Illona' | 'Ava' | 'Mata';
 
@@ -14,12 +13,52 @@ export interface ModelConfiguration {
   panelFaces: string[];
   hinging: string[];
   frameFinishes: string[];
+  trackSystem: string[];
   trackType: string[];
   trackFinish: string[];
   floorGuide?: string[];
   finalClosure: string[];
   bottomSeals: string[];
   topSeals: string[];
+}
+
+export interface GlassWallSpecification extends BaseWallSpecification {
+  wallSystemType: 'Glass Wall';
+  // model: string;
+  operation: string;
+  // panelConfiguration: string;
+  panelFace: string;
+  frameFinish: string;
+  glassType: string;
+  stcRating: string;
+  partitionSupport: string;
+  passDoorType: string;
+  passDoorOption: string;
+  hingeType: string;
+  frameThickness: string;
+  trackFinish: string;
+  floorGuide: string;
+  finalClosure: string;
+}
+
+export interface GlassWallConfiguration {
+  // model: string;
+  configurationType: string;
+  operationType: string;
+  glassType: string;
+  stc_rating: string;
+  partitionSupport: string;
+  passDoorType: string;
+  passDoorOption: string;
+  panelFace: string;
+  hingeType: string;
+  frameFinish: string;
+  frameThickness: string;
+  trackType: string;
+  trackFinish: string;
+  finalClosure: string;
+  bottomSeals: string;
+  topSeals: string;
 }
 
 export const modelConfigurations: Record<GlassWallModel, ModelConfiguration> = {
@@ -34,6 +73,7 @@ export const modelConfigurations: Record<GlassWallModel, ModelConfiguration> = {
     panelFaces: ['Solid Face', 'MDF-Backed Melamine', 'High Pressure Laminate', 'Electrical Internal Mini-Blinds', 'Internal Mullions & Muntins'],
     hinging: ['Invisible Hinges'],
     frameFinishes: ['Clear Anodized', 'Black', 'White', 'Custom RAL Powder Coat', 'Sublimation Wood Look'],
+    trackSystem: ['Architectural Grade Extruded Aluminum Alloy 6063-T6'],
     trackType: ['Top-Supported Multi-directional & Single-Point'],
     trackFinish: ['Clear Anodized', 'Black Powder Coat', 'White Powder Coat', 'Custom RAL Option'],
     finalClosure: ['Panel-Mounted Telescoping Jamb', 'Wall-Mounted Telescoping Jamb', 'Full-Height Door'],
@@ -51,6 +91,7 @@ export const modelConfigurations: Record<GlassWallModel, ModelConfiguration> = {
     panelFaces: ['Solid Face', 'MDF-Backed Melamine', 'High Pressure Laminate', 'Electrical Internal Mini-Blinds', 'Internal Muntins'],
     hinging: ['Invisible Hinges'],
     frameFinishes: ['Black Powder Coat', 'Custom RAL Powder Coat', 'Sublimation Wood Look'],
+    trackSystem: ['Architectural Grade Extruded Aluminum Alloy 6063-T6'],
     trackType: ['Top-Supported Multi-directional & Single-Point', 'Floor-Supported Top Guide'],
     trackFinish: ['Black Powder Coat','Clear Anodized', 'White', 'Custom RAL Option'],
     floorGuide: ['Optional'],
@@ -69,6 +110,7 @@ export const modelConfigurations: Record<GlassWallModel, ModelConfiguration> = {
     panelFaces: ['Surface-Mounted Muntins'],
     hinging: ['Invisible Hinges'],
     frameFinishes: ['Black Powder Coat', 'White Powder Coat', 'Custom RAL Powder Coat', 'Sublimation Wood Look'],
+    trackSystem: ['Architectural Grade Extruded Aluminum Alloy 6063-T6'],
     trackType: ['Top-Supported Multi-directional & Single-Point'],
     trackFinish: ['Black Powder Coat','Clear Anodized', 'White Powder Coat', 'Custom RAL Option'],
     floorGuide: ['Optional'],
@@ -87,6 +129,7 @@ export const modelConfigurations: Record<GlassWallModel, ModelConfiguration> = {
     panelFaces: ['None'],
     hinging: ['Full-Leaf Butt Hinges'],
     frameFinishes: ['Clear Anodized', 'Black Powder Coat', 'Custom RAL Color Options'],
+    trackSystem: ['Architectural Grade Extruded Aluminum Alloy 6063-T6'],
     trackType: ['Top-Supported Multi-directional & Single-Point'],
     trackFinish: ['Black Powder Coat', 'Clear Anodized', 'Custom RAL Color Option'],
     floorGuide: ['None'],
@@ -105,6 +148,7 @@ export const modelConfigurations: Record<GlassWallModel, ModelConfiguration> = {
     panelFaces: ['Wood Insert', 'Mullions & Surface-Mounted Muntins'],
     hinging: ['Full-Leaf Butt Hinges'],
     frameFinishes: ['Stained Fruitwood Dark Oak', 'Stained Wheat', 'Stained Cordovan', 'Painted Black', 'Painted White', 'Unfinished'],
+    trackSystem: ['Architectural Grade Extruded Aluminum Alloy 6063-T6'],
     trackType: ['Top-Supported Multi-directional & Single-Point'],
     trackFinish: ['Black Powder Coat', 'Clear Anodized', 'Custom RAL Option'],
     floorGuide: ['None'],
@@ -136,24 +180,6 @@ export function getFrameThickness(model: GlassWallModel, stcRating?: string): st
       return '1-7/16"';
     case 'Mata':
       return '1-3/4"';
-    default:
-      return 'N/A';
-  }
-}
-
-// Helper function to get panel width based on model
-export function getPanelWidth(model: GlassWallModel): string {
-  switch (model) {
-    case 'Stella':
-      return '51"';
-    case 'Luna':
-      return '41-3/8"';
-    case 'Illona':
-      return '39-3/8"';
-    case 'Ava':
-      return '48"';
-    case 'Mata':
-      return '48"';
     default:
       return 'N/A';
   }
