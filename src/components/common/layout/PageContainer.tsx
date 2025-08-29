@@ -8,11 +8,6 @@ interface PageContainerProps {
   className?: string;
 }
 
-// interface Page {
-//   id: string;
-//   content: HTMLElement[];
-// }
-
 export const PageContainer: React.FC<PageContainerProps> = ({ 
   children, 
   showMarginGuides = false, 
@@ -49,7 +44,6 @@ export const PageContainer: React.FC<PageContainerProps> = ({
     // Apply CSS pagination styling and insert content
     sanitizeHTML.setInnerHTML(contentContainer, sanitizeHTML.clean(htmlContent));
     
-    // Add margin guides overlay if requested
     if (showMarginGuides) {
       const guides = document.createElement('div');
       guides.className = 'margin-guides-overlay';
@@ -59,50 +53,6 @@ export const PageContainer: React.FC<PageContainerProps> = ({
     container.appendChild(contentContainer);
     console.log('📄 CSS-based pagination applied - content will break naturally using CSS rules');
   };
-
-  // const getElementHeight = (element: HTMLElement): number => {
-  //   // Create a temporary clone to measure height
-  //   const clone = element.cloneNode(true) as HTMLElement;
-  //   clone.style.position = 'absolute';
-  //   clone.style.left = '-9999px';
-  //   clone.style.width = '612px'; // 8.5 inches at 72 DPI
-  //   clone.style.visibility = 'hidden';
-    
-  //   document.body.appendChild(clone);
-  //   const height = clone.offsetHeight;
-  //   document.body.removeChild(clone);
-    
-  //   return height;
-  // };
-
-  // const renderPages = (pageList: Page[]) => {
-  //   if (!containerRef.current) return;
-
-  //   const container = containerRef.current;
-    
-  //   pageList.forEach((page, index) => {
-  //     const pageElement = document.createElement('div');
-  //     pageElement.className = `page ${showMarginGuides ? 'show-guides' : ''}`;
-  //     pageElement.setAttribute('data-page', (index + 1).toString());
-      
-  //     const pageContent = document.createElement('div');
-  //     pageContent.className = 'page-content';
-      
-  //     page.content.forEach(element => {
-  //       pageContent.appendChild(element);
-  //     });
-      
-  //     pageElement.appendChild(pageContent);
-      
-  //     if (showMarginGuides) {
-  //       const guides = document.createElement('div');
-  //       guides.className = 'margin-guides';
-  //       pageElement.appendChild(guides);
-  //     }
-      
-  //     container.appendChild(pageElement);
-  //   });
-  // };
 
   return (
     <div ref={containerRef} className={`page-container ${className}`}>

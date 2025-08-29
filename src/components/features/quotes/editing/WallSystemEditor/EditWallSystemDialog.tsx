@@ -8,6 +8,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { EditWallSystemDialogProps } from './types';
 import { OperableWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/OperableWallEditForm';
 import { GlassWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/GlassWallEditForm';
+import { 
+  getSeriesByPanelConfiguration,
+  getModelsByPanelConfigurationAndSeries,
+  getPanelSkinOptions,
+  getSTCRatingOptions,
+  getTrackSystemsByTrackType,
+  getTrackTypeByModel,
+  WallSystemType,
+  WallSpecification,
+ } from '@/lib/types';
 
 export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
   isOpen,
@@ -20,114 +30,6 @@ export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
   const [editedWall, setEditedWall] = useState(wall);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Helper functions for cascading logic (copied from OperableWallSpecs)
-  const getSeriesByPanelConfiguration = (panelConfiguration: string): string[] => {
-    switch (panelConfiguration) {
-      case "Individual Panels":
-        return ["2000", "3000", "Hufcor: 600"];
-      case "Hinged-Paired Panels":
-        return ["2000", "3000"];
-      case "Continuously-Hinged Panels":
-        return ["2000", "3000"];
-      default:
-        return [];
-    }
-  };
-
-  const getModelsByPanelConfigurationAndSeries = (panelConfiguration: string, series: string): string[] => {
-    if (panelConfiguration === "Individual Panels") {
-      if (series === "2000") return ["2010", "2020", "2010GL", "2020GL"];
-      if (series === "3000") return ["3010", "3020", "3010GL", "3020GL"];
-      if (series === "Hufcor: 600") return ["Hufcor 641"];
-    } else if (panelConfiguration === "Continuously-Hinged Panels") {
-      if (series === "2000") return ["2050e"];
-      if (series === "3000") return ["3050e"];
-    } else if (panelConfiguration === "Hinged-Paired Panels") {
-      if (series === "2000") return ["2030", "2030GL"];
-      if (series === "3000") return ["3030", "3030GL"];
-    }
-    return [];
-  };
-
-  const getPanelSkinOptions = (model: string): string[] => {
-    if (["Hufcor 641"].includes(model)) {
-      return ["Steel"];
-    }
-    if (["3010", "3020", "3030"].includes(model)) {
-      return ["Standard Steel Skin", "Optional Acoustical Substrate", "Optional Wood Veneer", "Optional High-Pressure Laminate"];
-    }
-    if (["3050e", "3010GL", "3020GL", "3030GL"].includes(model)) {
-      return ["Standard Steel Skin", "Optional Acoustical Substrate"];
-    }
-    if (["2010", "2020", "2030"].includes(model)) {
-      return ["Standard Acoustical Substrate", "Optional Steel Skin", "Optional Wood Veneer", "Optional High-Pressure Laminate"];
-    }
-    if (["2050e", "2010GL", "2020GL", "2030GL"].includes(model)) {
-      return ["Standard Acoustical Substrate", "Optional Steel Skin"];
-    }
-    return [];
-  };
-
-  const getSTCRatingOptions = (model: string, panelSkin: string): string[] => {
-    if (!model || !panelSkin) return [];
-    if (["Hufcor 641"].includes(model)) {
-      return ["43", "47", "49", "52", "54", "56"];
-    }
-    if (["2010GL", "2020GL", "2030GL"].includes(model)) {
-      return ["38"];
-    }
-
-    if (["3010GL", "3020GL", "3030GL"].includes(model)) {
-      return ["43", "48"];
-    }
-
-    if (["2010", "2020", "2030", "2050e"].includes(model)) {
-      if (panelSkin.includes("Acoustical Substrate")) {
-        return ["42", "45", "49", "50"];
-      }
-      if (panelSkin.includes("Steel")) {
-        return ["49", "51"];
-      }
-    }
-
-    if (["3010", "3020", "3030", "3050e"].includes(model)) {
-      if (panelSkin.includes("Steel")) {
-        return ["46", "50", "52", "56"];
-      }
-      if (panelSkin.includes("Acoustical Substrate")) {
-        return ["43", "46", "48", "50"];
-      }
-    }
-
-    return [];
-  };
-
-  const getTrackTypeByModel = (model: string): string => {
-    if (["Hufcor 641", "2010", "2010GL", "3010", "3010GL"].includes(model)) {
-      return "Curve & Diverter (Individual) Track";
-    } else if (["2020", "2020GL", "3020", "3020GL"].includes(model)) {
-      return "Multi-Directional Track";
-    } else if (["2050e", "3050e", "3030", "3030GL", "2030", "2030GL"].includes(model)) {
-      return "Hinged-Pair (Straight Line) Track";
-    }
-    return "";
-  };
-
-  const getTrackSystemsByTrackType = (trackType: string, model?: string): string[] => {
-    if (model === "Hufcor 641") {
-      return ["Type 26 Clear Satin-Anodized Aluminum", "Type 36 Clear Satin-Anodized Aluminum", "Type 57 Clear Anodized Aluminum", "Type 11L Powder Coated Off-White Steel", "Type 11 Powder Coated Off-White Steel"];
-    }
-    switch (trackType) {
-      case "Multi-Directional Track":
-        return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
-      case "Hinged-Pair (Straight Line) Track":
-        return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
-      case "Curve & Diverter (Individual) Track":
-        return ["Type 850 Powder Coated Off-White Steel"];
-      default:
-        return [];
-    }
-  };
 
   // Reset wall data when dialog opens
   useEffect(() => {
@@ -243,7 +145,7 @@ export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
                   // When changing wall system type, reset wall-specific fields but keep basic fields
                   const resetWall = {
                     ...editedWall,
-                    wallSystemType: value,
+                    wallSystemType: value as WallSystemType,
                     // Reset specification fields but keep basic dimensions
                     panelConfiguration: '',
                     series: '',
@@ -255,7 +157,7 @@ export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
                     trackType: '',
                     trackSystem: ''
                   };
-                  setEditedWall(resetWall);
+                  setEditedWall(resetWall as WallSpecification);
                   setHasChanges(true);
                 }}
               >

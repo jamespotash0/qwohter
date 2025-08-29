@@ -67,9 +67,9 @@ interface UIState {
   resetUI: () => void;
 }
 
-const initialState = {
-  theme: 'system' as Theme,
-  sidebarState: 'expanded' as SidebarState,
+const initialState: UIState = {
+  theme: 'system',
+  sidebarState: 'expanded',
   globalLoading: false,
   loadingMessage: null,
   modals: {
@@ -85,6 +85,23 @@ const initialState = {
   breadcrumbs: [],
   unsavedChanges: false,
   formErrors: {},
+  // added below to fix infers any error
+  setTheme: () => {},
+  setSidebarState: () => {},
+  setGlobalLoading: () => {},
+  openModal: () => {},
+  closeModal: () => {},
+  closeAllModals: () => {},
+  addToast: () => {},
+  removeToast: () => {},
+  clearToasts: () => {},
+  setCurrentPage: () => {},
+  setBreadcrumbs: () => {},
+  setUnsavedChanges: () => {},
+  setFormErrors: () => {},
+  clearFormErrors: () => {},
+  toggleSidebar: () => {},
+  resetUI: () => {},
 };
 
 export const useUIStore = create<UIState>()(

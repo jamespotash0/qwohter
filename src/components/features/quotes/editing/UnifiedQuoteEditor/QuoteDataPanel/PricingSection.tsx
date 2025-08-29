@@ -44,7 +44,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           id="basePrice"
           validationType="currency"
           value={data.price_details?.basePrice || data.price_details?.base_price || ''}
-          onValueChange={(value) => handleValidatedChange('basePrice', value, 'basePrice')}
+          onValueChange={(value: string) => handleValidatedChange('basePrice', value, 'basePrice')}
           onBlur={() => markFieldTouched('basePrice')}
           placeholder="0.00"
           className="text-sm"
@@ -61,7 +61,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
           id="freight"
           validationType="currency"
           value={data.price_details?.freight || ''}
-          onValueChange={(value) => handleValidatedChange('freight', value, 'freight')}
+          onValueChange={(value: string) => handleValidatedChange('freight', value, 'freight')} //updated value to be value:string for infer any error & line 47
           onBlur={() => markFieldTouched('freight')}
           placeholder="0.00"
           className="text-sm"

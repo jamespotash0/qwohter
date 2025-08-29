@@ -258,8 +258,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   // Handle form data changes
   const handleFormDataChange = useCallback((section: string, value: any) => {
     setState(prev => {
-      // Check if the value has actually changed to avoid unnecessary dirty state
-      const currentValue = prev.rawData[section];
+      const currentValue = (prev.rawData as any)[section]; //added, prev.rawData... "as any)[section];" to fix implicit any error
       const hasChanged = JSON.stringify(currentValue) !== JSON.stringify(value);
       
       return {
@@ -268,7 +267,6 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           ...prev.rawData,
           [section]: value
         },
-        // Only set dirty if value actually changed
         isDirty: prev.isDirty || hasChanged
       };
     });
@@ -326,7 +324,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           isEditable: true,
           isRequired: false,
           isVisible: true,
-          dependencies: []
+          dependencies: [] as string[] //implicit any sdded as string[]
         }));
       } else {
         console.log('No section overrides found, extracting from preview HTML');

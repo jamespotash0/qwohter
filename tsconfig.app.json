@@ -18,7 +18,7 @@
     "strict": false, //true
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noImplicitAny": false, //true
+    "noImplicitAny": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
     "noUncheckedIndexedAccess": true,

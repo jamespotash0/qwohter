@@ -58,7 +58,7 @@ export const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
           id="contactEmail"
           validationType="email"
           value={data.quote_details?.contactEmail || data.quote_details?.email || ''}
-          onValueChange={(value) => handleValidatedChange('contactEmail', value, 'email')}
+          onValueChange={(value: string) => handleValidatedChange('contactEmail', value, 'email')} //value:string for infers any error
           onBlur={() => markFieldTouched('contactEmail')}
           placeholder="contact@company.com"
           className="text-sm"
@@ -75,7 +75,7 @@ export const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
           id="phone"
           validationType="phone"
           value={data.quote_details?.phone || ''}
-          onValueChange={(value) => handleValidatedChange('phone', value, 'phone')}
+          onValueChange={(value: string) => handleValidatedChange('phone', value, 'phone')}
           onBlur={() => markFieldTouched('phone')}
           placeholder="(973) 884-0474"
           className="text-sm"
@@ -105,7 +105,7 @@ export const ContactInfoSection: React.FC<ContactInfoSectionProps> = ({
           id="website"
           validationType="website"
           value={data.quote_details?.website || ''}
-          onValueChange={(value) => handleValidatedChange('website', value, 'website')}
+          onValueChange={(value: string) => handleValidatedChange('website', value, 'website')}
           onBlur={() => markFieldTouched('website')}
           placeholder="www.contemporarywalls.com"
           className="text-sm"
