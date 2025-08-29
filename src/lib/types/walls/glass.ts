@@ -181,7 +181,7 @@ export function getFrameThickness(model: GlassWallModel, stcRating?: string): st
     case 'Mata':
       return '1-3/4"';
     default:
-      return 'N/A';
+      return 'Auto-Calculated';
   }
 }
 
