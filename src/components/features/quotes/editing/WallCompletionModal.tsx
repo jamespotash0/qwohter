@@ -39,19 +39,20 @@ export const WallCompletionModal: React.FC<WallCompletionModalProps> = ({
     {
       name: 'Pass Doors',
       value: isOperableWall(wall) ? wall.passDoorPanels : undefined,
-      configured: isOperableWall(wall) && wall.passDoorPanels && wall.passDoorPanels !== 'None' && wall.passDoorPanels !== '',
+      configured: isOperableWall(wall) && !!wall.passDoorPanels && wall.passDoorPanels !== 'None' && wall.passDoorPanels !== '',
       required: false
+      
     },
     {
       name: 'Pocket Doors',
       value: wall.pocketDoors?.foldType,
-      configured: wall.pocketDoors?.foldType && wall.pocketDoors.foldType !== 'None' && wall.pocketDoors.foldType !== '',
+      configured: !!(wall.pocketDoors?.foldType && wall.pocketDoors.foldType !== 'None' && wall.pocketDoors.foldType !== ''),
       required: false
     },
     {
       name: 'Structure Support',
       value: wall.structureSupport,
-      configured: wall.structureSupport && wall.structureSupport !== 'None' && wall.structureSupport !== '',
+      configured: !!(wall.structureSupport && wall.structureSupport !== 'None' && wall.structureSupport !== ''),
       required: false
     }
   ];

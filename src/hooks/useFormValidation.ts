@@ -63,15 +63,26 @@ export const useFormValidation = (): UseFormValidationReturn => {
     return result.sanitizedValue || value;
   }, [validateField]);
 
-  const markFieldTouched = useCallback((fieldName: string) => {
+  const markFieldTouched = useCallback((fieldName: string) => { //new due to strict error
     setValidationState(prev => ({
       ...prev,
       [fieldName]: {
-        ...prev[fieldName],
+        isValid: prev[fieldName]?.isValid ?? true,
+        errorMessage: prev[fieldName]?.errorMessage,
         touched: true
       }
     }));
   }, []);
+
+  //  const markFieldTouched = useCallback((fieldName: string) => {
+  //   setValidationState(prev => ({
+  //     ...prev,
+  //     [fieldName]: {
+  //       ...prev[fieldName],
+  //       touched: true
+  //     }
+  //   }));
+  // }, []);
 
   const clearValidation = useCallback((fieldName: string) => {
     setValidationState(prev => {

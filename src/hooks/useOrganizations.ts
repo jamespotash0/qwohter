@@ -13,7 +13,7 @@ export interface Organization {
 export interface OrganizationMember {
   id: string;
   organization_id: string;
-  role: 'owner' | 'admin' | 'member';
+  role: 'admin' | 'member';
   status: 'pending' | 'active' | 'suspended';
   invited_by?: string;
   joined_at: string;
@@ -97,7 +97,7 @@ export const useOrganizations = () => {
         .map(profile => ({
           id: profile.id,
           organization_id: profile.organization_id || '',
-          role: (profile.role as 'owner' | 'admin' | 'member') || 'member',
+          role: (profile.role as 'admin' | 'member') || 'member',
           status: (profile.status as 'pending' | 'active' | 'suspended') || 'active',
           invited_by: profile.invited_by || undefined,
           joined_at: profile.joined_at || new Date().toISOString(),
@@ -227,7 +227,7 @@ export const useOrganizations = () => {
           organization_id: '',
           role: 'member',
           invited_by: null,
-          joined_at: null
+          joined_at: undefined
         })
         .eq('id', memberId);
 

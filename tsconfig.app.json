@@ -15,7 +15,7 @@
     "jsx": "react-jsx",
 
     /* Linting - Phase 1: Enable critical safety checks */
-    "strict": false, //true
+    "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitAny": true,

@@ -82,7 +82,7 @@ export class PageBreakManager {
           const fragments = this.fragmentLargeSection(section, this.contentHeight - currentPageHeight);
           
           // Add first fragment to current page if there's space
-          if (fragments.length > 0 && currentPageHeight < this.contentHeight * 0.7) {
+          if (fragments.length > 0 && fragments[0] && currentPageHeight < this.contentHeight * 0.7) { //added this to fix strict error
             currentPage.push(fragments[0]);
           }
           

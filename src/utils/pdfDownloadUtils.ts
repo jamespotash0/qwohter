@@ -113,7 +113,6 @@ export const generateQuotePDF = async (quote: Quote, markAsDownloaded: (id: stri
     
   } catch (error) {
     console.error('❌ PDF generation failed with error:', error);
-    console.error('Error stack:', error.stack);
     throw error;
   }
 };

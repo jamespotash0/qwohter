@@ -72,7 +72,7 @@ export const teamManagementHelpers = {
    */
   inviteMember: async (
     { organizationId, email, role }: InviteMemberData,
-    inviteFunction: (orgId: string, email: string, role?: Role) => Promise<any>
+    inviteFunction: (orgId: string, email: string, role?: 'admin' | 'member') => Promise<any>
   ): Promise<TeamOperationResult> => {
     if (!email || !organizationId) {
       return {
@@ -85,7 +85,9 @@ export const teamManagementHelpers = {
       // Sanitize email input
       const sanitizedEmail = sanitizeInput.email(email);
       
-      await inviteFunction(organizationId, sanitizedEmail, role);
+      // Filter role to match what inviteFunction accepts (owner role is not supported for invitations)
+      const inviteRole = role === 'owner' ? 'admin' : role as 'admin' | 'member';
+      await inviteFunction(organizationId, sanitizedEmail, inviteRole);
       
       return {
         success: true,

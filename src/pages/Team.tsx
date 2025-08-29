@@ -115,7 +115,7 @@ const Team = () => {
       setTimeout(() => setCopiedCode(false), 2000);
       toast({
         title: "Copied!",
-        description: result.data?.message,
+        description: (result.data as any)?.message,
       });
     } else {
       toast({
@@ -179,7 +179,7 @@ const Team = () => {
                 onEmailChange={setInviteEmail}
                 onRoleChange={setInviteRole}
                 onInvite={handleInviteMember}
-                canInvite={['admin', 'owner'].includes(currentUserRole || '')}
+                canInvite={['admin'].includes(currentUserRole || '')}
               />
             </div>
             
@@ -189,7 +189,9 @@ const Team = () => {
               currentUserRole={currentUserRole}
               onApproveMember={approveMember}
               onRejectMember={rejectMember}
-              onUpdateMemberRole={updateMemberRole}
+              onUpdateMemberRole={(memberId: string, newRole: string) => {
+                updateMemberRole(memberId, newRole as 'admin' | 'member').catch(console.error);
+              }}
               onRemoveMember={removeMember}
             />
           </div>

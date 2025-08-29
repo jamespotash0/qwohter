@@ -135,7 +135,7 @@ export const useSecureActions = () => {
     actionData?: any
   ) => {
     // Validate admin privileges
-    if (!validateSecurity.adminRole(profile?.role)) {
+    if (!validateSecurity.adminRole(profile?.role ?? null)) {
       throw new Error('Access denied: Admin privileges required');
     }
 
@@ -151,9 +151,12 @@ export const useSecureActions = () => {
 
     try {
       // Validate admin has access to target organization
+      if (!profile?.organization_id) {
+        throw new Error('User not assigned to organization');
+      }
       const { data: hasAccess, error: accessError } = await supabase
         .rpc('user_has_admin_role_in_org', {
-          org_id: profile?.organization_id
+          org_id: profile.organization_id as string
         });
 
       if (accessError || !hasAccess) {
@@ -179,16 +182,19 @@ export const useSecureActions = () => {
     }
 
     // Validate admin role
-    if (!validateSecurity.adminRole(profile?.role)) {
+    if (!validateSecurity.adminRole(profile?.role ?? null)) {
       throw new Error('Access denied: Admin privileges required');
     }
 
     try {
       // Get user's organization with code
+      if (!profile?.organization_id) {
+        throw new Error('User not assigned to organization');
+      }
       const { data: orgData, error } = await supabase
         .from('organizations')
         .select('organization_code')
-        .eq('id', profile?.organization_id)
+        .eq('id', profile.organization_id)
         .single();
 
       if (error || !orgData) {

@@ -30,7 +30,7 @@ export const PerWallPocketDoorsForm: React.FC<PerWallPocketDoorsFormProps> = ({
 
   const handleFoldTypeChange = (wallName: string, foldType: string) => {
     const wall = walls[wallName];
-    const currentStyle = wall.pocketDoors?.foldStyle || '';
+    const currentStyle = wall?.pocketDoors?.foldStyle || '';
     const normalizedFoldType = foldType === 'None' ? 'None' : foldType;
     const availableStyles = getAvailableFoldStyles(normalizedFoldType);
     
@@ -49,7 +49,7 @@ export const PerWallPocketDoorsForm: React.FC<PerWallPocketDoorsFormProps> = ({
   const handleFoldStyleChange = (wallName: string, foldStyle: string) => {
     const wall = walls[wallName];
     const newPocketDoors: PocketDoorConfig = {
-      foldType: wall.pocketDoors?.foldType || '',
+      foldType: wall?.pocketDoors?.foldType || '',
       foldStyle
     };
     

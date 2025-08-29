@@ -127,6 +127,7 @@ export function useSecureForm<T extends Record<string, FormField>>(
 
     Object.keys(fields).forEach(name => {
       const field = fields[name as keyof T];
+      if (!field) return;
       const error = validateField(name, field.value);
       
       newFields[name as keyof T] = {
@@ -149,7 +150,10 @@ export function useSecureForm<T extends Record<string, FormField>>(
   const getFieldValues = useCallback(() => {
     const values: Record<string, string> = {};
     Object.keys(fields).forEach(name => {
-      values[name] = fields[name as keyof T].value;
+      const field = fields[name as keyof T];
+      if (field) {
+        values[name] = field.value;
+      }
     });
     return values;
   }, [fields]);

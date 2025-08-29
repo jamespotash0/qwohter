@@ -274,15 +274,20 @@ export const authFlowHelpers = {
           throw new Error("Error searching for organization. Please try again.");
         }
 
-        if (!orgData || !orgData.length) {
+        if (!orgData || !orgData.length || !orgData[0]) {
           throw new Error("Organization not found. Please check the code and try again.");
         }
 
         // Update profile with organization as pending member
+        const organizationId = orgData[0]?.id;
+        if (!organizationId) {
+          throw new Error("Organization ID not found. Please check the code and try again.");
+        }
+
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
-            organization_id: orgData[0].id,
+            organization_id: organizationId,
             role: 'member',
             status: 'pending'
           })

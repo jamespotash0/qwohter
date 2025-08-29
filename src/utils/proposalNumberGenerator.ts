@@ -111,17 +111,17 @@ export class ProposalNumberGenerator {
 
   private static extractMainNumber(proposalNumber: string): number | null {
     const match = proposalNumber.match(/^P(\d+)(?:\.\d+)?$/);
-    return match ? parseInt(match[1], 10) : null;
+    return match ? parseInt(match[1]!, 10) : null;
   }
 
   private static extractMainNumberString(proposalNumber: string): string {
     const match = proposalNumber.match(/^(P\d+)(?:\.\d+)?$/);
-    return match ? match[1] : proposalNumber;
+    return match ? match[1]! : proposalNumber;
   }
 
   private static extractVersion(proposalNumber: string): number | null {
     const match = proposalNumber.match(/^P\d+\.(\d+)$/);
-    return match ? parseInt(match[1], 10) : 1;
+    return match ? parseInt(match[1]!, 10) : 1;
   }
 
   static parseProposalNumber(proposalNumber: string): ProposalNumberInfo {
