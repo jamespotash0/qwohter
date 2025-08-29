@@ -1,156 +1,138 @@
+import React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { WallSpecification, isOperableWall, /*OperableWallSpecification*/ } from "@/lib/types";
+import { 
+  WallSpecification, 
+  isOperableWall, 
+  getSeriesByPanelConfiguration, 
+  getModelsByPanelConfigurationAndSeries, 
+  getPanelSkinOptions,
+  getSTCRatingOptions,
+  getTrackSystemsByTrackType,
+  getPanelThicknessBySeries,
+  getPanelFinishSpecificItems,
+  getPassDoorQuantityOptions,
+  panelConfigurations,
+  panelDesigns,
+  passDoorOptions,
+  panelFinishCategories,
+  verticalSeals,
+  bottomSealOptions,
+  topSealOptions,
+  endPanelTypes,
+  initialClosureSystems,
+} from "@/lib/types";
 
 interface OperableWallCreationFormProps {
   wall: WallSpecification;
   wallName: string;
-  // onWallChange: (wallName: string, field: string, value: string) => void;
-  onWallChange: (wallName: string, updates: Record<string, string>) => void;
+  onWallChange: (wallName: string, fieldOrUpdates: string | Record<string, string>, value?: string) => void;
 }
 
+const dependencies: Record<string, string[]> = {
+  panelConfiguration: ["series", "model", "panelThickness", "panelSkin", "stcRating", "panelDesign", "trackSystem", "verticalSeals", "bottomSeals", "topSeals", "initialClosureSystem", "endPanelType"],
+  series: ["model", "panelThickness", "panelSkin", "stcRating", "trackSystem"],
+  model: ["panelSkin", "stcRating", "trackSystem"],
+  panelSkin: ["stcRating"],
+  passDoorPanels: ["passDoorQuantity"],
+  panelFinishCategory: ["panelFinishSpecificItem"]
+};
+
 const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWallCreationFormProps) => {
-  // Early return if not an operable wall
   if (!isOperableWall(wall)) {
     return <div>This form is only for Operable Walls</div>;
   }
-  const getSeriesByPanelConfiguration = (panelConfiguration: string): string[] => {
-    switch (panelConfiguration) {
-      case "Individual Panels":
-        return ["2000", "3000", "Hufcor: 600"];
-      case "Hinged-Paired Panels":
-        return ["2000", "3000"];
-      case "Continuously-Hinged Panels":
-        return ["2000", "3000"];
-      default:
-        return [];
+
+  const [selectedPanelConfiguration, setSelectedPanelConfiguration] = React.useState(wall.panelConfiguration || "");
+  const [selectedSeries, setSelectedSeries] = React.useState(wall.series || "");
+  const [selectedModel, setSelectedModel] = React.useState(wall.model || "");
+  const [selectedPanelSkin, setSelectedPanelSkin] = React.useState(wall.panelSkin || "");
+  const [selectedSTCRating, setSelectedSTCRating] = React.useState(wall.stcRating || "");
+  const [selectedPassDoorPanels, setSelectedPassDoorPanels] = React.useState(wall.passDoorPanels || "");
+  const [selectedPassDoorQuantity, setSelectedPassDoorQuantity] = React.useState(wall.passDoorQuantity || "");
+  const [selectedPanelFinishCategory, setSelectedPanelFinishCategory] = React.useState(wall.panelFinishCategory || "");
+  const [selectedPanelFinishSpecificItem, setSelectedPanelFinishSpecificItem] = React.useState(wall.panelFinishSpecificItem || "");
+  const [selectedTrackSystem, setSelectedTrackSystem] = React.useState(wall.trackSystem || "");
+  const [selectedVerticalSeals, setSelectedVerticalSeals] = React.useState(wall.verticalSeals || "");
+  const [selectedBottomSeals, setSelectedBottomSeals] = React.useState(wall.bottomSeals || "");
+  const [selectedTopSeals, setSelectedTopSeals] = React.useState(wall.topSeals || "");
+  const [selectedInitialClosureSystem, setSelectedInitialClosureSystem] = React.useState(wall.initialClosureSystem || "");
+  const [selectedEndPanelType, setSelectedEndPanelType] = React.useState(wall.endPanelType || "");
+
+
+
+  const handleFieldChange = (field: string, value: string) => {
+    const displayValue = value === "None" ? "" : value;
+    const updates: Record<string, string> = { [field]: displayValue };
+
+    // Reset dependent fields
+    if (dependencies[field]) {
+      (dependencies[field] || []).forEach(dep => {
+        updates[dep] = "";
+      });
+    }
+
+    onWallChange(wallName, updates);
+
+    // Update controlled state
+    switch (field) {
+      case "panelConfiguration": 
+        setSelectedPanelConfiguration(displayValue);
+        if (dependencies[field]) {
+          setSelectedSeries("");
+          setSelectedModel("");
+          setSelectedPanelSkin("");
+          setSelectedSTCRating("");
+          setSelectedTrackSystem("");
+        }
+        break;
+      case "series": 
+        setSelectedSeries(displayValue);
+        if (dependencies[field]) {
+          setSelectedModel("");
+          setSelectedPanelSkin("");
+          setSelectedSTCRating("");
+          setSelectedTrackSystem("");
+        }
+        break;
+      case "model": 
+        setSelectedModel(displayValue);
+        if (dependencies[field]) {
+          setSelectedPanelSkin("");
+          setSelectedSTCRating("");
+          setSelectedTrackSystem("");
+        }
+        break;
+      case "panelSkin": 
+        setSelectedPanelSkin(displayValue);
+        if (dependencies[field]) {
+          setSelectedSTCRating("");
+        }
+        break;
+      case "stcRating": setSelectedSTCRating(displayValue); break;
+      case "passDoorPanels": 
+        setSelectedPassDoorPanels(displayValue);
+        if (dependencies[field]) {
+          setSelectedPassDoorQuantity("");
+        }
+        break;
+      case "passDoorQuantity": setSelectedPassDoorQuantity(displayValue); break;
+      case "panelFinishCategory": 
+        setSelectedPanelFinishCategory(displayValue);
+        if (dependencies[field]) {
+          setSelectedPanelFinishSpecificItem("");
+        }
+        break;
+      case "panelFinishSpecificItem": setSelectedPanelFinishSpecificItem(displayValue); break;
+      case "trackSystem": setSelectedTrackSystem(displayValue); break;
     }
   };
+  
+  // Use centralized data from types
 
-  const getModelsByPanelConfigurationAndSeries = (panelConfiguration: string, series: string): string[] => {
-    if (panelConfiguration === "Individual Panels") {
-      if (series === "2000") return ["2010", "2020", "2010GL", "2020GL"];
-      if (series === "3000") return ["3010", "3020", "3010GL", "3020GL"];
-      if (series === "Hufcor: 600") return ["Hufcor 641"];
-    } else if (panelConfiguration === "Continuously-Hinged Panels") {
-      if (series === "2000") return ["2050e"];
-      if (series === "3000") return ["3050e"];
-    } else if (panelConfiguration === "Hinged-Paired Panels") {
-      if (series === "2000") return ["2030", "2030GL"];
-      if (series === "3000") return ["3030", "3030GL"];
-    }
-    return [];
-  };
-
-  const getPanelSkinOptions = (model: string): string[] => {
-    if (["Hufcor 641"].includes(model)) {
-      return ["Steel"];
-    }
-    if (["3010", "3020", "3030"].includes(model)) {
-      return ["Standard Steel Skin", "Optional Acoustical Substrate", "Optional Wood Veneer", "Optional High-Pressure Laminate"];
-    }
-    if (["3050e", "3010GL", "3020GL", "3030GL"].includes(model)) {
-      return ["Standard Steel Skin", "Optional Acoustical Substrate"];
-    }
-    if (["2010", "2020", "2030"].includes(model)) {
-      return ["Standard Acoustical Substrate", "Optional Steel Skin", "Optional Wood Veneer", "Optional High-Pressure Laminate"];
-    }
-    if (["2050e", "2010GL", "2020GL", "2030GL"].includes(model)) {
-      return ["Standard Acoustical Substrate", "Optional Steel Skin"];
-    }
-    return [];
-  };
-
-  const getSTCRatingOptions = (model: string, panelSkin: string): string[] => {
-    if (!model || !panelSkin) return [];
-    if (["Hufcor 641"].includes(model)) {
-      return ["43", "47", "49", "52", "54", "56"];
-    }
-    if (["2010GL", "2020GL", "2030GL"].includes(model)) {
-      return ["38"];
-    }
-
-    if (["3010GL", "3020GL", "3030GL"].includes(model)) {
-      return ["43", "48"];
-    }
-
-    if (["2010", "2020", "2030", "2050e"].includes(model)) {
-      if (panelSkin.includes("Acoustical Substrate")) {
-        return ["42", "45", "49", "50"];
-      }
-      if (panelSkin.includes("Steel")) {
-        return ["49", "51"];
-      }
-    }
-
-    if (["3010", "3020", "3030", "3050e"].includes(model)) {
-      if (panelSkin.includes("Steel")) {
-        return ["46", "50", "52", "56"];
-      }
-      if (panelSkin.includes("Acoustical Substrate")) {
-        return ["43", "46", "48", "50"];
-      }
-    }
-
-    return [];
-  };
-
-  const getTrackSystemsByTrackType = (trackType: string, model?: string): string[] => {
-    if (model === "Hufcor 641") {
-      return ["Type 26 Clear Satin-Anodized Aluminum", "Type 36 Clear Satin-Anodized Aluminum", "Type 57 Clear Anodized Aluminum", "Type 11L Powder Coated Off-White Steel", "Type 11 Powder Coated Off-White Steel"];
-    }
-    switch (trackType) {
-      case "Multi-Directional Track":
-        return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
-      case "Hinged-Pair (Straight Line) Track":
-        return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
-      case "Curve & Diverter (Individual) Track":
-        return ["Type 850 Powder Coated Off-White Steel"];
-      default:
-        return [];
-    }
-  };
-
-  const getPanelFinishSpecificItems = (category: string): string[] => {
-    const categoriesWithoutSpecificItems = ["Uncovered", "C.O.M. Material", "Field Painting by Others"];
-    if (categoriesWithoutSpecificItems.includes(category)) {
-      return [];
-    }
-    
-    switch (category) {
-      case "Koroseal Standard Vinyl":
-        return ["Unknown", "Silver Fan", "Dover Gray", "Rectory", "Skylight", "Frost", "Surfside", "Mesh", "Nettle", "Fused", "Tangle", "Spun", "Rolled", "Inscription", "Joie de Vivre", "Zydeco", "Fine Silver", "Beignet", "French Quarter", "Mink", "Tuxedo", "Truffle", "Ionic Grey", "Inkwell", "Magnolia", "Hemline", "Clothesline", "Draperie", "Cotton", "Silk", "Cloth", "Stitch", "Origin", "Artisan", "Linen", "Bone", "Eggshell"];
-      case "Koroseal Upgrade Vinyl":
-        return ["Unknown", "Ash", "Jacobean", "Mocha", "Prairie", "Rustic", "Sedona", "Slate", "Vintage", "Willow", "Origin", "Heir", "Heritage", "Generation", "Pedigree", "Descent", "Illusion", "Mottled", "Opalescence", "Enchanted", "Melded", "Fascination", "Earnest", "Baroness", "Poplar", "Hope", "Expectation", "Smoke"];
-      case "Shaw Standard Carpet":
-        return ["Unknown", "Moonscape", "Whitewood", "Almond", "Pelican", "Teak", "Del Sol", "Mohair", "Pottery Glaze", "Mink", "Hazelnut", "Citrus Leaf", "Mineral Green", "Malachite", "Sierra", "Expresso", "Eclipse", "Antique Silver", "Riverboat", "Seacliff", "Snake Skin", "Flint", "PierPointe", "Lakeland", "Blooms Berry", "Ink", "Exotic Clay", "Red Velvet", "Roasted Pepper", "Black Nickel", "Onynx"];
-      case "HyTex Upgrade Carpet":
-        return ["Unknown", "Ghost", "Porcelain", "Parchment", "Beach", "Cinnabar", "Almond", "Abalone", "Lace", "Curry", "Scarlet", "Marble", "Linen", "Taffy", "Hunter", "Ruby", "Flagstone", "Taupe", "Mocha", "Teal", "Marine", "Gunmetal Grey", "Sepia", "Sumatra", "Danube", "Navy", "Black", "Charcoal", "Juniper", "Cerulean", "Verdigris"];
-      case "HyTex Standard Fabric":
-        return ["Unknown", "Cepheus", "Cassiopeia", "Pegasus", "Phoenix", "Hydrus", "Pyxis", "Monoceros", "Aquila", "Orion", "Pisces", "Snow", "Linen", "Sand", "Mocha", "Graphite", "Black", "Cottage", "Mist", "Starlight", "Parchment", "Plaster", "Gray", "Sand", "Discover", "Bahamas", "Olive Grove", "Graphite", "Silverado", "Glacier", "Element", "Gated", "Casarina", "Armor", "Wilderness", "Truffle", "Pepper", "Laguna"];
-      case "HyTex Upgrade Fabric":
-        return ["Unknown", "Eggshell", "Linen", "Flan", "Light Beige", "Husky Gray", "Primavera", "Dovetail", "Pigeon", "Magnetic", "Deep Navy", "Raisin", "Knight", "Mirage", "Triton", "Rock", "Metal", "Basket", "Coriander", "Greige", "Phoron", "Sand Dollar", "Silouhette", "Nightingale", "Buttercup", "Topaz", "Jade", "Palmwood", "Palm Dessert", "Beach Glass", "Harvest", "Morning Dove", "Boulder", "Bravado", "Saddle Brown", "Earl Gray", "Golden (Echo)", "White (Echo)", "Tan (Echo)", "Ice (Echo)", "Silver (Echo)", "Stone (Echo)", "Lake (Echo)", "Smokey Blue (Echo)"];
-      case "Standard Wood Veneer":
-        return ["Unknown", "Unfinished Flat Cut White Maple", "Unfinished Flat Cut White Oak", "Unfinished Flat Cut Walnut", "Unfinished Flat Cut Cherry", "Unfinished Flat Cut Red Oak"];
-      case "Wilsonart High Pressure Laminate (HPL)":
-        return ["Unknown", "Beigewood", "Raw Chestnut", "Fusion Maple", "Manitoba Maple", "Bannister Oak", "Limber Maple", "Solar Oak", "Fonthill Pear", "Wild Cherry", "Grey Glace", "Neutral Glace", "Shadow Zephyr", "Canyon Zephyr", "Grey Pampas", "Almond Leather", "Beige Pampas", "Miste Zephyr", "Twilight Zephyr", "Desert Zephyr", "Cloud Zephyr", "Burnished Chestnut", "Windswept Pewter", "Titanium Ev", "Carbon Ev", "Cloud Nebula", "White Nebula", "Grey Nebula", "Graphite Nebula", "White Tigris", "Evening Tigris", "Natural Tigris", "Bronze Legacy", "Navy Legacy", "Pewter Brush", "Woolamai Brush", "Grey", "Beige", "White", "Antique White", "Frosty White", "Black", "Graphite", "Regimental Red", "Atlantis", "Natural Almond", "Khaki Brown", "Pewter", "North Sea", "Slate Grey", "Dove Grey", "Shadow", "Hollyberry", "Platinum", "Brittany Blue", "Pepperdust", "Designer White", "Indigo", "Fashion Grey", "Crystal", "White Sand", "Lapis Blue", "Linen Alabaster", "Wallaby", "Coffee Bean", "Island", "Ocean", "Cement", "Fossil Shale", "Midnight", "Beachwalk", "Pebble Piazza", "Milan Quartz", "Mystique Dawn", "Kalahari Topaz"];
-      default:
-        return [];
-    }
-  };
-
-  const panelConfigurations = ["Individual Panels", "Hinged-Paired Panels", "Continuously-Hinged Panels"];
-  const panelDesigns = ["Trimless U Capped", "U-Capped Trim"];
-  const passDoorOptions = ["Single", "Double"];
-  const panelFinishCategories = ["Koroseal Standard Vinyl", "Koroseal Upgrade Vinyl", "Shaw Standard Carpet", "HyTex Upgrade Carpet", "HyTex Standard Fabric", "HyTex Upgrade Fabric", "Standard Wood Veneer", "Wilsonart High Pressure Laminate (HPL)", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
-  const verticalSeals = ["Tongue-and-Groove"];
-  const bottomSeals = ["Retractable", "Automatic", "Adjustable"];
-  const topSeals = ["Fixed", "Adjustable", "Operable"];
-  const endPanelTypes = ["Standard Expander Panel Closure", "Optional Hinged Panel(s) Closure"];
-  const initialClosureSystem = ["Standard Bulb", "Optional Fixed Starter Jamb", "Optional Adjustable Starter Jamb"];
-  // const structureSupportOptions = ["Pre-Drilled", "Existing Steel Beam", "Custom Support", "None Required"];
-
+  const optionalFieldsDisabled = !selectedModel;
+  
   return (
     <div>
       <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Operable Wall Details</h4>
@@ -159,8 +141,8 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Panel Configuration *</Label>
           <Select
-            value={wall.panelConfiguration}
-            onValueChange={(value) => onWallChange(wallName, { panelConfiguration: value})}
+            value={selectedPanelConfiguration}
+            onValueChange={(value) => handleFieldChange("panelConfiguration", value)}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select panel configuration" />
@@ -178,15 +160,15 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Series *</Label>
           <Select
-            value={wall.series}
-            onValueChange={(value) => onWallChange(wallName, { series: value})}
-            disabled={!wall.panelConfiguration}
+            value={selectedSeries}
+            onValueChange={(value) => handleFieldChange("series", value)}
+            disabled={!selectedPanelConfiguration}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select series" />
             </SelectTrigger>
             <SelectContent className="bg-background border z-50">
-              {getSeriesByPanelConfiguration(wall.panelConfiguration).map((series) => (
+              {getSeriesByPanelConfiguration(selectedPanelConfiguration).map((series) => (
                 <SelectItem key={series} value={series}>
                   {series} Series
                 </SelectItem>
@@ -198,15 +180,15 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Model *</Label>
           <Select
-            value={wall.model}
-            onValueChange={(value) => onWallChange(wallName, { model: value})}
-            disabled={!wall.series}
+            value={selectedModel}
+            onValueChange={(value) => handleFieldChange("model", value)}
+            disabled={!selectedSeries}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select model" />
             </SelectTrigger>
             <SelectContent className="bg-background border z-50">
-              {getModelsByPanelConfigurationAndSeries(wall.panelConfiguration, wall.series).map((model) => (
+              {getModelsByPanelConfigurationAndSeries(selectedPanelConfiguration, selectedSeries).map((model) => (
                 <SelectItem key={model} value={model}>
                   {model}
                 </SelectItem>
@@ -220,26 +202,25 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Panel Thickness (inches)</Label>
           <Input
-            value={wall.panelThickness}
-            onChange={(e) => onWallChange(wallName, { panelThickness: e.target.value})}
-            placeholder="Thickness"
+            value={getPanelThicknessBySeries(selectedSeries)}
+            placeholder={selectedSeries ? "Auto-calculated" : "Select series first"}
             readOnly
-            className="bg-muted"
+            className="bg-muted text-muted-foreground"
           />
         </div>
 
         <div className="space-y-2">
           <Label className="text-sm font-medium">Panel Skin *</Label>
           <Select
-            value={wall.panelSkin}
-            onValueChange={(value) => onWallChange(wallName, { panelSkin: value})}
-            disabled={!wall.model}
+            value={selectedPanelSkin === "" ? undefined : selectedPanelSkin}
+            onValueChange={(value) => handleFieldChange("panelSkin", value)}
+            disabled={!selectedModel}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select panel skin" />
             </SelectTrigger>
             <SelectContent className="bg-background border z-50">
-              {getPanelSkinOptions(wall.model).map((skin) => (
+              {getPanelSkinOptions(selectedModel).map((skin) => (
                 <SelectItem key={skin} value={skin}>
                   {skin}
                 </SelectItem>
@@ -251,15 +232,15 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">STC Rating *</Label>
           <Select
-            value={wall.stcRating}
-            onValueChange={(value) => onWallChange(wallName, { stcRating: value})}
-            disabled={!wall.model || !wall.panelSkin}
+            value={selectedSTCRating === "" ? undefined : selectedSTCRating}
+            onValueChange={(value) => handleFieldChange("stcRating", value)}
+            disabled={!selectedModel || !selectedPanelSkin}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select STC rating" />
             </SelectTrigger>
             <SelectContent className="bg-background border z-50">
-              {getSTCRatingOptions(wall.model, wall.panelSkin).map((rating) => (
+              {getSTCRatingOptions(selectedModel, selectedPanelSkin).map((rating) => (
                 <SelectItem key={rating} value={rating}>
                   {rating}
                 </SelectItem>
@@ -271,10 +252,10 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Panel Design *</Label>
+          <Label className="text-sm font-medium">Panel Design</Label>
           <Select
-            value={wall.panelDesign}
-            onValueChange={(value) => onWallChange(wallName, { panelDesign: value})}
+            value={wall.panelDesign === "" ? undefined : wall.panelDesign}
+            onValueChange={(value) => handleFieldChange("panelDesign", value)}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select panel design" />
@@ -292,14 +273,8 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Pass Door Panels</Label>
           <Select
-            value={wall.passDoorPanels || ""}
-            onValueChange={(value) => {
-              if (value === "None") {
-                onWallChange(wallName, { passDoorPanels: "", passDoorQuantity: "" });
-              } else {
-                onWallChange(wallName, { passDoorPanels: value });
-              }
-            }}
+            value={selectedPassDoorPanels === "" ? undefined : selectedPassDoorPanels}
+            onValueChange={(value) => handleFieldChange("passDoorPanels", value)}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select pass door panels" />
@@ -318,17 +293,19 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Pass Door Quantity</Label>
           <Select
-            value={wall.passDoorQuantity || ""}
-            onValueChange={(value) => onWallChange(wallName, { passDoorQuantity: value})}
-            disabled={!wall.passDoorPanels || wall.passDoorPanels === "None"}
+            value={selectedPassDoorQuantity === "" ? undefined : selectedPassDoorQuantity}
+            onValueChange={(value) => handleFieldChange("passDoorQuantity", value)}
+            disabled={!selectedPassDoorPanels || selectedPassDoorPanels === "None"}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select quantity" />
             </SelectTrigger>
             <SelectContent className="bg-background border z-50">
-              <SelectItem value="1">1</SelectItem>
-              <SelectItem value="2">2</SelectItem>
-              <SelectItem value="3">3</SelectItem>
+              {getPassDoorQuantityOptions(selectedPassDoorPanels).map((qty) => (
+                <SelectItem key={qty} value={qty}>
+                  {qty}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -336,8 +313,8 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Vertical Seals</Label>
           <Select
-            value={wall.verticalSeals}
-            onValueChange={(value) => onWallChange(wallName, { verticalSeals: value})}
+            value={selectedVerticalSeals || ""}
+            onValueChange={(value) => handleFieldChange("verticalSeals", value)}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select vertical seals" />
@@ -356,15 +333,15 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Bottom Seals</Label>
           <Select
-            value={wall.bottomSeals}
-            onValueChange={(value) => onWallChange(wallName, { bottomSeals: value})}
+            value={wall.bottomSeals === "" ? undefined : wall.bottomSeals}
+            onValueChange={(value) => handleFieldChange("bottomSeals", value)}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select bottom seals" />
             </SelectTrigger>
             <SelectContent className="bg-background border z-50">
               <SelectItem value="None">None</SelectItem>
-              {bottomSeals.map((seal) => (
+              {bottomSealOptions.map((seal) => (
                 <SelectItem key={seal} value={seal}>
                   {seal}
                 </SelectItem>
@@ -376,15 +353,15 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Top Seals</Label>
           <Select
-            value={wall.topSeals}
-            onValueChange={(value) => onWallChange(wallName, { topSeals: value})}
+            value={wall.topSeals === "" ? undefined : wall.topSeals}
+            onValueChange={(value) => handleFieldChange("topSeals", value)}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select top seals" />
             </SelectTrigger>
             <SelectContent className="bg-background border z-50">
               <SelectItem value="None">None</SelectItem>
-              {topSeals.map((seal) => (
+              {topSealOptions.map((seal) => (
                 <SelectItem key={seal} value={seal}>
                   {seal}
                 </SelectItem>
@@ -398,15 +375,15 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Initial Closure System</Label>
           <Select
-            value={wall.initialClosureSystem}
-            onValueChange={(value) => onWallChange(wallName, { initialClosureSystem: value})}
+            value={wall.initialClosureSystem === "" ? undefined : wall.initialClosureSystem}
+            onValueChange={(value) => handleFieldChange("initialClosureSystem", value)}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select initial closure system" />
             </SelectTrigger>
             <SelectContent className="bg-background border z-50">
               <SelectItem value="None">None</SelectItem>
-              {initialClosureSystem.map((seal) => (
+              {initialClosureSystems.map((seal) => (
                 <SelectItem key={seal} value={seal}>
                   {seal}
                 </SelectItem>
@@ -418,8 +395,8 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">End Panel Type</Label>
           <Select
-            value={wall.endPanelType}
-            onValueChange={(value) => onWallChange(wallName, { endPanelType: value})}
+            value={wall.endPanelType === "" ? undefined : wall.endPanelType}
+            onValueChange={(value) => handleFieldChange("endPanelType", value)}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select end panel type" />
@@ -440,8 +417,8 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Panel Finish Category</Label>
           <Select
-            value={wall.panelFinishCategory}
-            onValueChange={(value) => onWallChange(wallName, { panelFinishCategory: value })}
+            value={selectedPanelFinishCategory === "" ? undefined : selectedPanelFinishCategory}
+            onValueChange={(value) => handleFieldChange("panelFinishCategory", value)}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select panel finish category" />
@@ -457,19 +434,19 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           </Select>
         </div>
 
-        {getPanelFinishSpecificItems(wall.panelFinishCategory).length > 0 && (
+        {getPanelFinishSpecificItems(selectedPanelFinishCategory).length > 0 && (
           <div className="space-y-2">
             <Label className="text-sm font-medium">Panel Finish Specific Item *</Label>
             <Select
-              value={wall.panelFinishSpecificItem}
-              onValueChange={(value) => onWallChange(wallName, { panelFinishSpecificItem: value})}
-              disabled={!wall.panelFinishCategory}
+              value={selectedPanelFinishSpecificItem === "" ? undefined : selectedPanelFinishSpecificItem}
+              onValueChange={(value) => handleFieldChange("panelFinishSpecificItem", value)}
+              disabled={!selectedPanelFinishCategory}
             >
               <SelectTrigger className="bg-background">
                 <SelectValue placeholder="Select specific item" />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
-                {getPanelFinishSpecificItems(wall.panelFinishCategory).map((item) => (
+                {getPanelFinishSpecificItems(selectedPanelFinishCategory).map((item) => (
                   <SelectItem key={item} value={item}>
                     {item}
                   </SelectItem>
@@ -484,25 +461,25 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Track Type *</Label>
           <Input
-            value={wall.trackType}
-            placeholder="Track type (auto-filled)"
+            value={selectedModel ? "Auto-calculated" : ""}
+            placeholder={selectedModel ? "Auto-calculated" : "Select model first"}
             readOnly
-            className="bg-muted"
+            className="bg-muted text-muted-foreground"
           />
         </div>
 
         <div className="space-y-2">
           <Label className="text-sm font-medium">Track System *</Label>
           <Select
-            value={wall.trackSystem}
-            onValueChange={(value) => onWallChange(wallName, { trackSystem: value})}
-            disabled={!wall.trackType}
+            value={selectedTrackSystem === "" ? undefined : selectedTrackSystem}
+            onValueChange={(value) => handleFieldChange("trackSystem", value)}
+            disabled={!selectedModel}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select track system" />
             </SelectTrigger>
             <SelectContent className="bg-background border z-50">
-              {getTrackSystemsByTrackType(wall.trackType, wall.model).map((system) => (
+              {getTrackSystemsByTrackType("Multi-Directional Track", selectedModel).map((system) => (
                 <SelectItem key={system} value={system}>
                   {system}
                 </SelectItem>
