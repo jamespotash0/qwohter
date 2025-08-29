@@ -31,13 +31,14 @@ export const PerWallPocketDoorsForm: React.FC<PerWallPocketDoorsFormProps> = ({
   const handleFoldTypeChange = (wallName: string, foldType: string) => {
     const wall = walls[wallName];
     const currentStyle = wall.pocketDoors?.foldStyle || '';
-    const availableStyles = getAvailableFoldStyles(foldType);
+    const normalizedFoldType = foldType === 'None' ? 'None' : foldType;
+    const availableStyles = getAvailableFoldStyles(normalizedFoldType);
     
     // Reset style if current selection is not valid for new fold type
     const newStyle = availableStyles.includes(currentStyle) ? currentStyle : '';
     
     const newPocketDoors: PocketDoorConfig = {
-      foldType,
+      foldType: normalizedFoldType,
       foldStyle: newStyle
     };
     
@@ -112,8 +113,8 @@ export const PerWallPocketDoorsForm: React.FC<PerWallPocketDoorsFormProps> = ({
                   <div className="space-y-2">
                     <Label>Fold Type</Label>
                     <Select
-                      value={wall.pocketDoors?.foldType || 'None'}
-                      onValueChange={(value) => handleFoldTypeChange(wallName, value)}
+                      value={wall.pocketDoors?.foldType || ''}
+                      onValueChange={(value) => handleFoldTypeChange(wallName, value === 'None' ? '' : value)}
                     >
                       <SelectTrigger className={!status.hasFoldType ? 'border-amber-300' : ''}>
                         <SelectValue placeholder="Select fold type" />

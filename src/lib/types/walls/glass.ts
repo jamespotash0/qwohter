@@ -185,6 +185,23 @@ export function getFrameThickness(model: GlassWallModel, stcRating?: string): st
   }
 }
 
+export function getTrackSystem(model: GlassWallModel): string { 
+  switch (model) {
+    case 'Stella':
+      return 'Architectural Grade Extruded Aluminum Alloy 6063-T6';
+    case 'Luna':
+      return 'Architectural Grade Extruded Aluminum Alloy 6063-T6';
+    case 'Illona':
+      return 'Architectural Grade Extruded Aluminum Alloy 6063-T6';
+    case 'Ava':
+      return 'Architectural Grade Extruded Aluminum Alloy 6063-T6';
+    case 'Mata':
+      return 'Architectural Grade Extruded Aluminum Alloy 6063-T6';
+    default:
+      return 'Auto-Calculated';
+  }
+}
+
 // Validation function to check if a model supports a specific configuration
 export function isValidConfiguration(
   model: GlassWallModel, 

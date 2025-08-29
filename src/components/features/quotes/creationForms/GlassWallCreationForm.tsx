@@ -3,12 +3,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { WallSpecification, isGlassWall } from '@/lib/types';
-import { modelConfigurations, getAvailableOptions, getFrameThickness, GlassWallModel } from '@/lib/types/walls/glass';
+import { modelConfigurations, getAvailableOptions, getFrameThickness, getTrackSystem, GlassWallModel } from '@/lib/types/walls/glass';
 
 interface GlassWallCreationFormProps {
   wall: WallSpecification;
   wallName: string;
-  onWallChange: (wallName: string, field: string, value: string) => void;
+  // onWallChange: (wallName: string, field: string, value: string) => void;
+    onWallChange: (wallName: string, updates: Record<string, string>) => void;
+
 }
 
 const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreationFormProps) => {
@@ -29,7 +31,6 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
   const [selectedHingeType, setSelectedHingeType] = useState<string>(wall.hingeType || '');
   const [selectedFrameFinish, setSelectedFrameFinish] = useState<string>(wall.frameFinish || '');
   const [selectedTrackType, setSelectedTrackType] = useState<string>(wall.trackType || '');
-  const [selectedTrackSystem, setSelectedTrackSystem] = useState<string>(wall.trackSystem || '');
   const [selectedTrackFinish, setSelectedTrackFinish] = useState<string>(wall.trackFinish || '');
   const [selectedFinalClosure, setSelectedFinalClosure] = useState<string>(wall.finalClosure || '');
   const [selectedBottomSeals, setSelectedBottomSeals] = useState<string>(wall.bottomSeals || '');
@@ -38,48 +39,108 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
   const prevModelRef = useRef<string>('');
   const prevConfigRef = useRef<string>('');
 
+  // const handleFieldChange = (field: string, value: string) => {
+
+  //   const displayValue = value === "None" ? "" : value;
+    
+  //   if (field === 'model') {
+  //     setSelectedModel(displayValue);
+  //   } else if (field === 'panelConfiguration') {
+  //     setSelectedConfiguration(displayValue);
+  //   } else if (field === 'operation') {
+  //     setSelectedOperation(displayValue);
+  //   } else if (field === 'glassType') {
+  //     setSelectedGlassType(displayValue);
+  //   } else if (field === 'stcRating') {
+  //     setSelectedSTCRating(displayValue);
+  //   } else if (field === 'partitionSupport') {
+  //     setSelectedPartitionSupport(displayValue);
+  //   } else if (field === 'passDoorType') {
+  //     setSelectedPassDoorType(displayValue);
+  //   } else if (field === 'passDoorOption') {
+  //     setSelectedPassDoorOption(displayValue);
+  //   } else if (field === 'panelFace') {
+  //     setSelectedPanelFace(displayValue);
+  //   } else if (field === 'hingeType') {
+  //     setSelectedHingeType(displayValue);
+  //   } else if (field === 'frameFinish') {
+  //     setSelectedFrameFinish(displayValue);
+  //   } else if (field === 'trackType') {
+  //     setSelectedTrackType(displayValue);
+  //   } else if (field === 'trackFinish') {
+  //     setSelectedTrackFinish(displayValue);
+  //   } else if (field === 'finalClosure') {
+  //     setSelectedFinalClosure(displayValue);
+  //   } else if (field === 'bottomSeals') {
+  //     setSelectedBottomSeals(displayValue);
+  //   } else if (field === 'topSeals') {
+  //     setSelectedTopSeals(displayValue);
+  //   }
+  // };
   const handleFieldChange = (field: string, value: string) => {
-    
-    const actualValue = value === "none" ? "" : value;
-    onWallChange(wallName, field, actualValue);
-    const displayValue = value === "none" ? "" : value;
-    
-    if (field === 'model') {
-      setSelectedModel(displayValue);
-    } else if (field === 'panelConfiguration') {
-      setSelectedConfiguration(displayValue);
-    } else if (field === 'operation') {
-      setSelectedOperation(displayValue);
-    } else if (field === 'glassType') {
-      setSelectedGlassType(displayValue);
-    } else if (field === 'stcRating') {
-      setSelectedSTCRating(displayValue);
-    } else if (field === 'partitionSupport') {
-      setSelectedPartitionSupport(displayValue);
-    } else if (field === 'passDoorType') {
-      setSelectedPassDoorType(displayValue);
-    } else if (field === 'passDoorOption') {
-      setSelectedPassDoorOption(displayValue);
-    } else if (field === 'panelFace') {
-      setSelectedPanelFace(displayValue);
-    } else if (field === 'hingeType') {
-      setSelectedHingeType(displayValue);
-    } else if (field === 'frameFinish') {
-      setSelectedFrameFinish(displayValue);
-    } else if (field === 'trackType') {
-      setSelectedTrackType(displayValue);
-    } else if (field === 'trackSystem') {
-      setSelectedTrackSystem(displayValue);
-    } else if (field === 'trackFinish') {
-      setSelectedTrackFinish(displayValue);
-    } else if (field === 'finalClosure') {
-      setSelectedFinalClosure(displayValue);
-    } else if (field === 'bottomSeals') {
-      setSelectedBottomSeals(displayValue);
-    } else if (field === 'topSeals') {
-      setSelectedTopSeals(displayValue);
+    const displayValue = value === "None" ? "" : value;
+
+    // Update dependent state
+    switch (field) {
+      case "model":
+        setSelectedModel(displayValue);
+        break;
+      case "panelConfiguration":
+        setSelectedConfiguration(displayValue);
+        break;
+      case "operation":
+        setSelectedOperation(displayValue);
+        break;
+      case "glassType":
+        setSelectedGlassType(displayValue);
+        break;
+      case "stcRating":
+        setSelectedSTCRating(displayValue);
+        break;
+      case "partitionSupport":
+        setSelectedPartitionSupport(displayValue);
+        break;
+      case "passDoorType":
+        setSelectedPassDoorType(displayValue);
+        if (displayValue === "") setSelectedPassDoorOption("");
+        break;
+      case "passDoorOption":
+        setSelectedPassDoorOption(displayValue);
+        break;
+      case "panelFace":
+        setSelectedPanelFace(displayValue);
+        break;
+      case "hingeType":
+        setSelectedHingeType(displayValue);
+        break;
+      case "frameFinish":
+        setSelectedFrameFinish(displayValue);
+        break;
+      case "trackType":
+        setSelectedTrackType(displayValue);
+        break;
+      case "trackFinish":
+        setSelectedTrackFinish(displayValue);
+        break;
+      case "finalClosure":
+        setSelectedFinalClosure(displayValue);
+        break;
+      case "bottomSeals":
+        setSelectedBottomSeals(displayValue);
+        break;
+      case "topSeals":
+        setSelectedTopSeals(displayValue);
+        break;
     }
+    const updates: Record<string, string> = { [field]: displayValue };
+
+    if (field === "passDoorType" && displayValue === "") {
+      updates.passDoorOption = ""; // ensure dependent resets in wall object
+    }
+
+    onWallChange(wallName, updates);
   };
+
 
   useEffect(() => {
     if (prevModelRef.current !== selectedModel && prevModelRef.current !== '') {
@@ -94,7 +155,6 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
       setSelectedHingeType('');
       setSelectedFrameFinish('');
       setSelectedTrackType('');
-      setSelectedTrackSystem('Architectural Grade Extruded Aluminum Alloy 6063-T6');
       setSelectedTrackFinish('');
       setSelectedFinalClosure('');
       setSelectedBottomSeals('');
@@ -115,7 +175,6 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
       setSelectedHingeType('');
       setSelectedFrameFinish('');
       setSelectedTrackType('');
-      setSelectedTrackSystem('Architectural Grade Extruded Aluminum Alloy 6063-T6'); // Keep default for glass walls
       setSelectedTrackFinish('');
       setSelectedFinalClosure('');
       setSelectedBottomSeals('');
@@ -124,26 +183,16 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
     prevConfigRef.current = selectedConfiguration;
   }, [selectedConfiguration]);
 
-  useEffect(() => {
-    if (isGlassWall(wall) && selectedPassDoorType !== wall.passDoorType) {
-      setSelectedPassDoorOption('');
-      onWallChange(wallName, 'passDoorOption', '');
-    }
-  }, [selectedPassDoorType, wall.passDoorType, wallName]);
-
-  useEffect(() => {
-    if (isGlassWall(wall) && (!wall.trackSystem || wall.trackSystem === '')) {
-      onWallChange(wallName, 'trackSystem', 'Architectural Grade Extruded Aluminum Alloy 6063-T6');
-    }
-  }, [wall, wallName, onWallChange]);
-
   return (
     <div>
       <h4 className="text-lg font-semibold mb-4 text-foreground border-b pb-2">Glass Wall Details</h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div className="space-y-2">
             <Label className="text-sm font-medium">Glass Wall Model *</Label>
-            <Select value={selectedModel} onValueChange={(value) => handleFieldChange('model', value)}>
+            <Select 
+              value={selectedModel} 
+              onValueChange={(value) => handleFieldChange('model', value)}
+            >
               <SelectTrigger className="bg-background">
                 <SelectValue placeholder="Select glass wall model" />
               </SelectTrigger>
@@ -222,7 +271,7 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
           <div className="space-y-2">
             <Label className="text-sm font-medium">STC Rating *</Label>
             <Select 
-              value={selectedSTCRating} 
+              value={selectedSTCRating}
               onValueChange={(value) => handleFieldChange('stcRating', value)}
               disabled={!selectedModel}
             >
@@ -275,7 +324,7 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
           <div className="space-y-2">
             <Label className="text-sm font-medium">Panel Face Options</Label>
             <Select 
-              value={selectedPanelFace} 
+              value={selectedPanelFace || ""}
               onValueChange={(value) => handleFieldChange('panelFace', value)}
               disabled={!selectedModel}
             >
@@ -283,7 +332,7 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
                 <SelectValue placeholder={"Select panel face options"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="None">None</SelectItem>
                 {getAvailableOptions(selectedModel as GlassWallModel, 'panelFaces').map((face) => (
                   <SelectItem key={face} value={face}>
                     {face}
@@ -296,7 +345,7 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
           <div className="space-y-2">
             <Label className="text-sm font-medium">Frame Finish Options</Label>
             <Select 
-              value={selectedFrameFinish} 
+              value={selectedFrameFinish || ""}
               onValueChange={(value) => handleFieldChange('frameFinish', value)}
               disabled={!selectedModel}
             >
@@ -304,7 +353,7 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
                 <SelectValue placeholder={selectedModel ? "Select frame finish" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="None">None</SelectItem>
                 {getAvailableOptions(selectedModel as GlassWallModel, 'frameFinishes').map((finish) => (
                   <SelectItem key={finish} value={finish}>
                     {finish}
@@ -317,7 +366,7 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
           <div className="space-y-2">
             <Label className="text-sm font-medium">Hinge Type</Label>
             <Select 
-              value={selectedHingeType} 
+              value={selectedHingeType}
               onValueChange={(value) => handleFieldChange('hingeType', value)}
               disabled={!selectedModel}
             >
@@ -325,7 +374,7 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
                 <SelectValue placeholder={selectedModel ? "Select hinge type" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="None">None</SelectItem>
                 {getAvailableOptions(selectedModel as GlassWallModel, 'hinging').map((hinge) => (
                   <SelectItem key={hinge} value={hinge}>
                     {hinge}
@@ -335,12 +384,12 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
             </Select>
           </div>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {/* Pass Door Type */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Pass Door Type</Label>
             <Select 
-              value={selectedPassDoorType} 
+              value={selectedPassDoorType || ""}
               onValueChange={(value) => handleFieldChange('passDoorType', value)}
               disabled={!selectedModel}
             >
@@ -348,7 +397,7 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
                 <SelectValue placeholder={selectedModel ? "Select pass door type" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="None">None</SelectItem>
                 {getAvailableOptions(selectedModel as GlassWallModel, 'passDoorType').map((doorType) => (
                   <SelectItem key={doorType} value={doorType}>
                     {doorType}
@@ -358,10 +407,11 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
             </Select>
           </div>
 
+          {/* Pass Door Option */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Pass Door Option</Label>
             <Select 
-              value={selectedPassDoorOption} 
+              value={selectedPassDoorOption || ""}
               onValueChange={(value) => handleFieldChange('passDoorOption', value)}
               disabled={!selectedModel || !selectedPassDoorType}
             >
@@ -369,7 +419,6 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
                 <SelectValue placeholder={selectedPassDoorType ? "Select pass door option" : "Select pass door type first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
-                <SelectItem value="none">None</SelectItem>
                 {getAvailableOptions(selectedModel as GlassWallModel, 'passDoorOption').map((option) => (
                   <SelectItem key={option} value={option}>
                     {option}
@@ -384,7 +433,7 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
           <div className="space-y-2">
             <Label className="text-sm font-medium">Final Closure</Label>
             <Select 
-              value={selectedFinalClosure} 
+              value={selectedFinalClosure || ""} 
               onValueChange={(value) => handleFieldChange('finalClosure', value)}
               disabled={!selectedModel}
             >
@@ -392,7 +441,7 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
                 <SelectValue placeholder={selectedModel ? "Select final closure" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="None">None</SelectItem>
                 {getAvailableOptions(selectedModel as GlassWallModel, 'finalClosure').map((closure) => (
                   <SelectItem key={closure} value={closure}>
                     {closure}
@@ -401,10 +450,11 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
               </SelectContent>
             </Select>
           </div>
+
           <div className="space-y-2">
             <Label className="text-sm font-medium">Bottom Seals</Label>
             <Select 
-              value={selectedBottomSeals === "" ? undefined : selectedBottomSeals} 
+              value={selectedBottomSeals || ""}
               onValueChange={(value) => handleFieldChange('bottomSeals', value)}
               disabled={!selectedModel}
             >
@@ -412,7 +462,7 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
                 <SelectValue placeholder={selectedModel ? "Select bottom seals" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="None">None</SelectItem>
                 {getAvailableOptions(selectedModel as GlassWallModel, 'bottomSeals').map((seal) => (
                   <SelectItem key={seal} value={seal}>
                     {seal}
@@ -421,11 +471,10 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
               </SelectContent>
             </Select>
           </div>
-
           <div className="space-y-2">
             <Label className="text-sm font-medium">Top Seals</Label>
             <Select 
-              value={selectedTopSeals === "" ? undefined : selectedTopSeals} 
+              value={selectedTopSeals || ""}
               onValueChange={(value) => handleFieldChange('topSeals', value)}
               disabled={!selectedModel}
             >
@@ -433,7 +482,7 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
                 <SelectValue placeholder={selectedModel ? "Select top seals" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="None">None</SelectItem>
                 {getAvailableOptions(selectedModel as GlassWallModel,'topSeals').map((seal) => (
                   <SelectItem key={seal} value={seal}>
                     {seal}
@@ -443,12 +492,11 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
             </Select>
           </div>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="space-y-2">
             <Label className="text-sm font-medium">Track Type *</Label>
             <Select 
-              value={selectedTrackType === "" ? undefined : selectedTrackType} 
+              value={selectedTrackType} 
               onValueChange={(value) => handleFieldChange('trackType', value)}
               disabled={!selectedModel}
             >
@@ -468,17 +516,15 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
           <div className="space-y-2">
             <Label className="text-sm font-medium">Track System *</Label>
             <Input 
-              value={selectedModel ? 'Architectural Grade Extruded Aluminum Alloy 6063-T6' : ''}
-              placeholder={selectedModel ? "Auto-calculated" : "Select model first"}
+              value={getTrackSystem(selectedModel as GlassWallModel)}
               readOnly
-              className="bg-muted text-muted-foreground"
+              className="bg-muted text-muted-foreground mb-6"
             />
           </div>
-
           <div className="space-y-2">
             <Label className="text-sm font-medium">Track Finish</Label>
             <Select 
-              value={selectedTrackFinish} 
+              value={selectedTrackFinish || ""}
               onValueChange={(value) => handleFieldChange('trackFinish', value)}
               disabled={!selectedModel}
             >
@@ -486,7 +532,7 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
                 <SelectValue placeholder={selectedModel ? "Select track finish" : "Select model first"} />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="None">None</SelectItem>
                 {getAvailableOptions(selectedModel as GlassWallModel, 'trackFinish').map((finish) => (
                   <SelectItem key={finish} value={finish}>
                     {finish}

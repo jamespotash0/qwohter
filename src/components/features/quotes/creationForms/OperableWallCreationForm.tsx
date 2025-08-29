@@ -1,12 +1,13 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { WallSpecification, isOperableWall, OperableWallSpecification } from "@/lib/types";
+import { WallSpecification, isOperableWall, /*OperableWallSpecification*/ } from "@/lib/types";
 
 interface OperableWallCreationFormProps {
   wall: WallSpecification;
   wallName: string;
-  onWallChange: (wallName: string, field: string, value: string) => void;
+  // onWallChange: (wallName: string, field: string, value: string) => void;
+  onWallChange: (wallName: string, updates: Record<string, string>) => void;
 }
 
 const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWallCreationFormProps) => {
@@ -159,7 +160,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">Panel Configuration *</Label>
           <Select
             value={wall.panelConfiguration}
-            onValueChange={(value) => onWallChange(wallName, "panelConfiguration", value)}
+            onValueChange={(value) => onWallChange(wallName, { panelConfiguration: value})}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select panel configuration" />
@@ -178,7 +179,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">Series *</Label>
           <Select
             value={wall.series}
-            onValueChange={(value) => onWallChange(wallName, "series", value)}
+            onValueChange={(value) => onWallChange(wallName, { series: value})}
             disabled={!wall.panelConfiguration}
           >
             <SelectTrigger className="bg-background">
@@ -198,7 +199,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">Model *</Label>
           <Select
             value={wall.model}
-            onValueChange={(value) => onWallChange(wallName, "model", value)}
+            onValueChange={(value) => onWallChange(wallName, { model: value})}
             disabled={!wall.series}
           >
             <SelectTrigger className="bg-background">
@@ -220,7 +221,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">Panel Thickness (inches)</Label>
           <Input
             value={wall.panelThickness}
-            onChange={(e) => onWallChange(wallName, "panelThickness", e.target.value)}
+            onChange={(e) => onWallChange(wallName, { panelThickness: e.target.value})}
             placeholder="Thickness"
             readOnly
             className="bg-muted"
@@ -231,7 +232,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">Panel Skin *</Label>
           <Select
             value={wall.panelSkin}
-            onValueChange={(value) => onWallChange(wallName, "panelSkin", value)}
+            onValueChange={(value) => onWallChange(wallName, { panelSkin: value})}
             disabled={!wall.model}
           >
             <SelectTrigger className="bg-background">
@@ -251,7 +252,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">STC Rating *</Label>
           <Select
             value={wall.stcRating}
-            onValueChange={(value) => onWallChange(wallName, "stcRating", value)}
+            onValueChange={(value) => onWallChange(wallName, { stcRating: value})}
             disabled={!wall.model || !wall.panelSkin}
           >
             <SelectTrigger className="bg-background">
@@ -273,7 +274,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">Panel Design *</Label>
           <Select
             value={wall.panelDesign}
-            onValueChange={(value) => onWallChange(wallName, "panelDesign", value)}
+            onValueChange={(value) => onWallChange(wallName, { panelDesign: value})}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select panel design" />
@@ -291,8 +292,14 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Pass Door Panels</Label>
           <Select
-            value={wall.passDoorPanels}
-            onValueChange={(value) => onWallChange(wallName, "passDoorPanels", value)}
+            value={wall.passDoorPanels || ""}
+            onValueChange={(value) => {
+              if (value === "None") {
+                onWallChange(wallName, { passDoorPanels: "", passDoorQuantity: "" });
+              } else {
+                onWallChange(wallName, { passDoorPanels: value });
+              }
+            }}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select pass door panels" />
@@ -312,7 +319,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">Pass Door Quantity</Label>
           <Select
             value={wall.passDoorQuantity || ""}
-            onValueChange={(value) => onWallChange(wallName, "passDoorQuantity", value)}
+            onValueChange={(value) => onWallChange(wallName, { passDoorQuantity: value})}
             disabled={!wall.passDoorPanels || wall.passDoorPanels === "None"}
           >
             <SelectTrigger className="bg-background">
@@ -330,7 +337,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">Vertical Seals</Label>
           <Select
             value={wall.verticalSeals}
-            onValueChange={(value) => onWallChange(wallName, "verticalSeals", value)}
+            onValueChange={(value) => onWallChange(wallName, { verticalSeals: value})}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select vertical seals" />
@@ -350,7 +357,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">Bottom Seals</Label>
           <Select
             value={wall.bottomSeals}
-            onValueChange={(value) => onWallChange(wallName, "bottomSeals", value)}
+            onValueChange={(value) => onWallChange(wallName, { bottomSeals: value})}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select bottom seals" />
@@ -370,7 +377,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">Top Seals</Label>
           <Select
             value={wall.topSeals}
-            onValueChange={(value) => onWallChange(wallName, "topSeals", value)}
+            onValueChange={(value) => onWallChange(wallName, { topSeals: value})}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select top seals" />
@@ -392,7 +399,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">Initial Closure System</Label>
           <Select
             value={wall.initialClosureSystem}
-            onValueChange={(value) => onWallChange(wallName, "initialClosureSystem", value)}
+            onValueChange={(value) => onWallChange(wallName, { initialClosureSystem: value})}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select initial closure system" />
@@ -412,7 +419,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">End Panel Type</Label>
           <Select
             value={wall.endPanelType}
-            onValueChange={(value) => onWallChange(wallName, "endPanelType", value)}
+            onValueChange={(value) => onWallChange(wallName, { endPanelType: value})}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select end panel type" />
@@ -434,7 +441,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">Panel Finish Category</Label>
           <Select
             value={wall.panelFinishCategory}
-            onValueChange={(value) => onWallChange(wallName, "panelFinishCategory", value)}
+            onValueChange={(value) => onWallChange(wallName, { panelFinishCategory: value })}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select panel finish category" />
@@ -455,7 +462,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
             <Label className="text-sm font-medium">Panel Finish Specific Item *</Label>
             <Select
               value={wall.panelFinishSpecificItem}
-              onValueChange={(value) => onWallChange(wallName, "panelFinishSpecificItem", value)}
+              onValueChange={(value) => onWallChange(wallName, { panelFinishSpecificItem: value})}
               disabled={!wall.panelFinishCategory}
             >
               <SelectTrigger className="bg-background">
@@ -488,7 +495,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">Track System *</Label>
           <Select
             value={wall.trackSystem}
-            onValueChange={(value) => onWallChange(wallName, "trackSystem", value)}
+            onValueChange={(value) => onWallChange(wallName, { trackSystem: value})}
             disabled={!wall.trackType}
           >
             <SelectTrigger className="bg-background">

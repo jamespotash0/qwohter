@@ -21,17 +21,32 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const [newWallName, setNewWallName] = useState("");
   const [collapsedWalls, setCollapsedWalls] = useState<Set<string>>(new Set());
 
-  const handleWallChange = (wallName: string, field: string, value: string) => {
+  // const handleWallChange = (wallName: string, field: string, value: string) => {
     
+  //   const currentWall = walls.walls[wallName];
+  //   if (!currentWall) {
+  //     console.error(`Wall ${wallName} not found`);
+  //     return;
+  //   }
+  const handleWallChange = (
+    wallName: string,
+    fieldOrUpdates: string | Record<string, string>,
+    value?: string
+  ) => {
     const currentWall = walls.walls[wallName];
-    if (!currentWall) {
-      console.error(`Wall ${wallName} not found`);
-      return;
+    if (!currentWall) return;
+
+    // Determine updates
+    let updates: Record<string, string> = {};
+    if (typeof fieldOrUpdates === "string") {
+      updates = { [fieldOrUpdates]: value ?? "" };
+    } else {
+      updates = fieldOrUpdates;
     }
-    
+
     // Type-safe field assignment for discriminated unions
-    const updatedWall = { ...currentWall, [field]: value } as WallSpecification;
-    
+    const updatedWall = { ...currentWall, ...updates } as WallSpecification;
+
     const updatedWalls = {
       ...walls,
       walls: {
@@ -41,7 +56,8 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     };
     
     // Handle wallSystemType selection - transform to proper discriminated union type
-    if (field === "wallSystemType" && value) {
+    if ("wallSystemType" in updates) {
+      const value = updates["wallSystemType"];
       // When user selects a wall type, create the proper discriminated union structure
       if (value === "Operable Wall") {
         updatedWalls.walls[wallName] = {
@@ -84,7 +100,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           bottomSeals: currentWall.bottomSeals || "",
           topSeals: currentWall.topSeals || "",
           trackType: currentWall.trackType || "",
-          trackSystem: currentWall.trackSystem || "Architectural Grade Extruded Aluminum Alloy 6063-T6",
+          trackSystem: currentWall.trackSystem || "",
           // Glass wall specific fields
           model: "",
           operation: "",
@@ -101,25 +117,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           trackFinish: "",
           floorGuide: "",
           finalClosure: "",
-        };
-      } else if (value === "Accordion Wall") {
-        updatedWalls.walls[wallName] = {
-          wallSystemType: "Accordion Wall" as const,
-          lengthFeet: currentWall.lengthFeet || "",
-          lengthInches: currentWall.lengthInches || "",
-          heightFeet: currentWall.heightFeet || "",
-          heightInches: currentWall.heightInches || "",
-          quantity: currentWall.quantity || "1",
-          panelCount: currentWall.panelCount || "",
-          bottomSeals: currentWall.bottomSeals || "",
-          topSeals: currentWall.topSeals || "",
-          trackType: currentWall.trackType || "",
-          trackSystem: currentWall.trackSystem || "",
-          // Accordion wall specific fields
-          panelMaterial: "",
-          foldConfiguration: "",
-          acousticRating: "",
-          finishType: "",
         };
       }
     }
