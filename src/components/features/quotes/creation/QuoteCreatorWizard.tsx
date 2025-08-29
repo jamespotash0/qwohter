@@ -231,7 +231,7 @@ const QuoteCreatorWizard = ({
       
       if (isOperableWall(wall)) {
         if (!wall.panelConfiguration || !wall.series || !wall.model || 
-            !wall.panelSkin || !wall.stcRating || !wall.panelDesign || 
+            !wall.panelSkin || !wall.stcRating || 
             !wall.trackType || !wall.trackSystem) {
           return false;
         }

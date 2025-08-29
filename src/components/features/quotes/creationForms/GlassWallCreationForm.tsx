@@ -8,13 +8,11 @@ import { modelConfigurations, getAvailableOptions, getFrameThickness, getTrackSy
 interface GlassWallCreationFormProps {
   wall: WallSpecification;
   wallName: string;
-  // onWallChange: (wallName: string, field: string, value: string) => void;
     onWallChange: (wallName: string, updates: Record<string, string>) => void;
 
 }
 
 const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreationFormProps) => {
-  // Early return if not a glass wall
   if (!isGlassWall(wall)) {
     return <div>This form is only for Glass Walls</div>;
   }
@@ -39,44 +37,7 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
   const prevModelRef = useRef<string>('');
   const prevConfigRef = useRef<string>('');
 
-  // const handleFieldChange = (field: string, value: string) => {
-
-  //   const displayValue = value === "None" ? "" : value;
-    
-  //   if (field === 'model') {
-  //     setSelectedModel(displayValue);
-  //   } else if (field === 'panelConfiguration') {
-  //     setSelectedConfiguration(displayValue);
-  //   } else if (field === 'operation') {
-  //     setSelectedOperation(displayValue);
-  //   } else if (field === 'glassType') {
-  //     setSelectedGlassType(displayValue);
-  //   } else if (field === 'stcRating') {
-  //     setSelectedSTCRating(displayValue);
-  //   } else if (field === 'partitionSupport') {
-  //     setSelectedPartitionSupport(displayValue);
-  //   } else if (field === 'passDoorType') {
-  //     setSelectedPassDoorType(displayValue);
-  //   } else if (field === 'passDoorOption') {
-  //     setSelectedPassDoorOption(displayValue);
-  //   } else if (field === 'panelFace') {
-  //     setSelectedPanelFace(displayValue);
-  //   } else if (field === 'hingeType') {
-  //     setSelectedHingeType(displayValue);
-  //   } else if (field === 'frameFinish') {
-  //     setSelectedFrameFinish(displayValue);
-  //   } else if (field === 'trackType') {
-  //     setSelectedTrackType(displayValue);
-  //   } else if (field === 'trackFinish') {
-  //     setSelectedTrackFinish(displayValue);
-  //   } else if (field === 'finalClosure') {
-  //     setSelectedFinalClosure(displayValue);
-  //   } else if (field === 'bottomSeals') {
-  //     setSelectedBottomSeals(displayValue);
-  //   } else if (field === 'topSeals') {
-  //     setSelectedTopSeals(displayValue);
-  //   }
-  // };
+  
   const handleFieldChange = (field: string, value: string) => {
     const displayValue = value === "None" ? "" : value;
 
