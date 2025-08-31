@@ -33,6 +33,8 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
   const [selectedFinalClosure, setSelectedFinalClosure] = useState<string>(wall.finalClosure || '');
   const [selectedBottomSeals, setSelectedBottomSeals] = useState<string>(wall.bottomSeals || '');
   const [selectedTopSeals, setSelectedTopSeals] = useState<string>(wall.topSeals || '');
+  const [calculatedFrameThickness, setCalculatedFrameThickness] = useState<string>(wall.frameThickness || '');
+  const [calculatedTrackSystem, setCalculatedTrackSystem] = useState<string>(wall.trackSystem || '');
 
   const prevModelRef = useRef<string>('');
   const prevConfigRef = useRef<string>('');
@@ -97,6 +99,23 @@ const GlassWallCreationForm = ({ wall, wallName, onWallChange }: GlassWallCreati
 
     if (field === "passDoorType" && displayValue === "") {
       updates.passDoorOption = ""; // ensure dependent resets in wall object
+    }
+
+    // Auto-calculate frameThickness and trackSystem for glass walls
+    if (field === "model") {
+      const frameThickness = getFrameThickness(displayValue as GlassWallModel, selectedSTCRating);
+      const trackSystem = getTrackSystem(displayValue as GlassWallModel);
+      
+      setCalculatedFrameThickness(frameThickness);
+      setCalculatedTrackSystem(trackSystem);
+      
+      updates.frameThickness = frameThickness;
+      updates.trackSystem = trackSystem;
+    } else if (field === "stcRating" && selectedModel === "Stella") {
+      const frameThickness = getFrameThickness("Stella", displayValue);
+      
+      setCalculatedFrameThickness(frameThickness);
+      updates.frameThickness = frameThickness;
     }
 
     onWallChange(wallName, updates);

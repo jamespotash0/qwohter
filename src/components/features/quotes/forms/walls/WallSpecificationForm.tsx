@@ -316,8 +316,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                       wallName={wallName} 
                       onWallChange={handleWallChange} 
                     />
-
-                    {/* Only show specific forms once wallSystemType is selected */}
                     {wall.wallSystemType === "Operable Wall" && (
                       <OperableWallCreationForm 
                         wall={wall} 
@@ -332,9 +330,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         wallName={wallName} 
                         onWallChange={handleWallChange} 
                       />
-                    )}
-                    
-                    {/* Show a message if no wall type is selected yet */}
+                    )}      
                     {!wall.wallSystemType && (
                       <div className="text-center py-4 text-muted-foreground border-t">
                         <p className="text-sm">👆 Please select a Wall System Type above to continue with specific wall configuration.</p>

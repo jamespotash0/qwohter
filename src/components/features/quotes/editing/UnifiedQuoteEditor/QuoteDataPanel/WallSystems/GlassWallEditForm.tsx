@@ -33,7 +33,8 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
         onFieldChange(wallName, 'glasswallSTCRating', '');
         onFieldChange(wallName, 'glasswallGlassType', '');
         onFieldChange(wallName, 'glasswallPartitionSupport', '');
-        onFieldChange(wallName, 'glasswallFrameThickness', '');
+        onFieldChange(wallName, 'frameThickness', '');
+        onFieldChange(wallName, 'trackSystem', '');
         onFieldChange(wallName, 'glasswallPanelFace', '');
         onFieldChange(wallName, 'glasswallFrameFinish', '');
         onFieldChange(wallName, 'glasswallHingeType', '');
@@ -299,8 +300,14 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
               if (model === 'Ava') thickness = '1-7/16"';
               if (model === 'Mata') thickness = '1-3/4"';
               
-              if (thickness && thickness !== wall.glasswallFrameThickness) {
-                onFieldChange(wallName, 'glasswallFrameThickness', thickness);
+              if (thickness && thickness !== wall.frameThickness) {
+                onFieldChange(wallName, 'frameThickness', thickness);
+              }
+              
+              // Auto-set trackSystem for glass walls
+              const trackSystem = 'Architectural Grade Extruded Aluminum Alloy 6063-T6';
+              if (trackSystem && trackSystem !== wall.trackSystem) {
+                onFieldChange(wallName, 'trackSystem', trackSystem);
               }
               
               return thickness || 'N/A';

@@ -99,6 +99,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
     glasswallPassDoorOption: '',
     glasswallHingeType: '',
     glasswallFrameThickness: '',
+    glasswallTrackSystem: '',
     glasswallTrackType: '',
     glasswallTrackFinish: '',
     glasswallFinalClosure: '',
