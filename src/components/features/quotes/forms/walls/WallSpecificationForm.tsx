@@ -21,13 +21,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
   const [newWallName, setNewWallName] = useState("");
   const [collapsedWalls, setCollapsedWalls] = useState<Set<string>>(new Set());
 
-  // const handleWallChange = (wallName: string, field: string, value: string) => {
-    
-  //   const currentWall = walls.walls[wallName];
-  //   if (!currentWall) {
-  //     console.error(`Wall ${wallName} not found`);
-  //     return;
-  //   }
+ 
   const handleWallChange = (
     wallName: string,
     fieldOrUpdates: string | Record<string, string>,
@@ -36,7 +30,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     const currentWall = walls.walls[wallName];
     if (!currentWall) return;
 
-    // Determine updates
+
     let updates: Record<string, string> = {};
     if (typeof fieldOrUpdates === "string") {
       updates = { [fieldOrUpdates]: value ?? "" };
@@ -58,7 +52,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
     // Handle wallSystemType selection - transform to proper discriminated union type
     if ("wallSystemType" in updates) {
       const value = updates["wallSystemType"];
-      // When user selects a wall type, create the proper discriminated union structure
       if (value === "Operable Wall") {
         updatedWalls.walls[wallName] = {
           wallSystemType: "Operable Wall" as const,
