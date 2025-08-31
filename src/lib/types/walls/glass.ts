@@ -171,15 +171,15 @@ export function getAvailableOptions(
 export function getFrameThickness(model: GlassWallModel, stcRating?: string): string {
   switch (model) {
     case 'Stella':
-      return stcRating === '44' ? '4-1/2"' : '4-11/16"';
+      return stcRating === '44' ? '4 1/2"' : '4 11/16"';
     case 'Luna':
-      return '2-3/4"';
+      return '2 3/4"';
     case 'Illona':
-      return '1-3/8"';
+      return '1 3/8"';
     case 'Ava':
-      return '1-7/16"';
+      return '1 7/16"';
     case 'Mata':
-      return '1-3/4"';
+      return '1 3/4"';
     default:
       return 'Auto-Calculated';
   }

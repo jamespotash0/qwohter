@@ -17,7 +17,13 @@ export const createTemplateHelpers = (): TemplateHelpers => ({
   },
 
   toWords: (num: number | string): string => {
+    if (num === null || num === undefined || num === '' || num === 'undefined') {
+      return 'ZERO';
+    }
     const n = parseInt(num.toString());
+    if (isNaN(n)) {
+      return 'ZERO';
+    }
     const words = ['ZERO', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN', 'ELEVEN', 'TWELVE'];
     return words[n] || n.toString();
   },
@@ -71,12 +77,13 @@ export const createTemplateHelpers = (): TemplateHelpers => ({
     heightInches?: string,
     includeLabels = true
   ) => {
-    const wf = parseInt(lengthFeet || '0');
-    const hf = parseInt(heightFeet || '0');
+    // Handle undefined/null/empty values properly
+    const wf = (lengthFeet && lengthFeet !== 'undefined') ? parseInt(lengthFeet) : 0;
+    const hf = (heightFeet && heightFeet !== 'undefined') ? parseInt(heightFeet) : 0;
     
     // Handle fractional inches - preserve the original string if it contains fractions
-    const wi = lengthInches || '0';
-    const hi = heightInches || '0';
+    const wi = (lengthInches && lengthInches !== 'undefined') ? lengthInches : '0';
+    const hi = (heightInches && heightInches !== 'undefined') ? heightInches : '0';
     
     // Format inches to handle both whole numbers and fractions
     const formatInches = (inches: string) => {

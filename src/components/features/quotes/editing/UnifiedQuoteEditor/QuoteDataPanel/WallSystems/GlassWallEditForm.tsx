@@ -25,33 +25,33 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
 
     // Cascading logic - reset all dependent fields
 
-    if (field === "glasswallModel") {
+    if (field === "model") {
       // Reset dependent fields when model changes
       setTimeout(() => {
-        onFieldChange(wallName, 'glasswallOperation', '');
-        onFieldChange(wallName, 'glasswallPanelConfiguration', '');
-        onFieldChange(wallName, 'glasswallSTCRating', '');
-        onFieldChange(wallName, 'glasswallGlassType', '');
-        onFieldChange(wallName, 'glasswallPartitionSupport', '');
+        onFieldChange(wallName, 'operation', '');
+        onFieldChange(wallName, 'panelConfiguration', '');
+        onFieldChange(wallName, 'stcRating', '');
+        onFieldChange(wallName, 'glassType', '');
+        onFieldChange(wallName, 'partitionSupport', '');
         onFieldChange(wallName, 'frameThickness', '');
         onFieldChange(wallName, 'trackSystem', '');
-        onFieldChange(wallName, 'glasswallPanelFace', '');
-        onFieldChange(wallName, 'glasswallFrameFinish', '');
-        onFieldChange(wallName, 'glasswallHingeType', '');
-        onFieldChange(wallName, 'glasswallTrackType', '');
-        onFieldChange(wallName, 'glasswallTrackFinish', '');
-        onFieldChange(wallName, 'glasswallFloorGuide', '');
-        onFieldChange(wallName, 'glasswallPassDoorType', '');
-        onFieldChange(wallName, 'glasswallPassDoorOption', '');
-        onFieldChange(wallName, 'glasswallFinalClosure', '');
-        onFieldChange(wallName, 'glasswallBottomSeals', '');
-        onFieldChange(wallName, 'glasswallTopSeals', '');
+        onFieldChange(wallName, 'panelFace', '');
+        onFieldChange(wallName, 'frameFinish', '');
+        onFieldChange(wallName, 'hingeType', '');
+        onFieldChange(wallName, 'trackType', '');
+        onFieldChange(wallName, 'trackFinish', '');
+        onFieldChange(wallName, 'floorGuide', '');
+        onFieldChange(wallName, 'passDoorType', '');
+        onFieldChange(wallName, 'passDoorOption', '');
+        onFieldChange(wallName, 'finalClosure', '');
+        onFieldChange(wallName, 'bottomSeals', '');
+        onFieldChange(wallName, 'topSeals', '');
       }, 0);
     }
 
-    if (field === "glasswallPassDoorType") {
+    if (field === "passDoorType") {
       setTimeout(() => {
-        onFieldChange(wallName, 'glasswallPassDoorOption', '');
+        onFieldChange(wallName, 'passDoorOption', '');
       }, 0);
     }
   };
@@ -62,9 +62,9 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
       <div className={`space-y-1 ${showFullFields ? '' : 'hidden'}`}>
         <Label className="text-xs">Glass Wall Model</Label>
         <Select
-          key={`${wallName}-glasswallModel-${wall.glasswallModel}`}
-          value={wall.glasswallModel || ''}
-          onValueChange={(value) => handleFieldChange('glasswallModel', value)}
+          key={`${wallName}-model-${wall.model}`}
+          value={wall.model || ''}
+          onValueChange={(value) => handleFieldChange('model', value)}
         >
           <SelectTrigger className="text-xs h-8">
             <SelectValue placeholder="Select model" />
@@ -85,28 +85,28 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
         <div className={`space-y-1 ${showFullFields ? '' : 'hidden'}`}>
           <Label className="text-xs">Panel Configuration</Label>
           <Select
-            value={wall.glasswallPanelConfiguration || ''}
-            onValueChange={(value) => handleFieldChange('glasswallPanelConfiguration', value)}
-            disabled={!wall.glasswallModel}
+            value={wall.panelConfiguration || ''}
+            onValueChange={(value) => handleFieldChange('panelConfiguration', value)}
+            disabled={!wall.model}
           >
             <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select config" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {wall.glasswallModel === "Stella" && (
+              {wall.model === "Stella" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Luna" && (
+              {wall.model === "Luna" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
                   <SelectItem className="text-left" value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Illona" && (
+              {wall.model === "Illona" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
@@ -115,14 +115,14 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                   <SelectItem className="text-left" value="Single & Telescoping Slider Panels">Single & Telescoping Slider Panels</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Ava" && (
+              {wall.model === "Ava" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
                   <SelectItem className="text-left" value="Hinged-Paired Panels">Hinged-Paired Panels</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Mata" && (
+              {wall.model === "Mata" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Individual Panels">Individual Panels</SelectItem>
@@ -136,15 +136,15 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
         <div className={`space-y-1 ${showFullFields ? '' : 'hidden'}`}>
           <Label className="text-xs">Operation</Label>
           <Select
-            value={wall.glasswallOperation || ''}
-            onValueChange={(value) => handleFieldChange('glasswallOperation', value)}
-            disabled={!wall.glasswallModel}
+            value={wall.operation || ''}
+            onValueChange={(value) => handleFieldChange('operation', value)}
+            disabled={!wall.model}
           >
             <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select operation" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {wall.glasswallModel === "Stella" && (
+              {wall.model === "Stella" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Manual">Manual</SelectItem>
@@ -153,7 +153,7 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                   <SelectItem className="text-left" value="Semi-Automated Seals">Semi-Automated Seals</SelectItem>
                 </>
               )}
-              {["Luna", "Illona", "Ava", "Mata"].includes(wall.glasswallModel || '') && (
+              {["Luna", "Illona", "Ava", "Mata"].includes(wall.model || '') && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Manual">Manual</SelectItem>
@@ -167,34 +167,34 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
         <div className={`space-y-1 ${showFullFields ? '' : 'hidden'}`}>
           <Label className="text-xs">STC Rating</Label>
           <Select
-            value={wall.glasswallSTCRating || ''}
-            onValueChange={(value) => handleFieldChange('glasswallSTCRating', value)}
-            disabled={!wall.glasswallModel}
+            value={wall.stcRating || ''}
+            onValueChange={(value) => handleFieldChange('stcRating', value)}
+            disabled={!wall.model}
           >
             <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select STC" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {wall.glasswallModel === "Stella" && (
+              {wall.model === "Stella" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="44">44</SelectItem>
                   <SelectItem className="text-left" value="50">50</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Luna" && (
+              {wall.model === "Luna" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="43">43</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Illona" && (
+              {wall.model === "Illona" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="33">33</SelectItem>
                 </>
               )}
-              {(wall.glasswallModel === "Ava" || wall.glasswallModel === "Mata") && (
+              {(wall.model === "Ava" || wall.model === "Mata") && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Non-Acoustic">Non-Acoustic</SelectItem>
@@ -206,15 +206,15 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
         <div className="space-y-1">
           <Label className="text-xs">Glass Type</Label>
           <Select
-            value={wall.glasswallGlassType || ''}
-            onValueChange={(value) => handleFieldChange('glasswallGlassType', value)}
-            disabled={!wall.glasswallModel}
+            value={wall.glassType || ''}
+            onValueChange={(value) => handleFieldChange('glassType', value)}
+            disabled={!wall.model}
           >
             <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select glass type" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {wall.glasswallModel === "Stella" && (
+              {wall.model === "Stella" && (
                 <>
                   <SelectItem className="text-left" value="Tempered Glass">Tempered Glass</SelectItem>
                   <SelectItem className="text-left" value="Laminated Glass">Laminated Glass</SelectItem>
@@ -223,7 +223,7 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                   <SelectItem className="text-left" value="Fully Back-Painted Glass">Fully Back-Painted Glass</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Luna" && (
+              {wall.model === "Luna" && (
                 <>
                   <SelectItem className="text-left" value="Tempered Glass">Tempered Glass</SelectItem>
                   <SelectItem className="text-left" value="Laminated Glass">Laminated Glass</SelectItem>
@@ -232,17 +232,17 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                   <SelectItem className="text-left" value="Fully Back-Painted Glass">Fully Back-Painted Glass</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Illona" && (
+              {wall.model === "Illona" && (
                 <>
                   <SelectItem className="text-left" value="Tempered Glass">Tempered Glass</SelectItem>
                   <SelectItem className="text-left" value="Laminated Glass">Laminated Glass</SelectItem>
                   <SelectItem className="text-left" value="Back-Painted Glass">Back-Painted Glass</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Ava" && (
+              {wall.model === "Ava" && (
                 <SelectItem className="text-left" value="1/2&quot; Tempered Glass">1/2" Tempered Glass</SelectItem>
               )}
-              {wall.glasswallModel === "Mata" && (
+              {wall.model === "Mata" && (
                 <>
                   <SelectItem className="text-left" value="1/4&quot; Tempered Glass">1/4" Tempered Glass</SelectItem>
                   <SelectItem className="text-left" value="5/16&quot; Frosted Laminated Glass">5/16" Frosted Laminated Glass</SelectItem>
@@ -257,28 +257,28 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
         <div className="space-y-1">
           <Label className="text-xs">Partition Support</Label>
           <Select
-            value={wall.glasswallPartitionSupport || ''}
-            onValueChange={(value) => handleFieldChange('glasswallPartitionSupport', value)}
-            disabled={!wall.glasswallModel}
+            value={wall.partitionSupport || ''}
+            onValueChange={(value) => handleFieldChange('partitionSupport', value)}
+            disabled={!wall.model}
           >
             <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select support" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {wall.glasswallModel === "Stella" && (
+              {wall.model === "Stella" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Top-Supported">Top-Supported</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Luna" && (
+              {wall.model === "Luna" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Top-Supported">Top-Supported</SelectItem>
                   <SelectItem className="text-left" value="Floor-Supported">Floor-Supported</SelectItem>
                 </>
               )}
-              {["Illona", "Ava", "Mata"].includes(wall.glasswallModel || '') && (
+              {["Illona", "Ava", "Mata"].includes(wall.model || '') && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Top-Supported">Top-Supported</SelectItem>
@@ -291,14 +291,14 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
           <Label className="text-xs">Frame Thickness</Label>
           <Input
             value={(() => {
-              const model = wall.glasswallModel;
-              const stc = wall.glasswallSTCRating;
+              const model = wall.model;
+              const stc = wall.stcRating;
               let thickness = '';
-              if (model === 'Stella') thickness = stc === '44' ? '4-1/2"' : '4-11/16"';
-              if (model === 'Luna') thickness = '2-3/4"';
-              if (model === 'Illona') thickness = '1-3/8"';
-              if (model === 'Ava') thickness = '1-7/16"';
-              if (model === 'Mata') thickness = '1-3/4"';
+              if (model === 'Stella') thickness = stc === '44' ? '4 1/2"' : '4- 1/16"';
+              if (model === 'Luna') thickness = '2 3/4"';
+              if (model === 'Illona') thickness = '1 3/8"';
+              if (model === 'Ava') thickness = '1 7/16"';
+              if (model === 'Mata') thickness = '1 3/4"';
               
               if (thickness && thickness !== wall.frameThickness) {
                 onFieldChange(wallName, 'frameThickness', thickness);
@@ -310,7 +310,7 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                 onFieldChange(wallName, 'trackSystem', trackSystem);
               }
               
-              return thickness || 'N/A';
+              return thickness || 'Auto-Calculated';
             })()}
             readOnly
             className="text-xs h-8 bg-muted text-muted-foreground"
@@ -321,15 +321,15 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
         <div className="space-y-1">
           <Label className="text-xs">Panel Face Options</Label>
           <Select
-            value={wall.glasswallPanelFace || ''}
-            onValueChange={(value) => handleFieldChange('glasswallPanelFace', value)}
-            disabled={!wall.glasswallModel}
+            value={wall.panelFace || ''}
+            onValueChange={(value) => handleFieldChange('panelFace', value)}
+            disabled={!wall.model}
           >
             <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select panel face" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {wall.glasswallModel === "Stella" && (
+              {wall.model === "Stella" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Solid Face">Solid Face</SelectItem>
@@ -339,7 +339,7 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                   <SelectItem className="text-left" value="Internal Mullions & Muntins">Internal Mullions & Muntins</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Luna" && (
+              {wall.model === "Luna" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Solid Face">Solid Face</SelectItem>
@@ -349,16 +349,16 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                   <SelectItem className="text-left" value="Internal Muntins">Internal Muntins</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Illona" && (
+              {wall.model === "Illona" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Surface-Mounted Muntins">Surface-Mounted Muntins</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Ava" && (
+              {wall.model === "Ava" && (
                 <SelectItem className="text-left" value="None">None</SelectItem>
               )}
-              {wall.glasswallModel === "Mata" && (
+              {wall.model === "Mata" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Wood Insert">Wood Insert</SelectItem>
@@ -373,15 +373,15 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
         <div className="space-y-1">
           <Label className="text-xs">Frame Finish</Label>
           <Select
-            value={wall.glasswallFrameFinish || ''}
-            onValueChange={(value) => handleFieldChange('glasswallFrameFinish', value)}
-            disabled={!wall.glasswallModel}
+            value={wall.frameFinish || ''}
+            onValueChange={(value) => handleFieldChange('frameFinish', value)}
+            disabled={!wall.model}
           >
             <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select frame finish" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {wall.glasswallModel === "Stella" && (
+              {wall.model === "Stella" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Clear Anodized">Clear Anodized</SelectItem>
@@ -391,7 +391,7 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                   <SelectItem className="text-left" value="Sublimation Wood Look">Sublimation Wood Look</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Luna" && (
+              {wall.model === "Luna" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
@@ -399,7 +399,7 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                   <SelectItem className="text-left" value="Sublimation Wood Look">Sublimation Wood Look</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Illona" && (
+              {wall.model === "Illona" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
@@ -408,7 +408,7 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                   <SelectItem className="text-left" value="Sublimation Wood Look">Sublimation Wood Look</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Ava" && (
+              {wall.model === "Ava" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Clear Anodized">Clear Anodized</SelectItem>
@@ -416,7 +416,7 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                   <SelectItem className="text-left" value="Custom RAL Color Options">Custom RAL Color Options</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Mata" && (
+              {wall.model === "Mata" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Stained Fruitwood Dark Oak">Stained Fruitwood Dark Oak</SelectItem>
@@ -430,55 +430,29 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Hinge Type</Label>
-          <Select
-            value={wall.glasswallHingeType || ''}
-            onValueChange={(value) => handleFieldChange('glasswallHingeType', value)}
-            disabled={!wall.glasswallModel}
-          >
-            <SelectTrigger className="text-xs h-8 text-left">
-              <SelectValue placeholder="Select hinge type" />
-            </SelectTrigger>
-            <SelectContent className="text-left">
-              {["Stella", "Luna", "Illona"].includes(wall.glasswallModel || '') && (
-                <>
-                  <SelectItem className="text-left" value="None">None</SelectItem>
-                  <SelectItem className="text-left" value="Invisible Hinges">Invisible Hinges</SelectItem>
-                </>
-              )}
-              {["Ava", "Mata"].includes(wall.glasswallModel || '') && (
-                <>
-                  <SelectItem className="text-left" value="None">None</SelectItem>
-                  <SelectItem className="text-left" value="Full-Leaf Butt Hinges">Full-Leaf Butt Hinges</SelectItem>
-                </>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
 
         {/* Row 6 - Track Type spans full width */}
         <div className="col-span-2 space-y-1">
           <Label className="text-xs">Glass Wall Track Type</Label>
           <Select
-            value={wall.glasswallTrackType || ''}
-            onValueChange={(value) => handleFieldChange('glasswallTrackType', value)}
-            disabled={!wall.glasswallModel}
+            value={wall.trackType || ''}
+            onValueChange={(value) => handleFieldChange('trackType', value)}
+            disabled={!wall.model}
           >
             <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select track type" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {wall.glasswallModel === "Stella" && (
+              {wall.model === "Stella" && (
                 <SelectItem className="text-left" value="Top-Supported Multi-directional & Single-Point">Top-Supported Multi-directional & Single-Point</SelectItem>
               )}
-              {wall.glasswallModel === "Luna" && (
+              {wall.model === "Luna" && (
                 <>
                   <SelectItem className="text-left" value="Top-Supported Multi-directional & Single-Point">Top-Supported Multi-directional & Single-Point</SelectItem>
                   <SelectItem className="text-left" value="Floor-Supported Top Guide">Floor-Supported Top Guide</SelectItem>
                 </>
               )}
-              {["Illona", "Ava", "Mata"].includes(wall.glasswallModel || '') && (
+              {["Illona", "Ava", "Mata"].includes(wall.model || '') && (
                 <SelectItem className="text-left" value="Top-Supported Multi-directional & Single-Point">Top-Supported Multi-directional & Single-Point</SelectItem>
               )}
             </SelectContent>
@@ -489,15 +463,15 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
         <div className="space-y-1">
           <Label className="text-xs">Track Finish</Label>
           <Select
-            value={wall.glasswallTrackFinish || ''}
-            onValueChange={(value) => handleFieldChange('glasswallTrackFinish', value)}
-            disabled={!wall.glasswallModel}
+            value={wall.trackFinish || ''}
+            onValueChange={(value) => handleFieldChange('trackFinish', value)}
+            disabled={!wall.model}
           >
             <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select track finish" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {wall.glasswallModel === "Stella" && (
+              {wall.model === "Stella" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Clear Anodized">Clear Anodized</SelectItem>
@@ -506,7 +480,7 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                   <SelectItem className="text-left" value="Custom RAL Option">Custom RAL Option</SelectItem>
                 </>
               )}
-              {["Luna", "Illona"].includes(wall.glasswallModel || '') && (
+              {["Luna", "Illona"].includes(wall.model || '') && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
@@ -515,7 +489,7 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                   <SelectItem className="text-left" value="Custom RAL Option">Custom RAL Option</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Ava" && (
+              {wall.model === "Ava" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
@@ -523,7 +497,7 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                   <SelectItem className="text-left" value="Custom RAL Color Option">Custom RAL Color Option</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Mata" && (
+              {wall.model === "Mata" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Black Powder Coat">Black Powder Coat</SelectItem>
@@ -537,21 +511,21 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
         <div className="space-y-1">
           <Label className="text-xs">Floor Guide</Label>
           <Select
-            value={wall.glasswallFloorGuide || ''}
-            onValueChange={(value) => handleFieldChange('glasswallFloorGuide', value)}
-            disabled={!wall.glasswallModel}
+            value={wall.floorGuide || ''}
+            onValueChange={(value) => handleFieldChange('floorGuide', value)}
+            disabled={!wall.model}
           >
             <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select floor guide" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {["Luna", "Illona"].includes(wall.glasswallModel || '') && (
+              {["Luna", "Illona"].includes(wall.model || '') && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Optional">Optional</SelectItem>
                 </>
               )}
-              {["Ava", "Mata"].includes(wall.glasswallModel || '') && (
+              {["Ava", "Mata"].includes(wall.model || '') && (
                 <SelectItem className="text-left" value="None">None</SelectItem>
               )}
             </SelectContent>
@@ -562,23 +536,23 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
         <div className="space-y-1">
           <Label className="text-xs">Pass Door Type</Label>
           <Select
-            key={`${wallName}-glasswallPassDoorType-${wall.glasswallPassDoorType}`}
-            value={wall.glasswallPassDoorType || ''}
-            onValueChange={(value) => handleFieldChange('glasswallPassDoorType', value)}
-            disabled={!wall.glasswallModel}
+            key={`${wallName}-passDoorType-${wall.passDoorType}`}
+            value={wall.passDoorType || ''}
+            onValueChange={(value) => handleFieldChange('passDoorType', value)}
+            disabled={!wall.model}
           >
             <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select door type" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {wall.glasswallModel === "Stella" && (
+              {wall.model === "Stella" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Full-Height">Full-Height</SelectItem>
                   <SelectItem className="text-left" value="Inset">Inset</SelectItem>
                 </>
               )}
-              {["Luna", "Illona", "Ava", "Mata"].includes(wall.glasswallModel || '') && (
+              {["Luna", "Illona", "Ava", "Mata"].includes(wall.model || '') && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Full-Height">Full-Height</SelectItem>
@@ -591,15 +565,15 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
         <div className="space-y-1">
           <Label className="text-xs">Pass Door Option</Label>
           <Select
-            value={wall.glasswallPassDoorOption || ''}
-            onValueChange={(value) => handleFieldChange('glasswallPassDoorOption', value)}
-            disabled={!wall.glasswallModel || !wall.glasswallPassDoorType}
+            value={wall.passDoorOption || ''}
+            onValueChange={(value) => handleFieldChange('passDoorOption', value)}
+            disabled={!wall.model || !wall.passDoorType}
           >
             <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select door option" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {wall.glasswallPassDoorType && (
+              {wall.passDoorType && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Single">Single</SelectItem>
@@ -610,63 +584,91 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
           </Select>
         </div>
 
-        {/* Row 9 - Final Closure spans full width */}
-        <div className="col-span-2 space-y-1">
-          <Label className="text-xs">Final Closure</Label>
+        {/* Row 9 - Hinge Type */}
+        <div className="space-y-1">
+          <Label className="text-xs">Hinge Type</Label>
           <Select
-            value={wall.glasswallFinalClosure || ''}
-            onValueChange={(value) => handleFieldChange('glasswallFinalClosure', value)}
-            disabled={!wall.glasswallModel}
+            value={wall.hingeType || ''}
+            onValueChange={(value) => handleFieldChange('hingeType', value)}
+            disabled={!wall.model}
           >
             <SelectTrigger className="text-xs h-8 text-left">
-              <SelectValue placeholder="Select closure" />
+              <SelectValue placeholder="Select hinge type" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {wall.glasswallModel === "Stella" && (
+              {["Stella", "Luna", "Illona"].includes(wall.model || '') && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
-                  <SelectItem className="text-left" value="Panel-Mounted Telescoping Jamb">Panel-Mounted Telescoping Jamb</SelectItem>
-                  <SelectItem className="text-left" value="Wall-Mounted Telescoping Jamb">Wall-Mounted Telescoping Jamb</SelectItem>
-                  <SelectItem className="text-left" value="Full-Height Door">Full-Height Door</SelectItem>
+                  <SelectItem className="text-left" value="Invisible Hinges">Invisible Hinges</SelectItem>
                 </>
               )}
-              {["Luna", "Illona"].includes(wall.glasswallModel || '') && (
+              {["Ava", "Mata"].includes(wall.model || '') && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
-                  <SelectItem className="text-left" value="Hinged Closure Panel">Hinged Closure Panel</SelectItem>
-                  <SelectItem className="text-left" value="Full-Height Door">Full-Height Door</SelectItem>
-                </>
-              )}
-              {wall.glasswallModel === "Ava" && (
-                <>
-                  <SelectItem className="text-left" value="None">None</SelectItem>
-                  <SelectItem className="text-left" value="Fixed Pivot Panel">Fixed Pivot Panel</SelectItem>
-                  <SelectItem className="text-left" value="Fixed Swing Panel">Fixed Swing Panel</SelectItem>
-                </>
-              )}
-              {wall.glasswallModel === "Mata" && (
-                <>
-                  <SelectItem className="text-left" value="Hinged Closure Panel">Hinged Closure Panel</SelectItem>
-                  <SelectItem className="text-left" value="None Required">None Required</SelectItem>
+                  <SelectItem className="text-left" value="Full-Leaf Butt Hinges">Full-Leaf Butt Hinges</SelectItem>
                 </>
               )}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Row 10 */}
+        {/* Row 9 - Final Closure */}
+        <div className="space-y-1">
+          <Label className="text-xs">Final Closure</Label>
+          <Select
+            value={wall.finalClosure || ''}
+            onValueChange={(value) => handleFieldChange('finalClosure', value)}
+            disabled={!wall.model}
+          >
+              <SelectTrigger className="text-xs h-8 text-left">
+                <SelectValue placeholder="Select closure" />
+              </SelectTrigger>
+              <SelectContent className="text-left">
+                {wall.model === "Stella" && (
+                  <>
+                    <SelectItem className="text-left" value="None">None</SelectItem>
+                    <SelectItem className="text-left" value="Panel-Mounted Telescoping Jamb">Panel-Mounted Telescoping Jamb</SelectItem>
+                    <SelectItem className="text-left" value="Wall-Mounted Telescoping Jamb">Wall-Mounted Telescoping Jamb</SelectItem>
+                    <SelectItem className="text-left" value="Full-Height Door">Full-Height Door</SelectItem>
+                  </>
+                )}
+                {["Luna", "Illona"].includes(wall.model || '') && (
+                  <>
+                    <SelectItem className="text-left" value="None">None</SelectItem>
+                    <SelectItem className="text-left" value="Hinged Closure Panel">Hinged Closure Panel</SelectItem>
+                    <SelectItem className="text-left" value="Full-Height Door">Full-Height Door</SelectItem>
+                  </>
+                )}
+                {wall.model === "Ava" && (
+                  <>
+                    <SelectItem className="text-left" value="None">None</SelectItem>
+                    <SelectItem className="text-left" value="Fixed Pivot Panel">Fixed Pivot Panel</SelectItem>
+                    <SelectItem className="text-left" value="Fixed Swing Panel">Fixed Swing Panel</SelectItem>
+                  </>
+                )}
+                {wall.model === "Mata" && (
+                  <>
+                    <SelectItem className="text-left" value="Hinged Closure Panel">Hinged Closure Panel</SelectItem>
+                    <SelectItem className="text-left" value="None Required">None Required</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+        </div>
+
+        {/* Row 10 - Bottom Seals */}
         <div className="space-y-1">
           <Label className="text-xs">Bottom Seals</Label>
           <Select
-            value={wall.glasswallBottomSeals || ''}
-            onValueChange={(value) => handleFieldChange('glasswallBottomSeals', value)}
-            disabled={!wall.glasswallModel}
+            value={wall.bottomSeals || ''}
+            onValueChange={(value) => handleFieldChange('bottomSeals', value)}
+            disabled={!wall.model}
           >
             <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select bottom seals" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {wall.glasswallModel === "Stella" && (
+              {wall.model === "Stella" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Electric">Electric</SelectItem>
@@ -676,20 +678,20 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                   <SelectItem className="text-left" value="Operable">Operable</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Luna" && (
+              {wall.model === "Luna" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Floor Supported Fixed Bulb">Floor Supported Fixed Bulb</SelectItem>
                   <SelectItem className="text-left" value="Top Supported Fixed Brush">Top Supported Fixed Brush</SelectItem>
                 </>
               )}
-              {["Illona", "Ava"].includes(wall.glasswallModel || '') && (
+              {["Illona", "Ava"].includes(wall.model || '') && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Fixed Brush">Fixed Brush</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Mata" && (
+              {wall.model === "Mata" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Fixed Flexible Vinyl">Fixed Flexible Vinyl</SelectItem>
@@ -698,18 +700,20 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
             </SelectContent>
           </Select>
         </div>
+
+        {/* Row 10 - Top Seals */}
         <div className="space-y-1">
           <Label className="text-xs">Top Seals</Label>
           <Select
-            value={wall.glasswallTopSeals || ''}
-            onValueChange={(value) => handleFieldChange('glasswallTopSeals', value)}
-            disabled={!wall.glasswallModel}
+            value={wall.topSeals || ''}
+            onValueChange={(value) => handleFieldChange('topSeals', value)}
+            disabled={!wall.model}
           >
             <SelectTrigger className="text-xs h-8 text-left">
               <SelectValue placeholder="Select top seals" />
             </SelectTrigger>
             <SelectContent className="text-left">
-              {wall.glasswallModel === "Stella" && (
+              {wall.model === "Stella" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Electric">Electric</SelectItem>
@@ -719,20 +723,20 @@ export const GlassWallEditForm: React.FC<GlassWallEditFormProps> = ({
                   <SelectItem className="text-left" value="Operable">Operable</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Luna" && (
+              {wall.model === "Luna" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Floor Supported Fixed Bulb">Floor Supported Fixed Bulb</SelectItem>
                   <SelectItem className="text-left" value="Top Supported Fixed Brush">Top Supported Fixed Brush</SelectItem>
                 </>
               )}
-              {["Illona", "Ava"].includes(wall.glasswallModel || '') && (
+              {["Illona", "Ava"].includes(wall.model || '') && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Fixed Brush">Fixed Brush</SelectItem>
                 </>
               )}
-              {wall.glasswallModel === "Mata" && (
+              {wall.model === "Mata" && (
                 <>
                   <SelectItem className="text-left" value="None">None</SelectItem>
                   <SelectItem className="text-left" value="Fixed Flexible Vinyl">Fixed Flexible Vinyl</SelectItem>

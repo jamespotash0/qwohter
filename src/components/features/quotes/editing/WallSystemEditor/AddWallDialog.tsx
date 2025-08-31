@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { OperableWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/OperableWallEditForm';
 import { GlassWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/GlassWallEditForm';
+import { validateWallSpecification } from '@/utils/wallValidation';
 
 interface AddWallDialogProps {
   isOpen: boolean;
@@ -254,15 +255,24 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
     setHasChanges(true);
   };
 
+  // Validation function
+  const isWallValid = () => {
+    const validation = validateWallSpecification(newWall);
+    return validation.isValid;
+  };
+
   const handleSave = () => {
     setShowConfirmDialog(true);
   };
 
   const handleConfirmSave = async () => {
     try {
-      console.log('Saving wall with name:', wallName, 'and data:', newWall);
+      // Filter wall data to only include fields relevant to the selected wall type
+      const cleanWallData = filterWallDataByType(newWall);
+      console.log('Saving wall with name:', wallName, 'and clean data:', cleanWallData);
+      
       // Save wall data - database save is now handled by the parent component
-      await onSave(wallName, newWall);
+      await onSave(wallName, cleanWallData);
       
       setShowConfirmDialog(false);
       onClose();
@@ -270,6 +280,67 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
       console.error('Error saving wall:', error);
       // Keep dialog open if save fails
     }
+  };
+
+  // Function to filter wall data by wall type
+  const filterWallDataByType = (wallData: any) => {
+    const wallType = wallData.wallSystemType;
+    
+    if (wallType === 'Operable Wall') {
+      // Only keep operable wall fields and base fields
+      const {
+        // Remove all glasswall fields
+        glasswallModel, glasswallOperation, glasswallPanelConfiguration, glasswallPanelFace,
+        glasswallFrameFinish, glasswallGlassType, glasswallSTCRating, glasswallPartitionSupport,
+        glasswallPassDoorType, glasswallPassDoorOption, glasswallHingeType, glasswallFrameThickness,
+        glasswallTrackSystem, glasswallTrackType, glasswallTrackFinish, glasswallFinalClosure,
+        glasswallBottomSeals, glasswallTopSeals,
+        // Keep everything else
+        ...operableWallData
+      } = wallData;
+      
+      return operableWallData;
+    } else if (wallType === 'Glass Wall') {
+      // For glass walls, map glasswall fields to correct names and remove operable-specific fields
+      const cleanData = {
+        // Base fields
+        wallSystemType: wallData.wallSystemType,
+        lengthFeet: wallData.lengthFeet,
+        lengthInches: wallData.lengthInches,
+        heightFeet: wallData.heightFeet,
+        heightInches: wallData.heightInches,
+        panelCount: wallData.panelCount,
+        quantity: wallData.quantity,
+        bottomSeals: wallData.glasswallBottomSeals || wallData.bottomSeals,
+        topSeals: wallData.glasswallTopSeals || wallData.topSeals,
+        trackType: wallData.glasswallTrackType || wallData.trackType,
+        trackSystem: wallData.glasswallTrackSystem || wallData.trackSystem,
+        
+        // Glass wall specific fields (mapped from glasswall prefixes)
+        model: wallData.glasswallModel,
+        operation: wallData.glasswallOperation,
+        panelConfiguration: wallData.glasswallPanelConfiguration,
+        panelFace: wallData.glasswallPanelFace,
+        frameFinish: wallData.glasswallFrameFinish,
+        glassType: wallData.glasswallGlassType,
+        stcRating: wallData.glasswallSTCRating,
+        partitionSupport: wallData.glasswallPartitionSupport,
+        passDoorType: wallData.glasswallPassDoorType,
+        passDoorOption: wallData.glasswallPassDoorOption,
+        hingeType: wallData.glasswallHingeType,
+        frameThickness: wallData.glasswallFrameThickness,
+        trackFinish: wallData.glasswallTrackFinish,
+        finalClosure: wallData.glasswallFinalClosure,
+        
+        // Keep pocket doors if present
+        pocketDoors: wallData.pocketDoors
+      };
+      
+      return cleanData;
+    }
+    
+    // Default: return as-is
+    return wallData;
   };
 
   const handleClose = () => {
@@ -606,7 +677,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
             <Button variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
+            <Button onClick={handleSave} disabled={!isWallValid()}>
               Add Wall
             </Button>
           </div>

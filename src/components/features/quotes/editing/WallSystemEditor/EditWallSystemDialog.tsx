@@ -18,6 +18,7 @@ import {
   WallSystemType,
   WallSpecification,
  } from '@/lib/types';
+import { validateWallSpecification } from '@/utils/wallValidation';
 
 export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
   isOpen,
@@ -29,6 +30,12 @@ export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
 }) => {
   const [editedWall, setEditedWall] = useState(wall);
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Validation state
+  const isWallValid = () => {
+    const validation = validateWallSpecification(editedWall);
+    return validation.isValid;
+  };
 
 
   // Reset wall data when dialog opens
@@ -394,7 +401,7 @@ export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button disabled={!hasChanges}>
+                <Button disabled={!hasChanges || !isWallValid()}>
                   Save Changes
                 </Button>
               </AlertDialogTrigger>

@@ -6,7 +6,8 @@ import { WallSpecification } from "@/lib/types";
 interface BaseCreationFormProps {
   wall: WallSpecification;
   wallName: string;
-  onWallChange: (wallName: string, field: string, value: string) => void;
+  // onWallChange: (wallName: string, field: string, value: string) => void;
+  onWallChange: (wallName: string, updates: Record<string, string>) => void;
 }
 
 const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProps) => {
@@ -28,7 +29,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
                   onChange={(e) => {
                     const value = e.target.value.replace(/[^\d]/g, '');
                     if (parseInt(value) <= 99 || value === '') {
-                      onWallChange(wallName, "lengthFeet", value);
+                      onWallChange(wallName, {"lengthFeet": value});
                     }
                   }}
                   placeholder="Enter a number"
@@ -44,9 +45,10 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
                     // Allow digits, spaces, hyphens, and forward slashes for fractions
                     const cleanValue = value.replace(/[^\d\s\-\/]/g, '');
                     // Parse the base number (before any fraction)
-                    const baseNum = parseInt(cleanValue.split(/[\s\-]/)[0] || '0') || 0;
+                    const [base] = cleanValue.split(/[\s\-]/);
+                    const baseNum = parseInt(base || "0", 10) || 0;
                     if (baseNum <= 11 || cleanValue === '') {
-                      onWallChange(wallName, "lengthInches", cleanValue);
+                      onWallChange(wallName, {"lengthInches": cleanValue});
                     }
                   }}
                   placeholder="Enter a number between 0-11, could include a fractiona (Ex - 3 3/4)"
@@ -67,7 +69,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
                   onChange={(e) => {
                     const value = e.target.value.replace(/[^\d]/g, '');
                     if (parseInt(value) <= 40 || value === '') {
-                      onWallChange(wallName, "heightFeet", value);
+                      onWallChange(wallName, {"heightFeet": value});
                     }
                   }}
                   placeholder="Enter a number"
@@ -85,7 +87,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
                     // Parse the base number (before any fraction)
                     const baseNum = parseInt(cleanValue.split(/[\s\-]/)[0] || '0') || 0;
                     if (baseNum <= 11 || cleanValue === '') {
-                      onWallChange(wallName, "heightInches", cleanValue);
+                      onWallChange(wallName, {"heightInches": cleanValue});
                     }
                   }}
                   placeholder="Enter a number or fraction (Ex - 3 3/4)"
@@ -104,7 +106,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
               onChange={(e) => {
                 const value = e.target.value.replace(/[^\d]/g, '');
                 if (parseInt(value) <= 50 || value === '') {
-                  onWallChange(wallName, "panelCount", value);
+                  onWallChange(wallName, {"panelCount": value});
                 }
               }}
               placeholder="Enter a number"
@@ -123,7 +125,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
             <Label className="text-sm font-medium">Wall System Type *</Label>
             <Select
               value={wall.wallSystemType}
-              onValueChange={(value) => onWallChange(wallName, "wallSystemType", value)}
+              onValueChange={(value) => onWallChange(wallName, {"wallSystemType": value})}
             >
               <SelectTrigger className="bg-background">
                 <SelectValue placeholder="Select wall system type" />

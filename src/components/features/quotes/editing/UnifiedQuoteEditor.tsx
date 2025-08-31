@@ -87,7 +87,6 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
     // Apply section overrides to base HTML
     applySectionOverrides: (baseHTML: string, overrides: Map<string, string>): string => {
       let result = baseHTML;
-      console.log('Applying section overrides:', Object.fromEntries(overrides));
       
       overrides.forEach((content, sectionId) => {
         // Handle special sections that don't follow the standard pattern
@@ -103,7 +102,6 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           className = `${sectionId}-section`;
         }
         
-        console.log(`Looking for section with class: ${className}`);
         
         // Try multiple patterns to find the section
         const patterns = [
@@ -120,24 +118,19 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         // Try each pattern until one matches
         for (const pattern of patterns) {
           const matches = result.match(pattern);
-          console.log(`Pattern ${patterns.indexOf(pattern) + 1}: Found ${matches ? matches.length : 0} matches for ${className}`);
           
           if (matches) {
             const originalSection = matches[0];
-            console.log(`Original section: ${originalSection.substring(0, 200)}...`);
             
             result = result.replace(pattern, `$1${content}$2`);
-            console.log(`Applied override for ${sectionId} using pattern ${patterns.indexOf(pattern) + 1}`);
             patternMatched = true;
             break;
           }
         }
         
         if (!patternMatched) {
-          console.log(`No section found with class: ${className} using any pattern`);
           // Let's try to see what sections actually exist
           const allDivs = result.match(/<div[^>]*class="[^"]*-section[^"]*"[^>]*>/g);
-          console.log('Available sections in HTML:', allDivs);
         }
       });
       
@@ -164,12 +157,10 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         // Load existing customizations if they exist
         if (quote.customization?.customSections) {
           const customSections = quote.customization.customSections;
-          console.log('Loading existing customizations:', customSections);
           
           // Convert custom sections to section overrides
           customSections.forEach(section => {
             if (section.content && section.isVisible) {
-              console.log(`Loading section ${section.id} with content:`, section.content.substring(0, 100) + '...');
               
               // Check if content already has wrapper div or is just inner content
               let innerContent = section.content;
@@ -181,9 +172,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
                   .replace(/<div class="[^"]*-section"[^>]*>/, '')
                   .replace(/<\/div>$/, '')
                   .trim();
-                console.log(`Extracted inner content for ${section.id}:`, innerContent.substring(0, 100) + '...');
               } else {
-                console.log(`Using content as-is for ${section.id}`);
               }
               
               sectionOverrides.set(section.id, innerContent);
@@ -226,9 +215,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   // Real-time preview updates when data changes
   useEffect(() => {
     if (!isLoading) {
-      console.log('Regenerating preview with overrides:', Object.fromEntries(state.sectionOverrides));
       const newPreview = syncEngine.generateUnifiedPreview(state.rawData, state.sectionOverrides);
-      console.log('Generated new preview HTML length:', newPreview.length);
       
       setState(prev => ({
         ...prev,
@@ -260,21 +247,22 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
     setState(prev => {
       const currentValue = (prev.rawData as any)[section]; //added, prev.rawData... "as any)[section];" to fix implicit any error
       const hasChanged = JSON.stringify(currentValue) !== JSON.stringify(value);
-      
-      return {
-        ...prev,
-        rawData: {
-          ...prev.rawData,
-          [section]: value
-        },
-        isDirty: prev.isDirty || hasChanged
-      };
-    });
-  }, []);
+      if (hasChanged) {
+        return {
+          ...prev,
+          rawData: {
+            ...prev.rawData,
+            [section]: value
+          },
+          isDirty: prev.isDirty || hasChanged
+        };
+      }
+      return prev; //updated this
+      });
+    }, []);
 
   // Handle section content overrides
   const handleSectionOverride = useCallback((sectionId: string, content: string) => {
-    console.log('Section override triggered:', { sectionId, content: content.substring(0, 100) + '...' });
     
     setState(prev => {
       // Check if the section content has actually changed
@@ -282,18 +270,15 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       const hasChanged = currentContent !== content;
       
       if (!hasChanged) {
-        console.log('Section content unchanged, skipping update');
         return prev;
       }
       
       const newOverrides = new Map(prev.sectionOverrides);
       newOverrides.set(sectionId, content);
       
-      console.log('Updated overrides map:', Object.fromEntries(newOverrides));
       
       // Immediately regenerate preview with new overrides
       const newPreview = syncEngine.generateUnifiedPreview(prev.rawData, newOverrides);
-      console.log('Generated new preview after section override');
       
       return {
         ...prev,
@@ -316,7 +301,6 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       
       // If we have section overrides, create custom sections from them
       if (state.sectionOverrides.size > 0) {
-        console.log('Saving with section overrides:', Object.fromEntries(state.sectionOverrides));
         sections = Array.from(state.sectionOverrides.entries()).map(([sectionId, content]) => ({
           id: sectionId,
           title: sectionId.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()),
@@ -327,12 +311,10 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           dependencies: [] as string[] //implicit any sdded as string[]
         }));
       } else {
-        console.log('No section overrides found, extracting from preview HTML');
         // No custom overrides, extract sections from current preview HTML
         sections = SmartQuoteHelper.extractSections(state.previewHTML);
       }
       
-      console.log('Final sections being saved:', sections);
       
       const unifiedData: SmartQuoteData = {
         ...state.rawData,

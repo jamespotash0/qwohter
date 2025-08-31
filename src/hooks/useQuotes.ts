@@ -36,6 +36,12 @@ const prepareWallDataForSave = (wallsData: any): WallDetails => {
     };
   }
 
+  // If wallsData already has the WallDetails structure (id + walls), return it as-is
+  if (wallsData.id && wallsData.walls && typeof wallsData.walls === 'object') {
+    return wallsData;
+  }
+
+  // Otherwise, wrap the data as walls
   return {
     id: crypto.randomUUID(),
     walls: wallsData

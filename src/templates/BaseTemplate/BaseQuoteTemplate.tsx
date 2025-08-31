@@ -87,7 +87,6 @@ export abstract class BaseQuoteTemplate {
     </div>`;
 
     // Return simple HTML - CSS page breaks will handle pagination automatically
-    console.log('📄 Generated HTML with CSS pagination classes - Playwright will handle page breaks');
     return html;
   }
 
