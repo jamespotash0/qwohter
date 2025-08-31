@@ -306,9 +306,6 @@ const QuoteCreatorWizard = ({
     }
     
     if (errors.length > 0) {
-      console.log(`❌ Dimension validation failed for ${wallName}:`, errors);
-    } else {
-      console.log(`✅ Dimension validation passed for ${wallName}`);
     }
     
     return { isValid: errors.length === 0, errors };
@@ -318,7 +315,6 @@ const QuoteCreatorWizard = ({
     const wallEntries = Object.entries(walls.walls);
     
     if (wallEntries.length === 0) {
-      console.log('No walls defined');
       return false;
     }
     
@@ -331,8 +327,6 @@ const QuoteCreatorWizard = ({
       
       // Validate wall-type specific required fields
       if (isOperableWall(wall)) {
-        console.log(`🔧 Validating operable wall: ${wallName}`, wall);
-        
         const requiredFields = {
           panelConfiguration: wall.panelConfiguration,
           series: wall.series,
@@ -343,23 +337,22 @@ const QuoteCreatorWizard = ({
           trackSystem: wall.trackSystem
         };
         
-        console.log(`🔍 Required fields for ${wallName}:`, requiredFields);
-        
         // Check each required field
         for (const [field, value] of Object.entries(requiredFields)) {
           if (!value || value === '') {
-            console.log(`❌ Operable wall validation failed for ${wallName}, missing ${field}:`, value);
             return false;
           }
         }
         
         // Check for panel finish dependency
         if (wall.panelFinishCategory && (!wall.panelFinishSpecificItem || wall.panelFinishSpecificItem === '')) {
-          console.log(`❌ Panel finish validation failed for ${wallName}: has category "${wall.panelFinishCategory}" but no specific item`);
           return false;
         }
         
-        console.log(`✅ Operable wall validation passed for ${wallName}`);
+        // Check for pass door quantity dependency
+        if (wall.passDoorPanels && wall.passDoorPanels !== '' && (!wall.passDoorQuantity || wall.passDoorQuantity === '')) {
+          return false;
+        }
       }
       
       if (isGlassWall(wall)) {
@@ -376,14 +369,12 @@ const QuoteCreatorWizard = ({
         // Check each required field
         for (const [field, value] of Object.entries(requiredFields)) {
           if (!value || value === '') {
-            console.log(`Glass wall validation failed for ${wallName}, missing ${field}:`, value);
             return false;
           }
         }
       }
     }
     
-    console.log('✅ Wall spec validation passed for all walls');
     return true;
   };
 

@@ -55,6 +55,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
   const [selectedPanelFinishCategory, setSelectedPanelFinishCategory] = React.useState(wall.panelFinishCategory || "");
   const [selectedPanelFinishSpecificItem, setSelectedPanelFinishSpecificItem] = React.useState(wall.panelFinishSpecificItem || "");
   const [selectedTrackSystem, setSelectedTrackSystem] = React.useState(wall.trackSystem || "");
+  const [calculatedTrackType, setCalculatedTrackType] = React.useState(wall.trackType || "");
   const [selectedVerticalSeals, setSelectedVerticalSeals] = React.useState(wall.verticalSeals || "");
   const [selectedBottomSeals, setSelectedBottomSeals] = React.useState(wall.bottomSeals || "");
   const [selectedTopSeals, setSelectedTopSeals] = React.useState(wall.topSeals || "");
@@ -72,6 +73,16 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
       (dependencies[field] || []).forEach(dep => {
         updates[dep] = "";
       });
+    }
+
+    // Auto-calculate trackType based on model (after dependencies are reset)
+    if (field === "model" && displayValue) {
+      const trackType = getTrackTypeByModel(displayValue);
+      setCalculatedTrackType(trackType);
+      updates.trackType = trackType;
+    } else if (field === "model" && !displayValue) {
+      setCalculatedTrackType("");
+      updates.trackType = "";
     }
 
     onWallChange(wallName, updates);
@@ -104,7 +115,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           setSelectedSTCRating("");
           setSelectedTrackSystem("");
         }
-        break
+        break;
       case "panelSkin":
         setSelectedPanelSkin(displayValue);
         if (dependencies[field]) {

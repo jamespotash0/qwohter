@@ -26,39 +26,19 @@ export interface Quote {
   customization?: QuoteCustomization;
 }
 
-// Helper function to migrate wall_details to the new format with id and walls
-const migrateWallDetails = (wallDetails: any): WallDetails => {
-  // If it's already in the new format with id and walls, return as is
-  if (wallDetails && wallDetails.id && wallDetails.walls) {
-    return wallDetails;
-  }
-  
-  // If it's in the object format but without id (previous migration), wrap it
-  if (wallDetails && typeof wallDetails === 'object' && !Array.isArray(wallDetails) && !wallDetails.id) {
+
+// Helper function to prepare wall data for database save
+const prepareWallDataForSave = (wallsData: any): WallDetails => {
+  if (!wallsData || typeof wallsData !== 'object') {
     return {
       id: crypto.randomUUID(),
-      walls: wallDetails
+      walls: {}
     };
   }
-  
-  // If it's an array (old format), convert to new format
-  if (Array.isArray(wallDetails)) {
-    const wallsObject: { [key: string]: WallSpecification } = {};
-    wallDetails.forEach((wall: any, index: number) => {
-      const wallName = wall.name || `Wall ${index + 1}`;
-      const { id, name, ...wallSpec } = wall;
-      wallsObject[wallName] = wallSpec;
-    });
-    return {
-      id: crypto.randomUUID(),
-      walls: wallsObject
-    };
-  }
-  
-  // If empty or null, return default structure
+
   return {
     id: crypto.randomUUID(),
-    walls: {}
+    walls: wallsData
   };
 };
 
@@ -66,13 +46,7 @@ const migrateWallDetails = (wallDetails: any): WallDetails => {
 const convertRowToQuote = (row: QuoteRow): Quote => {
   return {
     ...row,
-    wall_details: (() => {
-      const migrated = migrateWallDetails(row.wall_details);
-      return {
-        ...migrated,
-        id: migrated.id || crypto.randomUUID()
-      };
-    })(),
+    wall_details: row.wall_details as unknown as WallDetails,
     project_name: row.project_name || undefined,
     date_last_downloaded: row.date_last_downloaded || undefined,
     status: row.status || 'Draft',
@@ -136,7 +110,7 @@ export const useQuotes = () => {
             client_address: quoteData.jobDetails.billedTo.address || '',
             date: quoteData.jobDetails.date
            },
-          wall_details: quoteData.walls || {},
+          wall_details: prepareWallDataForSave(quoteData.walls) as any,
           price_details: {
             base_price: quoteData.pricing.basePrice,
             freight: quoteData.pricing.freight,
@@ -304,7 +278,7 @@ export const useQuotes = () => {
       if (fetchError) throw fetchError;
 
       // Update the specific wall in the wall_details
-      const currentWallDetails = migrateWallDetails(currentQuote.wall_details);
+      const currentWallDetails = currentQuote.wall_details as unknown as WallDetails;
       const updatedWallDetails = {
         ...currentWallDetails,
         walls: {
@@ -359,8 +333,8 @@ export const useQuotes = () => {
 
       if (fetchError) throw fetchError;
 
-      // Get current wall details and migrate if needed
-      const currentWallDetails = migrateWallDetails(currentQuote.wall_details);
+      // Get current wall details  
+      const currentWallDetails = currentQuote.wall_details as unknown as WallDetails;
       const currentWalls = { ...currentWallDetails.walls };
 
       // Remove the specified wall
