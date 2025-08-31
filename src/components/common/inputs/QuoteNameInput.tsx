@@ -15,8 +15,8 @@ const QuoteNameInput = ({
   onSave,
   // className 
 }: QuoteNameInputProps) => {
-  const spanRef = useRef(null);
-  const inputRef = useRef(null);
+  const spanRef = useRef<HTMLSpanElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [inputWidth, setInputWidth] = useState(0);
 
   // Update input width dynamically when value changes

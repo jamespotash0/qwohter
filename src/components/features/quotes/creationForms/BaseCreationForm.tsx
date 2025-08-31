@@ -3,13 +3,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WallSpecification } from "@/lib/types";
 
-interface BaseSpecsProps {
+interface BaseCreationFormProps {
   wall: WallSpecification;
   wallName: string;
   onWallChange: (wallName: string, field: string, value: string) => void;
 }
 
-const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseSpecsProps) => {
+const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProps) => {
   const wallSystemTypes = ["Operable Wall", "Glass Wall", "Accordion Partitions", "Unispan Support", "FlexTact"];
 
   return (
@@ -25,8 +25,13 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseSpecsProps) => {
               <div className="flex-1">
                 <Input
                   value={wall.lengthFeet}
-                  onChange={(e) => onWallChange(wallName, "lengthFeet", e.target.value)}
-                  placeholder="32"
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d]/g, '');
+                    if (parseInt(value) <= 99 || value === '') {
+                      onWallChange(wallName, "lengthFeet", value);
+                    }
+                  }}
+                  placeholder="Enter a number"
                   className="text-center"
                 />
                 <Label className="text-xs text-muted-foreground mt-1 block text-center">Feet</Label>
@@ -34,8 +39,17 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseSpecsProps) => {
               <div className="flex-1">
                 <Input
                   value={wall.lengthInches}
-                  onChange={(e) => onWallChange(wallName, "lengthInches", e.target.value)}
-                  placeholder="4"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow digits, spaces, hyphens, and forward slashes for fractions
+                    const cleanValue = value.replace(/[^\d\s\-\/]/g, '');
+                    // Parse the base number (before any fraction)
+                    const baseNum = parseInt(cleanValue.split(/[\s\-]/)[0] || '0') || 0;
+                    if (baseNum <= 11 || cleanValue === '') {
+                      onWallChange(wallName, "lengthInches", cleanValue);
+                    }
+                  }}
+                  placeholder="Enter a number between 0-11, could include a fractiona (Ex - 3 3/4)"
                   className="text-center"
                 />
                 <Label className="text-xs text-muted-foreground mt-1 block text-center">Inches</Label>
@@ -50,8 +64,13 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseSpecsProps) => {
               <div className="flex-1">
                 <Input
                   value={wall.heightFeet}
-                  onChange={(e) => onWallChange(wallName, "heightFeet", e.target.value)}
-                  placeholder="8"
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^\d]/g, '');
+                    if (parseInt(value) <= 40 || value === '') {
+                      onWallChange(wallName, "heightFeet", value);
+                    }
+                  }}
+                  placeholder="Enter a number"
                   className="text-center"
                 />
                 <Label className="text-xs text-muted-foreground mt-1 block text-center">Feet</Label>
@@ -59,8 +78,17 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseSpecsProps) => {
               <div className="flex-1">
                 <Input
                   value={wall.heightInches}
-                  onChange={(e) => onWallChange(wallName, "heightInches", e.target.value)}
-                  placeholder="6"
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow digits, spaces, hyphens, and forward slashes for fractions
+                    const cleanValue = value.replace(/[^\d\s\-\/]/g, '');
+                    // Parse the base number (before any fraction)
+                    const baseNum = parseInt(cleanValue.split(/[\s\-]/)[0] || '0') || 0;
+                    if (baseNum <= 11 || cleanValue === '') {
+                      onWallChange(wallName, "heightInches", cleanValue);
+                    }
+                  }}
+                  placeholder="Enter a number or fraction (Ex - 3 3/4)"
                   className="text-center"
                 />
                 <Label className="text-xs text-muted-foreground mt-1 block text-center">Inches</Label>
@@ -73,8 +101,13 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseSpecsProps) => {
             <Label className="text-sm font-medium">Panel Count *</Label>
             <Input
               value={wall.panelCount}
-              onChange={(e) => onWallChange(wallName, "panelCount", e.target.value)}
-              placeholder="3"
+              onChange={(e) => {
+                const value = e.target.value.replace(/[^\d]/g, '');
+                if (parseInt(value) <= 50 || value === '') {
+                  onWallChange(wallName, "panelCount", value);
+                }
+              }}
+              placeholder="Enter a number"
               className="text-center"
             />
           </div>

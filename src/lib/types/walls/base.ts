@@ -14,12 +14,12 @@ export interface BaseWallSpecification {
   wallSystemType: WallSystemType;
   // model: string;
   // panelConfiguration: string;
-  lengthFeet: string;
-  lengthInches: string;
-  heightFeet: string;
-  heightInches: string;
-  quantity: string;
-  panelCount: string;
+  lengthFeet: number | string;
+  lengthInches: number | string;
+  heightFeet: number | string;
+  heightInches: number | string;
+  quantity: number | string;
+  panelCount: number | string;
   bottomSeals: string;
   topSeals: string;
   trackType: string;

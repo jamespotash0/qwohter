@@ -19,7 +19,7 @@ export const PocketDoorsSection: React.FC<PocketDoorsSectionProps> = ({
   data,
   isOpen,
   onToggle,
-  onFieldChange,
+  // onFieldChange,
   onChange
 }) => {
   // Helper function to get available fold styles based on fold type
@@ -57,7 +57,10 @@ export const PocketDoorsSection: React.FC<PocketDoorsSectionProps> = ({
       const availableStyles = getAvailableFoldStyles(value);
       const currentStyle = data.wall_details?.walls?.[wallName]?.pocketDoors?.foldStyle;
       if (currentStyle && !availableStyles.includes(currentStyle)) {
-        updatedWalls.walls[wallName].pocketDoors!.foldStyle = "";
+        const wall = updatedWalls.walls[wallName] as any;
+        if (wall?.pocketDoors) {
+          wall.pocketDoors.foldStyle = "";
+        }
       }
     }
     

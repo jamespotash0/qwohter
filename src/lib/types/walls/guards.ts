@@ -8,6 +8,6 @@ export const isGlassWall = (wall: WallSpecification): wall is GlassWallSpecifica
   return wall.wallSystemType === 'Glass Wall';
 };
 
-export const isAccordionWall = (wall: WallSpecification): wall is AccordionWallSpecification => {
-  return wall.wallSystemType === 'Accordion Wall';
-};
+// export const isAccordionWall = (wall: WallSpecification): wall is AccordionWallSpecification => {
+//   return wall.wallSystemType === 'Accordion Wall';
+// };

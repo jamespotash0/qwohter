@@ -28,9 +28,10 @@ import PricingForm from "@/components/features/quotes/forms/pricing/PricingForm"
 import { toast } from "sonner";
 import { QuoteNameInput } from "@/components/common/inputs";
 
-import { WallDetails, WallSpecification, isOperableWall } from "@/lib/types";
+import { WallDetails, WallSpecification, isOperableWall, isGlassWall } from "@/lib/types";
 import { useQuotes } from "@/hooks/useQuotes";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
+import { FormValidator } from "@/utils/formValidation";
 
 interface QuoteCreatorWizardProps {
   user: string;
@@ -109,8 +110,17 @@ const QuoteCreatorWizard = ({
     website: (quoteDetails?.website as string) || ""
   });
 
-  const [jobDetails, setJobDetails] = useState({
-    date: (jobDetailsData?.date as string) || new Date().toISOString().split('T')[0],
+  const [jobDetails, setJobDetails] = useState<{
+    date: string;
+    proposalNumber: string;
+    jobLocation: string;
+    billedTo: {
+      name: string;
+      company: string;
+      address: string;
+    };
+  }>({
+    date: String(jobDetailsData?.date || new Date().toISOString().split('T')[0]),
     proposalNumber: (existingQuoteData?.proposal_number as string) || "",
     jobLocation: (jobDetailsData?.job_location as string) || "",
     billedTo: {
@@ -182,7 +192,7 @@ const QuoteCreatorWizard = ({
         [wallName]: {
           ...prev.walls[wallName],
           pocketDoors: pocketDoorsConfig
-        }
+        } as WallSpecification
       }
     }));
   };
@@ -195,7 +205,7 @@ const QuoteCreatorWizard = ({
         [wallName]: {
           ...prev.walls[wallName],
           structureSupport
-        }
+        } as WallSpecification
       }
     }));
   };
@@ -219,29 +229,161 @@ const QuoteCreatorWizard = ({
            jobDetails.billedTo.address;
   };
 
-  const isWallSpecValid = () => {
-    const wallEntries = Object.entries(walls.walls);
+  // Enhanced validation functions with proper field validation
+  const validateWallDimensions = (wall: WallSpecification, wallName: string): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
     
-    if (wallEntries.length === 0) return false;
+    // Helper to convert to number
+    const toNumber = (value: number | string | undefined): number => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') return parseFloat(value);
+      return NaN;
+    };
     
-    for (const [, wall] of wallEntries) {
-      if (!wall.lengthFeet || !wall.heightFeet || !wall.panelCount || !wall.wallSystemType) {
-        return false;
-      }
-      
-      if (isOperableWall(wall)) {
-        if (!wall.panelConfiguration || !wall.series || !wall.model || 
-            !wall.panelSkin || !wall.stcRating || 
-            !wall.trackType || !wall.trackSystem) {
-          return false;
-        }
-      }
-      
-      if (isOperableWall(wall) && wall.panelFinishCategory && !wall.panelFinishSpecificItem) {
-        return false;
+    // Validate Length Feet (0-40)
+    if (wall.lengthFeet === undefined || wall.lengthFeet === null || wall.lengthFeet === '') {
+      errors.push('Length feet is required');
+    } else {
+      const lengthFeetNum = toNumber(wall.lengthFeet);
+      if (isNaN(lengthFeetNum) || lengthFeetNum < 0 || lengthFeetNum > 40) {
+        errors.push('Length feet must be a number between 0-40');
       }
     }
     
+    // Validate Height Feet (0-40) 
+    if (wall.heightFeet === undefined || wall.heightFeet === null || wall.heightFeet === '') {
+      errors.push('Height feet is required');
+    } else {
+      const heightFeetNum = toNumber(wall.heightFeet);
+      if (isNaN(heightFeetNum) || heightFeetNum < 0 || heightFeetNum > 40) {
+        errors.push('Height feet must be a number between 0-40');
+      }
+    }
+    
+    // Validate Length Inches (0-11, allow fractions)
+    if (wall.lengthInches && wall.lengthInches !== '') {
+      const inchesStr = String(wall.lengthInches);
+      const inchesResult = FormValidator.validateInches(inchesStr);
+      if (!inchesResult.isValid) {
+        errors.push(`Length inches: ${inchesResult.errorMessage}`);
+      } else {
+        // Additional range check for inches (0-11)
+        const inchesValue = parseFloat(inchesStr.replace(/\/.*/, ''));
+        if (!isNaN(inchesValue) && (inchesValue < 0 || inchesValue >= 12)) {
+          errors.push('Length inches must be between 0-11');
+        }
+      }
+    }
+    
+    // Validate Height Inches (0-11, allow fractions)
+    if (wall.heightInches && wall.heightInches !== '') {
+      const inchesStr = String(wall.heightInches);
+      const inchesResult = FormValidator.validateInches(inchesStr);
+      if (!inchesResult.isValid) {
+        errors.push(`Height inches: ${inchesResult.errorMessage}`);
+      } else {
+        // Additional range check for inches (0-11)
+        const inchesValue = parseFloat(inchesStr.replace(/\/.*/, ''));
+        if (!isNaN(inchesValue) && (inchesValue < 0 || inchesValue >= 12)) {
+          errors.push('Height inches must be between 0-11');
+        }
+      }
+    }
+    
+    // Validate Panel Count (1-50, numbers only)
+    if (wall.panelCount === undefined || wall.panelCount === null || wall.panelCount === '') {
+      errors.push('Panel count is required');
+    } else {
+      const panelCountNum = toNumber(wall.panelCount);
+      if (isNaN(panelCountNum) || panelCountNum < 1 || panelCountNum > 50) {
+        errors.push('Panel count must be a number between 1-50');
+      }
+    }
+    
+    // Wall System Type
+    if (!wall.wallSystemType) {
+      errors.push('Wall system type is required');
+    }
+    
+    if (errors.length > 0) {
+      console.log(`❌ Dimension validation failed for ${wallName}:`, errors);
+    } else {
+      console.log(`✅ Dimension validation passed for ${wallName}`);
+    }
+    
+    return { isValid: errors.length === 0, errors };
+  };
+
+  const isWallSpecValid = () => {
+    const wallEntries = Object.entries(walls.walls);
+    
+    if (wallEntries.length === 0) {
+      console.log('No walls defined');
+      return false;
+    }
+    
+    for (const [wallName, wall] of wallEntries) {
+      // First validate basic dimensions and fields
+      const dimensionValidation = validateWallDimensions(wall, wallName);
+      if (!dimensionValidation.isValid) {
+        return false;
+      }
+      
+      // Validate wall-type specific required fields
+      if (isOperableWall(wall)) {
+        console.log(`🔧 Validating operable wall: ${wallName}`, wall);
+        
+        const requiredFields = {
+          panelConfiguration: wall.panelConfiguration,
+          series: wall.series,
+          model: wall.model,
+          panelSkin: wall.panelSkin,
+          stcRating: wall.stcRating,
+          trackType: wall.trackType,
+          trackSystem: wall.trackSystem
+        };
+        
+        console.log(`🔍 Required fields for ${wallName}:`, requiredFields);
+        
+        // Check each required field
+        for (const [field, value] of Object.entries(requiredFields)) {
+          if (!value || value === '') {
+            console.log(`❌ Operable wall validation failed for ${wallName}, missing ${field}:`, value);
+            return false;
+          }
+        }
+        
+        // Check for panel finish dependency
+        if (wall.panelFinishCategory && (!wall.panelFinishSpecificItem || wall.panelFinishSpecificItem === '')) {
+          console.log(`❌ Panel finish validation failed for ${wallName}: has category "${wall.panelFinishCategory}" but no specific item`);
+          return false;
+        }
+        
+        console.log(`✅ Operable wall validation passed for ${wallName}`);
+      }
+      
+      if (isGlassWall(wall)) {
+        const requiredFields = {
+          model: wall.model,
+          panelConfiguration: wall.panelConfiguration,
+          operation: wall.operation,
+          glassType: wall.glassType,
+          stcRating: wall.stcRating,
+          partitionSupport: wall.partitionSupport,
+          trackType: wall.trackType
+        };
+        
+        // Check each required field
+        for (const [field, value] of Object.entries(requiredFields)) {
+          if (!value || value === '') {
+            console.log(`Glass wall validation failed for ${wallName}, missing ${field}:`, value);
+            return false;
+          }
+        }
+      }
+    }
+    
+    console.log('✅ Wall spec validation passed for all walls');
     return true;
   };
 
@@ -343,7 +485,7 @@ const QuoteCreatorWizard = ({
     }
   ];
 
-  const currentStep = steps[activeStep];
+  const currentStep = steps[activeStep] ?? steps[0]!;
   const completedSteps = steps.filter(step => step.isValid).length;
 
   const handleNext = () => {
@@ -363,8 +505,10 @@ const QuoteCreatorWizard = ({
     
     if (!allValid) {
       const firstInvalidStep = steps.findIndex(step => !step.isValid);
-      setActiveStep(firstInvalidStep);
-      toast.error(`Please complete the ${steps[firstInvalidStep].label} section`);
+      if (firstInvalidStep !== -1) {
+        setActiveStep(firstInvalidStep);
+        toast.error(`Please complete the ${steps[firstInvalidStep]!.label} section`);
+      }
       return;
     }
 

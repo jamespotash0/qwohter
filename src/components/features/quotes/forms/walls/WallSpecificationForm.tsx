@@ -7,7 +7,7 @@ import { Trash2, Edit, ChevronDown, ChevronUp } from "lucide-react";
 import { WallSpecification, WallDetails } from "@/lib/types";
 // import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import BaseSpecs from "@/components/features/quotes/creationForms/BaseCreationForm";
+import BaseCreationForm from "@/components/features/quotes/creationForms/BaseCreationForm";
 import GlassWallCreationForm from "@/components/features/quotes/creationForms/GlassWallCreationForm";
 import OperableWallCreationForm from "@/components/features/quotes/creationForms/OperableWallCreationForm";
 
@@ -318,7 +318,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
               <CollapsibleContent>
                 <CardContent>
                   <div className="space-y-8">
-                    <BaseSpecs 
+                    <BaseCreationForm
                       wall={wall} 
                       wallName={wallName} 
                       onWallChange={handleWallChange} 

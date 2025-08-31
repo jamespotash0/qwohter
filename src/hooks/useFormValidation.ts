@@ -74,16 +74,6 @@ export const useFormValidation = (): UseFormValidationReturn => {
     }));
   }, []);
 
-  //  const markFieldTouched = useCallback((fieldName: string) => {
-  //   setValidationState(prev => ({
-  //     ...prev,
-  //     [fieldName]: {
-  //       ...prev[fieldName],
-  //       touched: true
-  //     }
-  //   }));
-  // }, []);
-
   const clearValidation = useCallback((fieldName: string) => {
     setValidationState(prev => {
       const newState = { ...prev };
