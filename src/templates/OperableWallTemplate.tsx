@@ -245,7 +245,6 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
       <div class="general-section" style="line-height: 1.15; margin-bottom: 20px;">
         <h2 class="section-header">GENERAL:</h2>
         Estimated delivery for shop drawings would be <strong>${shopDrawingDelivery} weeks</strong>, after which approval of them, tracks would be delivered in <strong>${trackDelivery} weeks</strong>, & panels delivered in <strong>${panelDelivery} weeks</strong>.
-        <br><br>
         Installation of tracks would take approximately <strong>${trackInstallation} working days</strong> and installation of panels would take <strong>${panelInstallation} additional days</strong>.
       </div>
     `;

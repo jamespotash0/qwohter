@@ -22,6 +22,7 @@ import {
   topSealOptions,
   endPanelTypes,
   initialClosureSystems,
+  getTrackTypeByModel,
 } from "@/lib/types";
 
 interface OperableWallCreationFormProps {
@@ -59,7 +60,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
   const [selectedTopSeals, setSelectedTopSeals] = React.useState(wall.topSeals || "");
   const [selectedInitialClosureSystem, setSelectedInitialClosureSystem] = React.useState(wall.initialClosureSystem || "");
   const [selectedEndPanelType, setSelectedEndPanelType] = React.useState(wall.endPanelType || "");
-
+  const [selectedPanelDesign, setSelectedPanelDesign] = React.useState(wall.panelDesign || "");
 
 
   const handleFieldChange = (field: string, value: string) => {
@@ -103,15 +104,34 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           setSelectedSTCRating("");
           setSelectedTrackSystem("");
         }
-        break;
-      case "panelSkin": 
+        break
+      case "panelSkin":
         setSelectedPanelSkin(displayValue);
         if (dependencies[field]) {
           setSelectedSTCRating("");
         }
         break;
       case "stcRating": setSelectedSTCRating(displayValue); break;
-      case "passDoorPanels": 
+      case "trackSystem": setSelectedTrackSystem(displayValue); break;
+      case "verticalSeals": 
+        setSelectedVerticalSeals(displayValue);
+        break;
+      case "bottomSeals": 
+        setSelectedBottomSeals(displayValue);
+        break;
+      case "topSeals": 
+        setSelectedTopSeals(displayValue);
+        break;
+      case "initialClosureSystem": 
+        setSelectedInitialClosureSystem(displayValue);
+        break;
+      case "endPanelType": 
+        setSelectedEndPanelType(displayValue);
+        break;
+      case "panelDesign": 
+        setSelectedPanelDesign(displayValue);
+        break;  
+      case "passDoorPanels":
         setSelectedPassDoorPanels(displayValue);
         if (dependencies[field]) {
           setSelectedPassDoorQuantity("");
@@ -124,14 +144,10 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           setSelectedPanelFinishSpecificItem("");
         }
         break;
-      case "panelFinishSpecificItem": setSelectedPanelFinishSpecificItem(displayValue); break;
-      case "trackSystem": setSelectedTrackSystem(displayValue); break;
+      case "panelFinishSpecificItem": setSelectedPanelFinishSpecificItem(displayValue); break;  
+      default: break;
     }
   };
-  
-  // Use centralized data from types
-
-  const optionalFieldsDisabled = !selectedModel;
   
   return (
     <div>
@@ -203,7 +219,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Label className="text-sm font-medium">Panel Thickness (inches)</Label>
           <Input
             value={getPanelThicknessBySeries(selectedSeries)}
-            placeholder={selectedSeries ? "Auto-calculated" : "Select series first"}
+            placeholder={"Auto-calculated"}
             readOnly
             className="bg-muted text-muted-foreground"
           />
@@ -212,7 +228,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Panel Skin *</Label>
           <Select
-            value={selectedPanelSkin === "" ? undefined : selectedPanelSkin}
+            value={selectedPanelSkin}
             onValueChange={(value) => handleFieldChange("panelSkin", value)}
             disabled={!selectedModel}
           >
@@ -232,7 +248,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">STC Rating *</Label>
           <Select
-            value={selectedSTCRating === "" ? undefined : selectedSTCRating}
+            value={selectedSTCRating}
             onValueChange={(value) => handleFieldChange("stcRating", value)}
             disabled={!selectedModel || !selectedPanelSkin}
           >
@@ -254,8 +270,9 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Panel Design</Label>
           <Select
-            value={wall.panelDesign === "" ? undefined : wall.panelDesign}
+            value={selectedPanelDesign || ""}
             onValueChange={(value) => handleFieldChange("panelDesign", value)}
+            disabled={!selectedModel}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select panel design" />
@@ -273,8 +290,9 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Pass Door Panels</Label>
           <Select
-            value={selectedPassDoorPanels === "" ? undefined : selectedPassDoorPanels}
+            value={selectedPassDoorPanels || ""}
             onValueChange={(value) => handleFieldChange("passDoorPanels", value)}
+            disabled={!selectedModel}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select pass door panels" />
@@ -293,9 +311,9 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Pass Door Quantity</Label>
           <Select
-            value={selectedPassDoorQuantity === "" ? undefined : selectedPassDoorQuantity}
+            value={selectedPassDoorQuantity || ""}
             onValueChange={(value) => handleFieldChange("passDoorQuantity", value)}
-            disabled={!selectedPassDoorPanels || selectedPassDoorPanels === "None"}
+            disabled={!selectedPassDoorPanels || !selectedModel || selectedPassDoorPanels === ""} 
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select quantity" />
@@ -315,6 +333,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <Select
             value={selectedVerticalSeals || ""}
             onValueChange={(value) => handleFieldChange("verticalSeals", value)}
+            disabled={!selectedModel}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select vertical seals" />
@@ -333,8 +352,9 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Bottom Seals</Label>
           <Select
-            value={wall.bottomSeals === "" ? undefined : wall.bottomSeals}
+            value={selectedBottomSeals || ""}
             onValueChange={(value) => handleFieldChange("bottomSeals", value)}
+            disabled={!selectedModel}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select bottom seals" />
@@ -353,8 +373,9 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Top Seals</Label>
           <Select
-            value={wall.topSeals === "" ? undefined : wall.topSeals}
+            value={selectedTopSeals || ""}
             onValueChange={(value) => handleFieldChange("topSeals", value)}
+            disabled={!selectedModel}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select top seals" />
@@ -375,8 +396,9 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Initial Closure System</Label>
           <Select
-            value={wall.initialClosureSystem === "" ? undefined : wall.initialClosureSystem}
+            value={selectedInitialClosureSystem || ""}
             onValueChange={(value) => handleFieldChange("initialClosureSystem", value)}
+            disabled={!selectedModel}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select initial closure system" />
@@ -395,8 +417,9 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">End Panel Type</Label>
           <Select
-            value={wall.endPanelType === "" ? undefined : wall.endPanelType}
+            value={selectedEndPanelType || ""}
             onValueChange={(value) => handleFieldChange("endPanelType", value)}
+            disabled={!selectedModel}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select end panel type" />
@@ -417,8 +440,9 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Panel Finish Category</Label>
           <Select
-            value={selectedPanelFinishCategory === "" ? undefined : selectedPanelFinishCategory}
+            value={selectedPanelFinishCategory || ""}
             onValueChange={(value) => handleFieldChange("panelFinishCategory", value)}
+            disabled={!selectedModel}
           >
             <SelectTrigger className="bg-background">
               <SelectValue placeholder="Select panel finish category" />
@@ -438,9 +462,9 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
           <div className="space-y-2">
             <Label className="text-sm font-medium">Panel Finish Specific Item *</Label>
             <Select
-              value={selectedPanelFinishSpecificItem === "" ? undefined : selectedPanelFinishSpecificItem}
+              value={selectedPanelFinishSpecificItem || ""}
               onValueChange={(value) => handleFieldChange("panelFinishSpecificItem", value)}
-              disabled={!selectedPanelFinishCategory}
+              disabled={!selectedPanelFinishCategory || !selectedModel}
             >
               <SelectTrigger className="bg-background">
                 <SelectValue placeholder="Select specific item" />
@@ -461,8 +485,8 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Track Type *</Label>
           <Input
-            value={selectedModel ? "Auto-calculated" : ""}
-            placeholder={selectedModel ? "Auto-calculated" : "Select model first"}
+            value={getTrackTypeByModel(selectedModel)}
+            placeholder={"Auto-calculated"}
             readOnly
             className="bg-muted text-muted-foreground"
           />
@@ -471,7 +495,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
         <div className="space-y-2">
           <Label className="text-sm font-medium">Track System *</Label>
           <Select
-            value={selectedTrackSystem === "" ? undefined : selectedTrackSystem}
+            value={selectedTrackSystem || ""}
             onValueChange={(value) => handleFieldChange("trackSystem", value)}
             disabled={!selectedModel}
           >
@@ -479,7 +503,7 @@ const OperableWallCreationForm = ({ wall, wallName, onWallChange }: OperableWall
               <SelectValue placeholder="Select track system" />
             </SelectTrigger>
             <SelectContent className="bg-background border z-50">
-              {getTrackSystemsByTrackType("Multi-Directional Track", selectedModel).map((system) => (
+              {getTrackSystemsByTrackType(getTrackTypeByModel(selectedModel), selectedModel).map((system) => (
                 <SelectItem key={system} value={system}>
                   {system}
                 </SelectItem>
