@@ -48,7 +48,7 @@ export const createTemplateHelpers = (): TemplateHelpers => ({
     // Handle edge cases for very large numbers (up to 7 digits)
     const absNum = Math.abs(num);
     if (absNum >= 10000000) { // 7+ digits
-      console.warn('Currency value may be too large:', num);
+      // Currency value may be too large - could add proper error handling here
     }
     
     // Use Intl.NumberFormat for proper locale-specific formatting
@@ -63,9 +63,7 @@ export const createTemplateHelpers = (): TemplateHelpers => ({
     const formatted = formatter.format(num);
     
     // Debug logging for development
-    // if (process.env.NODE_ENV === 'development') {
-    //   console.log(`Currency formatting: ${amount} -> ${num} -> ${formatted}`);
-    // }
+    // Removed console.log for production
     
     return formatted;
   },

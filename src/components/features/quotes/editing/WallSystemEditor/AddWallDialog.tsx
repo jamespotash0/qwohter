@@ -29,11 +29,8 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
     const existingNames = Object.keys(existingWalls || {});
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     
-    console.log('Generating wall name. Existing walls:', existingNames);
-    
     // If no existing walls, start with 'Wall A'
     if (existingNames.length === 0) {
-      console.log('No existing walls, returning Wall A');
       return 'Wall A';
     }
     
@@ -41,7 +38,6 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
     for (let i = 0; i < letters.length; i++) {
       const letter = `Wall ${letters[i]}`;
       if (!existingNames.includes(letter)) {
-        console.log('Next available letter:', letter);
         return letter;
       }
     }
@@ -51,7 +47,6 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
     while (existingNames.includes(`Wall ${counter}`)) {
       counter++;
     }
-    console.log('Using numbered fallback:', `Wall ${counter}`);
     return `Wall ${counter}`;
   };
 
@@ -116,7 +111,6 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
   // Set initial wall name when component mounts
   useEffect(() => {
     const newName = generateNextWallName();
-    console.log('Setting initial wall name to:', newName);
     setWallName(newName);
   }, [existingWalls]);
 
@@ -124,7 +118,6 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
   useEffect(() => {
     if (isOpen) {
       const newName = generateNextWallName();
-      console.log('Setting wall name on dialog open to:', newName);
       setWallName(newName);
     }
   }, [isOpen]);
@@ -269,7 +262,6 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
     try {
       // Filter wall data to only include fields relevant to the selected wall type
       const cleanWallData = filterWallDataByType(newWall);
-      console.log('Saving wall with name:', wallName, 'and clean data:', cleanWallData);
       
       // Save wall data - database save is now handled by the parent component
       await onSave(wallName, cleanWallData);
