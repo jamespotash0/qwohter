@@ -7,7 +7,6 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     const walls = data.wall_details?.walls || {};
     const wallEntries = Object.entries(walls);
 
-    // If no walls exist, don't show the wall table
     if (wallEntries.length === 0) {
       return '';
     }
@@ -16,22 +15,23 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
       <table style="border-collapse: collapse; width: 100%;">
         <tbody>
           ${wallEntries.map(([wallName, wall]: [string, WallSpecification]) => {
-            const dimensions = this.helpers.formatDimensions(wall.lengthFeet, wall.lengthInches, wall.heightFeet, wall.heightInches, true);
+            const dimensions = this.helpers.formatDimensions(
+              String(wall.lengthFeet || ''), 
+              String(wall.lengthInches || ''), 
+              String(wall.heightFeet || ''), 
+              String(wall.heightInches || ''), 
+              true
+            );
             const wallSystemType = wall.wallSystemType || '';
             const panelCount = wall.panelCount || '';
             const quantity = wall.quantity || '1';
             
-            // Use appropriate configuration field based on wall type
             const panelConfiguration = isGlassWall(wall)
               ? (wall.panelConfiguration || '')
               : isOperableWall(wall) 
                 ? (wall.panelConfiguration || '')
                 : '';
             
-            // Use appropriate panel description based on wall type
-            // const panelDescription = isGlassWall
-            //   ? `${this.helpers.toWords(panelCount)} (${panelCount}) Glass Panels`
-            //   : `${this.helpers.toWords(panelCount)} (${panelCount})`;
             const panelDescription = `${this.helpers.toWords(panelCount)} (${panelCount})`;
 
             return `
@@ -51,7 +51,6 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
   }
 
   generateProposalIntro(data: QuoteData): string {
-    // Get organization name from quote data, fallback to default if not available
     const organizationName = data.quote_details?.organizationName?.trim() || 
                              data.quote_details?.organization_name?.trim() || 
                              data.quote_details?.company_name?.trim() ||
@@ -59,7 +58,6 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     const walls = data.wall_details?.walls || {};
     const wallCount = Object.keys(walls).length;
 
-    // If no walls exist, don't show the proposal intro
     if (wallCount === 0) {
       return '';
     }
@@ -136,37 +134,29 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     const walls = data.wall_details?.walls || {};
     const wallEntries = Object.entries(walls);
     
-    // If no walls exist, don't show the track section
     if (wallEntries.length === 0) {
       return '';
     }
 
-    // Filter walls that have track system configured
     const wallsWithTrackSystems = wallEntries.filter(([_, wall]) => {
       if (isGlassWall(wall)) {
-        // Glass walls always have a track system, but need panel configuration
         return wall.panelConfiguration && wall.panelConfiguration.trim() !== '';
       } else if (isOperableWall(wall)) {
-        // Operable walls need track system configured
         return wall.trackSystem && wall.trackSystem.trim() !== '';
       }
       return false;
     });
 
-    // If no walls have track systems configured, don't show the section
     if (wallsWithTrackSystems.length === 0) {
       return '';
     }
     
-    // Create inline sentence describing each wall's track system
     const wallDescriptions = wallsWithTrackSystems.map(([wallName, wall]) => {
       if (isGlassWall(wall)) {
-        // For glass walls, always use the specified track system
         const trackSystem = 'Architectural Grade Extruded Aluminum Alloy 6063-T6';
         const panelConfiguration = wall.panelConfiguration;
         return `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> utilizes a <strong>${trackSystem}</strong> Track System (${this.helpers.getMovementOnTrackText(panelConfiguration)} Panels)`;
       } else if (isOperableWall(wall)) {
-        // For operable walls, use the configured track system
         return `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> utilizes a <strong>${wall.trackSystem}</strong> Track System (${this.helpers.getMovementOnTrackText(wall.panelConfiguration)} Panels)`;
       }
       return '';
@@ -190,24 +180,20 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     const walls = data.wall_details?.walls || {};
     const wallEntries = Object.entries(walls);
     
-    // If no walls exist, don't show the support section
     if (wallEntries.length === 0) {
       return '';
     }
     
-    // Filter walls that have structure support configured
     const wallsWithSupport = wallEntries.filter(([_, wall]) => {
       return wall.structureSupport && 
              wall.structureSupport.trim() !== '' && 
              wall.structureSupport.toLowerCase() !== 'none';
     });
 
-    // If no walls have structure support configured, don't show the section
     if (wallsWithSupport.length === 0) {
       return '';
     }
 
-    // Create inline sentence describing each wall's structure support
     const wallDescriptions = wallsWithSupport.map(([wallName, wall]) => {
       return `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> will be hung from <strong>${wall.structureSupport}</strong>`;
     }).join(', and ');
@@ -226,15 +212,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     `;
   }
  
-  generateGeneralSection(data: QuoteData): string { //moving STC to panel details, add shop drawings as well
-    // const walls = data.wall_details?.walls || {};
-    // const wallEntries = Object.entries(walls);
-
-    // // If no walls exist, don't show the general section
-    // if (wallEntries.length === 0) {
-    //   return '';
-    // }
-
+  generateGeneralSection(data: QuoteData): string {
     const shopDrawingDelivery = data.delivery_details?.shopDrawingWeeks || '';
     const trackDelivery = data.delivery_details?.trackDeliveryWeeks || '';
     const panelDelivery = data.delivery_details?.panelDeliveryWeeks || '';
@@ -251,13 +229,8 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
   }
 
   getPageBreakStrategy(data: QuoteData): { breakAfterSection: string; minimumHeight: number }[] {
-    const wallCount = this.helpers.getWallCount(data);
     const strategy = [];
 
-    // Base strategy for operable walls - allow more natural flowing for panels
-    // Removed forced break after panels-section to allow individual paragraphs to flow across pages
-
-    // Check for pass doors section  
     const walls = data.wall_details?.walls || {};
     const wallEntries = Object.entries(walls);
     const firstWall = wallEntries[0]?.[1];
@@ -266,7 +239,6 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
       strategy.push({ breakAfterSection: 'pass-doors-section', minimumHeight: 100 });
     }
 
-    // Check if any walls have pocket doors (new per-wall approach)
     const hasPocketDoors = wallEntries.some(([, wall]) => 
       wall.pocketDoors?.foldType && wall.pocketDoors?.foldType !== 'None'
     );

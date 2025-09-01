@@ -135,6 +135,29 @@ export class FormValidator {
       sanitizedValue: value 
     };
   }
+
+  // Inches validation with spaces and hyphens - for fractional inputs like "3 3/4" or "3-3/4"
+  static validateInchesWithFractionsHyphen(value: string): ValidationResult {
+    if (!value.trim()) {
+      return { isValid: true }; // Allow empty for optional fields
+    }
+    
+    // Allow numbers, spaces, hyphens, and fractions (/) - matches the input restriction
+    // Examples: "3", "3.5", "3/4", "3 3/4", "3-3/4"
+    const pattern = /^[0-9]*\.?[0-9]*[\s\-]?[0-9]*\/[0-9]*$|^[0-9]*\.?[0-9]*$/;
+    
+    if (!pattern.test(value)) {
+      return { 
+        isValid: false, 
+        errorMessage: 'Enter numbers with optional fractions (e.g., 3 3/4 or 3-3/4)' 
+      };
+    }
+    
+    return { 
+      isValid: true, 
+      sanitizedValue: value 
+    };
+  }
   
   // Hyphen-separated numbers validation (e.g., 7-11)
   static validateHyphenNumbers(value: string): ValidationResult {
@@ -250,6 +273,9 @@ export const fieldValidators = {
   panelCount: (value: string) => FormValidator.validateNumbersOnly(value),
   quantity: (value: string) => FormValidator.validateNumbersOnly(value),
   
+  // Fractional inches validation (for spaces and hyphens)
+  numbersWithFractionsHyphen: (value: string) => FormValidator.validateInchesWithFractionsHyphen(value),
+  
   // Pricing fields
   basePrice: (value: string) => FormValidator.validateCurrency(value),
   freight: (value: string) => FormValidator.validateCurrency(value),
@@ -275,7 +301,6 @@ export const inputRestrictions = {
     if (e.key >= '0' && e.key <= '9') return;
     
     // Block everything else
-    console.log('🚫 Blocking key:', e.key, 'from numbersOnly field');
     e.preventDefault();
     e.stopPropagation();
   },
@@ -287,36 +312,10 @@ export const inputRestrictions = {
     e.preventDefault();
   },
   
-  numbersWithFractions: (e: React.KeyboardEvent) => {
-    const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', '.', '/'];
+  numbersWithFractionsHyphen: (e: React.KeyboardEvent) => {
+    const allowedKeys = [' ', '-', 'Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', '.', '/'];
     if (allowedKeys.includes(e.key)) return;
     if (e.key >= '0' && e.key <= '9') return;
-    e.preventDefault();
-  },
-  
-  numbersWithHyphen: (e: React.KeyboardEvent) => {
-    const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
-    if (allowedKeys.includes(e.key)) return;
-    
-    // Allow numbers
-    if (e.key >= '0' && e.key <= '9') return;
-    
-    // Allow hyphen only if there's already a number and no hyphen exists
-    if (e.key === '-') {
-      const input = e.currentTarget as HTMLInputElement;
-      const currentValue = input.value;
-      
-      // Only allow hyphen if:
-      // 1. There's at least one number already
-      // 2. There's no existing hyphen
-      // 3. The cursor is not at the beginning
-      if (currentValue.length > 0 && 
-          /^[0-9]+$/.test(currentValue) && 
-          input.selectionStart !== 0) {
-        return;
-      }
-    }
-    
     e.preventDefault();
   },
   

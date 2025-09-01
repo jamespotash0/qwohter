@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ValidatedInput } from '@/components/ui/validated-input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -10,7 +9,6 @@ import { WallCardProps } from './types';
 import { OperableWallEditForm } from './OperableWallEditForm';
 import { GlassWallEditForm } from './GlassWallEditForm';
 import { EditWallSystemDialog } from '../../../WallSystemEditor/EditWallSystemDialog';
-import { Settings } from 'lucide-react';
 
 export const WallCard: React.FC<WallCardProps> = ({
   wallName,
@@ -26,20 +24,17 @@ export const WallCard: React.FC<WallCardProps> = ({
   const { validateAndUpdate, getFieldError, isFieldValid, markFieldTouched } = useFormValidation();
 
   const handleSaveWallSystem = async (_editedWallName: string, updatedWall: any) => {
-    // If we have the dedicated wall system update function, use it
     if (onUpdateWallSystem) {
       try {
         await onUpdateWallSystem(wallName, updatedWall);
         console.log('✅ WallCard: Wall system updated via dedicated endpoint');
         
-        // Reload the page to refresh all dropdown data and return to clean state
         console.log('🔄 Reloading page to refresh all data...');
         window.location.reload();
       } catch (error) {
         console.error('❌ WallCard: Wall system update failed:', error);
       }
     } else {
-      // Fallback to the old method
       const currentWall = wall || {};
       const mergedWall = { ...currentWall, ...updatedWall };
       
@@ -52,18 +47,15 @@ export const WallCard: React.FC<WallCardProps> = ({
   };
 
   const handleConfirmRemove = async () => {
-    // Use database removal function if available for direct database updates
     if (onRemoveWallSystem) {
       try {
         await onRemoveWallSystem(wallName);
         console.log('✅ WallCard: Wall removed via database removal function');
-        // Reload the page to refresh all data
         window.location.reload();
       } catch (error) {
         console.error('❌ WallCard: Wall removal failed:', error);
       }
     } else {
-      // Fallback to local state removal
       onRemove(wallName);
     }
     setShowRemoveConfirmation(false);
@@ -95,7 +87,6 @@ export const WallCard: React.FC<WallCardProps> = ({
         </Button>
       </div>
     </div>
-    {/* Quick Edit Area Label */}
     <div className="col-span-2 pt-2 border-t border-gray-200">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-gray-500 font-medium">Quick Edit Area - Basic Fields Only</span>
@@ -125,14 +116,14 @@ export const WallCard: React.FC<WallCardProps> = ({
         <Label htmlFor={`${wallName}-lengthInches`} className="text-xs">Length (in)</Label>
         <ValidatedInput
           id={`${wallName}-lengthInches`}
-          validationType="numbersWithFractions"
+          validationType="numbersWithFractionsHyphen"
           value={wall.lengthInches || ''}
           onValueChange={(value: string) => {
-            const sanitized = validateAndUpdate(`${wallName}-lengthInches`, value, 'numbersWithFractions');
+            const sanitized = validateAndUpdate(`${wallName}-lengthInches`, value, 'numbersWithFractionsHyphen');
             onFieldChange(wallName, 'lengthInches', sanitized);
           }}
           onBlur={() => markFieldTouched(`${wallName}-lengthInches`)}
-          placeholder="0 or 6.5 or 3/4"
+          placeholder="0 or 6 3/4 or 3/4"
           className="text-xs h-8"
           errorMessage={getFieldError(`${wallName}-lengthInches`)}
           isValid={isFieldValid(`${wallName}-lengthInches`)}
@@ -159,10 +150,10 @@ export const WallCard: React.FC<WallCardProps> = ({
         <Label htmlFor={`${wallName}-heightInches`} className="text-xs">Height (in)</Label>
         <ValidatedInput
           id={`${wallName}-heightInches`}
-          validationType="numbersWithFractions"
+          validationType="numbersWithFractionsHyphen"
           value={wall.heightInches || ''}
           onValueChange={(value: string) => {
-            const sanitized = validateAndUpdate(`${wallName}-heightInches`, value, 'numbersWithFractions');
+            const sanitized = validateAndUpdate(`${wallName}-heightInches`, value, 'numbersWithFractionsHyphen');
             onFieldChange(wallName, 'heightInches', sanitized);
           }}
           onBlur={() => markFieldTouched(`${wallName}-heightInches`)}

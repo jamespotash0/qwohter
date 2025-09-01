@@ -1,9 +1,9 @@
 import React, { forwardRef, useCallback } from 'react';
-import { Input, InputProps } from '@/components/ui/input';
+import { Input } from '@/components/ui/input';
 import { inputRestrictions } from '@/utils/formValidation';
 import { cn } from '@/lib/utils';
 
-export interface ValidatedInputProps extends Omit<InputProps, 'onChange'> {
+export interface ValidatedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
   validationType?: 
     | 'email'
     | 'phone' 
@@ -11,8 +11,7 @@ export interface ValidatedInputProps extends Omit<InputProps, 'onChange'> {
     | 'address'
     | 'numbersOnly'
     | 'numbersWithDecimals'
-    | 'numbersWithFractions'
-    | 'numbersWithHyphen'
+    | 'numbersWithFractionsHyphen'
     | 'currency'
     | 'percentage';
   errorMessage?: string;
@@ -45,11 +44,8 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
         case 'percentage':
           inputRestrictions.numbersWithDecimals(e);
           break;
-        case 'numbersWithFractions':
-          inputRestrictions.numbersWithFractions(e);
-          break;
-        case 'numbersWithHyphen':
-          inputRestrictions.numbersWithHyphen(e);
+        case 'numbersWithFractionsHyphen':
+          inputRestrictions.numbersWithFractionsHyphen(e);
           break;
         case 'phone':
           inputRestrictions.phone(e);

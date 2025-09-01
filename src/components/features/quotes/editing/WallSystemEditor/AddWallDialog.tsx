@@ -388,8 +388,18 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                   <Label className="text-xs">Length (in)</Label>
                   <Input className="text-xs h-8"
                     value={newWall.lengthInches || ''}
-                    onChange={(e) => handleFieldChange(wallName, 'lengthInches', e.target.value)}
-                    placeholder="0"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow digits, spaces, hyphens, and forward slashes for fractions
+                      const cleanValue = value.replace(/[^\d\s\-\/]/g, '');
+                      // Parse the base number (before any fraction)
+                      const [base] = cleanValue.split(/[\s\-]/);
+                      const baseNum = parseInt(base || "0", 10) || 0;
+                      if (baseNum <= 11 || cleanValue === '') {
+                        handleFieldChange(wallName, 'lengthInches', cleanValue);
+                      }
+                    }}
+                    placeholder="0 or 3 3/4"
                   />
                 </div>
                 <div className="space-y-2">
@@ -404,8 +414,18 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                   <Label className="text-xs">Height (in)</Label>
                   <Input className="text-xs h-8"
                     value={newWall.heightInches || ''}
-                    onChange={(e) => handleFieldChange(wallName, 'heightInches', e.target.value)}
-                    placeholder="0"
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow digits, spaces, hyphens, and forward slashes for fractions
+                      const cleanValue = value.replace(/[^\d\s\-\/]/g, '');
+                      // Parse the base number (before any fraction)
+                      const [base] = cleanValue.split(/[\s\-]/);
+                      const baseNum = parseInt(base || "0", 10) || 0;
+                      if (baseNum <= 11 || cleanValue === '') {
+                        handleFieldChange(wallName, 'heightInches', cleanValue);
+                      }
+                    }}
+                    placeholder="0 or 3 3/4"
                   />
                 </div>
               </div>
