@@ -95,10 +95,10 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="operation" className={labelClass}>Operation *</Label>
+          <Label htmlFor="panelOperation" className={labelClass}>Panel Operation *</Label>
           <Select
             value={selectedOperation}
-            onValueChange={(value) => handleFieldChange("operation", value)}
+            onValueChange={(value) => handleFieldChange("panelOperation", value)}
             disabled={!selectedModel}
           >
             <SelectTrigger>
@@ -106,7 +106,7 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="None">None</SelectItem>
-              {getOptions("operation").map((option: string) => (
+              {getOptions("panelOperation").map((option: string) => (
                 <SelectItem key={option} value={option}>
                   {option}
                 </SelectItem>

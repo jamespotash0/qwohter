@@ -5,6 +5,7 @@ import {
   getAvailableOptions, 
   getFrameThickness, 
   getTrackSystem, 
+  getAvailablePanelOperations,
   GlassWallModel,
   ModelConfiguration 
 } from '@/lib/types/walls/glass';
@@ -19,7 +20,7 @@ export const useWallForm = ({ wall, wallName, onChange }: UseWallFormProps) => {
   // State for all glass wall fields
   const [selectedModel, setSelectedModel] = useState<string>(wall.model || '');
   const [selectedConfiguration, setSelectedConfiguration] = useState<string>(wall.panelConfiguration || '');
-  const [selectedOperation, setSelectedOperation] = useState<string>(wall.operation || '');
+  const [selectedOperation, setSelectedOperation] = useState<string>(wall.panelOperation || '');
   const [selectedGlassType, setSelectedGlassType] = useState<string>(wall.glassType || '');
   const [selectedSTCRating, setSelectedSTCRating] = useState<string>(wall.stcRating || '');
   const [selectedPartitionSupport, setSelectedPartitionSupport] = useState<string>(wall.partitionSupport || '');
@@ -45,7 +46,7 @@ export const useWallForm = ({ wall, wallName, onChange }: UseWallFormProps) => {
   useEffect(() => {
     setSelectedModel(wall.model || '');
     setSelectedConfiguration(wall.panelConfiguration || '');
-    setSelectedOperation(wall.operation || '');
+    setSelectedOperation(wall.panelOperation || '');
     setSelectedGlassType(wall.glassType || '');
     setSelectedSTCRating(wall.stcRating || '');
     setSelectedPartitionSupport(wall.partitionSupport || '');
@@ -67,13 +68,13 @@ export const useWallForm = ({ wall, wallName, onChange }: UseWallFormProps) => {
   // Cascading field dependencies
   const FIELD_DEPENDENCIES: Record<string, string[]> = {
     model: [
-      'panelConfiguration', 'operation', 'glassType', 'stcRating', 'partitionSupport',
+      'panelConfiguration', 'panelOperation', 'glassType', 'stcRating', 'partitionSupport',
       'panelFace', 'frameFinish', 'frameThickness', 'trackSystem', 'trackType', 
       'trackFinish', 'passDoorType', 'passDoorOption', 'floorGuide', 'hingeType',
       'finalClosure', 'bottomSeals', 'topSeals'
     ],
-    panelConfiguration: [],
-    operation: [],
+    panelConfiguration: ['panelOperation'],
+    panelOperation: [],
     passDoorType: ['passDoorOption']
   };
 
@@ -92,7 +93,7 @@ export const useWallForm = ({ wall, wallName, onChange }: UseWallFormProps) => {
 
     // Update local state - reset all fields that need to be reset
     if (fieldsToReset.includes('panelConfiguration')) setSelectedConfiguration('');
-    if (fieldsToReset.includes('operation')) setSelectedOperation('');
+    if (fieldsToReset.includes('panelOperation')) setSelectedOperation('');
     if (fieldsToReset.includes('glassType')) setSelectedGlassType('');
     if (fieldsToReset.includes('stcRating')) setSelectedSTCRating('');
     if (fieldsToReset.includes('partitionSupport')) setSelectedPartitionSupport('');
@@ -123,7 +124,7 @@ export const useWallForm = ({ wall, wallName, onChange }: UseWallFormProps) => {
       case "panelConfiguration":
         setSelectedConfiguration(displayValue);
         break;
-      case "operation":
+      case "panelOperation":
         setSelectedOperation(displayValue);
         break;
       case "glassType":
@@ -223,7 +224,7 @@ export const useWallForm = ({ wall, wallName, onChange }: UseWallFormProps) => {
       // Map form field names to ModelConfiguration property names
       const fieldMapping: Record<string, keyof ModelConfiguration> = {
         'panelConfiguration': 'configurations',
-        'operation': 'operations',
+        'panelOperation': 'panelOperations',
         'glassType': 'glassType',
         'stcRating': 'stcRating',
         'partitionSupport': 'partitionSupport',
@@ -251,12 +252,17 @@ export const useWallForm = ({ wall, wallName, onChange }: UseWallFormProps) => {
         return [];
       }
       
+      // Special handling for panel operations based on configuration
+      if (field === 'panelOperation') {
+        return getAvailablePanelOperations(selectedModel as GlassWallModel, selectedConfiguration);
+      }
+      
       return getAvailableOptions(selectedModel as GlassWallModel, mappedField);
     } catch (error) {
       console.error(`Error getting options for field ${field}:`, error);
       return [];
     }
-  }, [selectedModel]);
+  }, [selectedModel, selectedConfiguration]);
 
   // Validation function
   const validateForm = useCallback(() => {

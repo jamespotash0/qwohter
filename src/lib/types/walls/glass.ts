@@ -4,7 +4,7 @@ export type GlassWallModel = 'Stella' | 'Luna' | 'Illona' | 'Ava' | 'Mata';
 
 export interface ModelConfiguration {
   configurations: string[];
-  operations: string[];
+  panelOperations: string[];
   glassType: string[];
   stcRating: string[];
   partitionSupport: string[];
@@ -25,7 +25,7 @@ export interface ModelConfiguration {
 export interface GlassWallSpecification extends BaseWallSpecification {
   wallSystemType: 'Glass Wall';
   model: string;
-  operation: string;
+  panelOperation: string;
   panelConfiguration: string;
   panelFace: string;
   frameFinish: string;
@@ -63,8 +63,8 @@ export interface GlassWallConfiguration {
 
 export const modelConfigurations: Record<GlassWallModel, ModelConfiguration> = {
   Stella: {
-    configurations: ['Individual Panels'],
-    operations: ['Manual', 'Automated', 'Programmable Self-Driving', 'Semi-Automated Seals'],
+    configurations: ['Individual, Multi-Directional Panels', 'Individual, Single Carrier Panels', 'Individual, Fully Automatic Panels'],
+    panelOperations: ['Manual', 'Fully Automatic', 'Semi-Automated Seals'],
     glassType: ['Tempered Glass', 'Laminated Glass', 'Switchable Glass', 'Child-Safe Glass', 'Fully Back-Painted Glass'],
     stcRating: ['44', '50'],
     partitionSupport: ['Top-Supported'],
@@ -82,8 +82,8 @@ export const modelConfigurations: Record<GlassWallModel, ModelConfiguration> = {
     topSeals: ['Electric', 'Automatic', 'Semi-Automatic', 'Manual', 'Operable']
   },
   Luna: {
-    configurations: ['Individual Panels', 'Continuously-Hinged Panels'],
-    operations: ['Manual'],
+    configurations: ['Individual, Multi-Directional Panels', 'Continuously-Hinged Panels'],
+    panelOperations: ['Manual'],
     glassType: ['Tempered Glass', 'Laminated Glass', 'Switchable Glass', 'Child-Safe Glass', 'Fully Back-Painted Glass'],
     stcRating: ['43'],
     partitionSupport: ['Top-Supported', 'Floor-Supported'],
@@ -101,8 +101,8 @@ export const modelConfigurations: Record<GlassWallModel, ModelConfiguration> = {
     topSeals: ['Floor Supported Fixed Bulb', 'Top Supported Fixed Brush'],
   },
   Illona: {
-    configurations: ['Individual Panels', 'Continuously-Hinged Panels', 'Pivoting Individual Panels', 'Single & Telescoping Slider Panels'],
-    operations: ['Manual'],
+    configurations: ['Individual, Multi-Directional Panels', 'Continuously-Hinged Panels', 'Pivoting Individual Panels', 'Single & Telescoping Slider Panels'],
+    panelOperations: ['Manual'],
     glassType: ['Tempered Glass', 'Laminated Glass', 'Back-Painted Glass'],
     stcRating: ['33'],
     partitionSupport: ['Top-Supported'],
@@ -120,15 +120,15 @@ export const modelConfigurations: Record<GlassWallModel, ModelConfiguration> = {
     topSeals: ['Fixed Brush'],
   },
   Ava: {
-    configurations: ['Individual Panels', 'Hinged-Paired Panels'],
-    operations: ['Manual'],
+    configurations: ['Individual, Multi-Directional Panels', 'Hinged-Paired Panels'],
+    panelOperations: ['Manual'],
     glassType: ['1/2" Tempered Glass'],
     stcRating: ['Non-Acoustic'],
     partitionSupport: ['Top-Supported'],
     passDoorType: ['Full-Height'],
     passDoorOption: ['Single', 'Double'],
     panelFaces: ['Not Required'],
-    hinging: ['Full-Leaf Butt Hinges'],
+    hinging: ['Optional Full-Leaf Butt Hinges'],
     frameFinishes: ['Clear Anodized', 'Black Powder Coat', 'Custom RAL Color Options'],
     trackSystem: ['Architectural Grade Extruded Aluminum Alloy 6063-T6'],
     trackType: ['Top-Supported Multi-directional & Single-Point'],
@@ -139,15 +139,15 @@ export const modelConfigurations: Record<GlassWallModel, ModelConfiguration> = {
     topSeals: ['Fixed Brush'],
   },
   Mata: {
-    configurations: ['Individual Panels', 'Continuously-Hinged Panels', 'Single & Telescoping Slider Panels'],
-    operations: ['Manual'],
+    configurations: ['Individual, Multi-Directional Panels', 'Continuously-Hinged Panels', 'Single & Telescoping Slider Panels'],
+    panelOperations: ['Manual'],
     glassType: ['1/4" Tempered Glass', '5/16" Frosted Laminated Glass', 'Custom Glass Options'],
     stcRating: ['Non-Acoustic'],
     partitionSupport: ['Top-Supported'],
     passDoorType: ['Full-Height'],
     passDoorOption: ['Single', 'Double'],
     panelFaces: ['Wood Insert', 'Mullions & Surface-Mounted Muntins'],
-    hinging: ['Full-Leaf Butt Hinges'],
+    hinging: ['Optional Full-Leaf Butt Hinges'],
     frameFinishes: ['Stained Fruitwood Dark Oak', 'Stained Wheat', 'Stained Cordovan', 'Painted Black', 'Painted White', 'Unfinished'],
     trackSystem: ['Architectural Grade Extruded Aluminum Alloy 6063-T6'],
     trackType: ['Top-Supported Multi-directional & Single-Point'],
@@ -172,7 +172,7 @@ export function getAvailableOptions(
 export function getFrameThickness(model: GlassWallModel, stcRating?: string): string {
   switch (model) {
     case 'Stella':
-      return stcRating === '44' ? '4 1/2"' : '4 11/16"';
+      return stcRating === '44' ? '4 9/16"' : '4 11/16"';
     case 'Luna':
       return '2 3/4"';
     case 'Illona':
@@ -202,6 +202,27 @@ export function getTrackSystem(model: GlassWallModel): string {
       return 'Auto-Calculated';
   }
 }
+
+// Helper function to get available panel operations based on model and configuration
+export function getAvailablePanelOperations(
+  model: GlassWallModel, 
+  configuration?: string
+): string[] {
+  if (model === 'Stella' && configuration) {
+    if (configuration === 'Individual, Fully Automatic Panels') {
+      return ['Fully Automatic'];
+    } else if (
+      configuration === 'Individual, Multi-Directional Panels' || 
+      configuration === 'Individual, Single Carrier Panels'
+    ) {
+      return ['Manual', 'Semi-Automated Seals'];
+    }
+  }
+  
+  // For all other models or when configuration is not selected, return all available operations
+  return getAvailableOptions(model, 'panelOperations');
+}
+
 
 // Validation function to check if a model supports a specific configuration
 export function isValidConfiguration(

@@ -81,17 +81,17 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
 
     // Create single paragraph without bullets for better editing
     const wallDescriptions = wallEntries.map(([wallName, wall], index) => {
-      const panelCountText = wall.panelCount && parseInt(wall.panelCount) > 1 ? 'Multiple' : 'Single';
-      const heightText = this.helpers.formatDimensions('0', '0', wall.heightFeet, wall.heightInches, false).split(' x ')[1];
+      const panelCountText = wall.panelCount && parseInt(wall.panelCount || '1') > 1 ? 'Multiple' : 'Single';
+      const heightText = this.helpers.formatDimensions('0', '0', wall.heightFeet || '', wall.heightInches || '', false).split(' x ')[1];
       
       if (isGlassWall(wall)) {
         return SmartQuoteHelper.buildSentence([
           { text: `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> utilizes the Kwik-Wall Glass Wall System` },
           { text: `<strong>Model ${wall.model}</strong>`, condition: SmartQuoteHelper.hasValue(wall.model) },
-          { text: `featuring <strong>${wall.operation}</strong> operation`, condition: SmartQuoteHelper.hasValue(wall.operation) },
+          { text: `featuring <strong>${wall.panelOperation}</strong> operation`, condition: SmartQuoteHelper.hasValue(wall.panelOperation) },
           { text: `configured with <strong>${panelCountText} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
           { text: `for use on a <strong>${wall.trackType} Layout</strong>.`, condition: SmartQuoteHelper.hasValue(wall.trackType) },
-          { text: `The wall is <strong>${heightText}</strong> in height`, condition: SmartQuoteHelper.hasAllValues(wall.heightFeet, wall.heightInches) },
+          { text: `The wall is <strong>${heightText}</strong> in height`, condition: SmartQuoteHelper.hasAllValues(wall.heightFeet || '', wall.heightInches || '') },
           { text: `Each glass panel features <strong>${wall.glassType || 'insulated glass units'}</strong>`, condition: SmartQuoteHelper.hasValue(wall.glassType) },
           { text: `with <strong>${wall.frameThickness}</strong> thick framing`, condition: SmartQuoteHelper.hasValue(wall.frameThickness) },
           { text: `and <strong>${wall.frameFinish}</strong> frame finish.`, condition: SmartQuoteHelper.hasValue(wall.frameFinish) },
@@ -107,7 +107,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
           { text: `<strong>Model ${wall.model}</strong>`, condition: SmartQuoteHelper.hasValue(wall.model) },
           { text: `configured with <strong>${panelCountText} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
           { text: `for use on a <strong>${wall.trackType} Layout</strong>.`, condition: SmartQuoteHelper.hasValue(wall.trackType) },
-          { text: `The wall is <strong>${heightText}</strong> in height, with panel lengths varying as required`, condition: SmartQuoteHelper.hasAllValues(wall.heightFeet, wall.heightInches) },
+          { text: `The wall is <strong>${heightText}</strong> in height, with panel lengths varying as required`, condition: SmartQuoteHelper.hasAllValues(wall.heightFeet || '', wall.heightInches || '') },
           { text: `Each panel features a <strong>${wall.panelDesign}</strong> design`, condition: SmartQuoteHelper.hasValue(wall.panelDesign) },
           { text: `is <strong>${wall.panelThickness}"</strong> thick`, condition: SmartQuoteHelper.hasValue(wall.panelThickness) },
           { text: `and constructed with a <strong>${wall.panelSkin}</strong> panel skin.`, condition: SmartQuoteHelper.hasValue(wall.panelSkin) },

@@ -154,7 +154,7 @@ export const useWizardValidation = (
         const requiredFields = {
           model: wall.model,
           panelConfiguration: wall.panelConfiguration,
-          operation: wall.operation,
+          panelOperation: wall.panelOperation,
           glassType: wall.glassType,
           stcRating: wall.stcRating,
           partitionSupport: wall.partitionSupport,
