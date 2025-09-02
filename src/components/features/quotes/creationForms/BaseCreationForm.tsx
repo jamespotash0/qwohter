@@ -51,7 +51,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
                       onWallChange(wallName, {"lengthInches": cleanValue});
                     }
                   }}
-                  placeholder="Enter a number between 0-11, could include a fractiona (Ex - 3 3/4)"
+                  placeholder="Enter a number"
                   className="text-center"
                 />
                 <Label className="text-xs text-muted-foreground mt-1 block text-center">Inches</Label>
@@ -90,7 +90,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
                       onWallChange(wallName, {"heightInches": cleanValue});
                     }
                   }}
-                  placeholder="Enter a number or fraction (Ex - 3 3/4)"
+                  placeholder="Enter a number"
                   className="text-center"
                 />
                 <Label className="text-xs text-muted-foreground mt-1 block text-center">Inches</Label>

@@ -1,40 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { OperableWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/OperableWallEditForm';
-import { GlassWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/GlassWallEditForm';
+
+// Import the creation forms that include all necessary fields
+import OperableWallCreationForm from '@/components/features/quotes/creationForms/OperableWallCreationForm';
+import GlassWallCreationForm from '@/components/features/quotes/creationForms/GlassWallCreationForm';
+
+// Import validation
 import { validateWallSpecification } from '@/utils/wallValidation';
+import { WallSpecification } from '@/lib/types';
 
 interface AddWallDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (wallName: string, wallData: any) => Promise<void> | void;
-  onDatabaseSave?: () => Promise<void>;
-  existingWalls?: Record<string, any>;
+  onSave: (wallName: string, wallData: WallSpecification) => Promise<void> | void;
+  existingWalls?: Record<string, WallSpecification>;
 }
 
 export const AddWallDialog: React.FC<AddWallDialogProps> = ({
   isOpen,
   onClose,
   onSave,
-  onDatabaseSave,
   existingWalls = {}
 }) => {
-  // Function to generate the next wall name using A, B, C... convention
+  // Generate the next wall name
   const generateNextWallName = () => {
     const existingNames = Object.keys(existingWalls || {});
     const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     
-    // If no existing walls, start with 'Wall A'
     if (existingNames.length === 0) {
       return 'Wall A';
     }
     
-    // Find the next available letter
     for (let i = 0; i < letters.length; i++) {
       const letter = `Wall ${letters[i]}`;
       if (!existingNames.includes(letter)) {
@@ -50,299 +51,153 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
     return `Wall ${counter}`;
   };
 
-  // Empty wall template
-  const emptyWall = {
-    wallSystemType: '',
-    lengthFeet: '',
-    lengthInches: '',
-    heightFeet: '',
-    heightInches: '',
-    quantity: '1',
-    panelConfiguration: '',
-    panelCount: '',
-    series: '',
-    model: '',
-    panelThickness: '',
-    panelDesign: '',
-    panelSkin: '',
-    stcRating: '',
-    passDoorPanels: '',
-    passDoorQuantity: '',
-    panelFinishCategory: '',
-    panelFinishSpecificItem: '',
-    verticalSeals: '',
-    bottomSeals: '',
-    topSeals: '',
-    initialClosureSystem: '',
-    endPanelType: '',
-    trackType: '',
-    trackSystem: '',
-    structureSupport: '',
-    pocketDoors: {
-      foldType: '',
-      foldStyle: ''
-    },
-    // Glass Wall specific fields
-    glasswallModel: '',
-    glasswallOperation: '',
-    glasswallPanelConfiguration: '',
-    glasswallPanelFace: '',
-    glasswallFrameFinish: '',
-    glasswallGlassType: '',
-    glasswallSTCRating: '',
-    glasswallPartitionSupport: '',
-    glasswallPassDoorType: '',
-    glasswallPassDoorOption: '',
-    glasswallHingeType: '',
-    glasswallFrameThickness: '',
-    glasswallTrackSystem: '',
-    glasswallTrackType: '',
-    glasswallTrackFinish: '',
-    glasswallFinalClosure: '',
-    glasswallBottomSeals: '',
-    glasswallTopSeals: ''
-  };
-
-  const [newWall, setNewWall] = useState(emptyWall);
+  // State management
   const [wallName, setWallName] = useState('');
-  const [hasChanges, setHasChanges] = useState(false);
+  const [wallSystemType, setWallSystemType] = useState<string>('');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  // Set initial wall name when component mounts
-  useEffect(() => {
-    const newName = generateNextWallName();
-    setWallName(newName);
-  }, [existingWalls]);
-
-  // Regenerate wall name when dialog opens
-  useEffect(() => {
+  // Auto-generate wall name when dialog opens
+  React.useEffect(() => {
     if (isOpen) {
-      const newName = generateNextWallName();
-      setWallName(newName);
+      // Always regenerate the wall name when dialog opens to account for any new walls
+      setWallName(generateNextWallName());
     }
-  }, [isOpen]);
-
-  // Helper functions for cascading logic (copied from EditWallSystemDialog)
-  const getSeriesByPanelConfiguration = (panelConfiguration: string): string[] => {
-    switch (panelConfiguration) {
-      case "Individual Panels":
-        return ["2000", "3000", "Hufcor: 600"];
-      case "Hinged-Paired Panels":
-        return ["2000", "3000"];
-      case "Continuously-Hinged Panels":
-        return ["2000", "3000"];
-      default:
-        return [];
-    }
-  };
-
-  const getModelsByPanelConfigurationAndSeries = (panelConfiguration: string, series: string): string[] => {
-    if (panelConfiguration === "Individual Panels") {
-      if (series === "2000") return ["2010", "2020", "2010GL", "2020GL"];
-      if (series === "3000") return ["3010", "3020", "3010GL", "3020GL"];
-      if (series === "Hufcor: 600") return ["Hufcor 641"];
-    } else if (panelConfiguration === "Continuously-Hinged Panels") {
-      if (series === "2000") return ["2050e"];
-      if (series === "3000") return ["3050e"];
-    } else if (panelConfiguration === "Hinged-Paired Panels") {
-      if (series === "2000") return ["2030", "2030GL"];
-      if (series === "3000") return ["3030", "3030GL"];
-    }
-    return [];
-  };
-
-  const getPanelSkinOptions = (model: string): string[] => {
-    if (["Hufcor 641"].includes(model)) {
-      return ["Steel"];
-    }
-    if (["3010", "3020", "3030"].includes(model)) {
-      return ["Standard Steel Skin", "Optional Acoustical Substrate", "Optional Wood Veneer", "Optional High-Pressure Laminate"];
-    }
-    if (["3050e", "3010GL", "3020GL", "3030GL"].includes(model)) {
-      return ["Standard Steel Skin", "Optional Acoustical Substrate"];
-    }
-    if (["2010", "2020", "2030"].includes(model)) {
-      return ["Standard Acoustical Substrate", "Optional Steel Skin", "Optional Wood Veneer", "Optional High-Pressure Laminate"];
-    }
-    if (["2050e", "2010GL", "2020GL", "2030GL"].includes(model)) {
-      return ["Standard Acoustical Substrate", "Optional Steel Skin"];
-    }
-    return [];
-  };
-
-  const getSTCRatingOptions = (model: string, panelSkin: string): string[] => {
-    if (!model || !panelSkin) return [];
-    if (["Hufcor 641"].includes(model)) {
-      return ["43", "47", "49", "52", "54", "56"];
-    }
-    if (["2010GL", "2020GL", "2030GL"].includes(model)) {
-      return ["38"];
-    }
-
-    if (["3010GL", "3020GL", "3030GL"].includes(model)) {
-      return ["43", "48"];
-    }
-
-    if (["2010", "2020", "2030", "2050e"].includes(model)) {
-      if (panelSkin.includes("Acoustical Substrate")) {
-        return ["42", "45", "49", "50"];
+  }, [isOpen, existingWalls]);
+  
+  // Create empty wall template based on wall type
+  const createEmptyWall = (wallSystemType: string): WallSpecification => {
+    const baseWall: Partial<WallSpecification> = {
+      wallSystemType: wallSystemType as any,
+      lengthFeet: '',
+      lengthInches: '',
+      heightFeet: '',
+      heightInches: '',
+      quantity: '1',
+      panelConfiguration: '',
+      panelCount: '',
+      model: '',
+      stcRating: '',
+      trackType: '',
+      trackSystem: '',
+      bottomSeals: '',
+      topSeals: '',
+      structureSupport: '',
+      pocketDoors: {
+        foldType: '',
+        foldStyle: ''
       }
-      if (panelSkin.includes("Steel")) {
-        return ["49", "51"];
-      }
+    };
+
+    if (wallSystemType === 'Operable Wall') {
+      return {
+        ...baseWall,
+        wallSystemType: 'Operable Wall',
+        series: '',
+        panelThickness: '',
+        panelDesign: '',
+        panelSkin: '',
+        passDoorPanels: '',
+        passDoorQuantity: '',
+        panelFinishCategory: '',
+        panelFinishSpecificItem: '',
+        verticalSeals: '',
+        initialClosureSystem: '',
+        endPanelType: ''
+      } as WallSpecification;
+    } else if (wallSystemType === 'Glass Wall') {
+      return {
+        ...baseWall,
+        wallSystemType: 'Glass Wall',
+        operation: '',
+        glassType: '',
+        partitionSupport: '',
+        passDoorType: '',
+        passDoorOption: '',
+        panelFace: '',
+        hingeType: '',
+        frameFinish: '',
+        frameThickness: '',
+        trackFinish: '',
+        floorGuide: '',
+        finalClosure: ''
+      } as WallSpecification;
     }
 
-    if (["3010", "3020", "3030", "3050e"].includes(model)) {
-      if (panelSkin.includes("Steel")) {
-        return ["46", "50", "52", "56"];
-      }
-      if (panelSkin.includes("Acoustical Substrate")) {
-        return ["43", "46", "48", "50"];
-      }
-    }
-
-    return [];
+    return baseWall as WallSpecification;
   };
 
-  const getTrackTypeByModel = (model: string): string => {
-    if (["Hufcor 641", "2010", "2010GL", "3010", "3010GL"].includes(model)) {
-      return "Curve & Diverter (Individual) Track";
-    } else if (["2020", "2020GL", "3020", "3020GL"].includes(model)) {
-      return "Multi-Directional Track";
-    } else if (["2050e", "3050e", "3030", "3030GL", "2030", "2030GL"].includes(model)) {
-      return "Hinged-Pair (Straight Line) Track";
-    }
-    return "";
+  const [newWall, setNewWall] = useState<WallSpecification>(createEmptyWall(''));
+
+  // Handle wall system type change
+  const handleWallSystemTypeChange = (selectedType: string) => {
+    setWallSystemType(selectedType);
+    setNewWall(createEmptyWall(selectedType));
   };
 
-  const getTrackSystemsByTrackType = (trackType: string, model?: string): string[] => {
-    if (model === "Hufcor 641") {
-      return ["Type 26 Clear Satin-Anodized Aluminum", "Type 36 Clear Satin-Anodized Aluminum", "Type 57 Clear Anodized Aluminum", "Type 11L Powder Coated Off-White Steel", "Type 11 Powder Coated Off-White Steel"];
-    }
-    switch (trackType) {
-      case "Multi-Directional Track":
-        return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
-      case "Hinged-Pair (Straight Line) Track":
-        return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
-      case "Curve & Diverter (Individual) Track":
-        return ["Type 850 Powder Coated Off-White Steel"];
-      default:
-        return [];
+  // Handle field changes from creation forms
+  const handleWallChange = (_wallName: string, fieldOrUpdates: string | Record<string, string>, value?: string) => {
+    if (typeof fieldOrUpdates === 'string' && value !== undefined) {
+      // Single field update
+      setNewWall(prev => ({
+        ...prev,
+        [fieldOrUpdates]: value
+      }));
+    } else if (typeof fieldOrUpdates === 'object') {
+      // Batch update
+      setNewWall(prev => ({
+        ...prev,
+        ...fieldOrUpdates
+      }));
     }
   };
 
-  // Reset wall data when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      setNewWall(emptyWall);
-      setHasChanges(false);
-      // Don't reset wallName here - let the other useEffect handle it
-    }
-  }, [isOpen]);
-
-  const handleFieldChange = (_fieldWallName: string, field: string, value: any) => {
-    setNewWall(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    setHasChanges(true);
-  };
-
-  // Validation function
-  const isWallValid = () => {
+  // Full validation for wall creation - require all fields that are required for the specific wall type
+  const isWallValid = useMemo(() => {
+    if (!wallSystemType) return false;
+    if (!wallName.trim()) return false;
+    
+    // Use the comprehensive wall validation that checks all required fields
     const validation = validateWallSpecification(newWall);
+    
+    // Debug logging to see what's failing
+    if (!validation.isValid) {
+      console.log('AddWallDialog validation failed:', validation.errors);
+      console.log('Current wall data:', newWall);
+    }
+    
     return validation.isValid;
-  };
+  }, [newWall, wallSystemType, wallName]);
 
+  // Save handlers
   const handleSave = () => {
     setShowConfirmDialog(true);
   };
 
   const handleConfirmSave = async () => {
     try {
-      // Filter wall data to only include fields relevant to the selected wall type
-      const cleanWallData = filterWallDataByType(newWall);
-      
-      // Save wall data - database save is now handled by the parent component
-      await onSave(wallName, cleanWallData);
-      
+      console.log('🔄 Adding wall to database:', wallName, newWall);
+      await onSave(wallName, newWall);
       setShowConfirmDialog(false);
       onClose();
+      
+      // Don't reload page - let the database save and state updates handle the refresh
+      console.log('✅ Wall addition completed - live preview should update automatically');
     } catch (error) {
-      console.error('Error saving wall:', error);
-      // Keep dialog open if save fails
+      console.error('❌ Error saving wall:', error);
     }
   };
 
-  // Function to filter wall data by wall type
-  const filterWallDataByType = (wallData: any) => {
-    const wallType = wallData.wallSystemType;
-    
-    if (wallType === 'Operable Wall') {
-      // Only keep operable wall fields and base fields
-      const {
-        // Remove all glasswall fields
-        glasswallModel, glasswallOperation, glasswallPanelConfiguration, glasswallPanelFace,
-        glasswallFrameFinish, glasswallGlassType, glasswallSTCRating, glasswallPartitionSupport,
-        glasswallPassDoorType, glasswallPassDoorOption, glasswallHingeType, glasswallFrameThickness,
-        glasswallTrackSystem, glasswallTrackType, glasswallTrackFinish, glasswallFinalClosure,
-        glasswallBottomSeals, glasswallTopSeals,
-        // Keep everything else
-        ...operableWallData
-      } = wallData;
-      
-      return operableWallData;
-    } else if (wallType === 'Glass Wall') {
-      // For glass walls, map glasswall fields to correct names and remove operable-specific fields
-      const cleanData = {
-        // Base fields
-        wallSystemType: wallData.wallSystemType,
-        lengthFeet: wallData.lengthFeet,
-        lengthInches: wallData.lengthInches,
-        heightFeet: wallData.heightFeet,
-        heightInches: wallData.heightInches,
-        panelCount: wallData.panelCount,
-        quantity: wallData.quantity,
-        bottomSeals: wallData.glasswallBottomSeals || wallData.bottomSeals,
-        topSeals: wallData.glasswallTopSeals || wallData.topSeals,
-        trackType: wallData.glasswallTrackType || wallData.trackType,
-        trackSystem: wallData.glasswallTrackSystem || wallData.trackSystem,
-        
-        // Glass wall specific fields (mapped from glasswall prefixes)
-        model: wallData.glasswallModel,
-        operation: wallData.glasswallOperation,
-        panelConfiguration: wallData.glasswallPanelConfiguration,
-        panelFace: wallData.glasswallPanelFace,
-        frameFinish: wallData.glasswallFrameFinish,
-        glassType: wallData.glasswallGlassType,
-        stcRating: wallData.glasswallSTCRating,
-        partitionSupport: wallData.glasswallPartitionSupport,
-        passDoorType: wallData.glasswallPassDoorType,
-        passDoorOption: wallData.glasswallPassDoorOption,
-        hingeType: wallData.glasswallHingeType,
-        frameThickness: wallData.glasswallFrameThickness,
-        trackFinish: wallData.glasswallTrackFinish,
-        finalClosure: wallData.glasswallFinalClosure,
-        
-        // Keep pocket doors if present
-        pocketDoors: wallData.pocketDoors
-      };
-      
-      return cleanData;
-    }
-    
-    // Default: return as-is
-    return wallData;
-  };
-
+  // Close handlers
   const handleClose = () => {
-    if (hasChanges) {
-      if (confirm('You have unsaved changes. Are you sure you want to close?')) {
-        onClose();
-      }
-    } else {
-      onClose();
-    }
+    setWallSystemType('');
+    setNewWall(createEmptyWall(''));
+    setWallName(''); // Clear wall name so it regenerates on next open
+    onClose();
+  };
+
+  const handleConfirmClose = () => {
+    setShowConfirmDialog(false);
+    handleClose();
   };
 
   return (
@@ -350,348 +205,167 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add New Wall</DialogTitle>
+            <DialogTitle>Add New Wall System</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Wall Name */}
+            {/* Wall Name Input */}
             <div className="space-y-2">
-              <Label className="text-xs">Wall Name</Label>
-              <Input 
-                className="text-xs h-8 bg-muted text-muted-foreground"
+              <Label htmlFor="wallName">Wall Name *</Label>
+              <Input
+                id="wallName"
                 value={wallName}
-                readOnly
-                placeholder="Auto-generated wall name"
+                onChange={(e) => setWallName(e.target.value)}
+                placeholder="Enter wall name"
+                className="w-full"
               />
             </div>
 
-            {/* Basic Wall Information */}
+            {/* Wall System Type Selection */}
             <div className="space-y-2">
-              <div className="grid grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs">Length (ft) *</Label>
-                  <Input className="text-xs h-8"
-                    value={newWall.lengthFeet || ''}
-                    onChange={(e) => handleFieldChange(wallName, 'lengthFeet', e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Length (in)</Label>
-                  <Input className="text-xs h-8"
-                    value={newWall.lengthInches || ''}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Allow digits, spaces, hyphens, and forward slashes for fractions
-                      const cleanValue = value.replace(/[^\d\s\-\/]/g, '');
-                      // Parse the base number (before any fraction)
-                      const [base] = cleanValue.split(/[\s\-]/);
-                      const baseNum = parseInt(base || "0", 10) || 0;
-                      if (baseNum <= 11 || cleanValue === '') {
-                        handleFieldChange(wallName, 'lengthInches', cleanValue);
-                      }
-                    }}
-                    placeholder="0 or 3 3/4"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Height (ft) *</Label>
-                  <Input className="text-xs h-8"
-                    value={newWall.heightFeet || ''}
-                    onChange={(e) => handleFieldChange(wallName, 'heightFeet', e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Height (in)</Label>
-                  <Input className="text-xs h-8"
-                    value={newWall.heightInches || ''}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Allow digits, spaces, hyphens, and forward slashes for fractions
-                      const cleanValue = value.replace(/[^\d\s\-\/]/g, '');
-                      // Parse the base number (before any fraction)
-                      const [base] = cleanValue.split(/[\s\-]/);
-                      const baseNum = parseInt(base || "0", 10) || 0;
-                      if (baseNum <= 11 || cleanValue === '') {
-                        handleFieldChange(wallName, 'heightInches', cleanValue);
-                      }
-                    }}
-                    placeholder="0 or 3 3/4"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs">Panel Count *</Label>
-                  <Input className="text-xs h-8"
-                    value={newWall.panelCount || ''}
-                    onChange={(e) => handleFieldChange(wallName, 'panelCount', e.target.value)}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs">Quantity</Label>
-                  <Input className="text-xs h-8"
-                    value={newWall.quantity || '1'}
-                    onChange={(e) => handleFieldChange(wallName, 'quantity', e.target.value)}
-                    placeholder="1"
-                  />
-                </div>
-              </div>
-
-              {/* Wall System Type */}
-              <div className="space-y-2">
-                <Label className="text-xs">Wall System Type *</Label>
-                <Select
-                  value={newWall.wallSystemType || ''}
-                  onValueChange={(value) => {
-                    // When changing wall system type, reset wall-specific fields but keep basic dimensions
-                    const resetWall = {
-                      ...newWall,
-                      wallSystemType: value,
-                      // Reset specification fields but keep basic dimensions
-                      panelConfiguration: '',
-                      series: '',
-                      model: '',
-                      panelSkin: '',
-                      stcRating: '',
-                      panelThickness: '',
-                      panelDesign: '',
-                      trackType: '',
-                      trackSystem: value === 'Glass Wall' ? 'Architectural Grade Extruded Aluminum Alloy 6063-T6' : ''
-                    };
-                    setNewWall(resetWall);
-                    setHasChanges(true);
-                  }}
-                >
-                  <SelectTrigger className="text-xs h-8">
-                    <SelectValue placeholder="Select wall system type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Operable Wall">Operable Wall</SelectItem>
-                    <SelectItem value="Glass Wall">Glass Wall</SelectItem>
-                    <SelectItem value="Accordion Wall">Accordion Wall</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Label htmlFor="wallSystemType">Wall System Type *</Label>
+              <Select
+                value={wallSystemType}
+                onValueChange={handleWallSystemTypeChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select wall system type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Operable Wall">Operable Wall</SelectItem>
+                  <SelectItem value="Glass Wall">Glass Wall</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Wall System Specifications */}
-            {newWall.wallSystemType === "Operable Wall" && (
-              <div className="space-y-2">
-                {/* Panel Configuration, Series, Model - Cascading */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {/* Basic Wall Dimensions - Always Show These */}
+            {wallSystemType && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold border-t pt-4">Basic Wall Specifications</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-xs">Panel Configuration *</Label>
-                    <Select
-                      value={newWall.panelConfiguration || ''}
-                      onValueChange={(value) => {
-                        handleFieldChange(wallName, 'panelConfiguration', value);
-                        // Reset dependent fields
-                        handleFieldChange(wallName, 'series', '');
-                        handleFieldChange(wallName, 'model', '');
-                        handleFieldChange(wallName, 'panelSkin', '');
-                        handleFieldChange(wallName, 'stcRating', '');
-                        handleFieldChange(wallName, 'panelThickness', '');
-                        handleFieldChange(wallName, 'trackType', '');
-                        handleFieldChange(wallName, 'trackSystem', '');
-                      }}
-                    >
-                      <SelectTrigger className="text-xs h-8">
-                        <SelectValue placeholder="Select panel configuration" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Individual Panels">Individual Panels</SelectItem>
-                        <SelectItem value="Hinged-Paired Panels">Hinged-Paired Panels</SelectItem>
-                        <SelectItem value="Continuously-Hinged Panels">Continuously-Hinged Panels</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs">Series *</Label>
-                    <Select
-                      value={newWall.series || ''}
-                      onValueChange={(value) => {
-                        handleFieldChange(wallName, 'series', value);
-                        // Reset dependent fields
-                        handleFieldChange(wallName, 'model', '');
-                        handleFieldChange(wallName, 'panelSkin', '');
-                        handleFieldChange(wallName, 'stcRating', '');
-                        handleFieldChange(wallName, 'trackType', '');
-                        handleFieldChange(wallName, 'trackSystem', '');
-                        // Auto-calculate panel thickness
-                        const thickness = value === "2000" ? "3\"" : value === "3000" ? "4\"" : value === "Hufcor: 600" ? "4\"" : "";
-                        if (thickness) {
-                          handleFieldChange(wallName, 'panelThickness', thickness);
-                        }
-                      }}
-                      disabled={!newWall.panelConfiguration}
-                    >
-                      <SelectTrigger className="text-xs h-8">
-                        <SelectValue placeholder="Select series" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getSeriesByPanelConfiguration(newWall.panelConfiguration).map((series) => (
-                          <SelectItem key={series} value={series}>
-                            {series} Series
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs">Model *</Label>
-                    <Select
-                      value={newWall.model || ''}
-                      onValueChange={(value) => {
-                        handleFieldChange(wallName, 'model', value);
-                        // Reset dependent fields
-                        handleFieldChange(wallName, 'panelSkin', '');
-                        handleFieldChange(wallName, 'stcRating', '');
-                        handleFieldChange(wallName, 'trackSystem', '');
-                        // Auto-calculate track type based on model
-                        const trackType = getTrackTypeByModel(value);
-                        if (trackType) {
-                          handleFieldChange(wallName, 'trackType', trackType);
-                        }
-                      }}
-                      disabled={!newWall.series}
-                    >
-                      <SelectTrigger className="text-xs h-8">
-                        <SelectValue placeholder="Select model" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getModelsByPanelConfigurationAndSeries(newWall.panelConfiguration, newWall.series).map((model) => (
-                          <SelectItem key={model} value={model}>
-                            {model}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Panel Thickness, Panel Skin, STC Rating */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs">Panel Thickness (inches)</Label>
+                    <Label htmlFor="lengthFeet">Length (ft) *</Label>
                     <Input
-                      value={newWall.panelThickness || ''}
-                      placeholder="Auto-calculated"
-                      readOnly
-                      className="text-xs h-8 bg-muted"
+                      id="lengthFeet"
+                      // type="number"
+                      min="1"
+                      max="40"
+                      value={newWall.lengthFeet || ''}
+                      onChange={(e) => handleWallChange('', 'lengthFeet', e.target.value)}
+                      placeholder="Enter a number"
                     />
                   </div>
-
                   <div className="space-y-2">
-                    <Label className="text-xs">Panel Skin *</Label>
-                    <Select
-                      value={newWall.panelSkin || ''}
-                      onValueChange={(value) => {
-                        handleFieldChange(wallName, 'panelSkin', value);
-                        // Reset STC rating when panel skin changes
-                        handleFieldChange(wallName, 'stcRating', '');
-                      }}
-                      disabled={!newWall.model}
-                    >
-                      <SelectTrigger className="text-xs h-8">
-                        <SelectValue placeholder="Select panel skin" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getPanelSkinOptions(newWall.model).map((skin) => (
-                          <SelectItem key={skin} value={skin}>
-                            {skin}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs">STC Rating *</Label>
-                    <Select
-                      value={newWall.stcRating || ''}
-                      onValueChange={(value) => handleFieldChange(wallName, 'stcRating', value)}
-                      disabled={!newWall.model || !newWall.panelSkin}
-                    >
-                      <SelectTrigger className="text-xs h-8">
-                        <SelectValue placeholder="Select STC rating" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getSTCRatingOptions(newWall.model, newWall.panelSkin).map((rating) => (
-                          <SelectItem key={rating} value={rating}>
-                            {rating}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Track Type and Track System */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs">Track Type *</Label>
+                    <Label htmlFor="lengthInches">Length (in) *</Label>
                     <Input
-                      value={newWall.trackType || ''}
-                      placeholder="Auto-calculated from model"
-                      readOnly
-                      className="text-xs h-8 bg-muted"
+                      id="lengthInches"
+                      type="text"
+                      value={newWall.lengthInches || ''}
+                      onChange={(e) => handleWallChange('', 'lengthInches', e.target.value)}
+                      placeholder="1, 6 3/4, or 3/4"
+                      required
                     />
                   </div>
-
                   <div className="space-y-2">
-                    <Label className="text-xs">Track System *</Label>
-                    <Select
-                      value={newWall.trackSystem || ''}
-                      onValueChange={(value) => handleFieldChange(wallName, 'trackSystem', value)}
-                      disabled={!newWall.trackType}
-                    >
-                      <SelectTrigger className="text-xs h-8">
-                        <SelectValue placeholder="Select track system" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getTrackSystemsByTrackType(newWall.trackType, newWall.model).map((system) => (
-                          <SelectItem key={system} value={system}>
-                            {system}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="heightFeet">Height (ft) *</Label>
+                    <Input
+                      id="heightFeet"
+                      // type="number"
+                      min="1"
+                      max="40"
+                      value={newWall.heightFeet || ''}
+                      onChange={(e) => handleWallChange('', 'heightFeet', e.target.value)}
+                      placeholder="Enter a number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="heightInches">Height (in) *</Label>
+                    <Input
+                      id="heightInches"
+                      type="text"
+                      value={newWall.heightInches || ''}
+                      onChange={(e) => handleWallChange('', 'heightInches', e.target.value)}
+                      placeholder="1, 6 1/2, or 3/4"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="panelCount">Panel Count *</Label>
+                    <Input
+                      id="panelCount"
+                      // type="number"
+                      min="1"
+                      max="50"
+                      value={newWall.panelCount || ''}
+                      onChange={(e) => handleWallChange('', 'panelCount', e.target.value)}
+                      placeholder="Enter a number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">Quantity</Label>
+                    <Input
+                      id="quantity"
+                      // type="number"
+                      min="1"
+                      value={newWall.quantity || '1'}
+                      onChange={(e) => handleWallChange('', 'quantity', e.target.value)}
+                      placeholder="Enter a number"
+                    />
                   </div>
                 </div>
+              </div>
+            )}
 
-                {/* Use the existing OperableWallForm for the remaining fields */}
-                <OperableWallEditForm
+            {/* Wall Configuration Forms - These include ALL necessary fields */}
+            {wallSystemType === "Operable Wall" && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold border-t pt-4">Operable Wall Configuration</h3>
+                <OperableWallCreationForm
                   wall={newWall}
                   wallName={wallName}
-                  onFieldChange={handleFieldChange}
-                  hideHierarchicalFields={true}
+                  onWallChange={handleWallChange}
                 />
               </div>
             )}
 
-            {newWall.wallSystemType === "Glass Wall" && (
+            {wallSystemType === "Glass Wall" && (
               <div className="space-y-4">
-                <GlassWallEditForm
+                <h3 className="text-lg font-semibold border-t pt-4">Glass Wall Configuration</h3>
+                <GlassWallCreationForm
                   wall={newWall}
                   wallName={wallName}
-                  onFieldChange={handleFieldChange}
+                  onWallChange={handleWallChange}
                 />
+              </div>
+            )}
+
+            {!wallSystemType && (
+              <div className="text-center text-gray-500 py-8">
+                Please select a wall system type to configure the wall specifications.
               </div>
             )}
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={!isWallValid()}>
-              Add Wall
-            </Button>
+          {/* Dialog Actions */}
+          <div className="flex justify-between items-center pt-4 border-t">
+            <div className="text-sm text-gray-500">
+              {!wallSystemType && "Select wall system type to continue"}
+              {wallSystemType && !isWallValid && "Complete all required fields to add wall"}
+              {wallSystemType && isWallValid && "Ready to add wall system"}
+            </div>
+            <div className="space-x-2">
+              <Button variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSave} 
+                disabled={!isWallValid || !wallName.trim()}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Add Wall System
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -700,14 +374,17 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Add Wall</AlertDialogTitle>
+            <AlertDialogTitle>Confirm Add Wall System</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to add this wall? This action will save the changes to the database.
+              Are you sure you want to add "{wallName}" with the specified configuration?
+              This will save the wall system to your quote and update the live preview.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmSave}>Add Wall</AlertDialogAction>
+            <AlertDialogCancel onClick={handleConfirmClose}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmSave} className="bg-blue-600 hover:bg-blue-700">
+              Confirm
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

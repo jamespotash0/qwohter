@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Users, Mail, MoreHorizontal, UserPlus, Crown, Shield, User as UserIcon } from "lucide-react";
+import { Users, Mail, MoreHorizontal, UserPlus, Shield, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -24,10 +24,10 @@ interface MemberManagementProps {
 
 const getRoleIcon = (role: string) => {
   switch (role) {
-    case 'owner':
-      return <Crown className="w-4 h-4 text-yellow-500" />;
     case 'admin':
       return <Shield className="w-4 h-4 text-blue-500" />;
+    case 'member':
+      return <UserIcon className="w-4 h-4 text-gray-500" />;
     default:
       return <UserIcon className="w-4 h-4 text-gray-500" />;
   }
@@ -35,10 +35,10 @@ const getRoleIcon = (role: string) => {
 
 const getRoleBadgeVariant = (role: string) => {
   switch (role) {
-    case 'owner':
-      return 'default';
     case 'admin':
       return 'secondary';
+    case 'member':
+      return 'outline';
     default:
       return 'outline';
   }
@@ -155,7 +155,7 @@ export const MemberManagement = ({
                   {getRoleIcon(member?.role || 'member')}
                   {member?.role || 'member'}
                 </Badge>
-                {member?.role !== 'owner' && (
+                {member && member.role !== 'admin' && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm">
@@ -164,9 +164,9 @@ export const MemberManagement = ({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        onClick={() => onUpdateRole(member.id, member.role === 'admin' ? 'member' : 'admin')}
+                        onClick={() => onUpdateRole(member.id, 'admin')}
                       >
-                        {member.role === 'admin' ? 'Make Member' : 'Make Admin'}
+                        Make Admin
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => onRemoveMember(member.id)}

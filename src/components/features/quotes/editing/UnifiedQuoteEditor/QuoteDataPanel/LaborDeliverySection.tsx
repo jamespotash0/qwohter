@@ -86,7 +86,7 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
         </Label>
         <ValidatedInput
           id="shopDrawing"
-          validationType="numbersWithHyphen"
+          validationType="numbersWithFractionsHyphen"
           value={data.delivery_details?.shopDrawingWeeks || ''}
           onValueChange={(value: string) => handleValidatedDeliveryChange('shopDrawingWeeks', value, 'shopDrawingWeeks')}
           onBlur={() => markFieldTouched('shopDrawingWeeks')}
@@ -103,7 +103,7 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
         </Label>
         <ValidatedInput
           id="trackDelivery"
-          validationType="numbersWithHyphen"
+          validationType="numbersWithFractionsHyphen"
           value={data.delivery_details?.trackDeliveryWeeks || ''}
           onValueChange={(value: string) => handleValidatedDeliveryChange('trackDeliveryWeeks', value, 'trackDeliveryWeeks')}
           onBlur={() => markFieldTouched('trackDeliveryWeeks')}
@@ -120,7 +120,7 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
         </Label>
         <ValidatedInput
           id="panelDelivery"
-          validationType="numbersWithHyphen"
+          validationType="numbersWithFractionsHyphen"
           value={data.delivery_details?.panelDeliveryWeeks || ''}
           onValueChange={(value: string) => handleValidatedDeliveryChange('panelDeliveryWeeks', value, 'panelDeliveryWeeks')}
           onBlur={() => markFieldTouched('panelDeliveryWeeks')}
@@ -139,7 +139,7 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
         </Label>
         <ValidatedInput
           id="trackInstall"
-          validationType="numbersWithHyphen"
+          validationType="numbersWithFractionsHyphen"
           value={data.delivery_details?.trackInstallationDays || ''}
           onValueChange={(value: string) => handleValidatedDeliveryChange('trackInstallationDays', value, 'trackInstallationDays')}
           onBlur={() => markFieldTouched('trackInstallationDays')}
@@ -156,7 +156,7 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
         </Label>
         <ValidatedInput
           id="panelInstall"
-          validationType="numbersWithHyphen"
+          validationType="numbersWithFractionsHyphen"
           value={data.delivery_details?.panelInstallationDays || ''}
           onValueChange={(value: string) => handleValidatedDeliveryChange('panelInstallationDays', value, 'panelInstallationDays')}
           onBlur={() => markFieldTouched('panelInstallationDays')}

@@ -15,6 +15,7 @@ import { generateQuoteText } from '@/components/features/quotes/generation/Quote
 import { SmartQuoteHelper, QuoteSection, SmartQuoteData } from '@/templates/SmartQuoteTemplate';
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
 import { Quote } from '@/hooks/useQuotes';
+import { useCurrentQuote } from '@/stores/quotes/quotesStore';
 import { QuoteDataPanelCore as QuoteDataPanel } from './UnifiedQuoteEditor/QuoteDataPanel/QuoteDataPanelCore';
 import LivePreviewPanel from './UnifiedQuoteEditor/LivePreviewPanel';
 import QuickEditModal from './UnifiedQuoteEditor/QuickEditModal';
@@ -51,9 +52,15 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
 }) => {
   const { toast } = useToast();
   
+  // Get current quote from realtime store
+  const realtimeQuote = useCurrentQuote();
+  
+  // Use realtime quote if available and matches the current quote ID, otherwise use prop
+  const activeQuote = (realtimeQuote?.id === quote.id) ? realtimeQuote : quote;
+  
   // Core unified state
   const [state, setState] = useState<UnifiedQuoteState>({
-    rawData: quote,
+    rawData: activeQuote,
     generatedHTML: '',
     sectionOverrides: new Map(),
     previewHTML: '',
@@ -225,6 +232,19 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       }));
     }
   }, [JSON.stringify(state.rawData), state.sectionOverrides, syncEngine, isLoading]);
+
+  // Sync with realtime quote updates
+  useEffect(() => {
+    if (realtimeQuote?.id === quote.id && realtimeQuote !== quote) {
+      console.log('📡 Syncing UnifiedQuoteEditor with realtime quote update');
+      
+      setState(prev => ({
+        ...prev,
+        rawData: realtimeQuote,
+        // Don't mark as dirty since this is an external update
+      }));
+    }
+  }, [realtimeQuote, quote.id]);
 
 
   // Update document title when project name or proposal number changes

@@ -87,10 +87,9 @@ export const WallCard: React.FC<WallCardProps> = ({
         </Button>
       </div>
     </div>
-    <div className="col-span-2 pt-2 border-t border-gray-200">
-      <div className="flex items-center justify-between mb-2">
+    <div className="col-span-1 pt-2 border-t border-gray-200">
+      <div className="flex items-center justify-between mb-2 ml-10">
         <span className="text-xs text-gray-500 font-medium">Quick Edit Area - Basic Fields Only</span>
-        <span className="text-xs text-blue-600">Use "Edit Wall" for advanced configuration</span>
       </div>
     </div>
     
@@ -123,7 +122,7 @@ export const WallCard: React.FC<WallCardProps> = ({
             onFieldChange(wallName, 'lengthInches', sanitized);
           }}
           onBlur={() => markFieldTouched(`${wallName}-lengthInches`)}
-          placeholder="0 or 6 3/4 or 3/4"
+          placeholder="0, 6 3/4, or 3/4"
           className="text-xs h-8"
           errorMessage={getFieldError(`${wallName}-lengthInches`)}
           isValid={isFieldValid(`${wallName}-lengthInches`)}
@@ -157,7 +156,7 @@ export const WallCard: React.FC<WallCardProps> = ({
             onFieldChange(wallName, 'heightInches', sanitized);
           }}
           onBlur={() => markFieldTouched(`${wallName}-heightInches`)}
-          placeholder="0 or 6.5 or 3/4"
+          placeholder="0, 6 1/2, or 3/4"
           className="text-xs h-8"
           errorMessage={getFieldError(`${wallName}-heightInches`)}
           isValid={isFieldValid(`${wallName}-heightInches`)}
@@ -199,24 +198,25 @@ export const WallCard: React.FC<WallCardProps> = ({
       </div>
     </div>
 
-    {/* Wall Type Specific Forms */}
-    {wall.wallSystemType === "Operable Wall" && (
-      <div className="mt-2">
-        <OperableWallEditForm
-          wallName={wallName}
-          wall={wall}
-          onFieldChange={onFieldChange}
-        />
-      </div>
-    )}
-
-    {wall.wallSystemType === "Glass Wall" && (
-      <div className="mt-2">
-        <GlassWallEditForm
-          wallName={wallName}
-          wall={wall}
-          onFieldChange={onFieldChange}
-        />
+    {/* Model-Specific Configuration Message */}
+    {(wall.wallSystemType === "Operable Wall" || wall.wallSystemType === "Glass Wall") && (
+      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-blue-800 font-medium">
+              {wall.wallSystemType} Configuration
+            </p>
+            <p className="text-xs text-blue-600 mt-1">
+              Use "Edit Wall" button to configure model-specific fields
+            </p>
+          </div>
+          <div className="text-blue-400">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+        </div>
       </div>
     )}
 

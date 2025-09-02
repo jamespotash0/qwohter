@@ -9,8 +9,8 @@ export const createTemplateHelpers = (): TemplateHelpers => ({
       day: 'numeric' 
     });
     const parts = dateString.split('-');
-    if (parts.length === 3) {
-      const localDate = new Date(+parts[0], +parts[1] - 1, +parts[2]); //strict any
+    if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+      const localDate = new Date(+parts[0], +parts[1] - 1, +parts[2]);
       return localDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     }
     return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });

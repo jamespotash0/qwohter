@@ -63,9 +63,10 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           panelCount: currentWall.panelCount || "",
           bottomSeals: currentWall.bottomSeals || "",
           topSeals: currentWall.topSeals || "",
-          trackType: currentWall.trackType || "",
-          trackSystem: currentWall.trackSystem || "",
-          // Operable wall specific fields
+          // Track system fields will be auto-calculated by OperableWallCreationForm
+          trackType: "",
+          trackSystem: "",
+          // Operable wall specific fields - reset to empty for new configuration
           panelConfiguration: "",
           series: "",
           model: "",
@@ -92,8 +93,9 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           panelCount: currentWall.panelCount || "",
           bottomSeals: currentWall.bottomSeals || "",
           topSeals: currentWall.topSeals || "",
-          trackType: currentWall.trackType || "",
-          trackSystem: currentWall.trackSystem || "",
+          // Track system fields will be auto-calculated by GlassWallCreationForm
+          trackType: "",
+          trackSystem: "",
           // Glass wall specific fields
           model: "",
           operation: "",

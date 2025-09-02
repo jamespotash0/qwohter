@@ -24,6 +24,8 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
 
   // Helper function to handle wall addition from dialog
   const handleAddWall = async (wallName: string, wallData: any) => {
+    console.log('🔄 Adding wall to wall_details JSON:', wallName, wallData);
+    
     const updatedWalls = {
       id: data.wall_details?.id || crypto.randomUUID(),
       walls: {
@@ -31,15 +33,24 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
         [wallName]: wallData
       }
     };
+    
+    console.log('🔄 Updated wall_details structure:', updatedWalls);
     onChange('wall_details', updatedWalls);
     
-    // Save to database immediately after updating local state
+    // Wait for React state to propagate before saving to database
     if (onDatabaseSave) {
       try {
+        console.log('🔄 Waiting for state to propagate, then saving to database...');
+        // Use setTimeout to allow React state update to complete
+        await new Promise(resolve => setTimeout(resolve, 100));
         await onDatabaseSave();
+        console.log('✅ Wall successfully saved to database');
       } catch (error) {
-        console.error('Error saving wall to database:', error);
+        console.error('❌ Error saving wall to database:', error);
+        throw error; // Re-throw to be handled by AddWallDialog
       }
+    } else {
+      console.warn('⚠️ onDatabaseSave not available - wall saved to local state only');
     }
   };
 
@@ -113,7 +124,6 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
         isOpen={isAddWallDialogOpen}
         onClose={() => setIsAddWallDialogOpen(false)}
         onSave={handleAddWall}
-        onDatabaseSave={onDatabaseSave}
         existingWalls={data.wall_details?.walls || {}}
       />
     </CollapsibleSection>

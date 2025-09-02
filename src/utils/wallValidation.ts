@@ -17,8 +17,10 @@ export const validateWallDimensions = (wall: any) => {
     errors.push('Length feet must be between 1 and 40');
   }
   
-  const lengthInches = wall.lengthInches || '0';
-  if (lengthInches !== '0' && lengthInches !== '') {
+  const lengthInches = wall.lengthInches || '';
+  if (lengthInches === '') {
+    errors.push('Length inches is required');
+  } else {
     const inchesNum = parseFloat(lengthInches);
     if (isNaN(inchesNum) || inchesNum < 0 || inchesNum >= 12) {
       errors.push('Length inches must be between 0 and 11');
@@ -31,8 +33,10 @@ export const validateWallDimensions = (wall: any) => {
     errors.push('Height feet must be between 1 and 40');
   }
   
-  const heightInches = wall.heightInches || '0';
-  if (heightInches !== '0' && heightInches !== '') {
+  const heightInches = wall.heightInches || '';
+  if (heightInches === '') {
+    errors.push('Height inches is required');
+  } else {
     const inchesNum = parseFloat(heightInches);
     if (isNaN(inchesNum) || inchesNum < 0 || inchesNum >= 12) {
       errors.push('Height inches must be between 0 and 11');

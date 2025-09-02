@@ -14,6 +14,7 @@ interface QuotesState {
   isLoading: boolean;
   isInitialized: boolean;
   error: string | null;
+  isRealtimeConnected: boolean;
   filters: {
     search: string;
     status: string;
@@ -33,6 +34,10 @@ interface QuotesState {
   updateQuote: (id: string, updates: Partial<Quote>) => Promise<Quote>;
   deleteQuote: (id: string) => Promise<void>;
   setCurrentQuote: (quote: Quote | null) => void;
+  
+  // Realtime actions
+  subscribeToRealtime: () => Promise<void>;
+  unsubscribeFromRealtime: () => void;
   
   // Wall system actions
   updateWallSystem: (quoteId: string, wallName: string, wallData: WallSpecification) => Promise<void>;
@@ -65,6 +70,7 @@ export const useQuotesStore = create<QuotesState>()(
         isLoading: false,
         isInitialized: false,
         error: null,
+        isRealtimeConnected: false,
         filters: {
           search: '',
           status: '',
@@ -78,11 +84,15 @@ export const useQuotesStore = create<QuotesState>()(
 
         // Initialize quotes store
         initialize: async () => {
-          const { fetchQuotes, _setLoading } = get();
+          const { fetchQuotes, subscribeToRealtime, _setLoading } = get();
           
           try {
             _setLoading(true);
             await fetchQuotes();
+            
+            // Subscribe to realtime updates after initial fetch
+            await subscribeToRealtime();
+            
             set({ isInitialized: true });
           } catch (error) {
             console.error('Quotes store initialization error:', error);
@@ -327,6 +337,110 @@ export const useQuotesStore = create<QuotesState>()(
           set({ currentQuote: quote });
         },
 
+        // Subscribe to realtime updates
+        subscribeToRealtime: async () => {
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('User not authenticated');
+
+            // Get user's organization
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('organization_id')
+              .eq('id', user.id)
+              .single();
+
+            if (profileError) throw profileError;
+            if (!profileData?.organization_id) {
+              throw new Error('User not assigned to an organization');
+            }
+
+            console.log('🔄 Subscribing to realtime updates for organization:', profileData.organization_id);
+
+            // Subscribe to quotes table changes for this organization
+            const channel = supabase
+              .channel('quotes-changes')
+              .on(
+                'postgres_changes',
+                {
+                  event: '*',
+                  schema: 'public',
+                  table: 'quotes',
+                  filter: `organization_id=eq.${profileData.organization_id}`
+                },
+                (payload) => {
+                  console.log('📡 Realtime update received:', payload);
+                  
+                  const { eventType, new: newRecord, old: oldRecord } = payload;
+
+                  set((state) => {
+                    switch (eventType) {
+                      case 'INSERT': {
+                        if (newRecord) {
+                          const newQuote = convertRowToQuote(newRecord);
+                          // Add to beginning of array if not already exists
+                          const exists = state.quotes.some(q => q.id === newQuote.id);
+                          if (!exists) {
+                            state.quotes.unshift(newQuote);
+                          }
+                        }
+                        break;
+                      }
+                      case 'UPDATE': {
+                        if (newRecord) {
+                          const updatedQuote = convertRowToQuote(newRecord);
+                          const index = state.quotes.findIndex(q => q.id === updatedQuote.id);
+                          if (index !== -1) {
+                            state.quotes[index] = updatedQuote;
+                          }
+                          
+                          // Update current quote if it's the one being edited
+                          if (state.currentQuote?.id === updatedQuote.id) {
+                            state.currentQuote = updatedQuote;
+                          }
+                        }
+                        break;
+                      }
+                      case 'DELETE': {
+                        if (oldRecord) {
+                          state.quotes = state.quotes.filter(q => q.id !== oldRecord.id);
+                          
+                          // Clear current quote if it was deleted
+                          if (state.currentQuote?.id === oldRecord.id) {
+                            state.currentQuote = null;
+                          }
+                        }
+                        break;
+                      }
+                    }
+                  });
+                }
+              )
+              .subscribe((status) => {
+                console.log('📡 Realtime subscription status:', status);
+                set({ isRealtimeConnected: status === 'SUBSCRIBED' });
+              });
+
+            // Store channel reference for cleanup
+            (get() as any).realtimeChannel = channel;
+            
+          } catch (error) {
+            console.error('❌ Failed to subscribe to realtime:', error);
+            set({ isRealtimeConnected: false });
+          }
+        },
+
+        // Unsubscribe from realtime updates
+        unsubscribeFromRealtime: () => {
+          const channel = (get() as any).realtimeChannel;
+          if (channel) {
+            console.log('🔌 Unsubscribing from realtime updates');
+            supabase.removeChannel(channel);
+            set({ isRealtimeConnected: false });
+            (get() as any).realtimeChannel = null;
+          }
+        },
+
         // Update wall system in quote
         updateWallSystem: async (quoteId: string, wallName: string, wallData: WallSpecification) => {
           const { updateQuote } = get();
@@ -524,6 +638,7 @@ export const useQuotesError = () => useQuotesStore((state) => state.error);
 export const useQuotesFilters = () => useQuotesStore((state) => state.filters);
 export const useQuotesPagination = () => useQuotesStore((state) => state.pagination);
 export const useFilteredQuotes = () => useQuotesStore((state) => state.getFilteredQuotes());
+export const useRealtimeConnection = () => useQuotesStore((state) => state.isRealtimeConnected);
 export const useQuotesActions = () => useQuotesStore((state) => ({
   fetchQuotes: state.fetchQuotes,
   createQuote: state.createQuote,
@@ -531,6 +646,8 @@ export const useQuotesActions = () => useQuotesStore((state) => ({
   updateQuote: state.updateQuote,
   deleteQuote: state.deleteQuote,
   setCurrentQuote: state.setCurrentQuote,
+  subscribeToRealtime: state.subscribeToRealtime,
+  unsubscribeFromRealtime: state.unsubscribeFromRealtime,
   updateWallSystem: state.updateWallSystem,
   removeWallSystem: state.removeWallSystem,
   addWallSystem: state.addWallSystem,
