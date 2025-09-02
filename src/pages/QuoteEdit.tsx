@@ -178,7 +178,7 @@ const QuoteEdit = () => {
       
       try {
         // Use the centralized PDF generation utility
-        const { generateQuotePDF } = await import('@/utils/pdfDownloadUtils');
+        const { generateQuotePDF } = await import('@/utils/playwrightPdfUtils');
         await generateQuotePDF(quote, markAsDownloaded);
         
         toast({

@@ -3,6 +3,28 @@ import { WallSpecification, isGlassWall, isOperableWall } from '@/lib/types';
 import { SmartQuoteHelper } from './SmartQuoteTemplate';
 
 export class OperableWallTemplate extends BaseQuoteTemplate {
+  
+  /**
+   * Simplifies glass wall panel configuration display
+   * Example: "Individual, Multi-Directional Panels" -> "Individual Panels"
+   */
+  private simplifyGlassWallConfiguration(configuration: string): string {
+    if (!configuration) return '';
+    
+    // Convert complex glass wall configurations to simplified display names
+    const simplifications: Record<string, string> = {
+      'Individual, Multi-Directional Panels': 'Individual Panels',
+      'Individual, Single Carrier Panels': 'Individual Panels',
+      'Individual, Fully Automatic Panels': 'Individual Panels',
+      'Continuously-Hinged Panels': 'Continuously-Hinged Panels',
+      'Hinged-Paired Panels': 'Hinged-Paired Panels',
+      'Pivoting Individual Panels': 'Individual Panels',
+      'Single & Telescoping Slider Panels': 'Slider Panels'
+    };
+    
+    return simplifications[configuration] || configuration;
+  }
+
   generateWallTable(data: QuoteData): string {
     const walls = data.wall_details?.walls || {};
     const wallEntries = Object.entries(walls);
@@ -27,7 +49,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
             const quantity = wall.quantity || '1';
             
             const panelConfiguration = isGlassWall(wall)
-              ? (wall.panelConfiguration || '')
+              ? this.simplifyGlassWallConfiguration(wall.panelConfiguration || '')
               : isOperableWall(wall) 
                 ? (wall.panelConfiguration || '')
                 : '';
