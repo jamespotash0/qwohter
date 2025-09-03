@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { OrganizationInfo } from "@/types/companySettings";
 
 export interface Organization {
   id: string;
   name: string;
   organization_code: string;
+  organization_info: OrganizationInfo; // JSONB data
   created_at: string;
   updated_at: string;
 }
@@ -25,7 +27,7 @@ export interface OrganizationMember {
 export const useOrganizations = () => {
   const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
-  const [currentUserRole, setCurrentUserRole] = useState<'owner' | 'admin' | 'member' | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'member' | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -58,10 +60,15 @@ export const useOrganizations = () => {
         if (orgError) {
           console.error('Organization error:', orgError);
           // Don't throw here, just set role without organization
-          setCurrentUserRole(profileData.role as 'owner' | 'admin' | 'member');
+          setCurrentUserRole(profileData.role as 'admin' | 'member');
         } else {
-          setCurrentOrganization(orgData as Organization);
-          setCurrentUserRole(profileData.role as 'owner' | 'admin' | 'member');
+          // Ensure organization_info exists (handle both cases: column exists or doesn't)
+          const orgWithInfo = {
+            ...orgData,
+            organization_info: (orgData as any).organization_info || {}
+          } as Organization;
+          setCurrentOrganization(orgWithInfo);
+          setCurrentUserRole(profileData.role as 'admin' | 'member');
         }
       }
     } catch (error: any) {
@@ -123,36 +130,84 @@ export const useOrganizations = () => {
 
       // Create organization
       const orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          name,
-          organization_code: orgCode
-        })
-        .select()
-        .single();
+      let createdOrganization: Organization;
+      
+      try {
+        // Try to create organization with organization_info column
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .insert({
+            name,
+            organization_code: orgCode,
+            organization_info: {} // Initialize with empty JSONB object
+          })
+          .select('id, name, organization_code, created_at, updated_at')
+          .single();
 
-      if (orgError) throw orgError;
+        if (orgError) throw orgError;
 
-      // Update user's profile to link to this organization and set as owner
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ 
-          organization_id: orgData.id,
-          role: 'owner'
-        })
-        .eq('id', user.id);
+        // Update user's profile to link to this organization and set as admin
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ 
+            organization_id: orgData.id,
+            role: 'admin'
+          })
+          .eq('id', user.id);
 
-      if (profileError) throw profileError;
+        if (profileError) throw profileError;
 
-      setCurrentOrganization(orgData);
+        // Set organization with empty organization_info
+        createdOrganization = {
+          ...orgData,
+          organization_info: {}
+        };
+        setCurrentOrganization(createdOrganization);
+
+      } catch (createError: any) {
+        // If organization_info column doesn't exist, create without it
+        if (createError.message?.includes('organization_info')) {
+          console.warn('organization_info column does not exist yet. Creating organization without JSONB data.');
+          
+          const { data: orgData, error: orgError } = await supabase
+            .from('organizations')
+            .insert({
+              name,
+              organization_code: orgCode
+            })
+            .select('id, name, organization_code, created_at, updated_at')
+            .single();
+
+          if (orgError) throw orgError;
+
+          // Update user's profile to link to this organization and set as admin
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({ 
+              organization_id: orgData.id,
+              role: 'admin'
+            })
+            .eq('id', user.id);
+
+          if (profileError) throw profileError;
+
+          // Set organization with empty organization_info
+          createdOrganization = {
+            ...orgData,
+            organization_info: {}
+          };
+          setCurrentOrganization(createdOrganization);
+        } else {
+          throw createError;
+        }
+      }
       
       toast({
         title: "Organization created",
         description: `${name} has been created successfully.`,
       });
       
-      return orgData;
+      return createdOrganization;
     } catch (error: any) {
       toast({
         title: "Error creating organization",

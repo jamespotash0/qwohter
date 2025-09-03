@@ -30,7 +30,7 @@ test.describe('Complete Quote Workflow End-to-End Test', () => {
     await page.click('button[type="submit"], button:has-text("Sign In"), button:has-text("Login")');
     
     // Wait for successful login (should redirect to dashboard)
-    await expect(page).toHaveURL(/.*\\/dashboard.*/, { timeout: 15000 });
+    await expect(page).toHaveURL(/.*\/dashboard.*/, { timeout: 15000 });
     console.log('✅ Successfully logged in');
 
     // ========================================
@@ -71,7 +71,7 @@ test.describe('Complete Quote Workflow End-to-End Test', () => {
     await page.click('button:has-text("Save"), button:has-text("Save Draft"), button:has-text("Create Quote")');
     
     // Wait for quote to be saved and verify we're on quotes page or editor
-    await expect(page).toHaveURL(/.*\\/(quotes|editor).*/, { timeout: 10000 });
+    await expect(page).toHaveURL(/.*(quotes|editor).*/, { timeout: 10000 });
     console.log('✅ Quote created and saved as draft');
 
     // ========================================

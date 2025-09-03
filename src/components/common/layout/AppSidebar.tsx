@@ -25,7 +25,8 @@ const menuItems = [{
 ];
 const generalItems = [{
   title: "Settings",
-  icon: Settings
+  icon: Settings,
+  path: "/settings"
 }
 ];
 export function AppSidebar({
@@ -83,14 +84,17 @@ export function AppSidebar({
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {generalItems.map(item => <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="w-full justify-start hover:bg-muted">
-                    <div className="flex items-center gap-3 cursor-pointer">
+              {generalItems.map(item => {
+                const isActive = location.pathname === item.path;
+                return <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild className={`w-full justify-start transition-all duration-200 ${isActive ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground font-medium shadow-md" : "hover:bg-sidebar-accent/80"}`}>
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(item.path!)}>
                       <item.icon className="h-4 w-4" />
                       {!isCollapsed && <span>{item.title}</span>}
                     </div>
                   </SidebarMenuButton>
-                </SidebarMenuItem>)}
+                </SidebarMenuItem>
+              })}
               
               <SidebarMenuItem>
                 <SidebarMenuButton asChild className="w-full justify-start hover:bg-muted text-destructive hover:text-destructive" onClick={onLogout}>

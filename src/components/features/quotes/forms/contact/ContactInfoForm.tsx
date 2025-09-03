@@ -4,6 +4,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useEffect, useState } from "react";
 import { User, Mail, Phone, Printer, MapPin, Globe, Plus } from "lucide-react";
 import { useOrganizations } from "@/hooks/useOrganizations";
+import { useOrganizationSettings } from "@/hooks/useCompanySettings";
+import { extractPrimaryContactInfo } from "@/types/companySettings";
 
 interface ContactInfoData {
   contactName: string;
@@ -22,6 +24,7 @@ interface ContactInfoFormProps {
 
 const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
   const { currentOrganization, members, loading } = useOrganizations();
+  const { organization, isLoading: organizationLoading } = useOrganizationSettings();
   const [showCustomNameInput, setShowCustomNameInput] = useState(false);
   const [showCustomEmailInput, setShowCustomEmailInput] = useState(false);
   const [customName, setCustomName] = useState("");
@@ -92,29 +95,35 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
     }
   }, [loading, activeMembers, data.contactName, data.contactEmail, contactNames, contactEmails]);
 
-  // Auto-set single-option fields
+  // Auto-set fields from organization when available
   useEffect(() => {
-    const autoSetFields = {
-      address: "567 Commerce St, Franklin Lakes NJ, 07417",
-      phone: "(973) 884-0474",
-      fax: "(973) 884-1606",
-      website: "www.contemporarywalls.com"
-    };
+    if (!organizationLoading && organization) {
+      let shouldUpdate = false;
+      const updatedData = { ...data };
 
-    let shouldUpdate = false;
-    const updatedData = { ...data };
+      // Extract primary contact info from JSONB organization_info
+      const primaryContactInfo = extractPrimaryContactInfo(organization.organization_info);
 
-    Object.entries(autoSetFields).forEach(([field, value]) => {
-      if (!data[field as keyof ContactInfoData]) {
-        updatedData[field as keyof ContactInfoData] = value;
-        shouldUpdate = true;
+      // Set company fields from organization if not already set
+      const companyFields = {
+        address: primaryContactInfo.address,
+        phone: primaryContactInfo.phone,
+        fax: primaryContactInfo.fax,
+        website: primaryContactInfo.website
+      };
+
+      Object.entries(companyFields).forEach(([field, value]) => {
+        if (!data[field as keyof ContactInfoData] && value) {
+          updatedData[field as keyof ContactInfoData] = value;
+          shouldUpdate = true;
+        }
+      });
+
+      if (shouldUpdate) {
+        onUpdate(updatedData);
       }
-    });
-
-    if (shouldUpdate) {
-      onUpdate(updatedData);
     }
-  }, []);
+  }, [organizationLoading, organization]);
 
   return (
     <div className="p-1">
@@ -243,7 +252,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             id="phone"
             value={data.phone}
             onChange={(e) => handleChange("phone", e.target.value)}
-            placeholder="(973) 884-0474"
+            placeholder={organizationLoading ? "Loading..." : "Enter phone number"}
             required
             className="h-10 w-full"
           />
@@ -259,7 +268,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             id="fax"
             value={data.fax}
             onChange={(e) => handleChange("fax", e.target.value)}
-            placeholder="(973) 884-1606"
+            placeholder={organizationLoading ? "Loading..." : "Enter fax number"}
             required
             className="h-10 w-full"
           />
@@ -275,7 +284,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             id="address"
             value={data.address}
             onChange={(e) => handleChange("address", e.target.value)}
-            placeholder="567 Commerce St, Franklin Lakes, NJ, 07417"
+            placeholder={organizationLoading ? "Loading..." : "Enter address"}
             required
             className="h-10 w-full"
           />
@@ -291,7 +300,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             id="website"
             value={data.website}
             onChange={(e) => handleChange("website", e.target.value)}
-            placeholder="www.contemporarywalls.com"
+            placeholder={organizationLoading ? "Loading..." : "Enter website"}
             required
             className="h-10 w-full"
           />

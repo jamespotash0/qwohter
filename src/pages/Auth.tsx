@@ -9,6 +9,8 @@ import { AuthForm } from "@/components/auth/AuthForm";
 import { OtpVerificationForm } from "@/components/auth/OtpVerificationForm";
 import { ProfileSetupForm } from "@/components/auth/ProfileSetupForm";
 import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
+import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
+import { organizationSettingsService } from "@/services/companySettingsService";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -19,10 +21,17 @@ const Auth = () => {
   const [orgName, setOrgName] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<"auth" | "verify-otp" | "profile" | "organization">("auth");
+  const [step, setStep] = useState<"auth" | "verify-otp" | "profile" | "organization" | "company-info">("auth");
   const [otpCode, setOtpCode] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Company information state
+  const [companyPhone, setCompanyPhone] = useState("");
+  const [companyFax, setCompanyFax] = useState("");
+  const [companyAddress, setCompanyAddress] = useState("");
+  const [companyWebsite, setCompanyWebsite] = useState("");
+  const [companyEmail, setCompanyEmail] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -175,14 +184,16 @@ const Auth = () => {
             title: "Organization created!",
             description: `${result.data.organizationName} has been created successfully. Your code: ${result.data.organizationCode}`,
           });
+          // Move to company info setup for new organizations
+          setStep("company-info");
         } else if (orgChoice === "join" && result.data) {
           toast({
             title: "Join request sent!",
             description: "Your request to join the organization is pending approval.",
           });
+          // Skip company info for joining organizations
+          navigate("/dashboard");
         }
-        
-        navigate("/dashboard");
       } else {
         toast({
           title: "Organization Error",
@@ -200,6 +211,46 @@ const Auth = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCompanyInfoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId || !companyPhone || !companyFax || !companyAddress || !companyWebsite) return;
+
+    setLoading(true);
+    try {
+      // Use the organization settings service to update company info
+      
+      await organizationSettingsService.updateCompanyInfo({
+        phone: companyPhone,
+        fax: companyFax,
+        address: companyAddress,
+        website: companyWebsite,
+      });
+
+      toast({
+        title: "Company information saved!",
+        description: "Your organization is now ready for quote generation.",
+      });
+      
+      navigate("/dashboard");
+    } catch (error: any) {
+      toast({
+        title: "Company Info Error",
+        description: error.message || "Failed to save company information",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCompanyInfoSkip = () => {
+    toast({
+      title: "Setup completed!",
+      description: "You can add company information later in Settings.",
+    });
+    navigate("/dashboard");
   };
 
   return (
@@ -229,6 +280,7 @@ const Auth = () => {
               {step === "verify-otp" && "Verify Your Email"}
               {step === "profile" && "Complete Your Profile"}
               {step === "organization" && "Organization Setup"}
+              {step === "company-info" && "Company Information"}
             </CardTitle>
             <CardDescription className="text-muted-foreground text-base">
               {step === "auth" && (isSignUp 
@@ -238,6 +290,7 @@ const Auth = () => {
               {step === "verify-otp" && "Enter the 6-digit code sent to your email"}
               {step === "profile" && "Please provide your full name to continue"}
               {step === "organization" && "Join an existing organization or create a new one"}
+              {step === "company-info" && "Add your company details for professional quote generation"}
             </CardDescription>
           </CardHeader>
           
@@ -290,6 +343,25 @@ const Auth = () => {
                 onOrgCodeChange={setOrgCode}
                 onOrgNameChange={setOrgName}
                 onSubmit={handleOrganizationSubmit}
+              />
+            )}
+
+            {step === "company-info" && (
+              <CompanyInfoSetupForm
+                organizationName={orgName}
+                phone={companyPhone}
+                fax={companyFax}
+                address={companyAddress}
+                website={companyWebsite}
+                email={companyEmail}
+                loading={loading}
+                onPhoneChange={setCompanyPhone}
+                onFaxChange={setCompanyFax}
+                onAddressChange={setCompanyAddress}
+                onWebsiteChange={setCompanyWebsite}
+                onEmailChange={setCompanyEmail}
+                onSubmit={handleCompanyInfoSubmit}
+                onSkip={handleCompanyInfoSkip}
               />
             )}
           </CardContent>

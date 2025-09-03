@@ -4,11 +4,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary, QuoteErrorBoundary } from "@/components/ErrorBoundary";
-import Index from "./pages/Index";
+// import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Quotes from "./pages/Quotes";
 import Analytics from "./pages/Analytics";
 import Team from "./pages/Team";
+import Settings from "./pages/Settings";
 import NewQuote from "./pages/NewQuote";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -38,6 +39,7 @@ const App = () => (
             />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/team" element={<Team />} />
+            <Route path="/settings" element={<Settings />} />
             <Route 
               path="/newquote" 
               element={
