@@ -98,7 +98,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           trackSystem: "",
           // Glass wall specific fields
           model: "",
-          operation: "",
+          panelOperation: "",
           panelConfiguration: "",
           panelFace: "",
           frameFinish: "",

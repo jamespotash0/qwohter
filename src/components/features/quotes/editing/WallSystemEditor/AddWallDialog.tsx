@@ -108,7 +108,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
       return {
         ...baseWall,
         wallSystemType: 'Glass Wall',
-        operation: '',
+        panelOperation: '',
         glassType: '',
         partitionSupport: '',
         passDoorType: '',

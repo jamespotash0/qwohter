@@ -8,6 +8,39 @@ export const isGlassWall = (wall: any): boolean => {
   return wall?.wallSystemType === 'Glass Wall';
 };
 
+// Helper function to parse fractional inches like "3 3/4", "3-3/4" (no decimals allowed)
+const parseFractionalInches = (value: string): number => {
+  if (!value || value.trim() === '') {
+    return NaN;
+  }
+  
+  const trimmed = value.trim();
+  
+  // Handle fractions with space or dash separator: "3 3/4" or "3-3/4"
+  const fractionMatch = trimmed.match(/^(\d+)\s*[-\s]\s*(\d+)\/(\d+)$/);
+  if (fractionMatch) {
+    const whole = parseInt(fractionMatch[1]);
+    const numerator = parseInt(fractionMatch[2]);
+    const denominator = parseInt(fractionMatch[3]);
+    return whole + (numerator / denominator);
+  }
+  
+  // Handle just fractions: "3/4"
+  const pureFractionMatch = trimmed.match(/^(\d+)\/(\d+)$/);
+  if (pureFractionMatch) {
+    const numerator = parseInt(pureFractionMatch[1]);
+    const denominator = parseInt(pureFractionMatch[2]);
+    return numerator / denominator;
+  }
+  
+  // Handle whole numbers: "3"
+  if (/^\d+$/.test(trimmed)) {
+    return parseInt(trimmed);
+  }
+  
+  return NaN;
+};
+
 export const validateWallDimensions = (wall: any) => {
   const errors: string[] = [];
   
@@ -21,9 +54,9 @@ export const validateWallDimensions = (wall: any) => {
   if (lengthInches === '') {
     errors.push('Length inches is required');
   } else {
-    const inchesNum = parseFloat(lengthInches);
+    const inchesNum = parseFractionalInches(lengthInches);
     if (isNaN(inchesNum) || inchesNum < 0 || inchesNum >= 12) {
-      errors.push('Length inches must be between 0 and 11');
+      errors.push('Length inches must be between 0 and 11 (e.g., "0", "3/4", "3 3/4", or "3-3/4")');
     }
   }
   
@@ -37,9 +70,9 @@ export const validateWallDimensions = (wall: any) => {
   if (heightInches === '') {
     errors.push('Height inches is required');
   } else {
-    const inchesNum = parseFloat(heightInches);
+    const inchesNum = parseFractionalInches(heightInches);
     if (isNaN(inchesNum) || inchesNum < 0 || inchesNum >= 12) {
-      errors.push('Height inches must be between 0 and 11');
+      errors.push('Height inches must be between 0 and 11 (e.g., "0", "3/4", "3 3/4", or "3-3/4")');
     }
   }
   

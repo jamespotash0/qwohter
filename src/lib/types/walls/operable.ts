@@ -31,11 +31,20 @@ export interface OperableWallSpecification extends BaseWallSpecification {
     }
   };
 
-  export const getPanelThicknessBySeries = (series: string): string[] => {
-    if (series === "2000") return ["3\""];
-    if (series === "3000") return ["4\""];
-    if (series === "Hufcor: 600") return ["4\""];
-    return [];
+  export const getPanelThicknessByModel = (model: string): string => {
+    // 2000 series models (3" thickness)
+    if (["2010", "2020", "2030", "2050e", "2010GL", "2020GL", "2030GL"].includes(model)) {
+      return "3\"";
+    }
+    // 3000 series models (4" thickness)
+    if (["3010", "3020", "3030", "3050e", "3010GL", "3020GL", "3030GL"].includes(model)) {
+      return "4\"";
+    }
+    // Hufcor models (4" thickness)
+    if (["Hufcor 641", "Hufcor 642"].includes(model)) {
+      return "4\"";
+    }
+    return "";
   };
 
   export const getModelsByPanelConfigurationAndSeries = (panelConfiguration: string, series: string): string[] => {
@@ -123,7 +132,7 @@ export interface OperableWallSpecification extends BaseWallSpecification {
       case "3020":
       case "3020GL":
         return [
-          "Type 425 Clear Satin-Anodized Aluminum Track (Up to 525 lbs, find concurrent height)",
+          "Type 425 Clear Satin-Anodized Aluminum Track (Up to 525 lbs)",
           "Type 850 Clear Satin-Anodized Aluminum Track (>525–850 lbs)"
         ];
 

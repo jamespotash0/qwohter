@@ -44,7 +44,7 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
     getAvailableModels,
     getAvailablePanelSkins,
     getAvailableSTCRatings,
-    getAvailablePanelThickness,
+    // getAvailablePanelThickness,
     getAvailablePassDoorQuantity,
     getAvailablePanelFinishItems,
     getAvailableTrackSystems,
@@ -184,7 +184,7 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
                 value={selectedPanelThickness}
                 readOnly
                 className="bg-gray-50"
-                placeholder="Auto-calculated"
+                placeholder={selectedModel ? "Auto-calculated" : "Select model first"}
               />
             </div>
 
@@ -217,6 +217,7 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
               <Select
                 value={selectedPassDoorPanels}
                 onValueChange={(value) => handleFieldChange("passDoorPanels", value)}
+                disabled={!selectedModel}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select pass door panels" />
@@ -261,6 +262,7 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
               <Select
                 value={selectedPanelFinishCategory}
                 onValueChange={(value) => handleFieldChange("panelFinishCategory", value)}
+                disabled={!selectedModel}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select finish category" />
@@ -305,6 +307,7 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
               <Select
                 value={selectedInitialClosureSystem}
                 onValueChange={(value) => handleFieldChange("initialClosureSystem", value)}
+                disabled={!selectedModel}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select closure system" />
@@ -325,6 +328,7 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
               <Select
                 value={selectedEndPanelType}
                 onValueChange={(value) => handleFieldChange("endPanelType", value)}
+                disabled={!selectedModel}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select end panel type" />
@@ -348,6 +352,7 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
               <Select
                 value={selectedVerticalSeals}
                 onValueChange={(value) => handleFieldChange("verticalSeals", value)}
+                disabled={!selectedModel}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select vertical seals" />
@@ -364,13 +369,14 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="bottomSeals" className={labelClass}>Bottom Seals</Label>
+              <Label htmlFor="bottomSeals" className={labelClass}>Horizontal Bottom Seals</Label>
               <Select
                 value={selectedBottomSeals}
                 onValueChange={(value) => handleFieldChange("bottomSeals", value)}
+                disabled={!selectedModel}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select bottom seals" />
+                  <SelectValue placeholder="Select horizontal bottom seals" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="None">None</SelectItem>
@@ -384,13 +390,14 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="topSeals" className={labelClass}>Top Seals</Label>
+              <Label htmlFor="topSeals" className={labelClass}>Horizontal Top Seals</Label>
               <Select
                 value={selectedTopSeals}
                 onValueChange={(value) => handleFieldChange("topSeals", value)}
+                disabled={!selectedModel}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select top seals" />
+                  <SelectValue placeholder="Select horizontal top seals" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="None">None</SelectItem>
@@ -412,7 +419,7 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
                 value={selectedTrackType}
                 readOnly
                 className="bg-gray-50"
-                placeholder="Auto-calculated"
+                placeholder={selectedModel ? "Auto-calculated" : "Select model first"}
               />
             </div>
 
@@ -421,10 +428,10 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
               <Select
                 value={calculatedTrackSystem}
                 onValueChange={(value) => handleFieldChange("trackSystem", value)}
-                disabled={!selectedTrackType}
+                disabled={!selectedModel}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select track system" />
+                <SelectTrigger className="text-left">
+                  <SelectValue placeholder={selectedModel ? "Select track system" : "Select model first"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="None">None</SelectItem>

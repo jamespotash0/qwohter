@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { ContactInfo, JobDetails, DeliveryLabor, Pricing } from '../types/wizardTypes';
 import { WallDetails, WallSpecification, isOperableWall, isGlassWall } from '@/lib/types';
-import { FormValidator } from '@/utils/formValidation';
+import { validateWallDimensions } from '@/utils/wallValidation';
 
 export const useWizardValidation = (
   contactInfo: ContactInfo,
@@ -10,82 +10,9 @@ export const useWizardValidation = (
   deliveryLabor: DeliveryLabor,
   pricing: Pricing
 ) => {
-  const validateWallDimensions = (wall: WallSpecification, wallName: string): { isValid: boolean; errors: string[] } => {
-    const errors: string[] = [];
-    
-    // Helper to convert to number
-    const toNumber = (value: number | string | undefined): number => {
-      if (typeof value === 'number') return value;
-      if (typeof value === 'string') return parseFloat(value);
-      return NaN;
-    };
-    
-    // Validate Length Feet (0-40)
-    if (wall.lengthFeet === undefined || wall.lengthFeet === null || wall.lengthFeet === '') {
-      errors.push('Length feet is required');
-    } else {
-      const lengthFeetNum = toNumber(wall.lengthFeet);
-      if (isNaN(lengthFeetNum) || lengthFeetNum < 0 || lengthFeetNum > 40) {
-        errors.push('Length feet must be a number between 0-40');
-      }
-    }
-    
-    // Validate Height Feet (0-40) 
-    if (wall.heightFeet === undefined || wall.heightFeet === null || wall.heightFeet === '') {
-      errors.push('Height feet is required');
-    } else {
-      const heightFeetNum = toNumber(wall.heightFeet);
-      if (isNaN(heightFeetNum) || heightFeetNum < 0 || heightFeetNum > 40) {
-        errors.push('Height feet must be a number between 0-40');
-      }
-    }
-    
-    // Validate Length Inches (0-11, allow fractions)
-    if (wall.lengthInches && wall.lengthInches !== '') {
-      const inchesStr = String(wall.lengthInches);
-      const inchesResult = FormValidator.validateInches(inchesStr);
-      if (!inchesResult.isValid) {
-        errors.push(`Length inches: ${inchesResult.errorMessage}`);
-      } else {
-        // Additional range check for inches (0-11)
-        const inchesValue = parseFloat(inchesStr.replace(/\/.*/, ''));
-        if (!isNaN(inchesValue) && (inchesValue < 0 || inchesValue >= 12)) {
-          errors.push('Length inches must be between 0-11');
-        }
-      }
-    }
-    
-    // Validate Height Inches (0-11, allow fractions)
-    if (wall.heightInches && wall.heightInches !== '') {
-      const inchesStr = String(wall.heightInches);
-      const inchesResult = FormValidator.validateInches(inchesStr);
-      if (!inchesResult.isValid) {
-        errors.push(`Height inches: ${inchesResult.errorMessage}`);
-      } else {
-        // Additional range check for inches (0-11)
-        const inchesValue = parseFloat(inchesStr.replace(/\/.*/, ''));
-        if (!isNaN(inchesValue) && (inchesValue < 0 || inchesValue >= 12)) {
-          errors.push('Height inches must be between 0-11');
-        }
-      }
-    }
-    
-    // Validate Panel Count (1-50, numbers only)
-    if (wall.panelCount === undefined || wall.panelCount === null || wall.panelCount === '') {
-      errors.push('Panel count is required');
-    } else {
-      const panelCountNum = toNumber(wall.panelCount);
-      if (isNaN(panelCountNum) || panelCountNum < 1 || panelCountNum > 50) {
-        errors.push('Panel count must be a number between 1-50');
-      }
-    }
-    
-    // Wall System Type
-    if (!wall.wallSystemType) {
-      errors.push('Wall system type is required');
-    }
-    
-    return { isValid: errors.length === 0, errors };
+  // Use centralized validation from wallValidation.ts
+  const validateWallDimensionsLocal = (wall: WallSpecification, wallName: string): { isValid: boolean; errors: string[] } => {
+    return validateWallDimensions(wall);
   };
 
   const isContactInfoValid = useMemo(() => {
@@ -115,7 +42,7 @@ export const useWizardValidation = (
     
     for (const [wallName, wall] of wallEntries) {
       // First validate basic dimensions and fields
-      const dimensionValidation = validateWallDimensions(wall, wallName);
+      const dimensionValidation = validateWallDimensionsLocal(wall, wallName);
       if (!dimensionValidation.isValid) {
         return false;
       }
@@ -227,6 +154,6 @@ export const useWizardValidation = (
     isSupportStructureValid,
     isDeliveryLaborValid,
     isPricingValid,
-    validateWallDimensions
+    validateWallDimensions: validateWallDimensionsLocal
   };
 };

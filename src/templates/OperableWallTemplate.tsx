@@ -118,8 +118,8 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
           { text: `with <strong>${wall.frameThickness}</strong> thick framing`, condition: SmartQuoteHelper.hasValue(wall.frameThickness) },
           { text: `and <strong>${wall.frameFinish}</strong> frame finish.`, condition: SmartQuoteHelper.hasValue(wall.frameFinish) },
           { text: `The system achieves a minimum STC rating of <strong>${wall.stcRating}</strong>`, condition: SmartQuoteHelper.hasValue(wall.stcRating) },
-          { text: `while maintaining visual transparency. For acoustic performance, glass panels use <strong>${wall.bottomSeals}</strong> bottom seals`, condition: SmartQuoteHelper.hasValue(wall.bottomSeals) },
-          { text: `and <strong>${wall.topSeals}</strong> top seals.`, condition: SmartQuoteHelper.hasValue(wall.topSeals) },
+          { text: `while maintaining visual transparency. For acoustic performance, glass panels use <strong>${wall.bottomSeals}</strong> horizontal bottom seals`, condition: SmartQuoteHelper.hasValue(wall.bottomSeals) },
+          { text: `and <strong>${wall.topSeals}</strong> horizontal top seals.`, condition: SmartQuoteHelper.hasValue(wall.topSeals) },
           { text: `The system provides closure with <strong>${wall.finalClosure}</strong>`, condition: SmartQuoteHelper.hasValue(wall.finalClosure) }
         ]);
       } else if (isOperableWall(wall)) {
@@ -136,8 +136,8 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
           { text: `Panels are finished in <strong>${wall.panelFinishCategory}${wall.panelFinishSpecificItem && wall.panelFinishSpecificItem !== 'Unknown' ? ` - ${wall.panelFinishSpecificItem}` : ''}</strong> (from the manufacturer's standard offerings)`, condition: SmartQuoteHelper.hasValue(wall.panelFinishCategory) },
           { text: `and achieve a minimum STC rating of <strong>${wall.stcRating}</strong>.`, condition: SmartQuoteHelper.hasValue(wall.stcRating) },
           { text: `For acoustic performance, panels use <strong>${wall.verticalSeals}</strong> vertical seals,`, condition: SmartQuoteHelper.hasValue(wall.verticalSeals) },
-          { text: `${wall.bottomSeals === "Retractable" ? "<strong>Retractable</strong> operable" : `<strong>${wall.bottomSeals}</strong>`} bottom seals,`, condition: SmartQuoteHelper.hasValue(wall.bottomSeals) },
-          { text: `and <strong>${wall.topSeals}</strong> top seals.`, condition: SmartQuoteHelper.hasValue(wall.topSeals) },
+          { text: `${wall.bottomSeals === "Retractable" ? "<strong>Retractable</strong> operable" : `<strong>${wall.bottomSeals}</strong>`} horizontal bottom seals,`, condition: SmartQuoteHelper.hasValue(wall.bottomSeals) },
+          { text: `and <strong>${wall.topSeals}</strong> horizontal top seals.`, condition: SmartQuoteHelper.hasValue(wall.topSeals) },
           { text: `The lead panel provides closure with a <strong>${wall.initialClosureSystem} Seal</strong>`, condition: SmartQuoteHelper.hasValue(wall.initialClosureSystem) },
           { text: `while the end panel secures the system with a <strong>${wall.endPanelType}</strong>`, condition: SmartQuoteHelper.hasValue(wall.endPanelType) }
         ]);

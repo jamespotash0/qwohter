@@ -6,7 +6,7 @@ import {
   getPanelSkinOptions,
   getSTCRatingOptions,
   getTrackSystemByModel,
-  getPanelThicknessBySeries,
+  getPanelThicknessByModel,
   getPanelFinishSpecificItems,
   getPassDoorQuantityOptions,
   panelConfigurations,
@@ -56,18 +56,31 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
   const [selectedTrackType, setSelectedTrackType] = useState<string>(wall.trackType || '');
   const [calculatedTrackSystem, setCalculatedTrackSystem] = useState<string>(wall.trackSystem || '');
 
-  // Refs for tracking previous values
-  const prevSeriesRef = useRef<string>('');
+  // Ref for tracking previous values
   const prevModelRef = useRef<string>('');
 
-  // Field dependencies mapping - trackSystem now depends on model for cascading
+  // Field dependencies mapping - all fields that should reset when a parent field changes
   const FIELD_DEPENDENCIES: Record<string, string[]> = {
     panelConfiguration: [
-      'series', 'model', 'panelThickness', 'panelSkin', 'stcRating', 'panelDesign', 
-      'trackSystem', 'verticalSeals', 'bottomSeals', 'topSeals', 'initialClosureSystem', 'endPanelType'
+      'series', 'model', 'panelSkin', 'stcRating', 'panelDesign',
+      'verticalSeals', 'bottomSeals', 'topSeals', 
+      'initialClosureSystem', 'endPanelType',
+      'passDoorPanels', 'passDoorQuantity', 
+      'panelFinishCategory', 'panelFinishSpecificItem'
     ],
-    series: ['model', 'panelThickness', 'panelSkin', 'stcRating', 'trackSystem'],
-    model: ['panelSkin', 'stcRating', 'trackSystem'],
+    series: ['model', 'panelSkin', 'stcRating', 'panelDesign',
+      'verticalSeals', 'bottomSeals', 'topSeals', 
+      'initialClosureSystem', 'endPanelType', 
+      'passDoorPanels', 'passDoorQuantity', 
+      'panelFinishCategory', 'panelFinishSpecificItem' 
+    ],
+    model: [
+      'panelSkin', 'stcRating', 'panelDesign',
+      'passDoorPanels', 'passDoorQuantity', 
+      'panelFinishCategory', 'panelFinishSpecificItem',
+      'initialClosureSystem', 'endPanelType', 
+      'verticalSeals', 'bottomSeals', 'topSeals'
+    ],
     panelSkin: ['stcRating'],
     passDoorPanels: ['passDoorQuantity'],
     panelFinishCategory: ['panelFinishSpecificItem']
@@ -89,17 +102,17 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     // Update local state
     if (fieldsToReset.includes('series')) setSelectedSeries('');
     if (fieldsToReset.includes('model')) setSelectedModel('');
-    if (fieldsToReset.includes('panelThickness')) setSelectedPanelThickness('');
     if (fieldsToReset.includes('panelSkin')) setSelectedPanelSkin('');
     if (fieldsToReset.includes('stcRating')) setSelectedSTCRating('');
     if (fieldsToReset.includes('panelDesign')) setSelectedPanelDesign('');
-    if (fieldsToReset.includes('trackSystem')) setCalculatedTrackSystem('');
     if (fieldsToReset.includes('verticalSeals')) setSelectedVerticalSeals('');
     if (fieldsToReset.includes('bottomSeals')) setSelectedBottomSeals('');
     if (fieldsToReset.includes('topSeals')) setSelectedTopSeals('');
     if (fieldsToReset.includes('initialClosureSystem')) setSelectedInitialClosureSystem('');
     if (fieldsToReset.includes('endPanelType')) setSelectedEndPanelType('');
+    if (fieldsToReset.includes('passDoorPanels')) setSelectedPassDoorPanels('');
     if (fieldsToReset.includes('passDoorQuantity')) setSelectedPassDoorQuantity('');
+    if (fieldsToReset.includes('panelFinishCategory')) setSelectedPanelFinishCategory('');
     if (fieldsToReset.includes('panelFinishSpecificItem')) setSelectedPanelFinishSpecificItem('');
   }, [wallName, onChange]);
 
@@ -196,31 +209,54 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     setCalculatedTrackSystem(wall.trackSystem || '');
   }, [wall, safeGetProperty]);
 
-  // Auto-calculate panel thickness and track system
+  // Auto-calculate panel thickness, track type, and track system based on model
   useEffect(() => {
-    if (selectedSeries && selectedSeries !== prevSeriesRef.current) {
-      const panelThickness = getPanelThicknessBySeries(selectedSeries);
-      if (panelThickness.length > 0 && panelThickness[0]) {
-        setSelectedPanelThickness(panelThickness[0]);
-        onChange(wallName, { panelThickness: panelThickness[0] });
+    if (selectedModel !== prevModelRef.current) {
+      const updates: Record<string, string> = {};
+      
+      if (selectedModel) {
+        // Model is selected - calculate values
+        const panelThickness = getPanelThicknessByModel(selectedModel);
+        const trackType = getTrackTypeByModel(selectedModel);
+        const trackSystems = getTrackSystemByModel(selectedModel);
+        
+        // Update panel thickness
+        if (panelThickness) {
+          setSelectedPanelThickness(panelThickness);
+          updates.panelThickness = panelThickness;
+        }
+        
+        // Update track type and system
+        if (trackType) {
+          setSelectedTrackType(trackType);
+          updates.trackType = trackType;
+          
+          // Auto-select trackSystem if there's only one option
+          if (trackSystems.length === 1 && trackSystems[0]) {
+            setCalculatedTrackSystem(trackSystems[0]);
+            updates.trackSystem = trackSystems[0];
+          }
+        }
+      } else {
+        // Model is cleared - reset calculated values
+        setSelectedPanelThickness('');
+        setSelectedTrackType('');
+        setCalculatedTrackSystem('');
+        updates.panelThickness = '';
+        updates.trackType = '';
+        updates.trackSystem = '';
       }
-      prevSeriesRef.current = selectedSeries;
-    }
-  }, [selectedSeries, wallName, onChange]);
-
-  useEffect(() => {
-    if (selectedModel && selectedModel !== prevModelRef.current) {
-      const trackType = getTrackTypeByModel(selectedModel);
-      if (trackType) {
-        setSelectedTrackType(trackType);
-        // trackSystem is now handled by cascading logic in model field dependency
-        onChange(wallName, { trackType });
+      
+      // Apply all updates at once
+      if (Object.keys(updates).length > 0) {
+        onChange(wallName, updates);
       }
+      
       prevModelRef.current = selectedModel;
     }
   }, [selectedModel, wallName, onChange]);
 
-  // Get available options based on current selections
+
   const getAvailableSeries = useCallback(() => {
     return getSeriesByPanelConfiguration(selectedPanelConfiguration);
   }, [selectedPanelConfiguration]);
@@ -238,8 +274,9 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
   }, [selectedPanelSkin]);
 
   const getAvailablePanelThickness = useCallback(() => {
-    return getPanelThicknessBySeries(selectedSeries);
-  }, [selectedSeries]);
+    const thickness = getPanelThicknessByModel(selectedModel);
+    return thickness ? [thickness] : [];
+  }, [selectedModel]);
 
   const getAvailablePassDoorQuantity = useCallback(() => {
     return getPassDoorQuantityOptions(selectedPassDoorPanels);

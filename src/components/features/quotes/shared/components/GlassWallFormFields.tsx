@@ -306,17 +306,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
             </div>
           </div>
 
-          {/* Row 5: Top Seals, Bottom Seals */}
+          {/* Row 5: Horizontal Top Seals, Horizontal Bottom Seals */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="topSeals" className={labelClass}>Top Seals</Label>
+              <Label htmlFor="topSeals" className={labelClass}>Horizontal Top Seals</Label>
               <Select
                 value={selectedTopSeals}
                 onValueChange={(value) => handleFieldChange("topSeals", value)}
                 disabled={!selectedModel}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select top seals" />
+                  <SelectValue placeholder="Select horizontal top seals" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="None">None</SelectItem>
@@ -330,14 +330,14 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="bottomSeals" className={labelClass}>Bottom Seals</Label>
+              <Label htmlFor="bottomSeals" className={labelClass}>Horizontal Bottom Seals</Label>
               <Select
                 value={selectedBottomSeals}
                 onValueChange={(value) => handleFieldChange("bottomSeals", value)}
                 disabled={!selectedModel}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select bottom seals" />
+                  <SelectValue placeholder="Select horizontal bottom seals" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="None">None</SelectItem>

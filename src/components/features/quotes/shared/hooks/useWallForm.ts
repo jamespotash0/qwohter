@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { WallSpecification } from '@/lib/types';
+import { WallSpecification, isGlassWall } from '@/lib/types';
 import { 
   modelConfigurations, 
   getAvailableOptions, 
@@ -17,53 +17,60 @@ interface UseWallFormProps {
 }
 
 export const useWallForm = ({ wall, wallName, onChange }: UseWallFormProps) => {
+  // Safe property access for glass wall fields
+  const safeGetProperty = (property: string): string => {
+    if (isGlassWall(wall)) {
+      return (wall as any)[property] || '';
+    }
+    return '';
+  };
+
   // State for all glass wall fields
   const [selectedModel, setSelectedModel] = useState<string>(wall.model || '');
   const [selectedConfiguration, setSelectedConfiguration] = useState<string>(wall.panelConfiguration || '');
-  const [selectedOperation, setSelectedOperation] = useState<string>(wall.panelOperation || '');
-  const [selectedGlassType, setSelectedGlassType] = useState<string>(wall.glassType || '');
+  const [selectedOperation, setSelectedOperation] = useState<string>(safeGetProperty('panelOperation'));
+  const [selectedGlassType, setSelectedGlassType] = useState<string>(safeGetProperty('glassType'));
   const [selectedSTCRating, setSelectedSTCRating] = useState<string>(wall.stcRating || '');
-  const [selectedPartitionSupport, setSelectedPartitionSupport] = useState<string>(wall.partitionSupport || '');
-  const [selectedPassDoorType, setSelectedPassDoorType] = useState<string>(wall.passDoorType || '');
-  const [selectedPassDoorOption, setSelectedPassDoorOption] = useState<string>(wall.passDoorOption || '');
-  const [selectedPanelFace, setSelectedPanelFace] = useState<string>(wall.panelFace || '');
-  const [selectedHingeType, setSelectedHingeType] = useState<string>(wall.hingeType || '');
-  const [selectedFrameFinish, setSelectedFrameFinish] = useState<string>(wall.frameFinish || '');
+  const [selectedPartitionSupport, setSelectedPartitionSupport] = useState<string>(safeGetProperty('partitionSupport'));
+  const [selectedPassDoorType, setSelectedPassDoorType] = useState<string>(safeGetProperty('passDoorType'));
+  const [selectedPassDoorOption, setSelectedPassDoorOption] = useState<string>(safeGetProperty('passDoorOption'));
+  const [selectedPanelFace, setSelectedPanelFace] = useState<string>(safeGetProperty('panelFace'));
+  const [selectedHingeType, setSelectedHingeType] = useState<string>(safeGetProperty('hingeType'));
+  const [selectedFrameFinish, setSelectedFrameFinish] = useState<string>(safeGetProperty('frameFinish'));
   const [selectedTrackType, setSelectedTrackType] = useState<string>(wall.trackType || '');
-  const [selectedTrackFinish, setSelectedTrackFinish] = useState<string>(wall.trackFinish || '');
-  const [selectedFinalClosure, setSelectedFinalClosure] = useState<string>(wall.finalClosure || '');
+  const [selectedTrackFinish, setSelectedTrackFinish] = useState<string>(safeGetProperty('trackFinish'));
+  const [selectedFinalClosure, setSelectedFinalClosure] = useState<string>(safeGetProperty('finalClosure'));
   const [selectedBottomSeals, setSelectedBottomSeals] = useState<string>(wall.bottomSeals || '');
   const [selectedTopSeals, setSelectedTopSeals] = useState<string>(wall.topSeals || '');
-  const [calculatedFrameThickness, setCalculatedFrameThickness] = useState<string>(wall.frameThickness || '');
+  const [calculatedFrameThickness, setCalculatedFrameThickness] = useState<string>(safeGetProperty('frameThickness'));
   const [calculatedTrackSystem, setCalculatedTrackSystem] = useState<string>(wall.trackSystem || '');
-  const [selectedFloorGuide, setSelectedFloorGuide] = useState<string>(wall.floorGuide || '');
+  const [selectedFloorGuide, setSelectedFloorGuide] = useState<string>(safeGetProperty('floorGuide'));
 
-  // Refs for tracking previous values to prevent infinite loops
+  // Ref for tracking previous values
   const prevModelRef = useRef<string>('');
-  const prevConfigRef = useRef<string>('');
 
   // Sync state with wall prop changes (important for form re-renders)
   useEffect(() => {
     setSelectedModel(wall.model || '');
     setSelectedConfiguration(wall.panelConfiguration || '');
-    setSelectedOperation(wall.panelOperation || '');
-    setSelectedGlassType(wall.glassType || '');
+    setSelectedOperation(safeGetProperty('panelOperation'));
+    setSelectedGlassType(safeGetProperty('glassType'));
     setSelectedSTCRating(wall.stcRating || '');
-    setSelectedPartitionSupport(wall.partitionSupport || '');
-    setSelectedPassDoorType(wall.passDoorType || '');
-    setSelectedPassDoorOption(wall.passDoorOption || '');
-    setSelectedPanelFace(wall.panelFace || '');
-    setSelectedHingeType(wall.hingeType || '');
-    setSelectedFrameFinish(wall.frameFinish || '');
+    setSelectedPartitionSupport(safeGetProperty('partitionSupport'));
+    setSelectedPassDoorType(safeGetProperty('passDoorType'));
+    setSelectedPassDoorOption(safeGetProperty('passDoorOption'));
+    setSelectedPanelFace(safeGetProperty('panelFace'));
+    setSelectedHingeType(safeGetProperty('hingeType'));
+    setSelectedFrameFinish(safeGetProperty('frameFinish'));
     setSelectedTrackType(wall.trackType || '');
-    setSelectedTrackFinish(wall.trackFinish || '');
-    setSelectedFinalClosure(wall.finalClosure || '');
+    setSelectedTrackFinish(safeGetProperty('trackFinish'));
+    setSelectedFinalClosure(safeGetProperty('finalClosure'));
     setSelectedBottomSeals(wall.bottomSeals || '');
     setSelectedTopSeals(wall.topSeals || '');
-    setCalculatedFrameThickness(wall.frameThickness || '');
+    setCalculatedFrameThickness(safeGetProperty('frameThickness'));
     setCalculatedTrackSystem(wall.trackSystem || '');
-    setSelectedFloorGuide(wall.floorGuide || '');
-  }, [wall]);
+    setSelectedFloorGuide(safeGetProperty('floorGuide'));
+  }, [wall, safeGetProperty]);
 
   // Cascading field dependencies
   const FIELD_DEPENDENCIES: Record<string, string[]> = {
