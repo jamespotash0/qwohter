@@ -40,20 +40,6 @@ export function CompanySettingsSection() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-medium">Company Information</h3>
-          <p className="text-sm text-muted-foreground">
-            Manage your organization's company details for quote generation
-          </p>
-        </div>
-        <Button onClick={handleEdit} className="gap-2">
-          <Edit2 className="w-4 h-4" />
-          {hasCompanyInfo() ? 'Edit Information' : 'Add Information'}
-        </Button>
-      </div>
-
       {/* Company Information Display */}
       {hasCompanyInfo() ? (
         <Card>

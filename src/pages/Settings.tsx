@@ -73,30 +73,11 @@ const Settings = () => {
             {/* Company Information Section */}
             <Card className="card-elevated">
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-xl">
-                  <Building2 className="w-5 h-5 text-primary" />
-                  Company Information
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Manage your company details that will be used in quote generation
-                </p>
               </CardHeader>
               <CardContent>
                 <CompanySettingsSection />
               </CardContent>
             </Card>
-
-            {/* Future sections can be added here */}
-            {/* 
-            <Card className="card-elevated">
-              <CardHeader>
-                <CardTitle>Other Settings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                // Additional settings sections
-              </CardContent>
-            </Card>
-            */}
           </div>
         </main>
       </div>
