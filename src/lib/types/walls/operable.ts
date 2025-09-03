@@ -23,7 +23,7 @@ export interface OperableWallSpecification extends BaseWallSpecification {
       case "Individual Panels":
         return ["2000", "3000", "Hufcor: 600"];
       case "Hinged-Paired Panels":
-        return ["2000", "3000"];
+        return ["2000", "3000", "Hufcor: 600"];
       case "Continuously-Hinged Panels":
         return ["2000", "3000"];
       default:
@@ -49,6 +49,7 @@ export interface OperableWallSpecification extends BaseWallSpecification {
     } else if (panelConfiguration === "Hinged-Paired Panels") {
       if (series === "2000") return ["2030", "2030GL"];
       if (series === "3000") return ["3030", "3030GL"];
+      if (series === "Hufcor: 600") return ["Hufcor 642"]; //added new hufcor wall
     }
     return [];
   };
@@ -82,29 +83,78 @@ export interface OperableWallSpecification extends BaseWallSpecification {
     return [];
   };
 
-  export const getTrackSystemsByTrackType = (trackType: string, model?: string): string[] => {
-    if (model === "Hufcor 641") {
-      return ["Type 26 Clear Satin-Anodized Aluminum", "Type 36 Clear Satin-Anodized Aluminum", "Type 57 Clear Anodized Aluminum", "Type 11L Powder Coated Off-White Steel", "Type 11 Powder Coated Off-White Steel"];
-    }
-    switch (trackType) {
-      case "Multi-Directional Track":
-        return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
-      case "Hinged-Pair (Straight Line) Track":
-        return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
-      case "Curve & Diverter (Individual) Track":
-        return ["Type 850 Powder Coated Off-White Steel"];
+  // export const getTrackSystemsByTrackType = (trackType: string, model?: string): string[] => {
+  //   if (model === "Hufcor 641") {
+  //     return ["Type 26 Clear Satin-Anodized Aluminum", "Type 36 Clear Satin-Anodized Aluminum", "Type 57 Clear Anodized Aluminum", "Type 11L Powder Coated Off-White Steel", "Type 11 Powder Coated Off-White Steel"];
+  //   }
+  //   switch (trackType) {
+  //     case "Multi-Directional Track":
+  //       return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
+  //     case "Hinged-Pair (Straight Line) Track":
+  //       return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
+  //     case "Curve & Diverter (Individual) Track":
+  //       return ["Type 850 Powder Coated Off-White Steel"];
+  //     default:
+  //       return [];
+  //   }
+  // };
+
+  export const getTrackSystemByModel = (model: string): string[] => {
+    switch (model) {
+      case "Hufcor 641":
+        return [
+          "Type 26 Clear Satin-Anodized Aluminum",
+          "Type 36 Clear Satin-Anodized Aluminum",
+          "Type 57 Clear Anodized Aluminum",
+          "Type 11L Powder Coated Off-White Steel",
+          "Type 11 Powder Coated Off-White Steel"
+        ];
+      case "Hufcor 642":
+        return [
+          "Type 36 Clear Satin-Anodized Aluminum"
+        ]
+
+      case "2010":
+      case "2010GL":
+      case "3010":
+      case "3010GL":
+      case "2020":
+      case "2020GL":
+      case "3020":
+      case "3020GL":
+        return [
+          "Type 425 Clear Satin-Anodized Aluminum Track (Up to 525 lbs, find concurrent height)",
+          "Type 850 Clear Satin-Anodized Aluminum Track (>525–850 lbs)"
+        ];
+
+      case "2030":
+      case "2030GL":
+      case "3030":
+      case "3030GL":
+        return [
+          "Type 425 Clear Satin-Anodized Aluminum Track",
+          "Type 850 Clear Satin-Anodized Aluminum Track",
+          "Type 11L Black Painted Steel Track (Up to 900 lbs)"
+        ];
+
+      case "2050e":
+      case "3050e":
+        return ["Type H.D. Electric Steel Track"];
+
       default:
         return [];
     }
   };
 
   export const getTrackTypeByModel = (model: string): string => {
-    if (["Hufcor 641", "2010", "2010GL", "3010", "3010GL"].includes(model)) {
+    if (["2010", "2010GL", "3010", "3010GL"].includes(model)) {
       return "Curve & Diverter (Individual) Track";
     } else if (["2020", "2020GL", "3020", "3020GL"].includes(model)) {
       return "Multi-Directional Track";
-    } else if (["2050e", "3050e", "3030", "3030GL", "2030", "2030GL"].includes(model)) {
+    } else if (["2050e", "3050e", "3030", "3030GL", "2030", "2030GL", "Hufcor 642"].includes(model)) { //added Hufcor 642
       return "Hinged-Pair (Straight Line) Track";
+    } else if (["Hufcor 641"].includes(model)) {
+      return "Omni-Directional (Individual) Track"
     }
     return "";
   };
@@ -131,7 +181,6 @@ export interface OperableWallSpecification extends BaseWallSpecification {
     return ["1", "2", "3"];
   };
 
-// Operable Wall Static Data Arrays
 export const panelConfigurations = ["Individual Panels", "Hinged-Paired Panels", "Continuously-Hinged Panels"];
 export const panelDesigns = ["Trimless U Capped", "U-Capped Trim"];
 export const passDoorOptions = ["Single", "Double"];

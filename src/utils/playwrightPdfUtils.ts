@@ -5,7 +5,7 @@ import { Quote } from '@/hooks/useQuotes';
  * This ensures section headers are repeated when content continues on next page
  */
 function addSectionHeaderRepetition(html: string): string {
-  // Add invisible header markers that will be shown via CSS when content continues on next page
+  // Add invisible header markers only for items that might be moved to next page
   const sectionsToRepeat = [
     { class: 'panels-section', title: 'PANELS:' },
     { class: 'tracks-section', title: 'TRACK:' }, 
@@ -17,33 +17,40 @@ function addSectionHeaderRepetition(html: string): string {
   ];
   
   sectionsToRepeat.forEach(({ class: sectionClass, title }) => {
-    // Find individual items within sections and add continuation headers
+    // Find sections and preserve original header
     const sectionRegex = new RegExp(
-      `(<div class="${sectionClass}"[^>]*>)([\\s\\S]*?)(</div>)`,
+      `(<div class="${sectionClass}"[^>]*>\\s*)(<h2 class="section-header">[^<]+</h2>)([\\s\\S]*?)(</div>)`,
       'gi'
     );
     
-    html = html.replace(sectionRegex, (match, openTag, content, closeTag) => {
-      // Add continuation header before each major item that could be moved to next page
+    html = html.replace(sectionRegex, (match, openTag, originalHeader, content, closeTag) => {
+      // Add continuation headers only to items after the first one (skip first to preserve original flow)
       const itemPatterns = [
-        /<div class="panel-wall-item"[^>]*>/gi,
-        /<div class="term-item"[^>]*>/gi,
-        /<div class="payment-terms-item"[^>]*>/gi,
-        /<p[^>]*>/gi
+        { pattern: /<div class="panel-wall-item"[^>]*>/gi, name: 'panel-wall-item' },
+        { pattern: /<div class="term-item"[^>]*>/gi, name: 'term-item' },
+        { pattern: /<div class="payment-terms-item"[^>]*>/gi, name: 'payment-terms-item' }
       ];
       
       let processedContent = content;
+      let itemCount = 0;
       
-      itemPatterns.forEach(pattern => {
+      itemPatterns.forEach(({ pattern, name }) => {
         processedContent = processedContent.replace(pattern, (itemMatch: string) => {
-          return `<div class="section-continuation-header" style="display: none;">
-            <h2 class="section-header continuation-header">${title}</h2>
-          </div>
-          ${itemMatch}`;
+          itemCount++;
+          // Only add continuation headers starting from the 2nd item
+          if (itemCount > 1) {
+            return `<div class="section-continuation-header" data-section="${name}" style="display: none;">
+              <h2 class="section-header continuation-header">${title}</h2>
+            </div>
+            ${itemMatch}`;
+          }
+          return itemMatch;
         });
+        // Reset count for each pattern
+        itemCount = 0;
       });
       
-      return openTag + processedContent + closeTag;
+      return openTag + originalHeader + processedContent + closeTag;
     });
   });
   
@@ -220,31 +227,35 @@ export const generateQuotePDF = async (
                 page-break-before: avoid !important;
               }
               
-              /* Section continuation headers - show when content moves to new page */
+              /* Section continuation headers - hidden by default, preserve original headers */
               .section-continuation-header {
-                display: none; /* Hidden by default */
+                display: none !important; /* Hidden by default */
               }
               
-              /* Show continuation header when item starts on a new page */
-              .panel-wall-item,
-              .term-item,
-              .payment-terms-item {
-                page-break-before: auto;
+              /* Ensure original section headers are always visible */
+              h2.section-header:not(.continuation-header) {
+                display: block !important;
+                font-weight: bold !important;
+                font-size: 12pt !important;
+                margin-top: 1.5em !important;
+                margin-bottom: 0.5em !important;
               }
               
-              /* When an item is the first element on a page, show its continuation header */
+              /* Show continuation headers only when content actually continues on new page */
               @media print {
-                .panel-wall-item:first-child .section-continuation-header,
-                .term-item:first-child .section-continuation-header,
-                .payment-terms-item:first-child .section-continuation-header {
-                  display: block !important;
+                /* Show continuation header when item is forced to start new page due to space */
+                .section-continuation-header {
+                  page-break-before: auto;
                 }
                 
-                /* Show continuation header when item appears at top of page after page break */
-                .panel-wall-item[style*="page-break-before"] .section-continuation-header,
-                .term-item[style*="page-break-before"] .section-continuation-header,
-                .payment-terms-item[style*="page-break-before"] .section-continuation-header {
-                  display: block !important;
+                /* More specific targeting - show continuation only when item gets page break */
+                .panel-wall-item {
+                  page-break-inside: avoid;
+                }
+                
+                .term-item,
+                .payment-terms-item {
+                  page-break-inside: avoid;
                 }
               }
               
