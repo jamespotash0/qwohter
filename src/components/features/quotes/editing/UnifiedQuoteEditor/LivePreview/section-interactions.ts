@@ -2,6 +2,16 @@ import { QuoteSection } from '@/templates/SmartQuoteTemplate';
 
 export class SectionInteractions {
   /**
+   * Format section title for display
+   */
+  private static formatSectionTitle(sectionId: string): string {
+    return sectionId
+      .split('-')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  }
+
+  /**
    * Handle section click events
    */
   static createSectionClickHandler(
@@ -71,37 +81,18 @@ export class SectionInteractions {
       // console.log('Available sections:', sections.map(s => s.id));
       
       if (!sectionData) {
-        // Create mock section data for special clickable sections
-        if (sectionId === 'proposal-intro') {
-          const content = sectionElement?.outerHTML || '';
-          sectionData = {
-            id: 'proposal-intro',
-            title: 'Project Introduction & Specifications',
-            content: content,
-            isVisible: true,
-            isRequired: true
-          };
-        } else if (sectionId === 'pocket-doors-section') {
-          const content = sectionElement?.outerHTML || '';
-          sectionData = {
-            id: 'pocket-doors',
-            title: 'Pocket Doors',
-            content: content,
-            isVisible: true,
-            isRequired: false
-          };
-        } else if (sectionId === 'panel-doors-section') {
-          const content = sectionElement?.outerHTML || '';
-          sectionData = {
-            id: 'panel-doors',
-            title: 'Panel Doors',
-            content: content,
-            isVisible: true,
-            isRequired: false
-          };
-        } else {
-          return;
-        }
+        // For sections not found in extracted sections (possibly due to splitting),
+        // use the visible content but warn that it might be partial
+        const content = sectionElement?.outerHTML || '';
+        console.warn(`⚠️ Section "${sectionId}" not found in extracted sections, using visible content (may be partial)`);
+        
+        sectionData = {
+          id: sectionId,
+          title: this.formatSectionTitle(sectionId),
+          content: content,
+          isVisible: true,
+          isRequired: false
+        };
       }
 
       event.preventDefault();

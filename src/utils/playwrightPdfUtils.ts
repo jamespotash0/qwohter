@@ -12,7 +12,7 @@ function addSectionHeaderRepetition(html: string): string {
     { class: 'support-section', title: 'SUPPORT STRUCTURE (HEADER):' },
     { class: 'pocket-doors-section', title: 'POCKET DOORS:' },
     { class: 'pass-doors-section', title: 'PASS DOORS:' },
-    { class: 'general-notes-section', title: 'General Notes and Terms:' },
+    { class: 'general-notes-section', title: 'GENERAL NOTES AND TERMS:' },
     { class: 'terms-section', title: 'ACCEPTANCE OF PROPOSAL:' }
   ];
   

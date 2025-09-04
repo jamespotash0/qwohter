@@ -4,6 +4,7 @@ export interface QuoteSection {
   id: string;
   title: string;
   content: string;
+  header?: string; // Editable header text
   isVisible: boolean;
   isRequired: boolean;
   dependencies?: string[]; // Field names this section depends on
@@ -60,16 +61,99 @@ export class SmartQuoteHelper {
     content: string,
     isVisible: boolean,
     isRequired: boolean = false,
-    dependencies: string[] = []
+    dependencies: string[] = [],
+    header?: string
   ): QuoteSection {
     return {
       id,
       title,
       content: isVisible ? content : '',
+      header: header || title,
       isVisible,
       isRequired,
       dependencies
     };
+  }
+
+  /**
+   * Extract header text from a section
+   */
+  private static extractSectionHeader(html: string, startIndex: number): string | null {
+    const completeSection = this.extractCompleteSection(html, startIndex);
+    if (!completeSection) return null;
+    
+    // Extract header text
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = completeSection;
+    
+    const header = tempDiv.querySelector('h2.section-header, h2.editable-header');
+    return header ? header.textContent?.trim() || null : null;
+  }
+
+  /**
+   * Extract section content excluding the header
+   */
+  private static extractSectionContentOnly(html: string, startIndex: number): string | null {
+    const completeSection = this.extractCompleteSection(html, startIndex);
+    if (!completeSection) return null;
+    
+    // Remove header from the content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = completeSection;
+    
+    // Find and remove the header
+    const header = tempDiv.querySelector('h2.section-header, h2.editable-header');
+    if (header) {
+      header.remove();
+    }
+    
+    // Return the section wrapper with content but no header
+    const sectionDiv = tempDiv.firstElementChild;
+    return sectionDiv ? sectionDiv.outerHTML : completeSection;
+  }
+
+  /**
+   * Extract complete section content including all nested divs
+   */
+  private static extractCompleteSection(html: string, startIndex: number): string | null {
+    let divCount = 0;
+    let i = startIndex;
+    let sectionStart = startIndex;
+    
+    // Find the opening <div
+    while (i < html.length && html.substring(i, i + 4) !== '<div') {
+      i++;
+    }
+    
+    if (i >= html.length) return null;
+    sectionStart = i;
+    
+    // Find the complete opening tag
+    while (i < html.length && html.charAt(i) !== '>') {
+      i++;
+    }
+    i++; // Move past the '>'
+    
+    divCount = 1; // We found the opening div
+    
+    // Now find the matching closing div by counting div tags
+    while (i < html.length && divCount > 0) {
+      if (html.substring(i, i + 4) === '<div') {
+        divCount++;
+        i += 4;
+      } else if (html.substring(i, i + 6) === '</div>') {
+        divCount--;
+        i += 6;
+      } else {
+        i++;
+      }
+    }
+    
+    if (divCount === 0) {
+      return html.substring(sectionStart, i);
+    }
+    
+    return null;
   }
 
   /**
@@ -81,8 +165,8 @@ export class SmartQuoteHelper {
     // Define which sections should NOT be editable (read-only)
     const readOnlySections = ['wall-specifications-list', 'pricing-section'];
     
-    // Pattern 1: Sections with *-section class
-    const sectionPattern = /<div class="([^"]*-section)"[^>]*>([\s\S]*?)<\/div>/g;
+    // Pattern 1: Sections with *-section class - using proper nested div matching
+    const sectionPattern = /<div class="([^"]*-section)"[^>]*>/g;
     let match;
     
     while ((match = sectionPattern.exec(html)) !== null) {
@@ -96,19 +180,27 @@ export class SmartQuoteHelper {
         continue;
       }
       
-      // console.log(`Extracting section: ${className} -> id: ${id}`);
-      sections.push({
-        id,
-        title: this.formatSectionTitle(id),
-        content: match[0], // Include the full div
-        isVisible: true,
-        isRequired: this.isRequiredSection(id),
-        dependencies: this.getSectionDependencies(id)
-      });
+      // Extract section content without header and header text separately
+      const sectionContent = this.extractSectionContentOnly(html, match.index);
+      const headerText = this.extractSectionHeader(html, match.index);
+      
+      if (sectionContent) {
+        console.log(`✅ Extracting section: ${className} -> id: ${id} (${sectionContent.length} chars), header: "${headerText}"`);
+        sections.push({
+          id,
+          title: this.formatSectionTitle(id),
+          content: sectionContent, // Content without header
+          header: headerText || undefined, // Editable header text
+          isVisible: true,
+          isRequired: this.isRequiredSection(id),
+          dependencies: this.getSectionDependencies(id)
+        });
+        console.log(`📝 Added section with id: "${id}" to sections array. Total sections: ${sections.length}`);
+      }
     }
     
     // Pattern 2: H2 section headers with following content (but exclude pricing details)
-    const headerPattern = /<h2[^>]*class="section-header"[^>]*>(.*?)<\/h2>([\s\S]*?)(?=<h2[^>]*class="section-header"|$)/g;
+    const headerPattern = /<h2[^>]*class="[^"]*section-header[^"]*"[^>]*>(.*?)<\/h2>([\s\S]*?)(?=<h2[^>]*class="[^"]*section-header"|$)/g;
     let headerMatch;
     
     while ((headerMatch = headerPattern.exec(html)) !== null) {
@@ -118,13 +210,14 @@ export class SmartQuoteHelper {
       
       // Skip sections that are already handled or should be read-only
       if (sections.find(s => s.id === id) || readOnlySections.includes(id)) {
+        console.log(`⚠️ Skipping duplicate section from header pattern: ${id}`);
         continue;
       }
       
       sections.push({
         id,
         title,
-        content: `<h2 class="section-header">${headerMatch[1]}</h2>${content}`,
+        content: `<h2 class="section-header editable-header" contenteditable="false">${headerMatch[1]}</h2>${content}`,
         isVisible: true,
         isRequired: this.isRequiredSection(id),
         dependencies: this.getSectionDependencies(id)
@@ -207,7 +300,7 @@ export class SmartQuoteHelper {
         const patterns = [
           new RegExp(`<div class="${section.id}-section"[^>]*>[\\s\\S]*?<\\/div>`, 'g'),
           new RegExp(`<div class="${section.id}"[^>]*>[\\s\\S]*?<\\/div>`, 'g'),
-          new RegExp(`<h2[^>]*class="section-header"[^>]*>${section.title}[\\s\\S]*?(?=<h2[^>]*class="section-header"|<div class="[^"]*section"|$)`, 'gi')
+          new RegExp(`<h2[^>]*class="[^"]*section-header[^"]*"[^>]*>${section.title}[\\s\\S]*?(?=<h2[^>]*class="[^"]*section-header"|<div class="[^"]*section"|$)`, 'gi')
         ];
         
         patterns.forEach(pattern => {

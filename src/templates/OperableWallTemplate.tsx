@@ -146,7 +146,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     }).map((description, index) => `<p class="wall-paragraph" style="margin: 0 0 8px 0; page-break-inside: avoid; orphans: 2; widows: 2;">${description}</p>`).join('');
 
     return `<div class="panels-section" style="line-height: 1.15;">
-      <h2 class="section-header">PANELS:</h2>
+      <h2 class="section-header editable-header" contenteditable="false">PANELS:</h2>
       ${wallDescriptions}
     </div>`;
   }
@@ -189,7 +189,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
         : `The track system allows for the specified movement of the panels, as noted in parentheses, along the overhead track, enabling flexible operation and easy stacking when the wall is not in use.`
     return `
       <div class="track-section" style="line-height: 1.15; margin-top: 0px;">
-        <h2 class="section-header">TRACK:</h2>
+        <h2 class="section-header editable-header" contenteditable="false">TRACK:</h2>
         <p>
           ${wallDescriptions}. ${summary}
         </p>
@@ -225,7 +225,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     
     return `
       <div class="support-section" style="line-height: 1.15;">
-        <h2 class="section-header">SUPPORT STRUCTURE (HEADER):</h2>
+        <h2 class="section-header editable-header" contenteditable="false">SUPPORT STRUCTURE (HEADER):</h2>
         <p>
           ${wallDescriptions} ${summary}
         </p>
@@ -242,7 +242,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
 
     return `
       <div class="general-section" style="line-height: 1.15; margin-bottom: 20px;">
-        <h2 class="section-header">GENERAL:</h2>
+        <h2 class="section-header editable-header" contenteditable="false">GENERAL:</h2>
         Estimated delivery for shop drawings would be <strong>${shopDrawingDelivery} weeks</strong>, after which approval of them, tracks would be delivered in <strong>${trackDelivery} weeks</strong>, & panels delivered in <strong>${panelDelivery} weeks</strong>.
         Installation of tracks would take approximately <strong>${trackInstallation} working days</strong> and installation of panels would take <strong>${panelInstallation} additional days</strong>.
       </div>

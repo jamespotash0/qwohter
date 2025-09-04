@@ -30,17 +30,27 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
   onSave
 }) => {
   const [richEditingContent, setRichEditingContent] = useState('');
+  const [headerText, setHeaderText] = useState('');
   const richEditorRef = useRef<HTMLDivElement>(null);
+  const headerInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize content when section changes
   useEffect(() => {
     if (section && isOpen) {
-      // Extract clean content from section with better HTML handling
+      // Extract header text if available
+      const headerFromSection = section.header || '';
+      setHeaderText(headerFromSection);
+      
+      // Extract clean content from section WITHOUT header
       let cleanHTML = section.content;
       
       // Create a temporary div to parse the HTML properly
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = section.content;
+      
+      // Remove any headers from the content (in case they're still there)
+      const headers = tempDiv.querySelectorAll('h2.section-header, h2.editable-header');
+      headers.forEach(header => header.remove());
       
       // Find the section wrapper div and extract content properly
       const sectionDiv = tempDiv.querySelector(`li, div[class*="${section.id}"], div[class*="section"]`);
@@ -55,13 +65,11 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
         cleanHTML = container.innerHTML.trim();
       } else {
         // Fallback: remove only outermost div wrapper if exists
-        cleanHTML = section.content
-          .replace(/^<div[^>]*>/, '')
-          .replace(/<\/div>$/, '')
-          .trim();
+        cleanHTML = tempDiv.innerHTML.trim();
       }
       
-      // console.log('QuickEditModal: cleanHTML generated:', cleanHTML);
+      // console.log('QuickEditModal: cleanHTML generated (no header):', cleanHTML);
+      // console.log('QuickEditModal: header text:', headerFromSection);
       setRichEditingContent(cleanHTML);
       
       // Set the content directly to the contentEditable element
@@ -108,11 +116,42 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
 
   // Handle save
   const handleSave = useCallback(() => {
-    // Use rich text content from the contentEditable div
-    const contentToSave = richEditorRef.current?.innerHTML || richEditingContent;
+    // Get content from the editor
+    const bodyContent = richEditorRef.current?.innerHTML || richEditingContent;
+    
+    // Reconstruct the section with header and content
+    const sectionClassname = `${section.id}-section`;
+    const headerElement = headerText.trim() 
+      ? `<h2 class="section-header editable-header" contenteditable="false">${headerText.trim()}</h2>`
+      : '';
+    
+    // Combine header and content within the section div
+    let contentToSave = `<div class="${sectionClassname}">`;
+    if (headerElement) {
+      contentToSave += headerElement;
+    }
+    
+    // Add the body content, removing the outer div wrapper if it exists
+    let cleanBodyContent = bodyContent;
+    if (cleanBodyContent.startsWith(`<div class="${sectionClassname}"`) && cleanBodyContent.endsWith('</div>')) {
+      // Remove outer wrapper div to avoid double wrapping
+      cleanBodyContent = cleanBodyContent
+        .replace(new RegExp(`^<div class="${sectionClassname}"[^>]*>`), '')
+        .replace(/<\/div>$/, '');
+    }
+    
+    contentToSave += cleanBodyContent;
+    contentToSave += '</div>';
+    
+    console.log('Saving section with reconstructed content:', { 
+      sectionId: section.id, 
+      headerText, 
+      contentLength: contentToSave.length 
+    });
+    
     onSave(section.id, contentToSave);
     onClose();
-  }, [section.id, richEditingContent, onSave, onClose]);
+  }, [section.id, richEditingContent, headerText, onSave, onClose]);
 
   // Handle cancel
   const handleCancel = useCallback(() => {
@@ -190,6 +229,28 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
         <CardContent className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
           <div className="space-y-4">
             <div className="space-y-3">
+              {/* Section Header Input */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Section Header
+                </label>
+                <input
+                  ref={headerInputRef}
+                  type="text"
+                  value={headerText}
+                  onChange={(e) => setHeaderText(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-200 outline-none"
+                  placeholder="Enter section header text (e.g., PANELS:)"
+                  style={{
+                    fontFamily: '"Times New Roman", Times, serif',
+                    fontSize: '14px',
+                    fontWeight: 'bold'
+                  }}
+                />
+                <p className="text-xs text-gray-500">
+                  This text will appear as the section header in your document
+                </p>
+              </div>
               {/* Rich Text Formatting Toolbar */}
               <div className="flex items-center gap-1 p-2 bg-gray-50 rounded-lg border">
                 <Button
@@ -270,24 +331,31 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
                 </Button>
               </div>
 
-              {/* Rich Text Editor */}
-              <div
-                ref={richEditorRef}
-                contentEditable
-                className="w-full min-h-80 max-h-96 p-4 border-2 rounded-lg bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-200 outline-none overflow-y-auto"
+              {/* Section Content Label */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Section Content
+                </label>
+                
+                {/* Rich Text Editor */}
+                <div
+                  ref={richEditorRef}
+                  contentEditable
+                  className="w-full min-h-80 max-h-96 p-4 border-2 rounded-lg bg-white focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-200 outline-none overflow-y-auto"
                 style={{
                   fontFamily: '"Times New Roman", Times, serif',
                   fontSize: '14px',
                   lineHeight: '1.5'
                 }}
-                onInput={handleRichTextInput}
-                onKeyDown={handleKeyDown}
-                suppressContentEditableWarning={true}
-              />
-              
-              <p className="text-xs text-gray-500">
-                ✨ Use the toolbar above to format your text. Bold, italic, and underline formatting will be preserved in the final document.
-              </p>
+                  onInput={handleRichTextInput}
+                  onKeyDown={handleKeyDown}
+                  suppressContentEditableWarning={true}
+                />
+                
+                <p className="text-xs text-gray-500">
+                  ✨ Use the toolbar above to format your content. Bold, italic, and underline formatting will be preserved in the final document.
+                </p>
+              </div>
             </div>
           </div>
         </CardContent>

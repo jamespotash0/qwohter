@@ -16,6 +16,7 @@ export const getPreviewStyles = (): string => {
         page-break-after: auto;
       }
       
+      
       .page-break {
         margin: 20px 0;
         border-top: 2px dashed #e2e8f0;
@@ -43,8 +44,8 @@ export const getPreviewStyles = (): string => {
       
       /* Page fragment styles for sectioned content */
       .page-fragment {
-        page-break-inside: avoid;
-        break-inside: avoid;
+        /* Removed break-inside: avoid to allow ContentSplitter paragraph-level splitting */
+        page-break-before: auto;
       }
       
       .page-fragment + .page-fragment {
@@ -52,13 +53,13 @@ export const getPreviewStyles = (): string => {
         page-break-before: auto;
       }
       
-      /* Individual wall panel descriptions */
+      /* Individual wall panel descriptions - allow splitting at paragraph level */
       .panel-wall-item {
-        break-inside: avoid;
-        page-break-inside: avoid;
+        /* Allow ContentSplitter to handle paragraph-level breaking */
+        margin-bottom: 8px;
       }
       
-      /* Individual term items */
+      /* Individual term items - small items can still avoid breaking */
       .term-item {
         break-inside: avoid;
         page-break-inside: avoid;
@@ -69,6 +70,25 @@ export const getPreviewStyles = (): string => {
         break-inside: avoid;
         page-break-inside: avoid;
         keep-together: always;
+      }
+      
+      /* Keep section titles with their following content */
+      .quote-section-title {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+      
+      
+      /* Allow paragraphs in splittable sections to break naturally */
+      .panels-section p,
+      .pass-doors-section p,
+      .pocket-doors-section p,
+      .track-section p,
+      .support-section p,
+      .general-section p,
+      .terms-section p {
+        break-inside: auto;
+        page-break-inside: auto;
       }
       
       /* Prevent wall names from breaking across lines */
@@ -263,7 +283,41 @@ export const getPreviewStyles = (): string => {
         width: 100% !important;
         margin-left: 0 !important;
       }
-      h2.section-header { font-weight: bold; font-size: 12pt; margin-top: 1.5em; margin-bottom: 0.5em; }
+      h2.section-header, 
+      h2.editable-header { 
+        font-weight: bold; 
+        font-size: 12pt; 
+        margin: 1.5em 0 0.5em 0; /* Reset all margins explicitly */
+        padding: 0; /* Reset all padding */
+        text-indent: 0; /* Ensure no text indent */
+        box-sizing: border-box;
+      }
+      
+      /* Override for editable headers to maintain edit styling */
+      .editable-header {
+        position: relative;
+        margin: 1.5em 0 0.5em 0 !important; /* Same margins as regular headers */
+        padding: 2px 0px !important; /* Only vertical padding for edit styling */
+        border: 2px solid transparent;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+      }
+      
+      .editable-header:hover {
+        border-color: rgba(59, 130, 246, 0.3);
+        background-color: rgba(59, 130, 246, 0.05);
+      }
+      
+      .editable-header[contenteditable="true"] {
+        border-color: #3B82F6;
+        background-color: rgba(59, 130, 246, 0.1);
+        outline: none;
+      }
+      
+      .editable-header[contenteditable="true"]:focus {
+        border-color: #1D4ED8;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+      }
       .wall-specifications { line-height: 1.15; }
       .acceptance-section p { font-style: italic; font-size: 9pt; line-height: 1.2; }
       .pricing-section { margin-top: 20px; }

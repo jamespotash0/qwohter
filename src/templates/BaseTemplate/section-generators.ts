@@ -165,7 +165,7 @@ export class SectionGenerators {
     </div>
 
     <div class="terms-section">
-      <h2 class="section-header">General Notes and Terms:</h2>
+      <h2 class="section-header editable-header" contenteditable="false">GENERAL NOTES AND TERMS:</h2>
       <div class="terms-list">
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">1. <strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">2. All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate ? wageRate + ' ' : ''}Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</div>
@@ -190,7 +190,7 @@ export class SectionGenerators {
     <div class="signature-acceptance-section">
       <br><strong>Signed By:</strong> ___________________________________________&nbsp;&nbsp;&nbsp;<strong>Date:</strong> _____________________
       
-      <h2 class="section-header" style="margin-top: 20px;">ACCEPTANCE OF PROPOSAL:</h2>
+      <h2 class="section-header editable-header" contenteditable="false" style="margin-top: 20px;">ACCEPTANCE OF PROPOSAL:</h2>
       <p style="font-style: italic; font-size: 9pt; line-height: 1.2;">
         The above prices, specifications, and conditions are satisfactory and are hereby accepted. Any alteration or deviation from above specifications will be executed upon written approval and may/will be subject to additional costs over and above the estimate. All removal of packing material is the customer's responsibility. Electrical and H.V.A.C. installation(s) are not included. Visa, Mastercard and American Express (AMEX) are accepted. Payments by credit card will be charged a processing fee. Pricing subject to applicable sales tax unless otherwise noted. Late payments will be subject to a 1.5% finance charge per month. Cancellations will be subject to a restocking fee.
       </p>
@@ -234,7 +234,7 @@ export class SectionGenerators {
       : "This pocket door is designed to house the panels within the stack, offering space-efficient storage and acoustically enhanced performance.";
 
     return `<div class="pocket-doors-section" style="line-height: 1.15;">
-      <h2 class="section-header">POCKET DOORS:</h2>
+      <h2 class="section-header editable-header" contenteditable="false">POCKET DOORS:</h2>
       <p>
         ${wallDescriptions}. ${summary}
       </p>
@@ -322,7 +322,7 @@ export class SectionGenerators {
       : "This pass door panel is incorporated to allow for convenient access without disrupting the overall wall system.";
 
     return `<div class="pass-doors-section" style="line-height: 1.15;">
-      <h2 class="section-header">PASS DOORS:</h2>
+      <h2 class="section-header editable-header" contenteditable="false">PASS DOORS:</h2>
       <p>
         ${wallDescriptions}. ${summary}
       </p>

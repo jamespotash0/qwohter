@@ -100,23 +100,15 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
               style={{
                 transform: `scale(${zoomLevel / 100})`,
                 transformOrigin: 'top center',
-                marginBottom: `${32 * zoomLevel / 100}px`
+                marginBottom: `${32 * zoomLevel / 100}px`,
+                padding: '60px 72px 72px 72px', // Reduced top margin, standard sides/bottom
+                boxSizing: 'border-box',
+                minHeight: '1056px', // Full page height at 96 DPI
+                width: '816px', // Page width at 96 DPI
+                background: 'white',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
               }}
             >
-              {/* Page Number */}
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: '0.5in',
-                  right: '0.75in',
-                  fontSize: '10px',
-                  color: '#666',
-                  fontFamily: 'Arial, sans-serif',
-                  zIndex: 10
-                }}
-              >
-                {page.pageNumber}
-              </div>
 
               {/* Page Content with Styles */}
               <div

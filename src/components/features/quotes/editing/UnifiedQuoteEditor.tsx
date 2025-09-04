@@ -129,7 +129,23 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           if (matches) {
             const originalSection = matches[0];
             
-            result = result.replace(pattern, `$1${content}$2`);
+            // Check if content already includes the section wrapper div
+            const contentHasWrapper = content.trim().startsWith(`<div`) && content.includes(className);
+            
+            console.log(`Replacing section ${sectionId}:`, {
+              className,
+              contentHasWrapper,
+              contentPreview: content.substring(0, 100) + '...'
+            });
+            
+            if (contentHasWrapper) {
+              // Content already includes the section wrapper, replace entire section
+              result = result.replace(pattern, content);
+            } else {
+              // Content is just inner content, keep the wrapper
+              result = result.replace(pattern, `$1${content}$2`);
+            }
+            
             patternMatched = true;
             break;
           }
