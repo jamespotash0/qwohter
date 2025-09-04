@@ -164,6 +164,15 @@ export const authFlowHelpers = {
     try {
       console.log('Profile setup: updating full_name for userId:', userId, 'fullName:', fullName);
       
+      // First check if profile exists
+      const { data: existingProfile, error: checkError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      console.log('Existing profile check:', { existingProfile, checkError });
+      
       // Update the existing profile with full name (profile was created by trigger)
       const { data, error } = await supabase
         .from('profiles')
@@ -172,14 +181,34 @@ export const authFlowHelpers = {
         })
         .eq('id', userId)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Profile update error:', error);
         throw error;
       }
 
-      console.log('Profile updated successfully:', data);
+      // If no profile was found/updated, create one
+      if (!data) {
+        console.log('No profile found, creating new profile for userId:', userId);
+        const { data: newProfile, error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            full_name: sanitizeInput.string(fullName)
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Profile creation error:', createError);
+          throw createError;
+        }
+
+        console.log('Profile created successfully:', newProfile);
+      } else {
+        console.log('Profile updated successfully:', data);
+      }
 
       return {
         success: true,
