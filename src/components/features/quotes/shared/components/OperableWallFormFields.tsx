@@ -25,7 +25,6 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
     selectedSeries,
     selectedModel,
     selectedPanelThickness,
-    selectedPanelDesign,
     selectedPanelSkin,
     selectedSTCRating,
     selectedPassDoorPanels,
@@ -48,19 +47,17 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
     getAvailablePassDoorQuantity,
     getAvailablePanelFinishItems,
     getAvailableTrackSystems,
+    getAvailableVerticalSeals,
+    getAvailableBottomSeals,
+    getAvailableTopSeals,
     panelConfigurations,
-    panelDesigns,
     passDoorOptions,
     panelFinishCategories,
-    verticalSeals,
-    bottomSealOptions,
-    topSealOptions,
     endPanelTypes,
     initialClosureSystems
   } = useOperableWallForm({ wall, wallName, onChange });
 
   // Layout classes based on context
-  const gridClass = layout === 'edit' ? 'grid grid-cols-2 gap-4' : 'space-y-4';
   const labelClass = layout === 'edit' ? 'text-sm font-medium' : 'text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70';
 
   return (
@@ -176,8 +173,8 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
       </div>
       {showFullFields && (
         <>
-        {/* Row 3: Panel Thickness, Panel Design */}
-          <div className="grid grid-cols-2 gap-4">
+        {/* Row 3: Panel Thickness */}
+          {/* <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="panelThickness" className={labelClass}>Panel Thickness (Calculated)</Label>
               <Input
@@ -188,30 +185,19 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="panelDesign" className={labelClass}>Panel Design *</Label>
-              <Select
-                value={selectedPanelDesign}
-                onValueChange={(value) => handleFieldChange("panelDesign", value)}
-                disabled={!selectedModel}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select panel design" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="None">None</SelectItem>
-                  {panelDesigns.map((design) => (
-                    <SelectItem key={design} value={design}>
-                      {design}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          </div> */}
 
           {/* Row 4: Pass Door Panels, Pass Door Quantity */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
+             <div className="space-y-2">
+              <Label htmlFor="panelThickness" className={labelClass}>Panel Thickness (Calculated)</Label>
+              <Input
+                value={selectedPanelThickness}
+                readOnly
+                className="bg-gray-50"
+                placeholder={selectedModel ? "Auto-calculated" : "Select model first"}
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="passDoorPanels" className={labelClass}>Pass Door Panels</Label>
               <Select
@@ -359,7 +345,7 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="None">None</SelectItem>
-                  {verticalSeals.map((seal) => (
+                  {getAvailableVerticalSeals().map((seal) => (
                     <SelectItem key={seal} value={seal}>
                       {seal}
                     </SelectItem>
@@ -380,7 +366,7 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="None">None</SelectItem>
-                  {bottomSealOptions.map((seal) => (
+                  {getAvailableBottomSeals().map((seal) => (
                     <SelectItem key={seal} value={seal}>
                       {seal}
                     </SelectItem>
@@ -401,7 +387,7 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="None">None</SelectItem>
-                  {topSealOptions.map((seal) => (
+                  {getAvailableTopSeals().map((seal) => (
                     <SelectItem key={seal} value={seal}>
                       {seal}
                     </SelectItem>

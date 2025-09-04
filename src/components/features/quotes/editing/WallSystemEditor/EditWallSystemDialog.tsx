@@ -35,7 +35,7 @@ export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
       
       // Operable wall fields
       'panelConfiguration', 'series', 'model', 'panelSkin', 'stcRating', 
-      'panelThickness', 'panelDesign', 'passDoorPanels', 'passDoorQuantity',
+      'panelThickness', 'passDoorPanels', 'passDoorQuantity',
       'panelFinishCategory', 'panelFinishSpecificItem', 'initialClosureSystem', 
       'endPanelType', 'verticalSeals', 'bottomSeals', 'topSeals', 'trackType', 
       'trackSystem',

@@ -6,7 +6,6 @@ export interface OperableWallSpecification extends BaseWallSpecification {
   series: string;
   model: string;
   panelThickness: string;
-  panelDesign: string;
   panelSkin: string;
   stcRating: string;
   passDoorPanels: string;
@@ -92,21 +91,6 @@ export interface OperableWallSpecification extends BaseWallSpecification {
     return [];
   };
 
-  // export const getTrackSystemsByTrackType = (trackType: string, model?: string): string[] => {
-  //   if (model === "Hufcor 641") {
-  //     return ["Type 26 Clear Satin-Anodized Aluminum", "Type 36 Clear Satin-Anodized Aluminum", "Type 57 Clear Anodized Aluminum", "Type 11L Powder Coated Off-White Steel", "Type 11 Powder Coated Off-White Steel"];
-  //   }
-  //   switch (trackType) {
-  //     case "Multi-Directional Track":
-  //       return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
-  //     case "Hinged-Pair (Straight Line) Track":
-  //       return ["Type 425 Clear Satin-Anodized Aluminum", "Type 850 Clear Satin-Anodized Aluminum"];
-  //     case "Curve & Diverter (Individual) Track":
-  //       return ["Type 850 Powder Coated Off-White Steel"];
-  //     default:
-  //       return [];
-  //   }
-  // };
 
   export const getTrackSystemByModel = (model: string): string[] => {
     switch (model) {
@@ -191,13 +175,85 @@ export interface OperableWallSpecification extends BaseWallSpecification {
     return ["1", "2", "3"];
   };
 
+  // Model-specific seal options
+  export const getVerticalSealOptions = (model: string): string[] => {
+    // Hufcor models have unspecified vertical seals
+    if (["Hufcor 641", "Hufcor 642"].includes(model)) {
+      return ["Unspecified"];
+    }
+    
+    // All other models
+    if (["2010", "2010GL", "3010", "3010GL", "2050e", "3050e", "2020", "2020GL", "2030", "2030GL", "3020", "3020GL", "3030", "3030GL"].includes(model)) {
+      return ["Trimless Astragal", "Cap-type Astragal"];
+    }
+    
+    return ["Trimless Astragal", "Cap-type Astragal"]; // Default
+  };
+
+  export const getBottomSealOptions = (model: string): string[] => {
+    // 2050e, 3050e -> adjustable only
+    if (["2050e", "3050e"].includes(model)) {
+      return ["Adjustable"];
+    }
+    
+    // Hufcor 641 -> retractable (2"), retractable (4"), fixed
+    if (model === "Hufcor 641") {
+      return ["Retractable (2\")", "Retractable (4\")", "Fixed"];
+    }
+    
+    // Hufcor 642 -> retractable, fixed
+    if (model === "Hufcor 642") {
+      return ["Retractable", "Fixed"];
+    }
+    
+    // 2020/2020GL, 2030/2030GL, 3020/3020GL, 3030/3030GL -> operable, adjustable, automatic
+    if (["2020", "2020GL", "2030", "2030GL", "3020", "3020GL", "3030", "3030GL"].includes(model)) {
+      return ["Operable", "Adjustable", "Automatic"];
+    }
+    
+    // 2010/2010GL, 3010/3010GL -> operable, adjustable, automatic
+    if (["2010", "2010GL", "3010", "3010GL"].includes(model)) {
+      return ["Operable", "Adjustable", "Automatic"];
+    }
+    
+    return ["Operable", "Adjustable", "Automatic"]; // Default
+  };
+
+  export const getTopSealOptions = (model: string): string[] => {
+    // 2050e, 3050e -> fixed, operable
+    if (["2050e", "3050e"].includes(model)) {
+      return ["Fixed", "Operable"];
+    }
+    
+    // Hufcor 641 -> retractable, fixed
+    if (model === "Hufcor 641") {
+      return ["Retractable", "Fixed"];
+    }
+    
+    // Hufcor 642 -> retractable, fixed
+    if (model === "Hufcor 642") {
+      return ["Retractable", "Fixed"];
+    }
+    
+    // 2020/2020GL, 2030/2030GL, 3020/3020GL, 3030/3030GL -> fixed, operable
+    if (["2020", "2020GL", "2030", "2030GL", "3020", "3020GL", "3030", "3030GL"].includes(model)) {
+      return ["Fixed", "Operable"];
+    }
+    
+    // 2010/2010GL, 3010/3010GL -> fixed only
+    if (["2010", "2010GL", "3010", "3010GL"].includes(model)) {
+      return ["Fixed"];
+    }
+    
+    return ["Fixed"]; // Default
+  };
+
 export const panelConfigurations = ["Individual Panels", "Hinged-Paired Panels", "Continuously-Hinged Panels"];
-export const panelDesigns = ["Trimless U Capped", "U-Capped Trim"];
 export const passDoorOptions = ["Single", "Double"];
 export const panelFinishCategories = ["Koroseal Standard Vinyl", "Koroseal Upgrade Vinyl", "Shaw Standard Carpet", "HyTex Upgrade Carpet", "HyTex Standard Fabric", "HyTex Upgrade Fabric", "Standard Wood Veneer", "Wilsonart High Pressure Laminate (HPL)", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
-export const verticalSeals = ["Tongue-and-Groove"];
-export const bottomSealOptions = ["Retractable", "Automatic", "Adjustable"];
-export const topSealOptions = ["Fixed", "Adjustable", "Operable"];
+export const verticalSealOptions = ["Trimless Astragal", "Cap-type Astragal"]; //all models, not specified for hufcor models
+export const bottomSealOptions = ["Operable", "Adjustable", "Automatic", "Retractable", "Retractable (2\")", "Retractable (4\")", "Fixed"]; //Retractable and fixed only for hufcor models
+export const topSealOptions = ["Fixed", "Operable", "Retractable"]; //only for Hufcor 641/642, is it retractable
 export const endPanelTypes = ["Standard Expander Panel Closure", "Optional Hinged Panel(s) Closure"];
 export const initialClosureSystems = ["Standard Bulb", "Optional Fixed Starter Jamb", "Optional Adjustable Starter Jamb"];
 

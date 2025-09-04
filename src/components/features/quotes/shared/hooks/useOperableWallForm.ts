@@ -10,15 +10,17 @@ import {
   getPanelFinishSpecificItems,
   getPassDoorQuantityOptions,
   panelConfigurations,
-  panelDesigns,
   passDoorOptions,
   panelFinishCategories,
-  verticalSeals,
+  verticalSealOptions,
   bottomSealOptions,
   topSealOptions,
   endPanelTypes,
   initialClosureSystems,
   getTrackTypeByModel,
+  getVerticalSealOptions,
+  getBottomSealOptions,
+  getTopSealOptions,
 } from '@/lib/types';
 
 interface UseOperableWallFormProps {
@@ -41,7 +43,6 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
   const [selectedSeries, setSelectedSeries] = useState<string>(safeGetProperty('series'));
   const [selectedModel, setSelectedModel] = useState<string>(wall.model || '');
   const [selectedPanelThickness, setSelectedPanelThickness] = useState<string>(safeGetProperty('panelThickness'));
-  const [selectedPanelDesign, setSelectedPanelDesign] = useState<string>(safeGetProperty('panelDesign'));
   const [selectedPanelSkin, setSelectedPanelSkin] = useState<string>(safeGetProperty('panelSkin'));
   const [selectedSTCRating, setSelectedSTCRating] = useState<string>(wall.stcRating || '');
   const [selectedPassDoorPanels, setSelectedPassDoorPanels] = useState<string>(safeGetProperty('passDoorPanels'));
@@ -62,20 +63,20 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
   // Field dependencies mapping - all fields that should reset when a parent field changes
   const FIELD_DEPENDENCIES: Record<string, string[]> = {
     panelConfiguration: [
-      'series', 'model', 'panelSkin', 'stcRating', 'panelDesign',
+      'series', 'model', 'panelSkin', 'stcRating',
       'verticalSeals', 'bottomSeals', 'topSeals', 
       'initialClosureSystem', 'endPanelType',
       'passDoorPanels', 'passDoorQuantity', 
       'panelFinishCategory', 'panelFinishSpecificItem'
     ],
-    series: ['model', 'panelSkin', 'stcRating', 'panelDesign',
+    series: ['model', 'panelSkin', 'stcRating',
       'verticalSeals', 'bottomSeals', 'topSeals', 
       'initialClosureSystem', 'endPanelType', 
       'passDoorPanels', 'passDoorQuantity', 
       'panelFinishCategory', 'panelFinishSpecificItem' 
     ],
     model: [
-      'panelSkin', 'stcRating', 'panelDesign',
+      'panelSkin', 'stcRating',
       'passDoorPanels', 'passDoorQuantity', 
       'panelFinishCategory', 'panelFinishSpecificItem',
       'initialClosureSystem', 'endPanelType', 
@@ -104,7 +105,6 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     if (fieldsToReset.includes('model')) setSelectedModel('');
     if (fieldsToReset.includes('panelSkin')) setSelectedPanelSkin('');
     if (fieldsToReset.includes('stcRating')) setSelectedSTCRating('');
-    if (fieldsToReset.includes('panelDesign')) setSelectedPanelDesign('');
     if (fieldsToReset.includes('verticalSeals')) setSelectedVerticalSeals('');
     if (fieldsToReset.includes('bottomSeals')) setSelectedBottomSeals('');
     if (fieldsToReset.includes('topSeals')) setSelectedTopSeals('');
@@ -133,9 +133,6 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
         break;
       case "panelThickness":
         setSelectedPanelThickness(displayValue);
-        break;
-      case "panelDesign":
-        setSelectedPanelDesign(displayValue);
         break;
       case "panelSkin":
         setSelectedPanelSkin(displayValue);
@@ -193,7 +190,6 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     setSelectedSeries(safeGetProperty('series'));
     setSelectedModel(wall.model || '');
     setSelectedPanelThickness(safeGetProperty('panelThickness'));
-    setSelectedPanelDesign(safeGetProperty('panelDesign'));
     setSelectedPanelSkin(safeGetProperty('panelSkin'));
     setSelectedSTCRating(wall.stcRating || '');
     setSelectedPassDoorPanels(safeGetProperty('passDoorPanels'));
@@ -290,13 +286,25 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     return getTrackSystemByModel(selectedModel);
   }, [selectedModel]);
 
+  // Model-specific seal options
+  const getAvailableVerticalSeals = useCallback(() => {
+    return getVerticalSealOptions(selectedModel);
+  }, [selectedModel]);
+
+  const getAvailableBottomSeals = useCallback(() => {
+    return getBottomSealOptions(selectedModel);
+  }, [selectedModel]);
+
+  const getAvailableTopSeals = useCallback(() => {
+    return getTopSealOptions(selectedModel);
+  }, [selectedModel]);
+
   return {
     // State values
     selectedPanelConfiguration,
     selectedSeries,
     selectedModel,
     selectedPanelThickness,
-    selectedPanelDesign,
     selectedPanelSkin,
     selectedSTCRating,
     selectedPassDoorPanels,
@@ -323,13 +331,15 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     getAvailablePassDoorQuantity,
     getAvailablePanelFinishItems,
     getAvailableTrackSystems,
+    getAvailableVerticalSeals,
+    getAvailableBottomSeals,
+    getAvailableTopSeals,
 
     // Static options
     panelConfigurations,
-    panelDesigns,
     passDoorOptions,
     panelFinishCategories,
-    verticalSeals,
+    verticalSealOptions,
     bottomSealOptions,
     topSealOptions,
     endPanelTypes,

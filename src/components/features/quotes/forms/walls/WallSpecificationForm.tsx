@@ -71,7 +71,6 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           series: "",
           model: "",
           panelThickness: "",
-          panelDesign: "",
           panelSkin: "",
           stcRating: "",
           passDoorPanels: "",

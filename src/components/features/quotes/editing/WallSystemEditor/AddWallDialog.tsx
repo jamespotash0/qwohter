@@ -94,7 +94,6 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
         wallSystemType: 'Operable Wall',
         series: '',
         panelThickness: '',
-        panelDesign: '',
         panelSkin: '',
         passDoorPanels: '',
         passDoorQuantity: '',
