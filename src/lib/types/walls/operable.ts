@@ -115,12 +115,13 @@ export interface OperableWallSpecification extends BaseWallSpecification {
           "Type 26 Clear Satin-Anodized Aluminum",
           "Type 36 Clear Satin-Anodized Aluminum",
           "Type 57 Clear Anodized Aluminum",
-          "Type 11L Powder Coated Off-White Steel",
-          "Type 11 Powder Coated Off-White Steel"
+          "Type 11L Clear Satin-Anodized Steel",
+          "Type 11 Clear Satin-Anodized Steel" //Powder Coated Off-White
         ];
       case "Hufcor 642":
         return [
-          "Type 36 Clear Satin-Anodized Aluminum"
+          "Type 38 Clear Satin-Anodized Aluminum",
+          "Type 11 Clear Satin-Anodized Steel"
         ]
 
       case "2010":
@@ -132,8 +133,8 @@ export interface OperableWallSpecification extends BaseWallSpecification {
       case "3020":
       case "3020GL":
         return [
-          "Type 425 Clear Satin-Anodized Aluminum Track (Up to 525 lbs)",
-          "Type 850 Clear Satin-Anodized Aluminum Track (>525–850 lbs)"
+          "Type 425 Clear Satin-Anodized Aluminum (Up to 525 lbs)",
+          "Type 850 Clear Satin-Anodized Aluminum (>525–850 lbs)"
         ];
 
       case "2030":
@@ -141,14 +142,14 @@ export interface OperableWallSpecification extends BaseWallSpecification {
       case "3030":
       case "3030GL":
         return [
-          "Type 425 Clear Satin-Anodized Aluminum Track",
-          "Type 850 Clear Satin-Anodized Aluminum Track",
-          "Type 11L Black Painted Steel Track (Up to 900 lbs)"
+          "Type 425 Clear Satin-Anodized Aluminum",
+          "Type 850 Clear Satin-Anodized Aluminum",
+          "Type 11L Black Painted Steel (Up to 900 lbs)"
         ];
 
       case "2050e":
       case "3050e":
-        return ["Type H.D. Electric Steel Track"];
+        return ["Type H.D. Electric Steel"];
 
       default:
         return [];

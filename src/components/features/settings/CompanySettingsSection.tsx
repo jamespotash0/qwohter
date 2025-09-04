@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Edit2, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { CompanyInfoDialog } from "./CompanyInfoDialog";
 import { useOrganizationSettings } from "@/hooks/useCompanySettings";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { supabase } from "@/integrations/supabase/client";
 import { extractPrimaryContactInfo } from "@/types/companySettings";
 
 export function CompanySettingsSection() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
   
   const { 
     organization, 
@@ -16,6 +19,19 @@ export function CompanySettingsSection() {
     updateCompanyInfo,
     hasCompanyInfo
   } = useOrganizationSettings();
+  
+  const { profile } = useUserProfile(user?.id);
+
+  // Get current user
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+      }
+    };
+    getCurrentUser();
+  }, []);
 
   const handleEdit = () => {
     setIsDialogOpen(true);
@@ -37,6 +53,19 @@ export function CompanySettingsSection() {
 
   const companyData = organization ? 
     extractPrimaryContactInfo(organization.organization_info || {}) : null;
+  
+  // Check if user is admin
+  const isAdmin = profile?.role === 'admin';
+
+  // Debug logging
+  console.log('CompanySettingsSection Debug:', {
+    organization,
+    organizationInfo: organization?.organization_info,
+    companyData,
+    hasCompanyInfoResult: hasCompanyInfo(),
+    isAdmin,
+    profile
+  });
 
   return (
     <div className="space-y-4">
@@ -44,28 +73,48 @@ export function CompanySettingsSection() {
       {hasCompanyInfo() ? (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="w-5 h-5" />
-              {organization?.name}
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5" />
+                {organization?.name}
+              </div>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEdit}
+                  className="flex items-center gap-2"
+                >
+                  <Edit2 className="w-4 h-4" />
+                  Edit
+                </Button>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="font-medium text-muted-foreground">Phone:</span>
-                <p>{companyData?.phone}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+              {/* Left Side - Phone and Fax */}
+              <div className="space-y-4">
+                <div>
+                  <span className="font-medium text-muted-foreground">Phone:</span>
+                  <p>{companyData?.phone || 'Not provided'}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-muted-foreground">Fax:</span>
+                  <p>{companyData?.fax || 'Not provided'}</p>
+                </div>
               </div>
-              <div>
-                <span className="font-medium text-muted-foreground">Fax:</span>
-                <p>{companyData?.fax}</p>
-              </div>
-              <div className="md:col-span-2">
-                <span className="font-medium text-muted-foreground">Address:</span>
-                <p>{companyData?.address}</p>
-              </div>
-              <div>
-                <span className="font-medium text-muted-foreground">Website:</span>
-                <p>{companyData?.website}</p>
+              
+              {/* Right Side - Website and Address */}
+              <div className="space-y-4">
+                <div>
+                  <span className="font-medium text-muted-foreground">Website:</span>
+                  <p>{companyData?.website || 'Not provided'}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-muted-foreground">Address:</span>
+                  <p>{companyData?.address || 'Not provided'}</p>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -76,13 +125,15 @@ export function CompanySettingsSection() {
             <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
               <Building2 className="w-6 h-6 text-muted-foreground" />
             </div>
-            <h3 className="font-medium mb-2">No company information added</h3>
+            <h3 className="font-medium mb-2">Company information not set up</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Add your organization's company details to get started with quote generation
+              Set up your organization's contact details to enable professional quote generation
             </p>
-            <Button onClick={handleEdit} size="sm">
-              Add Company Information
-            </Button>
+            {isAdmin && (
+              <Button onClick={handleEdit} size="sm">
+                Set Up Company Information
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}

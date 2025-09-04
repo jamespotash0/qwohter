@@ -6,11 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/common/layout";
 import { CompanySettingsSection } from "@/components/features/settings/CompanySettingsSection";
-import { Building2, Settings as SettingsIcon } from "lucide-react";
+import { useOrganizationSettings } from "@/hooks/useCompanySettings";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { Building2, User as UserIcon } from "lucide-react";
 
 const Settings = () => {
   const [user, setUser] = useState<User | null>(null);
   const navigate = useNavigate();
+  const { organization } = useOrganizationSettings();
+  const { profile } = useUserProfile(user?.id);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -43,6 +47,8 @@ const Settings = () => {
   if (!user) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
+
+  
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
@@ -51,18 +57,23 @@ const Settings = () => {
         <main className="flex-1 flex flex-col">
           {/* Header */}
           <div className="p-6 pb-0">
-            <header className="bg-card/80 backdrop-blur-sm border border-border/50 shadow-large rounded-[22px] px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/5 rounded-full flex items-center justify-center">
-                  <SettingsIcon className="w-5 h-5 text-primary" />
+            <header className="bg-card/80 backdrop-blur-sm border border-border/50 shadow-lg rounded-[22px] px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1" />
+                <div className="flex items-center justify-center gap-2">
+                  <Building2 className="w-5 h-5 text-muted-foreground" />
+                  <span className="font-medium text-lg">{organization?.name || 'Loading...'}</span>
                 </div>
-                <div>
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-                    Settings
-                  </h1>
-                  <p className="text-sm text-muted-foreground">
-                    Manage your organization settings and preferences
-                  </p>
+                <div className="flex items-center gap-4 flex-1 justify-end">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+                      <UserIcon className="w-4 h-4" />
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">{profile?.full_name || user?.email}</p>
+                      <p className="text-xs text-muted-foreground">{profile?.role ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1).toLowerCase() : ""}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </header>

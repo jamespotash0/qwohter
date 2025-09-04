@@ -28,9 +28,10 @@ export interface WebsiteInfo extends ContactInfo {
 // EmailInfo removed - not using emails in organization_info
 
 export interface OrganizationInfo {
-  phones?: PhoneInfo[];
-  addresses?: AddressInfo[];
-  websites?: WebsiteInfo[];
+  phone?: string;
+  fax?: string;
+  address?: string;
+  website?: string;
 }
 
 // Organization with company information (matches database schema)
@@ -65,32 +66,20 @@ export interface OrganizationSettingsStore {
 
 // Helper function to convert simple form data to JSONB structure
 export const convertFormDataToOrganizationInfo = (formData: CompanyInfoFormData): OrganizationInfo => {
-  const info: OrganizationInfo = {};
-  
-  if (formData.phone) {
-    info.phones = [{ type: 'main', value: formData.phone, number: formData.phone, isPrimary: true }];
-  }
-  
-  if (formData.fax) {
-    info.phones = [...(info.phones || []), { type: 'fax', value: formData.fax, number: formData.fax }];
-  }
-  
-  if (formData.address) {
-    info.addresses = [{ type: 'business', value: formData.address, address: formData.address, isPrimary: true }];
-  }
-  
-  if (formData.website) {
-    info.websites = [{ type: 'main', value: formData.website, url: formData.website, isPrimary: true }];
-  }  
-  return info;
+  return {
+    phone: formData.phone || undefined,
+    fax: formData.fax || undefined,
+    address: formData.address || undefined,
+    website: formData.website || undefined,
+  };
 };
 
 // Helper function to extract primary values for forms
 export const extractPrimaryContactInfo = (orgInfo?: OrganizationInfo): CompanyInfoFormData => {
   return {
-    phone: orgInfo?.phones?.find(p => p.type === 'main' || p.isPrimary)?.number || '',
-    fax: orgInfo?.phones?.find(p => p.type === 'fax')?.number || '',
-    address: orgInfo?.addresses?.find(a => a.isPrimary)?.address || '',
-    website: orgInfo?.websites?.find(w => w.isPrimary)?.url || '',
+    phone: orgInfo?.phone || '',
+    fax: orgInfo?.fax || '',
+    address: orgInfo?.address || '',
+    website: orgInfo?.website || '',
   };
 };

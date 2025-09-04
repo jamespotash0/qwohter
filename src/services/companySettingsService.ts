@@ -25,20 +25,17 @@ class OrganizationSettingsService {
       // Fetch organization with company info
       const { data, error } = await supabase
         .from('organizations')
-        .select('id, name, organization_code, created_at, updated_at')
+        .select('*')
         .eq('id', profile.organization_id)
         .single();
 
       if (error) throw error;
+      if (!data) throw new Error('Organization not found');
 
-      // Ensure organization_info exists (handle both cases: column exists or doesn't)
+      // Return data as-is with organization_info fallback
       return {
-        id: data?.id || '',
-        name: data?.name || '',
-        organization_code: data?.organization_code || '',
-        created_at: data?.created_at || '',
-        updated_at: data?.updated_at || '',
-        organization_info: ((data as any)?.organization_info) || {}
+        ...data,
+        organization_info: data.organization_info || {}
       } as OrganizationWithCompanyInfo;
     } catch (error) {
       console.error('Error fetching organization:', error);
@@ -74,7 +71,7 @@ class OrganizationSettingsService {
             updated_at: new Date().toISOString()
           })
           .eq('id', profile.organization_id)
-          .select('id, name, organization_code, created_at, updated_at')
+          .select('*')
           .single();
 
         if (error) throw error;

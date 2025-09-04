@@ -39,15 +39,29 @@ export function useOrganizationSettings() {
 
   // Check if organization has company info
   const hasCompanyInfo = (): boolean => {
-    if (!organization?.organization_info) return false;
+    if (!organization?.organization_info) {
+      console.log('hasCompanyInfo: No organization_info found');
+      return false;
+    }
     
     const info = organization.organization_info;
-    const hasPhone = info.phones?.some(p => p.type === 'main' && p.number);
-    const hasFax = info.phones?.some(p => p.type === 'fax' && p.number);
-    const hasAddress = info.addresses?.some(a => a.address);
-    const hasWebsite = info.websites?.some(w => w.url);
+    const hasPhone = !!(info.phone?.trim());
+    const hasFax = !!(info.fax?.trim());
+    const hasAddress = !!(info.address?.trim());
+    const hasWebsite = !!(info.website?.trim());
     
-    return !!(hasPhone && hasFax && hasAddress && hasWebsite);
+    console.log('hasCompanyInfo Debug:', {
+      info,
+      hasPhone,
+      hasFax,
+      hasAddress,
+      hasWebsite
+    });
+    
+    // Show company info section if ANY data exists
+    const result = !!(hasPhone || hasFax || hasAddress || hasWebsite);
+    console.log('hasCompanyInfo result:', result);
+    return result;
   };
 
   // Load organization on mount

@@ -115,15 +115,15 @@ export function CompanyInfoDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
-            {initialData ? "Edit Company Information" : "Add Company Information"}
+            {initialData ? "Update Company Information" : "Set Up Company Information"}
           </DialogTitle>
           <DialogDescription>
             {initialData 
-              ? `Update company information for ${organizationName || 'your organization'}.`
-              : `Add company information for ${organizationName || 'your organization'} to use in quote generation.`
+              ? `Make changes to ${organizationName || 'your organization'}'s contact details and business information.`
+              : `Enter ${organizationName || 'your organization'}'s contact details to get started with professional quote generation.`
             }
           </DialogDescription>
         </DialogHeader>
@@ -210,7 +210,7 @@ export function CompanyInfoDialog({
               Cancel
             </Button>
             <Button type="submit">
-              {initialData ? "Update" : "Add"} Company Information
+              {initialData ? "Save Changes" : "Set Up Company"}
             </Button>
           </div>
         </form>
