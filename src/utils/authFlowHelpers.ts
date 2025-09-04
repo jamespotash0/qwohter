@@ -80,6 +80,25 @@ export const authFlowHelpers = {
     }
 
     try {
+      // Check if user with this email already exists
+      const { error: checkError } = await supabase.auth.signInWithPassword({
+        email,
+        password: 'dummy' // This will fail but tells us if user exists
+      });
+
+      // If we get a "Invalid login credentials" error, the user exists but wrong password
+      // If we get "Email not confirmed", the user exists but hasn't confirmed email
+      // If we get other errors, proceed with signup
+      if (checkError) {
+        if (checkError.message === 'Invalid login credentials' || 
+            checkError.message === 'Email not confirmed') {
+          return {
+            success: false,
+            error: "An account with this email already exists. Please sign in instead."
+          };
+        }
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -88,7 +107,16 @@ export const authFlowHelpers = {
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        // Handle specific signup errors
+        if (error.message === 'User already registered') {
+          return {
+            success: false,
+            error: "An account with this email already exists. Please sign in instead."
+          };
+        }
+        throw error;
+      }
       
       if (data.user) {
         return {

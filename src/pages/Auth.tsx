@@ -34,21 +34,124 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Auth flow state persistence helpers
+  const saveAuthState = (authState: {
+    step: string;
+    email?: string;
+    userId?: string;
+    fullName?: string;
+    orgChoice?: string;
+    orgName?: string;
+    orgCode?: string;
+  }) => {
+    const stateWithTimestamp = {
+      ...authState,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('auth_flow_state', JSON.stringify(stateWithTimestamp));
+  };
+
+  const loadAuthState = () => {
+    try {
+      const saved = localStorage.getItem('auth_flow_state');
+      if (!saved) return null;
+      
+      const state = JSON.parse(saved);
+      
+      // Check if state is too old (expire after 24 hours)
+      if (state.timestamp && Date.now() - state.timestamp > 24 * 60 * 60 * 1000) {
+        console.log('Auth state expired, clearing');
+        clearAuthState();
+        return null;
+      }
+      
+      return state;
+    } catch (error) {
+      console.error('Error loading auth state:', error);
+      clearAuthState(); // Clear corrupted state
+      return null;
+    }
+  };
+
+  const clearAuthState = () => {
+    localStorage.removeItem('auth_flow_state');
+  };
+
   useEffect(() => {
     const initAuth = async () => {
-      // Check if user is already logged in - only redirect if we're on auth step
+      // Check current session first
       const session = await authStateHelpers.checkAuthSession();
+      
+      // If user is fully authenticated, redirect to dashboard
       if (session && step === "auth") {
+        clearAuthState(); // Clean up any stale state
         navigate("/dashboard");
+        return;
       }
+
+      // Try to restore saved auth flow state
+      const savedState = loadAuthState();
+      if (savedState) {
+        // Validate the saved state makes sense
+        const validSteps = ["auth", "verify-otp", "profile", "organization", "company-info"];
+        if (!validSteps.includes(savedState.step)) {
+          console.warn('Invalid saved step, clearing state');
+          clearAuthState();
+          return;
+        }
+
+        // For steps that require a session/userId, validate it exists
+        if (["verify-otp", "profile", "organization", "company-info"].includes(savedState.step)) {
+          if (!savedState.userId || !savedState.email) {
+            console.warn('Missing userId/email for advanced step, clearing state');
+            clearAuthState();
+            return;
+          }
+        }
+
+        // Restore the state
+        setStep(savedState.step);
+        setEmail(savedState.email || '');
+        setUserId(savedState.userId || '');
+        setFullName(savedState.fullName || '');
+        setOrgChoice(savedState.orgChoice || '');
+        setOrgName(savedState.orgName || '');
+        setOrgCode(savedState.orgCode || '');
+        console.log('Restored auth flow state:', savedState);
+        return;
+      }
+
+      // No saved state, proceed normally
     };
     initAuth();
 
-    // Listen for auth changes - don't auto-redirect during signup flow
+    // Listen for auth changes - handle session changes during flow
     const subscription = authStateHelpers.setupAuthListener({
       onAuthStateChange: (user, session) => {
-        // Only redirect for sign-in (not during signup flow)
-        if (session && step === "auth") {
+        console.log("Auth state changed:", { user: !!user, session: !!session, currentStep: step });
+        
+        // If session is lost during signup flow, restart
+        if (!session && ["verify-otp", "profile", "organization", "company-info"].includes(step)) {
+          console.warn('Session lost during signup flow, restarting');
+          clearAuthState();
+          setStep("auth");
+          setUserId('');
+          setEmail('');
+          setFullName('');
+          setOrgChoice(null);
+          setOrgName('');
+          setOrgCode('');
+          toast({
+            title: "Session Expired",
+            description: "Please sign in again to continue.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Only auto-redirect if we're on the initial auth step and fully authenticated
+        if (session && user && step === "auth") {
+          clearAuthState();
           navigate("/dashboard");
         }
       }
@@ -69,6 +172,7 @@ const Auth = () => {
         if (result.success && result.data?.userId) {
           setUserId(result.data.userId);
           setStep("verify-otp");
+          saveAuthState({ step: "verify-otp", email, userId: result.data.userId });
           toast({
             title: "Verification code sent!",
             description: "Please check your email and enter the 6-digit code.",
@@ -113,6 +217,7 @@ const Auth = () => {
       if (result.success && result.data?.userId) {
         setUserId(result.data.userId);
         setStep("profile");
+        saveAuthState({ step: "profile", email, userId: result.data.userId });
         toast({
           title: "Email verified!",
           description: "Please complete your profile setup.",
@@ -145,6 +250,7 @@ const Auth = () => {
       
       if (result.success) {
         setStep("organization");
+        saveAuthState({ step: "organization", email, userId, fullName });
       } else {
         toast({
           title: "Profile Error",
@@ -185,12 +291,14 @@ const Auth = () => {
           });
           // Move to company info setup for new organizations
           setStep("company-info");
+          saveAuthState({ step: "company-info", email, userId, fullName, orgChoice, orgName, orgCode });
         } else if (orgChoice === "join" && result.data) {
           toast({
             title: "Join request sent!",
             description: "Your request to join the organization is pending approval.",
           });
           // Skip company info for joining organizations
+          clearAuthState();
           navigate("/dashboard");
         }
       } else {
@@ -232,6 +340,7 @@ const Auth = () => {
         description: "Your organization is now ready for quote generation.",
       });
       
+      clearAuthState();
       navigate("/dashboard");
     } catch (error: any) {
       toast({
@@ -249,6 +358,7 @@ const Auth = () => {
       title: "Setup completed!",
       description: "You can add company information later in Settings.",
     });
+    clearAuthState();
     navigate("/dashboard");
   };
 
