@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run test:e2e",
+    "build": "vite build && if [ \"$SKIP_E2E_TESTS\" != \"true\" ]; then npm run test:e2e; fi",
+    "build:production": "vite build",
     "build:dev": "vite build --mode development && npm run test:e2e",
     "lint": "eslint .",
     "preview": "vite preview",

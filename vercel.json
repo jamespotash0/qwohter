@@ -1,0 +1,22 @@
+{
+  "buildCommand": "npm run build:production",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "vite",
+  "outputDirectory": "dist",
+  "env": {
+    "NODE_ENV": "production",
+    "SKIP_E2E_TESTS": "true"
+  },
+  "functions": {
+    "app/**/*.{js,ts}": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
