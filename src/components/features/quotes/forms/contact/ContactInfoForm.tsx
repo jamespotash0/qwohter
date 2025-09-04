@@ -95,7 +95,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
     }
   }, [loading, activeMembers, data.contactName, data.contactEmail, contactNames, contactEmails]);
 
-  // Auto-set fields from organization when available
+  // Auto-set fields from organization when available (always override for company fields)
   useEffect(() => {
     if (!organizationLoading && organization) {
       let shouldUpdate = false;
@@ -104,7 +104,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
       // Extract primary contact info from JSONB organization_info
       const primaryContactInfo = extractPrimaryContactInfo(organization.organization_info);
 
-      // Set company fields from organization if not already set
+      // Always set company fields from organization (locked fields)
       const companyFields = {
         address: primaryContactInfo.address,
         phone: primaryContactInfo.phone,
@@ -113,7 +113,8 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
       };
 
       Object.entries(companyFields).forEach(([field, value]) => {
-        if (!data[field as keyof ContactInfoData] && value) {
+        // Always update these fields from organization settings (remove the check for existing values)
+        if (value && data[field as keyof ContactInfoData] !== value) {
           updatedData[field as keyof ContactInfoData] = value;
           shouldUpdate = true;
         }
@@ -123,13 +124,15 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
         onUpdate(updatedData);
       }
     }
-  }, [organizationLoading, organization]);
+  }, [organizationLoading, organization, data.address, data.phone, data.fax, data.website]);
 
   return (
     <div className="p-1">
-      {/* Improved Form Grid - Better spacing and responsive layout */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Contact Name - Full width on smaller screens */}
+      {/* Three-row layout as requested */}
+      <div className="space-y-6">
+        {/* Row 1: Contact Name and Contact Email */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Contact Name */}
         <div className="space-y-2">
           <Label htmlFor="contactName" className="text-sm font-medium flex items-center gap-2">
             <User className="w-4 h-4" />
@@ -185,8 +188,8 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
           )}
         </div>
 
-        {/* Contact Email */}
-        <div className="space-y-2">
+          {/* Contact Email */}
+          <div className="space-y-2">
           <Label htmlFor="contactEmail" className="text-sm font-medium flex items-center gap-2">
             <Mail className="w-4 h-4" />
             Contact Email *
@@ -240,10 +243,13 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
               </SelectContent>
             </Select>
           )}
+          </div>
         </div>
         
-        {/* Phone */}
-        <div className="space-y-2">
+        {/* Row 2: Phone and Fax */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Phone */}
+          <div className="space-y-2">
           <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
             <Phone className="w-4 h-4" />
             Phone *
@@ -251,15 +257,18 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
           <Input
             id="phone"
             value={data.phone}
-            onChange={(e) => handleChange("phone", e.target.value)}
-            placeholder={organizationLoading ? "Loading..." : "Enter phone number"}
+            readOnly
+            placeholder={organizationLoading ? "Loading..." : "From organization settings"}
             required
-            className="h-10 w-full"
+            className="h-10 w-full bg-gray-50 cursor-not-allowed"
           />
+          <p className="text-xs text-muted-foreground">
+            🔒 Locked from organization settings
+          </p>
         </div>
         
-        {/* Fax */}
-        <div className="space-y-2">
+          {/* Fax */}
+          <div className="space-y-2">
           <Label htmlFor="fax" className="text-sm font-medium flex items-center gap-2">
             <Printer className="w-4 h-4" />
             Fax *
@@ -267,43 +276,56 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
           <Input
             id="fax"
             value={data.fax}
-            onChange={(e) => handleChange("fax", e.target.value)}
-            placeholder={organizationLoading ? "Loading..." : "Enter fax number"}
+            readOnly
+            placeholder={organizationLoading ? "Loading..." : "From organization settings"}
             required
-            className="h-10 w-full"
+            className="h-10 w-full bg-gray-50 cursor-not-allowed"
           />
+          <p className="text-xs text-muted-foreground">
+            🔒 Locked from organization settings
+          </p>
+          </div>
         </div>
         
-        {/* Address - Spans 2 columns on larger screens */}
-        <div className="space-y-2 md:col-span-2 lg:col-span-2">
-          <Label htmlFor="address" className="text-sm font-medium flex items-center gap-2">
-            <MapPin className="w-4 h-4" />
-            Address *
-          </Label>
-          <Input
-            id="address"
-            value={data.address}
-            onChange={(e) => handleChange("address", e.target.value)}
-            placeholder={organizationLoading ? "Loading..." : "Enter address"}
-            required
-            className="h-10 w-full"
-          />
-        </div>
-        
-        {/* Website - Full width */}
-        <div className="space-y-2 md:col-span-2 lg:col-span-3">
-          <Label htmlFor="website" className="text-sm font-medium flex items-center gap-2">
-            <Globe className="w-4 h-4" />
-            Website *
-          </Label>
-          <Input
-            id="website"
-            value={data.website}
-            onChange={(e) => handleChange("website", e.target.value)}
-            placeholder={organizationLoading ? "Loading..." : "Enter website"}
-            required
-            className="h-10 w-full"
-          />
+        {/* Row 3: Address and Website */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Address */}
+          <div className="space-y-2">
+            <Label htmlFor="address" className="text-sm font-medium flex items-center gap-2">
+              <MapPin className="w-4 h-4" />
+              Address *
+            </Label>
+            <Input
+              id="address"
+              value={data.address}
+              readOnly
+              placeholder={organizationLoading ? "Loading..." : "From organization settings"}
+              required
+              className="h-10 w-full bg-gray-50 cursor-not-allowed"
+            />
+            <p className="text-xs text-muted-foreground">
+              🔒 Locked from organization settings
+            </p>
+          </div>
+          
+          {/* Website */}
+          <div className="space-y-2">
+            <Label htmlFor="website" className="text-sm font-medium flex items-center gap-2">
+              <Globe className="w-4 h-4" />
+              Website *
+            </Label>
+            <Input
+              id="website"
+              value={data.website}
+              readOnly
+              placeholder={organizationLoading ? "Loading..." : "From organization settings"}
+              required
+              className="h-10 w-full bg-gray-50 cursor-not-allowed"
+            />
+            <p className="text-xs text-muted-foreground">
+              🔒 Locked from organization settings
+            </p>
+          </div>
         </div>
       </div>
     </div>
