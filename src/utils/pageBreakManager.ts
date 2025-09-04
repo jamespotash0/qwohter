@@ -79,7 +79,7 @@ export class PageBreakManager {
         // Section doesn't fit, need to decide whether to break or start new page
         if (section.canBreak && section.height > this.contentHeight) {
           // Large section that spans multiple pages
-          const fragments = this.fragmentLargeSection(section, this.contentHeight - currentPageHeight);
+          const fragments = this.fragmentLargeSection(section);
           
           // Add first fragment to current page if there's space
           if (fragments.length > 0 && fragments[0] && currentPageHeight < this.contentHeight * 0.7) { //added this to fix strict error
@@ -232,14 +232,14 @@ export class PageBreakManager {
     }
     
     // Individual panel descriptions can be kept together but allow breaking between them
-    if (element.matches('.panels-section li')) {
+    if (element.matches('.panels-section p.wall-paragraph')) {
       return 80; // Keep individual wall descriptions together
     }
     
     return 30;
   }
 
-  private fragmentLargeSection(section: ContentSection, availableHeight: number): HTMLElement[] {
+  private fragmentLargeSection(section: ContentSection): HTMLElement[] {
     const element = section.element;
     
     // Handle panels section - break between individual wall descriptions (li elements)
@@ -258,14 +258,14 @@ export class PageBreakManager {
 
   private fragmentPanelsSection(element: HTMLElement): HTMLElement[] {
     const fragments: HTMLElement[] = [];
-    const listItems = element.querySelectorAll('li');
+    const wallParagraphs = element.querySelectorAll('p.wall-paragraph');
     
-    if (listItems.length <= 1) {
+    if (wallParagraphs.length <= 1) {
       return [element]; // No need to fragment if only one wall
     }
     
     // Create fragments with individual wall descriptions
-    listItems.forEach((li, index) => {
+    wallParagraphs.forEach((paragraph, index) => {
       const fragment = document.createElement('div');
       fragment.className = 'panels-section page-fragment';
       fragment.style.cssText = element.style.cssText;
@@ -278,11 +278,8 @@ export class PageBreakManager {
         }
       }
       
-      // Create ul with single li
-      const ul = document.createElement('ul');
-      ul.style.cssText = element.querySelector('ul')?.style.cssText || 'margin-left: 0px; padding-left: 0;';
-      ul.appendChild(li.cloneNode(true));
-      fragment.appendChild(ul);
+      // Add the wall paragraph directly to the fragment
+      fragment.appendChild(paragraph.cloneNode(true));
       
       fragments.push(fragment);
     });
