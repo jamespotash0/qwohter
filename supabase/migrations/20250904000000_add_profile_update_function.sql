@@ -81,8 +81,8 @@ DECLARE
     result json;
 BEGIN
     -- Create the organization
-    INSERT INTO public.organizations (name, organization_code, organization_info, created_by)
-    VALUES (org_name, org_code, '{}'::jsonb, creator_user_id)
+    INSERT INTO public.organizations (name, organization_code, organization_info)
+    VALUES (org_name, org_code, '{}'::jsonb)
     RETURNING id INTO new_org_id;
     
     -- Update the user's profile with the organization
