@@ -131,7 +131,8 @@ const Quotes = () => {
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium text-foreground">{profile?.full_name}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{profile?.role}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{profile?.role ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1).toLowerCase() : ""}</p>
+
                     </div>
                   </div>
                 </div>
