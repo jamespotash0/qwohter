@@ -248,7 +248,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ quotes }) => {
     },
     cutout: '60%',
   };
-
+//Dashboard Shown
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Monthly Quotes Trend */}

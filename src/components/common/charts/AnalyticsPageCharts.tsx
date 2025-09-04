@@ -293,7 +293,10 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
   const doughnutOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    cutout: '65%',
+    cutout: '60%',
+    layout: {
+      padding: 4,
+    },
     plugins: {
       legend: {
         position: 'bottom' as const,
@@ -307,12 +310,12 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
         },
       },
       tooltip: {
-        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
         titleColor: '#f8fafc',
         bodyColor: '#f8fafc',
-        borderColor: 'rgba(99, 102, 241, 0.3)',
+        borderColor: 'rgba(99, 102, 241, 0.2)',
         borderWidth: 1,
-        cornerRadius: 12,
+        cornerRadius: 8,
         padding: 12,
         callbacks: {
           label: function(context: any) {
