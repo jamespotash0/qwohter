@@ -210,18 +210,36 @@ export const authFlowHelpers = {
         }
         
         // Create organization and link user in single atomic operation
-        const orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-        console.log('Creating organization with userId:', userId);
+        // Retry up to 3 times if organization code already exists
+        let organizationData = null;
+        let orgCode = '';
+        let attempts = 0;
+        const maxAttempts = 3;
         
-        const { data: organizationData, error: orgError } = await supabase.rpc('create_organization_and_link_user', {
-          org_name: sanitizeInput.string(choice.orgName),
-          org_code: orgCode,
-          creator_user_id: userId
-        });
+        while (attempts < maxAttempts && !organizationData) {
+          orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+          console.log(`Creating organization with userId: ${userId}, attempt: ${attempts + 1}`);
+          
+          const { data, error: orgError } = await supabase.rpc('create_organization_and_link_user', {
+            org_name: sanitizeInput.string(choice.orgName),
+            org_code: orgCode,
+            creator_user_id: userId
+          });
 
-        if (orgError) {
-          console.error('Organization creation error:', orgError);
-          throw orgError;
+          if (orgError) {
+            // If organization code already exists, try again with new code
+            if (orgError.message?.includes('Organization code already exists') && attempts < maxAttempts - 1) {
+              console.log('Organization code conflict, retrying with new code...');
+              attempts++;
+              continue;
+            }
+            
+            console.error('Organization creation error:', orgError);
+            throw orgError;
+          }
+          
+          organizationData = data;
+          break;
         }
 
         console.log('Organization created successfully:', organizationData);
