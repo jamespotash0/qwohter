@@ -164,51 +164,18 @@ export const authFlowHelpers = {
     try {
       console.log('Profile setup: updating full_name for userId:', userId, 'fullName:', fullName);
       
-      // First check if profile exists
-      const { data: existingProfile, error: checkError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-      
-      console.log('Existing profile check:', { existingProfile, checkError });
-      
-      // Update the existing profile with full name (profile was created by trigger)
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: sanitizeInput.string(fullName)
-        })
-        .eq('id', userId)
-        .select()
-        .maybeSingle();
+      // Use service role to bypass RLS during profile setup
+      const { data, error } = await supabase.rpc('update_user_profile', {
+        user_id: userId,
+        full_name_value: sanitizeInput.string(fullName)
+      });
 
       if (error) {
         console.error('Profile update error:', error);
         throw error;
       }
 
-      // If no profile was found/updated, create one
-      if (!data) {
-        console.log('No profile found, creating new profile for userId:', userId);
-        const { data: newProfile, error: createError } = await supabase
-          .from('profiles')
-          .insert({
-            id: userId,
-            full_name: sanitizeInput.string(fullName)
-          })
-          .select()
-          .single();
-
-        if (createError) {
-          console.error('Profile creation error:', createError);
-          throw createError;
-        }
-
-        console.log('Profile created successfully:', newProfile);
-      } else {
-        console.log('Profile updated successfully:', data);
-      }
+      console.log('Profile updated successfully:', data);
 
       return {
         success: true,
