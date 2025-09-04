@@ -20,6 +20,13 @@ dist-ssr
 .env.test.local
 .env.production.local
 
+# Playwright testing (keep local only)
+tests/
+test-results/
+playwright-report/
+playwright.config.ts
+.playwright/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

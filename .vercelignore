@@ -16,5 +16,12 @@ node_modules/
 # Build artifacts (will be rebuilt)
 dist/
 
-# Playwright specific
+# Playwright specific files
 playwright.config.ts
+.playwright/
+playwright/
+
+# Ignore Playwright cache directories
+**/test-results/
+**/playwright-report/
+**/.playwright/
