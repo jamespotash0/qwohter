@@ -45,24 +45,14 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
       // Find the section wrapper div and extract content properly
       const sectionDiv = tempDiv.querySelector(`li, div[class*="${section.id}"], div[class*="section"]`);
       if (sectionDiv) {
-        // For panels section, get all paragraph content
-        if (section.id === 'panels') {
-          const paragraphs = sectionDiv.querySelectorAll('p');
-          if (paragraphs.length > 0) {
-            cleanHTML = Array.from(paragraphs).map(p => p.innerHTML).join('<br><br>');
-          } else {
-            cleanHTML = sectionDiv.innerHTML.trim();
+        // For all sections, use the same logic (including panels)
+        const container = document.createElement('div');
+        sectionDiv.childNodes.forEach(node => {
+          if (node.nodeType === Node.TEXT_NODE || node.nodeType === Node.ELEMENT_NODE) {
+            container.appendChild(node.cloneNode(true));
           }
-        } else {
-          // For other sections, use the existing logic
-          const container = document.createElement('div');
-          sectionDiv.childNodes.forEach(node => {
-            if (node.nodeType === Node.TEXT_NODE || node.nodeType === Node.ELEMENT_NODE) {
-              container.appendChild(node.cloneNode(true));
-            }
-          });
-          cleanHTML = container.innerHTML.trim();
-        }
+        });
+        cleanHTML = container.innerHTML.trim();
       } else {
         // Fallback: remove only outermost div wrapper if exists
         cleanHTML = section.content
@@ -71,6 +61,7 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
           .trim();
       }
       
+      // console.log('QuickEditModal: cleanHTML generated:', cleanHTML);
       setRichEditingContent(cleanHTML);
       
       // Set the content directly to the contentEditable element
@@ -164,6 +155,8 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
     }
   }, [handleCancel]);
 
+  // console.log(`QuickEditModal render: isOpen=${isOpen}, section:`, section);
+  
   if (!isOpen || !section) return null;
 
   return (

@@ -67,6 +67,9 @@ export class SectionInteractions {
       // Find section data or create mock data for special sections
       let sectionData = sections.find(s => s.id === sectionId);
       
+      // console.log(`Section click: sectionId="${sectionId}", found in sections:`, !!sectionData);
+      // console.log('Available sections:', sections.map(s => s.id));
+      
       if (!sectionData) {
         // Create mock section data for special clickable sections
         if (sectionId === 'proposal-intro') {

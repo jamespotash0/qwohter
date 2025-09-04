@@ -96,6 +96,7 @@ export class SmartQuoteHelper {
         continue;
       }
       
+      // console.log(`Extracting section: ${className} -> id: ${id}`);
       sections.push({
         id,
         title: this.formatSectionTitle(id),
