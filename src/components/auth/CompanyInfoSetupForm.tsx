@@ -7,8 +7,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Building2, Phone, Printer, MapPin, Globe, Mail } from "lucide-react";
+import { Building2 } from "lucide-react";
+import MapboxInput from "@/components/common/inputs/MapboxInput";
 
 interface CompanyInfoSetupFormProps {
   organizationName: string;
@@ -16,13 +16,11 @@ interface CompanyInfoSetupFormProps {
   fax: string;
   address: string;
   website: string;
-  email: string;
   loading: boolean;
   onPhoneChange: (phone: string) => void;
   onFaxChange: (fax: string) => void;
   onAddressChange: (address: string) => void;
   onWebsiteChange: (website: string) => void;
-  onEmailChange: (email: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   onSkip: () => void;
 }
@@ -33,16 +31,33 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
   fax,
   address,
   website,
-  email,
   loading,
   onPhoneChange,
   onFaxChange,
   onAddressChange,
   onWebsiteChange,
-  onEmailChange,
   onSubmit,
   onSkip
 }) => {
+  // Phone number formatting function
+  const formatPhoneNumber = (value: string): string => {
+    // Remove all non-numeric characters
+    const phoneNumber = value.replace(/\D/g, '');
+    
+    // Format based on length
+    if (phoneNumber.length === 0) return '';
+    if (phoneNumber.length <= 3) return `(${phoneNumber}`;
+    if (phoneNumber.length <= 6) return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+  };
+
+  const handlePhoneChange = (value: string) => {
+    onPhoneChange(formatPhoneNumber(value));
+  };
+
+  const handleFaxChange = (value: string) => {
+    onFaxChange(formatPhoneNumber(value));
+  };
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -60,87 +75,64 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
       {/* Form */}
       <form onSubmit={onSubmit} className="space-y-4">
         {/* Phone and Fax */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
-              <Phone className="w-4 h-4" />
-              Phone Number *
-            </Label>
+            <Label htmlFor="phone">Phone *</Label>
             <Input
               id="phone"
               type="tel"
               value={phone}
-              onChange={(e) => onPhoneChange(e.target.value)}
+              onChange={(e) => handlePhoneChange(e.target.value)}
               placeholder="(555) 123-4567"
+              maxLength={14}
               required
-              className="h-10"
             />
+            <p className="text-xs text-muted-foreground">
+              Format: (xxx) xxx-xxxx
+            </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="fax" className="text-sm font-medium flex items-center gap-2">
-              <Printer className="w-4 h-4" />
-              Fax Number *
-            </Label>
+            <Label htmlFor="fax">Fax *</Label>
             <Input
               id="fax"
               type="tel"
               value={fax}
-              onChange={(e) => onFaxChange(e.target.value)}
+              onChange={(e) => handleFaxChange(e.target.value)}
               placeholder="(555) 123-4568"
+              maxLength={14}
               required
-              className="h-10"
             />
+            <p className="text-xs text-muted-foreground">
+              Format: (xxx) xxx-xxxx
+            </p>
           </div>
         </div>
 
         {/* Address */}
         <div className="space-y-2">
-          <Label htmlFor="address" className="text-sm font-medium flex items-center gap-2">
-            <MapPin className="w-4 h-4" />
-            Business Address *
-          </Label>
-          <Textarea
+          <MapboxInput
             id="address"
+            label="Address *"
             value={address}
-            onChange={(e) => onAddressChange(e.target.value)}
-            placeholder="123 Main Street&#10;City, State 12345"
-            required
-            rows={3}
-            className="resize-none"
+            onChange={onAddressChange}
+            placeholder="Start typing your business address..."
+            required={true}
           />
+          <p className="text-xs text-muted-foreground">
+            Type your full business address including city, state, and ZIP code
+          </p>
         </div>
 
         {/* Website */}
         <div className="space-y-2">
-          <Label htmlFor="website" className="text-sm font-medium flex items-center gap-2">
-            <Globe className="w-4 h-4" />
-            Website *
-          </Label>
+          <Label htmlFor="website">Website *</Label>
           <Input
             id="website"
-            type="url"
             value={website}
             onChange={(e) => onWebsiteChange(e.target.value)}
-            placeholder="https://www.yourcompany.com"
+            placeholder="Enter company website"
             required
-            className="h-10"
-          />
-        </div>
-
-        {/* Email (Optional) */}
-        <div className="space-y-2">
-          <Label htmlFor="company-email" className="text-sm font-medium flex items-center gap-2">
-            <Mail className="w-4 h-4" />
-            Company Email <span className="text-muted-foreground text-xs">(Optional)</span>
-          </Label>
-          <Input
-            id="company-email"
-            type="email"
-            value={email}
-            onChange={(e) => onEmailChange(e.target.value)}
-            placeholder="contact@yourcompany.com"
-            className="h-10"
           />
         </div>
 

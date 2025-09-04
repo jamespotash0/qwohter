@@ -209,40 +209,22 @@ export const authFlowHelpers = {
           };
         }
         
-        // Create organization using the userId from signup
+        // Create organization and link user in single atomic operation
         const orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
         console.log('Creating organization with userId:', userId);
         
-        // Insert organization without immediate SELECT to avoid RLS policy conflict
-        const { error: orgError } = await supabase
-          .from('organizations')
-          .insert({
-            name: sanitizeInput.string(choice.orgName),
-            organization_code: orgCode,
-            organization_info: {} // Initialize with empty object
-          });
+        const { data: organizationData, error: orgError } = await supabase.rpc('create_organization_and_link_user', {
+          org_name: sanitizeInput.string(choice.orgName),
+          org_code: orgCode,
+          creator_user_id: userId
+        });
 
         if (orgError) {
           console.error('Organization creation error:', orgError);
           throw orgError;
         }
 
-        console.log('Organization created successfully with code:', orgCode);
-
-        // Update profile to make user an admin of the organization
-        console.log('Updating profile for org creator with status: active');
-        const { data: updatedProfile, error: profileError } = await supabase.rpc('update_org_creator_profile', {
-          user_id: userId,
-          role_value: 'admin',
-          status_value: 'active'
-        });
-
-        console.log('Profile updated after org creation:', updatedProfile);
-
-        if (profileError) {
-          console.error('Profile update error:', profileError);
-          throw profileError;
-        }
+        console.log('Organization created successfully:', organizationData);
 
         return {
           success: true,

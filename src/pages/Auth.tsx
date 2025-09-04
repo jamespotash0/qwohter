@@ -31,7 +31,6 @@ const Auth = () => {
   const [companyFax, setCompanyFax] = useState("");
   const [companyAddress, setCompanyAddress] = useState("");
   const [companyWebsite, setCompanyWebsite] = useState("");
-  const [companyEmail, setCompanyEmail] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -290,7 +289,7 @@ const Auth = () => {
               {step === "verify-otp" && "Enter the 6-digit code sent to your email"}
               {step === "profile" && "Please provide your full name to continue"}
               {step === "organization" && "Join an existing organization or create a new one"}
-              {step === "company-info" && "Add your company details for professional quote generation"}
+              {step === "company-info" && "Add your company details"}
             </CardDescription>
           </CardHeader>
           
@@ -353,13 +352,11 @@ const Auth = () => {
                 fax={companyFax}
                 address={companyAddress}
                 website={companyWebsite}
-                email={companyEmail}
                 loading={loading}
                 onPhoneChange={setCompanyPhone}
                 onFaxChange={setCompanyFax}
                 onAddressChange={setCompanyAddress}
                 onWebsiteChange={setCompanyWebsite}
-                onEmailChange={setCompanyEmail}
                 onSubmit={handleCompanyInfoSubmit}
                 onSkip={handleCompanyInfoSkip}
               />

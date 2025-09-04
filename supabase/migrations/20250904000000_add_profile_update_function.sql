@@ -64,3 +64,41 @@ BEGIN
     RETURN result;
 END;
 $$;
+
+-- Add function to create organization and link user (single atomic operation)
+CREATE OR REPLACE FUNCTION public.create_organization_and_link_user(
+    org_name text,
+    org_code text,
+    creator_user_id uuid
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+    new_org_id uuid;
+    result json;
+BEGIN
+    -- Create the organization
+    INSERT INTO public.organizations (name, organization_code, organization_info, created_by)
+    VALUES (org_name, org_code, '{}'::jsonb, creator_user_id)
+    RETURNING id INTO new_org_id;
+    
+    -- Update the user's profile with the organization
+    UPDATE public.profiles 
+    SET 
+        organization_id = new_org_id,
+        role = 'admin',
+        status = 'active',
+        updated_at = now()
+    WHERE id = creator_user_id;
+    
+    -- Return the organization data
+    SELECT to_json(o.*) INTO result
+    FROM public.organizations o
+    WHERE o.id = new_org_id;
+    
+    RETURN result;
+END;
+$$;
