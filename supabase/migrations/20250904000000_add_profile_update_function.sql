@@ -31,3 +31,36 @@ BEGIN
     RETURN result;
 END;
 $$;
+
+-- Add function to update profile for organization creator (bypasses RLS)
+CREATE OR REPLACE FUNCTION public.update_org_creator_profile(
+    user_id uuid, 
+    org_id uuid DEFAULT NULL,
+    role_value text DEFAULT 'admin',
+    status_value text DEFAULT 'active'
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+    result json;
+BEGIN
+    -- Update the profile with organization details
+    UPDATE public.profiles 
+    SET 
+        organization_id = COALESCE(org_id, organization_id),
+        role = role_value,
+        status = status_value,
+        updated_at = now()
+    WHERE id = user_id;
+    
+    -- Return the updated profile
+    SELECT to_json(p.*) INTO result
+    FROM public.profiles p
+    WHERE p.id = user_id;
+    
+    RETURN result;
+END;
+$$;
