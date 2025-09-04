@@ -70,7 +70,7 @@ const Settings = () => {
                       <UserIcon className="w-4 h-4" />
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">{profile?.full_name || user?.email}</p>
+                      <p className="text-sm font-medium">{profile?.full_name}</p>
                       <p className="text-xs text-muted-foreground">{profile?.role ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1).toLowerCase() : ""}</p>
                     </div>
                   </div>

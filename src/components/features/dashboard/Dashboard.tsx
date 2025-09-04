@@ -9,7 +9,6 @@ import {
   User,
   Mail,
   Users,
-  Crown,
   Shield
 } from "lucide-react";
 import { AppSidebar } from "@/components/common/layout";
@@ -54,15 +53,15 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
                   </span>
                 </div>
                 <div className="flex items-center gap-4 flex-1 justify-end">
-                  <Button variant="ghost" size="sm" className="btn-floating">
+                  {/* <Button variant="ghost" size="sm" className="btn-floating">
                     <Mail className="w-4 h-4" />
-                  </Button>
+                  </Button> */}
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-primary/5 rounded-full flex items-center justify-center">
                       <User className="w-4 h-4 text-primary" />
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-foreground">{profile?.full_name || user}</p>
+                      <p className="text-sm font-medium text-foreground">{profile?.full_name}</p>
                       <p className="text-xs text-muted-foreground capitalize">{currentUserRole}</p>
                     </div>
                   </div>
@@ -153,7 +152,6 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
                       </div>
                     </div>
                     <div className="w-12 h-12 bg-secondary/50 rounded-xl flex items-center justify-center">
-                      {currentUserRole === 'owner' && <Crown className="w-6 h-6 text-yellow-500" />}
                       {currentUserRole === 'admin' && <Shield className="w-6 h-6 text-blue-500" />}
                       {currentUserRole === 'member' && <User className="w-6 h-6 text-muted-foreground" />}
                     </div>

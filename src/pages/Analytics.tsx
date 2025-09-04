@@ -92,8 +92,8 @@ const Analytics = () => {
                       <User className="w-5 h-5 text-slate-600" />
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold text-slate-800">{profile?.full_name || user.email}</p>
-                      <p className="text-xs text-slate-500">Analytics Dashboard</p>
+                      <p className="text-sm font-semibold text-slate-800">{profile?.full_name}</p>
+                      <p className="text-xs text-slate-500">{profile?.role}</p>
                     </div>
                   </div>
                 </div>

@@ -130,7 +130,8 @@ const Quotes = () => {
                       <User className="w-4 h-4" />
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium">{profile?.full_name || user.email}</p>
+                      <p className="text-sm font-medium text-foreground">{profile?.full_name}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{profile?.role}</p>
                     </div>
                   </div>
                 </div>
