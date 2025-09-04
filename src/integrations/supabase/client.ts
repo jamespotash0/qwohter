@@ -6,7 +6,12 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.');
+  console.error('Missing Supabase environment variables:', {
+    SUPABASE_URL: SUPABASE_URL ? 'present' : 'missing',
+    SUPABASE_PUBLISHABLE_KEY: SUPABASE_PUBLISHABLE_KEY ? 'present' : 'missing',
+    env: import.meta.env
+  });
+  throw new Error('Missing Supabase environment variables. Please check your environment variables in Vercel dashboard.');
 }
 
 // Import the supabase client like this:
