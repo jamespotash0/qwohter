@@ -37,7 +37,7 @@ export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
       'panelConfiguration', 'series', 'model', 'panelSkin', 'stcRating', 
       'panelThickness', 'passDoorPanels', 'passDoorQuantity',
       'panelFinishCategory', 'panelFinishSpecificItem', 'initialClosureSystem', 
-      'endPanelType', 'verticalSeals', 'bottomSeals', 'topSeals', 'trackType', 
+      'finalClosureSystem', 'verticalSeals', 'bottomSeals', 'topSeals', 'trackType', 
       'trackSystem',
       
       // Glass wall fields  

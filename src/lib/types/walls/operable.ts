@@ -13,7 +13,7 @@ export interface OperableWallSpecification extends BaseWallSpecification {
   panelFinishCategory: string;
   panelFinishSpecificItem: string;
   initialClosureSystem: string;
-  endPanelType: string;
+  finalClosureSystem: string;
   verticalSeals: string;
 }
 
@@ -226,12 +226,7 @@ export interface OperableWallSpecification extends BaseWallSpecification {
     }
     
     // Hufcor 641 -> retractable, fixed
-    if (model === "Hufcor 641") {
-      return ["Retractable", "Fixed"];
-    }
-    
-    // Hufcor 642 -> retractable, fixed
-    if (model === "Hufcor 642") {
+    if (["Hufcor 641", "Hufcor 642"].includes(model)) {
       return ["Retractable", "Fixed"];
     }
     
@@ -248,13 +243,98 @@ export interface OperableWallSpecification extends BaseWallSpecification {
     return ["Fixed"]; // Default
   };
 
+// Model-specific initial closure system options
+export const getInitialClosureSystemOptions = (model: string): string[] => {
+  // 3030/3030GL, 3010/3010GL, 3020/3020GL, 2010/2010GL, 2020/2020GL, 2030/2030GL
+  if (["3030", "3030GL", "3010", "3010GL", "3020", "3020GL", "2010", "2010GL", "2020", "2020GL", "2030", "2030GL"].includes(model)) {
+    return ["Bulb Seal", "Fixed Starter Jamb", "Adjustable Starter Jamb"];
+  }
+  
+  // 3050e
+  if (model === "3050e") {
+    return ["Fixed Ball Seal", "Adjustable-Compensating"];
+  }
+  
+  // 2050e
+  if (model === "2050e") {
+    return ["Adjustable-Compensating"];
+  }
+  
+  // Hufcor models - return empty for now (not specified in requirements)
+  if (["Hufcor 641", "Hufcor 642"].includes(model)) {
+    return ["Bulb Seal", "Adjustable Starter Jamb"];
+  }
+  return [];
+};
+
+// Model-specific final closure system options
+export const getFinalClosureSystemOptions = (model: string): string[] => {
+  // 2010/2010GL
+  if (["2010", "2010GL"].includes(model)) {
+    return ["Hinged Panel(s)", "Portal Expander Panel", "Expander Panel", "Pocket Door(s)"];
+  }
+  
+  // 3010/3010GL
+  if (["3010", "3010GL"].includes(model)) {
+    return ["Hinged Panel(s)", "Portal Expander Panel", "Pocket Door(s)"];
+  }
+  
+  // 2020/2020GL, 3020/3020GL
+  if (["2020", "2020GL", "3020", "3020GL"].includes(model)) {
+    return ["Expander Panel", "Hinged Panel(s)", "Pocket Door(s)"];
+  }
+  
+  // 2030/2030GL
+  if (["2030", "2030GL"].includes(model)) {
+    return ["Expander Panel", "Hinged Panel(s)", "Communicating Panel", "Lap Panel", "Single Panel Expander", "Pocket Door(s)"];
+  }
+  
+  // 3030/3030GL
+  if (["3030", "3030GL"].includes(model)) {
+    return ["Expander Panel", "Hinged Panel(s)", "Communicating Panel", "Three-Panel-Train", "Lap Panel", "Single Panel Expander", "Pocket Door(s)"];
+  }
+  
+  // 3050e
+  if (model === "3050e") {
+    return ["L-Jamb", "Manual Half Panel Pivot", "Automatic Half Panel Pivot"];
+  }
+  
+  // 2050e
+  if (model === "2050e") {
+    return ["Manual Half Panel"];
+  }
+  
+  // Hufcor models - return empty for now (not specified in requirements)
+  if (["Hufcor 641", "Hufcor 642"].includes(model)) {
+    return ["Expanding Jamb (Lever) Panel"
+    ];
+  }
+  return [];
+};
+
 export const panelConfigurations = ["Individual Panels", "Hinged-Paired Panels", "Continuously-Hinged Panels"];
 export const passDoorOptions = ["Single", "Double"];
 export const panelFinishCategories = ["Koroseal Standard Vinyl", "Koroseal Upgrade Vinyl", "Shaw Standard Carpet", "HyTex Upgrade Carpet", "HyTex Standard Fabric", "HyTex Upgrade Fabric", "Standard Wood Veneer", "Wilsonart High Pressure Laminate (HPL)", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
 export const verticalSealOptions = ["Trimless Astragal", "Cap-type Astragal"]; //all models, not specified for hufcor models
 export const bottomSealOptions = ["Operable", "Adjustable", "Automatic", "Retractable", "Retractable (2\")", "Retractable (4\")", "Fixed"]; //Retractable and fixed only for hufcor models
 export const topSealOptions = ["Fixed", "Operable", "Retractable"]; //only for Hufcor 641/642, is it retractable
-export const endPanelTypes = ["Standard Expander Panel Closure", "Optional Hinged Panel(s) Closure"];
-export const initialClosureSystems = ["Standard Bulb", "Optional Fixed Starter Jamb", "Optional Adjustable Starter Jamb"];
+export const finalClosureSystems = ["Hinged Panel(s)", "Portal Expander Panel", "Expander Panel", "Pocket Door(s)", "Communicating Panel", "Lap Panel", "Single Panel Expander", "Three-Panel-Train", "L-Jamb", "Manual Half Panel Pivot", "Automatic Half Panel Pivot", "Manual Half Panel"];
+export const initialClosureSystems = ["Bulb Seal", "Fixed Starter Jamb", "Adjustable Starter Jamb", "Fixed Ball Seal", "Adjustable-Compensating"];
 
 
+/* 
+  3030/3030GL, 3010/3010GL, 3020/3020GL, 2010/2010GL, 2020/2020GL, 2030/2030GL -> InitialClosureSystem options -> Bulb Seal, Fixed Starter Jamb, Adjustable Starter Jamb
+  3050e -> InitialClosureSystem options -> Fixed Ball Seal, Adjustable-Compensating
+  2050e -> InitialClosureSystem options -> Adjustable-Compensating
+
+
+  2010/2010GL -> FinalClosureSystem options -> Hinged Panel(s), Portal Expander Panel, Expander Panel, Pocket Door(s)
+  
+  3010/3010GL -> FinalClosureSystem options -> Hinged Panel(s), Portal Expander Panel, Pocket Doors
+  2020/2020GL, 3020/3020GL -> FinalClosureSystem options -> Expander Panel, Hinged Panel(s), Pocket Door(s)
+  2030/2030GL -> FinalClosureSystem options -> Expander Panel, Hinged Panel(s), Communicating Panel, Lap Panel, Single Panel Expander, Pocket Door(s)
+  3030/3030GL -> FinalClosureSystem options -> Expander Panel, Hinged Panel(s), Communicating Panel, Three-Panel-Train, Lap Panel, Single Panel Expander, Pocket Door(s)
+  3050e -> FinalClosureSystem options -> L-Jamb, Manual Half Panel Pivot, Automatic Half Panel Pivot
+  2050e -> FinalClosureSystem options -> Manual Half Panel
+  
+  */

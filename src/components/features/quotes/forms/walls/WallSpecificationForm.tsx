@@ -78,7 +78,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           panelFinishCategory: "",
           panelFinishSpecificItem: "",
           initialClosureSystem: "",
-          endPanelType: "",
+          finalClosureSystem: "",
           verticalSeals: "",
         };
       } else if (value === "Glass Wall") {

@@ -15,12 +15,14 @@ import {
   verticalSealOptions,
   bottomSealOptions,
   topSealOptions,
-  endPanelTypes,
+  finalClosureSystems,
   initialClosureSystems,
   getTrackTypeByModel,
   getVerticalSealOptions,
   getBottomSealOptions,
   getTopSealOptions,
+  getInitialClosureSystemOptions,
+  getFinalClosureSystemOptions,
 } from '@/lib/types';
 
 interface UseOperableWallFormProps {
@@ -50,7 +52,7 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
   const [selectedPanelFinishCategory, setSelectedPanelFinishCategory] = useState<string>(safeGetProperty('panelFinishCategory'));
   const [selectedPanelFinishSpecificItem, setSelectedPanelFinishSpecificItem] = useState<string>(safeGetProperty('panelFinishSpecificItem'));
   const [selectedInitialClosureSystem, setSelectedInitialClosureSystem] = useState<string>(safeGetProperty('initialClosureSystem'));
-  const [selectedEndPanelType, setSelectedEndPanelType] = useState<string>(safeGetProperty('endPanelType'));
+  const [selectedFinalClosureSystem, setSelectedFinalClosureSystem] = useState<string>(safeGetProperty('finalClosureSystem'));
   const [selectedVerticalSeals, setSelectedVerticalSeals] = useState<string>(safeGetProperty('verticalSeals'));
   const [selectedBottomSeals, setSelectedBottomSeals] = useState<string>(wall.bottomSeals || '');
   const [selectedTopSeals, setSelectedTopSeals] = useState<string>(wall.topSeals || '');
@@ -65,13 +67,13 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     panelConfiguration: [
       'series', 'model', 'panelSkin', 'stcRating',
       'verticalSeals', 'bottomSeals', 'topSeals', 
-      'initialClosureSystem', 'endPanelType',
+      'initialClosureSystem', 'finalClosureSystem',
       'passDoorPanels', 'passDoorQuantity', 
       'panelFinishCategory', 'panelFinishSpecificItem'
     ],
     series: ['model', 'panelSkin', 'stcRating',
       'verticalSeals', 'bottomSeals', 'topSeals', 
-      'initialClosureSystem', 'endPanelType', 
+      'initialClosureSystem', 'finalClosureSystem', 
       'passDoorPanels', 'passDoorQuantity', 
       'panelFinishCategory', 'panelFinishSpecificItem' 
     ],
@@ -79,7 +81,7 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
       'panelSkin', 'stcRating',
       'passDoorPanels', 'passDoorQuantity', 
       'panelFinishCategory', 'panelFinishSpecificItem',
-      'initialClosureSystem', 'endPanelType', 
+      'initialClosureSystem', 'finalClosureSystem', 
       'verticalSeals', 'bottomSeals', 'topSeals'
     ],
     panelSkin: ['stcRating'],
@@ -109,7 +111,7 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     if (fieldsToReset.includes('bottomSeals')) setSelectedBottomSeals('');
     if (fieldsToReset.includes('topSeals')) setSelectedTopSeals('');
     if (fieldsToReset.includes('initialClosureSystem')) setSelectedInitialClosureSystem('');
-    if (fieldsToReset.includes('endPanelType')) setSelectedEndPanelType('');
+    if (fieldsToReset.includes('finalClosureSystem')) setSelectedFinalClosureSystem('');
     if (fieldsToReset.includes('passDoorPanels')) setSelectedPassDoorPanels('');
     if (fieldsToReset.includes('passDoorQuantity')) setSelectedPassDoorQuantity('');
     if (fieldsToReset.includes('panelFinishCategory')) setSelectedPanelFinishCategory('');
@@ -155,8 +157,8 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
       case "initialClosureSystem":
         setSelectedInitialClosureSystem(displayValue);
         break;
-      case "endPanelType":
-        setSelectedEndPanelType(displayValue);
+      case "finalClosureSystem":
+        setSelectedFinalClosureSystem(displayValue);
         break;
       case "verticalSeals":
         setSelectedVerticalSeals(displayValue);
@@ -197,7 +199,7 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     setSelectedPanelFinishCategory(safeGetProperty('panelFinishCategory'));
     setSelectedPanelFinishSpecificItem(safeGetProperty('panelFinishSpecificItem'));
     setSelectedInitialClosureSystem(safeGetProperty('initialClosureSystem'));
-    setSelectedEndPanelType(safeGetProperty('endPanelType'));
+    setSelectedFinalClosureSystem(safeGetProperty('finalClosureSystem'));
     setSelectedVerticalSeals(safeGetProperty('verticalSeals'));
     setSelectedBottomSeals(wall.bottomSeals || '');
     setSelectedTopSeals(wall.topSeals || '');
@@ -299,6 +301,14 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     return getTopSealOptions(selectedModel);
   }, [selectedModel]);
 
+  const getAvailableInitialClosureSystems = useCallback(() => {
+    return getInitialClosureSystemOptions(selectedModel);
+  }, [selectedModel]);
+
+  const getAvailableFinalClosureSystems = useCallback(() => {
+    return getFinalClosureSystemOptions(selectedModel);
+  }, [selectedModel]);
+
   return {
     // State values
     selectedPanelConfiguration,
@@ -312,7 +322,7 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     selectedPanelFinishCategory,
     selectedPanelFinishSpecificItem,
     selectedInitialClosureSystem,
-    selectedEndPanelType,
+    selectedFinalClosureSystem,
     selectedVerticalSeals,
     selectedBottomSeals,
     selectedTopSeals,
@@ -334,6 +344,8 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     getAvailableVerticalSeals,
     getAvailableBottomSeals,
     getAvailableTopSeals,
+    getAvailableInitialClosureSystems,
+    getAvailableFinalClosureSystems,
 
     // Static options
     panelConfigurations,
@@ -342,7 +354,7 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     verticalSealOptions,
     bottomSealOptions,
     topSealOptions,
-    endPanelTypes,
+    finalClosureSystems,
     initialClosureSystems
   };
 };

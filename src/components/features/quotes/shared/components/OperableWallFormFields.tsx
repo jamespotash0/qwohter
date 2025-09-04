@@ -32,7 +32,7 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
     selectedPanelFinishCategory,
     selectedPanelFinishSpecificItem,
     selectedInitialClosureSystem,
-    selectedEndPanelType,
+    selectedFinalClosureSystem,
     selectedVerticalSeals,
     selectedBottomSeals,
     selectedTopSeals,
@@ -50,10 +50,12 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
     getAvailableVerticalSeals,
     getAvailableBottomSeals,
     getAvailableTopSeals,
+    getAvailableInitialClosureSystems,
+    getAvailableFinalClosureSystems,
     panelConfigurations,
     passDoorOptions,
     panelFinishCategories,
-    endPanelTypes,
+    finalClosureSystems,
     initialClosureSystems
   } = useOperableWallForm({ wall, wallName, onChange });
 
@@ -300,7 +302,7 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="None">None</SelectItem>
-                  {initialClosureSystems.map((system) => (
+                  {getAvailableInitialClosureSystems().map((system) => (
                     <SelectItem key={system} value={system}>
                       {system}
                     </SelectItem>
@@ -310,20 +312,20 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="endPanelType" className={labelClass}>End Panel Type</Label>
+              <Label htmlFor="finalClosureSystem" className={labelClass}>Final Closure System</Label>
               <Select
-                value={selectedEndPanelType}
-                onValueChange={(value) => handleFieldChange("endPanelType", value)}
+                value={selectedFinalClosureSystem}
+                onValueChange={(value) => handleFieldChange("finalClosureSystem", value)}
                 disabled={!selectedModel}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select end panel type" />
+                  <SelectValue placeholder="Select final closure system" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="None">None</SelectItem>
-                  {endPanelTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
+                  {getAvailableFinalClosureSystems().map((system) => (
+                    <SelectItem key={system} value={system}>
+                      {system}
                     </SelectItem>
                   ))}
                 </SelectContent>

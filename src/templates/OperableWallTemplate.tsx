@@ -138,7 +138,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
           { text: `${wall.bottomSeals === "Retractable" ? "<strong>Retractable</strong> operable" : `<strong>${wall.bottomSeals}</strong>`} horizontal bottom seals,`, condition: SmartQuoteHelper.hasValue(wall.bottomSeals) },
           { text: `and <strong>${wall.topSeals}</strong> horizontal top seals.`, condition: SmartQuoteHelper.hasValue(wall.topSeals) },
           { text: `The lead panel provides closure with a <strong>${wall.initialClosureSystem} Seal</strong>`, condition: SmartQuoteHelper.hasValue(wall.initialClosureSystem) },
-          { text: `while the end panel secures the system with a <strong>${wall.endPanelType}</strong>`, condition: SmartQuoteHelper.hasValue(wall.endPanelType) }
+          { text: `while the end panel secures the system with a <strong>${wall.finalClosureSystem}</strong>`, condition: SmartQuoteHelper.hasValue(wall.finalClosureSystem) }
         ]);
       } else {
         return `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> - Unsupported wall type`;

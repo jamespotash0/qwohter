@@ -101,7 +101,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
         panelFinishSpecificItem: '',
         verticalSeals: '',
         initialClosureSystem: '',
-        endPanelType: ''
+        finalClosureSystem: ''
       } as WallSpecification;
     } else if (wallSystemType === 'Glass Wall') {
       return {
