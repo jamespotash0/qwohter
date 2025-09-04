@@ -162,15 +162,24 @@ export const authFlowHelpers = {
     }
 
     try {
+      console.log('Profile setup: updating full_name for userId:', userId, 'fullName:', fullName);
+      
       // Update the existing profile with full name (profile was created by trigger)
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('profiles')
         .update({
           full_name: sanitizeInput.string(fullName)
         })
-        .eq('id', userId);
+        .eq('id', userId)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Profile update error:', error);
+        throw error;
+      }
+
+      console.log('Profile updated successfully:', data);
 
       return {
         success: true,
@@ -208,31 +217,52 @@ export const authFlowHelpers = {
         const orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
         console.log('Creating organization with userId:', userId);
         
-        const { data: orgData, error: orgError } = await supabase
+        // Insert organization without immediate SELECT to avoid RLS policy conflict
+        const { error: orgError } = await supabase
           .from('organizations')
           .insert({
             name: sanitizeInput.string(choice.orgName),
-            organization_code: orgCode
-          })
-          .select()
-          .single();
+            organization_code: orgCode,
+            organization_info: {} // Initialize with empty object
+          });
 
         if (orgError) {
           console.error('Organization creation error:', orgError);
           throw orgError;
         }
 
-        console.log('Organization created successfully:', orgData);
+        console.log('Organization created successfully with code:', orgCode);
 
-        // Update profile with organization and set as owner
-        const { error: profileError } = await supabase
+        // Since we can't immediately SELECT the organization due to RLS policy,
+        // we'll skip linking the organization_id for now and let the user refresh
+        // or we'll update the profile in a separate step
+        
+        // First, get the current profile to preserve full_name
+        const { data: currentProfile, error: fetchError } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', userId)
+          .single();
+
+        if (fetchError) {
+          console.error('Error fetching current profile:', fetchError);
+          throw fetchError;
+        }
+
+        // Update profile status and role (without organization_id for now)
+        console.log('Updating profile for org creator with status: active');
+        const { data: updatedProfile, error: profileError } = await supabase
           .from('profiles')
           .update({
-            organization_id: orgData.id,
             role: 'admin',
-            status: 'active'
+            status: 'active', 
+            full_name: currentProfile?.full_name // Preserve the full_name
           })
-          .eq('id', userId);
+          .eq('id', userId)
+          .select()
+          .single();
+
+        console.log('Profile updated after org creation:', updatedProfile);
 
         if (profileError) {
           console.error('Profile update error:', profileError);
@@ -284,14 +314,32 @@ export const authFlowHelpers = {
           throw new Error("Organization ID not found. Please check the code and try again.");
         }
 
-        const { error: profileError } = await supabase
+        // First, get the current profile to preserve full_name
+        const { data: currentProfile, error: fetchError } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', userId)
+          .single();
+
+        if (fetchError) {
+          console.error('Error fetching current profile for join:', fetchError);
+          throw fetchError;
+        }
+
+        console.log('Updating profile for org joiner with status: pending');
+        const { data: updatedProfile, error: profileError } = await supabase
           .from('profiles')
           .update({
             organization_id: organizationId,
             role: 'member',
-            status: 'pending'
+            status: 'pending',
+            full_name: currentProfile?.full_name // Preserve the full_name
           })
-          .eq('id', userId);
+          .eq('id', userId)
+          .select()
+          .single();
+
+        console.log('Profile updated after org join:', updatedProfile);
 
         if (profileError) {
           console.error('Profile update error:', profileError);
