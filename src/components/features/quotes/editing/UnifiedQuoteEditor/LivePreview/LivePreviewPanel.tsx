@@ -38,7 +38,7 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
     
     try {
       // Use ContentSplitter to properly split content across pages
-      const splitPages = ContentSplitter.splitContent(previewHTML);
+      const splitPages = await ContentSplitter.splitContent(previewHTML);
       
       // Convert to DocumentPage format
       const newPages: DocumentPage[] = splitPages.map(page => ({
@@ -63,7 +63,12 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
   }, [previewHTML]);
 
   useEffect(() => {
-    calculatePages();
+    // Add a small delay to ensure DOM is stable after content updates
+    const timeoutId = setTimeout(() => {
+      calculatePages();
+    }, 50); // 50ms delay to allow DOM to settle
+    
+    return () => clearTimeout(timeoutId);
   }, [calculatePages]);
 
   // Create interaction handlers

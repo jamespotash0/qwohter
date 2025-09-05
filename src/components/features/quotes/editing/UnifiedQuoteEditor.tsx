@@ -96,10 +96,13 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       let result = baseHTML;
       
       overrides.forEach((content, sectionId) => {
+        console.log(`🔄 Processing section override: ${sectionId} = "${content.substring(0, 50)}..." (${content.length} chars)`);
+        
         // Handle special sections that don't follow the standard pattern
         let className: string;
         if (sectionId === 'proposal-intro') {
           className = 'proposal-intro';
+          console.log(`📝 proposal-intro override found: "${content.substring(0, 100)}..." (${content.length} chars)`);
         } else if (sectionId === 'pocket-doors') {
           className = 'pocket-doors-section';
         } else if (sectionId === 'panel-doors') {

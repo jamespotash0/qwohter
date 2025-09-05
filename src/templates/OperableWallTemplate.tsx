@@ -80,18 +80,29 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     const walls = data.wall_details?.walls || {};
     const wallCount = Object.keys(walls).length;
 
+    console.log('🏢 generateProposalIntro called:', { 
+      organizationName, 
+      wallCount,
+      hasWalls: wallCount > 0,
+      wallNames: Object.keys(walls) 
+    });
+
     if (wallCount === 0) {
+      console.log('⚠️ generateProposalIntro: No walls found, returning empty string');
       return '';
     }
 
     const systemText = wallCount > 1 ? "wall systems" : "wall system";
     
-    return `
+    const proposalHtml = `
       <div class="proposal-intro" style="line-height: 1.2; margin-top: 12px;">
         Thank you for considering <strong>${organizationName}</strong> for this project. As discussed, we are offering a proposal to furnish, deliver, & install, the following ${systemText} as specified below, at the above named project.
         <br><br><strong>Specifications as follows:</strong>
       </div>
     `;
+    
+    console.log('✅ generateProposalIntro returning HTML:', proposalHtml.length, 'characters');
+    return proposalHtml;
   }
 
   generatePanelsSection(data: QuoteData): string {
@@ -102,9 +113,9 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
 
 
     // Create single paragraph without bullets for better editing
-    const wallDescriptions = wallEntries.map(([wallName, wall], index) => {
+    const wallDescriptions = wallEntries.map(([wallName, wall]) => {
       const panelCountText = wall.panelCount && parseInt(wall.panelCount || '1') > 1 ? 'Multiple' : 'Single';
-      const heightText = this.helpers.formatDimensions('0', '0', wall.heightFeet || '', wall.heightInches || '', false).split(' x ')[1];
+      const heightText = this.helpers.formatDimensions('0', '0', String(wall.heightFeet || ''), String(wall.heightInches || ''), false).split(' x ')[1];
       
       if (isGlassWall(wall)) {
         return SmartQuoteHelper.buildSentence([
@@ -113,7 +124,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
           { text: `featuring <strong>${wall.panelOperation}</strong> operation`, condition: SmartQuoteHelper.hasValue(wall.panelOperation) },
           { text: `configured with <strong>${panelCountText} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
           { text: `for use on a <strong>${wall.trackType} Layout</strong>.`, condition: SmartQuoteHelper.hasValue(wall.trackType) },
-          { text: `The wall is <strong>${heightText}</strong> in height`, condition: SmartQuoteHelper.hasAllValues(wall.heightFeet || '', wall.heightInches || '') },
+          { text: `The wall is <strong>${heightText}</strong> in height`, condition: SmartQuoteHelper.hasAllValues(String(wall.heightFeet || ''), String(wall.heightInches || '')) },
           { text: `Each glass panel features <strong>${wall.glassType || 'insulated glass units'}</strong>`, condition: SmartQuoteHelper.hasValue(wall.glassType) },
           { text: `with <strong>${wall.frameThickness}</strong> thick framing`, condition: SmartQuoteHelper.hasValue(wall.frameThickness) },
           { text: `and <strong>${wall.frameFinish}</strong> frame finish.`, condition: SmartQuoteHelper.hasValue(wall.frameFinish) },
@@ -129,7 +140,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
           { text: `<strong>Model ${wall.model}</strong>`, condition: SmartQuoteHelper.hasValue(wall.model) },
           { text: `configured with <strong>${panelCountText} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
           { text: `for use on a <strong>${wall.trackType} Layout</strong>.`, condition: SmartQuoteHelper.hasValue(wall.trackType) },
-          { text: `The wall is <strong>${heightText}</strong> in height, with panel lengths varying as required`, condition: SmartQuoteHelper.hasAllValues(wall.heightFeet || '', wall.heightInches || '') },
+          { text: `The wall is <strong>${heightText}</strong> in height, with panel lengths varying as required`, condition: SmartQuoteHelper.hasAllValues(String(wall.heightFeet || ''), String(wall.heightInches || '')) },
           { text: `Each panel is <strong>${wall.panelThickness}"</strong> thick`, condition: SmartQuoteHelper.hasValue(wall.panelThickness) },
           { text: `and constructed with a <strong>${wall.panelSkin}</strong> panel skin.`, condition: SmartQuoteHelper.hasValue(wall.panelSkin) },
           { text: `Panels are finished in <strong>${wall.panelFinishCategory}${wall.panelFinishSpecificItem && wall.panelFinishSpecificItem !== 'Unknown' ? ` - ${wall.panelFinishSpecificItem}` : ''}</strong> (from the manufacturer's standard offerings)`, condition: SmartQuoteHelper.hasValue(wall.panelFinishCategory) },
@@ -143,7 +154,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
       } else {
         return `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> - Unsupported wall type`;
       }
-    }).map((description, index) => `<p class="wall-paragraph" style="margin: 0 0 8px 0; page-break-inside: avoid; orphans: 2; widows: 2;">${description}</p>`).join('');
+    }).map((description) => `<p class="wall-paragraph" style="margin: 0 0 8px 0; page-break-inside: avoid; orphans: 2; widows: 2;">${description}</p>`).join('');
 
     return `<div class="panels-section" style="line-height: 1.15;">
       <p class="wall-paragraph section-header-item" style="margin: 1.5em 0 0.5em 0; page-break-inside: avoid; orphans: 2; widows: 2; font-weight: bold; font-size: 12pt;">PANELS:</p>

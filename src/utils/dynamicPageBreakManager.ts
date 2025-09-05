@@ -34,6 +34,7 @@ export class DynamicPageBreakManager {
         priority: 9,
         allowBreakInside: false
       },
+        // sectionClass: 'proposal-intro'
       {
         sectionClass: 'wall-specifications-list',
         minimumHeight: hasMultipleWalls ? wallCount * 50 + 80 : 120,

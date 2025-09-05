@@ -301,6 +301,9 @@ export const getPreviewStyles = (): string => {
         border: 2px solid transparent;
         border-radius: 4px;
         transition: all 0.2s ease;
+        text-indent: 0 !important; /* Ensure no text indent */
+        margin-left: 0 !important; /* Align with paragraph text */
+        padding-left: 0 !important; /* Remove any left padding */
       }
       
       .editable-header:hover {
@@ -394,6 +397,69 @@ export const getPreviewStyles = (): string => {
       .panels-section > *,
       .terms-section > * {
         line-height: 1.15 !important;
+      }
+      
+      /* Ensure specific section headers align perfectly with their content */
+      .pass-doors-section h2.section-header,
+      .pass-doors-section h2.editable-header,
+      .track-section h2.section-header,
+      .track-section h2.editable-header,
+      .support-section h2.section-header,
+      .support-section h2.editable-header,
+      .general-section h2.section-header,
+      .general-section h2.editable-header {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        text-indent: 0 !important;
+        position: relative !important;
+        left: 0 !important;
+      }
+      
+      /* Ensure section content paragraphs are consistently aligned */
+      .pass-doors-section p,
+      .track-section p,
+      .support-section p,
+      .general-section p {
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        text-indent: 0 !important;
+      }
+      
+      /* Fix contentEditable styling inconsistencies */
+      [contenteditable="true"] {
+        line-height: 1.15 !important;
+        font-family: var(--page-font-family, 'Times New Roman', Times, serif) !important;
+        font-size: var(--page-font-size, 12pt) !important;
+      }
+      
+      /* Ensure all elements created during editing maintain consistent styling */
+      [contenteditable="true"] *,
+      [contenteditable="true"] div,
+      [contenteditable="true"] p,
+      [contenteditable="true"] span,
+      [contenteditable="true"] br {
+        line-height: 1.15 !important;
+        font-family: var(--page-font-family, 'Times New Roman', Times, serif) !important;
+        font-size: var(--page-font-size, 12pt) !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      
+      /* Override browser default paragraph spacing in contentEditable */
+      [contenteditable="true"] p {
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+        line-height: 1.15 !important;
+      }
+      
+      /* Ensure wall paragraphs maintain proper spacing even when edited */
+      [contenteditable="true"] .wall-paragraph,
+      .wall-paragraph[contenteditable="true"] {
+        margin: 0 0 8px 0 !important;
+        line-height: 1.15 !important;
+        page-break-inside: avoid !important;
+        orphans: 2 !important;
+        widows: 2 !important;
       }
     </style>
   `;

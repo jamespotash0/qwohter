@@ -56,9 +56,13 @@ export class ContentSplitter {
     contentHeight: 1056 - 148 // pageHeight - top (60) - bottom (72) - extra buffer (16px)
   };
 
+  // Tolerance for measurement inconsistencies (5px buffer for edge cases)
+  private static readonly MEASUREMENT_TOLERANCE = 5;
+
   private static readonly SECTION_SELECTORS = [
     '.header-section',
     '.billing-job-container', 
+    '.proposal-intro',
     '.wall-specifications-list',
     '.panels-section',
     '.pass-doors-section',
@@ -85,7 +89,7 @@ export class ContentSplitter {
     'terms-section'
   ];
 
-  static splitContent(htmlContent: string): Page[] {
+  static async splitContent(htmlContent: string): Promise<Page[]> {
     console.log('🔄 ContentSplitter: Starting content analysis...');
 
     // Create measurement container
@@ -107,6 +111,9 @@ export class ContentSplitter {
     document.body.appendChild(measureContainer);
 
     try {
+      // Wait for fonts to load and styles to be applied
+      await this.ensureRenderingComplete(measureContainer);
+      
       const sections = this.analyzeSections(measureContainer);
       const pages = this.distributeSections(sections);
       
@@ -180,6 +187,7 @@ export class ContentSplitter {
         if (htmlElement.textContent?.trim()) {
           const isTitle = htmlElement.classList.contains('quote-section-title') ||
                          htmlElement.classList.contains('section-header') ||
+                         htmlElement.classList.contains('section-header-item') ||
                          htmlElement.tagName.toLowerCase() === 'h2';
           
           // Each wall paragraph gets its own entry for splitting
@@ -336,8 +344,9 @@ export class ContentSplitter {
     let pageNumber = 1;
 
     sections.forEach((section) => {
-      // Check if section fits on current page
-      if (currentPageHeight + section.height <= this.PAGE_CONFIG.contentHeight || currentPageContent === '') {
+      // Check if section fits on current page (with tolerance for measurement inconsistencies)
+      const wouldFitWithTolerance = currentPageHeight + section.height <= this.PAGE_CONFIG.contentHeight + this.MEASUREMENT_TOLERANCE;
+      if (wouldFitWithTolerance || currentPageContent === '') {
         // Section fits, add to current page
         currentPageContent += section.html;
         currentPageHeight += section.height;
@@ -346,6 +355,7 @@ export class ContentSplitter {
         console.log(`✅ Added ${section.className} to page ${pageNumber} (height: ${currentPageHeight}px / ${this.PAGE_CONFIG.contentHeight}px available)`);
       } else if (section.canSplitParagraphs && section.paragraphs && section.paragraphs.length > 1) {
         // Only attempt to split if we have multiple paragraphs (avoid splitting single paragraph sections)
+        console.log(`🔍 Attempting paragraph-level split for ${section.className}: ${section.paragraphs.length} paragraphs, canSplit: ${section.canSplitParagraphs}`);
         // Section doesn't fit but can be split at paragraph level
         const splitResult = this.splitSectionByParagraphs(
           section, 
@@ -459,7 +469,8 @@ export class ContentSplitter {
         continue;
       }
       
-      const wouldExceed = heightAccumulator + paragraph.height > availableHeight;
+      // Apply tolerance to paragraph-level measurements as well
+      const wouldExceed = heightAccumulator + paragraph.height > availableHeight + this.MEASUREMENT_TOLERANCE;
       
       console.log(`📝 Paragraph ${i + 1}: ${paragraph.height}px, accumulated: ${heightAccumulator}px, would exceed: ${wouldExceed}, isTitle: ${paragraph.isTitle}`);
       
@@ -477,7 +488,10 @@ export class ContentSplitter {
         const isListBasedSection = section.className.includes('panels-section') || 
                                    section.className.includes('terms-section');
         
-        if (!isListBasedSection) {
+        // Special handling for the embedded section headers (like "PANELS:" or "GENERAL NOTES AND TERMS:")
+        const isEmbeddedSectionHeader = paragraph.element.classList.contains('section-header-item');
+        
+        if (!isListBasedSection && !isEmbeddedSectionHeader) {
           // Standard title handling for non-list sections
           let titleWithContentHeight = heightAccumulator + paragraph.height;
           let hasFollowingContent = false;
@@ -490,21 +504,25 @@ export class ContentSplitter {
             }
             if (!nextParagraph.isTitle) {
               titleWithContentHeight += nextParagraph.height;
-              if (titleWithContentHeight <= availableHeight) {
+              if (titleWithContentHeight <= availableHeight + this.MEASUREMENT_TOLERANCE) {
                 hasFollowingContent = true;
               }
               break; // Only check the first content paragraph
             }
           }
           
-          // If title + first content paragraph won't fit, move title to next page
-          if (!hasFollowingContent && titleWithContentHeight > availableHeight && heightAccumulator > 0) {
+          // If title + first content paragraph won't fit, move title to next page (apply tolerance)
+          if (!hasFollowingContent && titleWithContentHeight > availableHeight + this.MEASUREMENT_TOLERANCE && heightAccumulator > 0) {
             console.log(`🚫 Moving title to next page to keep with content: "${paragraph.element.textContent?.substring(0, 30)}..."`);
             splitIndex = i;
             break;
           }
         } else {
-          console.log(`📋 List-based section: allowing flexible title placement`);
+          if (isEmbeddedSectionHeader) {
+            console.log(`📋 Embedded section header: allowing flexible placement`);
+          } else {
+            console.log(`📋 List-based section: allowing flexible title placement`);
+          }
         }
       }
       
@@ -706,6 +724,29 @@ export class ContentSplitter {
     
     console.log(`⚠️ No section title found in HTML`);
     return null;
+  }
+
+  /**
+   * Ensures that fonts are loaded and layout is complete before measurement
+   */
+  private static async ensureRenderingComplete(container: HTMLElement): Promise<void> {
+    // Wait for fonts to load
+    await document.fonts.ready;
+    
+    // Force a style calculation
+    container.offsetHeight;
+    
+    // Use requestAnimationFrame to ensure layout is complete
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        // Double RAF to ensure rendering pipeline is complete
+        requestAnimationFrame(() => {
+          resolve();
+        });
+      });
+    });
+    
+    console.log('✅ ContentSplitter: Rendering and font loading complete');
   }
 
   static getPageConfig(): PageConfig {
