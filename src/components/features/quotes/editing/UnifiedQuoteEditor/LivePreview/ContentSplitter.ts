@@ -244,7 +244,9 @@ export class ContentSplitter {
           
           const isTitle = htmlElement.classList.contains('quote-section-title') ||
                          htmlElement.classList.contains('section-header') ||
-                         /^GENERAL NOTES AND TERMS|Payment Terms|Terms|Conditions/i.test(htmlElement.textContent?.trim() || '');
+                         htmlElement.classList.contains('section-header-item') ||
+                         htmlElement.tagName.toLowerCase() === 'h2' ||
+                         /^GENERAL NOTES AND TERMS|Payment Terms|Terms|Conditions|PANELS:/i.test(htmlElement.textContent?.trim() || '');
           
           paragraphs.push({
             element: htmlElement,
@@ -464,7 +466,7 @@ export class ContentSplitter {
       // CRITICAL: Prevent orphaned section headers
       if (paragraph.isTitle && wouldExceed && heightAccumulator > 0) {
         // Don't leave a title by itself on a page - move it to next page with its content
-        console.log(`🚫 Preventing orphaned title: "${paragraph.element.textContent?.substring(0, 30)}..."`);
+        console.log(`🚫 Preventing orphaned title: "${paragraph.element.textContent?.substring(0, 30)}..." - moving to next page`);
         splitIndex = i;
         break;
       }
@@ -551,15 +553,26 @@ export class ContentSplitter {
     let afterPageBreakHeight = 0;
     
     if (afterParagraphs.length > 0) {
-      // For split sections, DON'T repeat the header - just continue with content
-      const sectionStart = this.extractSectionStart(section.html, false); // Don't include header
+      // For split sections, check if the first paragraph being moved is the header itself
+      const firstAfterParagraph = afterParagraphs[0];
+      const isMovingHeaderWithContent = firstAfterParagraph && firstAfterParagraph.isTitle;
+      
+      console.log(`🔍 First paragraph being moved is title: ${isMovingHeaderWithContent}`);
+      console.log(`🔍 First paragraph content: "${firstAfterParagraph?.element?.textContent?.substring(0, 50)}..."`);
+      
+      const sectionStart = this.extractSectionStart(section.html, false); // Don't include original header
       const afterContent = afterParagraphs.map(p => p.html).join('');
       const sectionEnd = this.extractSectionEnd(section.html);
       
       afterPageBreak = sectionStart + afterContent + sectionEnd;
       afterPageBreakHeight = afterParagraphs.reduce((sum, p) => sum + p.height, 0);
       
-      console.log(`📋 After page break: continuing without header repetition`);
+      if (isMovingHeaderWithContent) {
+        console.log(`🔄 Moving section header with its content - no duplicate header needed`);
+      } else {
+        console.log(`📋 Continuing section content without header`);
+      }
+      
       console.log(`🔍 Section start without header: "${sectionStart.substring(0, 100)}..."`);
       console.log(`🔍 After content: "${afterContent.substring(0, 100)}..."`);
       console.log(`🔍 Section end: "${sectionEnd}"`);
@@ -667,6 +680,32 @@ export class ContentSplitter {
     // Fallback
     console.log(`⚠️ Using fallback section end: </div>`);
     return '</div>';
+  }
+
+  private static extractSectionTitle(sectionHtml: string): string | null {
+    // Use DOM parsing to extract the section header text
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = sectionHtml;
+    
+    const sectionDiv = tempDiv.firstElementChild as HTMLElement;
+    if (sectionDiv) {
+      // Look for h2 section headers
+      const header = sectionDiv.querySelector('h2.section-header, h2.editable-header');
+      if (header && header.textContent) {
+        console.log(`🏷️ Extracted section title: "${header.textContent.trim()}"`);
+        return header.textContent.trim();
+      }
+      
+      // Fallback: look for any h2 element
+      const anyHeader = sectionDiv.querySelector('h2');
+      if (anyHeader && anyHeader.textContent) {
+        console.log(`🏷️ Extracted fallback section title: "${anyHeader.textContent.trim()}"`);
+        return anyHeader.textContent.trim();
+      }
+    }
+    
+    console.log(`⚠️ No section title found in HTML`);
+    return null;
   }
 
   static getPageConfig(): PageConfig {

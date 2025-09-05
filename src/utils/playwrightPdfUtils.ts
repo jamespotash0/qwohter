@@ -5,52 +5,61 @@ import { Quote } from '@/hooks/useQuotes';
  * This ensures section headers are repeated when content continues on next page
  */
 function addSectionHeaderRepetition(html: string): string {
-  // Add invisible header markers only for items that might be moved to next page
+  // Enhanced approach: Add explicit continuation detection
   const sectionsToRepeat = [
     { class: 'panels-section', title: 'PANELS:' },
-    { class: 'tracks-section', title: 'TRACK:' }, 
-    { class: 'support-section', title: 'SUPPORT STRUCTURE (HEADER):' },
-    { class: 'pocket-doors-section', title: 'POCKET DOORS:' },
-    { class: 'pass-doors-section', title: 'PASS DOORS:' },
-    { class: 'general-notes-section', title: 'GENERAL NOTES AND TERMS:' },
-    { class: 'terms-section', title: 'ACCEPTANCE OF PROPOSAL:' }
+    { class: 'terms-section', title: 'GENERAL NOTES AND TERMS:' }
   ];
   
   sectionsToRepeat.forEach(({ class: sectionClass, title }) => {
-    // Find sections and preserve original header
+    // Find sections and add continuation markers
     const sectionRegex = new RegExp(
-      `(<div class="${sectionClass}"[^>]*>\\s*)(<h2 class="section-header">[^<]+</h2>)([\\s\\S]*?)(</div>)`,
+      `(<div class="${sectionClass}"[^>]*>\\s*)(<h2[^>]*>[^<]+</h2>)([\\s\\S]*?)(</div>)`,
       'gi'
     );
     
     html = html.replace(sectionRegex, (match, openTag, originalHeader, content, closeTag) => {
-      // Add continuation headers only to items after the first one (skip first to preserve original flow)
-      const itemPatterns = [
-        { pattern: /<div class="panel-wall-item"[^>]*>/gi, name: 'panel-wall-item' },
-        { pattern: /<div class="term-item"[^>]*>/gi, name: 'term-item' },
-        { pattern: /<div class="payment-terms-item"[^>]*>/gi, name: 'payment-terms-item' }
-      ];
-      
       let processedContent = content;
-      let itemCount = 0;
       
-      itemPatterns.forEach(({ pattern, name }) => {
-        processedContent = processedContent.replace(pattern, (itemMatch: string) => {
-          itemCount++;
-          // Only add continuation headers starting from the 2nd item
-          if (itemCount > 1) {
-            return `<div class="section-continuation-header" data-section="${name}" style="display: none;">
-              <h2 class="section-header continuation-header">${title}</h2>
-            </div>
-            ${itemMatch}`;
+      if (sectionClass === 'panels-section') {
+        // Add continuation header element after original header
+        const continuationHeader = `
+          <div class="section-continuation-marker" data-section="panels" style="position: absolute; top: -1000px;">
+            <h2 class="section-header continuation-header">${title}</h2>
+          </div>
+        `;
+        
+        // Mark paragraphs for potential continuation headers
+        processedContent = processedContent.replace(
+          /<p class="wall-paragraph"([^>]*)>/gi, 
+          (match, attrs) => {
+            return `<p class="wall-paragraph"${attrs} data-continuation-header="${title}">`;
           }
-          return itemMatch;
-        });
-        // Reset count for each pattern
-        itemCount = 0;
-      });
+        );
+        
+        return openTag + originalHeader + continuationHeader + processedContent + closeTag;
+      }
       
-      return openTag + originalHeader + processedContent + closeTag;
+      if (sectionClass === 'terms-section') {
+        // Add continuation header element after original header  
+        const continuationHeader = `
+          <div class="section-continuation-marker" data-section="terms" style="position: absolute; top: -1000px;">
+            <h2 class="section-header continuation-header">${title}</h2>
+          </div>
+        `;
+        
+        // Mark term items for potential continuation headers
+        processedContent = processedContent.replace(
+          /<div class="term-item"([^>]*)>/gi,
+          (match, attrs) => {
+            return `<div class="term-item"${attrs} data-continuation-header="${title}">`;
+          }
+        );
+        
+        return openTag + originalHeader + continuationHeader + processedContent + closeTag;
+      }
+      
+      return match;
     });
   });
   
@@ -234,36 +243,120 @@ export const generateQuotePDF = async (
                 page-break-before: avoid !important;
               }
               
-              /* Section continuation headers - hidden by default, preserve original headers */
+              /* Enhanced section header repetition for page breaks */
               .section-continuation-header {
-                display: none !important; /* Hidden by default */
+                display: none !important;
               }
               
-              /* Ensure original section headers are always visible */
-              h2.section-header:not(.continuation-header) {
-                display: block !important;
-                font-weight: bold !important;
-                font-size: 12pt !important;
+              /* Force headers to stay with content and maintain spacing */
+              .panels-section h2,
+              .terms-section h2 {
+                page-break-after: avoid !important;
+                keep-with-next: always !important;
                 margin-top: 1.5em !important;
                 margin-bottom: 0.5em !important;
               }
               
-              /* Show continuation headers only when content actually continues on new page */
+              /* Ensure first content item stays with header */
+              .panels-section h2 + p,
+              .terms-section h2 + div,
+              .panels-section h2 + *,
+              .terms-section h2 + * {
+                page-break-before: avoid !important;
+                margin-top: 0 !important;
+              }
+              
+              /* Prevent section headers from being orphaned */
+              .panels-section,
+              .terms-section {
+                page-break-inside: auto !important;
+                orphans: 3 !important;
+                widows: 3 !important;
+              }
+              
+              /* Show continuation headers using data attributes */
+              p[data-continuation-header]::before,
+              div[data-continuation-header]::before {
+                content: attr(data-continuation-header);
+                display: block;
+                font-weight: bold !important;
+                font-size: 12pt !important;
+                margin-top: 1.5em !important;
+                margin-bottom: 0.5em !important;
+                page-break-after: avoid !important;
+                visibility: hidden; /* Hidden by default */
+              }
+              
+              /* Show continuation header only when element starts on new page */
               @media print {
-                /* Show continuation header when item is forced to start new page due to space */
-                .section-continuation-header {
-                  page-break-before: auto;
+                /* Use page break detection */
+                p[data-continuation-header]:first-child::before,
+                div[data-continuation-header]:first-child::before {
+                  visibility: visible;
                 }
                 
-                /* More specific targeting - show continuation only when item gets page break */
-                .panel-wall-item {
-                  page-break-inside: avoid;
+                /* Alternative: Show for elements that get pushed to new page */
+                .wall-paragraph:first-of-type::before {
+                  content: attr(data-continuation-header);
+                  display: block;
+                  font-weight: bold !important;
+                  font-size: 12pt !important;
+                  margin-top: 1.5em !important;
+                  margin-bottom: 0.5em !important;
+                  page-break-after: avoid !important;
                 }
-                
-                .term-item,
-                .payment-terms-item {
-                  page-break-inside: avoid;
-                }
+              }
+              
+              /* Ensure proper spacing for section content */
+              .panels-section .wall-paragraph:first-of-type,
+              .terms-section .term-item:first-of-type {
+                margin-top: 0 !important;
+                padding-top: 0 !important;
+              }
+              
+              /* Force section headers to always appear with proper spacing */
+              .panels-section > h2,
+              .terms-section > h2 {
+                margin-top: 1.5em !important;
+                margin-bottom: 0.5em !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+              }
+              
+              /* Ensure section headers maintain proper spacing when splitting */
+              h2.section-header {
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+                margin-top: 1.5em !important;
+                margin-bottom: 0.5em !important;
+                orphans: 3;
+                widows: 3;
+              }
+              
+              /* Better page break handling for sectioned content */
+              .panels-section {
+                orphans: 2;
+                widows: 2;
+              }
+              
+              .terms-section {
+                orphans: 2; 
+                widows: 2;
+              }
+              
+              /* Ensure proper spacing is maintained on continued pages */
+              .panel-wall-item,
+              .term-item {
+                page-break-inside: avoid;
+                margin-bottom: 8px !important;
+                orphans: 2;
+                widows: 2;
+              }
+              
+              /* Add top margin when content starts new page */
+              .panel-wall-item:first-child,
+              .term-item:first-child {
+                margin-top: 0 !important;
               }
               
               /* Style continuation headers same as original headers */

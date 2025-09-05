@@ -114,6 +114,9 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
     }
   }, []);
 
+  // Check if this section has embedded headers (panels and terms)
+  const hasEmbeddedHeader = section.id === 'panels' || section.id === 'terms';
+
   // Handle save
   const handleSave = useCallback(() => {
     // Get content from the editor
@@ -121,7 +124,9 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
     
     // Reconstruct the section with header and content
     const sectionClassname = `${section.id}-section`;
-    const headerElement = headerText.trim() 
+    
+    // For sections with embedded headers (panels, terms), don't add separate header
+    const headerElement = (!hasEmbeddedHeader && headerText.trim()) 
       ? `<h2 class="section-header editable-header" contenteditable="false">${headerText.trim()}</h2>`
       : '';
     
@@ -151,7 +156,7 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
     
     onSave(section.id, contentToSave);
     onClose();
-  }, [section.id, richEditingContent, headerText, onSave, onClose]);
+  }, [section.id, richEditingContent, headerText, hasEmbeddedHeader, onSave, onClose]);
 
   // Handle cancel
   const handleCancel = useCallback(() => {
@@ -229,28 +234,40 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
         <CardContent className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
           <div className="space-y-4">
             <div className="space-y-3">
-              {/* Section Header Input */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Section Header
-                </label>
-                <input
-                  ref={headerInputRef}
-                  type="text"
-                  value={headerText}
-                  onChange={(e) => setHeaderText(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-200 outline-none"
-                  placeholder="Enter section header text (e.g., PANELS:)"
-                  style={{
-                    fontFamily: '"Times New Roman", Times, serif',
-                    fontSize: '14px',
-                    fontWeight: 'bold'
-                  }}
-                />
-                <p className="text-xs text-gray-500">
-                  This text will appear as the section header in your document
-                </p>
-              </div>
+              {/* Section Header Input - Hidden for sections with embedded headers */}
+              {!hasEmbeddedHeader && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Section Header
+                  </label>
+                  <input
+                    ref={headerInputRef}
+                    type="text"
+                    value={headerText}
+                    onChange={(e) => setHeaderText(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all duration-200 outline-none"
+                    placeholder="Enter section header text (e.g., PANELS:)"
+                    style={{
+                      fontFamily: '"Times New Roman", Times, serif',
+                      fontSize: '14px',
+                      fontWeight: 'bold'
+                    }}
+                  />
+                  <p className="text-xs text-gray-500">
+                    This text will appear as the section header in your document
+                  </p>
+                </div>
+              )}
+              
+              {/* Info message for sections with embedded headers */}
+              {hasEmbeddedHeader && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    <strong>Note:</strong> This section's header is embedded within the content to ensure proper page flow. 
+                    Edit the header directly in the content below.
+                  </p>
+                </div>
+              )}
               {/* Rich Text Formatting Toolbar */}
               <div className="flex items-center gap-1 p-2 bg-gray-50 rounded-lg border">
                 <Button

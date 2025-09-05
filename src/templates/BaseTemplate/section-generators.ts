@@ -165,8 +165,8 @@ export class SectionGenerators {
     </div>
 
     <div class="terms-section">
-      <h2 class="section-header editable-header" contenteditable="false">GENERAL NOTES AND TERMS:</h2>
       <div class="terms-list">
+        <div class="term-item section-header-item" style="break-inside: avoid; margin-bottom: 8px; font-weight: bold; font-size: 12pt; margin-top: 1.5em;">GENERAL NOTES AND TERMS:</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">1. <strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">2. All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate ? wageRate + ' ' : ''}Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">3. <strong>Delivery includes drop-off to the Roof</strong> of the site, if applicable.</div>

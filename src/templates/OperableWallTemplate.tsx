@@ -146,7 +146,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     }).map((description, index) => `<p class="wall-paragraph" style="margin: 0 0 8px 0; page-break-inside: avoid; orphans: 2; widows: 2;">${description}</p>`).join('');
 
     return `<div class="panels-section" style="line-height: 1.15;">
-      <h2 class="section-header editable-header" contenteditable="false">PANELS:</h2>
+      <p class="wall-paragraph section-header-item" style="margin: 1.5em 0 0.5em 0; page-break-inside: avoid; orphans: 2; widows: 2; font-weight: bold; font-size: 12pt;">PANELS:</p>
       ${wallDescriptions}
     </div>`;
   }

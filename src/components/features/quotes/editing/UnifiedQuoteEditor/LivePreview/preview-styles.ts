@@ -355,6 +355,46 @@ export const getPreviewStyles = (): string => {
         margin-bottom: 2px !important;
         line-height: 1.15 !important;
       }
+      
+      /* Ensure continued sections maintain proper spacing */
+      .panels-section p.wall-paragraph {
+        margin-bottom: 8px !important;
+        line-height: 1.15 !important;
+      }
+      
+      /* Style section headers that are embedded as content items */
+      .section-header-item {
+        font-weight: bold !important;
+        font-size: 12pt !important;
+        margin: 1.5em 0 0.5em 0 !important;
+        line-height: 1.15 !important;
+        color: #000 !important;
+      }
+      
+      /* Ensure embedded headers in terms section have proper spacing */
+      .terms-section .section-header-item {
+        margin-top: 1.5em !important;
+        margin-bottom: 0.5em !important;
+      }
+      
+      .terms-section .term-item {
+        margin-bottom: 4px !important;
+        line-height: 1.15 !important;
+        display: block !important;
+        visibility: visible !important;
+      }
+      
+      
+      /* Prevent spacing compression in split sections */
+      .panels-section,
+      .terms-section {
+        line-height: 1.15 !important;
+      }
+      
+      .panels-section > *,
+      .terms-section > * {
+        line-height: 1.15 !important;
+      }
     </style>
   `;
 };
