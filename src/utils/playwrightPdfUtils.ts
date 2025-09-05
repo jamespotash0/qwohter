@@ -124,6 +124,13 @@ export const generateQuotePDF = async (
             @page {
               size: letter;
               margin: 0.75in;
+              /* Remove browser default headers and footers */
+              @top-left { content: none; }
+              @top-center { content: none; }
+              @top-right { content: none; }
+              @bottom-left { content: none; }
+              @bottom-center { content: none; }
+              @bottom-right { content: none; }
             }
             
             @media print {
@@ -311,12 +318,37 @@ export const generateQuotePDF = async (
           <script>
             // Auto-print when loaded
             window.addEventListener('load', function() {
-              setTimeout(function() {
-                window.print();
+              // Create a more professional print instruction overlay
+              const overlay = document.createElement('div');
+              overlay.innerHTML = \`
+                <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                           background: rgba(0,0,0,0.8); z-index: 10000; display: flex; 
+                           align-items: center; justify-content: center; font-family: Arial;">
+                  <div style="background: white; padding: 30px; border-radius: 10px; 
+                             max-width: 500px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+                    <h3 style="margin-top: 0; color: #333;">Clean PDF Print Settings</h3>
+                    <p style="color: #666; line-height: 1.5;">For a professional PDF without headers/footers:</p>
+                    <ol style="text-align: left; color: #666; margin: 20px 0;">
+                      <li>In the print dialog, click <strong>"More settings"</strong></li>
+                      <li>Uncheck <strong>"Headers and footers"</strong></li>
+                      <li>This removes date/time and page numbers/URL</li>
+                    </ol>
+                    <button onclick="this.parentElement.parentElement.remove(); window.print();" 
+                            style="background: #3B82F6; color: white; border: none; padding: 10px 20px; 
+                                   border-radius: 5px; cursor: pointer; font-size: 14px;">
+                      Continue to Print
+                    </button>
+                  </div>
+                </div>
+              \`;
+              document.body.appendChild(overlay);
+              
+              // Close window after print
+              window.addEventListener('afterprint', function() {
                 setTimeout(function() {
                   window.close();
-                }, 1000);
-              }, 500);
+                }, 500);
+              });
             });
           </script>
         </body>
