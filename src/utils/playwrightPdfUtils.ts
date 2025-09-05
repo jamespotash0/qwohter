@@ -32,7 +32,7 @@ function addSectionHeaderRepetition(html: string): string {
         // Mark paragraphs for potential continuation headers
         processedContent = processedContent.replace(
           /<p class="wall-paragraph"([^>]*)>/gi, 
-          (match, attrs) => {
+          (_match: string, attrs: string) => {
             return `<p class="wall-paragraph"${attrs} data-continuation-header="${title}">`;
           }
         );
@@ -51,7 +51,7 @@ function addSectionHeaderRepetition(html: string): string {
         // Mark term items for potential continuation headers
         processedContent = processedContent.replace(
           /<div class="term-item"([^>]*)>/gi,
-          (match, attrs) => {
+          (_match: string, attrs: string) => {
             return `<div class="term-item"${attrs} data-continuation-header="${title}">`;
           }
         );
