@@ -4,7 +4,8 @@ import WallSpecificationForm from "@/components/features/quotes/forms/walls/Wall
 import PerWallPocketDoorsForm from "@/components/features/quotes/forms/walls/PerWallPocketDoorsForm";
 import PerWallStructureForm from "@/components/features/quotes/forms/walls/PerWallStructureForm";
 import DeliveryLaborForm from "@/components/features/quotes/forms/delivery/DeliveryLaborForm";
-import PricingForm from "@/components/features/quotes/forms/pricing/PricingForm";
+import EnhancedPricingForm from "@/components/features/quotes/forms/pricing/EnhancedPricingForm";
+import { EnhancedPricingData, defaultEnhancedPricing } from "@/types/enhancedPricing";
 
 import { ContactInfo, JobDetails, DeliveryLabor, Pricing, QuoteData } from '../types/wizardTypes';
 import { WallDetails } from '@/lib/types';
@@ -57,15 +58,38 @@ export const StepContent = ({
       return <PerWallStructureForm walls={walls.walls} onWallUpdate={onWallStructureSupportUpdate} />;
     case "delivery":
       return <DeliveryLaborForm data={deliveryLabor} onUpdate={onDeliveryLaborUpdate} />;
-    case "pricing":
+    case "pricing": {
+      // Convert wizard's basic Pricing to EnhancedPricingData format
+      const enhancedData: EnhancedPricingData = {
+        ...defaultEnhancedPricing,
+        basePrice: pricing.basePrice,
+        freight: pricing.freight,
+        total: pricing.total,
+        paymentUponDrawings: pricing.paymentUponDrawings,
+        paymentUponTrackInstallation: pricing.paymentUponTrackInstallation
+      };
+
+      const handleEnhancedUpdate = (updatedData: EnhancedPricingData) => {
+        // Convert back to basic Pricing format for wizard
+        const basicPricing: Pricing = {
+          basePrice: updatedData.basePrice,
+          freight: updatedData.freight,
+          total: updatedData.total,
+          paymentUponDrawings: updatedData.paymentUponDrawings,
+          paymentUponTrackInstallation: updatedData.paymentUponTrackInstallation
+        };
+        onPricingUpdate(basicPricing);
+      };
+
       return (
-        <PricingForm 
-          data={pricing} 
-          onUpdate={onPricingUpdate} 
+        <EnhancedPricingForm 
+          data={enhancedData}
+          onUpdate={handleEnhancedUpdate} 
           onGenerate={onSave}
           quoteData={allQuoteData}
         />
       );
+    }
     default:
       return null;
   }

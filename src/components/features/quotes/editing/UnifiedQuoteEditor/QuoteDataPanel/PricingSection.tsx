@@ -1,12 +1,10 @@
-import React from 'react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ValidatedInput } from '@/components/ui/validated-input';
+import React, { useMemo } from 'react';
 import { DollarSign } from 'lucide-react';
 import { CollapsibleSection } from './CollapsibleSection';
 import { FieldChangeHandler } from './types';
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
-import { useFormValidation } from '@/hooks/useFormValidation';
+import EnhancedPricingForm from '@/components/features/quotes/forms/pricing/EnhancedPricingForm';
+import { EnhancedPricingData, defaultEnhancedPricing } from '@/types/enhancedPricing';
 
 interface PricingSectionProps {
   data: QuoteData;
@@ -21,104 +19,98 @@ export const PricingSection: React.FC<PricingSectionProps> = ({
   onToggle,
   onFieldChange
 }) => {
-  const { validateAndUpdate, getFieldError, isFieldValid, markFieldTouched } = useFormValidation();
   
-  const handleValidatedChange = (field: string, value: string, validationType?: string) => {
-    const sanitizedValue = validateAndUpdate(field, value, validationType);
-    onFieldChange('price_details', field, sanitizedValue);
+  // Convert current price_details to EnhancedPricingData format
+  const enhancedData = useMemo((): EnhancedPricingData => {
+    const priceDetails = data.price_details || {};
+    
+    return {
+      // If enhanced data exists, use it; otherwise use defaults
+      kwik_wall_materials_cost: priceDetails.kwik_wall_materials_cost || 0,
+      misc_materials_cost: priceDetails.misc_materials_cost || 0,
+      misc_materials_description: priceDetails.misc_materials_description || '',
+      delivery_cost_track: priceDetails.delivery_cost_track || 0,
+      track_equipment_costs: priceDetails.track_equipment_costs || 0,
+      track_labor_cost: priceDetails.track_labor_cost || 0,
+      panel_equipment_costs: priceDetails.panel_equipment_costs || 0,
+      panel_labor_cost: priceDetails.panel_labor_cost || 0,
+      track_freight_factory: priceDetails.track_freight_factory || 0,
+      panel_freight_factory: priceDetails.panel_freight_factory || 0,
+      local_handling_costs: priceDetails.local_handling_costs || 0,
+      gross_profit_percentage: priceDetails.gross_profit_percentage || 30,
+      gross_profit_margin: priceDetails.gross_profit_margin || 15,
+      
+      // Auto-calculated fields (will be recalculated)
+      unseen_costs: priceDetails.unseen_costs || 0,
+      cost_subtotal: priceDetails.cost_subtotal || 0,
+      base_selling_price: priceDetails.base_selling_price || 0,
+      shipping_handling_subtotal: priceDetails.shipping_handling_subtotal || 0,
+      shipping_freight_subtotal: priceDetails.shipping_freight_subtotal || 0,
+      selling_price: priceDetails.selling_price || 0,
+      
+      // Legacy fields (backward compatibility)
+      basePrice: priceDetails.basePrice || priceDetails.base_price || 0,
+      freight: priceDetails.freight || 0,
+      total: priceDetails.total || '0',
+      paymentUponDrawings: priceDetails.paymentUponDrawings || priceDetails.payment_upon_drawings || '33',
+      paymentUponTrackInstallation: priceDetails.paymentUponTrackInstallation || priceDetails.payment_upon_track_installation || '33'
+    };
+  }, [data.price_details]);
+
+  // Handle enhanced pricing data updates
+  const handlePricingUpdate = (updatedData: EnhancedPricingData) => {
+    // Convert back to the format expected by the parent component
+    const updateData = {
+      // Enhanced fields
+      kwik_wall_materials_cost: updatedData.kwik_wall_materials_cost,
+      misc_materials_cost: updatedData.misc_materials_cost,
+      misc_materials_description: updatedData.misc_materials_description,
+      delivery_cost_track: updatedData.delivery_cost_track,
+      track_equipment_costs: updatedData.track_equipment_costs,
+      track_labor_cost: updatedData.track_labor_cost,
+      panel_equipment_costs: updatedData.panel_equipment_costs,
+      panel_labor_cost: updatedData.panel_labor_cost,
+      track_freight_factory: updatedData.track_freight_factory,
+      panel_freight_factory: updatedData.panel_freight_factory,
+      local_handling_costs: updatedData.local_handling_costs,
+      gross_profit_percentage: updatedData.gross_profit_percentage,
+      gross_profit_margin: updatedData.gross_profit_margin,
+      
+      // Auto-calculated fields
+      unseen_costs: updatedData.unseen_costs,
+      cost_subtotal: updatedData.cost_subtotal,
+      base_selling_price: updatedData.base_selling_price,
+      shipping_handling_subtotal: updatedData.shipping_handling_subtotal,
+      shipping_freight_subtotal: updatedData.shipping_freight_subtotal,
+      selling_price: updatedData.selling_price,
+      
+      // Legacy fields (for backward compatibility)
+      basePrice: updatedData.basePrice,
+      base_price: updatedData.basePrice, // Database field
+      freight: updatedData.freight,
+      total: updatedData.total,
+      paymentUponDrawings: updatedData.paymentUponDrawings,
+      payment_upon_drawings: updatedData.paymentUponDrawings, // Database field
+      paymentUponTrackInstallation: updatedData.paymentUponTrackInstallation,
+      payment_upon_track_installation: updatedData.paymentUponTrackInstallation // Database field
+    };
+
+    // Update all fields at once
+    onFieldChange('price_details', '', updateData);
   };
 
   return (
-  <CollapsibleSection
-    title="Pricing"
-    icon={<DollarSign className="w-4 h-4 text-green-500" />}
-    isOpen={isOpen}
-    onToggle={onToggle}
-  >
-    <div className="space-y-3">
-      <div>
-        <Label htmlFor="basePrice" className="text-xs font-medium text-gray-600">
-          Base Price ($)
-        </Label>
-        <ValidatedInput
-          id="basePrice"
-          validationType="currency"
-          value={data.price_details?.basePrice || data.price_details?.base_price || ''}
-          onValueChange={(value: string) => handleValidatedChange('basePrice', value, 'basePrice')}
-          onBlur={() => markFieldTouched('basePrice')}
-          placeholder="0.00"
-          className="text-sm"
-          errorMessage={getFieldError('basePrice')}
-          isValid={isFieldValid('basePrice')}
-        />
-      </div>
-      
-      <div>
-        <Label htmlFor="freight" className="text-xs font-medium text-gray-600">
-          Estimated Freight + Delivery ($)
-        </Label>
-        <ValidatedInput
-          id="freight"
-          validationType="currency"
-          value={data.price_details?.freight || ''}
-          onValueChange={(value: string) => handleValidatedChange('freight', value, 'freight')} //updated value to be value:string for infer any error & line 47
-          onBlur={() => markFieldTouched('freight')}
-          placeholder="0.00"
-          className="text-sm"
-          errorMessage={getFieldError('freight')}
-          isValid={isFieldValid('freight')}
-        />
-      </div>
-      
-      <div>
-        <Label htmlFor="total" className="text-xs font-medium text-gray-600">
-          Total $ (Auto-calculated)
-        </Label>
-        <Input
-          id="total"
-          value={data.price_details?.total || ''}
-          readOnly
-          placeholder="0.00"
-          className="text-sm bg-gray-100"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <Label htmlFor="paymentDrawings" className="text-xs font-medium text-gray-600">
-            Payment on Drawings (%)
-          </Label>
-          <ValidatedInput
-            id="paymentDrawings"
-            validationType="percentage"
-            value={data.price_details?.payment_upon_drawings || ''}
-            onValueChange={(value: string) => handleValidatedChange('payment_upon_drawings', value, 'paymentPercentage')}
-            onBlur={() => markFieldTouched('payment_upon_drawings')}
-            placeholder="33"
-            className="text-sm"
-            errorMessage={getFieldError('payment_upon_drawings')}
-            isValid={isFieldValid('payment_upon_drawings')}
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="paymentTrack" className="text-xs font-medium text-gray-600">
-            Payment on Track (%)
-          </Label>
-          <ValidatedInput
-            id="paymentTrack"
-            validationType="percentage"
-            value={data.price_details?.payment_upon_track_installation || ''}
-            onValueChange={(value: string) => handleValidatedChange('payment_upon_track_installation', value, 'paymentPercentage')}
-            onBlur={() => markFieldTouched('payment_upon_track_installation')}
-            placeholder="33"
-            className="text-sm"
-            errorMessage={getFieldError('payment_upon_track_installation')}
-            isValid={isFieldValid('payment_upon_track_installation')}
-          />
-        </div>
-      </div>
-    </div>
-  </CollapsibleSection>
+    <CollapsibleSection
+      title="Pricing (Enhanced)"
+      icon={<DollarSign className="w-4 h-4 text-green-500" />}
+      isOpen={isOpen}
+      onToggle={onToggle}
+    >
+      <EnhancedPricingForm
+        data={enhancedData}
+        onUpdate={handlePricingUpdate}
+        quoteData={data}
+      />
+    </CollapsibleSection>
   );
 };

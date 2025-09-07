@@ -1,3 +1,9 @@
+/**
+ * @deprecated This component has been replaced by EnhancedPricingForm.
+ * Use EnhancedPricingForm instead for new implementations.
+ * This file is kept for backward compatibility and will be removed in a future version.
+ */
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 // import { Button } from "@/components/ui/button";
@@ -19,6 +25,10 @@ interface PricingFormProps {
   quoteData?: any;
 }
 
+/**
+ * @deprecated This component has been replaced by EnhancedPricingForm.
+ * Use EnhancedPricingForm instead for new implementations.
+ */
 const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps) => {
   const [calculatedTotal, setCalculatedTotal] = useState("");
 
