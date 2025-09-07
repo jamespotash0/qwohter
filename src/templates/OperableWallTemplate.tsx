@@ -114,7 +114,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
 
     // Create single paragraph without bullets for better editing
     const wallDescriptions = wallEntries.map(([wallName, wall]) => {
-      const panelCountText = wall.panelCount && parseInt(wall.panelCount || '1') > 1 ? 'Multiple' : 'Single';
+      const panelCountText = wall.panelCount && parseInt(wall.panelCount as any || '1') > 1 ? 'Multiple' : 'Single';
       const heightText = this.helpers.formatDimensions('0', '0', String(wall.heightFeet || ''), String(wall.heightInches || ''), false).split(' x ')[1];
       
       if (isGlassWall(wall)) {
@@ -141,7 +141,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
           { text: `configured with <strong>${panelCountText} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
           { text: `for use on a <strong>${wall.trackType} Layout</strong>.`, condition: SmartQuoteHelper.hasValue(wall.trackType) },
           { text: `The wall is <strong>${heightText}</strong> in height, with panel lengths varying as required`, condition: SmartQuoteHelper.hasAllValues(String(wall.heightFeet || ''), String(wall.heightInches || '')) },
-          { text: `Each panel is <strong>${wall.panelThickness}"</strong> thick`, condition: SmartQuoteHelper.hasValue(wall.panelThickness) },
+          { text: `Each panel is <strong>${wall.panelThickness}</strong> thick`, condition: SmartQuoteHelper.hasValue(wall.panelThickness) },
           { text: `and constructed with a <strong>${wall.panelSkin}</strong> panel skin.`, condition: SmartQuoteHelper.hasValue(wall.panelSkin) },
           { text: `Panels are finished in <strong>${wall.panelFinishCategory}${wall.panelFinishSpecificItem && wall.panelFinishSpecificItem !== 'Unknown' ? ` - ${wall.panelFinishSpecificItem}` : ''}</strong> (from the manufacturer's standard offerings)`, condition: SmartQuoteHelper.hasValue(wall.panelFinishCategory) },
           { text: `and achieve a minimum STC rating of <strong>${wall.stcRating}</strong>.`, condition: SmartQuoteHelper.hasValue(wall.stcRating) },
@@ -200,7 +200,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
         : `The track system allows for the specified movement of the panels, as noted in parentheses, along the overhead track, enabling flexible operation and easy stacking when the wall is not in use.`
     return `
       <div class="track-section" style="line-height: 1.15; margin-top: 0px;">
-        <h2 class="section-header editable-header" contenteditable="false">TRACK:</h2>
+        <p class="section-header-item" style="margin: 1.5em 0 0.5em 0; font-weight: bold; font-size: 12pt;">TRACK:</p>
         <p>
           ${wallDescriptions}. ${summary}
         </p>
@@ -236,7 +236,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     
     return `
       <div class="support-section" style="line-height: 1.15;">
-        <h2 class="section-header editable-header" contenteditable="false">SUPPORT STRUCTURE (HEADER):</h2>
+        <p class="section-header-item" style="margin: 1.5em 0 0.5em 0; font-weight: bold; font-size: 12pt;">SUPPORT STRUCTURE (HEADER):</p>
         <p>
           ${wallDescriptions} ${summary}
         </p>
@@ -253,9 +253,9 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
 
     return `
       <div class="general-section" style="line-height: 1.15; margin-bottom: 20px;">
-        <h2 class="section-header editable-header" contenteditable="false">GENERAL:</h2>
-        Estimated delivery for shop drawings would be <strong>${shopDrawingDelivery} weeks</strong>, after which approval of them, tracks would be delivered in <strong>${trackDelivery} weeks</strong>, & panels delivered in <strong>${panelDelivery} weeks</strong>.
-        Installation of tracks would take approximately <strong>${trackInstallation} working days</strong> and installation of panels would take <strong>${panelInstallation} additional days</strong>.
+        <p class="section-header-item" style="margin: 1.5em 0 0.5em 0; font-weight: bold; font-size: 12pt;">GENERAL:</p>
+        <p>Estimated delivery for shop drawings would be <strong>${shopDrawingDelivery} weeks</strong>, after which approval of them, tracks would be delivered in <strong>${trackDelivery} weeks</strong>, & panels delivered in <strong>${panelDelivery} weeks</strong>.
+        Installation of tracks would take approximately <strong>${trackInstallation} working days</strong> and installation of panels would take <strong>${panelInstallation} additional days</strong>.</p>
       </div>
     `;
   }

@@ -425,22 +425,29 @@ export const getPreviewStyles = (): string => {
         text-indent: 0 !important;
       }
       
-      /* Fix contentEditable styling inconsistencies */
+      /* Fix contentEditable styling inconsistencies - allow inline styles to override */
       [contenteditable="true"] {
-        line-height: 1.15 !important;
-        font-family: var(--page-font-family, 'Times New Roman', Times, serif) !important;
-        font-size: var(--page-font-size, 12pt) !important;
+        line-height: 1.15;
+        font-family: var(--page-font-family, 'Times New Roman', Times, serif);
+        font-size: var(--page-font-size, 12pt);
       }
       
-      /* Ensure all elements created during editing maintain consistent styling */
+      /* Ensure elements without inline styles use defaults, but allow inline styles to override */
+      [contenteditable="true"] *:not([style*="font-size"]):not([style*="line-height"]),
+      [contenteditable="true"] div:not([style*="font-size"]):not([style*="line-height"]),
+      [contenteditable="true"] p:not([style*="font-size"]):not([style*="line-height"]),
+      [contenteditable="true"] span:not([style*="font-size"]):not([style*="line-height"]) {
+        line-height: 1.15;
+        font-family: var(--page-font-family, 'Times New Roman', Times, serif);
+        font-size: var(--page-font-size, 12pt);
+      }
+      
+      /* Only enforce margin/padding with !important */
       [contenteditable="true"] *,
       [contenteditable="true"] div,
       [contenteditable="true"] p,
       [contenteditable="true"] span,
       [contenteditable="true"] br {
-        line-height: 1.15 !important;
-        font-family: var(--page-font-family, 'Times New Roman', Times, serif) !important;
-        font-size: var(--page-font-size, 12pt) !important;
         margin: 0 !important;
         padding: 0 !important;
       }

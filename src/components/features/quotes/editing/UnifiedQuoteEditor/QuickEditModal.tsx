@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Save, 
   X,
@@ -90,6 +91,108 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
     setRichEditingContent(richEditorRef.current.innerHTML);
   }, []);
 
+  // Handle line height changes
+  const handleLineHeightChange = useCallback((lineHeight: string) => {
+    if (!richEditorRef.current) return;
+
+    richEditorRef.current.focus();
+    
+    // Apply line height using CSS styling
+    document.execCommand('styleWithCSS', false, 'true');
+    
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      
+      if (range.collapsed) {
+        // No selection - apply to current block element
+        const container = range.commonAncestorContainer;
+        let element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as Element;
+        
+        // Find the block element (p, div, li, etc.)
+        while (element && element !== richEditorRef.current) {
+          if (['P', 'DIV', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'].includes(element.tagName)) {
+            (element as HTMLElement).style.lineHeight = lineHeight;
+            break;
+          }
+          element = element.parentElement;
+        }
+        
+        // If no block element found, apply to the whole editor
+        if (!element || element === richEditorRef.current) {
+          richEditorRef.current.style.lineHeight = lineHeight;
+        }
+      } else {
+        // Has selection - wrap in div with line height
+        const selectedContent = range.extractContents();
+        const div = document.createElement('div');
+        div.style.lineHeight = lineHeight;
+        div.appendChild(selectedContent);
+        range.insertNode(div);
+        
+        // Restore selection
+        range.selectNodeContents(div);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    }
+    
+    // Update the rich editing content
+    setRichEditingContent(richEditorRef.current.innerHTML);
+  }, []);
+
+  // Handle font size changes
+  const handleFontSizeChange = useCallback((fontSize: string) => {
+    if (!richEditorRef.current) return;
+
+    richEditorRef.current.focus();
+    
+    // Apply font size using CSS styling
+    document.execCommand('styleWithCSS', false, 'true');
+    
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      
+      if (range.collapsed) {
+        // No selection - apply to current element or create a span for future typing
+        const container = range.commonAncestorContainer;
+        let element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container as Element;
+        
+        if (element && element !== richEditorRef.current) {
+          (element as HTMLElement).style.fontSize = `${fontSize}px`;
+        } else {
+          // Create a span for future typing
+          const span = document.createElement('span');
+          span.style.fontSize = `${fontSize}px`;
+          span.innerHTML = '&nbsp;'; // Non-breaking space to make it visible
+          range.insertNode(span);
+          
+          // Position cursor inside the span
+          range.setStart(span.firstChild || span, 1);
+          range.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+      } else {
+        // Has selection - wrap in span with font size
+        const selectedContent = range.extractContents();
+        const span = document.createElement('span');
+        span.style.fontSize = `${fontSize}px`;
+        span.appendChild(selectedContent);
+        range.insertNode(span);
+        
+        // Restore selection
+        range.selectNodeContents(span);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    }
+    
+    // Update the rich editing content
+    setRichEditingContent(richEditorRef.current.innerHTML);
+  }, []);
+
   // Handle rich text input changes
   const handleRichTextInput = useCallback(() => {
     if (richEditorRef.current) {
@@ -114,8 +217,14 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
     }
   }, []);
 
-  // Check if this section has embedded headers (panels and terms)
-  const hasEmbeddedHeader = section.id === 'panels' || section.id === 'terms';
+  // Check if this section has embedded headers (panels, terms, track, support, general, pocket-doors, pass-doors)
+  const hasEmbeddedHeader = section.id === 'panels' || 
+                            section.id === 'terms' ||
+                            section.id === 'track' ||
+                            section.id === 'support' ||
+                            section.id === 'general' ||
+                            section.id === 'pocket-doors' ||
+                            section.id === 'pass-doors';
 
   // Handle save
   const handleSave = useCallback(() => {
@@ -346,6 +455,45 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
                 >
                   <AlignRight className="w-4 h-4" />
                 </Button>
+
+                <Separator orientation="vertical" className="h-6 mx-1" />
+
+                {/* Line Height Dropdown */}
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-gray-600 mr-1">Line Height:</span>
+                  <Select onValueChange={handleLineHeightChange}>
+                    <SelectTrigger className="w-20 h-8">
+                      <SelectValue placeholder="1.15" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="1.15">1.15</SelectItem>
+                      <SelectItem value="1.5">1.5</SelectItem>
+                      <SelectItem value="2">2</SelectItem>
+                      <SelectItem value="2.5">2.5</SelectItem>
+                      <SelectItem value="3">3</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Separator orientation="vertical" className="h-6 mx-1" />
+
+                {/* Font Size Dropdown */}
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-gray-600 mr-1">Size:</span>
+                  <Select onValueChange={handleFontSizeChange}>
+                    <SelectTrigger className="w-16 h-8">
+                      <SelectValue placeholder="14" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {Array.from({ length: 72 }, (_, i) => i + 1).map(size => (
+                        <SelectItem key={size} value={size.toString()}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Section Content Label */}

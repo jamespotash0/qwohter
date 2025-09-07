@@ -234,7 +234,7 @@ export class SectionGenerators {
       : "This pocket door is designed to house the panels within the stack, offering space-efficient storage and acoustically enhanced performance.";
 
     return `<div class="pocket-doors-section" style="line-height: 1.15;">
-      <h2 class="section-header editable-header" contenteditable="false">POCKET DOORS:</h2>
+      <p class="section-header-item" style="margin: 1.5em 0 0.5em 0; font-weight: bold; font-size: 12pt;">POCKET DOORS:</p>
       <p>
         ${wallDescriptions}. ${summary}
       </p>
@@ -322,7 +322,7 @@ export class SectionGenerators {
       : "This pass door panel is incorporated to allow for convenient access without disrupting the overall wall system.";
 
     return `<div class="pass-doors-section" style="line-height: 1.15;">
-      <h2 class="section-header editable-header" contenteditable="false">PASS DOORS:</h2>
+      <p class="section-header-item" style="margin: 1.5em 0 0.5em 0; font-weight: bold; font-size: 12pt;">PASS DOORS:</p>
       <p>
         ${wallDescriptions}. ${summary}
       </p>

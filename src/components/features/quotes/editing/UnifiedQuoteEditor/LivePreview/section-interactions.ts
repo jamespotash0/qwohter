@@ -23,6 +23,11 @@ export class SectionInteractions {
 
       const target = event.target as HTMLElement;
       
+      // Check if the click is on a section header - if so, prevent opening the modal
+      if (target.closest('h2.section-header, h2.editable-header, .section-header-item')) {
+        return;
+      }
+      
       // Find the closest section element or special clickable sections
       let sectionElement = target.closest('[class*="-section"]');
       let sectionId: string;
@@ -62,6 +67,8 @@ export class SectionInteractions {
           sectionId = 'panel-doors';
         } else if (sectionClass === 'signature-acceptance-section') {
           sectionId = 'signature-acceptance';
+        } else if (sectionClass === 'job-info-section') {
+          sectionId = 'job-info';
         } else {
           // For normal sections, extract the base name (remove -section suffix)
           sectionId = sectionClass.replace('-section', '');
@@ -69,7 +76,7 @@ export class SectionInteractions {
       }
       
       // Skip read-only sections and billing/job info sections
-      const readOnlySections = ['wall-specifications-list', 'pricing', 'billing-job-container', 'job-info-section', 'billing-table'];
+      const readOnlySections = ['wall-specifications-list', 'pricing', 'billing-job-container', 'job-info-section', 'job-info', 'billing-table', 'header', 'header-section'];
       if (readOnlySections.includes(sectionId)) {
         return;
       }
@@ -108,6 +115,13 @@ export class SectionInteractions {
   static createSectionHoverHandler(setHoveredSectionId: (id: string | null) => void) {
     return (event: React.MouseEvent) => {
       const target = event.target as HTMLElement;
+      
+      // Check if hovering over a section header - if so, don't show hover effects
+      if (target.closest('h2.section-header, h2.editable-header, .section-header-item')) {
+        setHoveredSectionId(null);
+        return;
+      }
+      
       let sectionElement = target.closest('[class*="-section"]');
       let sectionId: string | null = null;
       
@@ -126,6 +140,8 @@ export class SectionInteractions {
             sectionId = 'panel-doors';
           } else if (sectionClass === 'signature-acceptance-section') {
             sectionId = 'signature-acceptance';
+          } else if (sectionClass === 'job-info-section') {
+            sectionId = 'job-info';
           } else {
             // For regular sections, remove -section suffix
             sectionId = sectionClass.replace('-section', '');
@@ -148,7 +164,7 @@ export class SectionInteractions {
       }
       
       if (sectionId) {
-        const readOnlySections = ['wall-specifications-list', 'pricing', 'billing-job-container', 'job-info-section', 'billing-table'];
+        const readOnlySections = ['wall-specifications-list', 'pricing', 'billing-job-container', 'job-info-section', 'job-info', 'billing-table', 'header', 'header-section'];
         
         if (!readOnlySections.includes(sectionId)) {
           setHoveredSectionId(sectionId);
