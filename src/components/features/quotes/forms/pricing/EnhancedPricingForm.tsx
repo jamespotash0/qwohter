@@ -21,8 +21,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
   
   // Separate state for percentage inputs to prevent focus loss during typing
   const [percentageInputs, setPercentageInputs] = useState({
-    gross_profit_percentage: data.gross_profit_percentage?.toString() || '30',
-    gross_profit_margin: data.gross_profit_margin?.toString() || '15',
+    markup_percentage: data.markup_percentage && data.markup_percentage > 0 ? data.markup_percentage.toString() : '',
+    markup_margin: data.markup_margin && data.markup_margin > 0 ? data.markup_margin.toString() : '',
     unseen_costs_percentage: data.unseen_costs_percentage?.toString() || '10'
   });
 
@@ -37,7 +37,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
   }, []);
 
   // Handle percentage input changes - update both display and data state
-  const handlePercentageChange = useCallback((field: 'gross_profit_percentage' | 'gross_profit_margin' | 'unseen_costs_percentage', value: string) => {
+  const handlePercentageChange = useCallback((field: 'markup_percentage' | 'markup_margin' | 'unseen_costs_percentage', value: string) => {
     // Allow empty string and valid numbers while typing
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
       // Update display value immediately
@@ -76,8 +76,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
     localData.track_freight_factory,
     localData.panel_freight_factory,
     localData.local_handling_costs,
-    localData.gross_profit_percentage,
-    localData.gross_profit_margin,
+    localData.markup_percentage,
+    localData.markup_margin,
     localData.unseen_costs_percentage,
     localData.unseen_costs_locked,
     localData.unseen_costs,
@@ -403,15 +403,15 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
 
           {/* Profit Percentages - 2 columns */}
           <div className="mt-8">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Profit Margins</h4>
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">Markup & Profit Margins</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="gross_profit_percentage" className="text-sm font-medium text-gray-700">
-                    Base Cost Gross Profit Percentage
+                  <Label htmlFor="markup_percentage" className="text-sm font-medium text-gray-700">
+                    Base Cost Markup Percentage
                   </Label>
                   <InfoIcon 
-                    title="Base Cost Gross Profit Percentage"
+                    title="Base Cost Markup Percentage"
                     description="The percentage markup applied to your total base costs (materials, labor, equipment, unseen costs) to determine the base selling price before shipping. Industry standard is typically 20-40% depending on market conditions and competition."
                     size={14}
                   />
@@ -419,11 +419,11 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
                     <Input
-                      id="gross_profit_percentage"
+                      id="markup_percentage"
                       type="text"
-                      value={percentageInputs.gross_profit_percentage}
-                      onChange={(e) => handlePercentageChange("gross_profit_percentage", e.target.value)}
-                      placeholder="30"
+                      value={percentageInputs.markup_percentage}
+                      onChange={(e) => handlePercentageChange("markup_percentage", e.target.value)}
+                      placeholder="Enter a number"
                       className="w-full h-11 pr-8 border-gray-300 focus:border-green-500 focus:ring-green-500"
                     />
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
@@ -432,27 +432,30 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                     {formatCurrency(localData.base_selling_price - localData.cost_subtotal)}
                   </span>
                 </div>
+                <div className="text-xs text-blue-600 mt-1">
+                  Gross Profit: {localData.base_selling_price > 0 ? ((localData.base_selling_price - localData.cost_subtotal) / localData.base_selling_price * 100).toFixed(1) : 0}%
+                </div>
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="gross_profit_margin" className="text-sm font-medium text-gray-700">
-                    Shipping Profit Margin
+                  <Label htmlFor="markup_margin" className="text-sm font-medium text-gray-700">
+                    Shipping Markup Percentage
                   </Label>
                   <InfoIcon 
-                    title="Shipping Profit Margin"
-                    description="Additional profit margin applied to shipping and handling costs. This helps cover administrative overhead and provides additional profit on freight services."
+                    title="Shipping Markup Margin"
+                    description="Additional markup margin applied to shipping and handling costs. This helps cover administrative overhead and provides additional profit on freight services."
                     size={14}
                   />
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
                     <Input
-                      id="gross_profit_margin"
+                      id="markup_margin"
                       type="text"
-                      value={percentageInputs.gross_profit_margin}
-                      onChange={(e) => handlePercentageChange("gross_profit_margin", e.target.value)}
-                      placeholder="15"
+                      value={percentageInputs.markup_margin}
+                      onChange={(e) => handlePercentageChange("markup_margin", e.target.value)}
+                      placeholder="Enter a number"
                       className="w-full h-11 pr-8 border-gray-300 focus:border-orange-500 focus:ring-orange-500"
                     />
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
@@ -460,6 +463,9 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   <span className="text-lg font-semibold text-orange-600 min-w-[100px]">
                     {formatCurrency(localData.shipping_freight_subtotal - localData.shipping_handling_subtotal)}
                   </span>
+                </div>
+                <div className="text-xs text-blue-600 mt-1">
+                  Gross Profit: {localData.shipping_freight_subtotal > 0 ? ((localData.shipping_freight_subtotal - localData.shipping_handling_subtotal) / localData.shipping_freight_subtotal * 100).toFixed(1) : 0}%
                 </div>
               </div>
             </div>
@@ -477,7 +483,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                 <span className="font-semibold text-gray-900">{formatCurrency(localData.cost_subtotal)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="font-medium text-gray-700">Base Cost Gross Profit Amount ({localData.gross_profit_percentage}%)</span>
+                <span className="font-medium text-gray-700">Base Cost Markup Amount ({localData.markup_percentage}%)</span>
                 <span className="font-semibold text-green-600">{formatCurrency(localData.base_selling_price - localData.cost_subtotal)}</span>
               </div>
               <div className="flex justify-between items-center pt-3 border-t border-emerald-200">
@@ -492,7 +498,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   <span className="font-semibold text-gray-900">{formatCurrency(localData.shipping_handling_subtotal)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700">Shipping Gross Profit Amount ({localData.gross_profit_margin}%)</span>
+                  <span className="font-medium text-gray-700">Shipping Markup Amount ({localData.markup_margin}%)</span>
                   <span className="font-semibold text-orange-600">{formatCurrency(localData.shipping_freight_subtotal - localData.shipping_handling_subtotal)}</span>
                 </div>
                 <div className="flex justify-between items-center pt-3 border-t border-orange-200">
@@ -538,7 +544,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                         handleInputChange("paymentUponDrawings", value);
                       }
                     }}
-                    placeholder="33"
+                    placeholder="Enter a number"
                     required
                     className="h-11 pr-8 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
@@ -568,7 +574,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                         handleInputChange("paymentUponTrackInstallation", value);
                       }
                     }}
-                    placeholder="33"
+                    placeholder="Enter a number"
                     required
                     className="h-11 pr-8 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />

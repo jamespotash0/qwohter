@@ -107,6 +107,7 @@ export const QuoteDataPanelCore: React.FC<QuoteDataPanelProps> = ({
         isOpen={openSections.pricing}
         onToggle={() => toggleSection('pricing')}
         onFieldChange={handleFieldChange}
+        onChange={onChange}
       />
     </div>
   );

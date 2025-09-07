@@ -14,8 +14,8 @@ export interface EnhancedPricingData {
   panel_freight_factory: number;              // Freight from factory (panels)  
   local_handling_costs: number;               // Local handling costs
   
-  gross_profit_percentage: number;            // Gross profit percentage
-  gross_profit_margin: number;                // Gross profit margin
+  markup_percentage: number;                  // Markup percentage (for materials cost)
+  markup_margin: number;                      // Markup margin (for shipping/freight)
   
   // ========== AUTO-CALCULATED FIELDS ==========
   unseen_costs: number;                       // Calculated from unseen_costs_percentage
@@ -50,8 +50,8 @@ export const defaultEnhancedPricing: EnhancedPricingData = {
   track_freight_factory: 0,
   panel_freight_factory: 0,
   local_handling_costs: 0,
-  gross_profit_percentage: 30, // Default 30%
-  gross_profit_margin: 15,     // Default 15%
+  markup_percentage: 0,        // No default - user enters their own
+  markup_margin: 0,            // No default - user enters their own
   
   // Auto-calculated fields
   unseen_costs: 0,
@@ -88,8 +88,8 @@ export const calculateEnhancedPricing = (data: EnhancedPricingData): EnhancedPri
     data.panel_labor_cost +
     unseen_costs;
   
-  // Calculate base selling price (cost + gross profit)
-  const base_selling_price = cost_subtotal + (cost_subtotal * data.gross_profit_percentage / 100);
+  // Calculate base selling price (cost + markup)
+  const base_selling_price = cost_subtotal + (cost_subtotal * data.markup_percentage / 100);
   
   // Calculate shipping & handling subtotal
   const shipping_handling_subtotal = 
@@ -98,7 +98,7 @@ export const calculateEnhancedPricing = (data: EnhancedPricingData): EnhancedPri
     data.local_handling_costs;
   
   // Calculate shipping/freight subtotal (shipping + margin)
-  const shipping_freight_subtotal = shipping_handling_subtotal + (shipping_handling_subtotal * data.gross_profit_margin / 100);
+  const shipping_freight_subtotal = shipping_handling_subtotal + (shipping_handling_subtotal * data.markup_margin / 100);
   
   // Calculate final selling price
   const selling_price = base_selling_price + shipping_freight_subtotal;

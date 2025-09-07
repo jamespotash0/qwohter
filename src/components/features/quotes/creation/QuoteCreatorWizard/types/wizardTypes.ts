@@ -45,11 +45,33 @@ export interface DeliveryLabor {
 }
 
 export interface Pricing {
-  basePrice: number;
-  freight: number;
-  total: string;
+  // basePrice: number;
+  // freight: number;
+  // total: string;
   paymentUponDrawings: string;
   paymentUponTrackInstallation: string;
+  // Enhanced pricing fields
+  kwik_wall_materials_cost?: number;
+  misc_materials_cost?: number;
+  misc_materials_description?: string;
+  delivery_cost_track?: number;
+  delivery_cost_panel?: number;
+  track_equipment_costs?: number;
+  track_labor_cost?: number;
+  panel_equipment_costs?: number;
+  panel_labor_cost?: number;
+  track_freight_factory?: number;
+  panel_freight_factory?: number;
+  local_handling_costs?: number;
+  cost_markup_percentage?: number;
+  shipping_markup_percentage?: number;
+  unseen_costs?: number;
+  unseen_costs_percentage?: number;
+  unseen_costs_locked?: boolean;
+  material_cost_subtotal?: number;
+  base_selling_price?: number;
+  shipping_handlingFreight_subtotal?: number;
+  total_selling_price?: number;
 }
 
 export interface WizardStep {
