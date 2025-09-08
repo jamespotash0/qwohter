@@ -163,13 +163,29 @@ export const generateQuotePDF = async (
               }
               
               /* Remove interactive hover effects for print */
-              [class*="-section"]:hover::after {
+              [class*="-section"]:hover::after,
+              .proposal-intro:hover::after,
+              .pocket-doors-section:hover::after,
+              .pass-doors-section:hover::after {
                 display: none !important;
               }
               
-              [class*="-section"]:hover {
+              [class*="-section"]:hover,
+              .proposal-intro:hover,
+              .pocket-doors-section:hover,
+              .pass-doors-section:hover {
                 background-color: transparent !important;
                 box-shadow: none !important;
+              }
+              
+              /* Remove all interactive styles from sections during print */
+              .proposal-intro,
+              .pocket-doors-section,
+              .pass-doors-section,
+              [class*="-section"] {
+                cursor: default !important;
+                transition: none !important;
+                border-radius: 0 !important;
               }
               
               /* Ensure quote document styling is preserved */
