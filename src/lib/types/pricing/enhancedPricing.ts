@@ -109,6 +109,7 @@ export const calculateEnhancedPricing = (data: EnhancedPricingData): EnhancedPri
     unseen_costs,
     cost_subtotal,
     base_selling_price,
+    shipping_cost_subtotal,  // This was missing!
     shipping_selling_price,
     final_selling_price,
     

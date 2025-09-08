@@ -37,7 +37,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
   }, []);
 
   // Handle percentage input changes - update both display and data state
-  const handlePercentageChange = useCallback((field: 'markup_percentage' | 'markup_margin' | 'unseen_costs_percentage', value: string) => {
+  const handlePercentageChange = useCallback((field: 'materials_markup_percentage' | 'shipping_markup_percentage' | 'unseen_costs_percentage', value: string) => {
     // Allow empty string and valid numbers while typing
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
       // Update display value immediately
@@ -407,7 +407,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="markup_percentage" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="materials_markup_percentage" className="text-sm font-medium text-gray-700">
                     Base Cost Markup Percentage
                   </Label>
                   <InfoIcon 
@@ -419,10 +419,10 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
                     <Input
-                      id="markup_percentage"
+                      id="materials_markup_percentage"
                       type="text"
                       value={percentageInputs.materials_markup_percentage}
-                      onChange={(e) => handlePercentageChange("markup_percentage", e.target.value)}
+                      onChange={(e) => handlePercentageChange("materials_markup_percentage", e.target.value)}
                       placeholder="Enter a number"
                       className="w-full h-11 pr-8 border-gray-300 focus:border-green-500 focus:ring-green-500"
                     />
@@ -433,7 +433,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   </span>
                 </div>
                 <div className="text-xs text-blue-600 mt-1">
-                  Gross Profit: {localData.base_selling_price > 0 ? ((localData.base_selling_price - localData.cost_subtotal) / localData.base_selling_price * 100).toFixed(1) : 0}%
+                  Gross Profit: {localData.base_selling_price > 0 && localData.cost_subtotal > 0 ? ((localData.base_selling_price - localData.cost_subtotal) / localData.base_selling_price * 100).toFixed(1) : 0}%
                 </div>
               </div>
 
@@ -443,7 +443,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                     Shipping Markup Percentage
                   </Label>
                   <InfoIcon 
-                    title="Shipping Markup Margin"
+                    title="Shipping Markup Percentage"
                     description="Additional markup margin applied to shipping and handling costs. This helps cover administrative overhead and provides additional profit on freight services."
                     size={14}
                   />
@@ -451,10 +451,10 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
                     <Input
-                      id="markup_margin"
+                      id="shipping_markup_percentage"
                       type="text"
                       value={percentageInputs.shipping_markup_percentage}
-                      onChange={(e) => handlePercentageChange("markup_margin", e.target.value)}
+                      onChange={(e) => handlePercentageChange("shipping_markup_percentage", e.target.value)}
                       placeholder="Enter a number"
                       className="w-full h-11 pr-8 border-gray-300 focus:border-orange-500 focus:ring-orange-500"
                     />
@@ -465,7 +465,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   </span>
                 </div>
                 <div className="text-xs text-blue-600 mt-1">
-                  Gross Profit: {localData.shipping_selling_price > 0 ? ((localData.shipping_selling_price - localData.shipping_cost_subtotal) / localData.shipping_selling_price * 100).toFixed(1) : 0}%
+                  Gross Profit: {localData.shipping_selling_price > 0 && localData.shipping_cost_subtotal > 0 ? ((localData.shipping_selling_price - localData.shipping_cost_subtotal) / localData.shipping_selling_price * 100).toFixed(1) : 0}%
                 </div>
               </div>
             </div>
@@ -524,7 +524,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="paymentUponDrawings" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="payment_upon_drawings" className="text-sm font-medium text-gray-700">
                     Payment % Upon Drawings <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
@@ -535,7 +535,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                 </div>
                 <div className="relative">
                   <Input
-                    id="paymentUponDrawings"
+                    id="payment_upon_drawings"
                     type="text"
                     value={localData.payment_upon_drawings}
                     onChange={(e) => {
@@ -554,7 +554,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
               
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="paymentUponTrackInstallation" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="payment_upon_track_installation" className="text-sm font-medium text-gray-700">
                     Payment % Upon Track Installation <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
@@ -565,7 +565,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                 </div>
                 <div className="relative">
                   <Input
-                    id="paymentUponTrackInstallation"
+                    id="payment_upon_track_installation"
                     type="text"
                     value={localData.payment_upon_track_installation}
                     onChange={(e) => {
