@@ -5,7 +5,7 @@ import PerWallPocketDoorsForm from "@/components/features/quotes/forms/walls/Per
 import PerWallStructureForm from "@/components/features/quotes/forms/walls/PerWallStructureForm";
 import DeliveryLaborForm from "@/components/features/quotes/forms/delivery/DeliveryLaborForm";
 import EnhancedPricingForm from "@/components/features/quotes/forms/pricing/EnhancedPricingForm";
-import { EnhancedPricingData, defaultEnhancedPricing } from "@/types/enhancedPricing";
+import { EnhancedPricingData, defaultEnhancedPricing } from "@/lib/types/pricing/enhancedPricing";
 
 import { ContactInfo, JobDetails, DeliveryLabor, Pricing, QuoteData } from '../types/wizardTypes';
 import { WallDetails } from '@/lib/types';
@@ -75,33 +75,33 @@ export const StepContent = ({
         track_freight_factory: pricing.track_freight_factory || 0,
         panel_freight_factory: pricing.panel_freight_factory || 0,
         local_handling_costs: pricing.local_handling_costs || 0,
-        markup_percentage: pricing.markup_percentage || 0,
-        markup_margin: pricing.markup_margin || 0,
+        materials_markup_percentage: pricing.materials_markup_percentage || 0, //cost markup percentage
+        shipping_markup_percentage: pricing.shipping_markup_percentage || 0,
         unseen_costs: pricing.unseen_costs || 0,
         unseen_costs_percentage: pricing.unseen_costs_percentage || 10,
         unseen_costs_locked: pricing.unseen_costs_locked !== false,
         cost_subtotal: pricing.cost_subtotal || 0,
         base_selling_price: pricing.base_selling_price || 0,
-        shipping_handling_subtotal: pricing.shipping_handling_subtotal || 0,
-        shipping_freight_subtotal: pricing.shipping_freight_subtotal || 0,
-        selling_price: pricing.selling_price || 0,
+        shipping_cost_subtotal: pricing.shipping_cost_subtotal || 0,
+        shipping_selling_price: pricing.shipping_selling_price || 0,
+        final_selling_price: pricing.final_selling_price || 0,
         // Legacy fields
-        basePrice: pricing.basePrice,
-        freight: pricing.freight,
-        total: pricing.total,
-        paymentUponDrawings: pricing.paymentUponDrawings,
-        paymentUponTrackInstallation: pricing.paymentUponTrackInstallation
+        // basePrice: pricing.basePrice,
+        // freight: pricing.freight,
+        // total: pricing.total,
+        payment_upon_drawings: pricing.payment_upon_drawings,
+        payment_upon_track_installation: pricing.payment_upon_track_installation
       };
 
       const handleEnhancedUpdate = (updatedData: EnhancedPricingData) => {
         // Convert back to enhanced Pricing format for wizard
         const enhancedPricing: Pricing = {
           // Legacy fields
-          basePrice: updatedData.basePrice,
-          freight: updatedData.freight,
-          total: updatedData.total,
-          paymentUponDrawings: updatedData.paymentUponDrawings,
-          paymentUponTrackInstallation: updatedData.paymentUponTrackInstallation,
+          // basePrice: updatedData.basePrice,
+          // freight: updatedData.freight,
+          // total: updatedData.total,
+          payment_upon_drawings: updatedData.payment_upon_drawings,
+          payment_upon_track_installation: updatedData.payment_upon_track_installation,
           // Enhanced fields
           kwik_wall_materials_cost: updatedData.kwik_wall_materials_cost,
           misc_materials_cost: updatedData.misc_materials_cost,
@@ -115,16 +115,16 @@ export const StepContent = ({
           track_freight_factory: updatedData.track_freight_factory,
           panel_freight_factory: updatedData.panel_freight_factory,
           local_handling_costs: updatedData.local_handling_costs,
-          markup_percentage: updatedData.markup_percentage,
-          markup_margin: updatedData.markup_margin,
+          materials_markup_percentage: updatedData.materials_markup_percentage,
+          shipping_markup_percentage: updatedData.shipping_markup_percentage,
           unseen_costs: updatedData.unseen_costs,
           unseen_costs_percentage: updatedData.unseen_costs_percentage,
           unseen_costs_locked: updatedData.unseen_costs_locked,
           cost_subtotal: updatedData.cost_subtotal,
           base_selling_price: updatedData.base_selling_price,
-          shipping_handling_subtotal: updatedData.shipping_handling_subtotal,
-          shipping_freight_subtotal: updatedData.shipping_freight_subtotal,
-          selling_price: updatedData.selling_price
+          shipping_cost_subtotal: updatedData.shipping_cost_subtotal,
+          shipping_selling_price: updatedData.shipping_selling_price,
+          final_selling_price: updatedData.final_selling_price
         };
         onPricingUpdate(enhancedPricing);
       };

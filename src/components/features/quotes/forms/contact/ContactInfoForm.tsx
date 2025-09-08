@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { User, Mail, Phone, Printer, MapPin, Globe, Plus } from "lucide-react";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useOrganizationSettings } from "@/hooks/useCompanySettings";
-import { extractPrimaryContactInfo } from "@/types/companySettings";
+import { extractPrimaryContactInfo } from "@/lib/types/settings/companySettings";
 
 interface ContactInfoData {
   contactName: string;

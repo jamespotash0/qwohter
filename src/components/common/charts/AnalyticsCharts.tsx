@@ -55,7 +55,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ quotes }) => {
       });
 
       const totalValue = monthQuotes.reduce((sum, q) => {
-        const price = q.price_details?.total || q.price_details?.basePrice || q.price_details?.base_price || 0;
+        const price = q.price_details?.final_selling_price || 0;
         return sum + (typeof price === 'string' ? parseFloat(price) || 0 : price);
       }, 0);
 

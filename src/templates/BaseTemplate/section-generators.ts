@@ -116,9 +116,10 @@ export class SectionGenerators {
   }
 
   generatePricingSection(data: QuoteData): string {
-    const basePriceValue = data.price_details?.basePrice || data.price_details?.base_price;
-    const freightValue = data.price_details?.freight;
-    const totalValue = data.price_details?.total;
+    // Use new enhanced pricing fields with fallbacks to old fields for backward compatibility
+    const basePriceValue = data.price_details?.base_selling_price;
+    const freightValue = data.price_details?.shipping_selling_price;
+    const totalValue = data.price_details?.final_selling_price;
 
     // Additional processing to ensure numeric values with better null handling
     const parsedBasePrice = basePriceValue ? 

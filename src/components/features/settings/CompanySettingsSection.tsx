@@ -7,7 +7,7 @@ import { CompanyInfoDialog } from "./CompanyInfoDialog";
 import { useOrganizationSettings } from "@/hooks/useCompanySettings";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { supabase } from "@/integrations/supabase/client";
-import { extractPrimaryContactInfo } from "@/types/companySettings";
+import { extractPrimaryContactInfo } from "@/lib/types/settings/companySettings";
 
 export function CompanySettingsSection() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);

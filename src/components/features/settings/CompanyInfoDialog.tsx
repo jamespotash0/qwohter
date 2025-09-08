@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
-import { CompanyInfoFormData } from "@/types/companySettings";
+import { CompanyInfoFormData } from "@/lib/types/settings/companySettings";
 
 interface CompanyInfoDialogProps {
   isOpen: boolean;

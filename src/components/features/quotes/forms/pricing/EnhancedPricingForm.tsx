@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { InfoIcon } from "@/components/ui/info-icon";
 import { useEffect, useState, useCallback } from "react";
-import { EnhancedPricingData, defaultEnhancedPricing, calculateEnhancedPricing } from "@/types/enhancedPricing";
+import { EnhancedPricingData, defaultEnhancedPricing, calculateEnhancedPricing } from "@/lib/types/pricing/enhancedPricing";
 import { Calculator, Package } from "lucide-react";
 
 interface EnhancedPricingFormProps {
@@ -21,8 +21,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
   
   // Separate state for percentage inputs to prevent focus loss during typing
   const [percentageInputs, setPercentageInputs] = useState({
-    markup_percentage: data.markup_percentage && data.markup_percentage > 0 ? data.markup_percentage.toString() : '',
-    markup_margin: data.markup_margin && data.markup_margin > 0 ? data.markup_margin.toString() : '',
+    materials_markup_percentage: data.materials_markup_percentage && data.materials_markup_percentage > 0 ? data.materials_markup_percentage.toString() : '',
+    shipping_markup_percentage: data.shipping_markup_percentage && data.shipping_markup_percentage > 0 ? data.shipping_markup_percentage.toString() : '',
     unseen_costs_percentage: data.unseen_costs_percentage?.toString() || '10'
   });
 
@@ -76,8 +76,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
     localData.track_freight_factory,
     localData.panel_freight_factory,
     localData.local_handling_costs,
-    localData.markup_percentage,
-    localData.markup_margin,
+    localData.materials_markup_percentage,
+    localData.shipping_markup_percentage,
     localData.unseen_costs_percentage,
     localData.unseen_costs_locked,
     localData.unseen_costs,
@@ -421,7 +421,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                     <Input
                       id="markup_percentage"
                       type="text"
-                      value={percentageInputs.markup_percentage}
+                      value={percentageInputs.materials_markup_percentage}
                       onChange={(e) => handlePercentageChange("markup_percentage", e.target.value)}
                       placeholder="Enter a number"
                       className="w-full h-11 pr-8 border-gray-300 focus:border-green-500 focus:ring-green-500"
@@ -439,7 +439,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="markup_margin" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="shipping_markup_percentage" className="text-sm font-medium text-gray-700">
                     Shipping Markup Percentage
                   </Label>
                   <InfoIcon 
@@ -453,7 +453,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                     <Input
                       id="markup_margin"
                       type="text"
-                      value={percentageInputs.markup_margin}
+                      value={percentageInputs.shipping_markup_percentage}
                       onChange={(e) => handlePercentageChange("markup_margin", e.target.value)}
                       placeholder="Enter a number"
                       className="w-full h-11 pr-8 border-gray-300 focus:border-orange-500 focus:ring-orange-500"
@@ -461,11 +461,11 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
                   </div>
                   <span className="text-lg font-semibold text-orange-600 min-w-[100px]">
-                    {formatCurrency(localData.shipping_freight_subtotal - localData.shipping_handling_subtotal)}
+                    {formatCurrency(localData.shipping_selling_price - localData.shipping_cost_subtotal)}
                   </span>
                 </div>
                 <div className="text-xs text-blue-600 mt-1">
-                  Gross Profit: {localData.shipping_freight_subtotal > 0 ? ((localData.shipping_freight_subtotal - localData.shipping_handling_subtotal) / localData.shipping_freight_subtotal * 100).toFixed(1) : 0}%
+                  Gross Profit: {localData.shipping_selling_price > 0 ? ((localData.shipping_selling_price - localData.shipping_cost_subtotal) / localData.shipping_selling_price * 100).toFixed(1) : 0}%
                 </div>
               </div>
             </div>
@@ -483,7 +483,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                 <span className="font-semibold text-gray-900">{formatCurrency(localData.cost_subtotal)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="font-medium text-gray-700">Base Cost Markup Amount ({localData.markup_percentage}%)</span>
+                <span className="font-medium text-gray-700">Base Cost Markup Percentage ({localData.materials_markup_percentage}%)</span>
                 <span className="font-semibold text-green-600">{formatCurrency(localData.base_selling_price - localData.cost_subtotal)}</span>
               </div>
               <div className="flex justify-between items-center pt-3 border-t border-emerald-200">
@@ -494,16 +494,16 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
               {/* Shipping & Handling Section */}
               <div className="pt-3 border-t border-emerald-200 space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700">Shipping & Handling Subtotal</span>
-                  <span className="font-semibold text-gray-900">{formatCurrency(localData.shipping_handling_subtotal)}</span>
+                  <span className="font-medium text-gray-700">Shipping & Freight Cost Subtotal</span>
+                  <span className="font-semibold text-gray-900">{formatCurrency(localData.shipping_cost_subtotal)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700">Shipping Markup Amount ({localData.markup_margin}%)</span>
-                  <span className="font-semibold text-orange-600">{formatCurrency(localData.shipping_freight_subtotal - localData.shipping_handling_subtotal)}</span>
+                  <span className="font-medium text-gray-700">Shipping Markup Percentage ({localData.shipping_markup_percentage}%)</span>
+                  <span className="font-semibold text-orange-600">{formatCurrency(localData.shipping_selling_price - localData.shipping_cost_subtotal)}</span>
                 </div>
                 <div className="flex justify-between items-center pt-3 border-t border-orange-200">
-                  <span className="text-xl font-bold text-gray-900">Shipping/Freight Subtotal</span>
-                  <span className="text-2xl font-bold text-orange-600">{formatCurrency(localData.shipping_freight_subtotal)}</span>
+                  <span className="text-xl font-bold text-gray-900">Shipping Selling Price</span>
+                  <span className="text-2xl font-bold text-orange-600">{formatCurrency(localData.shipping_selling_price)}</span>
                 </div>
               </div>
               
@@ -511,7 +511,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
               <div className="pt-4 border-t-2 border-emerald-300">
                 <div className="flex justify-between items-center">
                   <span className="text-2xl font-bold text-gray-900">Final Selling Price</span>
-                  <span className="text-3xl font-bold text-emerald-600">{formatCurrency(localData.selling_price)}</span>
+                  <span className="text-3xl font-bold text-emerald-600">{formatCurrency(localData.final_selling_price)}</span>
                 </div>
               </div>
             </div>
@@ -537,11 +537,11 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   <Input
                     id="paymentUponDrawings"
                     type="text"
-                    value={localData.paymentUponDrawings}
+                    value={localData.payment_upon_drawings}
                     onChange={(e) => {
                       const value = e.target.value.replace(/[^\d]/g, '');
                       if (parseInt(value) <= 100 || value === '') {
-                        handleInputChange("paymentUponDrawings", value);
+                        handleInputChange("payment_upon_drawings", value);
                       }
                     }}
                     placeholder="Enter a number"
@@ -567,11 +567,11 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   <Input
                     id="paymentUponTrackInstallation"
                     type="text"
-                    value={localData.paymentUponTrackInstallation}
+                    value={localData.payment_upon_track_installation}
                     onChange={(e) => {
                       const value = e.target.value.replace(/[^\d]/g, '');
                       if (parseInt(value) <= 100 || value === '') {
-                        handleInputChange("paymentUponTrackInstallation", value);
+                        handleInputChange("payment_upon_track_installation", value);
                       }
                     }}
                     placeholder="Enter a number"

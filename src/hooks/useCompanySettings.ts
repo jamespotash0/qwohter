@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { OrganizationWithCompanyInfo, CompanyInfoFormData } from '@/types/companySettings';
+import { OrganizationWithCompanyInfo, CompanyInfoFormData } from '@/lib/types/settings/companySettings';
 import { organizationSettingsService } from '@/services/companySettingsService';
 
 export function useOrganizationSettings() {

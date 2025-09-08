@@ -1,12 +1,9 @@
 export type QuoteStatus = 'Draft' | 'Pending' | 'Submitted' | 'Won' | 'Rejected';
 
-export interface PricingData {
-  basePrice: number;
-  freight: number;
-  total: string;
-  paymentUponDrawings: string;
-  paymentUponTrackInstallation: string;
-}
+import { EnhancedPricingData } from '@/lib/types/pricing/enhancedPricing';
+
+// Use enhanced pricing data structure
+export type PricingData = EnhancedPricingData;
 
 export interface QuoteCustomization {
   customSections?: Array<{

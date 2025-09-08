@@ -48,7 +48,7 @@ const Analytics = () => {
   // Calculate metrics
   const totalQuotes = quotes.length;
   const totalRevenue = quotes.reduce((sum, quote) => {
-    const total = quote.price_details?.total || quote.price_details?.basePrice || quote.price_details?.base_price || 0;
+    const total = quote.price_details?.final_selling_price || 0;
     
     // Only add if job is won
     if (quote.status === 'Won') {

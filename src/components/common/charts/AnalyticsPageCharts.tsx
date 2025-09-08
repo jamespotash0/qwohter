@@ -64,7 +64,7 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
     const quotesWithDates = quotes.map(q => ({
       ...q,
       parsedDate: new Date(q.created_at),
-      parsedPrice: parseCurrency(q.price_details?.total || q.price_details?.basePrice || q.price_details?.base_price || 0)
+      parsedPrice: parseCurrency(q.price_details?.final_selling_price || 0)
     }));
 
     const monthlyData = months.map(({ month, monthIndex, year }) => {

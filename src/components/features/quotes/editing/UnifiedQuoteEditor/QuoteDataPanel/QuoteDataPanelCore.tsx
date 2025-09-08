@@ -41,16 +41,8 @@ export const QuoteDataPanelCore: React.FC<QuoteDataPanelProps> = ({
     onChange(section, updatedSection);
   }, [data, onChange]);
 
-  // Calculate total price when base price or freight changes
-  useEffect(() => {
-    const basePrice = parseFloat(data.price_details?.basePrice || data.price_details?.base_price || '0');
-    const freight = parseFloat(data.price_details?.freight || '0');
-    
-    if (basePrice > 0 || freight > 0) {
-      const total = basePrice + freight;
-      handleFieldChange('price_details', 'total', total.toFixed(2));
-    }
-  }, [data.price_details?.basePrice, data.price_details?.base_price, data.price_details?.freight, handleFieldChange]);
+  // Note: Total price calculation is now handled by the EnhancedPricingForm
+  // Legacy simple calculation removed in favor of enhanced pricing system
 
   return (
     <div className={`space-y-4 pb-6 ${className}`}>

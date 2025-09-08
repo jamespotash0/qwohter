@@ -1,3 +1,5 @@
+// Main export - now points to EnhancedPricingForm
 export { default as PricingForm } from './EnhancedPricingForm';
 export { default as EnhancedPricingForm } from './EnhancedPricingForm';
-export { default as BasicPricingForm } from './PricingForm';
+
+// BasicPricingForm removed - no longer needed as all components migrated to EnhancedPricingForm

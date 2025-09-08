@@ -4,7 +4,7 @@ import { CollapsibleSection } from './CollapsibleSection';
 import { FieldChangeHandler } from './types';
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
 import EnhancedPricingForm from '@/components/features/quotes/forms/pricing/EnhancedPricingForm';
-import { EnhancedPricingData, defaultEnhancedPricing } from '@/types/enhancedPricing';
+import { EnhancedPricingData, defaultEnhancedPricing } from '@/lib/types/pricing/enhancedPricing';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
@@ -46,8 +46,10 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
       track_freight_factory: priceDetails.track_freight_factory || 0,
       panel_freight_factory: priceDetails.panel_freight_factory || 0,
       local_handling_costs: priceDetails.local_handling_costs || 0,
-      markup_percentage: priceDetails.markup_percentage || priceDetails.gross_profit_percentage || 0,
-      markup_margin: priceDetails.markup_margin || priceDetails.gross_profit_margin || 0,
+      materials_markup_percentage: priceDetails.materials_markup_percentage, 
+      //|| priceDetails.gross_profit_percentage || 0,
+      shipping_markup_percentage: priceDetails.shipping_markup_percentage, 
+      //|| priceDetails.gross_profit_margin || 0,
       
       // Auto-calculated fields (will be recalculated)
       unseen_costs: priceDetails.unseen_costs || 0,
@@ -55,16 +57,16 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
       unseen_costs_locked: priceDetails.unseen_costs_locked !== false, // Default to true
       cost_subtotal: priceDetails.cost_subtotal || 0,
       base_selling_price: priceDetails.base_selling_price || 0,
-      shipping_handling_subtotal: priceDetails.shipping_handling_subtotal || 0,
-      shipping_freight_subtotal: priceDetails.shipping_freight_subtotal || 0,
-      selling_price: priceDetails.selling_price || 0,
+      shipping_cost_subtotal: priceDetails.shipping_cost_subtotal || 0,
+      shipping_selling_price: priceDetails.shipping_selling_price || 0,
+      final_selling_price: priceDetails.final_selling_price || 0,
       
       // Legacy fields (backward compatibility)
-      basePrice: priceDetails.basePrice || priceDetails.base_price || 0,
-      freight: priceDetails.freight || 0,
-      total: priceDetails.total || '0',
-      paymentUponDrawings: priceDetails.paymentUponDrawings || priceDetails.payment_upon_drawings || '33',
-      paymentUponTrackInstallation: priceDetails.paymentUponTrackInstallation || priceDetails.payment_upon_track_installation || '33'
+      // basePrice: priceDetails.basePrice || priceDetails.base_price || 0,
+      // freight: priceDetails.freight || 0,
+      // total: priceDetails.total || '0',
+      payment_upon_drawings: priceDetails.payment_upon_drawings || '33',
+      payment_upon_track_installation: priceDetails.payment_upon_track_installation || '33',
     };
   }, [data.price_details]);
 
@@ -87,11 +89,11 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
       track_freight_factory: updatedData.track_freight_factory,
       panel_freight_factory: updatedData.panel_freight_factory,
       local_handling_costs: updatedData.local_handling_costs,
-      markup_percentage: updatedData.markup_percentage,
-      markup_margin: updatedData.markup_margin,
+      materials_markup_percentage: updatedData.materials_markup_percentage,
+      shipping_markup_percentage: updatedData.shipping_markup_percentage,
       // Keep legacy fields for backward compatibility
-      gross_profit_percentage: updatedData.markup_percentage,
-      gross_profit_margin: updatedData.markup_margin,
+      // gross_profit_percentage: updatedData.markup_percentage,
+      // gross_profit_margin: updatedData.markup_margin,
       
       // Auto-calculated fields
       unseen_costs: updatedData.unseen_costs,
@@ -99,19 +101,20 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
       unseen_costs_locked: updatedData.unseen_costs_locked,
       cost_subtotal: updatedData.cost_subtotal,
       base_selling_price: updatedData.base_selling_price,
-      shipping_handling_subtotal: updatedData.shipping_handling_subtotal,
-      shipping_freight_subtotal: updatedData.shipping_freight_subtotal,
-      selling_price: updatedData.selling_price,
+      shipping_cost_subtotal: updatedData.shipping_cost_subtotal,
+      shipping_selling_price: updatedData.shipping_selling_price,
+      final_selling_price: updatedData.final_selling_price,
       
       // Legacy fields (for backward compatibility)
-      basePrice: updatedData.basePrice,
-      base_price: updatedData.basePrice, // Database field
-      freight: updatedData.freight,
-      total: updatedData.total,
-      paymentUponDrawings: updatedData.paymentUponDrawings,
-      payment_upon_drawings: updatedData.paymentUponDrawings, // Database field
-      paymentUponTrackInstallation: updatedData.paymentUponTrackInstallation,
-      payment_upon_track_installation: updatedData.paymentUponTrackInstallation // Database field
+      // basePrice: updatedData.basePrice,
+      // base_price: updatedData.basePrice, // Database field
+      // freight: updatedData.freight,
+      // total: updatedData.total,
+      // paymentUponDrawings: updatedData.paymentUponDrawings,
+      // paymentUponTrackInstallation: updatedData.paymentUponTrackInstallation,
+
+      payment_upon_drawings: updatedData.payment_upon_drawings, // Database field
+      payment_upon_track_installation: updatedData.payment_upon_track_installation // Database field
     };
 
     // Update the entire price_details section at once
@@ -149,11 +152,11 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
   };
 
   // Calculate markup amounts and gross profit percentages
-  const materialsMarkupAmount = enhancedData.cost_subtotal * (enhancedData.markup_percentage / 100);
+  const materialsMarkupAmount = enhancedData.cost_subtotal * (enhancedData.materials_markup_percentage / 100);
   const materialsGrossProfitPercentage = calculateGrossProfitPercentage(materialsMarkupAmount, enhancedData.base_selling_price);
   
-  const shippingMarkupAmount = enhancedData.shipping_handling_subtotal * (enhancedData.markup_margin / 100);
-  const shippingGrossProfitPercentage = calculateGrossProfitPercentage(shippingMarkupAmount, enhancedData.shipping_freight_subtotal);
+  const shippingMarkupAmount = enhancedData.shipping_cost_subtotal * (enhancedData.shipping_markup_percentage / 100);
+  const shippingGrossProfitPercentage = calculateGrossProfitPercentage(shippingMarkupAmount, enhancedData.shipping_cost_subtotal);
 
   return (
     <CollapsibleSection
@@ -198,19 +201,19 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
               <span className="font-medium text-blue-600">{formatCurrency(materialsMarkupAmount)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Shipping & Freight:</span>
-              <span className="font-medium">{formatCurrency(enhancedData.shipping_freight_subtotal)}</span>
+              <span className="text-gray-600">Shipping & Freight Cost Subtotal:</span>
+              <span className="font-medium">{formatCurrency(enhancedData.shipping_cost_subtotal)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-blue-600">Freight Gross Profit ({shippingGrossProfitPercentage.toFixed(1)}%):</span>
+              <span className="text-blue-600">Shipping & Freight Gross Profit ({shippingGrossProfitPercentage.toFixed(1)}%):</span>
               <span className="font-medium text-blue-600">{formatCurrency(shippingMarkupAmount)}</span>
             </div>
             <div className="flex justify-between text-lg font-bold border-t pt-2">
               <span className="text-gray-900">Final Selling Price:</span>
-              <span className="text-green-600">{formatCurrency(enhancedData.selling_price)}</span>
+              <span className="text-green-600">{formatCurrency(enhancedData.final_selling_price)}</span>
             </div>
             <div className="flex justify-between text-lg font-bold">
-              <span className="text-blue-600">Final Gross Profit ({((materialsMarkupAmount + shippingMarkupAmount) / enhancedData.selling_price * 100).toFixed(1)}%):</span>
+              <span className="text-blue-600">Final Gross Profit ({((materialsMarkupAmount + shippingMarkupAmount) / enhancedData.final_selling_price * 100).toFixed(1)}%):</span>
               <span className="text-blue-600">{formatCurrency(materialsMarkupAmount + shippingMarkupAmount)}</span>
             </div>
           </div>
@@ -220,11 +223,11 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="flex justify-between">
             <span className="text-gray-600">Payment Upon Drawings:</span>
-            <span className="font-medium">{enhancedData.paymentUponDrawings}%</span>
+            <span className="font-medium">{enhancedData.payment_upon_drawings}%</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Payment Upon Track Installation:</span>
-            <span className="font-medium">{enhancedData.paymentUponTrackInstallation}%</span>
+            <span className="font-medium">{enhancedData.payment_upon_track_installation}%</span>
           </div>
         </div>
 
