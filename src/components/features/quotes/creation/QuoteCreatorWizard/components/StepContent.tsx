@@ -88,21 +88,12 @@ export const StepContent = ({
         shipping_selling_gross_profit_percentage: pricing.shipping_selling_gross_profit_percentage || 0,
         final_selling_gross_profit_percentage: pricing.final_selling_gross_profit_percentage || 0,
         final_selling_price_profit_amount: pricing.final_selling_price_profit_amount || 0,
-        // Legacy fields
-        // basePrice: pricing.basePrice,
-        // freight: pricing.freight,
-        // total: pricing.total,
         payment_upon_drawings: pricing.payment_upon_drawings,
         payment_upon_track_installation: pricing.payment_upon_track_installation
       };
 
       const handleEnhancedUpdate = (updatedData: EnhancedPricingData) => {
-        // Convert back to enhanced Pricing format for wizard
         const enhancedPricing: Pricing = {
-          // Legacy fields
-          // basePrice: updatedData.basePrice,
-          // freight: updatedData.freight,
-          // total: updatedData.total,
           payment_upon_drawings: updatedData.payment_upon_drawings,
           payment_upon_track_installation: updatedData.payment_upon_track_installation,
           // Enhanced fields

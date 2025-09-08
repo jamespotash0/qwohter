@@ -29,11 +29,6 @@ export interface EnhancedPricingData {
   shipping_selling_gross_profit_percentage: number;
   final_selling_gross_profit_percentage: number;
   final_selling_price_profit_amount: number;
-  
-  // ========== LEGACY FIELDS (Mapped from auto-calculated) ==========
-  // basePrice: number;                          // Maps to base_selling_price
-  // freight: number;                           // Maps to shipping_freight_subtotal  
-  // total: string;                             // Maps to final_selling_price
   payment_upon_drawings: string;                // Keep as-is
   payment_upon_track_installation: string;       // Keep as-is
 }
@@ -68,12 +63,6 @@ export const defaultEnhancedPricing: EnhancedPricingData = {
   shipping_selling_gross_profit_percentage: 0,
   final_selling_gross_profit_percentage: 0,
   final_selling_price_profit_amount: 0,
-
-  
-  // Legacy fields
-  // basePrice: 0,
-  // freight: 0,
-  // total: '0',
   payment_upon_drawings: '33',
   payment_upon_track_installation: '33'
 };
@@ -132,17 +121,12 @@ export const calculateEnhancedPricing = (data: EnhancedPricingData): EnhancedPri
     unseen_costs,
     cost_subtotal,
     base_selling_price,
-    shipping_cost_subtotal,  // This was missing!
+    shipping_cost_subtotal,
     shipping_selling_price,
     final_selling_price,
     base_selling_gross_profit_percentage,
     shipping_selling_gross_profit_percentage,
     final_selling_gross_profit_percentage,
     final_selling_price_profit_amount,
-    
-    // Update legacy fields for backward compatibility
-    // basePrice: base_selling_price,
-    // freight: shipping_selling_price,
-    // total: final_selling_price.toString()
   };
 };

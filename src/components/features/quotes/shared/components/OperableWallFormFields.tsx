@@ -55,8 +55,8 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
     panelConfigurations,
     passDoorOptions,
     panelFinishCategories,
-    finalClosureSystems,
-    initialClosureSystems
+    // finalClosureSystems,
+    // initialClosureSystems
   } = useOperableWallForm({ wall, wallName, onChange });
 
   // Layout classes based on context
@@ -67,7 +67,9 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
       {/* Row 1: Panel Configuration, Series, Model */}
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="panelConfiguration" className={labelClass}>Panel Configuration *</Label>
+          <Label htmlFor="panelConfiguration" className={labelClass}>
+            Panel Configuration <span className="text-red-500">*</span>
+          </Label>
           <Select
             value={selectedPanelConfiguration}
             onValueChange={(value) => handleFieldChange("panelConfiguration", value)}
@@ -87,7 +89,9 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="series" className={labelClass}>Series *</Label>
+          <Label htmlFor="series" className={labelClass}>
+            Series <span className="text-red-500">*</span>
+          </Label>
           <Select
             value={selectedSeries}
             onValueChange={(value) => handleFieldChange("series", value)}
@@ -108,7 +112,9 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="model" className={labelClass}>Model *</Label>
+          <Label htmlFor="model" className={labelClass}>
+            Model <span className="text-red-500">*</span>
+          </Label>
           <Select
             value={selectedModel}
             onValueChange={(value) => handleFieldChange("model", value)}
@@ -132,7 +138,9 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
       {/* Row 2: Panel Skin, STC Rating */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="panelSkin" className={labelClass}>Panel Skin *</Label>
+          <Label htmlFor="panelSkin" className={labelClass}>
+            Panel Skin <span className="text-red-500">*</span>
+          </Label>
           <Select
             value={selectedPanelSkin}
             onValueChange={(value) => handleFieldChange("panelSkin", value)}
@@ -153,7 +161,9 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="stcRating" className={labelClass}>STC Rating *</Label>
+          <Label htmlFor="stcRating" className={labelClass}>
+            STC Rating <span className="text-red-500">*</span>
+          </Label>
           <Select
             value={selectedSTCRating}
             onValueChange={(value) => handleFieldChange("stcRating", value)}
@@ -175,20 +185,6 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
       </div>
       {showFullFields && (
         <>
-        {/* Row 3: Panel Thickness */}
-          {/* <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="panelThickness" className={labelClass}>Panel Thickness (Calculated)</Label>
-              <Input
-                value={selectedPanelThickness}
-                readOnly
-                className="bg-gray-50"
-                placeholder={selectedModel ? "Auto-calculated" : "Select model first"}
-              />
-            </div>
-
-          </div> */}
-
           {/* Row 4: Pass Door Panels, Pass Door Quantity */}
           <div className="grid grid-cols-3 gap-4">
              <div className="space-y-2">
@@ -222,13 +218,18 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="passDoorQuantity" className={labelClass}>Pass Door Quantity</Label>
+              <Label htmlFor="passDoorQuantity" className={labelClass}>
+                Pass Door Quantity
+              {selectedPassDoorPanels != '' && (<span className="text-red-500"> *</span>)}
+              </Label>
               <Select
                 value={selectedPassDoorQuantity}
                 onValueChange={(value) => handleFieldChange("passDoorQuantity", value)}
                 disabled={!selectedPassDoorPanels || selectedPassDoorPanels === "None"}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={selectedPassDoorPanels !== "" && (!selectedPassDoorQuantity || selectedPassDoorQuantity === "None") ? "border-red-500" : ""}
+                >
                   <SelectValue placeholder="Select quantity" />
                 </SelectTrigger>
                 <SelectContent>
@@ -242,6 +243,7 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
               </Select>
             </div>
           </div>
+
 
           {/* Row 5: Panel Finish Category, Panel Finish Specific Item */}
           <div className="grid grid-cols-2 gap-4">
@@ -267,13 +269,23 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="panelFinishSpecificItem" className={labelClass}>Panel Finish Specific Item *</Label>
+              <Label htmlFor="panelFinishSpecificItem" className={labelClass}>
+                Panel Finish Specific Item 
+                {selectedPanelFinishCategory != '' && (<span className="text-red-500">*</span>)}
+              </Label>
               <Select
                 value={selectedPanelFinishSpecificItem}
                 onValueChange={(value) => handleFieldChange("panelFinishSpecificItem", value)}
                 disabled={!selectedPanelFinishCategory || selectedPanelFinishCategory === "None"}
               >
-                <SelectTrigger>
+                <SelectTrigger 
+                  className={
+                    selectedPanelFinishCategory !== "" &&
+                    (!selectedPanelFinishSpecificItem || selectedPanelFinishSpecificItem === "None")
+                      ? "border-red-500"
+                      : ""
+                  }
+                >
                   <SelectValue placeholder="Select specific item" />
                 </SelectTrigger>
                 <SelectContent>
@@ -291,7 +303,9 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
           {/* Row 6: Initial Closure System, End Panel Type */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="initialClosureSystem" className={labelClass}>Initial Closure System</Label>
+              <Label htmlFor="initialClosureSystem" className={labelClass}>
+                Initial Closure System <span className="text-red-500">*</span>
+              </Label>
               <Select
                 value={selectedInitialClosureSystem}
                 onValueChange={(value) => handleFieldChange("initialClosureSystem", value)}
@@ -312,7 +326,9 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="finalClosureSystem" className={labelClass}>Final Closure System</Label>
+              <Label htmlFor="finalClosureSystem" className={labelClass}>
+                Final Closure System <span className="text-red-500">*</span>
+              </Label>
               <Select
                 value={selectedFinalClosureSystem}
                 onValueChange={(value) => handleFieldChange("finalClosureSystem", value)}
@@ -336,7 +352,9 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
           {/* Row 7: Vertical Seals, Bottom Seals, Top Seals */}
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="verticalSeals" className={labelClass}>Vertical Seals</Label>
+              <Label htmlFor="verticalSeals" className={labelClass}>
+                Vertical Seals <span className="text-red-500">*</span>
+              </Label>
               <Select
                 value={selectedVerticalSeals}
                 onValueChange={(value) => handleFieldChange("verticalSeals", value)}
@@ -357,7 +375,9 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="bottomSeals" className={labelClass}>Horizontal Bottom Seals</Label>
+              <Label htmlFor="bottomSeals" className={labelClass}>
+                Horizontal Bottom Seals <span className="text-red-500">*</span>
+              </Label>
               <Select
                 value={selectedBottomSeals}
                 onValueChange={(value) => handleFieldChange("bottomSeals", value)}
@@ -378,7 +398,9 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="topSeals" className={labelClass}>Horizontal Top Seals</Label>
+              <Label htmlFor="topSeals" className={labelClass}>
+                Horizontal Top Seals <span className="text-red-500">*</span>
+              </Label>
               <Select
                 value={selectedTopSeals}
                 onValueChange={(value) => handleFieldChange("topSeals", value)}
@@ -412,7 +434,9 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="trackSystem" className={labelClass}>Track System *</Label>
+              <Label htmlFor="trackSystem" className={labelClass}>
+                Track System <span className="text-red-500">*</span>
+              </Label>
               <Select
                 value={calculatedTrackSystem}
                 onValueChange={(value) => handleFieldChange("trackSystem", value)}

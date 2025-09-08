@@ -136,7 +136,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
         <div className="space-y-2">
           <Label htmlFor="contactName" className="text-sm font-medium flex items-center gap-2">
             <User className="w-4 h-4" />
-            Contact Name *
+            Contact Name <span className="text-red-500">*</span>
           </Label>
           {showCustomNameInput ? (
             <div className="space-y-2">
@@ -147,7 +147,9 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
                   handleChange("contactName", e.target.value);
                 }}
                 placeholder="Enter custom contact name"
-                className="h-10"
+                className={`h-10 ${
+                  customName.trim() ? 'border-green-500' : 'border-red-500'
+                }`}
                 required
               />
               <button
@@ -168,7 +170,9 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
               onValueChange={handleNameChange}
               required
             >
-              <SelectTrigger className="h-10">
+              <SelectTrigger className={`h-10 ${
+                data.contactName ? 'border-green-500' : 'border-red-500'
+              }`}>
                 <SelectValue placeholder={loading ? "Loading contacts..." : "Select contact name"} />
               </SelectTrigger>
               <SelectContent>
@@ -192,7 +196,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
           <div className="space-y-2">
           <Label htmlFor="contactEmail" className="text-sm font-medium flex items-center gap-2">
             <Mail className="w-4 h-4" />
-            Contact Email *
+            Contact Email <span className="text-red-500">*</span>
           </Label>
           {showCustomEmailInput ? (
             <div className="space-y-2">
@@ -204,7 +208,9 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
                 }}
                 placeholder="Enter custom email address"
                 type="email"
-                className="h-10"
+                className={`h-10 ${
+                  customEmail.trim() ? 'border-green-500' : 'border-red-500'
+                }`}
                 required
               />
               <button
@@ -225,7 +231,9 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
               onValueChange={handleEmailChange}
               required
             >
-              <SelectTrigger className="h-10 w-full">
+              <SelectTrigger className={`h-10 w-full ${
+                data.contactEmail ? 'border-green-500' : 'border-red-500'
+              }`}>
                 <SelectValue placeholder={loading ? "Loading emails..." : "Select contact email"} />
               </SelectTrigger>
               <SelectContent>
@@ -252,7 +260,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
           <div className="space-y-2">
           <Label htmlFor="phone" className="text-sm font-medium flex items-center gap-2">
             <Phone className="w-4 h-4" />
-            Phone *
+            Phone <span className="text-red-500">*</span>
           </Label>
           <Input
             id="phone"
@@ -260,7 +268,9 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             readOnly
             placeholder={organizationLoading ? "Loading..." : "From organization settings"}
             required
-            className="h-10 w-full bg-gray-50 cursor-not-allowed"
+            className={`h-10 w-full bg-gray-50 cursor-not-allowed ${
+              data.phone ? 'border-green-500' : 'border-red-500'
+            }`}
           />
           <p className="text-xs text-muted-foreground">
             🔒 Locked from organization settings
@@ -271,7 +281,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
           <div className="space-y-2">
           <Label htmlFor="fax" className="text-sm font-medium flex items-center gap-2">
             <Printer className="w-4 h-4" />
-            Fax *
+            Fax <span className="text-red-500">*</span>
           </Label>
           <Input
             id="fax"
@@ -279,7 +289,9 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             readOnly
             placeholder={organizationLoading ? "Loading..." : "From organization settings"}
             required
-            className="h-10 w-full bg-gray-50 cursor-not-allowed"
+            className={`h-10 w-full bg-gray-50 cursor-not-allowed ${
+              data.fax ? 'border-green-500' : 'border-red-500'
+            }`}
           />
           <p className="text-xs text-muted-foreground">
             🔒 Locked from organization settings
@@ -293,7 +305,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
           <div className="space-y-2">
             <Label htmlFor="address" className="text-sm font-medium flex items-center gap-2">
               <MapPin className="w-4 h-4" />
-              Address *
+              Address <span className="text-red-500">*</span>
             </Label>
             <Input
               id="address"
@@ -301,7 +313,9 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
               readOnly
               placeholder={organizationLoading ? "Loading..." : "From organization settings"}
               required
-              className="h-10 w-full bg-gray-50 cursor-not-allowed"
+              className={`h-10 w-full bg-gray-50 cursor-not-allowed ${
+                data.address ? 'border-green-500' : 'border-red-500'
+              }`}
             />
             <p className="text-xs text-muted-foreground">
               🔒 Locked from organization settings
@@ -312,7 +326,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
           <div className="space-y-2">
             <Label htmlFor="website" className="text-sm font-medium flex items-center gap-2">
               <Globe className="w-4 h-4" />
-              Website *
+              Website <span className="text-red-500">*</span>
             </Label>
             <Input
               id="website"
@@ -320,7 +334,9 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
               readOnly
               placeholder={organizationLoading ? "Loading..." : "From organization settings"}
               required
-              className="h-10 w-full bg-gray-50 cursor-not-allowed"
+              className={`h-10 w-full bg-gray-50 cursor-not-allowed ${
+                data.website ? 'border-green-500' : 'border-red-500'
+              }`}
             />
             <p className="text-xs text-muted-foreground">
               🔒 Locked from organization settings

@@ -77,7 +77,7 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
         {/* Phone and Fax */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone *</Label>
+            <Label htmlFor="phone">Phone <span className="text-red-500">*</span></Label>
             <Input
               id="phone"
               type="tel"
@@ -93,7 +93,7 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="fax">Fax *</Label>
+            <Label htmlFor="fax">Fax <span className="text-red-500">*</span></Label>
             <Input
               id="fax"
               type="tel"
@@ -126,7 +126,7 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
 
         {/* Website */}
         <div className="space-y-2">
-          <Label htmlFor="website">Website *</Label>
+          <Label htmlFor="website">Website <span className="text-red-500">*</span></Label>
           <Input
             id="website"
             value={website}

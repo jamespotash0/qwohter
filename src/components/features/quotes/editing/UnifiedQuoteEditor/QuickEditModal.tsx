@@ -377,6 +377,7 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
                   </p>
                 </div>
               )}
+              
               {/* Rich Text Formatting Toolbar */}
               <div className="flex items-center gap-1 p-2 bg-gray-50 rounded-lg border">
                 <Button

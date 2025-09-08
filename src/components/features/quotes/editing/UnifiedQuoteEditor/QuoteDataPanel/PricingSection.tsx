@@ -46,9 +46,7 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
       panel_freight_factory: priceDetails.panel_freight_factory || 0,
       local_handling_costs: priceDetails.local_handling_costs || 0,
       materials_markup_percentage: priceDetails.materials_markup_percentage, 
-      //|| priceDetails.gross_profit_percentage || 0,
       shipping_markup_percentage: priceDetails.shipping_markup_percentage, 
-      //|| priceDetails.gross_profit_margin || 0,
       
       // Auto-calculated fields (will be recalculated)
       unseen_costs: priceDetails.unseen_costs || 0,
@@ -63,11 +61,6 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
       shipping_selling_gross_profit_percentage: priceDetails.shipping_selling_gross_profit_percentage || 0,
       final_selling_gross_profit_percentage: priceDetails.final_selling_gross_profit_percentage || 0,
       final_selling_price_profit_amount: priceDetails.final_selling_price_profit_amount || 0,
-      
-      // Legacy fields (backward compatibility)
-      // basePrice: priceDetails.basePrice || priceDetails.base_price || 0,
-      // freight: priceDetails.freight || 0,
-      // total: priceDetails.total || '0',
       payment_upon_drawings: priceDetails.payment_upon_drawings || '33',
       payment_upon_track_installation: priceDetails.payment_upon_track_installation || '33',
     };
@@ -93,9 +86,6 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
       local_handling_costs: updatedData.local_handling_costs,
       materials_markup_percentage: updatedData.materials_markup_percentage,
       shipping_markup_percentage: updatedData.shipping_markup_percentage,
-      // Keep legacy fields for backward compatibility
-      // gross_profit_percentage: updatedData.markup_percentage,
-      // gross_profit_margin: updatedData.markup_margin,
       
       // Auto-calculated fields
       unseen_costs: updatedData.unseen_costs,
@@ -110,15 +100,6 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
       shipping_selling_gross_profit_percentage: updatedData.shipping_selling_gross_profit_percentage,
       final_selling_gross_profit_percentage: updatedData.final_selling_gross_profit_percentage,
       final_selling_price_profit_amount: updatedData.final_selling_price_profit_amount,
-      
-      // Legacy fields (for backward compatibility)
-      // basePrice: updatedData.basePrice,
-      // base_price: updatedData.basePrice, // Database field
-      // freight: updatedData.freight,
-      // total: updatedData.total,
-      // paymentUponDrawings: updatedData.paymentUponDrawings,
-      // paymentUponTrackInstallation: updatedData.paymentUponTrackInstallation,
-
       payment_upon_drawings: updatedData.payment_upon_drawings, // Database field
       payment_upon_track_installation: updatedData.payment_upon_track_installation // Database field
     };

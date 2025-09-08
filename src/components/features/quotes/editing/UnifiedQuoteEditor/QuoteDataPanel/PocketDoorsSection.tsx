@@ -73,7 +73,7 @@ export const PocketDoorsSection: React.FC<PocketDoorsSectionProps> = ({
   return (
     <CollapsibleSection
       title="Pocket Doors"
-      icon={<DoorOpen className="w-4 h-4 text-yellow-500" />}
+      icon={<DoorOpen className="w-4 h-4" />}
       isOpen={isOpen}
       onToggle={onToggle}
     >
@@ -111,7 +111,8 @@ export const PocketDoorsSection: React.FC<PocketDoorsSectionProps> = ({
                 {wall.pocketDoors?.foldType && wall.pocketDoors.foldType !== 'None' && (
                   <div>
                     <Label htmlFor={`${wallName}-foldStyle`} className="text-xs font-medium text-gray-600">
-                      Fold Style
+                      Fold Style 
+                      {wall.pocketDoors.foldType != '' && (<span className="text-red-500">*</span>)}
                     </Label>
                     <Select
                       value={wall.pocketDoors?.foldStyle || ''}
@@ -119,6 +120,7 @@ export const PocketDoorsSection: React.FC<PocketDoorsSectionProps> = ({
                       disabled={!getAvailableFoldStyles(wall.pocketDoors?.foldType || '').length}
                     >
                       <SelectTrigger className="text-xs h-8">
+                        
                         <SelectValue placeholder="Select fold style" />
                       </SelectTrigger>
                       <SelectContent className="text-left">

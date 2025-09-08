@@ -69,7 +69,7 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="basePrice">Base Price ($) *</Label>
+            <Label htmlFor="basePrice">Base Price ($) <span className="text-red-500">*</span></Label>
             <CurrencyInput
               id="basePrice"
               value={data.basePrice}
@@ -80,7 +80,7 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="freight">Estimated Freight + Delivery ($) *</Label>
+            <Label htmlFor="freight">Estimated Freight + Delivery ($) <span className="text-red-500">*</span></Label>
             <CurrencyInput
               id="freight"
               value={data.freight}
@@ -95,7 +95,7 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
           <h3 className="text-lg font-medium mb-4">Payment Terms</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="paymentUponDrawings">Payment % Upon Drawings *</Label>
+              <Label htmlFor="paymentUponDrawings">Payment % Upon Drawings <span className="text-red-500">*</span></Label>
               <Input
                 id="paymentUponDrawings"
                 type="text"
@@ -113,7 +113,7 @@ const PricingForm = ({ data, onUpdate, onGenerate, quoteData }: PricingFormProps
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="paymentUponTrackInstallation">Payment % Upon Track Installation *</Label>
+              <Label htmlFor="paymentUponTrackInstallation">Payment % Upon Track Installation <span className="text-red-500">*</span></Label>
               <Input
                 id="paymentUponTrackInstallation"
                 type="text"

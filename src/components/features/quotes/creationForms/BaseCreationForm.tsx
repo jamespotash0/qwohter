@@ -21,7 +21,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Length */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Length *</Label>
+            <Label className="text-sm font-medium">Length <span className="text-red-500">*</span></Label>
             <div className="flex gap-2">
               <div className="flex-1">
                 <Input
@@ -61,7 +61,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
 
           {/* Height */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Height *</Label>
+            <Label className="text-sm font-medium">Height <span className="text-red-500">*</span></Label>
             <div className="flex gap-2">
               <div className="flex-1">
                 <Input
@@ -100,7 +100,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
 
           {/* Panel Count */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Panel Count *</Label>
+            <Label className="text-sm font-medium">Panel Count <span className="text-red-500">*</span></Label>
             <Input
               value={wall.panelCount}
               onChange={(e) => {
@@ -122,7 +122,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
         
         <div className="mb-6">
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Wall System Type *</Label>
+            <Label className="text-sm font-medium">Wall System Type <span className="text-red-500">*</span></Label>
             <Select
               value={wall.wallSystemType}
               onValueChange={(value) => onWallChange(wallName, {"wallSystemType": value})}

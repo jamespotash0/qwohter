@@ -54,7 +54,7 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
       {/* Row 1: Model, Panel Configuration, Operation */}
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="model" className={labelClass}>Model *</Label>
+          <Label htmlFor="model" className={labelClass}>Model <span className="text-red-500">*</span></Label>
           <Select
             value={selectedModel}
             onValueChange={(value) => handleFieldChange("model", value)}
@@ -74,7 +74,7 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="panelConfiguration" className={labelClass}>Panel Configuration *</Label>
+          <Label htmlFor="panelConfiguration" className={labelClass}>Panel Configuration <span className="text-red-500">*</span></Label>
           <Select
             value={selectedConfiguration}
             onValueChange={(value) => handleFieldChange("panelConfiguration", value)}
@@ -95,7 +95,7 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="panelOperation" className={labelClass}>Panel Operation *</Label>
+          <Label htmlFor="panelOperation" className={labelClass}>Panel Operation <span className="text-red-500">*</span></Label>
           <Select
             value={selectedOperation}
             onValueChange={(value) => handleFieldChange("panelOperation", value)}
@@ -119,7 +119,7 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
       {/* Row 2: Glass Type, STC Rating, Partition Support */}
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="glassType" className={labelClass}>Glass Type *</Label>
+          <Label htmlFor="glassType" className={labelClass}>Glass Type <span className="text-red-500">*</span></Label>
           <Select
             value={selectedGlassType}
             onValueChange={(value) => handleFieldChange("glassType", value)}
@@ -140,7 +140,7 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="stcRating" className={labelClass}>STC Rating *</Label>
+          <Label htmlFor="stcRating" className={labelClass}>STC Rating <span className="text-red-500">*</span></Label>
           <Select
             value={selectedSTCRating}
             onValueChange={(value) => handleFieldChange("stcRating", value)}
@@ -161,7 +161,7 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="partitionSupport" className={labelClass}>Partition Support *</Label>
+          <Label htmlFor="partitionSupport" className={labelClass}>Partition Support <span className="text-red-500">*</span></Label>
           <Select
             value={selectedPartitionSupport}
             onValueChange={(value) => handleFieldChange("partitionSupport", value)}
@@ -401,7 +401,7 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
           {/* Row 7: Track Type, Track System, Track Finish */}
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="trackType" className={labelClass}>Track Type *</Label>
+              <Label htmlFor="trackType" className={labelClass}>Track Type <span className="text-red-500">*</span></Label>
               <Select
                 value={selectedTrackType}
                 onValueChange={(value) => handleFieldChange("trackType", value)}

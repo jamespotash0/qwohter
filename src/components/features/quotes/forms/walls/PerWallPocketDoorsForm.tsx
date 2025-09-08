@@ -27,19 +27,13 @@ export const PerWallPocketDoorsForm: React.FC<PerWallPocketDoorsFormProps> = ({
         return [];
     }
   };
+  
 
   const handleFoldTypeChange = (wallName: string, foldType: string) => {
-    const wall = walls[wallName];
-    const currentStyle = wall?.pocketDoors?.foldStyle || '';
     const normalizedFoldType = foldType === 'None' ? 'None' : foldType;
-    const availableStyles = getAvailableFoldStyles(normalizedFoldType);
-    
-    // Reset style if current selection is not valid for new fold type
-    const newStyle = availableStyles.includes(currentStyle) ? currentStyle : '';
-    
     const newPocketDoors: PocketDoorConfig = {
       foldType: normalizedFoldType,
-      foldStyle: newStyle
+      foldStyle: ''
     };
     
     onWallUpdate(wallName, newPocketDoors);
@@ -96,10 +90,10 @@ export const PerWallPocketDoorsForm: React.FC<PerWallPocketDoorsFormProps> = ({
           return (
             <Card 
               key={wallName} 
-              className={`${
-                status.isComplete ? 'border-green-200' : 
-                status.hasFoldType ? 'border-amber-200' : 'border-gray-200'
-              }`}
+              // className={`${
+              //   status.isComplete ? 'border-green-200' : 
+              //   status.hasFoldType ? 'border-amber-200' : 'border-gray-200'
+              // }`}
             >
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center justify-between text-base">
@@ -116,7 +110,9 @@ export const PerWallPocketDoorsForm: React.FC<PerWallPocketDoorsFormProps> = ({
                       value={wall.pocketDoors?.foldType || ''}
                       onValueChange={(value) => handleFoldTypeChange(wallName, value === 'None' ? '' : value)}
                     >
-                      <SelectTrigger className={!status.hasFoldType ? 'border-amber-300' : ''}>
+                      <SelectTrigger 
+                       className={wall.pocketDoors?.foldType == '' ? 'border-red-500' : 'border-green-500'}
+                      >
                         <SelectValue placeholder="Select fold type" />
                       </SelectTrigger>
                       <SelectContent>
@@ -140,7 +136,7 @@ export const PerWallPocketDoorsForm: React.FC<PerWallPocketDoorsFormProps> = ({
                       disabled={!status.hasFoldType || availableStyles.length === 0}
                     >
                       <SelectTrigger 
-                        className={status.requiresStyle && !status.hasFoldStyle ? 'border-amber-300' : ''}
+                        className={status.requiresStyle && !status.hasFoldStyle ? 'border-red-500' : 'border-green-500'}
                       >
                         <SelectValue placeholder="Select fold style" />
                       </SelectTrigger>

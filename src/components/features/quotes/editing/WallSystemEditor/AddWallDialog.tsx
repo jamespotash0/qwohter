@@ -210,7 +210,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
           <div className="space-y-6">
             {/* Wall Name Input */}
             <div className="space-y-2">
-              <Label htmlFor="wallName">Wall Name *</Label>
+              <Label htmlFor="wallName">Wall Name <span className="text-red-500">*</span></Label>
               <Input
                 id="wallName"
                 value={wallName}
@@ -222,7 +222,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
 
             {/* Wall System Type Selection */}
             <div className="space-y-2">
-              <Label htmlFor="wallSystemType">Wall System Type *</Label>
+              <Label htmlFor="wallSystemType">Wall System Type <span className="text-red-500">*</span></Label>
               <Select
                 value={wallSystemType}
                 onValueChange={handleWallSystemTypeChange}
@@ -244,7 +244,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="lengthFeet">Length (ft) *</Label>
+                    <Label htmlFor="lengthFeet">Length (ft) <span className="text-red-500">*</span></Label>
                     <Input
                       id="lengthFeet"
                       // type="number"
@@ -256,7 +256,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lengthInches">Length (in) *</Label>
+                    <Label htmlFor="lengthInches">Length (in) <span className="text-red-500">*</span></Label>
                     <Input
                       id="lengthInches"
                       type="text"
@@ -267,7 +267,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="heightFeet">Height (ft) *</Label>
+                    <Label htmlFor="heightFeet">Height (ft) <span className="text-red-500">*</span></Label>
                     <Input
                       id="heightFeet"
                       // type="number"
@@ -279,7 +279,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="heightInches">Height (in) *</Label>
+                    <Label htmlFor="heightInches">Height (in) <span className="text-red-500">*</span></Label>
                     <Input
                       id="heightInches"
                       type="text"
@@ -290,7 +290,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="panelCount">Panel Count *</Label>
+                    <Label htmlFor="panelCount">Panel Count <span className="text-red-500">*</span></Label>
                     <Input
                       id="panelCount"
                       // type="number"

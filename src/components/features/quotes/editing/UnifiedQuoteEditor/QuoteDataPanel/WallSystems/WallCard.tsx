@@ -95,7 +95,7 @@ export const WallCard: React.FC<WallCardProps> = ({
     
     <div className="grid grid-cols-2 gap-2 text-xs">
       <div className="space-y-2">
-        <Label htmlFor={`${wallName}-lengthFeet`} className="text-xs">Length (ft) *</Label>
+        <Label htmlFor={`${wallName}-lengthFeet`} className="text-xs">Length (ft) <span className="text-red-500">*</span></Label>
         <ValidatedInput
           id={`${wallName}-lengthFeet`}
           validationType="numbersOnly"
@@ -129,7 +129,7 @@ export const WallCard: React.FC<WallCardProps> = ({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor={`${wallName}-heightFeet`} className="text-xs">Height (ft) *</Label>
+        <Label htmlFor={`${wallName}-heightFeet`} className="text-xs">Height (ft) <span className="text-red-500">*</span></Label>
         <ValidatedInput
           id={`${wallName}-heightFeet`}
           validationType="numbersOnly"
@@ -163,7 +163,7 @@ export const WallCard: React.FC<WallCardProps> = ({
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor={`${wallName}-panelCount`} className="text-xs">Panel Count *</Label>
+        <Label htmlFor={`${wallName}-panelCount`} className="text-xs">Panel Count <span className="text-red-500">*</span></Label>
         <ValidatedInput
           id={`${wallName}-panelCount`}
           validationType="numbersOnly"

@@ -63,7 +63,7 @@ export const PerWallStructureForm: React.FC<PerWallStructureFormProps> = ({
           return (
             <Card 
               key={wallName} 
-              className={`${status.isComplete ? 'border-green-200' : 'border-amber-200'}`}
+              // className={`${status.isComplete ? 'border-green-200' : 'border-amber-200'}`}
             >
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center justify-between text-base">
@@ -75,12 +75,12 @@ export const PerWallStructureForm: React.FC<PerWallStructureFormProps> = ({
                 <div className="space-y-4">
                   {/* Structure Support Selection */}
                   <div className="space-y-2">
-                    <Label>Structure Support Type *</Label>
+                    <Label>Structure Support Type <span className="text-red-500">*</span></Label>
                     <Select
                       value={currentValue}
                       onValueChange={(value) => handleStructureSupportChange(wallName, value)}
                     >
-                      <SelectTrigger className={!status.isComplete ? 'border-amber-300' : ''}>
+                      <SelectTrigger className={!status.isComplete ? 'border-red-500' : 'border-green-500'}>
                         <SelectValue placeholder="Select structure support" />
                       </SelectTrigger>
                       <SelectContent>

@@ -90,10 +90,10 @@ export abstract class BaseQuoteTemplate {
     </div>`;
 
     // Check if proposal-intro is in the final HTML
-    const hasProposalIntro = html.includes('class="proposal-intro"');
-    console.log('🔍 Final HTML contains proposal-intro class:', hasProposalIntro);
+    const hasProposalIntro = html.includes('class="proposal-intro-section"');
+    console.log('🔍 Final HTML contains proposal-intro-section class:', hasProposalIntro);
     if (!hasProposalIntro) {
-      console.log('❌ proposal-intro missing from final HTML');
+      console.log('❌ proposal-intro-section missing from final HTML');
     }
 
     // Return simple HTML - CSS page breaks will handle pagination automatically
