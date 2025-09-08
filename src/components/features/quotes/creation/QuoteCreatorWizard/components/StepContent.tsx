@@ -65,7 +65,6 @@ export const StepContent = ({
         // Enhanced fields
         kwik_wall_materials_cost: pricing.kwik_wall_materials_cost || 0,
         misc_materials_cost: pricing.misc_materials_cost || 0,
-        misc_materials_description: pricing.misc_materials_description || '',
         delivery_cost_track: pricing.delivery_cost_track || 0,
         delivery_cost_panel: pricing.delivery_cost_panel || 0,
         track_equipment_costs: pricing.track_equipment_costs || 0,
@@ -85,6 +84,10 @@ export const StepContent = ({
         shipping_cost_subtotal: pricing.shipping_cost_subtotal || 0,
         shipping_selling_price: pricing.shipping_selling_price || 0,
         final_selling_price: pricing.final_selling_price || 0,
+        base_selling_gross_profit_percentage: pricing.base_selling_gross_profit_percentage || 0,
+        shipping_selling_gross_profit_percentage: pricing.shipping_selling_gross_profit_percentage || 0,
+        final_selling_gross_profit_percentage: pricing.final_selling_gross_profit_percentage || 0,
+        final_selling_price_profit_amount: pricing.final_selling_price_profit_amount || 0,
         // Legacy fields
         // basePrice: pricing.basePrice,
         // freight: pricing.freight,
@@ -105,7 +108,6 @@ export const StepContent = ({
           // Enhanced fields
           kwik_wall_materials_cost: updatedData.kwik_wall_materials_cost,
           misc_materials_cost: updatedData.misc_materials_cost,
-          misc_materials_description: updatedData.misc_materials_description,
           delivery_cost_track: updatedData.delivery_cost_track,
           delivery_cost_panel: updatedData.delivery_cost_panel,
           track_equipment_costs: updatedData.track_equipment_costs,
@@ -124,7 +126,11 @@ export const StepContent = ({
           base_selling_price: updatedData.base_selling_price,
           shipping_cost_subtotal: updatedData.shipping_cost_subtotal,
           shipping_selling_price: updatedData.shipping_selling_price,
-          final_selling_price: updatedData.final_selling_price
+          final_selling_price: updatedData.final_selling_price,
+          base_selling_gross_profit_percentage: updatedData.base_selling_gross_profit_percentage,
+          shipping_selling_gross_profit_percentage: updatedData.shipping_selling_gross_profit_percentage,
+          final_selling_gross_profit_percentage: updatedData.final_selling_gross_profit_percentage,
+          final_selling_price_profit_amount: updatedData.final_selling_price_profit_amount
         };
         onPricingUpdate(enhancedPricing);
       };

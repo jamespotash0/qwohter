@@ -140,11 +140,26 @@ export const useWizardValidation = (
   }, [deliveryLabor]);
 
   const isPricingValid = useMemo(() => {
-    return !!(pricing.basePrice > 0 && 
-             pricing.freight > 0 && 
-             pricing.paymentUponDrawings && 
-             pricing.paymentUponTrackInstallation);
+    return !!(
+      (pricing.kwik_wall_materials_cost ?? 0) >= 0 && 
+      (pricing.misc_materials_cost ?? 0) >= 0 && 
+      (pricing.delivery_cost_track ?? 0) >= 0 &&
+      (pricing.delivery_cost_panel ?? 0) >= 0 &&
+      (pricing.track_equipment_costs ?? 0) >= 0 &&
+      (pricing.track_labor_cost ?? 0) >= 0 &&
+      (pricing.panel_equipment_costs ?? 0) >= 0 &&
+      (pricing.panel_labor_cost ?? 0) >= 0 &&
+      (pricing.track_freight_factory ?? 0) >= 0 &&
+      (pricing.panel_freight_factory ?? 0) >= 0 &&
+      (pricing.local_handling_costs ?? 0) >= 0 &&
+      (pricing.materials_markup_percentage ?? 0) >= 0 &&
+      (pricing.shipping_markup_percentage ?? 0) >= 0 &&
+      (pricing.unseen_costs ?? 0) >= 0 &&
+      (pricing.unseen_costs_percentage ?? 0) >= 0 &&
+      pricing.payment_upon_drawings &&        
+      pricing.payment_upon_track_installation);
   }, [pricing]);
+  
 
   return {
     isContactInfoValid,

@@ -115,7 +115,6 @@ const QuoteCreatorWizard = ({
             // Enhanced pricing fields
             kwik_wall_materials_cost: pricing.kwik_wall_materials_cost || 0,
             misc_materials_cost: pricing.misc_materials_cost || 0,
-            misc_materials_description: pricing.misc_materials_description || '',
             delivery_cost_track: pricing.delivery_cost_track || 0,
             delivery_cost_panel: pricing.delivery_cost_panel || 0,
             track_equipment_costs: pricing.track_equipment_costs || 0,
@@ -135,7 +134,10 @@ const QuoteCreatorWizard = ({
             shipping_cost_subtotal: pricing.shipping_cost_subtotal || 0,
             shipping_selling_price: pricing.shipping_selling_price || 0,
             final_selling_price: pricing.final_selling_price || 0,
-
+            base_selling_gross_profit_percentage: pricing.base_selling_gross_profit_percentage || 0,
+            shipping_selling_gross_profit_percentage: pricing.shipping_selling_gross_profit_percentage || 0,
+            final_selling_gross_profit_percentage: pricing.final_selling_gross_profit_percentage || 0,
+            final_selling_price_profit_amount: pricing.final_selling_price_profit_amount || 0,
             payment_upon_drawings: pricing.payment_upon_drawings,
             payment_upon_track_installation: pricing.payment_upon_track_installation,
           },

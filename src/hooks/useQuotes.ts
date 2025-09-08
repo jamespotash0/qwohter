@@ -128,7 +128,6 @@ export const useQuotes = () => {
             // Enhanced pricing fields
             kwik_wall_materials_cost: quoteData.pricing.kwik_wall_materials_cost || 0,
             misc_materials_cost: quoteData.pricing.misc_materials_cost || 0,
-            misc_materials_description: quoteData.pricing.misc_materials_description || '',
             delivery_cost_track: quoteData.pricing.delivery_cost_track || 0,
             delivery_cost_panel: quoteData.pricing.delivery_cost_panel || 0,
             track_equipment_costs: quoteData.pricing.track_equipment_costs || 0,
@@ -147,7 +146,11 @@ export const useQuotes = () => {
             base_selling_price: quoteData.pricing.base_selling_price || 0,
             shipping_cost_subtotal: quoteData.pricing.shipping_cost_subtotal || 0,
             shipping_selling_price: quoteData.pricing.shipping_selling_price || 0,
-            final_selling_price: quoteData.pricing.final_selling_price || 0
+            final_selling_price: quoteData.pricing.final_selling_price || 0,
+            base_selling_gross_profit_percentage: quoteData.pricing.base_selling_gross_profit_percentage,
+            shipping_selling_gross_profit_percentage: quoteData.pricing.shipping_selling_gross_profit_percentage,
+            final_selling_gross_profit_percentage: quoteData.pricing.final_selling_gross_profit_percentage,
+            final_selling_price_profit_amount: quoteData.pricing.final_selling_price_profit_amount
           },
           delivery_details: quoteData.deliveryLabor.delivery || {},
           labor_details: quoteData.deliveryLabor.labor || {},

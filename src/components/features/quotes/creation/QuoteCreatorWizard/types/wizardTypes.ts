@@ -53,7 +53,6 @@ export interface Pricing {
   // Enhanced pricing fields
   kwik_wall_materials_cost?: number;
   misc_materials_cost?: number;
-  misc_materials_description?: string;
   delivery_cost_track?: number;
   delivery_cost_panel?: number;
   track_equipment_costs?: number;
@@ -73,6 +72,10 @@ export interface Pricing {
   shipping_cost_subtotal?: number;
   shipping_selling_price?: number;
   final_selling_price?: number;
+  base_selling_gross_profit_percentage?: number;
+  shipping_selling_gross_profit_percentage?: number;
+  final_selling_gross_profit_percentage?: number;
+  final_selling_price_profit_amount?: number;
 }
 
 export interface WizardStep {

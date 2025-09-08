@@ -23,7 +23,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
   const [percentageInputs, setPercentageInputs] = useState({
     materials_markup_percentage: data.materials_markup_percentage && data.materials_markup_percentage > 0 ? data.materials_markup_percentage.toString() : '',
     shipping_markup_percentage: data.shipping_markup_percentage && data.shipping_markup_percentage > 0 ? data.shipping_markup_percentage.toString() : '',
-    unseen_costs_percentage: data.unseen_costs_percentage?.toString() || '10'
+    unseen_costs_percentage: data.unseen_costs_percentage?.toString() || '10',
   });
 
   // Handle currency input changes - only update local state
@@ -408,7 +408,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Label htmlFor="materials_markup_percentage" className="text-sm font-medium text-gray-700">
-                    Base Cost Markup Percentage
+                    Base Cost Markup Percentage <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
                     title="Base Cost Markup Percentage"
@@ -433,14 +433,14 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   </span>
                 </div>
                 <div className="text-xs text-blue-600 mt-1">
-                  Gross Profit: {localData.base_selling_price > 0 && localData.cost_subtotal > 0 ? ((localData.base_selling_price - localData.cost_subtotal) / localData.base_selling_price * 100).toFixed(1) : 0}%
+                  Gross Profit: {localData.base_selling_gross_profit_percentage.toFixed(1)}%
                 </div>
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Label htmlFor="shipping_markup_percentage" className="text-sm font-medium text-gray-700">
-                    Shipping Markup Percentage
+                    Shipping Markup Percentage <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
                     title="Shipping Markup Percentage"
@@ -465,7 +465,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   </span>
                 </div>
                 <div className="text-xs text-blue-600 mt-1">
-                  Gross Profit: {localData.shipping_selling_price > 0 && localData.shipping_cost_subtotal > 0 ? ((localData.shipping_selling_price - localData.shipping_cost_subtotal) / localData.shipping_selling_price * 100).toFixed(1) : 0}%
+                  Gross Profit: {localData.shipping_selling_gross_profit_percentage.toFixed(1)}%
                 </div>
               </div>
             </div>
@@ -513,6 +513,17 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   <span className="text-2xl font-bold text-gray-900">Final Selling Price</span>
                   <span className="text-3xl font-bold text-emerald-600">{formatCurrency(localData.final_selling_price)}</span>
                 </div>
+                {/* Total Gross Profit */}
+                {localData.final_selling_price > 0 && (localData.cost_subtotal > 0 || localData.shipping_cost_subtotal > 0) && (
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="font-medium text-gray-700">
+                      Total Gross Profit ({localData.final_selling_gross_profit_percentage.toFixed(1)}%)
+                    </span>
+                    <span className="font-semibold text-emerald-600">
+                      {formatCurrency(localData.final_selling_price_profit_amount)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

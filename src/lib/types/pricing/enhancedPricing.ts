@@ -2,7 +2,6 @@ export interface EnhancedPricingData {
   // ========== INPUT FIELDS (Manual Entry) ==========
   kwik_wall_materials_cost: number;           // Panels, track
   misc_materials_cost: number;                // Screws, nuts, bolts
-  misc_materials_description: string;         // Descriptor field
   delivery_cost_track: number;                // Delivery cost for track to site
   delivery_cost_panel: number;               // Delivery cost for panels to site
   track_equipment_costs: number;              // Lifts, scaffolding, installation equipment (tracks)
@@ -25,7 +24,11 @@ export interface EnhancedPricingData {
   base_selling_price: number;                 // Cost subtotal + gross profit
   shipping_cost_subtotal: number;         // Track freight + panel freight + local handling
   shipping_selling_price: number;          // Shipping & handling + gross profit margin
-  final_selling_price: number;                      // Final selling price
+  final_selling_price: number;                    // Final selling price
+  base_selling_gross_profit_percentage: number;
+  shipping_selling_gross_profit_percentage: number;
+  final_selling_gross_profit_percentage: number;
+  final_selling_price_profit_amount: number;
   
   // ========== LEGACY FIELDS (Mapped from auto-calculated) ==========
   // basePrice: number;                          // Maps to base_selling_price
@@ -40,7 +43,6 @@ export const defaultEnhancedPricing: EnhancedPricingData = {
   // Input fields
   kwik_wall_materials_cost: 0,
   misc_materials_cost: 0,
-  misc_materials_description: '',
   delivery_cost_track: 0,
   delivery_cost_panel: 0,
   track_equipment_costs: 0,
@@ -62,6 +64,11 @@ export const defaultEnhancedPricing: EnhancedPricingData = {
   shipping_cost_subtotal: 0,
   shipping_selling_price: 0,
   final_selling_price: 0,
+  base_selling_gross_profit_percentage: 0,
+  shipping_selling_gross_profit_percentage: 0,
+  final_selling_gross_profit_percentage: 0,
+  final_selling_price_profit_amount: 0,
+
   
   // Legacy fields
   // basePrice: 0,
@@ -102,6 +109,22 @@ export const calculateEnhancedPricing = (data: EnhancedPricingData): EnhancedPri
   
   // Calculate final selling price
   const final_selling_price = base_selling_price + shipping_selling_price;
+
+  // Calculate gross profit percentages - handle division by zero
+  const base_selling_gross_profit_percentage = base_selling_price > 0 && cost_subtotal > 0 
+    ? ((base_selling_price - cost_subtotal) / base_selling_price * 100) 
+    : 0;
+    
+  const shipping_selling_gross_profit_percentage = shipping_selling_price > 0 && shipping_cost_subtotal > 0 
+    ? ((shipping_selling_price - shipping_cost_subtotal) / shipping_selling_price * 100) 
+    : 0;
+    
+  const final_selling_gross_profit_percentage = final_selling_price > 0 && (cost_subtotal > 0 || shipping_cost_subtotal > 0)
+    ? (((base_selling_price - cost_subtotal) + (shipping_selling_price - shipping_cost_subtotal)) / final_selling_price * 100)
+    : 0;
+    
+  const final_selling_price_profit_amount = (base_selling_price - cost_subtotal) + (shipping_selling_price - shipping_cost_subtotal);
+
   
   return {
     ...data,
@@ -112,6 +135,10 @@ export const calculateEnhancedPricing = (data: EnhancedPricingData): EnhancedPri
     shipping_cost_subtotal,  // This was missing!
     shipping_selling_price,
     final_selling_price,
+    base_selling_gross_profit_percentage,
+    shipping_selling_gross_profit_percentage,
+    final_selling_gross_profit_percentage,
+    final_selling_price_profit_amount,
     
     // Update legacy fields for backward compatibility
     // basePrice: base_selling_price,

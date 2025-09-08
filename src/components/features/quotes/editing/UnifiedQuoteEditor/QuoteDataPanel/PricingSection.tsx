@@ -36,7 +36,6 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
       // If enhanced data exists, use it; otherwise use defaults
       kwik_wall_materials_cost: priceDetails.kwik_wall_materials_cost || 0,
       misc_materials_cost: priceDetails.misc_materials_cost || 0,
-      misc_materials_description: priceDetails.misc_materials_description || '',
       delivery_cost_track: priceDetails.delivery_cost_track || 0,
       delivery_cost_panel: priceDetails.delivery_cost_panel || 0,
       track_equipment_costs: priceDetails.track_equipment_costs || 0,
@@ -60,6 +59,10 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
       shipping_cost_subtotal: priceDetails.shipping_cost_subtotal || 0,
       shipping_selling_price: priceDetails.shipping_selling_price || 0,
       final_selling_price: priceDetails.final_selling_price || 0,
+      base_selling_gross_profit_percentage: priceDetails.base_selling_gross_profit_percentage || 0,
+      shipping_selling_gross_profit_percentage: priceDetails.shipping_selling_gross_profit_percentage || 0,
+      final_selling_gross_profit_percentage: priceDetails.final_selling_gross_profit_percentage || 0,
+      final_selling_price_profit_amount: priceDetails.final_selling_price_profit_amount || 0,
       
       // Legacy fields (backward compatibility)
       // basePrice: priceDetails.basePrice || priceDetails.base_price || 0,
@@ -79,7 +82,6 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
       // Enhanced fields
       kwik_wall_materials_cost: updatedData.kwik_wall_materials_cost,
       misc_materials_cost: updatedData.misc_materials_cost,
-      misc_materials_description: updatedData.misc_materials_description,
       delivery_cost_track: updatedData.delivery_cost_track,
       delivery_cost_panel: updatedData.delivery_cost_panel,
       track_equipment_costs: updatedData.track_equipment_costs,
@@ -104,6 +106,10 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
       shipping_cost_subtotal: updatedData.shipping_cost_subtotal,
       shipping_selling_price: updatedData.shipping_selling_price,
       final_selling_price: updatedData.final_selling_price,
+      base_selling_gross_profit_percentage: updatedData.base_selling_gross_profit_percentage,
+      shipping_selling_gross_profit_percentage: updatedData.shipping_selling_gross_profit_percentage,
+      final_selling_gross_profit_percentage: updatedData.final_selling_gross_profit_percentage,
+      final_selling_price_profit_amount: updatedData.final_selling_price_profit_amount,
       
       // Legacy fields (for backward compatibility)
       // basePrice: updatedData.basePrice,
@@ -145,19 +151,10 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
     }).format(amount);
   };
 
-  // Calculate gross profit percentages for display
-  const calculateGrossProfitPercentage = (markupAmount: number, sellingPrice: number) => {
-    if (sellingPrice === 0) return 0;
-    return (markupAmount / sellingPrice) * 100;
-  };
-
-  // Calculate markup amounts and gross profit percentages
-  const materialsMarkupAmount = enhancedData.cost_subtotal * (enhancedData.materials_markup_percentage / 100);
-  const materialsGrossProfitPercentage = calculateGrossProfitPercentage(materialsMarkupAmount, enhancedData.base_selling_price);
+  // Calculate markup amounts - use stored gross profit percentages
+  const materialsMarkupAmount = enhancedData.base_selling_price - enhancedData.cost_subtotal;
+  const shippingMarkupAmount = enhancedData.shipping_selling_price - enhancedData.shipping_cost_subtotal;
   
-  const shippingMarkupAmount = enhancedData.shipping_cost_subtotal * (enhancedData.shipping_markup_percentage / 100);
-  const shippingGrossProfitPercentage = calculateGrossProfitPercentage(shippingMarkupAmount, enhancedData.shipping_cost_subtotal);
-
   return (
     <CollapsibleSection
       title="Pricing (Enhanced)"
@@ -197,7 +194,7 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
               <span className="font-medium">{formatCurrency(enhancedData.base_selling_price)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-blue-600">Base Gross Profit ({materialsGrossProfitPercentage.toFixed(1)}%):</span>
+              <span className="text-blue-600">Base Gross Profit ({enhancedData.base_selling_gross_profit_percentage.toFixed(1)}%):</span>
               <span className="font-medium text-blue-600">{formatCurrency(materialsMarkupAmount)}</span>
             </div>
             <div className="flex justify-between text-sm">
@@ -205,17 +202,24 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
               <span className="font-medium">{formatCurrency(enhancedData.shipping_cost_subtotal)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-blue-600">Shipping & Freight Gross Profit ({shippingGrossProfitPercentage.toFixed(1)}%):</span>
+              <span className="text-blue-600">Shipping & Freight Gross Profit ({enhancedData.shipping_selling_gross_profit_percentage.toFixed(1)}%):</span>
               <span className="font-medium text-blue-600">{formatCurrency(shippingMarkupAmount)}</span>
             </div>
             <div className="flex justify-between text-lg font-bold border-t pt-2">
               <span className="text-gray-900">Final Selling Price:</span>
               <span className="text-green-600">{formatCurrency(enhancedData.final_selling_price)}</span>
             </div>
-            <div className="flex justify-between text-lg font-bold">
-              <span className="text-blue-600">Final Gross Profit ({((materialsMarkupAmount + shippingMarkupAmount) / enhancedData.final_selling_price * 100).toFixed(1)}%):</span>
-              <span className="text-blue-600">{formatCurrency(materialsMarkupAmount + shippingMarkupAmount)}</span>
-            </div>
+            {/* Total Gross Profit - only show if we have values */}
+            {enhancedData.final_selling_price > 0 && (enhancedData.cost_subtotal > 0 || enhancedData.shipping_cost_subtotal > 0) && (
+              <div className="flex justify-between text-sm border-t pt-2">
+                <span className="font-medium text-gray-700">
+                  Total Gross Profit ({enhancedData.final_selling_gross_profit_percentage.toFixed(1)}%)
+                </span>
+                <span className="font-semibold text-green-600">
+                  {formatCurrency(enhancedData.final_selling_price_profit_amount)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
