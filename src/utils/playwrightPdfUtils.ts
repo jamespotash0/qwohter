@@ -164,14 +164,14 @@ export const generateQuotePDF = async (
               
               /* Remove interactive hover effects for print */
               [class*="-section"]:hover::after,
-              .proposal-intro:hover::after,
+              .proposal-intro-section:hover::after,
               .pocket-doors-section:hover::after,
               .pass-doors-section:hover::after {
                 display: none !important;
               }
               
               [class*="-section"]:hover,
-              .proposal-intro:hover,
+              .proposal-intro-section:hover,
               .pocket-doors-section:hover,
               .pass-doors-section:hover {
                 background-color: transparent !important;
@@ -179,7 +179,7 @@ export const generateQuotePDF = async (
               }
               
               /* Remove all interactive styles from sections during print */
-              .proposal-intro,
+              .proposal-intro-section,
               .pocket-doors-section,
               .pass-doors-section,
               [class*="-section"] {

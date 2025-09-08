@@ -100,10 +100,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         
         // Handle special sections that don't follow the standard pattern
         let className: string;
-        if (sectionId === 'proposal-intro') {
-          className = 'proposal-intro';
-          console.log(`📝 proposal-intro override found: "${content.substring(0, 100)}..." (${content.length} chars)`);
-        } else if (sectionId === 'pocket-doors') {
+        if (sectionId === 'pocket-doors') {
           className = 'pocket-doors-section';
         } else if (sectionId === 'panel-doors') {
           className = 'panel-doors-section';
@@ -113,50 +110,86 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         }
         
         
-        // Try multiple patterns to find the section
-        const patterns = [
-          // Pattern 1: class="exact-match"
-          new RegExp(`(<div[^>]*class="${className}"[^>]*>)[\\s\\S]*?(<\\/div>)`, 'g'),
-          // Pattern 2: class="other-classes target-class more-classes"  
-          new RegExp(`(<div[^>]*class="[^"]*${className}[^"]*"[^>]*>)[\\s\\S]*?(<\\/div>)`, 'g'),
-          // Pattern 3: class='single quotes'
-          new RegExp(`(<div[^>]*class='[^']*${className}[^']*'[^>]*>)[\\s\\S]*?(<\\/div>)`, 'g')
-        ];
-        
+        // Create more sophisticated regex patterns for section matching
+        // Need to handle nested divs properly by counting opening/closing tags
+        // let sectionStartPattern, sectionContent = '';
         let patternMatched = false;
         
-        // Try each pattern until one matches
-        for (const pattern of patterns) {
-          const matches = result.match(pattern);
-          
-          if (matches) {
-            const originalSection = matches[0];
+        // Find the section start
+        const startPatterns = [
+          new RegExp(`<div[^>]*class="${className}"[^>]*>`, 'g'),
+          new RegExp(`<div[^>]*class="[^"]*${className}[^"]*"[^>]*>`, 'g'),
+          new RegExp(`<div[^>]*class='[^']*${className}[^']*'[^>]*>`, 'g')
+        ];
+        
+        for (const startPattern of startPatterns) {
+          const startMatch = startPattern.exec(result);
+          if (startMatch) {
+            const startIndex = startMatch.index;
+            const startTag = startMatch[0];
             
-            // Check if content already includes the section wrapper div
-            const contentHasWrapper = content.trim().startsWith(`<div`) && content.includes(className);
+            // Find the matching closing div by counting nested divs
+            let divCount = 1;
+            let currentIndex = startIndex + startTag.length;
+            let endIndex = -1;
             
-            console.log(`Replacing section ${sectionId}:`, {
-              className,
-              contentHasWrapper,
-              contentPreview: content.substring(0, 100) + '...'
-            });
-            
-            if (contentHasWrapper) {
-              // Content already includes the section wrapper, replace entire section
-              result = result.replace(pattern, content);
-            } else {
-              // Content is just inner content, keep the wrapper
-              result = result.replace(pattern, `$1${content}$2`);
+            while (divCount > 0 && currentIndex < result.length) {
+              const nextOpenDiv = result.indexOf('<div', currentIndex);
+              const nextCloseDiv = result.indexOf('</div>', currentIndex);
+              
+              if (nextCloseDiv === -1) break;
+              
+              if (nextOpenDiv !== -1 && nextOpenDiv < nextCloseDiv) {
+                divCount++;
+                currentIndex = nextOpenDiv + 4;
+              } else {
+                divCount--;
+                if (divCount === 0) {
+                  endIndex = nextCloseDiv + 6;
+                  break;
+                } else {
+                  currentIndex = nextCloseDiv + 6;
+                }
+              }
             }
             
-            patternMatched = true;
-            break;
+            if (endIndex !== -1) {
+              const originalSection = result.substring(startIndex, endIndex);
+              const contentHasWrapper = content.trim().startsWith(`<div`) && content.includes(className);
+              
+              console.log(`🔄 Replacing section ${sectionId} (${className}):`, {
+                originalLength: originalSection.length,
+                contentHasWrapper,
+                contentLength: content.length,
+                contentPreview: content.substring(0, 100) + '...'
+              });
+              
+              if (contentHasWrapper) {
+                // Content already includes the section wrapper, replace entire section
+                result = result.substring(0, startIndex) + content + result.substring(endIndex);
+              } else {
+                // Content is just inner content, keep the wrapper
+                const innerContent = originalSection.substring(startTag.length, originalSection.length - 6); // Remove </div>
+                result = result.substring(0, startIndex) + startTag + content + '</div>' + result.substring(endIndex);
+              }
+              
+              patternMatched = true;
+              break;
+            }
           }
+          
+          // Reset regex for next attempt
+          startPattern.lastIndex = 0;
         }
         
         if (!patternMatched) {
-          // Let's try to see what sections actually exist
-          const allDivs = result.match(/<div[^>]*class="[^"]*-section[^"]*"[^>]*>/g);
+          console.warn(`⚠️ Failed to find section ${sectionId} with className ${className} in HTML`);
+          // Debug: Show what sections actually exist
+          const allSections = result.match(/<div[^>]*class="[^"]*"/g);
+          if (allSections) {
+            console.log('Available sections:', allSections.slice(0, 10)); // Show first 10 to avoid spam
+          }
+          
         }
       });
       

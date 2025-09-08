@@ -62,7 +62,7 @@ export class ContentSplitter {
   private static readonly SECTION_SELECTORS = [
     '.header-section',
     '.billing-job-container', 
-    '.proposal-intro',
+    '.proposal-intro-section',
     '.wall-specifications-list',
     '.panels-section',
     '.pass-doors-section',

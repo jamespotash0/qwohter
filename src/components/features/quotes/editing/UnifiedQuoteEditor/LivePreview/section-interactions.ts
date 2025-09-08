@@ -34,11 +34,11 @@ export class SectionInteractions {
 
       if (!sectionElement) {
         // Check for special clickable sections
-        sectionElement = target.closest('.proposal-intro') || target.closest('.pocket-doors-section') || target.closest('.pass-doors-section') || target.closest('.panel-doors-section');
+        sectionElement = target.closest('.proposal-intro-section') || target.closest('.pocket-doors-section') || target.closest('.pass-doors-section') || target.closest('.panel-doors-section');
         if (!sectionElement) return;
         
         // Extract section ID from class name
-        if (sectionElement.classList.contains('proposal-intro')) {
+        if (sectionElement.classList.contains('proposal-intro-section')) {
           sectionId = 'proposal-intro';
         } else if (sectionElement.classList.contains('pocket-doors-section')) {
           sectionId = 'pocket-doors';
@@ -149,9 +149,9 @@ export class SectionInteractions {
         }
       } else {
         // Check for special clickable sections without -section suffix
-        sectionElement = target.closest('.proposal-intro') || target.closest('.pocket-doors-section') || target.closest('.pass-doors-section') || target.closest('.panel-doors-section');
+        sectionElement = target.closest('.proposal-intro-section') || target.closest('.pocket-doors-section') || target.closest('.pass-doors-section') || target.closest('.panel-doors-section');
         if (sectionElement) {
-          if (sectionElement.classList.contains('proposal-intro')) {
+          if (sectionElement.classList.contains('proposal-intro-section')) {
             sectionId = 'proposal-intro';
           } else if (sectionElement.classList.contains('pocket-doors-section')) {
             sectionId = 'pocket-doors';

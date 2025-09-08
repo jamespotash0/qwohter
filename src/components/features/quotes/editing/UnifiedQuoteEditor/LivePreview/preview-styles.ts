@@ -162,7 +162,7 @@ export const getPreviewStyles = (): string => {
       /* REMOVED: Non-interactive styles - now using consistent not-allowed cursor treatment */
       
       /* Make proposal intro, pocket doors, and pass doors sections hoverable */
-      .quote-document .proposal-intro,
+      .quote-document .proposal-intro-section,
       .quote-document .pocket-doors-section,
       .quote-document .pass-doors-section {
         transition: all 0.2s ease;
@@ -171,14 +171,14 @@ export const getPreviewStyles = (): string => {
         position: relative;
       }
       
-      .quote-document .proposal-intro:hover,
+      .quote-document .proposal-intro-section:hover,
       .quote-document .pocket-doors-section:hover,
       .quote-document .pass-doors-section:hover {
         background-color: rgba(59, 130, 246, 0.05);
         box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
       }
       
-      .quote-document .proposal-intro:hover::after,
+      .quote-document .proposal-intro-section:hover::after,
       .quote-document .pocket-doors-section:hover::after,
       .quote-document .pass-doors-section:hover::after {
         content: "✏️ Click to edit";
