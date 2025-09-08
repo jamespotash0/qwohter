@@ -3,7 +3,7 @@ import {
   OrganizationWithCompanyInfo, 
   CompanyInfoFormData, 
   convertFormDataToOrganizationInfo 
-} from '@/types/companySettings';
+} from '@/lib/types/settings/companySettings';
 
 class OrganizationSettingsService {
   async getOrganization(): Promise<OrganizationWithCompanyInfo | null> {

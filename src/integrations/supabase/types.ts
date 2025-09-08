@@ -1,3 +1,4 @@
+// Updated database types to fix TypeScript errors
 export interface Database {
   public: {
     Tables: {
@@ -63,19 +64,37 @@ export interface Database {
       profiles: {
         Row: {
           id: string;
-          organization_id: string;
+          organization_id: string | null;
+          email: string;
+          full_name: string | null;
+          role: 'admin' | 'member' | null;
+          status: 'pending' | 'active' | 'suspended' | null;
+          invited_by: string | null;
+          joined_at: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id: string;
-          organization_id: string;
+          organization_id?: string | null;
+          email?: string;
+          full_name?: string | null;
+          role?: 'admin' | 'member' | null;
+          status?: 'pending' | 'active' | 'suspended' | null;
+          invited_by?: string | null;
+          joined_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
-          organization_id?: string;
+          organization_id?: string | null;
+          email?: string;
+          full_name?: string | null;
+          role?: 'admin' | 'member' | null;
+          status?: 'pending' | 'active' | 'suspended' | null;
+          invited_by?: string | null;
+          joined_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -84,18 +103,24 @@ export interface Database {
         Row: {
           id: string;
           name: string;
+          organization_code: string;
+          organization_info: any;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
           name: string;
+          organization_code?: string;
+          organization_info?: any;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
           name?: string;
+          organization_code?: string;
+          organization_info?: any;
           created_at?: string;
           updated_at?: string;
         };
@@ -105,7 +130,18 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      approve_member: {
+        Args: {
+          member_id: string;
+        };
+        Returns: any;
+      };
+      reject_member: {
+        Args: {
+          member_id: string;
+        };
+        Returns: any;
+      };
     };
     Enums: {
       [_ in never]: never;
