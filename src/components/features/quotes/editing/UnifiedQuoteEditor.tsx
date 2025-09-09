@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { generateQuoteText } from '@/components/features/quotes/generation/QuoteTextGenerator';
 import { SmartQuoteHelper, QuoteSection, SmartQuoteData } from '@/templates/SmartQuoteTemplate';
+import { MixedContentEngine, MixedContentSection } from '@/utils/mixedContentEngine';
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
 import { Quote } from '@/hooks/useQuotes';
 import { useCurrentQuote } from '@/stores/quotes/quotesStore';
@@ -24,7 +25,7 @@ import QuickEditModal from './UnifiedQuoteEditor/QuickEditModal';
 interface UnifiedQuoteState {
   rawData: QuoteData;
   generatedHTML: string;
-  sectionOverrides: Map<string, string>;
+  mixedContentSections: Map<string, MixedContentSection>;
   previewHTML: string;
   isDirty: boolean;
   lastSaved?: Date;
@@ -62,7 +63,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   const [state, setState] = useState<UnifiedQuoteState>({
     rawData: activeQuote,
     generatedHTML: '',
-    sectionOverrides: new Map(),
+    mixedContentSections: new Map(),
     previewHTML: '',
     isDirty: false,
     conflicts: []
@@ -169,7 +170,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
                 result = result.substring(0, startIndex) + content + result.substring(endIndex);
               } else {
                 // Content is just inner content, keep the wrapper
-                const innerContent = originalSection.substring(startTag.length, originalSection.length - 6); // Remove </div>
+                // Content is just inner content, keep the wrapper
                 result = result.substring(0, startIndex) + startTag + content + '</div>' + result.substring(endIndex);
               }
               
@@ -196,10 +197,37 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       return result;
     },
 
-    // Generate unified preview combining raw data + overrides
-    generateUnifiedPreview: (data: QuoteData, overrides: Map<string, string>): string => {
-      const baseHTML = syncEngine.generateBaseHTML(data);
-      return syncEngine.applySectionOverrides(baseHTML, overrides);
+    // Generate unified preview combining raw data + overrides + mixed content
+    generateUnifiedPreview: (
+      data: QuoteData, 
+      overrides: Map<string, string>, 
+      mixedSections: Map<string, MixedContentSection>
+    ): string => {
+      let baseHTML = syncEngine.generateBaseHTML(data);
+      
+      // First, apply mixed content sections (populate templates with current form data)
+      mixedSections.forEach((mixedSection, sectionId) => {
+        const populatedContent = MixedContentEngine.populateTemplate(mixedSection.template, data);
+        console.log(`🔄 Populating mixed content for ${sectionId}:`, { 
+          template: mixedSection.template.substring(0, 100) + '...', 
+          populatedContent: populatedContent.substring(0, 100) + '...' 
+        });
+        
+        // Apply the populated content as an override
+        const tempOverrides = new Map(overrides);
+        tempOverrides.set(sectionId, populatedContent);
+        baseHTML = syncEngine.applySectionOverrides(baseHTML, tempOverrides);
+      });
+      
+      // Then apply regular overrides (for non-mixed sections)
+      const regularOverrides = new Map();
+      overrides.forEach((content, sectionId) => {
+        if (!mixedSections.has(sectionId)) {
+          regularOverrides.set(sectionId, content);
+        }
+      });
+      
+      return syncEngine.applySectionOverrides(baseHTML, regularOverrides);
     }
   }), []);
 
@@ -211,7 +239,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         
         const baseHTML = syncEngine.generateBaseHTML(quote);
         let previewHTML = baseHTML;
-        let sectionOverrides = new Map<string, string>();
+        let mixedContentSections = new Map<string, MixedContentSection>();
         
         // Load existing customizations if they exist
         if (quote.customization?.customSections) {
@@ -219,50 +247,42 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           
           console.log('🔄 Loading saved customizations:', customSections.map(s => ({ id: s.id, isVisible: s.isVisible, contentLength: s.content?.length })));
           
-          // Define sections that should NOT be loaded as overrides (form-driven content)
+          // Define sections that should NOT be loaded as mixed content (pure form-driven content)
           const formDrivenSections = [
-            'support', 'structure-support', // Structure support depends on form fields
-            'track', // Track configuration depends on form fields  
-            'pocket-doors', // Pocket doors depend on form fields
-            'panel-doors', 'pass-doors', // Pass doors depend on form fields
             'billing-job', 'billing-and-job-info', // Job info depends on form fields
             'pricing', // Pricing depends on form fields
-            'terms' // Terms section contains laborType, wageRate, payment percentages
-            // Removed 'statement' - user wants to edit this
-            // Allow customization: 'panels', 'proposal-intro', 'statement-section'
+            'wall-specifications' // Wall specs table depends on form fields
+            // All other sections now use mixed content editing
           ];
           
-          // Convert custom sections to section overrides
+          // Convert custom sections to mixed content sections
           customSections.forEach(section => {
             if (section.content && section.isVisible) {
-              // Skip form-driven sections - they should regenerate from form data
+              // Skip pure form-driven sections - they should regenerate from form data
               if (formDrivenSections.includes(section.id)) {
                 console.log(`🚫 Skipping form-driven section override: ${section.id} - will regenerate from form data`);
                 return;
               }
               
-              console.log(`🔒 Applying section override for: ${section.id} (content length: ${section.content.length})`);
+              console.log(`🔄 Loading mixed content section: ${section.id}`);
               
-              // Check if content already has wrapper div or is just inner content
-              let innerContent = section.content;
+              const mixedSection = MixedContentEngine.createMixedSection(
+                section.id,
+                section.content,
+                true // Mark as customized since it was saved
+              );
               
-              // If it looks like it has a wrapper div, extract inner content
-              if (section.content.includes(`class="${section.id}-section"`) || 
-                  section.content.includes(`class="`) && section.content.includes(`-section"`)) {
-                innerContent = section.content
-                  .replace(/<div class="[^"]*-section"[^>]*>/, '')
-                  .replace(/<\/div>$/, '')
-                  .trim();
-              }
-              
-              console.log(`📝 Section ${section.id} override applied:`, innerContent.substring(0, 100) + '...');
-              sectionOverrides.set(section.id, innerContent);
+              mixedContentSections.set(section.id, mixedSection);
+              console.log(`📝 Mixed content section loaded for ${section.id}:`, {
+                variables: mixedSection.variables,
+                templateLength: mixedSection.template.length
+              });
             }
           });
           
-          // Apply the overrides to generate the preview
-          if (sectionOverrides.size > 0) {
-            previewHTML = syncEngine.applySectionOverrides(baseHTML, sectionOverrides);
+          // Apply mixed content to generate the preview
+          if (mixedContentSections.size > 0) {
+            previewHTML = syncEngine.generateUnifiedPreview(quote, new Map(), mixedContentSections);
           }
         }
         
@@ -271,7 +291,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           rawData: quote,
           generatedHTML: baseHTML,
           previewHTML,
-          sectionOverrides,
+          mixedContentSections,
           isDirty: false,
           lastSaved: quote?.updated_at ? new Date(quote.updated_at) : undefined
         }));
@@ -298,7 +318,11 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
     if (!isLoading) {
       console.log('🔄 Preview update triggered. Current rawData:', state.rawData);
       
-      const newPreview = syncEngine.generateUnifiedPreview(state.rawData, state.sectionOverrides);
+      const newPreview = syncEngine.generateUnifiedPreview(
+        state.rawData, 
+        new Map(), 
+        state.mixedContentSections
+      );
       
       console.log('✅ Generated new preview HTML length:', newPreview.length);
       
@@ -309,7 +333,12 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         // Preserve isDirty state during preview updates
       }));
     }
-  }, [JSON.stringify(state.rawData), state.sectionOverrides, syncEngine, isLoading]);
+  }, [
+    JSON.stringify(state.rawData), 
+    state.mixedContentSections,
+    syncEngine, 
+    isLoading
+  ]);
 
   // Sync with realtime quote updates
   useEffect(() => {
@@ -374,31 +403,46 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       });
     }, []);
 
-  // Handle section content overrides
+  // Handle section content overrides (mixed content only)
   const handleSectionOverride = useCallback((sectionId: string, content: string) => {
-    
     setState(prev => {
-      // Check if the section content has actually changed
-      const currentContent = prev.sectionOverrides.get(sectionId);
-      const hasChanged = currentContent !== content;
+      console.log(`🔄 Processing ${sectionId} as mixed content`);
       
-      if (!hasChanged) {
-        return prev;
+      // Get original template from generated HTML
+      const baseHTML = syncEngine.generateBaseHTML(prev.rawData);
+      const sections = SmartQuoteHelper.extractSections(baseHTML);
+      const originalSection = sections.find(s => s.id === sectionId);
+      const originalTemplate = originalSection?.content || '';
+      
+      const mixedResult = MixedContentEngine.processSectionForMixedContent(
+        sectionId,
+        content,
+        originalTemplate,
+        prev.rawData
+      );
+      
+      if (mixedResult.shouldSaveAsMixed && mixedResult.mixedSection) {
+        const newMixedSections = new Map(prev.mixedContentSections);
+        newMixedSections.set(sectionId, mixedResult.mixedSection);
+        
+        // Generate preview with mixed content
+        const newPreview = syncEngine.generateUnifiedPreview(prev.rawData, new Map(), newMixedSections);
+        
+        console.log(`📝 Mixed content section updated for ${sectionId}:`, {
+          template: mixedResult.mixedSection.template.substring(0, 100) + '...',
+          variables: mixedResult.mixedSection.variables,
+          totalMixedSections: newMixedSections.size
+        });
+        
+        return {
+          ...prev,
+          mixedContentSections: newMixedSections,
+          previewHTML: newPreview,
+          isDirty: true
+        };
       }
       
-      const newOverrides = new Map(prev.sectionOverrides);
-      newOverrides.set(sectionId, content);
-      
-      
-      // Immediately regenerate preview with new overrides
-      const newPreview = syncEngine.generateUnifiedPreview(prev.rawData, newOverrides);
-      
-      return {
-        ...prev,
-        sectionOverrides: newOverrides,
-        previewHTML: newPreview,
-        isDirty: true
-      };
+      return prev;
     });
   }, [syncEngine]);
 
@@ -413,54 +457,43 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       let sections: QuoteSection[] = [];
       
       // Define sections that should NOT be saved as overrides (form-driven content)
-      const formDrivenSections = [
-        'support', 'structure-support', // Structure support depends on form fields
-        'track', // Track configuration depends on form fields  
-        'pocket-doors', // Pocket doors depend on form fields
-        'panel-doors', 'pass-doors', // Pass doors depend on form fields
-        'billing-job', 'billing-and-job-info', // Job info depends on form fields
-        'pricing', // Pricing depends on form fields
-        'terms' // Terms section contains laborType, wageRate, payment percentages
-        // Removed 'statement' - user wants to edit this
-        // Allow customization: 'panels', 'proposal-intro', 'statement-section'
-      ];
+      // Mixed content sections are the only customizations we save now
       
-      // If we have section overrides, create custom sections from them
-      if (state.sectionOverrides.size > 0) {
-        sections = Array.from(state.sectionOverrides.entries())
-          .filter(([sectionId, content]) => {
-            // Skip form-driven sections - they should regenerate from form data
-            if (formDrivenSections.includes(sectionId)) {
-              console.log(`🚫 Skipping form-driven section override: ${sectionId}`);
-              return false;
-            }
-            return true;
-          })
-          .map(([sectionId, content]) => ({
-            id: sectionId,
-            title: sectionId.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-            content: content,
-            isEditable: true,
-            isRequired: false,
-            isVisible: true,
-            dependencies: [] as string[] //implicit any sdded as string[]
-          }));
-          
-        console.log(`💾 Saving ${sections.length} custom sections (filtered out ${state.sectionOverrides.size - sections.length} form-driven sections)`);
-      } else {
-        // No custom overrides, extract sections from current preview HTML
+      // Add mixed content sections to the sections array
+      if (state.mixedContentSections.size > 0) {
+        const mixedSections = Array.from(state.mixedContentSections.entries()).map(([sectionId, mixedSection]) => ({
+          id: sectionId,
+          title: mixedSection.id.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+          content: mixedSection.template, // Save the template, not populated content
+          header: mixedSection.template.includes('${') ? `Mixed Content Template (${mixedSection.variables.length} variables)` : undefined,
+          isEditable: true,
+          isRequired: false,
+          isVisible: true,
+          isMixedContent: true, // Flag to identify mixed content sections
+          variables: mixedSection.variables,
+          dependencies: [] as string[]
+        }));
+        
+        sections = [...sections, ...mixedSections];
+        console.log(`💾 Added ${mixedSections.length} mixed content sections to save data`);
+      }
+      
+      // If no sections at all, extract sections from current preview HTML
+      if (sections.length === 0) {
         sections = SmartQuoteHelper.extractSections(state.previewHTML);
       }
       
       
+      // For true mixed content editing, we store templates in customSections
+      // The customHTML field stores the current populated preview for reference
       const unifiedData: SmartQuoteData = {
         ...state.rawData,
-        customSections: sections,
-        customHTML: state.previewHTML,
-        isCustomized: state.sectionOverrides.size > 0
+        customSections: sections, // ✅ Contains templates with ${variables}
+        customHTML: state.previewHTML, // Current populated HTML for display reference
+        isCustomized: state.mixedContentSections.size > 0
       };
 
-      await onSave?.(unifiedData);
+      onSave?.(unifiedData);
       
       setState(prev => ({
         ...prev,
@@ -487,7 +520,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   const handleDownload = useCallback(async () => {
     try {
       // Pass both HTML and Smart PDF state to the download handler
-      await onDownload?.(state.previewHTML, showSmartPDFPreview);
+      onDownload?.(state.previewHTML, showSmartPDFPreview);
       
       toast({
         title: "Download Started",
@@ -510,47 +543,29 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
     // Restore the original quote data from database and clear any customizations
     const baseHTML = syncEngine.generateBaseHTML(quote);
     let restoredHTML = baseHTML;
-    let restoredOverrides = new Map<string, string>();
+    let restoredMixedSections = new Map<string, MixedContentSection>();
     
     // If the quote has saved customizations, restore them
     if (quote.customization?.customSections) {
       const customSections = quote.customization.customSections;
       
-      // Define sections that should NOT be loaded as overrides (form-driven content)
-      const formDrivenSections = [
-        'support', 'structure-support', // Structure support depends on form fields
-        'track', // Track configuration depends on form fields  
-        'pocket-doors', // Pocket doors depend on form fields
-        'panel-doors', 'pass-doors', // Pass doors depend on form fields
-        'billing-job', 'billing-and-job-info', // Job info depends on form fields
-        'pricing', // Pricing depends on form fields
-        'terms' // Terms section contains laborType, wageRate, payment percentages
-        // Removed 'statement' - user wants to edit this
-        // Allow customization: 'panels', 'proposal-intro', 'statement-section'
-      ];
-      
-      // Convert custom sections to section overrides (same logic as initialization)
       customSections.forEach(section => {
         if (section.content && section.isVisible) {
-          // Skip form-driven sections - they should regenerate from form data
-          if (formDrivenSections.includes(section.id)) {
-            console.log(`🚫 Reset: Skipping form-driven section override: ${section.id} - will regenerate from form data`);
-            return;
-          }
+          console.log(`🔄 Reset: Restoring mixed content section: ${section.id}`);
           
-          // Extract the inner content from the section (remove the wrapper div)
-          const innerContent = section.content
-            .replace(/<div class="[^"]*-section"[^>]*>/, '')
-            .replace(/<\/div>$/, '')
-            .trim();
+          const mixedSection = MixedContentEngine.createMixedSection(
+            section.id,
+            section.content,
+            true // Mark as customized since it was saved
+          );
           
-          restoredOverrides.set(section.id, innerContent);
+          restoredMixedSections.set(section.id, mixedSection);
         }
       });
       
-      // Apply the restored overrides to generate the preview
-      if (restoredOverrides.size > 0) {
-        restoredHTML = syncEngine.applySectionOverrides(baseHTML, restoredOverrides);
+      // Apply the restored mixed content to generate the preview
+      if (restoredMixedSections.size > 0) {
+        restoredHTML = syncEngine.generateUnifiedPreview(quote, new Map(), restoredMixedSections);
       }
     }
 
@@ -559,7 +574,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       rawData: quote, // Restore original quote data from database
       generatedHTML: baseHTML,
       previewHTML: restoredHTML,
-      sectionOverrides: restoredOverrides,
+      mixedContentSections: restoredMixedSections,
       isDirty: false, // Not dirty since we're reverting to saved state
       lastSaved: quote?.updated_at ? new Date(quote.updated_at) : prev.lastSaved
     }));
