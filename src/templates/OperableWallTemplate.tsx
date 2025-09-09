@@ -95,7 +95,7 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     const systemText = wallCount > 1 ? "wall systems" : "wall system";
     
     const proposalHtml = `
-      <div class="proposal-intro" style="line-height: 1.2; margin-top: 12px;">
+      <div class="proposal-intro-section" style="line-height: 1.2; margin-top: 12px;">
         Thank you for considering <strong>${organizationName}</strong> for this project. As discussed, we are offering a proposal to furnish, deliver, & install, the following ${systemText} as specified below, at the above named project.
         <br><br><strong>Specifications as follows:</strong>
       </div>

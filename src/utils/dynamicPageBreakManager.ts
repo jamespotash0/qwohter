@@ -1,16 +1,76 @@
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
 import { sanitizeHTML } from './security';
+import { Minimize } from 'lucide-react';
 
 export interface PageBreakRule {
   sectionClass: string;
   minimumHeight: number;
+  calculatedHeight?: number; // Actual measured height from content
   priority: number; // Higher priority gets more protection from breaking
   allowBreakInside?: boolean;
+  isDynamic?: boolean; // Whether this rule should use calculated height instead of minimum
 }
 
 export class DynamicPageBreakManager {
   private pageHeight = 1123; // A4 at scale 2
   private marginBuffer = 50;
+
+  /**
+   * Calculate actual section heights from HTML content
+   */
+  private calculateSectionHeights(htmlContent: string): Map<string, number> {
+    const sectionHeights = new Map<string, number>();
+    
+    // Create temporary container for measurement
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.width = '794px'; // A4 width at scale 2
+    tempContainer.style.visibility = 'hidden';
+    tempContainer.style.fontFamily = '"Times New Roman", Times, serif';
+    tempContainer.style.fontSize = '14px';
+    tempContainer.style.lineHeight = '1.15';
+    
+    try {
+      sanitizeHTML.setInnerHTML(tempContainer, sanitizeHTML.cleanForPDF(htmlContent));
+      document.body.appendChild(tempContainer);
+
+      // Define section selectors to measure
+      const sectionSelectors = [
+        'header-section',
+        'billing-job-container', 
+        'proposal-intro-section',
+        'wall-specifications-list',
+        'panels-section',
+        'pricing-section',
+        'terms-section',
+        'signature-section',
+        'pocket-doors-section',
+        'pass-doors-section'
+      ];
+
+      sectionSelectors.forEach(sectionClass => {
+        const section = tempContainer.querySelector(`.${sectionClass}`) as HTMLElement;
+        if (section) {
+          // Force layout calculation
+          section.offsetHeight;
+          const actualHeight = section.getBoundingClientRect().height;
+          sectionHeights.set(sectionClass, Math.ceil(actualHeight));
+          
+          console.log(`📏 Measured ${sectionClass}: ${Math.ceil(actualHeight)}px`);
+        }
+      });
+
+      document.body.removeChild(tempContainer);
+    } catch (error) {
+      console.error('Error calculating section heights:', error);
+      if (document.body.contains(tempContainer)) {
+        document.body.removeChild(tempContainer);
+      }
+    }
+
+    return sectionHeights;
+  }
 
   private getPageBreakRules(data: QuoteData): PageBreakRule[] {
     const wallCount = this.getWallCount(data);
@@ -26,44 +86,57 @@ export class DynamicPageBreakManager {
         sectionClass: 'header-section',
         minimumHeight: 200,
         priority: 10,
-        allowBreakInside: false
+        allowBreakInside: false,
+        isDynamic: true
       },
       {
         sectionClass: 'billing-job-container',
         minimumHeight: 150,
         priority: 9,
-        allowBreakInside: false
+        allowBreakInside: false,
+        isDynamic: true
       },
-        // sectionClass: 'proposal-intro'
+      {
+        sectionClass: 'proposal-intro-section',
+        minimumHeight: 50,
+        priority: 10,
+        allowBreakInside: false,
+        isDynamic: true
+      },
       {
         sectionClass: 'wall-specifications-list',
         minimumHeight: hasMultipleWalls ? wallCount * 50 + 80 : 120,
         priority: 8,
-        allowBreakInside: hasMultipleWalls
+        allowBreakInside: hasMultipleWalls,
+        isDynamic: true
       },
       {
         sectionClass: 'panels-section',
         minimumHeight: 180,
         priority: 7,
-        allowBreakInside: true
+        allowBreakInside: true,
+        isDynamic: true
       },
       {
         sectionClass: 'pricing-section',
         minimumHeight: 120,
         priority: 9,
-        allowBreakInside: false
+        allowBreakInside: false,
+        isDynamic: true
       },
       {
         sectionClass: 'terms-section',
         minimumHeight: 250,
         priority: 6,
-        allowBreakInside: true
+        allowBreakInside: true,
+        isDynamic: true
       },
       {
         sectionClass: 'signature-section',
         minimumHeight: 120,
         priority: 10,
-        allowBreakInside: false
+        allowBreakInside: false,
+        isDynamic: true
       }
     ];
 
@@ -72,11 +145,36 @@ export class DynamicPageBreakManager {
         sectionClass: 'pocket-doors-section',
         minimumHeight: 80,
         priority: 7,
-        allowBreakInside: false
+        allowBreakInside: false,
+        isDynamic: true
       });
     }
 
     return rules;
+  }
+
+  /**
+   * Get page break rules with calculated heights from actual content
+   */
+  private getDynamicPageBreakRules(data: QuoteData, htmlContent: string): PageBreakRule[] {
+    const baseRules = this.getPageBreakRules(data);
+    const sectionHeights = this.calculateSectionHeights(htmlContent);
+    
+    // Update rules with calculated heights
+    return baseRules.map(rule => {
+      if (rule.isDynamic) {
+        const measuredHeight = sectionHeights.get(rule.sectionClass);
+        if (measuredHeight !== undefined) {
+          return {
+            ...rule,
+            calculatedHeight: measuredHeight,
+            // Use the larger of minimum or calculated height for safety
+            minimumHeight: Math.max(rule.minimumHeight, measuredHeight)
+          };
+        }
+      }
+      return rule;
+    });
   }
 
   private getWallCount(data: QuoteData): number {
@@ -85,35 +183,51 @@ export class DynamicPageBreakManager {
   }
 
   public processHTMLWithDynamicBreaks(htmlContent: string, data: QuoteData): string {
-    // Create temporary container for measurement
+    console.log('🔄 Processing HTML with dynamic page breaks...');
+    
+    // Create temporary container for layout calculations
     const tempContainer = document.createElement('div');
     tempContainer.style.position = 'absolute';
     tempContainer.style.left = '-9999px';
     tempContainer.style.width = '794px'; // A4 width at scale 2
     tempContainer.style.visibility = 'hidden';
-    sanitizeHTML.setInnerHTML(tempContainer, sanitizeHTML.cleanForPDF(htmlContent));
-    document.body.appendChild(tempContainer);
-
+    
     try {
-      const rules = this.getPageBreakRules(data);
+      // Get rules with calculated heights from actual content
+      const rules = this.getDynamicPageBreakRules(data, htmlContent);
+      console.log('📋 Using dynamic rules:', rules.map(r => ({ 
+        section: r.sectionClass, 
+        min: r.minimumHeight, 
+        calculated: r.calculatedHeight 
+      })));
+
+      sanitizeHTML.setInnerHTML(tempContainer, sanitizeHTML.cleanForPDF(htmlContent));
+      document.body.appendChild(tempContainer);
       let processedContent = htmlContent;
       // let currentPageHeight = 0;
 
-      // Process each section according to rules
+      // Process each section according to dynamic rules
       rules.forEach(rule => {
         const section = tempContainer.querySelector(`.${rule.sectionClass}`) as HTMLElement;
         if (section) {
           const sectionTop = section.offsetTop;
-          const sectionHeight = section.offsetHeight;
+          const actualSectionHeight = section.offsetHeight;
+          
+          // Use calculated height if available, otherwise use actual measured height
+          const effectiveHeight = rule.calculatedHeight || actualSectionHeight;
+          const requiredHeight = rule.isDynamic && rule.calculatedHeight ? 
+            rule.calculatedHeight : rule.minimumHeight;
+          
+          console.log(`📏 Processing ${rule.sectionClass}: actual=${actualSectionHeight}px, calculated=${rule.calculatedHeight}px, using=${effectiveHeight}px`);
           
           // Calculate which page we're on
           const currentPage = Math.floor(sectionTop / this.pageHeight);
           const positionOnPage = sectionTop - (currentPage * this.pageHeight);
           const remainingSpace = this.pageHeight - positionOnPage;
 
-          // Check if section needs page break protection
-          if (sectionHeight >= rule.minimumHeight && 
-              remainingSpace < rule.minimumHeight + this.marginBuffer) {
+          // Check if section needs page break protection using dynamic height
+          if (effectiveHeight >= requiredHeight && 
+              remainingSpace < requiredHeight + this.marginBuffer) {
             
             if (!rule.allowBreakInside) {
               // Add page break before this section
@@ -273,7 +387,10 @@ export class DynamicPageBreakManager {
 
     // Add paragraphs that fit
     for (let i = 0; i < breakPoint; i++) {
-      firstFragment.appendChild(wallParagraphs[i].cloneNode(true));
+      const paragraph = wallParagraphs[i];
+      if (paragraph) {
+        firstFragment.appendChild(paragraph.cloneNode(true));
+      }
     }
 
     // Create second fragment (what goes to next page)  
@@ -283,7 +400,10 @@ export class DynamicPageBreakManager {
 
     // Add remaining paragraphs
     for (let i = breakPoint; i < wallParagraphs.length; i++) {
-      secondFragment.appendChild(wallParagraphs[i].cloneNode(true));
+      const paragraph = wallParagraphs[i];
+      if (paragraph) {
+        secondFragment.appendChild(paragraph.cloneNode(true));
+      }
     }
 
     // Insert page break between fragments
