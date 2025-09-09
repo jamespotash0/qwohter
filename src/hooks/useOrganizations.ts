@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { OrganizationInfo } from "@/lib/types/settings/companySettings";
-import type { Database } from "@/integrations/supabase/types";
 
 export interface Organization {
   id: string;
@@ -43,7 +42,7 @@ export const useOrganizations = () => {
         .from('profiles')
         .select('organization_id, role')
         .eq('id', user.user.id)
-        .single();
+        .single() as any;
 
       if (profileError) {
         console.error('Profile error:', profileError);
@@ -54,9 +53,9 @@ export const useOrganizations = () => {
         // If user has an organization, try to fetch it
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
-          .select('id, name, organization_code, created_at, updated_at')
+          .select('id, name, organization_code, created_at, updated_at, organization_info')
           .eq('id', profileData.organization_id)
-          .single();
+          .single() as any;
 
         if (orgError) {
           console.error('Organization error:', orgError);
@@ -66,7 +65,7 @@ export const useOrganizations = () => {
           // Ensure organization_info exists (handle both cases: column exists or doesn't)
           const orgWithInfo = {
             ...orgData,
-            organization_info: (orgData as any).organization_info || {}
+            organization_info: orgData.organization_info || {}
           } as Organization;
           setCurrentOrganization(orgWithInfo);
           setCurrentUserRole(profileData.role as 'admin' | 'member');
@@ -90,7 +89,7 @@ export const useOrganizations = () => {
       const { data: membersData, error: membersError } = await supabase
         .from('profiles')
         .select('id, email, full_name, role, status, invited_by, joined_at, organization_id')
-        .eq('organization_id', organizationId);
+        .eq('organization_id', organizationId) as any;
 
       if (membersError) throw membersError;
 
@@ -100,9 +99,9 @@ export const useOrganizations = () => {
       }
 
       // Transform data to match OrganizationMember interface
-      const transformedData = membersData
-        .filter(profile => profile && profile.id) // Filter out null/undefined profiles
-        .map(profile => ({
+      const transformedData = (membersData || [])
+        .filter((profile: any) => profile && profile.id) // Filter out null/undefined profiles
+        .map((profile: any) => ({
           id: profile.id,
           organization_id: profile.organization_id || '',
           role: (profile.role as 'admin' | 'member') || 'member',
@@ -135,20 +134,21 @@ export const useOrganizations = () => {
       
       try {
         // Try to create organization with organization_info column
-        const { data: orgData, error: orgError } = await supabase
+        const { data: orgData, error: orgError } = await (supabase as any)
           .from('organizations')
           .insert({
             name,
             organization_code: orgCode,
             organization_info: {} // Initialize with empty JSONB object
           })
-          .select('id, name, organization_code, created_at, updated_at')
+          .select('id, name, organization_code, created_at, updated_at, organization_info')
           .single();
 
         if (orgError) throw orgError;
+        if (!orgData) throw new Error('Failed to create organization');
 
         // Update user's profile to link to this organization and set as admin
-        const { error: profileError } = await supabase
+        const { error: profileError } = await (supabase as any)
           .from('profiles')
           .update({ 
             organization_id: orgData.id,
@@ -158,10 +158,10 @@ export const useOrganizations = () => {
 
         if (profileError) throw profileError;
 
-        // Set organization with empty organization_info
+        // Set organization with organization_info
         createdOrganization = {
           ...orgData,
-          organization_info: {}
+          organization_info: orgData.organization_info || {}
         };
         setCurrentOrganization(createdOrganization);
 
@@ -170,7 +170,7 @@ export const useOrganizations = () => {
         if (createError.message?.includes('organization_info')) {
           console.warn('organization_info column does not exist yet. Creating organization without JSONB data.');
           
-          const { data: orgData, error: orgError } = await supabase
+          const { data: orgData, error: orgError } = await (supabase as any)
             .from('organizations')
             .insert({
               name,
@@ -181,8 +181,10 @@ export const useOrganizations = () => {
 
           if (orgError) throw orgError;
 
+          if (!orgData) throw new Error('Failed to create organization');
+
           // Update user's profile to link to this organization and set as admin
-          const { error: profileError } = await supabase
+          const { error: profileError } = await (supabase as any)
             .from('profiles')
             .update({ 
               organization_id: orgData.id,
@@ -229,9 +231,9 @@ export const useOrganizations = () => {
         .from('profiles')
         .select('*')
         .eq('email', email)
-        .single();
+        .single() as any;
 
-      if (profileError) {
+      if (profileError || !profile) {
         throw new Error('User not found. They need to sign up first.');
       }
 
@@ -241,7 +243,7 @@ export const useOrganizations = () => {
       }
 
       // Update user's profile to join organization
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('profiles')
         .update({
           organization_id: organizationId,
@@ -277,13 +279,13 @@ export const useOrganizations = () => {
   const removeMember = async (memberId: string) => {
     try {
       // Remove organization association from profile
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('profiles')
         .update({
-          organization_id: '',
+          organization_id: null,
           role: 'member',
           invited_by: null,
-          joined_at: undefined
+          joined_at: null
         })
         .eq('id', memberId);
 
@@ -307,7 +309,7 @@ export const useOrganizations = () => {
 
   const updateMemberRole = async (memberId: string, role: 'admin' | 'member') => {
     try {
-      const { data, error } = await supabase.rpc('update_member_role', {
+      const { data, error } = await (supabase as any).rpc('update_member_role', {
         member_id: memberId,
         new_role: role
       });
@@ -336,7 +338,7 @@ export const useOrganizations = () => {
 
   const approveMember = async (memberId: string) => {
     try {
-      const { data, error } = await supabase.rpc('approve_member', {
+      const { data, error } = await (supabase as any).rpc('approve_member', {
         member_id: memberId
       });
 
@@ -365,7 +367,7 @@ export const useOrganizations = () => {
 
   const rejectMember = async (memberId: string) => {
     try {
-      const { data, error } = await supabase.rpc('reject_member', {
+      const { data, error } = await (supabase as any).rpc('reject_member', {
         member_id: memberId
       });
 
