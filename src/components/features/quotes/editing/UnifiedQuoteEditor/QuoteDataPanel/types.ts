@@ -15,6 +15,7 @@ export interface CollapsibleSectionProps {
   isOpen: boolean;
   onToggle: () => void;
   children: React.ReactNode;
+  headerAction?: React.ReactNode;
 }
 
 export interface SectionState {

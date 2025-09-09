@@ -100,6 +100,7 @@ export const QuoteDataPanelCore: React.FC<QuoteDataPanelProps> = ({
         onToggle={() => toggleSection('pricing')}
         onFieldChange={handleFieldChange}
         onChange={onChange}
+        onDatabaseSave={onDatabaseSave}
       />
     </div>
   );

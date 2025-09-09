@@ -8,18 +8,28 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   icon,
   isOpen,
   onToggle,
-  children
+  children,
+  headerAction
 }) => (
   <Card className="mb-4">
     <CardHeader 
-      className="cursor-pointer p-3 hover:bg-gray-50 transition-colors"
-      onClick={onToggle}
+      className="p-3 hover:bg-gray-50 transition-colors"
     >
-      <CardTitle className="flex items-center gap-2 text-sm">
-        {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-        {icon}
-        {title}
-      </CardTitle>
+      <div className="flex items-center justify-between">
+        <CardTitle 
+          className="flex items-center gap-2 text-sm cursor-pointer"
+          onClick={onToggle}
+        >
+          {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          {icon}
+          {title}
+        </CardTitle>
+        {headerAction && (
+          <div onClick={(e) => e.stopPropagation()}>
+            {headerAction}
+          </div>
+        )}
+      </div>
     </CardHeader>
     {isOpen && (
       <CardContent className="p-3 pt-0">
