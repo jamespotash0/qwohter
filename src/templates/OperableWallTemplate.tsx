@@ -114,23 +114,27 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
 
     // Create single paragraph without bullets for better editing
     const wallDescriptions = wallEntries.map(([wallName, wall]) => {
-      const panelCountText = wall.panelCount && parseInt(wall.panelCount as any || '1') > 1 ? 'Multiple' : 'Single';
-      const heightText = this.helpers.formatDimensions('0', '0', String(wall.heightFeet || ''), String(wall.heightInches || ''), false).split(' x ')[1];
+      // const panelCountText = wall.panelCount && parseInt(wall.panelCount as any || '1') > 1 ? 'Multiple' : 'Single';
+      // const heightText = this.helpers.formatDimensions('0', '0', String(wall.heightFeet || ''), String(wall.heightInches || ''), false).split(' x ')[1];
       
       if (isGlassWall(wall)) {
         return SmartQuoteHelper.buildSentence([
           { text: `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> utilizes the Kwik-Wall Glass Wall System` },
           { text: `<strong>Model ${wall.model}</strong>`, condition: SmartQuoteHelper.hasValue(wall.model) },
           { text: `featuring <strong>${wall.panelOperation}</strong> operation`, condition: SmartQuoteHelper.hasValue(wall.panelOperation) },
-          { text: `configured with <strong>${panelCountText} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
+          // { text: `configured with <strong>${panelCountText} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
+          { text: `configured with <strong>${wall.panelCount && parseInt(wall.panelCount as any || '1') > 1 ? 'Multiple' : 'Single'} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
           { text: `for use on a <strong>${wall.trackType} Layout</strong>.`, condition: SmartQuoteHelper.hasValue(wall.trackType) },
-          { text: `The wall is <strong>${heightText}</strong> in height`, condition: SmartQuoteHelper.hasAllValues(String(wall.heightFeet || ''), String(wall.heightInches || '')) },
+          // { text: `The wall is <strong>${heightText}</strong> in height`, condition: SmartQuoteHelper.hasAllValues(String(wall.heightFeet || ''), String(wall.heightInches || '')) },
+          { text: `The wall is <strong>${this.helpers.formatDimensions('0', '0', String(wall.heightFeet || ''), String(wall.heightInches || ''), false).split(' x ')[1]}</strong> in height, with panel lengths varying as required.`, condition: SmartQuoteHelper.hasAllValues(String(wall.heightFeet || ''), String(wall.heightInches || '')) },
           { text: `Each glass panel features <strong>${wall.glassType || 'insulated glass units'}</strong>`, condition: SmartQuoteHelper.hasValue(wall.glassType) },
           { text: `with <strong>${wall.frameThickness}</strong> thick framing`, condition: SmartQuoteHelper.hasValue(wall.frameThickness) },
           { text: `and <strong>${wall.frameFinish}</strong> frame finish.`, condition: SmartQuoteHelper.hasValue(wall.frameFinish) },
-          { text: `The system achieves a minimum STC rating of <strong>${wall.stcRating}</strong>`, condition: SmartQuoteHelper.hasValue(wall.stcRating) },
-          { text: `while maintaining visual transparency. For acoustic performance, glass panels use <strong>${wall.bottomSeals}</strong> horizontal bottom seals`, condition: SmartQuoteHelper.hasValue(wall.bottomSeals) },
-          { text: `and <strong>${wall.topSeals}</strong> horizontal top seals.`, condition: SmartQuoteHelper.hasValue(wall.topSeals) },
+          { text: `The system achieves a minimum STC rating of <strong>${wall.stcRating}</strong> will maintaining visual transparency.`, condition: SmartQuoteHelper.hasValue(wall.stcRating) },
+          // { text: `For acoustic performance, glass panels use <strong>${wall.bottomSeals}</strong> horizontal bottom seals`, condition: SmartQuoteHelper.hasValue(wall.bottomSeals) },
+          // { text: `and <strong>${wall.topSeals}</strong> horizontal top seals.`, condition: SmartQuoteHelper.hasValue(wall.topSeals) },
+          { text: `For acoustic performance, glass panels use ${SmartQuoteHelper.hasValue(wall.bottomSeals) ? `<strong>${wall.bottomSeals}</strong> horizontal bottom seals` : ''}${SmartQuoteHelper.hasValue(wall.bottomSeals) && SmartQuoteHelper.hasValue(wall.topSeals) ? ',' : ''}${!SmartQuoteHelper.hasValue(wall.bottomSeals) && SmartQuoteHelper.hasValue(wall.topSeals) ? '' : ''}`,condition: SmartQuoteHelper.hasValue(wall.bottomSeals) || SmartQuoteHelper.hasValue(wall.topSeals) },
+          { text: `${SmartQuoteHelper.hasValue(wall.topSeals) ? `${SmartQuoteHelper.hasValue(wall.bottomSeals) ? 'and ' : ''}<strong>${wall.topSeals}</strong> horizontal top seals.` : ''}`, condition: SmartQuoteHelper.hasValue(wall.topSeals) },
           { text: `The system provides closure with <strong>${wall.finalClosure}</strong>`, condition: SmartQuoteHelper.hasValue(wall.finalClosure) }
         ]);
       } else if (isOperableWall(wall)) {
@@ -138,18 +142,18 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
           { text: `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> utilizes the Kwik-Wall` },
           { text: `<strong>${wall.series} series</strong>`, condition: SmartQuoteHelper.hasValue(wall.series) },
           { text: `<strong>Model ${wall.model}</strong>`, condition: SmartQuoteHelper.hasValue(wall.model) },
-          { text: `configured with <strong>${panelCountText} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
+          { text: `configured with <strong>${wall.panelCount && parseInt(wall.panelCount as any || '1') > 1 ? 'Multiple' : 'Single'} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
           { text: `for use on a <strong>${wall.trackType} Layout</strong>.`, condition: SmartQuoteHelper.hasValue(wall.trackType) },
-          { text: `The wall is <strong>${heightText}</strong> in height, with panel lengths varying as required`, condition: SmartQuoteHelper.hasAllValues(String(wall.heightFeet || ''), String(wall.heightInches || '')) },
+          { text: `The wall is <strong>${this.helpers.formatDimensions('0', '0', String(wall.heightFeet || ''), String(wall.heightInches || ''), false).split(' x ')[1]}</strong> in height, with panel heights varying as required.`, condition: SmartQuoteHelper.hasAllValues(String(wall.heightFeet || ''), String(wall.heightInches || '')) },
           { text: `Each panel is <strong>${wall.panelThickness}</strong> thick`, condition: SmartQuoteHelper.hasValue(wall.panelThickness) },
           { text: `and constructed with a <strong>${wall.panelSkin}</strong> panel skin.`, condition: SmartQuoteHelper.hasValue(wall.panelSkin) },
           { text: `Panels are finished in <strong>${wall.panelFinishCategory}${wall.panelFinishSpecificItem && wall.panelFinishSpecificItem !== 'Unknown' ? ` - ${wall.panelFinishSpecificItem}` : ''}</strong> (from the manufacturer's standard offerings)`, condition: SmartQuoteHelper.hasValue(wall.panelFinishCategory) },
           { text: `and achieve a minimum STC rating of <strong>${wall.stcRating}</strong>.`, condition: SmartQuoteHelper.hasValue(wall.stcRating) },
-          { text: `For acoustic performance, panels use <strong>${wall.verticalSeals}</strong> vertical seals,`, condition: SmartQuoteHelper.hasValue(wall.verticalSeals) },
-          { text: `${wall.bottomSeals === "Retractable" ? "<strong>Retractable</strong> operable" : `<strong>${wall.bottomSeals}</strong>`} horizontal bottom seals,`, condition: SmartQuoteHelper.hasValue(wall.bottomSeals) },
-          { text: `and <strong>${wall.topSeals}</strong> horizontal top seals.`, condition: SmartQuoteHelper.hasValue(wall.topSeals) },
-          { text: `The lead panel provides closure with a <strong>${wall.initialClosureSystem} Seal</strong>`, condition: SmartQuoteHelper.hasValue(wall.initialClosureSystem) },
-          { text: `while the end panel secures the system with a <strong>${wall.finalClosureSystem}</strong>`, condition: SmartQuoteHelper.hasValue(wall.finalClosureSystem) }
+          { text: `For acoustic performance, panels use <strong>${wall.verticalSeals}</strong> vertical seals${SmartQuoteHelper.hasValue(wall.bottomSeals) || SmartQuoteHelper.hasValue(wall.topSeals) ? ',' : '.'}`, condition: SmartQuoteHelper.hasValue(wall.verticalSeals)},
+          { text: `<strong>${wall.bottomSeals}</strong> horizontal bottom seals${SmartQuoteHelper.hasValue(wall.topSeals) ? ',' : '.'}`, condition: SmartQuoteHelper.hasValue(wall.bottomSeals)},
+          { text: `and <strong>${wall.topSeals}</strong> horizontal top seals.`, condition: SmartQuoteHelper.hasValue(wall.topSeals)},     
+          { text: `The initial closure (lead panel) provides closure with a <strong>${wall.initialClosureSystem}</strong>`, condition: SmartQuoteHelper.hasValue(wall.initialClosureSystem) },
+          { text: `while the final closure (end panel) secures the system with a <strong>${wall.finalClosureSystem}</strong>`, condition: SmartQuoteHelper.hasValue(wall.finalClosureSystem) }
         ]);
       } else {
         return `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> - Unsupported wall type`;
@@ -226,9 +230,18 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
       return '';
     }
 
-    const wallDescriptions = wallsWithSupport.map(([wallName, wall]) => {
-      return `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> will be hung from <strong>${wall.structureSupport}</strong>`;
-    }).join(', and ');
+    const hangableSupports = ["Pre-Drilled Steel Beam", "Existing Steel Beam", "Unispan Truss System"];
+
+    const wallDescriptions = wallsWithSupport.map(([wallName, wall], index, arr) => {
+      const support = wall.structureSupport || '';
+      const text = `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> ${
+        hangableSupports.includes(support) ? `will be hung from <strong>${support}</strong>` : `will be <strong>${support}</strong>`
+      }`;
+     // Decide punctuation
+      if (index === arr.length - 1 && arr.length > 1) return `and ${text}`;
+      if (index < arr.length - 1) return `${text},`;
+      return text;
+    }).join(' ');
     
     const summary = wallsWithSupport.length > 1
       ? `to manufacturer's specs, as supplied by others. Soffits, if required, as supplied by others.`
