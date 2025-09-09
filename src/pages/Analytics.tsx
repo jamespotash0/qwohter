@@ -192,7 +192,13 @@ const Analytics = () => {
 
             {/* Chart.js Analytics */}
             <div className="animate-fade-in">
-              <AnalyticsPageCharts quotes={quotes} />
+              {currentOrganization ? (
+                <AnalyticsPageCharts quotes={quotes} organization={currentOrganization} />
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-slate-600">Loading analytics...</p>
+                </div>
+              )}
             </div>
           </div>
         </main>
