@@ -284,7 +284,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                             }}
                             onClick={(e) => e.stopPropagation()}
                             placeholder="1"
-                            className="w-16 h-10 text-center"
+                            className={`w-16 h-10 text-center ${wall.quantity ? 'border-green-500' : 'border-red-500'}`}
                           />
                         </div>
                       </>
