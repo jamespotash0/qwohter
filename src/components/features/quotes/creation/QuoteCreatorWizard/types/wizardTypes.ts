@@ -44,39 +44,8 @@ export interface DeliveryLabor {
   };
 }
 
-export interface Pricing {
-  // basePrice: number;
-  // freight: number;
-  // total: string;
-  payment_upon_drawings: string;
-  payment_upon_track_installation: string;
-  // Enhanced pricing fields
-  kwik_wall_materials_cost?: number;
-  misc_materials_cost?: number;
-  delivery_cost_track?: number;
-  delivery_cost_panel?: number;
-  track_equipment_costs?: number;
-  track_labor_cost?: number;
-  panel_equipment_costs?: number;
-  panel_labor_cost?: number;
-  track_freight_factory?: number;
-  panel_freight_factory?: number;
-  local_handling_costs?: number;
-  materials_markup_percentage?: number;
-  shipping_markup_percentage?: number;
-  unseen_costs?: number;
-  unseen_costs_percentage?: number;
-  unseen_costs_locked?: boolean;
-  cost_subtotal?: number;
-  base_selling_price?: number;
-  shipping_cost_subtotal?: number;
-  shipping_selling_price?: number;
-  final_selling_price?: number;
-  base_selling_gross_profit_percentage?: number;
-  shipping_selling_gross_profit_percentage?: number;
-  final_selling_gross_profit_percentage?: number;
-  final_selling_price_profit_amount?: number;
-}
+// Use EnhancedPricingData directly instead of duplicate interface
+export type Pricing = import('@/lib/types/pricing/enhancedPricing').EnhancedPricingData;
 
 export interface WizardStep {
   id: string;
