@@ -64,7 +64,7 @@ export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
   }, [wall, isOpen]);
 
   // Handle field changes from edit forms
-  const handleFieldChange = (field: string, value: any) => {
+  const handleFieldChange = (wallNameParam: string, field: string, value: any) => {
     setEditedWall(prev => ({
       ...prev,
       [field]: value

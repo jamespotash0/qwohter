@@ -217,9 +217,31 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         if (quote.customization?.customSections) {
           const customSections = quote.customization.customSections;
           
+          console.log('🔄 Loading saved customizations:', customSections.map(s => ({ id: s.id, isVisible: s.isVisible, contentLength: s.content?.length })));
+          
+          // Define sections that should NOT be loaded as overrides (form-driven content)
+          const formDrivenSections = [
+            'support', 'structure-support', // Structure support depends on form fields
+            'track', // Track configuration depends on form fields  
+            'pocket-doors', // Pocket doors depend on form fields
+            'panel-doors', 'pass-doors', // Pass doors depend on form fields
+            'billing-job', 'billing-and-job-info', // Job info depends on form fields
+            'pricing', // Pricing depends on form fields
+            'terms' // Terms section contains laborType, wageRate, payment percentages
+            // Removed 'statement' - user wants to edit this
+            // Allow customization: 'panels', 'proposal-intro', 'statement-section'
+          ];
+          
           // Convert custom sections to section overrides
           customSections.forEach(section => {
             if (section.content && section.isVisible) {
+              // Skip form-driven sections - they should regenerate from form data
+              if (formDrivenSections.includes(section.id)) {
+                console.log(`🚫 Skipping form-driven section override: ${section.id} - will regenerate from form data`);
+                return;
+              }
+              
+              console.log(`🔒 Applying section override for: ${section.id} (content length: ${section.content.length})`);
               
               // Check if content already has wrapper div or is just inner content
               let innerContent = section.content;
@@ -231,9 +253,9 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
                   .replace(/<div class="[^"]*-section"[^>]*>/, '')
                   .replace(/<\/div>$/, '')
                   .trim();
-              } else {
               }
               
+              console.log(`📝 Section ${section.id} override applied:`, innerContent.substring(0, 100) + '...');
               sectionOverrides.set(section.id, innerContent);
             }
           });
@@ -274,7 +296,11 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   // Real-time preview updates when data changes
   useEffect(() => {
     if (!isLoading) {
+      console.log('🔄 Preview update triggered. Current rawData:', state.rawData);
+      
       const newPreview = syncEngine.generateUnifiedPreview(state.rawData, state.sectionOverrides);
+      
+      console.log('✅ Generated new preview HTML length:', newPreview.length);
       
       setState(prev => ({
         ...prev,
@@ -316,16 +342,31 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
 
   // Handle form data changes
   const handleFormDataChange = useCallback((section: string, value: any) => {
+    console.log('🔄 handleFormDataChange called:', { section, value });
+    
     setState(prev => {
       const currentValue = (prev.rawData as any)[section]; //added, prev.rawData... "as any)[section];" to fix implicit any error
       const hasChanged = JSON.stringify(currentValue) !== JSON.stringify(value);
+      
+      console.log('📊 Data change analysis:', {
+        section,
+        currentValue,
+        newValue: value,
+        hasChanged,
+        currentDataStructure: Object.keys(prev.rawData)
+      });
+      
       if (hasChanged) {
+        const updatedRawData = {
+          ...prev.rawData,
+          [section]: value
+        };
+        
+        console.log('✅ Updating rawData with:', updatedRawData);
+        
         return {
           ...prev,
-          rawData: {
-            ...prev.rawData,
-            [section]: value
-          },
+          rawData: updatedRawData,
           isDirty: prev.isDirty || hasChanged
         };
       }
@@ -371,17 +412,41 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       // Convert section overrides to the expected format
       let sections: QuoteSection[] = [];
       
+      // Define sections that should NOT be saved as overrides (form-driven content)
+      const formDrivenSections = [
+        'support', 'structure-support', // Structure support depends on form fields
+        'track', // Track configuration depends on form fields  
+        'pocket-doors', // Pocket doors depend on form fields
+        'panel-doors', 'pass-doors', // Pass doors depend on form fields
+        'billing-job', 'billing-and-job-info', // Job info depends on form fields
+        'pricing', // Pricing depends on form fields
+        'terms' // Terms section contains laborType, wageRate, payment percentages
+        // Removed 'statement' - user wants to edit this
+        // Allow customization: 'panels', 'proposal-intro', 'statement-section'
+      ];
+      
       // If we have section overrides, create custom sections from them
       if (state.sectionOverrides.size > 0) {
-        sections = Array.from(state.sectionOverrides.entries()).map(([sectionId, content]) => ({
-          id: sectionId,
-          title: sectionId.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()),
-          content: content,
-          isEditable: true,
-          isRequired: false,
-          isVisible: true,
-          dependencies: [] as string[] //implicit any sdded as string[]
-        }));
+        sections = Array.from(state.sectionOverrides.entries())
+          .filter(([sectionId, content]) => {
+            // Skip form-driven sections - they should regenerate from form data
+            if (formDrivenSections.includes(sectionId)) {
+              console.log(`🚫 Skipping form-driven section override: ${sectionId}`);
+              return false;
+            }
+            return true;
+          })
+          .map(([sectionId, content]) => ({
+            id: sectionId,
+            title: sectionId.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            content: content,
+            isEditable: true,
+            isRequired: false,
+            isVisible: true,
+            dependencies: [] as string[] //implicit any sdded as string[]
+          }));
+          
+        console.log(`💾 Saving ${sections.length} custom sections (filtered out ${state.sectionOverrides.size - sections.length} form-driven sections)`);
       } else {
         // No custom overrides, extract sections from current preview HTML
         sections = SmartQuoteHelper.extractSections(state.previewHTML);
@@ -451,9 +516,28 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
     if (quote.customization?.customSections) {
       const customSections = quote.customization.customSections;
       
+      // Define sections that should NOT be loaded as overrides (form-driven content)
+      const formDrivenSections = [
+        'support', 'structure-support', // Structure support depends on form fields
+        'track', // Track configuration depends on form fields  
+        'pocket-doors', // Pocket doors depend on form fields
+        'panel-doors', 'pass-doors', // Pass doors depend on form fields
+        'billing-job', 'billing-and-job-info', // Job info depends on form fields
+        'pricing', // Pricing depends on form fields
+        'terms' // Terms section contains laborType, wageRate, payment percentages
+        // Removed 'statement' - user wants to edit this
+        // Allow customization: 'panels', 'proposal-intro', 'statement-section'
+      ];
+      
       // Convert custom sections to section overrides (same logic as initialization)
       customSections.forEach(section => {
         if (section.content && section.isVisible) {
+          // Skip form-driven sections - they should regenerate from form data
+          if (formDrivenSections.includes(section.id)) {
+            console.log(`🚫 Reset: Skipping form-driven section override: ${section.id} - will regenerate from form data`);
+            return;
+          }
+          
           // Extract the inner content from the section (remove the wrapper div)
           const innerContent = section.content
             .replace(/<div class="[^"]*-section"[^>]*>/, '')
