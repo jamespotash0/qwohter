@@ -11,7 +11,13 @@ interface BaseCreationFormProps {
 }
 
 const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProps) => {
-  const wallSystemTypes = ["Operable Wall", "Glass Wall", "Accordion Partitions", "Unispan Support", "FlexTact"];
+  const wallSystemTypes = [
+    "Operable Wall", 
+    "Glass Wall", 
+    "Accordion Partitions",
+    "Unispan Support", 
+    "FlexTact"
+    ];
 
   return (
     <div className="space-y-8">
