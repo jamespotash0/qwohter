@@ -1,6 +1,5 @@
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
 import { sanitizeHTML } from './security';
-import { Minimize } from 'lucide-react';
 
 export interface PageBreakRule {
   sectionClass: string;
@@ -14,6 +13,8 @@ export interface PageBreakRule {
 export class DynamicPageBreakManager {
   private pageHeight = 1123; // A4 at scale 2
   private marginBuffer = 50;
+  private static cachedResults: Map<string, string> = new Map();
+  private static lastContentHash: string | null = null;
 
   /**
    * Calculate actual section heights from HTML content
@@ -185,6 +186,16 @@ export class DynamicPageBreakManager {
   public processHTMLWithDynamicBreaks(htmlContent: string, data: QuoteData): string {
     console.log('🔄 Processing HTML with dynamic page breaks...');
     
+    // Generate a hash for caching
+    const contentHash = this.generateContentHash(htmlContent, data);
+    
+    // Check if we have a cached result and content hasn't changed significantly
+    const cachedResult = DynamicPageBreakManager.cachedResults.get(contentHash);
+    if (cachedResult && DynamicPageBreakManager.lastContentHash === contentHash) {
+      console.log('✅ Using cached dynamic page break result');
+      return cachedResult;
+    }
+    
     // Create temporary container for layout calculations
     const tempContainer = document.createElement('div');
     tempContainer.style.position = 'absolute';
@@ -261,6 +272,19 @@ export class DynamicPageBreakManager {
       }
 
       document.body.removeChild(tempContainer);
+      
+      // Cache the result
+      DynamicPageBreakManager.cachedResults.set(contentHash, processedContent);
+      DynamicPageBreakManager.lastContentHash = contentHash;
+      
+      // Limit cache size to prevent memory issues
+      if (DynamicPageBreakManager.cachedResults.size > 10) {
+        const firstKey = DynamicPageBreakManager.cachedResults.keys().next().value;
+        if (firstKey !== undefined) {
+          DynamicPageBreakManager.cachedResults.delete(firstKey);
+        }
+      }
+      
       return processedContent;
 
     } catch (error) {
@@ -422,5 +446,95 @@ export class DynamicPageBreakManager {
     const estimatedLines = Math.ceil(words / wordsPerLine);
     
     return baseHeight + (estimatedLines * lineHeight);
+  }
+
+  /**
+   * Public method to get current dynamic rules for a specific HTML content
+   * This can be used by components to get updated rules when content changes
+   */
+  public getCurrentRules(htmlContent: string, data: QuoteData): PageBreakRule[] {
+    return this.getDynamicPageBreakRules(data, htmlContent);
+  }
+
+  /**
+   * Get the effective height for a specific section class
+   */
+  public getSectionHeight(sectionClass: string, htmlContent: string, data: QuoteData): number {
+    const rules = this.getDynamicPageBreakRules(data, htmlContent);
+    const rule = rules.find(r => r.sectionClass === sectionClass);
+    
+    if (rule) {
+      return rule.calculatedHeight || rule.minimumHeight;
+    }
+    
+    // Fallback: try to measure directly
+    const sectionHeights = this.calculateSectionHeights(htmlContent);
+    return sectionHeights.get(sectionClass) || 0;
+  }
+
+  /**
+   * Check if content update requires rule recalculation
+   */
+  public shouldRecalculateRules(
+    oldContent: string, 
+    newContent: string, 
+    data: QuoteData
+  ): boolean {
+    // Simple check - if content length changes significantly, recalculate
+    const lengthDifference = Math.abs(oldContent.length - newContent.length);
+    const threshold = Math.min(oldContent.length, newContent.length) * 0.1; // 10% change threshold
+    
+    if (lengthDifference > threshold) {
+      console.log(`📏 Content change detected: ${lengthDifference} chars difference, recalculating rules`);
+      return true;
+    }
+    
+    // Check if wall count changed (affects many rules)
+    const oldWallCount = this.extractWallCountFromHTML(oldContent);
+    const newWallCount = this.extractWallCountFromHTML(newContent);
+    
+    if (oldWallCount !== newWallCount) {
+      console.log(`📏 Wall count changed: ${oldWallCount} → ${newWallCount}, recalculating rules`);
+      return true;
+    }
+    
+    return false;
+  }
+
+  private extractWallCountFromHTML(htmlContent: string): number {
+    // Count wall specifications in HTML - rough estimate
+    const wallMatches = htmlContent.match(/wall-specification-row/g);
+    return wallMatches ? wallMatches.length : 0;
+  }
+
+  /**
+   * Generate a hash for content caching
+   */
+  private generateContentHash(htmlContent: string, data: QuoteData): string {
+    const wallCount = this.getWallCount(data);
+    const contentLength = htmlContent.length;
+    const hasMultipleWalls = wallCount > 1;
+    const hasPocketDoors = data.wall_details && Object.values(data.wall_details.walls || {}).some(
+      (wall: any) => wall.pocketDoors?.foldType && wall.pocketDoors.foldType.toLowerCase() !== 'none'
+    );
+    
+    return `${contentLength}-${wallCount}-${hasMultipleWalls}-${hasPocketDoors}`;
+  }
+
+  /**
+   * Clear the cache to force recalculation
+   */
+  public static clearCache(): void {
+    this.cachedResults.clear();
+    this.lastContentHash = null;
+    console.log('🗑️ DynamicPageBreakManager cache cleared');
+  }
+
+  /**
+   * Force recalculation on next processHTMLWithDynamicBreaks call
+   */
+  public forceRecalculation(): void {
+    DynamicPageBreakManager.clearCache();
+    console.log('🔄 DynamicPageBreakManager: Forced recalculation on next process');
   }
 }

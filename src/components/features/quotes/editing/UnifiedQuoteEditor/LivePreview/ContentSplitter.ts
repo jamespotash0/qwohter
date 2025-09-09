@@ -45,7 +45,20 @@ interface Page {
   sections: string[];
 }
 
+interface ContentItem {
+  type: 'section' | 'section-header' | 'paragraph';
+  html: string;
+  height: number;
+  sectionClass: string;
+  canBreakAfter: boolean;
+  id: string;
+}
+
 export class ContentSplitter {
+  private static previousContent: string | null = null;
+  private static cachedPages: Page[] | null = null;
+  private static lastAnalyzedSections: SectionInfo[] | null = null;
+
   private static readonly PAGE_CONFIG: PageConfig = {
     pageWidth: 816,
     pageHeight: 1056,
@@ -91,6 +104,10 @@ export class ContentSplitter {
 
   static async splitContent(htmlContent: string): Promise<Page[]> {
     console.log('🔄 ContentSplitter: Starting content analysis...');
+    
+    // Temporarily disable caching in editing mode for better real-time updates
+    // TODO: Re-enable with more sophisticated caching logic later
+    this.clearCache();
 
     // Create measurement container
     const measureContainer = document.createElement('div');
@@ -115,7 +132,12 @@ export class ContentSplitter {
       await this.ensureRenderingComplete(measureContainer);
       
       const sections = this.analyzeSections(measureContainer);
-      const pages = this.distributeSections(sections);
+      const pages = this.distributeWithReflow(sections);
+      
+      // Note: Caching temporarily disabled for better real-time updates
+      // this.previousContent = htmlContent;
+      // this.cachedPages = pages;
+      // this.lastAnalyzedSections = sections;
       
       console.log(`📄 ContentSplitter: Created ${pages.length} pages`);
       return pages;
@@ -123,6 +145,84 @@ export class ContentSplitter {
     } finally {
       document.body.removeChild(measureContainer);
     }
+  }
+
+  /**
+   * Determine if content has changed significantly enough to require recalculation
+   */
+  private static shouldRecalculate(newContent: string): boolean {
+    if (!this.previousContent || !this.cachedPages) {
+      return true; // First time or no cache
+    }
+
+    // Quick length-based check for significant changes
+    const lengthDifference = Math.abs(newContent.length - this.previousContent.length);
+    const threshold = Math.min(this.previousContent.length, newContent.length) * 0.05; // 5% change threshold
+    
+    if (lengthDifference > threshold) {
+      console.log(`📏 Content length changed significantly: ${lengthDifference} chars (threshold: ${Math.round(threshold)})`);
+      return true;
+    }
+
+    // Check for structural changes in key sections
+    const structuralChanges = this.hasStructuralChanges(this.previousContent, newContent);
+    if (structuralChanges) {
+      console.log('📏 Structural changes detected in content');
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check for structural changes that would affect page layout
+   */
+  private static hasStructuralChanges(oldContent: string, newContent: string): boolean {
+    // Check for changes in section structure
+    const oldSectionMatches = oldContent.match(/class="[^"]*(?:header-section|billing-job-container|panels-section|terms-section|pricing-section|signature-acceptance-section)[^"]*"/g) || [];
+    const newSectionMatches = newContent.match(/class="[^"]*(?:header-section|billing-job-container|panels-section|terms-section|pricing-section|signature-acceptance-section)[^"]*"/g) || [];
+    
+    if (oldSectionMatches.length !== newSectionMatches.length) {
+      return true;
+    }
+
+    // Check for changes in wall count (affects panels section)
+    const oldWallMatches = oldContent.match(/wall-paragraph|Wall [A-Z]:/g) || [];
+    const newWallMatches = newContent.match(/wall-paragraph|Wall [A-Z]:/g) || [];
+    
+    if (oldWallMatches.length !== newWallMatches.length) {
+      console.log(`📏 Wall count changed: ${oldWallMatches.length} → ${newWallMatches.length}`);
+      return true;
+    }
+
+    // Check for changes in terms/list items (affects terms section)
+    const oldTermMatches = oldContent.match(/term-item|<li>/g) || [];
+    const newTermMatches = newContent.match(/term-item|<li>/g) || [];
+    
+    if (Math.abs(oldTermMatches.length - newTermMatches.length) > 2) { // Allow small variations
+      console.log(`📏 Terms/list items changed significantly: ${oldTermMatches.length} → ${newTermMatches.length}`);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Clear the cache to force recalculation
+   */
+  private static clearCache(): void {
+    this.previousContent = null;
+    this.cachedPages = null;
+    this.lastAnalyzedSections = null;
+    console.log('🗑️ ContentSplitter cache cleared');
+  }
+
+  /**
+   * Force a recalculation on the next splitContent call
+   */
+  static forceRecalculation(): void {
+    this.clearCache();
+    console.log('🔄 ContentSplitter: Forced recalculation on next split');
   }
 
   private static analyzeSections(container: HTMLElement): SectionInfo[] {
@@ -334,6 +434,157 @@ export class ContentSplitter {
     
     console.log(`📝 Found ${paragraphs.length} paragraphs in section (isPanels: ${isPanelsSection})`);
     return paragraphs;
+  }
+
+  /**
+   * Distribute sections with intelligent reflow - when content is removed from earlier pages,
+   * content from later pages flows back to fill the space
+   */
+  private static distributeWithReflow(sections: SectionInfo[]): Page[] {
+    console.log('🌊 Starting content distribution with reflow...');
+    
+    // Create a flat list of all content items (sections + paragraphs)
+    const contentItems = this.flattenToContentItems(sections);
+    
+    // Distribute items across pages with reflow capability
+    return this.distributeItemsWithReflow(contentItems);
+  }
+
+  /**
+   * Flatten sections into individual content items that can be distributed
+   */
+  private static flattenToContentItems(sections: SectionInfo[]): ContentItem[] {
+    const items: ContentItem[] = [];
+    
+    sections.forEach((section, sectionIndex) => {
+      if (section.canSplitParagraphs && section.paragraphs && section.paragraphs.length > 1) {
+        // Add section header first if it exists
+        const sectionHeaderMatch = section.html.match(/<h2[^>]*class="[^"]*section-header[^"]*"[^>]*>.*?<\/h2>/s);
+        if (sectionHeaderMatch) {
+          items.push({
+            type: 'section-header',
+            html: sectionHeaderMatch[0],
+            height: 40, // Estimated header height
+            sectionClass: section.className,
+            canBreakAfter: false, // Don't break immediately after headers
+            id: `section-${sectionIndex}-header`
+          });
+        }
+        
+        // Add each paragraph as individual item
+        section.paragraphs.forEach((paragraph, paragraphIndex) => {
+          // Skip if this paragraph is already included in the header
+          if (sectionHeaderMatch && paragraph.html === sectionHeaderMatch[0]) {
+            return;
+          }
+          
+          items.push({
+            type: 'paragraph',
+            html: this.wrapParagraphInSection(paragraph.html, section.className),
+            height: paragraph.height,
+            sectionClass: section.className,
+            canBreakAfter: !paragraph.isTitle, // Don't break after titles
+            id: `section-${sectionIndex}-para-${paragraphIndex}`
+          });
+        });
+      } else {
+        // Add entire section as single item
+        items.push({
+          type: 'section',
+          html: section.html,
+          height: section.height,
+          sectionClass: section.className,
+          canBreakAfter: section.canBreak,
+          id: `section-${sectionIndex}`
+        });
+      }
+    });
+    
+    console.log(`📦 Flattened ${sections.length} sections into ${items.length} content items`);
+    return items;
+  }
+
+  /**
+   * Wrap paragraph HTML in minimal section structure for proper styling
+   */
+  private static wrapParagraphInSection(paragraphHtml: string, sectionClass: string): string {
+    // Extract the section wrapper structure
+    const wrapperStart = `<div class="${sectionClass}" style="margin: 0;">`;
+    const wrapperEnd = `</div>`;
+    
+    return wrapperStart + paragraphHtml + wrapperEnd;
+  }
+
+  /**
+   * Distribute content items across pages with true reflow capability
+   */
+  private static distributeItemsWithReflow(items: ContentItem[]): Page[] {
+    const pages: Page[] = [];
+    let currentPageItems: ContentItem[] = [];
+    let currentPageHeight = 0;
+    let pageNumber = 1;
+
+    console.log(`🌊 Distributing ${items.length} items across pages with reflow...`);
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const wouldFit = currentPageHeight + item.height <= this.PAGE_CONFIG.contentHeight + this.MEASUREMENT_TOLERANCE;
+      
+      if (wouldFit || currentPageItems.length === 0) {
+        // Item fits on current page
+        currentPageItems.push(item);
+        currentPageHeight += item.height;
+        
+        console.log(`✅ Added ${item.type} (${item.sectionClass}) to page ${pageNumber} - height: ${currentPageHeight}px`);
+      } else {
+        // Item doesn't fit, finalize current page and start new one
+        if (currentPageItems.length > 0) {
+          pages.push(this.createPageFromItems(currentPageItems, pageNumber));
+          console.log(`📄 Completed page ${pageNumber} with ${currentPageItems.length} items (${currentPageHeight}px)`);
+        }
+        
+        // Start new page
+        pageNumber++;
+        currentPageItems = [item];
+        currentPageHeight = item.height;
+        
+        console.log(`🆕 Started page ${pageNumber} with ${item.type} (${item.sectionClass})`);
+      }
+    }
+    
+    // Add final page if it has content
+    if (currentPageItems.length > 0) {
+      pages.push(this.createPageFromItems(currentPageItems, pageNumber));
+      console.log(`📄 Final page ${pageNumber} with ${currentPageItems.length} items`);
+    }
+
+    // Ensure at least one page
+    if (pages.length === 0) {
+      pages.push({
+        id: 'page-1',
+        content: items.map(item => item.html).join(''),
+        pageNumber: 1,
+        sections: [...new Set(items.map(item => item.sectionClass))]
+      });
+    }
+
+    console.log(`🌊 Content reflow complete: ${pages.length} pages created`);
+    return pages;
+  }
+
+  /**
+   * Create a page object from content items
+   */
+  private static createPageFromItems(items: ContentItem[], pageNumber: number): Page {
+    const content = items.map(item => item.html).join('');
+    const sections = [...new Set(items.map(item => item.sectionClass))];
+    
+    return {
+      id: `page-${pageNumber}`,
+      content,
+      pageNumber,
+      sections
+    };
   }
 
   private static distributeSections(sections: SectionInfo[]): Page[] {

@@ -21,12 +21,24 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
   const [sections, setSections] = useState<any[]>([]);
   const measureRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const previousHtmlRef = useRef<string>('');
 
-  // Extract sections for click handling
+  // Extract sections for click handling and detect content changes
   useEffect(() => {
     if (previewHTML) {
       const extractedSections = SmartQuoteHelper.extractSections(previewHTML);
       setSections(extractedSections);
+      
+      // Check for significant content changes that require immediate recalculation
+      const hasSignificantChange = previousHtmlRef.current && 
+        Math.abs(previewHTML.length - previousHtmlRef.current.length) > 100;
+      
+      if (hasSignificantChange) {
+        console.log('🔄 Significant content change detected, forcing recalculation');
+        ContentSplitter.forceRecalculation();
+      }
+      
+      previousHtmlRef.current = previewHTML;
     }
   }, [previewHTML]);
 
@@ -66,7 +78,7 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
     // Add a small delay to ensure DOM is stable after content updates
     const timeoutId = setTimeout(() => {
       calculatePages();
-    }, 50); // 50ms delay to allow DOM to settle
+    }, 150); // Increased delay to 150ms for better stability after edits
     
     return () => clearTimeout(timeoutId);
   }, [calculatePages]);
