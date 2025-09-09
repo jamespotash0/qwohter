@@ -33,7 +33,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
                     }
                   }}
                   placeholder="Enter a number"
-                  className="text-center"
+                  className={`text-center rounded-md ${wall.lengthFeet ? 'border-green-500' : 'border-red-500'}`}
                 />
                 <Label className="text-xs text-muted-foreground mt-1 block text-center">Feet</Label>
               </div>
@@ -52,7 +52,8 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
                     }
                   }}
                   placeholder="Enter a number"
-                  className="text-center"
+                  className={`text-center rounded-md ${wall.lengthInches ? 'border-green-500' : 'border-red-500'}`}
+
                 />
                 <Label className="text-xs text-muted-foreground mt-1 block text-center">Inches</Label>
               </div>
@@ -73,7 +74,8 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
                     }
                   }}
                   placeholder="Enter a number"
-                  className="text-center"
+                  className={`text-center rounded-md ${wall.heightFeet ? 'border-green-500' : 'border-red-500'}`}
+
                 />
                 <Label className="text-xs text-muted-foreground mt-1 block text-center">Feet</Label>
               </div>
@@ -82,16 +84,15 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
                   value={wall.heightInches}
                   onChange={(e) => {
                     const value = e.target.value;
-                    // Allow digits, spaces, hyphens, and forward slashes for fractions
                     const cleanValue = value.replace(/[^\d\s\-\/]/g, '');
-                    // Parse the base number (before any fraction)
                     const baseNum = parseInt(cleanValue.split(/[\s\-]/)[0] || '0') || 0;
                     if (baseNum <= 11 || cleanValue === '') {
                       onWallChange(wallName, {"heightInches": cleanValue});
                     }
                   }}
                   placeholder="Enter a number"
-                  className="text-center"
+                  className={`text-center rounded-md ${wall.heightInches ? 'border-green-500' : 'border-red-500'}`}
+
                 />
                 <Label className="text-xs text-muted-foreground mt-1 block text-center">Inches</Label>
               </div>
@@ -110,7 +111,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
                 }
               }}
               placeholder="Enter a number"
-              className="text-center"
+              className={`text-center rounded-md ${wall.panelCount ? 'border-green-500' : 'border-red-500'}`}
             />
           </div>
         </div>
@@ -127,7 +128,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
               value={wall.wallSystemType}
               onValueChange={(value) => onWallChange(wallName, {"wallSystemType": value})}
             >
-              <SelectTrigger className="bg-background">
+              <SelectTrigger className={wall.wallSystemType ? 'border-green-500' : 'border-red-500'}>
                 <SelectValue placeholder="Select wall system type" />
               </SelectTrigger>
               <SelectContent className="bg-background border z-50">

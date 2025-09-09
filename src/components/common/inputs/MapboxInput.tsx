@@ -11,9 +11,10 @@ interface MapboxInputProps {
   placeholder: string;
   id: string;
   required?: boolean;
+  className?: string;
 }
 
-const MapboxInput = ({ label, value, onChange, placeholder, id, required = false }: MapboxInputProps) => {
+const MapboxInput = ({ label, value, onChange, placeholder, id, required = false, className = "" }: MapboxInputProps & {className?: string}) => {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [mapboxToken, setMapboxToken] = useState("");
@@ -101,6 +102,8 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
     setShowSuggestions(false);
   };
 
+  const inputBorderClass = value && value.trim() !== '' ? 'border-green-500' : 'border-red-500';
+
   return (
     <div className="space-y-1 relative">
       {label && <Label htmlFor={id} className="text-sm font-medium">{label}</Label>}
@@ -112,7 +115,7 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
         placeholder={placeholder}
         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
         required={required}
-        className="h-10"
+        className={`h-10 rounded-md border ${inputBorderClass} focus:border-blue-500 focus:ring-blue-500 ${className}`}
       />
       
       {showSuggestions && suggestions.length > 0 && (

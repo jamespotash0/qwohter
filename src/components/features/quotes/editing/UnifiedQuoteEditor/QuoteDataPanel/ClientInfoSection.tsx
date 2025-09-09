@@ -88,9 +88,9 @@ export const ClientInfoSection: React.FC<ClientInfoSectionProps> = ({
           value={data.job_details?.client_address || ''}
           onChange={(value) => onFieldChange('job_details', 'client_address', value)}
           placeholder="Client address..."
+          required
         />
       </div>
-      
       <div>
         <MapboxInput
           label="Job Location"
@@ -98,6 +98,7 @@ export const ClientInfoSection: React.FC<ClientInfoSectionProps> = ({
           value={data.job_details?.job_location || ''}
           onChange={(value) => onFieldChange('job_details', 'job_location', value)}
           placeholder="Project location"
+          required
         />
       </div>
       

@@ -108,11 +108,6 @@ const QuoteCreatorWizard = ({
           },
           wall_details: walls,
           price_details: {
-            // Legacy fields
-            // base_price: pricing.basePrice, 
-            // freight: pricing.freight,
-            // total: pricing.total,
-            // Enhanced pricing fields
             kwik_wall_materials_cost: pricing.kwik_wall_materials_cost || 0,
             misc_materials_cost: pricing.misc_materials_cost || 0,
             delivery_cost_track: pricing.delivery_cost_track || 0,

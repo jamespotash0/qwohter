@@ -74,7 +74,13 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
             value={selectedPanelConfiguration}
             onValueChange={(value) => handleFieldChange("panelConfiguration", value)}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              className={`border rounded-md ${
+                !selectedPanelConfiguration
+                ? 'border-red-500'          // active
+                : 'border-green-500'        // complete
+              }`}
+            >
               <SelectValue placeholder="Select panel configuration" />
             </SelectTrigger>
             <SelectContent>
@@ -97,7 +103,13 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
             onValueChange={(value) => handleFieldChange("series", value)}
             disabled={!selectedPanelConfiguration}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              className={`border rounded-md ${
+                !selectedSeries
+                ? 'border-red-500'          // active
+                : 'border-green-500'        // complete
+              }`}
+            >
               <SelectValue placeholder="Select series" />
             </SelectTrigger>
             <SelectContent>
@@ -120,7 +132,13 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
             onValueChange={(value) => handleFieldChange("model", value)}
             disabled={!selectedSeries}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              className={`border rounded-md ${
+                !selectedModel
+                ? 'border-red-500'          // active
+                : 'border-green-500'        // complete
+              }`}
+            >
               <SelectValue placeholder="Select model" />
             </SelectTrigger>
             <SelectContent>
@@ -146,7 +164,13 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
             onValueChange={(value) => handleFieldChange("panelSkin", value)}
             disabled={!selectedModel}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              className={`border rounded-md ${
+                !selectedPanelSkin
+                ? 'border-red-500'          // active
+                : 'border-green-500'        // complete
+              }`}
+            >
               <SelectValue placeholder="Select panel skin" />
             </SelectTrigger>
             <SelectContent>
@@ -169,7 +193,13 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
             onValueChange={(value) => handleFieldChange("stcRating", value)}
             disabled={!selectedPanelSkin}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              className={`border rounded-md ${
+                !selectedSTCRating
+                ? 'border-red-500'          // active
+                : 'border-green-500'        // complete
+              }`}
+            >
               <SelectValue placeholder="Select STC rating" />
             </SelectTrigger>
             <SelectContent>
@@ -203,7 +233,11 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
                 onValueChange={(value) => handleFieldChange("passDoorPanels", value)}
                 disabled={!selectedModel}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    selectedPassDoorPanels ? "border-green-500" : "border-gray-300"
+                  }`}
+                >
                   <SelectValue placeholder="Select pass door panels" />
                 </SelectTrigger>
                 <SelectContent>
@@ -228,7 +262,13 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
                 disabled={!selectedPassDoorPanels || selectedPassDoorPanels === "None"}
               >
                 <SelectTrigger
-                  className={selectedPassDoorPanels !== "" && (!selectedPassDoorQuantity || selectedPassDoorQuantity === "None") ? "border-red-500" : ""}
+                  className={`border rounded-md ${
+                    selectedPassDoorPanels === "" 
+                      ? "border-gray-300"  // nothing selected yet
+                      : (!selectedPassDoorQuantity || selectedPassDoorQuantity === "None")
+                        ? "border-red-500" // invalid
+                        : "border-green-500" // completed
+                  }`}
                 >
                   <SelectValue placeholder="Select quantity" />
                 </SelectTrigger>
@@ -254,7 +294,11 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
                 onValueChange={(value) => handleFieldChange("panelFinishCategory", value)}
                 disabled={!selectedModel}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    selectedPanelFinishCategory ? "border-green-500" : "border-gray-300"
+                  }`}
+                >
                   <SelectValue placeholder="Select finish category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -271,20 +315,21 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
             <div className="space-y-2">
               <Label htmlFor="panelFinishSpecificItem" className={labelClass}>
                 Panel Finish Specific Item 
-                {selectedPanelFinishCategory != '' && (<span className="text-red-500">*</span>)}
+                {selectedPanelFinishCategory != '' && (<span className="text-red-500"> *</span>)}
               </Label>
               <Select
                 value={selectedPanelFinishSpecificItem}
                 onValueChange={(value) => handleFieldChange("panelFinishSpecificItem", value)}
                 disabled={!selectedPanelFinishCategory || selectedPanelFinishCategory === "None"}
               >
-                <SelectTrigger 
-                  className={
-                    selectedPanelFinishCategory !== "" &&
-                    (!selectedPanelFinishSpecificItem || selectedPanelFinishSpecificItem === "None")
-                      ? "border-red-500"
-                      : ""
-                  }
+                 <SelectTrigger
+                  className={`border rounded-md ${
+                    selectedPanelFinishCategory === "" 
+                      ? "border-gray-300"  // nothing selected yet
+                      : (!selectedPanelFinishSpecificItem || selectedPanelFinishSpecificItem === "None")
+                        ? "border-red-500" // invalid
+                        : "border-green-500" // completed
+                  }`}
                 >
                   <SelectValue placeholder="Select specific item" />
                 </SelectTrigger>
@@ -311,7 +356,11 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
                 onValueChange={(value) => handleFieldChange("initialClosureSystem", value)}
                 disabled={!selectedModel}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    selectedInitialClosureSystem ? "border-green-500" : "border-gray-300"
+                  }`}
+                >
                   <SelectValue placeholder="Select closure system" />
                 </SelectTrigger>
                 <SelectContent>
@@ -334,7 +383,11 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
                 onValueChange={(value) => handleFieldChange("finalClosureSystem", value)}
                 disabled={!selectedModel}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    selectedFinalClosureSystem ? "border-green-500" : "border-gray-300"
+                  }`}
+                >
                   <SelectValue placeholder="Select final closure system" />
                 </SelectTrigger>
                 <SelectContent>
@@ -360,7 +413,11 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
                 onValueChange={(value) => handleFieldChange("verticalSeals", value)}
                 disabled={!selectedModel}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    selectedVerticalSeals ? "border-green-500" : "border-gray-300"
+                  }`}
+                >
                   <SelectValue placeholder="Select vertical seals" />
                 </SelectTrigger>
                 <SelectContent>
@@ -383,7 +440,11 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
                 onValueChange={(value) => handleFieldChange("bottomSeals", value)}
                 disabled={!selectedModel}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    selectedBottomSeals ? "border-green-500" : "border-gray-300"
+                  }`}
+                >
                   <SelectValue placeholder="Select horizontal bottom seals" />
                 </SelectTrigger>
                 <SelectContent>
@@ -406,7 +467,11 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
                 onValueChange={(value) => handleFieldChange("topSeals", value)}
                 disabled={!selectedModel}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    selectedTopSeals ? "border-green-500" : "border-gray-300"
+                  }`}
+                >
                   <SelectValue placeholder="Select horizontal top seals" />
                 </SelectTrigger>
                 <SelectContent>
@@ -442,7 +507,9 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
                 onValueChange={(value) => handleFieldChange("trackSystem", value)}
                 disabled={!selectedModel}
               >
-                <SelectTrigger className="text-left">
+                <SelectTrigger
+                  className={`text-left border rounded-md ${calculatedTrackSystem ? "border-green-500" : "border-red-500"}`}
+                >
                   <SelectValue placeholder={selectedModel ? "Select track system" : "Select model first"} />
                 </SelectTrigger>
                 <SelectContent>

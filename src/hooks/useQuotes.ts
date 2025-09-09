@@ -118,14 +118,9 @@ export const useQuotes = () => {
            },
           wall_details: prepareWallDataForSave(quoteData.walls) as any,
           price_details: {
-            // Legacy fields (backward compatibility)
-            // base_price: quoteData.pricing.basePrice,
-            // basePrice: quoteData.pricing.basePrice,
-            // freight: quoteData.pricing.freight,
-            // total: quoteData.pricing.total,
             payment_upon_drawings: quoteData.pricing.payment_upon_drawings,
             payment_upon_track_installation: quoteData.pricing.payment_upon_track_installation,
-            // Enhanced pricing fields
+      
             kwik_wall_materials_cost: quoteData.pricing.kwik_wall_materials_cost || 0,
             misc_materials_cost: quoteData.pricing.misc_materials_cost || 0,
             delivery_cost_track: quoteData.pricing.delivery_cost_track || 0,

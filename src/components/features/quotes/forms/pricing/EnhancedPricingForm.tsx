@@ -131,7 +131,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                 value={localData.kwik_wall_materials_cost}
                 onChange={(value) => handleCurrencyChange("kwik_wall_materials_cost", value)}
                 placeholder="$0.00"
-                className="w-full h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                className={`w-full h-11 border ${localData.kwik_wall_materials_cost ? "border-green-500" : "border-red-500"} 
+                    focus:ring-blue-500 focus:border-blue-500`}
               />
             </div>
 
@@ -151,8 +152,9 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                 value={localData.misc_materials_cost}
                 onChange={(value) => handleCurrencyChange("misc_materials_cost", value)}
                 placeholder="$0.00"
-                className="w-full h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-              />
+                className= {`w-full h-11 border ${localData.misc_materials_cost ? "border-green-500" : "border-red-500"} 
+                  focus:ring-blue-500 focus:border-blue-500`}
+                />
             </div>
 
             {/* Delivery Costs Row */}
@@ -173,7 +175,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   value={localData.delivery_cost_track}
                   onChange={(value) => handleCurrencyChange("delivery_cost_track", value)}
                   placeholder="$0.00"
-                  className="w-full h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className={`w-full h-11 border ${localData.delivery_cost_track ? "border-green-500" : "border-red-500"} 
+                    focus:ring-blue-500 focus:border-blue-500`}
                 />
               </div>
 
@@ -193,7 +196,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   value={localData.delivery_cost_panel}
                   onChange={(value) => handleCurrencyChange("delivery_cost_panel", value)}
                   placeholder="$0.00"
-                  className="w-full h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className={`w-full h-11 border ${localData.delivery_cost_panel ? "border-green-500" : "border-red-500"}
+                    focus:ring-blue-500 focus:border-blue-500`}
                 />
               </div>
             </div>
@@ -216,7 +220,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   value={localData.track_labor_cost}
                   onChange={(value) => handleCurrencyChange("track_labor_cost", value)}
                   placeholder="$0.00"
-                  className="w-full h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className={`w-full h-11 border ${localData.track_labor_cost ? "border-green-500" : "border-red-500"} 
+                    focus:ring-blue-500 focus:border-blue-500`}                
                 />
               </div>
 
@@ -236,7 +241,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   value={localData.panel_labor_cost}
                   onChange={(value) => handleCurrencyChange("panel_labor_cost", value)}
                   placeholder="$0.00"
-                  className="w-full h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className={`w-full h-11 border ${localData.panel_labor_cost ? "border-green-500" : "border-red-500"} 
+                    focus:ring-blue-500 focus:border-blue-500`}  
                 />
               </div>
             </div>
@@ -259,7 +265,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   value={localData.track_equipment_costs}
                   onChange={(value) => handleCurrencyChange("track_equipment_costs", value)}
                   placeholder="$0.00"
-                  className="w-full h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className={`w-full h-11 border ${localData.track_equipment_costs ? "border-green-500" : "border-red-500"} 
+                    focus:ring-blue-500 focus:border-blue-500`}
                 />
               </div>
 
@@ -279,7 +286,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   value={localData.panel_equipment_costs}
                   onChange={(value) => handleCurrencyChange("panel_equipment_costs", value)}
                   placeholder="$0.00"
-                  className="w-full h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  className={`w-full h-11 border ${localData.panel_equipment_costs ? "border-green-500" : "border-red-500"} 
+                    focus:ring-blue-500 focus:border-blue-500`}
                 />
               </div>
             </div>
@@ -315,15 +323,24 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                 <div className="relative flex-1">
                   <Input
                     id="unseen_costs_percentage"
-                    type="text"
-                    value={localData.unseen_costs_locked ? '10' : percentageInputs.unseen_costs_percentage}
+                    value={
+                      localData.unseen_costs_locked
+                        ? percentageInputs.unseen_costs_percentage ?? '' // show the existing value, don’t force '10'
+                        : percentageInputs.unseen_costs_percentage ?? ''
+                    }
                     onChange={(e) => handlePercentageChange("unseen_costs_percentage", e.target.value)}
-                    placeholder="10"
+                    placeholder="Enter a number"
                     disabled={localData.unseen_costs_locked}
-                    className={`w-full h-11 pr-8 ${
-                      localData.unseen_costs_locked 
-                        ? 'bg-gray-50 border-gray-200 text-gray-500' 
-                        : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                    className={`w-full h-11 pr-8 rounded-md ${
+                      localData.unseen_costs_locked
+                        ? 'bg-gray-50 border-gray-200 text-gray-500'
+                        : `${
+                            percentageInputs.unseen_costs_percentage !== null &&
+                            percentageInputs.unseen_costs_percentage !== undefined &&
+                            percentageInputs.unseen_costs_percentage !== ''
+                              ? 'border-green-500'
+                              : 'border-red-500'
+                          } focus:border-blue-500 focus:ring-blue-500`
                     }`}
                   />
                   <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
@@ -355,7 +372,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   value={localData.track_freight_factory}
                   onChange={(value) => handleCurrencyChange("track_freight_factory", value)}
                   placeholder="$0.00"
-                  className="w-full h-11 border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+                  className={`w-full h-11 border ${localData.track_freight_factory ? "border-green-500" : "border-red-500"} 
+                    focus:ring-blue-500 focus:border-blue-500`}
                 />
               </div>
 
@@ -375,7 +393,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   value={localData.panel_freight_factory}
                   onChange={(value) => handleCurrencyChange("panel_freight_factory", value)}
                   placeholder="$0.00"
-                  className="w-full h-11 border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+                  className={`w-full h-11 border ${localData.panel_freight_factory ? "border-green-500" : "border-red-500"} 
+                    focus:ring-blue-500 focus:border-blue-500`}
                 />
               </div>
 
@@ -395,7 +414,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   value={localData.local_handling_costs}
                   onChange={(value) => handleCurrencyChange("local_handling_costs", value)}
                   placeholder="$0.00"
-                  className="w-full h-11 border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+                  className={`w-full h-11 border ${localData.local_handling_costs ? "border-green-500" : "border-red-500"} 
+                    focus:ring-blue-500 focus:border-blue-500`}
                 />
               </div>
             </div>
@@ -407,7 +427,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="materials_markup_percentage" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="materials_markup_percentage" className="text-sm font-medium text-gray-500">
                     Base Cost Markup Percentage <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
@@ -420,11 +440,12 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   <div className="relative flex-1">
                     <Input
                       id="materials_markup_percentage"
-                      type="text"
+                      // type="text"
                       value={percentageInputs.materials_markup_percentage}
                       onChange={(e) => handlePercentageChange("materials_markup_percentage", e.target.value)}
                       placeholder="Enter a number"
-                      className="w-full h-11 pr-8 border-gray-300 focus:border-green-500 focus:ring-green-500"
+                      className={`w-full h-11 border ${localData.materials_markup_percentage ? "border-green-500" : "border-red-500"} 
+                        focus:ring-blue-500 focus:border-blue-500`}   
                     />
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
                   </div>
@@ -452,11 +473,12 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                   <div className="relative flex-1">
                     <Input
                       id="shipping_markup_percentage"
-                      type="text"
+                      // type="text"
                       value={percentageInputs.shipping_markup_percentage}
                       onChange={(e) => handlePercentageChange("shipping_markup_percentage", e.target.value)}
                       placeholder="Enter a number"
-                      className="w-full h-11 pr-8 border-gray-300 focus:border-orange-500 focus:ring-orange-500"
+                      className={`w-full h-11 border ${localData.shipping_markup_percentage ? "border-green-500" : "border-red-500"} 
+                        focus:ring-blue-500 focus:border-blue-500`}   
                     />
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
                   </div>
@@ -557,7 +579,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                     }}
                     placeholder="Enter a number"
                     required
-                    className="h-11 pr-8 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className={`w-full h-11 border ${localData.payment_upon_drawings ? "border-green-500" : "border-red-500"} 
+                        focus:ring-blue-500 focus:border-blue-500`}   
                   />
                   <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
                 </div>
@@ -587,7 +610,8 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
                     }}
                     placeholder="Enter a number"
                     required
-                    className="h-11 pr-8 border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    className={`w-full h-11 border ${localData.payment_upon_track_installation ? "border-green-500" : "border-red-500"} 
+                        focus:ring-blue-500 focus:border-blue-500`}   
                   />
                   <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
                 </div>
