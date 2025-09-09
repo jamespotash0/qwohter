@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { OrganizationInfo } from "@/lib/types/settings/companySettings";
+import type { Database } from "@/integrations/supabase/types";
 
 export interface Organization {
   id: string;
@@ -306,12 +307,10 @@ export const useOrganizations = () => {
 
   const updateMemberRole = async (memberId: string, role: 'admin' | 'member') => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({ role })
-        .eq('id', memberId)
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('update_member_role', {
+        member_id: memberId,
+        new_role: role
+      });
 
       if (error) throw error;
 
@@ -321,7 +320,7 @@ export const useOrganizations = () => {
       
       toast({
         title: "Role updated",
-        description: "Member role has been updated successfully.",
+        description: `Member has been ${role === 'admin' ? 'promoted to admin' : 'changed to member'} successfully.`,
       });
       
       return data;

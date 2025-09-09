@@ -142,6 +142,13 @@ export interface Database {
         };
         Returns: any;
       };
+      update_member_role: {
+        Args: {
+          member_id: string;
+          new_role: string;
+        };
+        Returns: any;
+      };
     };
     Enums: {
       [_ in never]: never;
