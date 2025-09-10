@@ -162,6 +162,76 @@ const QuoteCreatorWizard = ({
     }
   };
 
+  const handleSaveAsDraft = async () => {
+    // Skip validation and save with Draft status
+    try {
+      if (existingQuote) {
+        await updateQuote((existingQuoteData?.id as string), {
+          project_name: localQuoteName,
+          quote_details: contactInfo,
+          job_details: {
+            job_location: jobDetails.jobLocation || "",
+            client_name: jobDetails.billedTo?.name || "",
+            client_company: jobDetails.billedTo?.company || "",
+            client_address: jobDetails.billedTo?.address || "",
+            date: jobDetails.date || ""
+          },
+          wall_details: walls,
+          price_details: {
+            kwik_wall_materials_cost: pricing.kwik_wall_materials_cost || 0,
+            misc_materials_cost: pricing.misc_materials_cost || 0,
+            delivery_cost_track: pricing.delivery_cost_track || 0,
+            delivery_cost_panel: pricing.delivery_cost_panel || 0,
+            track_equipment_costs: pricing.track_equipment_costs || 0,
+            track_labor_cost: pricing.track_labor_cost || 0,
+            panel_equipment_costs: pricing.panel_equipment_costs || 0,
+            panel_labor_cost: pricing.panel_labor_cost || 0,
+            track_freight_factory: pricing.track_freight_factory || 0,
+            panel_freight_factory: pricing.panel_freight_factory || 0,
+            local_handling_costs: pricing.local_handling_costs || 0,
+            materials_markup_percentage: pricing.materials_markup_percentage || 0,
+            shipping_markup_percentage: pricing.shipping_markup_percentage || 0,
+            unseen_costs: pricing.unseen_costs || 0,
+            unseen_costs_percentage: pricing.unseen_costs_percentage || 10,
+            unseen_costs_locked: pricing.unseen_costs_locked !== false,
+            cost_subtotal: pricing.cost_subtotal || 0,
+            base_selling_price: pricing.base_selling_price || 0,
+            shipping_cost_subtotal: pricing.shipping_cost_subtotal || 0,
+            shipping_selling_price: pricing.shipping_selling_price || 0,
+            final_selling_price: pricing.final_selling_price || 0,
+            base_selling_gross_profit_percentage: pricing.base_selling_gross_profit_percentage || 0,
+            shipping_selling_gross_profit_percentage: pricing.shipping_selling_gross_profit_percentage || 0,
+            final_selling_gross_profit_percentage: pricing.final_selling_gross_profit_percentage || 0,
+            final_selling_price_profit_amount: pricing.final_selling_price_profit_amount || 0,
+            payment_upon_drawings: pricing.payment_upon_drawings || "",
+            payment_upon_track_installation: pricing.payment_upon_track_installation || "",
+          },
+          delivery_details: deliveryLabor.delivery,
+          labor_details: deliveryLabor.labor,
+          proposal_number: jobDetails.proposalNumber || "",
+          status: "Draft"
+        });
+        toast.success("Quote saved as draft!");
+      } else {
+        await createQuote({
+          quoteName: localQuoteName,
+          contactInfo,
+          jobDetails,
+          walls,
+          pocketDoors,
+          supportStructure,
+          deliveryLabor,
+          pricing,
+          status: "Draft"
+        });
+        toast.success("Quote saved as draft!");
+      }
+      onBackToDashboard();
+    } catch (error) {
+      toast.error("Failed to save draft");
+    }
+  };
+
   const allQuoteData = {
     contactInfo,
     jobDetails,
@@ -252,6 +322,7 @@ const QuoteCreatorWizard = ({
                 onPrevious={handlePrevious}
                 onNext={handleNext}
                 onSave={handleSave}
+                onSaveAsDraft={handleSaveAsDraft}
               />
             </Card>
           </div>

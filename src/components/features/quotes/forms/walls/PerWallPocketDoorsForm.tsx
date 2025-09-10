@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { WallSpecification, PocketDoorConfig, isOperableWall, isGlassWall } from '@/lib/types';
+import { WallSpecification, PocketDoorConfig, isOperableWall, isGlassWall, isAccordionPartition } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -158,7 +158,11 @@ export const PerWallPocketDoorsForm: React.FC<PerWallPocketDoorsFormProps> = ({
                   <div className="bg-gray-50 rounded-lg p-3 text-sm">
                     <div className="font-medium text-gray-700 mb-1">Wall Specifications:</div>
                     <div className="grid grid-cols-2 gap-2 text-gray-600">
-                      <span>{wall.wallSystemType || ''}, Model: {(isOperableWall(wall) || isGlassWall(wall)) ? wall.model : 'N/A'}</span>
+                      <span>{wall.wallSystemType || ''}, Model: {
+                        (isOperableWall(wall) || isGlassWall(wall)) ? wall.model : 
+                        isAccordionPartition(wall) ? (wall as any).model : 
+                        'N/A'
+                      }</span>
                     </div>
                   </div>
                 </div>

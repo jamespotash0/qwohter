@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,6 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { X, ChevronDown } from 'lucide-react';
 import { WallSpecification } from '@/lib/types';
 import { useAccordionWallForm } from '../hooks/useAccordionWallForm';
+import { AccordionWallSpecification } from '@/lib/types/walls/accordion';
 
 interface AccordionWallFormFieldsProps {
   wall: WallSpecification;
@@ -26,6 +27,9 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
   layout = 'creation'
 }) => {
   const [optionsOpen, setOptionsOpen] = useState(false);
+  
+  // Cast to AccordionWallSpecification for type safety
+  const accordionWall = wall as AccordionWallSpecification;
 
   const {
     selectedSeries,
@@ -42,30 +46,51 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
     availableOptions,
     trackMountingOptions,
     trackSystemOptions,
+    finalClosureSystemOptions,
     handleFieldChange,
   } = useAccordionWallForm({ wall, wallName, onChange });
 
-  // Parse selected options as array
-  const selectedOptionsArray = selectedOptions ? selectedOptions.split(',').map(s => s.trim()).filter(Boolean) : [];
+  // Ensure panelConfiguration is initialized with default value
+  React.useEffect(() => {
+    if (!accordionWall.panelConfiguration) {
+      handleFieldChange("panelConfiguration", "Individual Panels");
+    }
+  }, [accordionWall.panelConfiguration, handleFieldChange]);
+
+  // Parse selected options as array - handle JSON array or legacy comma-separated string
+  const selectedOptionsArray = useMemo(() => {
+    if (!selectedOptions) return [];
+    
+    // Try to parse as JSON array first
+    try {
+      const parsed = JSON.parse(selectedOptions);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // If parsing fails, fallback to comma splitting for legacy data
+      return selectedOptions.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    
+    return [];
+  }, [selectedOptions]);
 
   // Handle multi-select options
   const handleOptionSelect = (option: string) => {
     const currentOptions = selectedOptionsArray;
     const isSelected = currentOptions.includes(option);
     
-    let newOptions;
+    let newOptions: string[];
     if (isSelected) {
-      newOptions = currentOptions.filter(item => item !== option);
+      newOptions = currentOptions.filter((item: string) => item !== option);
     } else {
       newOptions = [...currentOptions, option];
     }
     
-    handleFieldChange('options', newOptions.join(', '));
+    handleFieldChange('options', JSON.stringify(newOptions));
   };
 
   const removeOption = (optionToRemove: string) => {
-    const newOptions = selectedOptionsArray.filter(option => option !== optionToRemove);
-    handleFieldChange('options', newOptions.join(', '));
+    const newOptions = selectedOptionsArray.filter((option: string) => option !== optionToRemove);
+    handleFieldChange('options', JSON.stringify(newOptions));
   };
 
   // Layout classes based on context
@@ -73,26 +98,31 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
 
   return (
     <div className="space-y-6">
-      {/* Panel Configuration */}
-      <div className="space-y-2">
-        <Label htmlFor="panelConfiguration" className={labelClass}>
-          Panel Configuration <span className="text-red-500">*</span>
-        </Label>
-        <Select
-          value={wall.panelConfiguration || "Individual panels"}
-          onValueChange={(value) => handleFieldChange("panelConfiguration", value)}
-        >
-          <SelectTrigger className="border rounded-md border-green-500">
-            <SelectValue placeholder="Select panel configuration" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Individual panels">Individual panels</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Row 1: Series, Model, STC Rating */}
+      {/* Row 1: Panel Configuration, Series, Model */}
       <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="panelConfiguration" className={labelClass}>
+            Panel Configuration <span className="text-red-500">*</span>
+          </Label>
+          <Select
+            value={accordionWall.panelConfiguration || "Individual Panels"}
+            onValueChange={(value) => handleFieldChange("panelConfiguration", value)}
+          >
+            <SelectTrigger
+              className={`border rounded-md ${
+                !accordionWall.panelConfiguration
+                ? 'border-red-500'          // missing value
+                : 'border-green-500'        // has value
+              }`}
+            >
+              <SelectValue placeholder="Select panel configuration" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Individual Panels">Individual Panels</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="series" className={labelClass}>
             Series <span className="text-red-500">*</span>
@@ -147,7 +177,10 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
             </SelectContent>
           </Select>
         </div>
+      </div>
 
+      {/* Row 2: STC Rating, Operation */}
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="stcRating" className={labelClass}>
             STC Rating <span className="text-red-500">*</span>
@@ -157,12 +190,41 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
             value={selectedSTCRating}
             readOnly
             placeholder="Auto-calculated from model"
-            className={`bg-gray-50 ${selectedSTCRating ? 'border-green-500' : 'border-red-500'}`}
+            disabled={!selectedModel}
+            className={`bg-gray-50 ${
+              !selectedModel ? 'bg-gray-100 cursor-not-allowed' : ''
+            } ${selectedSTCRating ? 'border-green-500' : 'border-red-500'}`}
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="operation" className={labelClass}>
+            Operation <span className="text-red-500">*</span>
+          </Label>
+          <Select
+            value={selectedOperation || ""}
+            onValueChange={(value) => handleFieldChange('operation', value)}
+            disabled={!selectedModel}
+          >
+            <SelectTrigger
+              className={`border rounded-md ${
+                !selectedModel ? 'bg-gray-100 cursor-not-allowed' : ''
+              } ${
+                selectedOperation
+                ? 'border-green-500'
+                : 'border-red-500'
+              }`}
+            >
+              <SelectValue placeholder="Select operation type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Manual, Top Supported">Manual, Top Supported</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {/* Row 2: Panel Finish, Operation */}
+      {/* Row 3: Panel Finish, Options */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="panelFinish" className={labelClass}>
@@ -195,101 +257,142 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="operation" className={labelClass}>
-            Operation <span className="text-red-500">*</span>
+          <Label className="text-sm font-medium">
+            Options
+          </Label>
+          <Popover open={optionsOpen} onOpenChange={setOptionsOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={optionsOpen}
+                disabled={!selectedModel}
+                className={`w-full justify-between h-auto min-h-[40px] ${
+                  !selectedModel ? 'bg-gray-100 cursor-not-allowed' : ''
+                } ${
+                  selectedOptionsArray.length === 0
+                    ? 'border-red-500'
+                    : 'border-green-500'
+                }`}
+              >
+                <div className="flex flex-wrap gap-1 max-w-full">
+                  {selectedOptionsArray.length === 0 ? (
+                    <span className="text-muted-foreground">Select options...</span>
+                  ) : (
+                    selectedOptionsArray.map((option) => (
+                      <Badge
+                        key={option}
+                        variant="secondary"
+                        className="text-xs"
+                      >
+                        {option}
+                        <button
+                          className="ml-1 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            removeOption(option);
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))
+                  )}
+                </div>
+                <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-full p-0" side="bottom" align="start">
+              <div className="max-h-64 overflow-auto p-1">
+                {availableOptions.map((option) => (
+                  <div
+                    key={option}
+                    className="flex items-center space-x-2 w-full p-2 hover:bg-accent rounded-sm cursor-pointer"
+                    onClick={() => handleOptionSelect(option)}
+                  >
+                    <Checkbox
+                      checked={selectedOptionsArray.includes(option)}
+                      className="pointer-events-none"
+                    />
+                    <span className="flex-1 text-sm">{option}</span>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+
+
+      {/* Row 3: Final Closure System, Track System Option */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="finalClosureSystem" className={labelClass}>
+            Final Closure System <span className="text-red-500">*</span>
           </Label>
           <Select
-            value={selectedOperation || "Manual, Top Supported"}
-            onValueChange={(value) => handleFieldChange('operation', value)}
+            value={accordionWall.finalClosureSystem || ""}
+            onValueChange={(value) => handleFieldChange("finalClosureSystem", value)}
             disabled={!selectedModel}
           >
             <SelectTrigger
               className={`border rounded-md ${
                 !selectedModel ? 'bg-gray-100 cursor-not-allowed' : ''
               } ${
-                selectedOperation || !selectedModel
+                accordionWall.finalClosureSystem
                 ? 'border-green-500'
                 : 'border-red-500'
               }`}
             >
-              <SelectValue placeholder="Select operation type" />
+              <SelectValue placeholder="Select final closure system" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Manual, Top Supported">Manual, Top Supported</SelectItem>
+              {Array.isArray(finalClosureSystemOptions) 
+                ? finalClosureSystemOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))
+                : null
+              }
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="trackSystemOption" className={labelClass}>
+            Track System Option
+          </Label>
+          <Select
+            value={selectedTrackSystemOption || ""}
+            onValueChange={(value) => handleFieldChange('trackSystemOption', value === 'None' ? '' : value)}
+            disabled={!selectedModel}
+          >
+            <SelectTrigger
+              className={`border rounded-md ${
+                !selectedModel ? 'bg-gray-100 cursor-not-allowed' : ''
+              } ${
+                !selectedTrackSystemOption
+                ? 'border-red-500'          // active
+                : 'border-green-500'        // complete
+              }`}
+            >
+              <SelectValue placeholder="Select track system option" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="None">None</SelectItem>
+              {trackSystemOptions && (
+                <SelectItem key={trackSystemOptions} value={trackSystemOptions}>
+                  {trackSystemOptions}
+                </SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      {/* Options Section - Multi-Select Dropdown */}
-      <div className="space-y-3">
-        <Label className="text-sm font-medium">
-          Options <span className="text-red-500">*</span>
-        </Label>
-        <Popover open={optionsOpen} onOpenChange={setOptionsOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={optionsOpen}
-              disabled={!selectedModel}
-              className={`w-full justify-between h-auto min-h-[40px] ${
-                !selectedModel ? 'bg-gray-100 cursor-not-allowed' : ''
-              } ${
-                selectedOptionsArray.length === 0
-                  ? 'border-red-500'
-                  : 'border-green-500'
-              }`}
-            >
-              <div className="flex flex-wrap gap-1 max-w-full">
-                {selectedOptionsArray.length === 0 ? (
-                  <span className="text-muted-foreground">Select options...</span>
-                ) : (
-                  selectedOptionsArray.map((option) => (
-                    <Badge
-                      key={option}
-                      variant="secondary"
-                      className="text-xs"
-                    >
-                      {option}
-                      <button
-                        className="ml-1 text-muted-foreground hover:text-foreground"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          removeOption(option);
-                        }}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))
-                )}
-              </div>
-              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-full p-0" side="bottom" align="start">
-            <div className="max-h-64 overflow-auto p-1">
-              {availableOptions.map((option) => (
-                <div
-                  key={option}
-                  className="flex items-center space-x-2 w-full p-2 hover:bg-accent rounded-sm cursor-pointer"
-                  onClick={() => handleOptionSelect(option)}
-                >
-                  <Checkbox
-                    checked={selectedOptionsArray.includes(option)}
-                    className="pointer-events-none"
-                  />
-                  <span className="flex-1 text-sm">{option}</span>
-                </div>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      {/* Row 3: Track Mounting, Track System Option */}
+      {/* Row 4: Track Mounting, Track System */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="trackMounting" className={labelClass}>
@@ -322,49 +425,22 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="trackSystemOption" className={labelClass}>
-            Track System Option <span className="text-red-500">*</span>
+          <Label htmlFor="suspensionTrackSystem" className={labelClass}>
+            Track System <span className="text-red-500">*</span>
           </Label>
-          <Select
-            value={selectedTrackSystemOption || undefined}
-            onValueChange={(value) => handleFieldChange('trackSystemOption', value === 'None' ? '' : value)}
+          <Input
+            id="suspensionTrackSystem"
+            value={selectedModel ? "Curtition #4 Architectural Grade Aluminum Extrusion" : ""}
+            readOnly
+            placeholder="Auto-calculated from model"
             disabled={!selectedModel}
-          >
-            <SelectTrigger
-              className={`border rounded-md ${
-                !selectedModel ? 'bg-gray-100 cursor-not-allowed' : ''
-              } ${
-                !selectedTrackSystemOption
-                ? 'border-red-500'          // active
-                : 'border-green-500'        // complete
-              }`}
-            >
-              <SelectValue placeholder="Select track system option" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="None">None</SelectItem>
-              {trackSystemOptions && (
-                <SelectItem key={trackSystemOptions} value={trackSystemOptions}>
-                  {trackSystemOptions}
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
+            className={`bg-gray-50 ${
+              !selectedModel ? 'bg-gray-100 cursor-not-allowed' : ''
+            } ${selectedModel ? 'border-green-500' : 'border-red-500'}`}
+          />
         </div>
       </div>
 
-      {/* Suspension Track System - Read Only */}
-      <div className="space-y-2">
-        <Label htmlFor="suspensionTrackSystem" className={labelClass}>
-          Suspension/Track System <span className="text-red-500">*</span>
-        </Label>
-        <Input
-          id="suspensionTrackSystem"
-          value="Curtition #4 Architectural Grade Aluminum Extrusion"
-          readOnly
-          className="bg-gray-50 border-green-500"
-        />
-      </div>
     </div>
   );
 };

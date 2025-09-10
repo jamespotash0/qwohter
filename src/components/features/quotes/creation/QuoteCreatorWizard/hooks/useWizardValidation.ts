@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { ContactInfo, JobDetails, DeliveryLabor, Pricing } from '../types/wizardTypes';
-import { WallDetails, WallSpecification, isOperableWall, isGlassWall } from '@/lib/types';
+import { WallDetails, WallSpecification, isOperableWall, isGlassWall, isAccordionPartition } from '@/lib/types';
+import { AccordionWallSpecification } from '@/lib/types/walls/accordion';
 import { validateWallDimensions } from '@/utils/wallValidation';
 
 export const useWizardValidation = (
@@ -95,19 +96,62 @@ export const useWizardValidation = (
           }
         }
       }
+      
+      if (isAccordionPartition(wall)) {
+        const accordionWall = wall as AccordionWallSpecification;
+        const requiredFields = {
+          panelConfiguration: accordionWall.panelConfiguration,
+          series: accordionWall.series,
+          model: accordionWall.model,
+          stcRating: accordionWall.stcRating,
+          operation: accordionWall.operation,
+          panelFinish: accordionWall.panelFinish,
+          trackMounting: accordionWall.trackMounting,
+          trackSystem: accordionWall.trackSystem,
+          finalClosureSystem: accordionWall.finalClosureSystem
+        };
+        
+        // Check each required field (all except options and trackSystemOption are required)
+        for (const [field, value] of Object.entries(requiredFields)) {
+          if (!value || value === '') {
+            console.log(`Accordion wall validation failed for wall ${wallName}:`, field, '=', value);
+            return false;
+          }
+        }
+        
+        // Options field is optional, no validation needed
+        // trackSystemOption is optional, no validation needed
+        console.log(`Accordion wall validation passed for wall ${wallName}`, requiredFields);
+      }
     }
     
     return true;
   }, [walls]);
 
   const isPocketDoorsValid = useMemo(() => {
-    // Per-wall validation: all walls should have pocket doors configured
+    // Per-wall validation: all walls (including accordion) can have pocket doors configured
     const wallEntries = Object.entries(walls.walls);
     if (wallEntries.length === 0) return false;
     
     return wallEntries.every(([, wall]) => {
-      const foldType = wall.pocketDoors?.foldType;
-      const foldStyle = wall.pocketDoors?.foldStyle;
+      // Handle accordion walls
+      if (isAccordionPartition(wall)) {
+        const accordionWall = wall as AccordionWallSpecification;
+        const foldType = accordionWall.pocketDoors?.foldType;
+        const foldStyle = accordionWall.pocketDoors?.foldStyle;
+        
+        // If no fold type or "None", it's valid
+        if (!foldType || foldType === 'None') {
+          return true;
+        }
+        
+        // If fold type is specified, fold style should also be specified
+        return !!foldStyle;
+      }
+      
+      // For operable and glass walls, check pocket doors
+      const foldType = (wall as any).pocketDoors?.foldType;
+      const foldStyle = (wall as any).pocketDoors?.foldStyle;
       
       // If no fold type or "None", it's valid
       if (!foldType || foldType === 'None') {
@@ -120,12 +164,13 @@ export const useWizardValidation = (
   }, [walls]);
 
   const isSupportStructureValid = useMemo(() => {
-    // Per-wall validation: all walls should have structure support configured
+    // Per-wall validation: operable, glass walls, and accordion partitions need structure support configured
     const wallEntries = Object.entries(walls.walls);
     if (wallEntries.length === 0) return false;
     
     return wallEntries.every(([, wall]) => {
-      return !!(wall.structureSupport && wall.structureSupport.trim() !== '');
+      // For operable, glass, and accordion walls, check structure support
+      return !!((wall as any).structureSupport && (wall as any).structureSupport.trim() !== '');
     });
   }, [walls]);
 
@@ -140,24 +185,87 @@ export const useWizardValidation = (
   }, [deliveryLabor]);
 
   const isPricingValid = useMemo(() => {
+    // Helper to check if a numeric field has been meaningfully set
+    const isNumericFieldValid = (value: number | null | undefined) => {
+      return value !== null && value !== undefined && (!isNaN(value));
+    };
+    
+    // Helper to check if percentage fields are reasonable (between 0-100)
+    const isPercentageValid = (value: number | null | undefined) => {
+      return isNumericFieldValid(value) && value! >= 0 && value! <= 100;
+    };
+    
+    // Count how many cost fields have been filled with non-zero values
+    const costFields = [
+      pricing.kwik_wall_materials_cost,
+      pricing.misc_materials_cost,
+      pricing.delivery_cost_track,
+      pricing.delivery_cost_panel,
+      pricing.track_equipment_costs,
+      pricing.track_labor_cost,
+      pricing.panel_equipment_costs,
+      pricing.panel_labor_cost,
+      pricing.track_freight_factory,
+      pricing.panel_freight_factory,
+      pricing.local_handling_costs,
+      pricing.unseen_costs
+    ].filter(value => isNumericFieldValid(value));
+    
+    // At least some meaningful cost data should be provided (not all zeros)
+    const hasMeaningfulCostData = costFields.some(value => value! > 0);
+    
     return !!(
-      (pricing.kwik_wall_materials_cost ?? 0) >= 0 && 
-      (pricing.misc_materials_cost ?? 0) >= 0 && 
-      (pricing.delivery_cost_track ?? 0) >= 0 &&
-      (pricing.delivery_cost_panel ?? 0) >= 0 &&
-      (pricing.track_equipment_costs ?? 0) >= 0 &&
-      (pricing.track_labor_cost ?? 0) >= 0 &&
-      (pricing.panel_equipment_costs ?? 0) >= 0 &&
-      (pricing.panel_labor_cost ?? 0) >= 0 &&
-      (pricing.track_freight_factory ?? 0) >= 0 &&
-      (pricing.panel_freight_factory ?? 0) >= 0 &&
-      (pricing.local_handling_costs ?? 0) >= 0 &&
-      (pricing.materials_markup_percentage ?? 0) >= 0 &&
-      (pricing.shipping_markup_percentage ?? 0) >= 0 &&
-      (pricing.unseen_costs ?? 0) >= 0 &&
-      (pricing.unseen_costs_percentage ?? 0) >= 0 &&
-      pricing.payment_upon_drawings &&        
-      pricing.payment_upon_track_installation);
+      // All numeric cost fields must be valid numbers (can be 0, but not null/undefined/NaN)
+      isNumericFieldValid(pricing.kwik_wall_materials_cost) && 
+      pricing.kwik_wall_materials_cost! >= 0 && 
+      
+      isNumericFieldValid(pricing.misc_materials_cost) && 
+      pricing.misc_materials_cost! >= 0 && 
+      
+      isNumericFieldValid(pricing.delivery_cost_track) && 
+      pricing.delivery_cost_track! >= 0 &&
+      
+      isNumericFieldValid(pricing.delivery_cost_panel) && 
+      pricing.delivery_cost_panel! >= 0 &&
+      
+      isNumericFieldValid(pricing.track_equipment_costs) && 
+      pricing.track_equipment_costs! >= 0 &&
+      
+      isNumericFieldValid(pricing.track_labor_cost) && 
+      pricing.track_labor_cost! >= 0 &&
+      
+      isNumericFieldValid(pricing.panel_equipment_costs) && 
+      pricing.panel_equipment_costs! >= 0 &&
+      
+      isNumericFieldValid(pricing.panel_labor_cost) && 
+      pricing.panel_labor_cost! >= 0 &&
+      
+      isNumericFieldValid(pricing.track_freight_factory) && 
+      pricing.track_freight_factory! >= 0 &&
+      
+      isNumericFieldValid(pricing.panel_freight_factory) && 
+      pricing.panel_freight_factory! >= 0 &&
+      
+      isNumericFieldValid(pricing.local_handling_costs) && 
+      pricing.local_handling_costs! >= 0 &&
+      
+      // Percentage fields must be valid percentages (0-100)
+      isPercentageValid(pricing.materials_markup_percentage) &&
+      isPercentageValid(pricing.shipping_markup_percentage) &&
+      isPercentageValid(pricing.unseen_costs_percentage) &&
+      
+      isNumericFieldValid(pricing.unseen_costs) && 
+      pricing.unseen_costs! >= 0 &&
+      
+      // String fields must be filled out
+      pricing.payment_upon_drawings && 
+      pricing.payment_upon_drawings.trim() !== '' &&        
+      pricing.payment_upon_track_installation &&
+      pricing.payment_upon_track_installation.trim() !== '' &&
+      
+      // At least some meaningful cost data should be provided (not everything can be zero)
+      hasMeaningfulCostData
+    );
   }, [pricing]);
   
 

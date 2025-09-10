@@ -59,7 +59,13 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
             value={selectedModel}
             onValueChange={(value) => handleFieldChange("model", value)}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              className={`border rounded-md ${
+                !selectedModel || selectedModel === 'None'
+                ? 'border-red-500'          // missing value
+                : 'border-green-500'        // has value
+              }`}
+            >
               <SelectValue placeholder="Select model" />
             </SelectTrigger>
             <SelectContent>
@@ -78,9 +84,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
           <Select
             value={selectedConfiguration}
             onValueChange={(value) => handleFieldChange("panelConfiguration", value)}
-            disabled={!selectedModel}
+            disabled={!selectedModel || selectedModel === 'None'}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              className={`border rounded-md ${
+                !selectedModel || selectedModel === 'None'
+                ? 'border-red-500'          // disabled state but required field
+                : !selectedConfiguration || selectedConfiguration === 'None'
+                  ? 'border-red-500'        // missing value
+                  : 'border-green-500'      // has value
+              }`}
+            >
               <SelectValue placeholder="Select configuration" />
             </SelectTrigger>
             <SelectContent>
@@ -99,9 +113,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
           <Select
             value={selectedOperation}
             onValueChange={(value) => handleFieldChange("panelOperation", value)}
-            disabled={!selectedModel}
+            disabled={!selectedModel || selectedModel === 'None'}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              className={`border rounded-md ${
+                !selectedModel || selectedModel === 'None'
+                ? 'border-red-500'          // disabled state but required field
+                : !selectedOperation || selectedOperation === 'None'
+                  ? 'border-red-500'        // missing value
+                  : 'border-green-500'      // has value
+              }`}
+            >
               <SelectValue placeholder="Select operation" />
             </SelectTrigger>
             <SelectContent>
@@ -123,9 +145,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
           <Select
             value={selectedGlassType}
             onValueChange={(value) => handleFieldChange("glassType", value)}
-            disabled={!selectedModel}
+            disabled={!selectedModel || selectedModel === 'None'}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              className={`border rounded-md ${
+                !selectedModel || selectedModel === 'None'
+                ? 'border-red-500'          // disabled state but required field
+                : !selectedGlassType || selectedGlassType === 'None'
+                  ? 'border-red-500'        // missing value
+                  : 'border-green-500'      // has value
+              }`}
+            >
               <SelectValue placeholder="Select glass type" />
             </SelectTrigger>
             <SelectContent>
@@ -144,9 +174,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
           <Select
             value={selectedSTCRating}
             onValueChange={(value) => handleFieldChange("stcRating", value)}
-            disabled={!selectedModel}
+            disabled={!selectedModel || selectedModel === 'None'}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              className={`border rounded-md ${
+                !selectedModel || selectedModel === 'None'
+                ? 'border-red-500'          // disabled state but required field
+                : !selectedSTCRating || selectedSTCRating === 'None'
+                  ? 'border-red-500'        // missing value
+                  : 'border-green-500'      // has value
+              }`}
+            >
               <SelectValue placeholder="Select STC rating" />
             </SelectTrigger>
             <SelectContent>
@@ -165,9 +203,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
           <Select
             value={selectedPartitionSupport}
             onValueChange={(value) => handleFieldChange("partitionSupport", value)}
-            disabled={!selectedModel}
+            disabled={!selectedModel || selectedModel === 'None'}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              className={`border rounded-md ${
+                !selectedModel || selectedModel === 'None'
+                ? 'border-red-500'          // disabled state but required field
+                : !selectedPartitionSupport || selectedPartitionSupport === 'None'
+                  ? 'border-red-500'        // missing value
+                  : 'border-green-500'      // has value
+              }`}
+            >
               <SelectValue placeholder="Select partition support" />
             </SelectTrigger>
             <SelectContent>
@@ -189,9 +235,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
           <Select
             value={selectedPanelFace}
             onValueChange={(value) => handleFieldChange("panelFace", value)}
-            disabled={!selectedModel}
+            disabled={!selectedModel || selectedModel === 'None'}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              className={`border rounded-md ${
+                !selectedModel || selectedModel === 'None'
+                ? 'border-gray-300'         // disabled state
+                : !selectedPanelFace || selectedPanelFace === 'None'
+                  ? 'border-gray-300'       // optional field, no value
+                  : 'border-green-500'      // has value
+              }`}
+            >
               <SelectValue placeholder="Select panel face" />
             </SelectTrigger>
             <SelectContent>
@@ -210,9 +264,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
           <Select
             value={selectedFrameFinish}
             onValueChange={(value) => handleFieldChange("frameFinish", value)}
-            disabled={!selectedModel}
+            disabled={!selectedModel || selectedModel === 'None'}
           >
-            <SelectTrigger>
+            <SelectTrigger
+              className={`border rounded-md ${
+                !selectedModel || selectedModel === 'None'
+                ? 'border-gray-300'         // disabled state
+                : !selectedFrameFinish || selectedFrameFinish === 'None'
+                  ? 'border-gray-300'       // optional field, no value
+                  : 'border-green-500'      // has value
+              }`}
+            >
               <SelectValue placeholder="Select frame finish" />
             </SelectTrigger>
             <SelectContent>
@@ -247,9 +309,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
               <Select
                 value={selectedHingeType}
                 onValueChange={(value) => handleFieldChange("hingeType", value)}
-                disabled={!selectedModel}
+                disabled={!selectedModel || selectedModel === 'None'}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    !selectedModel || selectedModel === 'None'
+                    ? 'border-gray-300'         // disabled state
+                    : !selectedHingeType || selectedHingeType === 'None'
+                      ? 'border-gray-300'       // optional field, no value
+                      : 'border-green-500'      // has value
+                  }`}
+                >
                   <SelectValue placeholder="Select hinge type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -268,9 +338,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
               <Select
                 value={selectedFinalClosure}
                 onValueChange={(value) => handleFieldChange("finalClosure", value)}
-                disabled={!selectedModel}
+                disabled={!selectedModel || selectedModel === 'None'}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    !selectedModel || selectedModel === 'None'
+                    ? 'border-gray-300'         // disabled state
+                    : !selectedFinalClosure || selectedFinalClosure === 'None'
+                      ? 'border-gray-300'       // optional field, no value
+                      : 'border-green-500'      // has value
+                  }`}
+                >
                   <SelectValue placeholder="Select final closure" />
                 </SelectTrigger>
                 <SelectContent>
@@ -289,9 +367,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
               <Select
                 value={selectedFloorGuide}
                 onValueChange={(value) => handleFieldChange("floorGuide", value)}
-                disabled={!selectedModel}
+                disabled={!selectedModel || selectedModel === 'None'}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    !selectedModel || selectedModel === 'None'
+                    ? 'border-gray-300'         // disabled state
+                    : !selectedFloorGuide || selectedFloorGuide === 'None'
+                      ? 'border-gray-300'       // optional field, no value
+                      : 'border-green-500'      // has value
+                  }`}
+                >
                   <SelectValue placeholder="Select floor guide" />
                 </SelectTrigger>
                 <SelectContent>
@@ -313,9 +399,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
               <Select
                 value={selectedTopSeals}
                 onValueChange={(value) => handleFieldChange("topSeals", value)}
-                disabled={!selectedModel}
+                disabled={!selectedModel || selectedModel === 'None'}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    !selectedModel || selectedModel === 'None'
+                    ? 'border-gray-300'         // disabled state
+                    : !selectedTopSeals || selectedTopSeals === 'None'
+                      ? 'border-gray-300'       // optional field, no value
+                      : 'border-green-500'      // has value
+                  }`}
+                >
                   <SelectValue placeholder="Select horizontal top seals" />
                 </SelectTrigger>
                 <SelectContent>
@@ -334,9 +428,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
               <Select
                 value={selectedBottomSeals}
                 onValueChange={(value) => handleFieldChange("bottomSeals", value)}
-                disabled={!selectedModel}
+                disabled={!selectedModel || selectedModel === 'None'}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    !selectedModel || selectedModel === 'None'
+                    ? 'border-gray-300'         // disabled state
+                    : !selectedBottomSeals || selectedBottomSeals === 'None'
+                      ? 'border-gray-300'       // optional field, no value
+                      : 'border-green-500'      // has value
+                  }`}
+                >
                   <SelectValue placeholder="Select horizontal bottom seals" />
                 </SelectTrigger>
                 <SelectContent>
@@ -358,9 +460,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
               <Select
                 value={selectedPassDoorType}
                 onValueChange={(value) => handleFieldChange("passDoorType", value)}
-                disabled={!selectedModel}
+                disabled={!selectedModel || selectedModel === 'None'}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    !selectedModel || selectedModel === 'None'
+                    ? 'border-gray-300'         // disabled state
+                    : !selectedPassDoorType || selectedPassDoorType === 'None'
+                      ? 'border-gray-300'       // optional field, no value
+                      : 'border-green-500'      // has value
+                  }`}
+                >
                   <SelectValue placeholder="Select pass door type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -383,7 +493,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
                 onValueChange={(value) => handleFieldChange("passDoorOption", value)}
                 disabled={!selectedPassDoorType || selectedPassDoorType === "None"}
               >
-                <SelectTrigger className={selectedPassDoorType && selectedPassDoorType !== "None" && (!selectedPassDoorOption || selectedPassDoorOption === "None") ? "border-red-500" : ""}>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    !selectedPassDoorType || selectedPassDoorType === 'None'
+                    ? 'border-gray-300'         // disabled state (no pass door type)
+                    : selectedPassDoorType && selectedPassDoorType !== 'None' && (!selectedPassDoorOption || selectedPassDoorOption === 'None')
+                      ? 'border-red-500'        // pass door type selected but option missing (required)
+                      : selectedPassDoorOption && selectedPassDoorOption !== 'None'
+                        ? 'border-green-500'     // has value
+                        : 'border-gray-300'      // no value but not required
+                  }`}
+                >
                   <SelectValue placeholder="Select pass door option" />
                 </SelectTrigger>
                 <SelectContent>
@@ -405,9 +525,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
               <Select
                 value={selectedTrackType}
                 onValueChange={(value) => handleFieldChange("trackType", value)}
-                disabled={!selectedModel}
+                disabled={!selectedModel || selectedModel === 'None'}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    !selectedModel || selectedModel === 'None'
+                    ? 'border-red-500'          // disabled state but required field
+                    : !selectedTrackType || selectedTrackType === 'None'
+                      ? 'border-red-500'        // missing value
+                      : 'border-green-500'      // has value
+                  }`}
+                >
                   <SelectValue placeholder="Select track type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -422,9 +550,10 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="trackSystem" className={labelClass}>Track System (Calculated)</Label>
+              <Label htmlFor="trackSystem" className={labelClass}>Track System</Label>
               <Input
                 value={calculatedTrackSystem}
+                disabled={!selectedModel}
                 readOnly
                 className="bg-gray-50"
                 placeholder="Auto-calculated"
@@ -436,9 +565,17 @@ export const GlassWallFormFields: React.FC<GlassWallFormFieldsProps> = ({
               <Select
                 value={selectedTrackFinish}
                 onValueChange={(value) => handleFieldChange("trackFinish", value)}
-                disabled={!selectedModel}
+                disabled={!selectedModel || selectedModel === 'None'}
               >
-                <SelectTrigger>
+                <SelectTrigger
+                  className={`border rounded-md ${
+                    !selectedModel || selectedModel === 'None'
+                    ? 'border-gray-300'         // disabled state
+                    : !selectedTrackFinish || selectedTrackFinish === 'None'
+                      ? 'border-gray-300'       // optional field, no value
+                      : 'border-green-500'      // has value
+                  }`}
+                >
                   <SelectValue placeholder="Select track finish" />
                 </SelectTrigger>
                 <SelectContent>

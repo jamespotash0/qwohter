@@ -8,7 +8,8 @@ import {
   getOptionsByModel,
   getAccordionTrackSystemByModel,
   getTrackSystemOptions,
-  getTrackMounting
+  getTrackMounting,
+  getAccordionFinalClosureOptions
 } from '@/lib/types/walls/accordion';
 
 interface UseAccordionWallFormProps {
@@ -29,7 +30,7 @@ export const useAccordionWallForm = ({ wall, wallName, onChange }: UseAccordionW
   const selectedOptions = accordionWall.options || '';
   const selectedTrackSystemOption = accordionWall.trackSystemOption || '';
   const selectedTrackMounting = accordionWall.trackMounting || '';
-
+  const selectedFinalClosureSystem = accordionWall.finalClosureSystem || '';
   // Available options based on current selections
   const availableModels = useMemo(() => {
     return selectedSeries ? getAccordionModelsBySeries(selectedSeries) : [];
@@ -52,6 +53,10 @@ export const useAccordionWallForm = ({ wall, wallName, onChange }: UseAccordionW
     return selectedModel ? getTrackSystemOptions(selectedModel) : '';
   }, [selectedModel]);
 
+  const finalClosureSystemOptions = useMemo(() => {
+      return selectedModel ? getAccordionFinalClosureOptions(selectedModel) : '';
+  },[selectedModel]);
+
   // Cascading field change handler
   const handleFieldChange = useCallback((field: string, value: any) => {
     let updates: Record<string, any> = { [field]: value };
@@ -64,17 +69,25 @@ export const useAccordionWallForm = ({ wall, wallName, onChange }: UseAccordionW
         model: '',
         stcRating: '',
         panelFinish: '',
+        operation: '',
         options: '',
         trackSystem: '',
         trackSystemOption: '',
-        trackMounting: ''
+        trackMounting: '',
+        finalClosureSystem: ''
       };
     } else if (field === 'model') {
       // Auto-calculate STC rating and set track system when model changes
       updates = {
         ...updates,
         stcRating: getSTCFromModel(value),
-        trackSystem: getAccordionTrackSystemByModel(value)
+        trackSystem: getAccordionTrackSystemByModel(value),
+        panelFinish: '',
+        operation: '',
+        options: '',
+        trackSystemOption: '',
+        trackMounting: '',
+        finalClosureSystem: ''
       };
     }
 
@@ -104,6 +117,7 @@ export const useAccordionWallForm = ({ wall, wallName, onChange }: UseAccordionW
     availableOptions,
     trackMountingOptions,
     trackSystemOptions,
+    finalClosureSystemOptions,
 
     // Handlers
     handleFieldChange,

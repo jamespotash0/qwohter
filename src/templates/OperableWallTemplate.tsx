@@ -1,5 +1,6 @@
 import { BaseQuoteTemplate, QuoteData } from './BaseQuoteTemplate';
-import { WallSpecification, isGlassWall, isOperableWall } from '@/lib/types';
+import { WallSpecification, isGlassWall, isOperableWall, isAccordionPartition } from '@/lib/types';
+import { AccordionWallSpecification } from '@/lib/types/walls/accordion';
 import { SmartQuoteHelper } from './SmartQuoteTemplate';
 
 export class OperableWallTemplate extends BaseQuoteTemplate {
@@ -52,7 +53,9 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
               ? this.simplifyGlassWallConfiguration(wall.panelConfiguration || '')
               : isOperableWall(wall) 
                 ? (wall.panelConfiguration || '')
-                : '';
+                : isAccordionPartition(wall)
+                  ? ((wall as AccordionWallSpecification).panelConfiguration || '')
+                  : '';
             
             const panelDescription = `${this.helpers.toWords(panelCount)} (${panelCount})`;
 
@@ -155,6 +158,22 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
           { text: `The initial closure (lead panel) provides closure with a <strong>${wall.initialClosureSystem}</strong>`, condition: SmartQuoteHelper.hasValue(wall.initialClosureSystem) },
           { text: `while the final closure (end panel) secures the system with a <strong>${wall.finalClosureSystem}</strong>`, condition: SmartQuoteHelper.hasValue(wall.finalClosureSystem) }
         ]);
+      } else if (isAccordionPartition(wall)) {
+        const accordionWall = wall as AccordionWallSpecification;
+        return SmartQuoteHelper.buildSentence([
+          { text: `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> utilizes the Curtition Accordion Partition` },
+          { text: `<strong>${accordionWall.series} series</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.series) },
+          { text: `<strong>Model ${accordionWall.model}</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.model) },
+          { text: `configured with <strong>${accordionWall.panelCount && parseInt(accordionWall.panelCount as any || '1') > 1 ? 'Multiple' : 'Single'} ${accordionWall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.panelConfiguration) },
+          { text: `featuring <strong>${accordionWall.operation}</strong> operation.`, condition: SmartQuoteHelper.hasValue(accordionWall.operation) },
+          { text: `The partition is <strong>${this.helpers.formatDimensions('0', '0', String(accordionWall.heightFeet || ''), String(accordionWall.heightInches || ''), false).split(' x ')[1]}</strong> in height, with panels folding as required.`, condition: SmartQuoteHelper.hasAllValues(String(accordionWall.heightFeet || ''), String(accordionWall.heightInches || '')) },
+          { text: `Panels are finished in <strong>${accordionWall.panelFinish}</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.panelFinish) },
+          { text: `and achieve a minimum STC rating of <strong>${accordionWall.stcRating}</strong>.`, condition: SmartQuoteHelper.hasValue(accordionWall.stcRating) },
+          { text: `The system uses <strong>${accordionWall.trackMounting}</strong> track mounting`, condition: SmartQuoteHelper.hasValue(accordionWall.trackMounting) },
+          { text: `with <strong>${accordionWall.trackSystem}</strong> track system`, condition: SmartQuoteHelper.hasValue(accordionWall.trackSystem) },
+          { text: `and <strong>${accordionWall.finalClosureSystem}</strong> final closure system.`, condition: SmartQuoteHelper.hasValue(accordionWall.finalClosureSystem) },
+          { text: `Additional options include: <strong>${Array.isArray(accordionWall.options) ? accordionWall.options.join(', ') : typeof accordionWall.options === 'string' ? JSON.parse(accordionWall.options || '[]').join(', ') : ''}</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.options) }
+        ]);
       } else {
         return `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> - Unsupported wall type`;
       }
@@ -179,6 +198,9 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
         return wall.panelConfiguration && wall.panelConfiguration.trim() !== '';
       } else if (isOperableWall(wall)) {
         return wall.trackSystem && wall.trackSystem.trim() !== '';
+      } else if (isAccordionPartition(wall)) {
+        const accordionWall = wall as AccordionWallSpecification;
+        return accordionWall.trackSystem && accordionWall.trackSystem.trim() !== '';
       }
       return false;
     });
@@ -194,6 +216,9 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
         return `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> utilizes a <strong>${trackSystem}</strong> Track System (${this.helpers.getMovementOnTrackText(panelConfiguration)} Panels)`;
       } else if (isOperableWall(wall)) {
         return `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> utilizes a <strong>${wall.trackSystem}</strong> Track System (${this.helpers.getMovementOnTrackText(wall.panelConfiguration)} Panels)`;
+      } else if (isAccordionPartition(wall)) {
+        const accordionWall = wall as AccordionWallSpecification;
+        return `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> utilizes a <strong>${accordionWall.trackSystem}</strong> Track System (${this.helpers.getMovementOnTrackText(accordionWall.panelConfiguration)} Panels)`;
       }
       return '';
     }).join(', and ');
@@ -285,7 +310,8 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
     }
 
     const hasPocketDoors = wallEntries.some(([, wall]) => 
-      wall.pocketDoors?.foldType && wall.pocketDoors?.foldType !== 'None'
+      wall.pocketDoors?.foldType && wall.pocketDoors?.foldType !== 'None' ||
+      (isAccordionPartition(wall) && (wall as AccordionWallSpecification).pocketDoors?.foldType && (wall as AccordionWallSpecification).pocketDoors?.foldType !== 'None')
     );
     if (hasPocketDoors) {
       strategy.push({ breakAfterSection: 'pocket-doors-section', minimumHeight: 150 });

@@ -88,7 +88,14 @@ const Quotes = () => {
 
   const editQuote = (quote: Quote) => {
     const proposalNumber = quote.proposal_number;
-    navigate(`/quotes/edit/${proposalNumber}`);
+    
+    // If quote is a draft, send to creation wizard for completion
+    if (quote.status === "Draft") {
+      navigate(`/quotes/new?edit=${encodeURIComponent(proposalNumber)}`);
+    } else {
+      // For completed quotes, use the unified editor
+      navigate(`/quotes/edit/${proposalNumber}`);
+    }
   };
 
 

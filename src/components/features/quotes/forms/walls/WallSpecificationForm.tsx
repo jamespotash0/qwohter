@@ -133,6 +133,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           trackSystem: "",
           trackSystemOption: "",
           trackMounting: "",
+          finalClosureSystem: "",
         };
       }
     }

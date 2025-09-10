@@ -120,8 +120,8 @@ const DeliveryLaborForm = ({ data, onUpdate }: DeliveryLaborFormProps) => {
                 <SelectValue placeholder="Select labor type" />
               </SelectTrigger>
               <SelectContent className="bg-white">
-                <SelectItem value="Union">Union</SelectItem>
                 <SelectItem value="Non-Union">Non-Union</SelectItem>
+                <SelectItem value="Union">Union</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -139,8 +139,8 @@ const DeliveryLaborForm = ({ data, onUpdate }: DeliveryLaborFormProps) => {
                 <SelectValue placeholder="Select wage rate" />
               </SelectTrigger>
               <SelectContent className="bg-white">
-                <SelectItem value="Prevailing">Prevailing</SelectItem>
                 <SelectItem value="Standard">Standard</SelectItem>
+                <SelectItem value="Prevailing">Prevailing</SelectItem>
               </SelectContent>
             </Select>
           </div>

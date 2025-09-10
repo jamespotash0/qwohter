@@ -54,8 +54,8 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
             <SelectValue placeholder="Select labor type" />
           </SelectTrigger>
           <SelectContent className="text-left">
-            <SelectItem value="Union">Union</SelectItem>
             <SelectItem value="Non-Union">Non-Union</SelectItem>
+            <SelectItem value="Union">Union</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -72,8 +72,8 @@ export const LaborDeliverySection: React.FC<LaborDeliverySectionProps> = ({
             <SelectValue placeholder="Select wage rate" />
           </SelectTrigger>
           <SelectContent className="text-left">
-            <SelectItem value="Prevailing">Prevailing</SelectItem>
             <SelectItem value="Standard">Standard</SelectItem>
+            <SelectItem value="Prevailing">Prevailing</SelectItem>
           </SelectContent>
         </Select>
       </div>

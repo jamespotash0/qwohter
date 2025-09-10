@@ -1,4 +1,6 @@
 
+import { PocketDoorConfig } from './base';
+
 export interface AccordionWallSpecification {
   wallSystemType: 'Accordion Partition';
   lengthFeet: number | string;
@@ -11,13 +13,20 @@ export interface AccordionWallSpecification {
   panelConfiguration: string;
   series: string;
   model: string;
-  stcRating: string; // Auto-calculated from model
+  stcRating: string;
   operation: string;
   panelFinish: string;
   options: string;
   trackSystem: string;
   trackSystemOption: string;
   trackMounting: string;
+  finalClosureSystem: string;
+  
+  // Accordion partitions can have pocket doors
+  pocketDoors?: PocketDoorConfig;
+  
+  // Structure support for mounting
+  structureSupport?: string;
 }
 
 export const getAccordionModelsBySeries = (series: string): string[] => {
@@ -49,8 +58,8 @@ export const getPanelFinishesByModel = (model: string): string[] => {
 
 export const getOptionsByModel = (model: string): string[] => {
   if (!model) return [];
-  if (["VL-2","VL-6","VL-8"].includes(model)) return ['Lock on one or both sides','Radius construction for curved applications','Track switches for alternate storage or multi-location applications','Floating posts for latching of multiple partitions in L, T, and X configurations','Storage pocket with sliding jamb','Storage pocket with door','Conversion latch'];
-  if (["MK-X","MK-XX"].includes(model)) return ['Lock on one or both sides','Radius construction for curved applications','Track switches for alternate storage or multi-location applications','Floating posts for latching of multiple partitions in L, T, and X configurations','Storage pocket with sliding jamb','Storage pocket with door'];
+  if (["VL-2","VL-6","VL-8"].includes(model)) return ['Lock on one or both sides','Radius construction for curved applications','Track switches for alternate storage or multi-location applications',"Floating posts for latching of multiple partitions in L, T, and X configurations",'Storage pocket with sliding jamb','Storage pocket with door','Conversion latch'];
+  if (["MK-X","MK-XX"].includes(model)) return ['Lock on one or both sides','Radius construction for curved applications','Track switches for alternate storage or multi-location applications',"Floating posts for latching of multiple partitions in L, T, and X configurations",'Storage pocket with sliding jamb','Storage pocket with door'];
   return [];
 };
 
@@ -69,5 +78,11 @@ export const getTrackSystemOptions = (model: string): string => {
 export const getTrackMounting = (model: string): string[] => {
   if (!model) return [];
   if (["VL-2","VL-6","VL-8","MK-X","MK-XX"].includes(model)) return ['Surface-Mounted','Concealed'];
+  return [];
+};
+
+export const getAccordionFinalClosureOptions = (model: string): string[] => {
+  if (!model) return [];
+  if (["VL-2","VL-6","VL-8","MK-X","MK-XX"].includes(model)) return ['Latch Mechanism', 'Tiebacks', 'Pocket Door(s)'];
   return [];
 };
