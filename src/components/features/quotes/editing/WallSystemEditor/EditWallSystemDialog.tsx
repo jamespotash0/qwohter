@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { EditWallSystemDialogProps } from './types';
 import { OperableWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/OperableWallEditForm';
 import { GlassWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/GlassWallEditForm';
+import { AccordionWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/AccordionWallEditForm';
 import { validateWallSpecification } from '@/utils/wallValidation';
 
 export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
@@ -44,6 +45,10 @@ export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
       'model', 'panelConfiguration', 'operation', 'glassType', 'partitionSupport',
       'panelFace', 'frameFinish', 'frameThickness', 'hingeType', 'finalClosure', 
       'floorGuide', 'passDoorType', 'passDoorOption', 'trackFinish',
+      
+      // Accordion partition fields
+      'series', 'model', 'stcRating', 'operation', 'panelFinish', 'options',
+      'suspensionTrackSystem', 'trackSystemOption', 'trackMounting',
       
       // Any other fields that might exist
       'notes', 'specialInstructions', 'accessories'
@@ -123,6 +128,17 @@ export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
                 wallName={wallName}
                 onFieldChange={handleFieldChange}
                 showFullFields={true}
+              />
+            </div>
+          )}
+
+          {editedWall.wallSystemType === "Accordion Partition" && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-t pt-4">Accordion Partition Configuration</h3>
+              <AccordionWallEditForm
+                wall={editedWall}
+                wallName={wallName}
+                onFieldChange={handleFieldChange}
               />
             </div>
           )}

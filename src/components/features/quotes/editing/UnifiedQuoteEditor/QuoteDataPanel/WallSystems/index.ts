@@ -8,4 +8,4 @@ export type { WallSystemsSectionProps, WallCardProps, WallTypeFormProps, WallSys
 export { WallCard } from './WallCard';
 export { OperableWallEditForm } from './OperableWallEditForm';
 export { GlassWallEditForm } from './GlassWallEditForm';
-// export { AccordionPartitionForm } from './AccordionPartitionForm';
+export { AccordionWallEditForm } from './AccordionWallEditForm';

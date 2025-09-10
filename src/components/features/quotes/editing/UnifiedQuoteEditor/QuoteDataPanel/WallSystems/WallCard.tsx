@@ -8,6 +8,7 @@ import { useFormValidation } from '@/hooks/useFormValidation';
 import { WallCardProps } from './types';
 import { OperableWallEditForm } from './OperableWallEditForm';
 import { GlassWallEditForm } from './GlassWallEditForm';
+import { AccordionWallEditForm } from './AccordionWallEditForm';
 import { EditWallSystemDialog } from '../../../WallSystemEditor/EditWallSystemDialog';
 
 export const WallCard: React.FC<WallCardProps> = ({
@@ -199,7 +200,7 @@ export const WallCard: React.FC<WallCardProps> = ({
     </div>
 
     {/* Model-Specific Configuration Message */}
-    {(wall.wallSystemType === "Operable Wall" || wall.wallSystemType === "Glass Wall") && (
+    {(wall.wallSystemType === "Operable Wall" || wall.wallSystemType === "Glass Wall" || wall.wallSystemType === "Accordion Partition") && (
       <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
         <div className="flex items-center justify-between">
           <div>

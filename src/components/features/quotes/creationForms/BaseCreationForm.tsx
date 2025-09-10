@@ -14,7 +14,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
   const wallSystemTypes = [
     "Operable Wall", 
     "Glass Wall", 
-    "Accordion Partitions",
+    "Accordion Partition",
     "Unispan Support", 
     "FlexTact"
     ];

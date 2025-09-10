@@ -10,6 +10,7 @@ import { useState } from "react";
 import BaseCreationForm from "@/components/features/quotes/creationForms/BaseCreationForm";
 import GlassWallCreationForm from "@/components/features/quotes/creationForms/GlassWallCreationForm";
 import OperableWallCreationForm from "@/components/features/quotes/creationForms/OperableWallCreationForm";
+import { AccordionWallCreationForm } from "@/components/features/quotes/creationForms/AccordionWallCreationForm";
 
 interface WallSpecificationFormProps {
   walls: WallDetails;
@@ -61,8 +62,8 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           heightInches: currentWall.heightInches || "",
           quantity: currentWall.quantity || "1",
           panelCount: currentWall.panelCount || "",
-          bottomSeals: currentWall.bottomSeals || "",
-          topSeals: currentWall.topSeals || "",
+          bottomSeals: (currentWall as any).bottomSeals || "",
+          topSeals: (currentWall as any).topSeals || "",
           // Track system fields will be auto-calculated by OperableWallCreationForm
           trackType: "",
           trackSystem: "",
@@ -90,8 +91,8 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           heightInches: currentWall.heightInches || "",
           quantity: currentWall.quantity || "1",
           panelCount: currentWall.panelCount || "",
-          bottomSeals: currentWall.bottomSeals || "",
-          topSeals: currentWall.topSeals || "",
+          bottomSeals: (currentWall as any).bottomSeals || "",
+          topSeals: (currentWall as any).topSeals || "",
           // Track system fields will be auto-calculated by GlassWallCreationForm
           trackType: "",
           trackSystem: "",
@@ -111,6 +112,27 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           trackFinish: "",
           floorGuide: "",
           finalClosure: "",
+        };
+      } else if (value === "Accordion Partition") {
+        updatedWalls.walls[wallName] = {
+          wallSystemType: "Accordion Partition" as const,
+          lengthFeet: currentWall.lengthFeet || "",
+          lengthInches: currentWall.lengthInches || "",
+          heightFeet: currentWall.heightFeet || "",
+          heightInches: currentWall.heightInches || "",
+          quantity: currentWall.quantity || "1",
+          panelCount: currentWall.panelCount || "",
+          // Accordion partition specific fields
+          panelConfiguration: "",
+          series: "",
+          model: "",
+          stcRating: "",
+          operation: "",
+          panelFinish: "",
+          options: "",
+          trackSystem: "",
+          trackSystemOption: "",
+          trackMounting: "",
         };
       }
     }
@@ -331,7 +353,16 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
                         wallName={wallName} 
                         onWallChange={handleWallChange} 
                       />
-                    )}      
+                    )}
+                    
+                    {wall.wallSystemType === "Accordion Partition" && (
+                      <AccordionWallCreationForm 
+                        wall={wall} 
+                        wallName={wallName} 
+                        onWallChange={handleWallChange} 
+                      />
+                    )}
+                    
                     {!wall.wallSystemType && (
                       <div className="text-center py-4 text-muted-foreground border-t">
                         <p className="text-sm">👆 Please select a Wall System Type above to continue with specific wall configuration.</p>

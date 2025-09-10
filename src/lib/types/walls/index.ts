@@ -6,12 +6,12 @@ export * from './guards';
 
 import { OperableWallSpecification } from './operable';
 import { GlassWallSpecification } from './glass';
-// import { AccordionWallSpecification } from './accordion';
+import { AccordionWallSpecification } from './accordion';
 
 export type WallSpecification = 
   | OperableWallSpecification 
   | GlassWallSpecification 
-  // | AccordionWallSpecification;
+  | AccordionWallSpecification;
 
 export interface WallDetails {
   id: string;

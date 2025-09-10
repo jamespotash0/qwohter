@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 // Import the creation forms that include all necessary fields
 import OperableWallCreationForm from '@/components/features/quotes/creationForms/OperableWallCreationForm';
 import GlassWallCreationForm from '@/components/features/quotes/creationForms/GlassWallCreationForm';
+import { AccordionWallCreationForm } from '@/components/features/quotes/creationForms/AccordionWallCreationForm';
 
 // Import validation
 import { validateWallSpecification } from '@/utils/wallValidation';
@@ -119,6 +120,20 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
         trackFinish: '',
         floorGuide: '',
         finalClosure: ''
+      } as WallSpecification;
+    } else if (wallSystemType === 'Accordion Partition') {
+      return {
+        ...baseWall,
+        wallSystemType: 'Accordion Partition',
+        series: '',
+        model: '',
+        stcRating: '',
+        operation: '',
+        panelFinish: '',
+        options: '',
+        trackSystem: '',
+        trackSystemOption: '',
+        trackMounting: ''
       } as WallSpecification;
     }
 
@@ -233,6 +248,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                 <SelectContent>
                   <SelectItem value="Operable Wall">Operable Wall</SelectItem>
                   <SelectItem value="Glass Wall">Glass Wall</SelectItem>
+                  <SelectItem value="Accordion Partition">Accordion Partition</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -332,6 +348,17 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold border-t pt-4">Glass Wall Configuration</h3>
                 <GlassWallCreationForm
+                  wall={newWall}
+                  wallName={wallName}
+                  onWallChange={handleWallChange}
+                />
+              </div>
+            )}
+
+            {wallSystemType === "Accordion Partition" && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold border-t pt-4">Accordion Partition Configuration</h3>
+                <AccordionWallCreationForm
                   wall={newWall}
                   wallName={wallName}
                   onWallChange={handleWallChange}

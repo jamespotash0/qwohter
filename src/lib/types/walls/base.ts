@@ -1,4 +1,4 @@
-export type WallSystemType = 'Glass Wall' | 'Operable Wall' | 'Accordion Wall';
+export type WallSystemType = 'Glass Wall' | 'Operable Wall' | 'Accordion Partition';
 
 export interface PocketDoorConfig {
   foldType: string;
