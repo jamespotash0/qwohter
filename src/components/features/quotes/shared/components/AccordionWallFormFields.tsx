@@ -36,13 +36,17 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
     selectedModel,
     selectedSTCRating,
     selectedOperation,
-    selectedPanelFinish,
+    selectedPanelFace,
+    selectedTopSeals,
+    selectedBottomSeals,
     selectedOptions,
     selectedTrackSystemOption,
     selectedTrackMounting,
     seriesOptions,
     availableModels,
-    availablePanelFinishes,
+    availablePanelFaces,
+    availableTopSeals,
+    availableBottomSeals,
     availableOptions,
     trackMountingOptions,
     trackSystemOptions,
@@ -53,7 +57,7 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
   // Ensure panelConfiguration is initialized with default value
   React.useEffect(() => {
     if (!accordionWall.panelConfiguration) {
-      handleFieldChange("panelConfiguration", "Individual Panels");
+      handleFieldChange("panelConfiguration", "Individual Partition");
     }
   }, [accordionWall.panelConfiguration, handleFieldChange]);
 
@@ -105,7 +109,7 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
             Panel Configuration <span className="text-red-500">*</span>
           </Label>
           <Select
-            value={accordionWall.panelConfiguration || "Individual Panels"}
+            value={accordionWall.panelConfiguration || "Individual Partition"}
             onValueChange={(value) => handleFieldChange("panelConfiguration", value)}
           >
             <SelectTrigger
@@ -118,7 +122,9 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
               <SelectValue placeholder="Select panel configuration" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Individual Panels">Individual Panels</SelectItem>
+              <SelectItem value="Individual Partition">Individual Partition</SelectItem>
+              <SelectItem value="Paired Partition">Paired Partition</SelectItem>
+              <SelectItem value="Multiple (Intersecting) Partitions">Multiple (Intersecting) Partitions</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -224,32 +230,32 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
         </div>
       </div>
 
-      {/* Row 3: Panel Finish, Options */}
+      {/* Row 3: Panel Face, Options */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="panelFinish" className={labelClass}>
-            Panel Finish <span className="text-red-500">*</span>
+          <Label htmlFor="panelFace" className={labelClass}>
+            Panel Face <span className="text-red-500">*</span>
           </Label>
           <Select
-            value={selectedPanelFinish}
-            onValueChange={(value) => handleFieldChange("panelFinish", value)}
+            value={selectedPanelFace}
+            onValueChange={(value) => handleFieldChange("panelFace", value)}
             disabled={!selectedModel}
           >
             <SelectTrigger
               className={`border rounded-md ${
                 !selectedModel ? 'bg-gray-100 cursor-not-allowed' : ''
               } ${
-                !selectedPanelFinish
+                !selectedPanelFace
                 ? 'border-red-500'          // active
                 : 'border-green-500'        // complete
               }`}
             >
-              <SelectValue placeholder="Select panel finish" />
+              <SelectValue placeholder="Select panel face" />
             </SelectTrigger>
             <SelectContent>
-              {availablePanelFinishes.map((finish) => (
-                <SelectItem key={finish} value={finish}>
-                  {finish}
+              {availablePanelFaces.map((face) => (
+                <SelectItem key={face} value={face}>
+                  {face}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -324,8 +330,74 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
         </div>
       </div>
 
+      {/* Row 4: Top Seals, Bottom Seals (VL Series only) */}
+      {selectedSeries === 'VL Series' && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="topSeals" className={labelClass}>
+              Top Seals
+            </Label>
+            <Select
+              value={selectedTopSeals || "none"}
+              onValueChange={(value) => handleFieldChange("topSeals", value)}
+              disabled={!selectedModel || availableTopSeals.length === 0}
+            >
+              <SelectTrigger
+                className={`border rounded-md ${
+                  !selectedModel || availableTopSeals.length === 0 ? 'bg-gray-100 cursor-not-allowed' : ''
+                } ${
+                  selectedTopSeals
+                  ? 'border-green-500'
+                  : 'border-gray-300'
+                }`}
+              >
+                <SelectValue placeholder="Select top seals" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {availableTopSeals.map((seal) => (
+                  <SelectItem key={seal} value={seal}>
+                    {seal}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      {/* Row 3: Final Closure System, Track System Option */}
+          <div className="space-y-2">
+            <Label htmlFor="bottomSeals" className={labelClass}>
+              Bottom Seals
+            </Label>
+            <Select
+              value={selectedBottomSeals || "none"}
+              onValueChange={(value) => handleFieldChange("bottomSeals", value)}
+              disabled={!selectedModel || availableBottomSeals.length === 0}
+            >
+              <SelectTrigger
+                className={`border rounded-md ${
+                  !selectedModel || availableBottomSeals.length === 0 ? 'bg-gray-100 cursor-not-allowed' : ''
+                } ${
+                  selectedBottomSeals
+                  ? 'border-green-500'
+                  : 'border-gray-300'
+                }`}
+              >
+                <SelectValue placeholder="Select bottom seals" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {availableBottomSeals.map((seal) => (
+                  <SelectItem key={seal} value={seal}>
+                    {seal}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
+
+      {/* Row 5: Final Closure System, Track System Option */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="finalClosureSystem" className={labelClass}>
@@ -392,7 +464,7 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
         </div>
       </div>
 
-      {/* Row 4: Track Mounting, Track System */}
+      {/* Row 6: Track Mounting, Track System */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="trackMounting" className={labelClass}>

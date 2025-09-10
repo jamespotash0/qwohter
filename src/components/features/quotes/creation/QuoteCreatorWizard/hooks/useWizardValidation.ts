@@ -105,7 +105,7 @@ export const useWizardValidation = (
           model: accordionWall.model,
           stcRating: accordionWall.stcRating,
           operation: accordionWall.operation,
-          panelFinish: accordionWall.panelFinish,
+          panelFace: accordionWall.panelFace,
           trackMounting: accordionWall.trackMounting,
           trackSystem: accordionWall.trackSystem,
           finalClosureSystem: accordionWall.finalClosureSystem

@@ -128,7 +128,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
           model: "",
           stcRating: "",
           operation: "",
-          panelFinish: "",
+          panelFace: "",
           options: "",
           trackSystem: "",
           trackSystemOption: "",

@@ -161,14 +161,16 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
       } else if (isAccordionPartition(wall)) {
         const accordionWall = wall as AccordionWallSpecification;
         return SmartQuoteHelper.buildSentence([
-          { text: `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> utilizes the Curtition Accordion Partition` },
+          { text: `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> utilizes the Kwik-Wall Accordion Partition`},
           { text: `<strong>${accordionWall.series} series</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.series) },
           { text: `<strong>Model ${accordionWall.model}</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.model) },
           { text: `configured with <strong>${accordionWall.panelCount && parseInt(accordionWall.panelCount as any || '1') > 1 ? 'Multiple' : 'Single'} ${accordionWall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.panelConfiguration) },
           { text: `featuring <strong>${accordionWall.operation}</strong> operation.`, condition: SmartQuoteHelper.hasValue(accordionWall.operation) },
           { text: `The partition is <strong>${this.helpers.formatDimensions('0', '0', String(accordionWall.heightFeet || ''), String(accordionWall.heightInches || ''), false).split(' x ')[1]}</strong> in height, with panels folding as required.`, condition: SmartQuoteHelper.hasAllValues(String(accordionWall.heightFeet || ''), String(accordionWall.heightInches || '')) },
-          { text: `Panels are finished in <strong>${accordionWall.panelFinish}</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.panelFinish) },
+          { text: `Panels faces are covered with <strong>${accordionWall.panelFace}</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.panelFace) },
           { text: `and achieve a minimum STC rating of <strong>${accordionWall.stcRating}</strong>.`, condition: SmartQuoteHelper.hasValue(accordionWall.stcRating) },
+          { text: `For acoustic performance, partitions use <strong>${accordionWall.topSeals}</strong> horizontal top seals${SmartQuoteHelper.hasValue(accordionWall.bottomSeals) ? ',' : '.'}`, condition: SmartQuoteHelper.hasValue(accordionWall.topSeals)},
+          { text: `<strong>${accordionWall.bottomSeals}</strong> horizontal bottom seals${SmartQuoteHelper.hasValue(accordionWall.topSeals) ? ',' : '.'}`, condition: SmartQuoteHelper.hasValue(accordionWall.bottomSeals)},
           { text: `The system uses <strong>${accordionWall.trackMounting}</strong> track mounting`, condition: SmartQuoteHelper.hasValue(accordionWall.trackMounting) },
           { text: `with <strong>${accordionWall.trackSystem}</strong> track system`, condition: SmartQuoteHelper.hasValue(accordionWall.trackSystem) },
           { text: `and <strong>${accordionWall.finalClosureSystem}</strong> final closure system.`, condition: SmartQuoteHelper.hasValue(accordionWall.finalClosureSystem) },

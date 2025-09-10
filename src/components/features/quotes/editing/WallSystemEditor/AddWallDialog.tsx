@@ -129,7 +129,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
         model: '',
         stcRating: '',
         operation: '',
-        panelFinish: '',
+        panelFace: '',
         options: '',
         trackSystem: '',
         trackSystemOption: '',

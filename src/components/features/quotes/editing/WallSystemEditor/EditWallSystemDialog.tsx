@@ -47,7 +47,7 @@ export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
       'floorGuide', 'passDoorType', 'passDoorOption', 'trackFinish',
       
       // Accordion partition fields
-      'series', 'model', 'stcRating', 'operation', 'panelFinish', 'options',
+      'series', 'model', 'stcRating', 'operation', 'panelFace', 'options',
       'suspensionTrackSystem', 'trackSystemOption', 'trackMounting',
       
       // Any other fields that might exist

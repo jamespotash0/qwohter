@@ -15,7 +15,9 @@ export interface AccordionWallSpecification {
   model: string;
   stcRating: string;
   operation: string;
-  panelFinish: string;
+  panelFace: string;
+  topSeals?: string;
+  bottomSeals?: string;
   options: string;
   trackSystem: string;
   trackSystemOption: string;
@@ -84,5 +86,17 @@ export const getTrackMounting = (model: string): string[] => {
 export const getAccordionFinalClosureOptions = (model: string): string[] => {
   if (!model) return [];
   if (["VL-2","VL-6","VL-8","MK-X","MK-XX"].includes(model)) return ['Latch Mechanism', 'Tiebacks', 'Pocket Door(s)'];
+  return [];
+};
+
+export const getTopSealsOptions = (model: string): string[] => {
+  if (!model) return [];
+  if (["VL-2","VL-6","VL-8"].includes(model)) return ['1/2" multi-ply rubberized sweep strip'];
+  return [];
+};
+
+export const getBottomSealsOptions = (model: string): string[] => {
+  if (!model) return [];
+  if (["VL-2","VL-6","VL-8"].includes(model)) return ['1-1/2" multi-ply rubberized sweep strip', '3" multi-ply rubberized sweep strip'];
   return [];
 };

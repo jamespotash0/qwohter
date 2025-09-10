@@ -9,7 +9,9 @@ import {
   getAccordionTrackSystemByModel,
   getTrackSystemOptions,
   getTrackMounting,
-  getAccordionFinalClosureOptions
+  getAccordionFinalClosureOptions,
+  getTopSealsOptions,
+  getBottomSealsOptions
 } from '@/lib/types/walls/accordion';
 
 interface UseAccordionWallFormProps {
@@ -26,7 +28,9 @@ export const useAccordionWallForm = ({ wall, wallName, onChange }: UseAccordionW
   const selectedModel = accordionWall.model || '';
   const selectedSTCRating = accordionWall.stcRating || '';
   const selectedOperation = accordionWall.operation || '';
-  const selectedPanelFinish = accordionWall.panelFinish || '';
+  const selectedPanelFace = accordionWall.panelFace || '';
+  const selectedTopSeals = accordionWall.topSeals || '';
+  const selectedBottomSeals = accordionWall.bottomSeals || '';
   const selectedOptions = accordionWall.options || '';
   const selectedTrackSystemOption = accordionWall.trackSystemOption || '';
   const selectedTrackMounting = accordionWall.trackMounting || '';
@@ -36,8 +40,16 @@ export const useAccordionWallForm = ({ wall, wallName, onChange }: UseAccordionW
     return selectedSeries ? getAccordionModelsBySeries(selectedSeries) : [];
   }, [selectedSeries]);
 
-  const availablePanelFinishes = useMemo(() => {
+  const availablePanelFaces = useMemo(() => {
     return selectedModel ? getPanelFinishesByModel(selectedModel) : [];
+  }, [selectedModel]);
+
+  const availableTopSeals = useMemo(() => {
+    return selectedModel ? getTopSealsOptions(selectedModel) : [];
+  }, [selectedModel]);
+
+  const availableBottomSeals = useMemo(() => {
+    return selectedModel ? getBottomSealsOptions(selectedModel) : [];
   }, [selectedModel]);
 
   const availableOptions = useMemo(() => {
@@ -59,6 +71,11 @@ export const useAccordionWallForm = ({ wall, wallName, onChange }: UseAccordionW
 
   // Cascading field change handler
   const handleFieldChange = useCallback((field: string, value: any) => {
+    // Handle "none" values for seals - convert to empty string
+    if ((field === 'topSeals' || field === 'bottomSeals') && value === 'none') {
+      value = '';
+    }
+    
     let updates: Record<string, any> = { [field]: value };
 
     // Handle cascading changes
@@ -68,7 +85,9 @@ export const useAccordionWallForm = ({ wall, wallName, onChange }: UseAccordionW
         ...updates,
         model: '',
         stcRating: '',
-        panelFinish: '',
+        panelFace: '',
+        topSeals: '',
+        bottomSeals: '',
         operation: '',
         options: '',
         trackSystem: '',
@@ -82,7 +101,9 @@ export const useAccordionWallForm = ({ wall, wallName, onChange }: UseAccordionW
         ...updates,
         stcRating: getSTCFromModel(value),
         trackSystem: getAccordionTrackSystemByModel(value),
-        panelFinish: '',
+        panelFace: '',
+        topSeals: '',
+        bottomSeals: '',
         operation: '',
         options: '',
         trackSystemOption: '',
@@ -105,7 +126,9 @@ export const useAccordionWallForm = ({ wall, wallName, onChange }: UseAccordionW
     selectedModel,
     selectedSTCRating,
     selectedOperation,
-    selectedPanelFinish,
+    selectedPanelFace,
+    selectedTopSeals,
+    selectedBottomSeals,
     selectedOptions,
     selectedTrackSystemOption,
     selectedTrackMounting,
@@ -113,7 +136,9 @@ export const useAccordionWallForm = ({ wall, wallName, onChange }: UseAccordionW
     // Available options
     seriesOptions,
     availableModels,
-    availablePanelFinishes,
+    availablePanelFaces,
+    availableTopSeals,
+    availableBottomSeals,
     availableOptions,
     trackMountingOptions,
     trackSystemOptions,
@@ -125,7 +150,9 @@ export const useAccordionWallForm = ({ wall, wallName, onChange }: UseAccordionW
 
     // Helper functions
     getAvailableModels: () => availableModels,
-    getAvailablePanelFinishes: () => availablePanelFinishes,
+    getAvailablePanelFaces: () => availablePanelFaces,
+    getAvailableTopSeals: () => availableTopSeals,
+    getAvailableBottomSeals: () => availableBottomSeals,
     getAvailableOptions: () => availableOptions
   };
 };
