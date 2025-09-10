@@ -54,12 +54,8 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
     handleFieldChange,
   } = useAccordionWallForm({ wall, wallName, onChange });
 
-  // Ensure panelConfiguration is initialized with default value
-  React.useEffect(() => {
-    if (!accordionWall.panelConfiguration) {
-      handleFieldChange("panelConfiguration", "Individual Partition");
-    }
-  }, [accordionWall.panelConfiguration, handleFieldChange]);
+  // Remove automatic default initialization - let user select from placeholder
+  // Fixed: Seals reset behavior with proper Select value handling and key props
 
   // Parse selected options as array - handle JSON array or legacy comma-separated string
   const selectedOptionsArray = useMemo(() => {
@@ -109,7 +105,7 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
             Panel Configuration <span className="text-red-500">*</span>
           </Label>
           <Select
-            value={accordionWall.panelConfiguration || "Individual Partition"}
+            value={accordionWall.panelConfiguration || undefined}
             onValueChange={(value) => handleFieldChange("panelConfiguration", value)}
           >
             <SelectTrigger
@@ -119,7 +115,7 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
                 : 'border-green-500'        // has value
               }`}
             >
-              <SelectValue placeholder="Select panel configuration" />
+              <SelectValue placeholder="Select panel configuration" className="font-normal" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Individual Partition">Individual Partition</SelectItem>
@@ -136,15 +132,18 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
           <Select
             value={selectedSeries}
             onValueChange={(value) => handleFieldChange("series", value)}
+            disabled={!accordionWall.panelConfiguration}
           >
             <SelectTrigger
               className={`border rounded-md ${
+                !accordionWall.panelConfiguration ? 'bg-gray-100 cursor-not-allowed' : ''
+              } ${
                 !selectedSeries
                 ? 'border-red-500'          // active
                 : 'border-green-500'        // complete
               }`}
             >
-              <SelectValue placeholder="Select series" />
+              <SelectValue placeholder="Select series" className="font-normal" />
             </SelectTrigger>
             <SelectContent>
               {seriesOptions.map((series) => (
@@ -172,7 +171,7 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
                 : 'border-green-500'        // complete
               }`}
             >
-              <SelectValue placeholder="Select model" />
+              <SelectValue placeholder="Select model" className="font-normal" />
             </SelectTrigger>
             <SelectContent>
               {availableModels.map((model) => (
@@ -221,7 +220,7 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
                 : 'border-red-500'
               }`}
             >
-              <SelectValue placeholder="Select operation type" />
+              <SelectValue placeholder="Select operation type" className="font-normal" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Manual, Top Supported">Manual, Top Supported</SelectItem>
@@ -242,7 +241,7 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
             disabled={!selectedModel}
           >
             <SelectTrigger
-              className={`border rounded-md ${
+              className={`border rounded-md text-left ${
                 !selectedModel ? 'bg-gray-100 cursor-not-allowed' : ''
               } ${
                 !selectedPanelFace
@@ -250,7 +249,7 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
                 : 'border-green-500'        // complete
               }`}
             >
-              <SelectValue placeholder="Select panel face" />
+              <SelectValue placeholder="Select panel face" className="font-normal" />
             </SelectTrigger>
             <SelectContent>
               {availablePanelFaces.map((face) => (
@@ -283,7 +282,7 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
               >
                 <div className="flex flex-wrap gap-1 max-w-full">
                   {selectedOptionsArray.length === 0 ? (
-                    <span className="text-muted-foreground">Select options...</span>
+                    <span className="text-foreground font-normal">Select options...</span>
                   ) : (
                     selectedOptionsArray.map((option) => (
                       <Badge
@@ -292,8 +291,8 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
                         className="text-xs"
                       >
                         {option}
-                        <button
-                          className="ml-1 text-muted-foreground hover:text-foreground"
+                        <span
+                          className="ml-1 text-muted-foreground hover:text-foreground cursor-pointer"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -301,7 +300,7 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
                           }}
                         >
                           <X className="h-3 w-3" />
-                        </button>
+                        </span>
                       </Badge>
                     ))
                   )}
@@ -338,8 +337,9 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
               Top Seals
             </Label>
             <Select
-              value={selectedTopSeals || "none"}
-              onValueChange={(value) => handleFieldChange("topSeals", value)}
+              key={`topSeals-${selectedModel}`}
+              value={selectedTopSeals || ""}
+              onValueChange={(value) => handleFieldChange("topSeals", value === 'None' ? '' : value)}
               disabled={!selectedModel || availableTopSeals.length === 0}
             >
               <SelectTrigger
@@ -351,10 +351,10 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
                   : 'border-gray-300'
                 }`}
               >
-                <SelectValue placeholder="Select top seals" />
+                <SelectValue placeholder="Select top seals" className="font-normal" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="None">None</SelectItem>
                 {availableTopSeals.map((seal) => (
                   <SelectItem key={seal} value={seal}>
                     {seal}
@@ -369,8 +369,9 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
               Bottom Seals
             </Label>
             <Select
-              value={selectedBottomSeals || "none"}
-              onValueChange={(value) => handleFieldChange("bottomSeals", value)}
+              key={`bottomSeals-${selectedModel}`}
+              value={selectedBottomSeals || ""}
+              onValueChange={(value) => handleFieldChange("bottomSeals", value === 'None' ? '' : value)}
               disabled={!selectedModel || availableBottomSeals.length === 0}
             >
               <SelectTrigger
@@ -382,10 +383,10 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
                   : 'border-gray-300'
                 }`}
               >
-                <SelectValue placeholder="Select bottom seals" />
+                <SelectValue placeholder="Select bottom seals" className="font-normal" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="None">None</SelectItem>
                 {availableBottomSeals.map((seal) => (
                   <SelectItem key={seal} value={seal}>
                     {seal}
@@ -417,7 +418,7 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
                 : 'border-red-500'
               }`}
             >
-              <SelectValue placeholder="Select final closure system" />
+              <SelectValue placeholder="Select final closure system" className="font-normal" />
             </SelectTrigger>
             <SelectContent>
               {Array.isArray(finalClosureSystemOptions) 
@@ -450,7 +451,7 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
                 : 'border-green-500'        // complete
               }`}
             >
-              <SelectValue placeholder="Select track system option" />
+              <SelectValue placeholder="Select track system option" className="font-normal" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="None">None</SelectItem>
@@ -484,7 +485,7 @@ export const AccordionWallFormFields: React.FC<AccordionWallFormFieldsProps> = (
                 : 'border-green-500'        // complete
               }`}
             >
-              <SelectValue placeholder="Select mounting type" />
+              <SelectValue placeholder="Select mounting type" className="font-normal" />
             </SelectTrigger>
             <SelectContent>
               {trackMountingOptions.map((mounting) => (

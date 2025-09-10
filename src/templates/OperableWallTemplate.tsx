@@ -172,7 +172,8 @@ export class OperableWallTemplate extends BaseQuoteTemplate {
           { text: `For acoustic performance, partitions use <strong>${accordionWall.topSeals}</strong> horizontal top seals${SmartQuoteHelper.hasValue(accordionWall.bottomSeals) ? ',' : '.'}`, condition: SmartQuoteHelper.hasValue(accordionWall.topSeals)},
           { text: `<strong>${accordionWall.bottomSeals}</strong> horizontal bottom seals${SmartQuoteHelper.hasValue(accordionWall.topSeals) ? ',' : '.'}`, condition: SmartQuoteHelper.hasValue(accordionWall.bottomSeals)},
           { text: `The system uses <strong>${accordionWall.trackMounting}</strong> track mounting`, condition: SmartQuoteHelper.hasValue(accordionWall.trackMounting) },
-          { text: `with <strong>${accordionWall.trackSystem}</strong> track system`, condition: SmartQuoteHelper.hasValue(accordionWall.trackSystem) },
+          { text: `<strong>${accordionWall.trackSystem}</strong> track system`, condition: SmartQuoteHelper.hasValue(accordionWall.trackSystem) },
+          { text: `with a <strong>${accordionWall.trackSystemOption}</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.trackSystemOption) },
           { text: `and <strong>${accordionWall.finalClosureSystem}</strong> final closure system.`, condition: SmartQuoteHelper.hasValue(accordionWall.finalClosureSystem) },
           { text: `Additional options include: <strong>${Array.isArray(accordionWall.options) ? accordionWall.options.join(', ') : typeof accordionWall.options === 'string' ? JSON.parse(accordionWall.options || '[]').join(', ') : ''}</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.options) }
         ]);

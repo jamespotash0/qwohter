@@ -71,15 +71,27 @@ export const useAccordionWallForm = ({ wall, wallName, onChange }: UseAccordionW
 
   // Cascading field change handler
   const handleFieldChange = useCallback((field: string, value: any) => {
-    // Handle "none" values for seals - convert to empty string
-    if ((field === 'topSeals' || field === 'bottomSeals') && value === 'none') {
-      value = '';
-    }
-    
     let updates: Record<string, any> = { [field]: value };
 
     // Handle cascading changes
-    if (field === 'series') {
+    if (field === 'panelConfiguration') {
+      // Reset all dependent fields when panel configuration changes
+      updates = {
+        ...updates,
+        series: '',
+        model: '',
+        stcRating: '',
+        panelFace: '',
+        topSeals: '',
+        bottomSeals: '',
+        operation: '',
+        options: '',
+        trackSystem: '',
+        trackSystemOption: '',
+        trackMounting: '',
+        finalClosureSystem: ''
+      };
+    } else if (field === 'series') {
       // Reset dependent fields when series changes
       updates = {
         ...updates,
