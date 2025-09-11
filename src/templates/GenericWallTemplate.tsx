@@ -3,7 +3,7 @@ import { WallSpecification, isGlassWall, isOperableWall, isAccordionPartition } 
 import { AccordionWallSpecification } from '@/lib/types/walls/accordion';
 import { SmartQuoteHelper } from './SmartQuoteTemplate';
 
-export class OperableWallTemplate extends BaseQuoteTemplate {
+export class GenericWallTemplate extends BaseQuoteTemplate {
   
   /**
    * Simplifies glass wall panel configuration display

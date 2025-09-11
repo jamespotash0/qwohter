@@ -1,9 +1,9 @@
 import { QuoteData } from './BaseQuoteTemplate';
-import { OperableWallTemplate } from './OperableWallTemplate';
+import { GenericWallTemplate } from './GenericWallTemplate';
 
 export class TemplateFactory {
   static getTemplate(data: QuoteData) {
-    return new OperableWallTemplate(); // Default to OperableWallTemplate for now
+    return new GenericWallTemplate();
   }
 
 
