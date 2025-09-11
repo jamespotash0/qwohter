@@ -92,12 +92,28 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
     });
   };
 
-  // Initialize with provided data on mount only
+  // Sync with provided data when it changes (e.g., when editing existing quote)
   useEffect(() => {
+    // Only update if the incoming data is different from current localData
     const mergedData = { ...defaultEnhancedPricing, ...data };
     const calculatedData = calculateEnhancedPricing(mergedData);
-    setLocalData(calculatedData);
-  }, []); // Only run on mount - no dependencies to prevent reset loops
+    
+    // Avoid unnecessary updates by comparing the essential fields
+    const hasSignificantChanges = 
+      calculatedData.kwik_wall_materials_cost !== localData.kwik_wall_materials_cost ||
+      calculatedData.misc_materials_cost !== localData.misc_materials_cost ||
+      calculatedData.final_selling_price !== localData.final_selling_price;
+    
+    if (hasSignificantChanges) {
+      setLocalData(calculatedData);
+      // Update percentage inputs display as well
+      setPercentageInputs({
+        materials_markup_percentage: calculatedData.materials_markup_percentage > 0 ? calculatedData.materials_markup_percentage.toString() : '',
+        shipping_markup_percentage: calculatedData.shipping_markup_percentage > 0 ? calculatedData.shipping_markup_percentage.toString() : '',
+        unseen_costs_percentage: calculatedData.unseen_costs_percentage?.toString() || '10',
+      });
+    }
+  }, [data]); // React to changes in the data prop
 
 
   return (

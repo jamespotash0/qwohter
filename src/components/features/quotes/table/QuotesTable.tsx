@@ -16,6 +16,7 @@ interface QuotesTableProps {
 }
 
 const statusColors = {
+  Incomplete: "bg-gray-300 text-gray-800",
   Draft: "bg-gray-100 text-gray-800",
   Pending: "bg-yellow-100 text-yellow-800",
   Submitted: "bg-green-100 text-green-800",
@@ -28,6 +29,39 @@ const formatCurrency = (amount: number) => {
     style: 'currency',
     currency: 'USD',
   }).format(amount);
+};
+
+// Define which status transitions are allowed
+const getAvailableStatusOptions = (currentStatus: string) => {
+  const allStatuses = [
+    { value: "Incomplete", label: "Incomplete" },
+    { value: "Draft", label: "Draft" },
+    { value: "Pending", label: "Pending" },
+    { value: "Submitted", label: "Submitted" },
+    { value: "Won", label: "Won" },
+    { value: "Rejected", label: "Rejected" }
+  ];
+
+  // Incomplete can go to any status
+  if (currentStatus === "Incomplete") {
+    return allStatuses;
+  }
+  
+  // Draft can go to any status except Incomplete
+  if (currentStatus === "Draft") {
+    return allStatuses.filter(status => status.value !== "Incomplete");
+  }
+  
+  // Completed statuses (Pending, Submitted, Won, Rejected) cannot go back to Incomplete
+  // They can move between completed statuses but not back to incomplete/draft workflow
+  const completedStatuses = ["Pending", "Submitted", "Won", "Rejected"];
+  if (completedStatuses.includes(currentStatus)) {
+    return allStatuses.filter(status => 
+      status.value !== "Incomplete" && status.value !== "Draft"
+    );
+  }
+
+  return allStatuses;
 };
 
 export const QuotesTable: React.FC<QuotesTableProps> = ({
@@ -91,11 +125,11 @@ export const QuotesTable: React.FC<QuotesTableProps> = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-background border shadow-lg z-50">
-                      <SelectItem value="Draft">Draft</SelectItem>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="Submitted">Submitted</SelectItem>
-                      <SelectItem value="Won">Won</SelectItem>
-                      <SelectItem value="Rejected">Rejected</SelectItem>
+                      {getAvailableStatusOptions(quote.status || "Incomplete").map((status) => (
+                        <SelectItem key={status.value} value={status.value}>
+                          {status.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </TableCell>

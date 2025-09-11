@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, Save, FileText } from "lucide-react";
+import { ArrowLeft, ArrowRight, Save } from "lucide-react";
 
 interface NavigationFooterProps {
   activeStep: number;
@@ -8,7 +8,6 @@ interface NavigationFooterProps {
   onPrevious: () => void;
   onNext: () => void;
   onSave: () => Promise<void>;
-  onSaveAsDraft?: () => Promise<void>;
 }
 
 export const NavigationFooter = ({
@@ -17,37 +16,23 @@ export const NavigationFooter = ({
   allStepsValid,
   onPrevious,
   onNext,
-  onSave,
-  onSaveAsDraft
+  onSave
 }: NavigationFooterProps) => {
   const isLastStep = activeStep >= totalSteps - 1;
 
   return (
     <div className="border-t border-slate-100 p-4 flex-shrink-0">
       <div className="flex items-center justify-between">
-        {/* Left side - Previous button and Save as Draft */}
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={onPrevious}
-            disabled={activeStep === 0}
-            className="px-4 py-2 rounded-lg border hover:bg-slate-50 transition-all duration-200"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Previous
-          </Button>
-          
-          {onSaveAsDraft && (
-            <Button
-              variant="outline"
-              onClick={onSaveAsDraft}
-              className="px-4 py-2 rounded-lg border hover:bg-slate-50 transition-all duration-200 text-slate-600"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Save as Draft
-            </Button>
-          )}
-        </div>
+        {/* Left side - Previous button */}
+        <Button
+          variant="outline"
+          onClick={onPrevious}
+          disabled={activeStep === 0}
+          className="px-4 py-2 rounded-lg border hover:bg-slate-50 transition-all duration-200"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Previous
+        </Button>
         
         {/* Center - Progress indicator */}
         <div className="flex items-center gap-2 text-sm text-slate-500">

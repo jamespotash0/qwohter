@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ContactInfo, JobDetails, PocketDoors, SupportStructure, DeliveryLabor, Pricing } from '../types/wizardTypes';
 import { WallDetails, WallSpecification } from '@/lib/types';
 import { ProposalNumberGenerator } from '@/utils/proposalNumberGenerator';
+import { defaultEnhancedPricing } from '@/lib/types/pricing/enhancedPricing';
 
 // Helper function to migrate wall_details to the new format
 const migrateWallDetails = (wallDetails: unknown): WallDetails => {
@@ -98,11 +99,34 @@ export const useWizardState = (existingQuote?: Record<string, unknown>) => {
   });
 
   const [pricing, setPricing] = useState<Pricing>({
-    basePrice: (priceDetailsData?.base_price as number) || 0,
-    freight: (priceDetailsData?.freight as number) || 0,
-    total: (priceDetailsData?.total as string) || "",
-    paymentUponDrawings: (priceDetailsData?.payment_upon_drawings as string) || "",
-    paymentUponTrackInstallation: (priceDetailsData?.payment_upon_track_installation as string) || ""
+    // Use existing data if available, otherwise use defaults
+    kwik_wall_materials_cost: (priceDetailsData?.kwik_wall_materials_cost as number) ?? defaultEnhancedPricing.kwik_wall_materials_cost,
+    misc_materials_cost: (priceDetailsData?.misc_materials_cost as number) ?? defaultEnhancedPricing.misc_materials_cost,
+    delivery_cost_track: (priceDetailsData?.delivery_cost_track as number) ?? defaultEnhancedPricing.delivery_cost_track,
+    delivery_cost_panel: (priceDetailsData?.delivery_cost_panel as number) ?? defaultEnhancedPricing.delivery_cost_panel,
+    track_equipment_costs: (priceDetailsData?.track_equipment_costs as number) ?? defaultEnhancedPricing.track_equipment_costs,
+    track_labor_cost: (priceDetailsData?.track_labor_cost as number) ?? defaultEnhancedPricing.track_labor_cost,
+    panel_equipment_costs: (priceDetailsData?.panel_equipment_costs as number) ?? defaultEnhancedPricing.panel_equipment_costs,
+    panel_labor_cost: (priceDetailsData?.panel_labor_cost as number) ?? defaultEnhancedPricing.panel_labor_cost,
+    track_freight_factory: (priceDetailsData?.track_freight_factory as number) ?? defaultEnhancedPricing.track_freight_factory,
+    panel_freight_factory: (priceDetailsData?.panel_freight_factory as number) ?? defaultEnhancedPricing.panel_freight_factory,
+    local_handling_costs: (priceDetailsData?.local_handling_costs as number) ?? defaultEnhancedPricing.local_handling_costs,
+    materials_markup_percentage: (priceDetailsData?.materials_markup_percentage as number) ?? defaultEnhancedPricing.materials_markup_percentage,
+    shipping_markup_percentage: (priceDetailsData?.shipping_markup_percentage as number) ?? defaultEnhancedPricing.shipping_markup_percentage,
+    unseen_costs: (priceDetailsData?.unseen_costs as number) ?? defaultEnhancedPricing.unseen_costs,
+    unseen_costs_percentage: (priceDetailsData?.unseen_costs_percentage as number) ?? defaultEnhancedPricing.unseen_costs_percentage,
+    unseen_costs_locked: (priceDetailsData?.unseen_costs_locked as boolean) ?? defaultEnhancedPricing.unseen_costs_locked,
+    cost_subtotal: (priceDetailsData?.cost_subtotal as number) ?? defaultEnhancedPricing.cost_subtotal,
+    base_selling_price: (priceDetailsData?.base_selling_price as number) ?? defaultEnhancedPricing.base_selling_price,
+    shipping_cost_subtotal: (priceDetailsData?.shipping_cost_subtotal as number) ?? defaultEnhancedPricing.shipping_cost_subtotal,
+    shipping_selling_price: (priceDetailsData?.shipping_selling_price as number) ?? defaultEnhancedPricing.shipping_selling_price,
+    final_selling_price: (priceDetailsData?.final_selling_price as number) ?? defaultEnhancedPricing.final_selling_price,
+    base_selling_gross_profit_percentage: (priceDetailsData?.base_selling_gross_profit_percentage as number) ?? defaultEnhancedPricing.base_selling_gross_profit_percentage,
+    shipping_selling_gross_profit_percentage: (priceDetailsData?.shipping_selling_gross_profit_percentage as number) ?? defaultEnhancedPricing.shipping_selling_gross_profit_percentage,
+    final_selling_gross_profit_percentage: (priceDetailsData?.final_selling_gross_profit_percentage as number) ?? defaultEnhancedPricing.final_selling_gross_profit_percentage,
+    final_selling_price_profit_amount: (priceDetailsData?.final_selling_price_profit_amount as number) ?? defaultEnhancedPricing.final_selling_price_profit_amount,
+    payment_upon_drawings: (priceDetailsData?.payment_upon_drawings as string) ?? defaultEnhancedPricing.payment_upon_drawings,
+    payment_upon_track_installation: (priceDetailsData?.payment_upon_track_installation as string) ?? defaultEnhancedPricing.payment_upon_track_installation
   });
 
   // Generate proposal number on component mount if creating new quote

@@ -14,6 +14,7 @@ interface WizardHeaderProps {
   onEditingQuoteNameChange: (editing: boolean) => void;
   onQuoteStatusChange: (status: string) => void;
   onSave: () => Promise<void>;
+  onSaveAsDraft?: () => Promise<void>;
   onQuoteNameSave?: (name: string) => void;
 }
 
@@ -28,6 +29,7 @@ export const WizardHeader = ({
   onEditingQuoteNameChange,
   onQuoteStatusChange,
   onSave,
+  onSaveAsDraft,
   onQuoteNameSave
 }: WizardHeaderProps) => {
   return (
@@ -82,7 +84,7 @@ export const WizardHeader = ({
             </Select>
           </div>
 
-          {/* Right - Progress and save */}
+          {/* Right - Progress and save buttons */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 text-xs text-slate-600">
               <div className="w-12 bg-slate-200 rounded-full h-1">
@@ -93,6 +95,20 @@ export const WizardHeader = ({
               </div>
               <span>{completedSteps}/{totalSteps}</span>
             </div>
+            
+            {/* Save as Incomplete button */}
+            {onSaveAsDraft && (
+              <Button
+                variant="outline"
+                onClick={onSaveAsDraft}
+                size="sm"
+                className="px-3 py-2 rounded-lg border hover:bg-slate-50 transition-all duration-200 text-slate-600"
+              >
+                Save as Incomplete
+              </Button>
+            )}
+            
+            {/* Save Quote button */}
             <Button
               onClick={onSave}
               disabled={completedSteps < totalSteps}
@@ -100,7 +116,7 @@ export const WizardHeader = ({
               className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50"
             >
               <Save className="w-4 h-4 mr-1" />
-              Save
+              Save Quote
             </Button>
           </div>
         </div>

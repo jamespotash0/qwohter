@@ -209,9 +209,9 @@ const QuoteCreatorWizard = ({
           delivery_details: deliveryLabor.delivery,
           labor_details: deliveryLabor.labor,
           proposal_number: jobDetails.proposalNumber || "",
-          status: "Draft"
+          status: "Incomplete"
         });
-        toast.success("Quote saved as draft!");
+        toast.success("Quote saved as incomplete!");
       } else {
         await createQuote({
           quoteName: localQuoteName,
@@ -222,9 +222,9 @@ const QuoteCreatorWizard = ({
           supportStructure,
           deliveryLabor,
           pricing,
-          status: "Draft"
+          status: "Incomplete"
         });
-        toast.success("Quote saved as draft!");
+        toast.success("Quote saved as incomplete!");
       }
       onBackToDashboard();
     } catch (error) {
@@ -255,6 +255,7 @@ const QuoteCreatorWizard = ({
         onEditingQuoteNameChange={setEditingQuoteName}
         onQuoteStatusChange={setQuoteStatus}
         onSave={handleSave}
+        onSaveAsDraft={handleSaveAsDraft}
         onQuoteNameSave={onQuoteNameChange}
       />
 
@@ -322,7 +323,6 @@ const QuoteCreatorWizard = ({
                 onPrevious={handlePrevious}
                 onNext={handleNext}
                 onSave={handleSave}
-                onSaveAsDraft={handleSaveAsDraft}
               />
             </Card>
           </div>
