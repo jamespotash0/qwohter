@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
-import { ContactInfo, JobDetails, DeliveryLabor, Pricing } from '../types/wizardTypes';
+import { ContactInfo, JobDetails, DeliveryLabor, Pricing } from '@/components/features/quotes/creation/QuoteCreatorWizard/types/wizardTypes';
 import { WallDetails, WallSpecification, isOperableWall, isGlassWall, isAccordionPartition } from '@/lib/types';
 import { AccordionWallSpecification } from '@/lib/types/walls/accordion';
 import { validateWallDimensions } from '@/utils/wallValidation';
 
-export const useWizardValidation = (
+export const useEditingValidation = (
   contactInfo: ContactInfo,
   jobDetails: JobDetails,
   walls: WallDetails,
@@ -115,14 +115,9 @@ export const useWizardValidation = (
         // Check each required field (all except options and trackSystemOption are required)
         for (const [field, value] of Object.entries(requiredFields)) {
           if (!value || value === '') {
-            console.log(`Accordion wall validation failed for wall ${wallName}:`, field, '=', value);
             return false;
           }
         }
-        
-        // Options field is optional, no validation needed
-        // trackSystemOption is optional, no validation needed
-        console.log(`Accordion wall validation passed for wall ${wallName}`, requiredFields);
       }
     }
     
@@ -273,6 +268,29 @@ export const useWizardValidation = (
     return !!(quoteStatus && quoteStatus.trim() !== '');
   }, [quoteStatus]);
 
+  // Overall validation status
+  const isCompletelyValid = useMemo(() => {
+    return (
+      isContactInfoValid &&
+      isJobDetailsValid &&
+      isWallSpecValid &&
+      isPocketDoorsValid &&
+      isSupportStructureValid &&
+      isDeliveryLaborValid &&
+      isPricingValid &&
+      isQuoteStatusValid
+    );
+  }, [
+    isContactInfoValid,
+    isJobDetailsValid,
+    isWallSpecValid,
+    isPocketDoorsValid,
+    isSupportStructureValid,
+    isDeliveryLaborValid,
+    isPricingValid,
+    isQuoteStatusValid
+  ]);
+
   return {
     isContactInfoValid,
     isJobDetailsValid,
@@ -282,6 +300,7 @@ export const useWizardValidation = (
     isDeliveryLaborValid,
     isPricingValid,
     isQuoteStatusValid,
+    isCompletelyValid,
     validateWallDimensions: validateWallDimensionsLocal
   };
 };

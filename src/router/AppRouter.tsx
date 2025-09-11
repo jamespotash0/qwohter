@@ -21,6 +21,7 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 const QuotesList = lazy(() => import("@/pages/Quotes"));
 const NewQuote = lazy(() => import("@/pages/NewQuote"));
 const QuoteEdit = lazy(() => import("@/pages/QuoteEdit"));
+const QuoteEditIncomplete = lazy(() => import("@/pages/QuoteEditIncomplete"));
 
 // Loading component
 const PageLoader = () => (
@@ -101,6 +102,15 @@ export const AppRouter = () => (
             <ProtectedRoute>
               <QuoteErrorBoundary>
                 <QuoteEdit />
+              </QuoteErrorBoundary>
+            </ProtectedRoute>
+          } />
+          
+          {/* Incomplete quote editing with dedicated wizard */}
+          <Route path="/quotes/edit-incomplete/:proposalNumber" element={
+            <ProtectedRoute>
+              <QuoteErrorBoundary>
+                <QuoteEditIncomplete />
               </QuoteErrorBoundary>
             </ProtectedRoute>
           } />

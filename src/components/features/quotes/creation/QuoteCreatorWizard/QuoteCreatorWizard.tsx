@@ -53,8 +53,9 @@ const QuoteCreatorWizard = ({
     isPocketDoorsValid,
     isSupportStructureValid,
     isDeliveryLaborValid,
-    isPricingValid
-  } = useWizardValidation(contactInfo, jobDetails, walls, deliveryLabor, pricing);
+    isPricingValid,
+    isQuoteStatusValid
+  } = useWizardValidation(contactInfo, jobDetails, walls, deliveryLabor, pricing, quoteStatus);
 
   // Create wizard steps with validation states
   const steps = createWizardSteps(

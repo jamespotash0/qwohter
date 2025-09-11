@@ -89,11 +89,12 @@ const Quotes = () => {
   const editQuote = (quote: Quote) => {
     const proposalNumber = quote.proposal_number;
     
-    // If quote is incomplete or draft, send to creation wizard for completion
-    if (quote.status === "Incomplete" || quote.status === "Draft") {
-      navigate(`/quotes/new?edit=${encodeURIComponent(proposalNumber)}`);
-    } else {
-      // For completed quotes, use the unified editor
+    // Only incomplete quotes use the dedicated editing wizard
+    if (quote.status === "Incomplete") {
+      navigate(`/quotes/edit-incomplete/${proposalNumber}`);
+    } 
+    // All other statuses (Draft, Pending, Submitted, Won, Rejected) use the unified editor
+    else {
       navigate(`/quotes/edit/${proposalNumber}`);
     }
   };
