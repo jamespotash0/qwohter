@@ -18,7 +18,6 @@ export const createEditingSteps = (
   isSupportStructureValid: boolean,
   isDeliveryLaborValid: boolean,
   isPricingValid: boolean,
-  // isQuoteStatusValid: boolean,
   changeTracker: ChangeTracker
 ): EditingStep[] => [
   {

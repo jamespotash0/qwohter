@@ -53,7 +53,6 @@ const QuoteEditingWizard = ({
     isSupportStructureValid,
     isDeliveryLaborValid,
     isPricingValid,
-    isQuoteStatusValid,
     isCompletelyValid
   } = useEditingValidation(contactInfo, jobDetails, walls, deliveryLabor, pricing, quoteStatus);
 
@@ -66,7 +65,6 @@ const QuoteEditingWizard = ({
     isSupportStructureValid,
     isDeliveryLaborValid,
     isPricingValid,
-    isQuoteStatusValid,
     changeTracker
   );
 
