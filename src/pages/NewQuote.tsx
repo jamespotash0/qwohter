@@ -78,7 +78,7 @@ const NewQuote = () => {
       quoteName={quoteName}
       onBackToDashboard={handleBackToDashboard}
       onQuoteNameChange={handleQuoteNameChange}
-      existingQuote={existingQuote}
+      existingQuote={existingQuote as any}
     />
   );
 };

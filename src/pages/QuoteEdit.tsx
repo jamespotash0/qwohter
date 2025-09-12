@@ -77,7 +77,7 @@ const QuoteEdit = () => {
         
         // Convert the database quote to the proper Quote type
         const loadedQuote: Quote = {
-          ...rawQuote,
+          ...rawQuote as any,
           wall_details: rawQuote.wall_details ? 
             (typeof rawQuote.wall_details === 'string' ? 
               JSON.parse(rawQuote.wall_details) : 
