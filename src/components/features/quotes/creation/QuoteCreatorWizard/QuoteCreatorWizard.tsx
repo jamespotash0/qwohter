@@ -54,7 +54,7 @@ const QuoteCreatorWizard = ({
     isSupportStructureValid,
     isDeliveryLaborValid,
     isPricingValid,
-    isQuoteStatusValid
+    // isQuoteStatusValid
   } = useWizardValidation(contactInfo, jobDetails, walls, deliveryLabor, pricing, quoteStatus);
 
   // Create wizard steps with validation states

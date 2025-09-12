@@ -1,33 +1,14 @@
 import { useState, useEffect } from 'react';
-import { ContactInfo, JobDetails, PocketDoors, SupportStructure, DeliveryLabor, Pricing } from '../types/wizardTypes';
+import { ContactInfo, JobDetails, SupportStructure, DeliveryLabor, Pricing, PocketDoors } from '../types/wizardTypes';
 import { WallDetails, WallSpecification } from '@/lib/types';
 import { ProposalNumberGenerator } from '@/utils/proposalNumberGenerator';
 import { defaultEnhancedPricing } from '@/lib/types/pricing/enhancedPricing';
 
-// Helper function to migrate wall_details to the new format
-const migrateWallDetails = (wallDetails: unknown): WallDetails => {
-  // Check if already in correct format
-  if (wallDetails && typeof wallDetails === 'object' && wallDetails !== null) {
-    const wd = wallDetails as Record<string, unknown>;
-    if (wd.id && wd.walls) {
-      return wallDetails as WallDetails;
-    }
-    
-    // If it's an object but without id (previous migration), wrap it
-    if (!Array.isArray(wallDetails) && !wd.id) {
-      return {
-        id: crypto.randomUUID(),
-        walls: wallDetails as { [key: string]: WallSpecification }
-      };
-    }
-  }
-  
-  // Default empty structure
-  return {
-    id: crypto.randomUUID(),
-    walls: {}
-  };
-};
+// Helper function to create empty wall details structure
+const createEmptyWallDetails = (): WallDetails => ({
+  id: crypto.randomUUID(),
+  walls: {}
+});
 
 // Helper function to safely get nested properties
 const getNestedProperty = (obj: unknown, path: string): unknown => {
@@ -72,7 +53,9 @@ export const useWizardState = (existingQuote?: Record<string, unknown>) => {
     }
   });
 
-  const [walls, setWalls] = useState<WallDetails>(migrateWallDetails(existingQuoteData?.wall_details));
+  const [walls, setWalls] = useState<WallDetails>(
+    (existingQuoteData?.wall_details as WallDetails) || createEmptyWallDetails()
+  );
   
   // Legacy global state - kept for backward compatibility in quote saving
   const [pocketDoors] = useState<PocketDoors>({

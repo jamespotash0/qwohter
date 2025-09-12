@@ -5,8 +5,7 @@ import {
   DoorOpen, 
   Construction, 
   Truck, 
-  DollarSign,
-  FileText
+  DollarSign
 } from "lucide-react";
 import { EditingStep } from '../types/editingTypes';
 import { ChangeTracker } from '../types/editingTypes';
@@ -19,7 +18,7 @@ export const createEditingSteps = (
   isSupportStructureValid: boolean,
   isDeliveryLaborValid: boolean,
   isPricingValid: boolean,
-  isQuoteStatusValid: boolean,
+  // isQuoteStatusValid: boolean,
   changeTracker: ChangeTracker
 ): EditingStep[] => [
   {

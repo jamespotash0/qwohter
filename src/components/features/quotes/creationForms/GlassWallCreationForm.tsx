@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import { WallSpecification, isGlassWall } from '@/lib/types';
 import { GlassWallFormAdapter } from '@/components/features/quotes/shared/components/GlassWallFormAdapter';
 

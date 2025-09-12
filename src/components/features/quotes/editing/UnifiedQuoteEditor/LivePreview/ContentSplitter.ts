@@ -527,7 +527,7 @@ export class ContentSplitter {
     console.log(`🌊 Distributing ${items.length} items across pages with reflow...`);
 
     for (let i = 0; i < items.length; i++) {
-      const item = items[i];
+      const item = items[i]!;
       const wouldFit = currentPageHeight + item.height <= this.PAGE_CONFIG.contentHeight + this.MEASUREMENT_TOLERANCE;
       
       if (wouldFit || currentPageItems.length === 0) {

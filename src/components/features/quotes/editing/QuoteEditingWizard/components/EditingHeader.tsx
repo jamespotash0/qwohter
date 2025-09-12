@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 import { QuoteNameInput } from "@/components/common/inputs";
 
 interface EditingHeaderProps {
@@ -26,7 +26,6 @@ export const EditingHeader = ({
   quoteStatus,
   completedSteps,
   totalSteps,
-  hasUnsavedChanges,
   isCompletelyValid,
   onBackToDashboard,
   onQuoteNameChange,
@@ -76,22 +75,6 @@ export const EditingHeader = ({
               </h1>
             )}
             
-            {/* <Select value={quoteStatus} onValueChange={onQuoteStatusChange}>
-              <SelectTrigger className={`w-28 h-8 text-xs rounded-lg bg-white/80 transition-colors ${
-                !quoteStatus || quoteStatus === '' 
-                  ? 'border-red-300 border-2' 
-                  : 'border-green-300 border-2'
-              }`}>
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Draft">Draft</SelectItem>
-                <SelectItem value="Pending">Pending</SelectItem>
-                <SelectItem value="Submitted">Submitted</SelectItem>
-                <SelectItem value="Won">Won</SelectItem>
-                <SelectItem value="Rejected">Rejected</SelectItem>
-              </SelectContent>
-            </Select> */}
             <Select value={quoteStatus} onValueChange={onQuoteStatusChange}>
               <SelectTrigger
                 className={`w-28 h-8 text-xs rounded-lg bg-white/80 transition-colors ${

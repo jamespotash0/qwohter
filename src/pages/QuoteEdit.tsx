@@ -131,8 +131,7 @@ const QuoteEdit = () => {
           customSections: customSections,
           customHTML: customHTML,
           isCustomized: isCustomized || true,
-          lastModified: new Date(),
-          version: 1
+          lastModified: new Date()
         });
       }
       
