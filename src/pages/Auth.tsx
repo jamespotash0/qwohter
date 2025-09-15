@@ -89,27 +89,34 @@ const Auth = () => {
         return;
       }
 
-      // Try to restore saved auth flow state
+      // Only restore auth state if we have NO session (incomplete signup flow)
+      // AND the state is recent (less than 1 hour old)
       const savedState = loadAuthState();
-      if (savedState) {
-        // Validate the saved state makes sense
-        const validSteps = ["auth", "verify-otp", "profile", "organization", "company-info"];
-        if (!validSteps.includes(savedState.step)) {
-          console.warn('Invalid saved step, clearing state');
+      if (savedState && !session) {
+        // Check if state is too old (expire after 1 hour for incomplete flows)
+        const oneHourAgo = Date.now() - (60 * 60 * 1000);
+        if (savedState.timestamp < oneHourAgo) {
+          console.warn('Saved auth state is too old, clearing');
           clearAuthState();
           return;
         }
 
-        // For steps that require a session/userId, validate it exists
-        if (["verify-otp", "profile", "organization", "company-info"].includes(savedState.step)) {
-          if (!savedState.userId || !savedState.email) {
-            console.warn('Missing userId/email for advanced step, clearing state');
-            clearAuthState();
-            return;
-          }
+        // Validate the saved state makes sense
+        const validSteps = ["verify-otp", "profile", "organization", "company-info"];
+        if (!validSteps.includes(savedState.step)) {
+          console.warn('Invalid saved step for incomplete flow, clearing state');
+          clearAuthState();
+          return;
         }
 
-        // Restore the state
+        // For incomplete signup flows, require userId and email
+        if (!savedState.userId || !savedState.email) {
+          console.warn('Missing userId/email for incomplete signup, clearing state');
+          clearAuthState();
+          return;
+        }
+
+        // Restore the incomplete signup state
         setStep(savedState.step);
         setEmail(savedState.email || '');
         setUserId(savedState.userId || '');
@@ -117,8 +124,14 @@ const Auth = () => {
         setOrgChoice(savedState.orgChoice || '');
         setOrgName(savedState.orgName || '');
         setOrgCode(savedState.orgCode || '');
-        console.log('Restored auth flow state:', savedState);
+        console.log('Restored incomplete signup state:', savedState);
         return;
+      }
+
+      // If we have session but also saved state, clear the saved state (completed flow)
+      if (session && savedState) {
+        console.log('User has session, clearing saved auth state');
+        clearAuthState();
       }
 
       // No saved state, proceed normally
@@ -476,6 +489,20 @@ const Auth = () => {
 
         {/* Footer */}
         <div className="text-center mt-8">
+          {/* Debug button - remove in production */}
+          {import.meta.env.DEV && (
+            <button
+              onClick={() => {
+                clearAuthState();
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.reload();
+              }}
+              className="text-xs text-red-500 hover:text-red-400 mb-2 block"
+            >
+              🚨 Clear All Auth State & Reload
+            </button>
+          )}
           <p className="text-slate-500 text-sm">
             © 2024 AiQu. All rights reserved.
           </p>

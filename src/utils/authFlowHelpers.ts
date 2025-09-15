@@ -40,12 +40,44 @@ export const authFlowHelpers = {
    */
   handleSignIn: async (email: string, password: string): Promise<AuthResult> => {
     try {
+      // First check if user exists in our profiles table
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .single();
+      
+      // If user doesn't exist in profiles, they need to create account
+      if (!existingProfile) {
+        return {
+          success: false,
+          error: "No account found with this email. Please create an account first."
+        };
+      }
+
+      // User exists, now try to sign them in
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (error) {
+        // Since we know user exists, this must be wrong password
+        if (error.message === 'Invalid login credentials') {
+          return {
+            success: false,
+            error: "Incorrect password. Please try again."
+          };
+        }
+        
+        // Handle other possible errors
+        if (error.message === 'Email not confirmed') {
+          return {
+            success: false,
+            error: "Please check your email and click the verification link before signing in."
+          };
+        }
+        
         return {
           success: false,
           error: error.message
@@ -69,12 +101,34 @@ export const authFlowHelpers = {
    */
   handleSignUp: async (email: string, password: string): Promise<AuthResult> => {
     try {
+      // First check if user exists in profiles table (our source of truth)
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .single();
+      
+      if (existingProfile) {
+        return {
+          success: false,
+          error: "An account with this email already exists. Please sign in instead."
+        };
+      }
+
+      // Attempt to sign up
       const { data, error } = await supabase.auth.signUp({
         email,
         password
       });
       
       if (error) {
+        // Handle specific Supabase errors
+        if (error.message.includes('User already registered') || error.message.includes('already exists')) {
+          return {
+            success: false,
+            error: "An account with this email already exists. Please sign in instead."
+          };
+        }
         return {
           success: false,
           error: error.message
