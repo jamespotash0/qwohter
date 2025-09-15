@@ -9,8 +9,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Lock } from "lucide-react";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
 import { CompanyInfoFormData } from "@/lib/types/settings/companySettings";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CompanyInfoDialogProps {
   isOpen: boolean;
@@ -32,7 +35,11 @@ export function CompanyInfoDialog({
     fax: "",
     address: "",
     website: "",
+    quote_starting_point: "",
   });
+
+  const [includeFax, setIncludeFax] = useState(false);
+  const [hasExistingQuotes, setHasExistingQuotes] = useState(false);
 
   const [errors, setErrors] = useState<Partial<CompanyInfoFormData>>({});
 
@@ -48,21 +55,59 @@ export function CompanyInfoDialog({
     return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
   };
 
+  // Quote starting point formatting function
+  const formatQuoteStartingPoint = (value: string): string => {
+    // Remove spaces and convert to uppercase
+    const cleanValue = value.replace(/\s/g, '').toUpperCase();
+    
+    // Allow alphanumeric characters and hyphens
+    const allowedChars = cleanValue.replace(/[^A-Z0-9-]/g, '');
+    
+    return allowedChars;
+  };
+
+  // Check if there are existing quotes
+  const checkForExistingQuotes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('quotes')
+        .select('id')
+        .limit(1);
+      
+      if (error) {
+        console.error('Error checking for existing quotes:', error);
+        return;
+      }
+      
+      setHasExistingQuotes(data && data.length > 0);
+    } catch (error) {
+      console.error('Error checking for existing quotes:', error);
+    }
+  };
+
   useEffect(() => {
+    if (isOpen) {
+      checkForExistingQuotes();
+    }
+    
     if (initialData) {
       setFormData({
         phone: initialData.phone || "",
         fax: initialData.fax || "",
         address: initialData.address || "",
         website: initialData.website || "",
+        quote_starting_point: initialData.quote_starting_point || "",
       });
+      setIncludeFax(Boolean(initialData.fax));
     } else {
       setFormData({
         phone: "",
         fax: "",
         address: "",
         website: "",
+        quote_starting_point: "",
       });
+      setIncludeFax(false);
     }
     setErrors({});
   }, [initialData, isOpen]);
@@ -74,7 +119,7 @@ export function CompanyInfoDialog({
       newErrors.phone = "Phone number is required";
     }
 
-    if (!formData.fax.trim()) {
+    if (includeFax && !formData.fax.trim()) {
       newErrors.fax = "Fax number is required";
     }
 
@@ -86,6 +131,10 @@ export function CompanyInfoDialog({
       newErrors.website = "Website is required";
     }
 
+    if (!hasExistingQuotes && !formData.quote_starting_point.trim()) {
+      newErrors.quote_starting_point = "Quote starting point is required";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -94,7 +143,12 @@ export function CompanyInfoDialog({
     e.preventDefault();
     
     if (validateForm()) {
-      onSave(formData);
+      // Clear fax if not included
+      const dataToSave = { 
+        ...formData, 
+        fax: includeFax ? formData.fax : '' 
+      };
+      onSave(dataToSave);
     }
   };
 
@@ -104,6 +158,11 @@ export function CompanyInfoDialog({
     // Apply phone number formatting for phone and fax fields
     if (field === 'phone' || field === 'fax') {
       formattedValue = formatPhoneNumber(value);
+    }
+    
+    // Apply quote starting point formatting
+    if (field === 'quote_starting_point') {
+      formattedValue = formatQuoteStartingPoint(value);
     }
     
     setFormData(prev => ({ ...prev, [field]: formattedValue }));
@@ -128,8 +187,8 @@ export function CompanyInfoDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Phone and Quote Starting Point */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="phone">Phone <span className="text-red-500">*</span></Label>
@@ -138,9 +197,9 @@ export function CompanyInfoDialog({
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => handleChange("phone", e.target.value)}
-                placeholder="(555) 123-4567"
+                placeholder="Enter your business phone number"
                 maxLength={14}
-                className={errors.phone ? "border-destructive" : ""}
+                className={`h-12 placeholder:text-muted-foreground/60 ${errors.phone ? "border-destructive" : ""}`}
               />
               {errors.phone && (
                 <p className="text-sm text-destructive">{errors.phone}</p>
@@ -151,25 +210,73 @@ export function CompanyInfoDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="fax">Fax <span className="text-red-500">*</span></Label>
+              <Label htmlFor="quoteStartingPoint" className="flex items-center gap-2">
+                Quote Starting Number 
+                {!hasExistingQuotes && <span className="text-red-500">*</span>}
+                {hasExistingQuotes && <Lock className="w-4 h-4 text-muted-foreground" />}
+              </Label>
               <Input
-                id="fax"
-                type="tel"
-                value={formData.fax}
-                onChange={(e) => handleChange("fax", e.target.value)}
-                placeholder="(555) 123-4568"
-                maxLength={14}
-                className={errors.fax ? "border-destructive" : ""}
+                id="quoteStartingPoint"
+                type="text"
+                value={formData.quote_starting_point}
+                onChange={(e) => handleChange("quote_starting_point", e.target.value)}
+                placeholder="P10001, 15000, Q-10001"
+                disabled={hasExistingQuotes}
+                className={`h-12 placeholder:text-muted-foreground/60 ${errors.quote_starting_point ? "border-destructive" : ""} ${hasExistingQuotes ? "bg-muted cursor-not-allowed" : ""}`}
               />
-              {errors.fax && (
-                <p className="text-sm text-destructive">{errors.fax}</p>
+              {errors.quote_starting_point && (
+                <p className="text-sm text-destructive">{errors.quote_starting_point}</p>
               )}
               <p className="text-xs text-muted-foreground">
-                Format: (xxx) xxx-xxxx
+                {hasExistingQuotes 
+                  ? "Cannot be changed - quotes already exist with this numbering system"
+                  : "Starting point for your quote numbering system"
+                }
               </p>
             </div>
           </div>
 
+          {/* Fax Section with Optional Checkbox */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="includeFax"
+                checked={includeFax}
+                onCheckedChange={(checked) => {
+                  setIncludeFax(checked as boolean);
+                  if (!checked) {
+                    handleChange("fax", ""); // Clear fax when unchecked
+                  }
+                }}
+              />
+              <Label htmlFor="includeFax" className="text-sm font-medium">
+                Include fax number
+              </Label>
+            </div>
+
+            {includeFax && (
+              <div className="space-y-2">
+                <Label htmlFor="fax">Fax</Label>
+                <Input
+                  id="fax"
+                  type="tel"
+                  value={formData.fax}
+                  onChange={(e) => handleChange("fax", e.target.value)}
+                  placeholder="Enter your business fax number"
+                  maxLength={14}
+                  className={`h-12 placeholder:text-muted-foreground/60 ${errors.fax ? "border-destructive" : ""}`}
+                />
+                {errors.fax && (
+                  <p className="text-sm text-destructive">{errors.fax}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Format: (xxx) xxx-xxxx
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Address */}
           <div className="space-y-2">
             <MapboxInput
               id="address"
@@ -178,6 +285,7 @@ export function CompanyInfoDialog({
               onChange={(address) => handleChange("address", address)}
               placeholder="Start typing your business address..."
               required={true}
+              className="placeholder:text-muted-foreground/60"
             />
             {errors.address && (
               <p className="text-sm text-destructive">{errors.address}</p>
@@ -187,20 +295,22 @@ export function CompanyInfoDialog({
             </p>
           </div>
 
+          {/* Website */}
           <div className="space-y-2">
             <Label htmlFor="website">Website <span className="text-red-500">*</span></Label>
             <Input
               id="website"
               value={formData.website}
               onChange={(e) => handleChange("website", e.target.value)}
-              placeholder="Enter company website"
-              className={errors.website ? "border-destructive" : ""}
+              placeholder="https://www.yourcompany.com"
+              className={`h-12 placeholder:text-muted-foreground/60 ${errors.website ? "border-destructive" : ""}`}
             />
             {errors.website && (
               <p className="text-sm text-destructive">{errors.website}</p>
             )}
           </div>
 
+          {/* Action Buttons */}
           <div className="flex justify-end space-x-2 pt-4">
             <Button
               type="button"

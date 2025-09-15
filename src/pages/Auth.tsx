@@ -48,6 +48,7 @@ const Auth = () => {
   const [companyFax, setCompanyFax] = useState("");
   const [companyAddress, setCompanyAddress] = useState("");
   const [companyWebsite, setCompanyWebsite] = useState("");
+  const [quoteStartingPoint, setQuoteStartingPoint] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -480,7 +481,7 @@ const Auth = () => {
 
   const handleCompanyInfoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId || !companyPhone || !companyFax || !companyAddress || !companyWebsite) return;
+    if (!userId || !companyPhone || !companyAddress || !companyWebsite || !quoteStartingPoint) return;
 
     setLoading(true);
     try {
@@ -488,9 +489,10 @@ const Auth = () => {
       
       await organizationSettingsService.updateCompanyInfo({
         phone: companyPhone,
-        fax: companyFax,
+        fax: companyFax, // Can be empty string, handled by the service
         address: companyAddress,
         website: companyWebsite,
+        quote_starting_point: quoteStartingPoint,
       });
 
       toast({
@@ -691,11 +693,13 @@ const Auth = () => {
                 fax={companyFax}
                 address={companyAddress}
                 website={companyWebsite}
+                quoteStartingPoint={quoteStartingPoint}
                 loading={loading}
                 onPhoneChange={setCompanyPhone}
                 onFaxChange={setCompanyFax}
                 onAddressChange={setCompanyAddress}
                 onWebsiteChange={setCompanyWebsite}
+                onQuoteStartingPointChange={setQuoteStartingPoint}
                 onSubmit={handleCompanyInfoSubmit}
                 onSkip={handleCompanyInfoSkip}
               />
