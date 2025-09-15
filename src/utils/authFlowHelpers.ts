@@ -39,43 +39,24 @@ export const authFlowHelpers = {
    * Handle user sign in with email and password
    */
   handleSignIn: async (email: string, password: string): Promise<AuthResult> => {
-    // Rate limiting check
-    if (!authRateLimiter.isAllowed(email)) {
-      return {
-        success: false,
-        error: "Too many attempts. Please wait before trying again."
-      };
-    }
-
     try {
-      console.log('Attempting sign in for:', email);
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (error) {
-        console.error('Sign in error:', error);
-        
-        // Handle specific error cases
-        if (error.message === 'Invalid login credentials') {
-          return {
-            success: false,
-            error: "Invalid email or password. Please check your credentials or sign up if you don't have an account."
-          };
-        }
-        
-        throw error;
+        return {
+          success: false,
+          error: error.message
+        };
       }
-      
-      console.log('Sign in successful:', data);
       
       return {
         success: true,
         nextStep: 'complete'
       };
     } catch (error: any) {
-      console.error('Sign in catch error:', error);
       return {
         success: false,
         error: error.message
@@ -87,42 +68,17 @@ export const authFlowHelpers = {
    * Handle user sign up with email and password
    */
   handleSignUp: async (email: string, password: string): Promise<AuthResult> => {
-    // Rate limiting check
-    if (!authRateLimiter.isAllowed(email)) {
-      return {
-        success: false,
-        error: "Too many attempts. Please wait before trying again."
-      };
-    }
-
     try {
-      console.log('Attempting sign up for:', email);
       const { data, error } = await supabase.auth.signUp({
         email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth`
-        }
+        password
       });
       
-      console.log('Sign up response:', { data, error });
-      
       if (error) {
-        console.error('Sign up error:', error);
-        // Handle specific signup errors from Supabase
-        if (error.message === 'User already registered') {
-          return {
-            success: false,
-            error: "An account with this email already exists. Please sign in instead."
-          };
-        }
-        if (error.message.includes('already registered')) {
-          return {
-            success: false,
-            error: "An account with this email already exists. Please sign in instead."
-          };
-        }
-        throw error;
+        return {
+          success: false,
+          error: error.message
+        };
       }
       
       if (data.user) {
