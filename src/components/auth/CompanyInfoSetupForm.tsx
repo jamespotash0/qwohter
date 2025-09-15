@@ -4,9 +4,11 @@
  * Collects company information during organization creation flow
  */
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
 
 interface CompanyInfoSetupFormProps {
@@ -15,11 +17,13 @@ interface CompanyInfoSetupFormProps {
   fax: string;
   address: string;
   website: string;
+  quoteStartingPoint: string;
   loading: boolean;
   onPhoneChange: (phone: string) => void;
   onFaxChange: (fax: string) => void;
   onAddressChange: (address: string) => void;
   onWebsiteChange: (website: string) => void;
+  onQuoteStartingPointChange: (startingPoint: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   onSkip: () => void;
 }
@@ -29,14 +33,17 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
   fax,
   address,
   website,
+  quoteStartingPoint,
   loading,
   onPhoneChange,
   onFaxChange,
   onAddressChange,
   onWebsiteChange,
+  onQuoteStartingPointChange,
   onSubmit,
   onSkip
 }) => {
+  const [includeFax, setIncludeFax] = useState(false);
   // Phone number formatting function
   const formatPhoneNumber = (value: string): string => {
     // Remove all non-numeric characters
@@ -56,10 +63,26 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
   const handleFaxChange = (value: string) => {
     onFaxChange(formatPhoneNumber(value));
   };
+
+  // Quote starting point formatting function
+  const formatQuoteStartingPoint = (value: string): string => {
+    // Remove spaces and convert to uppercase
+    const cleanValue = value.replace(/\s/g, '').toUpperCase();
+    
+    // Allow alphanumeric characters and hyphens
+    const allowedChars = cleanValue.replace(/[^A-Z0-9-]/g, '');
+    
+    return allowedChars;
+  };
+
+  const handleQuoteStartingPointChange = (value: string) => {
+    onQuoteStartingPointChange(formatQuoteStartingPoint(value));
+  };
   return (
     <div className="space-y-6">
       {/* Form */}
       <form onSubmit={onSubmit} className="space-y-6">
+        {/* Phone and Quote Starting Point */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="phone">Phone <span className="text-red-500">*</span></Label>
@@ -71,7 +94,7 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
               placeholder="Enter your business phone number"
               maxLength={14}
               required
-              className="h-12"
+              className="h-12 placeholder:text-muted-foreground/60"
             />
             <p className="text-xs text-muted-foreground">
               Format: (xxx) xxx-xxxx
@@ -79,21 +102,63 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="fax">Fax <span className="text-red-500">*</span></Label>
+            <Label htmlFor="quoteStartingPoint">Quote Starting Number <span className="text-red-500">*</span></Label>
             <Input
-              id="fax"
-              type="tel"
-              value={fax}
-              onChange={(e) => handleFaxChange(e.target.value)}
-              placeholder="Enter your business fax number"
-              maxLength={14}
+              id="quoteStartingPoint"
+              type="text"
+              value={quoteStartingPoint}
+              onChange={(e) => handleQuoteStartingPointChange(e.target.value)}
+              placeholder="P10001, 15000, Q-10001"
               required
-              className="h-12"
+              className="h-12 placeholder:text-muted-foreground/60"
             />
+            {quoteStartingPoint && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm font-medium text-blue-900 mb-1">Next Proposal Number Preview:</p>
+                <p className="text-lg font-semibold text-blue-700">{quoteStartingPoint}</p>
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
-              Format: (xxx) xxx-xxxx
+              Starting point for your quote numbering system
             </p>
           </div>
+        </div>
+
+        {/* Fax Section with Optional Checkbox */}
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="includeFax"
+              checked={includeFax}
+              onCheckedChange={(checked) => {
+                setIncludeFax(checked as boolean);
+                if (!checked) {
+                  onFaxChange(''); // Clear fax when unchecked
+                }
+              }}
+            />
+            <Label htmlFor="includeFax" className="text-sm font-medium">
+              Include fax number
+            </Label>
+          </div>
+
+          {includeFax && (
+            <div className="space-y-2">
+              <Label htmlFor="fax">Fax</Label>
+              <Input
+                id="fax"
+                type="tel"
+                value={fax}
+                onChange={(e) => handleFaxChange(e.target.value)}
+                placeholder="Enter your business fax number"
+                maxLength={14}
+                className="h-12 placeholder:text-muted-foreground/60"
+              />
+              <p className="text-xs text-muted-foreground">
+                Format: (xxx) xxx-xxxx
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Address */}
@@ -105,6 +170,7 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
             onChange={onAddressChange}
             placeholder="Start typing your business address..."
             required={true}
+            className="placeholder:text-muted-foreground/60"
           />
           <p className="text-xs text-muted-foreground">
             Type your full business address including city, state, and ZIP code
@@ -120,7 +186,7 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
             onChange={(e) => onWebsiteChange(e.target.value)}
             placeholder="https://www.yourcompany.com"
             required
-            className="h-12"
+            className="h-12 placeholder:text-muted-foreground/60"
           />
         </div>
 

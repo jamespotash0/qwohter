@@ -93,15 +93,23 @@ export function CompanySettingsSection() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-              {/* Left Side - Phone and Fax */}
+              {/* Left Side - Contact Info */}
               <div className="space-y-4">
                 <div>
                   <span className="font-medium text-muted-foreground">Phone:</span>
                   <p>{companyData?.phone || 'Not provided'}</p>
                 </div>
+                {companyData?.fax && (
+                  <div>
+                    <span className="font-medium text-muted-foreground">Fax:</span>
+                    <p>{companyData.fax}</p>
+                  </div>
+                )}
                 <div>
-                  <span className="font-medium text-muted-foreground">Fax:</span>
-                  <p>{companyData?.fax || 'Not provided'}</p>
+                  <span className="font-medium text-muted-foreground">Proposal Starting Number:</span>
+                  <p className="font-mono text-lg font-semibold text-blue-700">
+                    {companyData?.quote_starting_point || 'Not set'}
+                  </p>
                 </div>
               </div>
               

@@ -32,6 +32,7 @@ export interface OrganizationInfo {
   fax?: string;
   address?: string;
   website?: string;
+  quote_starting_point?: string;
 }
 
 // Organization with company information (matches database schema)
@@ -49,6 +50,7 @@ export interface CompanyInfoFormData {
   fax: string;
   address: string;
   website: string;
+  quote_starting_point: string;
 }
 
 export interface OrganizationSettingsStore {
@@ -71,6 +73,7 @@ export const convertFormDataToOrganizationInfo = (formData: CompanyInfoFormData)
     fax: formData.fax || undefined,
     address: formData.address || undefined,
     website: formData.website || undefined,
+    quote_starting_point: formData.quote_starting_point || undefined,
   };
 };
 
@@ -81,5 +84,6 @@ export const extractPrimaryContactInfo = (orgInfo?: OrganizationInfo): CompanyIn
     fax: orgInfo?.fax || '',
     address: orgInfo?.address || '',
     website: orgInfo?.website || '',
+    quote_starting_point: orgInfo?.quote_starting_point || '',
   };
 };

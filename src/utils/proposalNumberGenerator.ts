@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { organizationSettingsService } from '@/services/companySettingsService';
 
 export interface ProposalNumberInfo {
   mainNumber: string;
@@ -18,6 +19,10 @@ export class ProposalNumberGenerator {
 
   private static async generateNewQuoteNumber(): Promise<ProposalNumberInfo> {
     try {
+      // Get organization's quote starting point
+      const organization = await organizationSettingsService.getOrganization();
+      const quoteStartingPoint = organization?.organization_info?.quote_starting_point || 'P100001';
+      
       const { data, error } = await supabase
         .from('quotes')
         .select('proposal_number')
@@ -26,21 +31,24 @@ export class ProposalNumberGenerator {
 
       if (error) throw error;
 
-      let highestMainNumber = 100000;
+      // Parse the starting point to extract prefix and number
+      const { prefix, baseNumber } = this.parseQuoteStartingPoint(quoteStartingPoint);
+      let highestMainNumber = baseNumber;
 
       if (data && data.length > 0) {
+        // Only consider quotes with the same prefix
         const mainNumbers = data
-          .map(quote => this.extractMainNumber(quote.proposal_number))
+          .map(quote => this.extractMainNumberWithPrefix(quote.proposal_number, prefix))
           .filter(num => num !== null)
           .map(num => num as number);
 
         if (mainNumbers.length > 0) {
-          highestMainNumber = Math.max(...mainNumbers);
+          highestMainNumber = Math.max(highestMainNumber, ...mainNumbers);
         }
       }
 
       const newMainNumber = highestMainNumber + 1;
-      const mainNumber = `P${newMainNumber}`;
+      const mainNumber = `${prefix}${newMainNumber}`;
       const fullNumber = mainNumber;
       const displayNumber = mainNumber;
 
@@ -109,18 +117,54 @@ export class ProposalNumberGenerator {
     }
   }
 
-  private static extractMainNumber(proposalNumber: string): number | null {
-    const match = proposalNumber.match(/^P(\d+)(?:\.\d+)?$/);
+  /**
+   * Parse the organization's quote starting point to extract prefix and base number
+   * Supports formats like: P10001, 15000, Q-10001, etc.
+   */
+  private static parseQuoteStartingPoint(startingPoint: string): { prefix: string; baseNumber: number } {
+    // Remove any spaces and convert to uppercase
+    const cleaned = startingPoint.replace(/\s/g, '').toUpperCase();
+    
+    // Try to match prefix + number patterns (P10001, Q-10001, etc.)
+    const prefixMatch = cleaned.match(/^([A-Z-]*)(\d+)$/);
+    
+    if (prefixMatch) {
+      const prefix = prefixMatch[1] || '';
+      const number = parseInt(prefixMatch[2]!, 10);
+      return { prefix, baseNumber: number };
+    }
+    
+    // If no prefix found, treat as pure number (15000)
+    const numberMatch = cleaned.match(/^(\d+)$/);
+    if (numberMatch) {
+      return { prefix: '', baseNumber: parseInt(numberMatch[1]!, 10) };
+    }
+    
+    // Fallback for unparseable formats
+    console.warn('Could not parse quote starting point:', startingPoint);
+    return { prefix: 'P', baseNumber: 100001 };
+  }
+
+  /**
+   * Extract main number from proposal number, considering the prefix
+   */
+  private static extractMainNumberWithPrefix(proposalNumber: string, expectedPrefix: string): number | null {
+    const escapedPrefix = expectedPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`^${escapedPrefix}(\\d+)(?:\\.\\d+)?$`);
+    const match = proposalNumber.match(pattern);
     return match ? parseInt(match[1]!, 10) : null;
   }
 
+
   private static extractMainNumberString(proposalNumber: string): string {
-    const match = proposalNumber.match(/^(P\d+)(?:\.\d+)?$/);
+    // Updated to handle any prefix pattern
+    const match = proposalNumber.match(/^([A-Z-]*\d+)(?:\.\d+)?$/);
     return match ? match[1]! : proposalNumber;
   }
 
   private static extractVersion(proposalNumber: string): number | null {
-    const match = proposalNumber.match(/^P\d+\.(\d+)$/);
+    // Updated to handle any prefix pattern
+    const match = proposalNumber.match(/^[A-Z-]*\d+\.(\d+)$/);
     return match ? parseInt(match[1]!, 10) : 1;
   }
 
