@@ -1,0 +1,27 @@
+# Tests
+tests/
+test-results/
+playwright-report/
+*.spec.ts
+*.test.ts
+
+# Development files
+.env.test
+.env.test.local
+.env.development.local
+
+# Node modules (handled by Vercel)
+node_modules/
+
+# Build artifacts (will be rebuilt)
+dist/
+
+# Playwright specific files
+playwright.config.ts
+.playwright/
+playwright/
+
+# Ignore Playwright cache directories
+**/test-results/
+**/playwright-report/
+**/.playwright/

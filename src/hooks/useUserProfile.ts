@@ -5,7 +5,7 @@ export interface UserProfile {
   id: string;
   full_name: string | null;
   email: string;
-  organization_id: string;
+  organization_id: string | null;
   role: string;
   created_at: string;
   updated_at: string;
@@ -25,6 +25,15 @@ export const useUserProfile = (userId?: string) => {
     const fetchProfile = async () => {
       try {
         setLoading(true);
+        
+        // First check if the auth user exists
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || user.id !== userId) {
+          setError('User not authenticated or session expired');
+          setProfile(null);
+          return;
+        }
+
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -32,7 +41,12 @@ export const useUserProfile = (userId?: string) => {
           .single();
 
         if (error) {
-          setError(error.message);
+          if (error.code === 'PGRST116') {
+            // Profile not found - this could be an orphaned auth user
+            setError('Profile not found. Please contact support.');
+          } else {
+            setError(error.message);
+          }
           return;
         }
 
