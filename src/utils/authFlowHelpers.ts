@@ -48,18 +48,34 @@ export const authFlowHelpers = {
     }
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('Attempting sign in for:', email);
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Sign in error:', error);
+        
+        // Handle specific error cases
+        if (error.message === 'Invalid login credentials') {
+          return {
+            success: false,
+            error: "Invalid email or password. Please check your credentials or sign up if you don't have an account."
+          };
+        }
+        
+        throw error;
+      }
+      
+      console.log('Sign in successful:', data);
       
       return {
         success: true,
         nextStep: 'complete'
       };
     } catch (error: any) {
+      console.error('Sign in catch error:', error);
       return {
         success: false,
         error: error.message
@@ -80,25 +96,7 @@ export const authFlowHelpers = {
     }
 
     try {
-      // Check if user with this email already exists
-      const { error: checkError } = await supabase.auth.signInWithPassword({
-        email,
-        password: 'dummy' // This will fail but tells us if user exists
-      });
-
-      // If we get a "Invalid login credentials" error, the user exists but wrong password
-      // If we get "Email not confirmed", the user exists but hasn't confirmed email
-      // If we get other errors, proceed with signup
-      if (checkError) {
-        if (checkError.message === 'Invalid login credentials' || 
-            checkError.message === 'Email not confirmed') {
-          return {
-            success: false,
-            error: "An account with this email already exists. Please sign in instead."
-          };
-        }
-      }
-
+      console.log('Attempting sign up for:', email);
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -107,9 +105,18 @@ export const authFlowHelpers = {
         }
       });
       
+      console.log('Sign up response:', { data, error });
+      
       if (error) {
-        // Handle specific signup errors
+        console.error('Sign up error:', error);
+        // Handle specific signup errors from Supabase
         if (error.message === 'User already registered') {
+          return {
+            success: false,
+            error: "An account with this email already exists. Please sign in instead."
+          };
+        }
+        if (error.message.includes('already registered')) {
           return {
             success: false,
             error: "An account with this email already exists. Please sign in instead."

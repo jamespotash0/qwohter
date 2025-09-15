@@ -164,10 +164,12 @@ const Auth = () => {
     e.preventDefault();
     if (!email || !password) return;
 
+    console.log('handleAuth called with:', { email, isSignUp, step });
     setLoading(true);
     try {
       let result;
       if (isSignUp) {
+        console.log('Calling handleSignUp for:', email);
         result = await authFlowHelpers.handleSignUp(email, password);
         if (result.success && result.data?.userId) {
           setUserId(result.data.userId);
@@ -179,6 +181,7 @@ const Auth = () => {
           });
         }
       } else {
+        console.log('Calling handleSignIn for:', email);
         result = await authFlowHelpers.handleSignIn(email, password);
         if (result.success) {
           toast({
