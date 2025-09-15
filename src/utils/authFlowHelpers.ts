@@ -43,6 +43,35 @@ export const authFlowHelpers = {
     console.log('=== SIGNIN FUNCTION START (Auth-First) ===');
     console.log('Email:', email);
     
+    // First, let's check what's actually in the database in real-time
+    console.log('🔍 Checking real-time database state...');
+    
+    // Check profiles table
+    const { data: profileCheck, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, email, full_name, organization_id, created_at')
+      .eq('email', email)
+      .single();
+    
+    console.log('📊 Profiles table check:', {
+      found: !!profileCheck,
+      profile: profileCheck,
+      error: profileError?.message
+    });
+    
+    // Check if we can query auth.users (if we have proper permissions)
+    try {
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      const userInAuth = authUsers?.users?.find(u => u.email === email);
+      console.log('🔐 Auth table check:', {
+        found: !!userInAuth,
+        user: userInAuth ? { id: userInAuth.id, email: userInAuth.email, created_at: userInAuth.created_at } : null,
+        error: authError?.message
+      });
+    } catch (authCheckError) {
+      console.log('🔐 Auth table check failed (expected if no admin access):', authCheckError);
+    }
+    
     try {
       // Try Supabase auth signin first - it's the authoritative system
       console.log('Attempting Supabase auth.signInWithPassword...');
@@ -61,61 +90,22 @@ export const authFlowHelpers = {
         console.log('SignIn error:', error);
         
         if (error.message === 'Invalid login credentials') {
-          // Check if user exists in Supabase Auth by trying with a different dummy password
-          // This helps distinguish between "email doesn't exist" vs "wrong password"
-          console.log('Checking if email exists in Supabase Auth...');
+          // Use the real-time database check we just performed
+          console.log('Using real-time database check results for error message');
           
-          try {
-            const { error: testError } = await supabase.auth.signInWithPassword({
-              email,
-              password: 'definitely-wrong-password-12345'
-            });
-            
-            console.log('Test signin result:', { testError: testError?.message });
-            
-            // If we get the same "Invalid login credentials" error, email exists - wrong password
-            if (testError?.message === 'Invalid login credentials') {
-              console.log('Email exists in auth - password incorrect');
-              return {
-                success: false,
-                error: "Incorrect password. Please try again."
-              };
-            }
-            
-            // If we get a different error or success (!), email exists - wrong password  
-            if (!testError || testError.message !== error.message) {
-              console.log('Email exists in auth - password incorrect (different response)');
-              return {
-                success: false,
-                error: "Incorrect password. Please try again."
-              };
-            }
-            
-          } catch (testErr) {
-            console.log('Test signin failed:', testErr);
-          }
-          
-          // If test failed in same way, likely email doesn't exist
-          // But to be safe, check profiles table as secondary confirmation
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('email', email)
-            .single();
-            
-          if (profile) {
-            // Profile exists but signin failed - likely wrong password
+          if (!profileCheck) {
+            // No profile found, and signin failed - email doesn't exist
+            console.log('No profile found and signin failed - email doesn\'t exist');
+            return {
+              success: false,
+              error: "No account found with this email. Please create an account first."
+            };
+          } else {
+            // Profile exists but signin failed - wrong password
             console.log('Profile exists but signin failed - wrong password');
             return {
               success: false,
               error: "Incorrect password. Please try again."
-            };
-          } else {
-            // No profile and signin failed - likely email doesn't exist
-            console.log('No profile found and signin failed - email likely doesn\'t exist');
-            return {
-              success: false,
-              error: "No account found with this email. Please create an account first."
             };
           }
         }
@@ -211,27 +201,32 @@ export const authFlowHelpers = {
     console.log('=== SIGNUP FUNCTION START (Auth-First) ===');
     console.log('Email:', email);
     
+    // First, check what's actually in the database in real-time
+    console.log('🔍 Checking real-time database state for signup...');
+    
+    // Check profiles table
+    const { data: profileCheck, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, email, full_name, organization_id, created_at')
+      .eq('email', email)
+      .single();
+    
+    console.log('📊 Profiles table check (signup):', {
+      found: !!profileCheck,
+      profile: profileCheck,
+      error: profileError?.message
+    });
+    
+    // If profile exists, user should sign in instead of sign up
+    if (profileCheck) {
+      console.log('Email already has profile - directing to sign in');
+      return {
+        success: false,
+        error: "An account with this email already exists. Please sign in to access your account."
+      };
+    }
+    
     try {
-      // First, do an explicit check if email exists by attempting a signin with dummy password
-      // This is more reliable than relying on signup behavior which varies by Supabase config
-      console.log('Pre-checking if email exists in Supabase Auth...');
-      
-      const { error: preCheckError } = await supabase.auth.signInWithPassword({
-        email,
-        password: 'intentionally-wrong-password-for-check-12345'
-      });
-      
-      // If we get "Invalid login credentials", the email exists in auth system
-      if (preCheckError?.message === 'Invalid login credentials') {
-        console.log('Email already exists in Supabase Auth - blocking signup');
-        return {
-          success: false,
-          error: "An account with this email already exists. Please sign in to complete your setup or continue where you left off."
-        };
-      }
-      
-      // If no error or different error, email might not exist - proceed with signup
-      console.log('Pre-check complete, proceeding with signup. Pre-check result:', preCheckError?.message || 'no error');
 
       // Try Supabase auth signup
       console.log('Attempting Supabase auth.signUp...');

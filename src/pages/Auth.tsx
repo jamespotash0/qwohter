@@ -520,50 +520,119 @@ const Auth = () => {
     navigate("/dashboard");
   };
 
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-background via-secondary/30 to-accent/10" />
-      
-      <div className={`w-full relative z-10 ${step === "company-info" ? "max-w-2xl" : step === "auth" ? "max-w-lg" : "max-w-md"}`}>
-        {/* Logo and branding section - only show on auth step */}
-        {step === "auth" && (
-          <div className="text-center mb-8 animate-fade-in-up">
-            <div className="mx-auto w-20 h-20 bg-gradient-to-br from-primary to-primary/80 rounded-3xl flex items-center justify-center mb-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-              <Building2 className="w-10 h-10 text-primary-foreground" />
-            </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent mb-2">
-              Qwohter
-            </h1>
-            <p className="text-muted-foreground text-lg font-medium">
-              Professional Quote Management
-            </p>
-          </div>
-        )}
+  // Define onboarding steps for progress tracking
+  const onboardingSteps = [
+    { key: "auth", label: "Sign In", icon: "🔐" },
+    { key: "verify-otp", label: "Verify", icon: "📧" },
+    { key: "profile", label: "Profile", icon: "👤" },
+    { key: "organization", label: "Organization", icon: "🏢" },
+    { key: "company-info", label: "Company", icon: "📋" }
+  ];
 
-        {/* Auth card */}
-        <Card className="card-floating backdrop-blur-sm border-0 shadow-large animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-          <CardHeader className="text-center space-y-4 pb-8">
-            <CardTitle className="text-2xl font-bold text-foreground">
-              {step === "auth" && (isSignUp ? "Create Account" : "Welcome")}
-              {step === "verify-otp" && "Verify Your Email"}
-              {step === "profile" && "Complete Your Profile"}
-              {step === "organization" && "Organization Setup"}
-              {step === "company-info" && "Company Information"}
-            </CardTitle>
-            <CardDescription className="text-muted-foreground text-base">
-              {step === "auth" && (isSignUp 
-                ? "Create your account to start managing quotes"
-                : "Sign in to access your quote management system"
-              )}
-              {step === "verify-otp" && "Enter the 6-digit code sent to your email"}
-              {step === "profile" && "Please provide your full name to continue"}
-              {step === "organization" && "Join an existing organization or create a new one"}
-              {step === "company-info" && "Add your company details"}
-            </CardDescription>
-          </CardHeader>
+  const getCurrentStepIndex = () => onboardingSteps.findIndex(s => s.key === step);
+  const isOnboarding = step !== "auth";
+
+  return (
+    <div className="min-h-screen bg-white relative overflow-hidden">
+      {/* Elegant background with subtle patterns */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50/50 via-white to-blue-50/30" />
+        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-br from-emerald-500/5 to-blue-500/5 rounded-full blur-3xl" />
+      </div>
+
+      {/* Simple progress indicator */}
+      {isOnboarding && (
+        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-20">
+          <div className="bg-white/90 backdrop-blur-xl rounded-full px-6 py-3 shadow-lg border border-white/20">
+            <span className="text-sm font-medium text-gray-700">
+              Step {getCurrentStepIndex()} of {onboardingSteps.length - 1}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div className="min-h-screen flex items-center justify-center p-8">
+        {/* Centered content area */}
+        <div className="w-full flex items-center justify-center">
+          <div className={`w-full relative z-10 ${
+            step === "company-info" ? "max-w-4xl" : 
+            step === "auth" ? "max-w-lg" : "max-w-2xl"
+          }`}>
+            {/* Main branding - only show on auth step */}
+            {step === "auth" && (
+              <div className="text-center mb-8">
+                <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl flex items-center justify-center mb-6 shadow-2xl animate-pulse-subtle">
+                  <Building2 className="w-10 h-10 text-white" />
+                </div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent mb-3">
+                  Qwohter
+                </h1>
+                <p className="text-xl text-gray-600 mb-6">Professional Quote Management</p>
+                <div className="flex justify-center space-x-8 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    <span className="text-gray-700">Instant Quotes</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+                    <span className="text-gray-700">Sales Pipeline</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-emerald-600 rounded-full"></div>
+                    <span className="text-gray-700">Faster Deals</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Main form card */}
+            <Card className="bg-white/70 backdrop-blur-xl border-0 shadow-2xl shadow-black/5 rounded-3xl overflow-hidden animate-slide-in-right step-transition">
+              <CardHeader className="text-center space-y-8 pb-8 pt-12 px-12">
+                {/* Step-specific icons and enhanced descriptions */}
+                {step === "verify-otp" && (
+                  <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center animate-float mb-4">
+                    <div className="text-4xl">📧</div>
+                  </div>
+                )}
+                {step === "profile" && (
+                  <div className="mx-auto w-20 h-20 bg-gradient-to-br from-emerald-100 to-blue-100 rounded-2xl flex items-center justify-center animate-float mb-4">
+                    <div className="text-4xl">👤</div>
+                  </div>
+                )}
+                {step === "organization" && (
+                  <div className="mx-auto w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center animate-float mb-4">
+                    <div className="text-4xl">🏢</div>
+                  </div>
+                )}
+                {step === "company-info" && (
+                  <div className="mx-auto w-20 h-20 bg-gradient-to-br from-orange-100 to-red-100 rounded-2xl flex items-center justify-center animate-float mb-4">
+                    <div className="text-4xl">📋</div>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <CardTitle className="text-3xl font-bold text-gray-900">
+                    {step === "auth" && (isSignUp ? "Create your account" : "Welcome back")}
+                    {step === "verify-otp" && "Check your email"}
+                    {step === "profile" && "Tell us about yourself"}
+                    {step === "organization" && "Join your team"}
+                    {step === "company-info" && "Company details"}
+                  </CardTitle>
+                  <CardDescription className="text-gray-600 text-lg leading-relaxed max-w-2xl mx-auto">
+                    {step === "auth" && (isSignUp 
+                      ? "Join thousands of professionals who trust Qwohter for their quote management"
+                      : "Sign in to continue managing your quotes and growing your business"
+                    )}
+                    {step === "verify-otp" && "We've sent a verification code to your email address. Enter it below to continue setting up your account."}
+                    {step === "profile" && "Help us personalize your experience by providing some basic information about yourself."}
+                    {step === "organization" && "Connect with your organization or create a new one to start collaborating with your team."}
+                    {step === "company-info" && "Add your company information to create professional, branded quotes that impress your clients."}
+                  </CardDescription>
+                </div>
+              </CardHeader>
           
-          <CardContent className="space-y-6">
+          <CardContent className="px-12 pb-12 space-y-8">
             {step === "auth" && (
               <AuthForm
                 isSignUp={isSignUp}
@@ -634,38 +703,49 @@ const Auth = () => {
           </CardContent>
         </Card>
 
-        {/* Footer */}
-        <div className="text-center mt-8">
+            {/* Elegant footer */}
+            <div className="text-center mt-12">
+              {/* Production fallback for stuck sessions */}
+              {!import.meta.env.DEV && step === "auth" && (
+                <div className="mb-6">
+                  <button
+                    onClick={async () => {
+                      try {
+                        await supabase.auth.signOut();
+                        clearAuthState();
+                        localStorage.clear();
+                        sessionStorage.clear();
+                        toast({
+                          title: "Session cleared",
+                          description: "All authentication data has been cleared. Please try signing in again.",
+                        });
+                        window.location.reload();
+                      } catch (error) {
+                        console.error('Error clearing session:', error);
+                      }
+                    }}
+                    className="text-sm text-gray-500 hover:text-gray-700 underline transition-colors"
+                  >
+                    Having login issues? Clear session data
+                  </button>
+                </div>
+              )}
 
-          {/* Production fallback for stuck sessions */}
-          {!import.meta.env.DEV && step === "auth" && (
-            <div className="mt-4">
-              <button
-                onClick={async () => {
-                  try {
-                    await supabase.auth.signOut();
-                    clearAuthState();
-                    localStorage.clear();
-                    sessionStorage.clear();
-                    toast({
-                      title: "Session cleared",
-                      description: "All authentication data has been cleared. Please try signing in again.",
-                    });
-                    window.location.reload();
-                  } catch (error) {
-                    console.error('Error clearing session:', error);
-                  }
-                }}
-                className="text-xs text-muted-foreground hover:text-foreground underline"
-              >
-                Having login issues? Clear session data
-              </button>
+              <div className="space-y-4">
+                <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
+                <p className="text-gray-500 text-sm font-medium">
+                  © 2024 Qwohter. Crafted with care for professionals.
+                </p>
+                <div className="flex justify-center space-x-6 text-xs">
+                  <span className="text-gray-400">Secure</span>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-gray-400">Fast</span>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-gray-400">Reliable</span>
+                </div>
+              </div>
             </div>
-          )}
-
-          <p className="text-slate-500 text-sm">
-            © 2024 Qwohter. All rights reserved.
-          </p>
+          </div>
         </div>
       </div>
     </div>
