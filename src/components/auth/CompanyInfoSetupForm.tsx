@@ -7,7 +7,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2 } from "lucide-react";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
 
 interface CompanyInfoSetupFormProps {
@@ -26,7 +25,6 @@ interface CompanyInfoSetupFormProps {
 }
 
 export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
-  organizationName,
   phone,
   fax,
   address,
@@ -60,21 +58,8 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
   };
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-          <Building2 className="w-8 h-8 text-primary" />
-        </div>
-        <h2 className="text-2xl font-bold text-foreground">Company Information</h2>
-        <p className="text-muted-foreground">
-          Add your company details for <span className="font-semibold">{organizationName}</span>.
-          This information will be used in quote generation.
-        </p>
-      </div>
-
       {/* Form */}
-      <form onSubmit={onSubmit} className="space-y-4">
-        {/* Phone and Fax */}
+      <form onSubmit={onSubmit} className="space-y-6">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="phone">Phone <span className="text-red-500">*</span></Label>
@@ -83,9 +68,10 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
               type="tel"
               value={phone}
               onChange={(e) => handlePhoneChange(e.target.value)}
-              placeholder="(555) 123-4567"
+              placeholder="Enter your business phone number"
               maxLength={14}
               required
+              className="h-12"
             />
             <p className="text-xs text-muted-foreground">
               Format: (xxx) xxx-xxxx
@@ -99,9 +85,10 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
               type="tel"
               value={fax}
               onChange={(e) => handleFaxChange(e.target.value)}
-              placeholder="(555) 123-4568"
+              placeholder="Enter your business fax number"
               maxLength={14}
               required
+              className="h-12"
             />
             <p className="text-xs text-muted-foreground">
               Format: (xxx) xxx-xxxx
@@ -131,25 +118,26 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
             id="website"
             value={website}
             onChange={(e) => onWebsiteChange(e.target.value)}
-            placeholder="Enter company website"
+            placeholder="https://www.yourcompany.com"
             required
+            className="h-12"
           />
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-4">
+        <div className="flex flex-col sm:flex-row gap-4 pt-6">
           <Button
             type="button"
             variant="outline"
             onClick={onSkip}
-            className="flex-1"
+            className="flex-1 h-12 text-base"
             disabled={loading}
           >
             Skip for now
           </Button>
           <Button
             type="submit"
-            className="flex-1 bg-primary hover:bg-primary/90"
+            className="flex-1 h-12 text-base bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 font-semibold"
             disabled={loading}
           >
             {loading ? "Saving..." : "Complete Setup"}

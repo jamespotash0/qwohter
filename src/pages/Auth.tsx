@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2 } from "lucide-react";
@@ -11,6 +11,12 @@ import { ProfileSetupForm } from "@/components/auth/ProfileSetupForm";
 import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
 import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
 import { organizationSettingsService } from "@/services/companySettingsService";
+import { supabase } from "@/integrations/supabase/client";
+
+interface ProfileData {
+  full_name: string | null;
+  organization_id: string | null;
+}
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -25,6 +31,17 @@ const Auth = () => {
   const [otpCode, setOtpCode] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Use ref to track current step for auth listener (avoids stale closure issues)
+  const stepRef = useRef(step);
+  const userIdRef = useRef(userId);
+  const redirectingRef = useRef(false); // Prevent duplicate redirects
+  
+  // Update refs when state changes
+  useEffect(() => {
+    stepRef.current = step;
+    userIdRef.current = userId;
+  }, [step, userId]);
   
   // Company information state
   const [companyPhone, setCompanyPhone] = useState("");
@@ -78,15 +95,62 @@ const Auth = () => {
   };
 
   useEffect(() => {
+    // Prevent running if already redirecting
+    if (redirectingRef.current) {
+      return;
+    }
+    
     const initAuth = async () => {
-      // Check current session first
-      const session = await authStateHelpers.checkAuthSession();
+      // Check current session first AND validate it
+      // Use signup flow validation if we're in post-OTP steps
+      const postOtpSteps = ["verify-otp", "profile", "organization", "company-info"];
+      const isSignupFlow = postOtpSteps.includes(step);
+      const session = await authStateHelpers.checkValidAuthSession(isSignupFlow);
       
-      // If user is fully authenticated, redirect to dashboard
+      // If user has a session, check if they completed onboarding
       if (session && step === "auth") {
-        clearAuthState(); // Clean up any stale state
-        navigate("/dashboard");
-        return;
+        // Check user's profile and organization status
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, organization_id')
+            .eq('id', session.user.id)
+            .single() as { data: ProfileData | null };
+          
+          // If user has completed onboarding (has name and organization), redirect to dashboard
+          if (profile && profile.full_name && profile.organization_id) {
+            if (!redirectingRef.current) {
+              console.log('User has completed onboarding, redirecting to dashboard');
+              redirectingRef.current = true;
+              clearAuthState();
+              // Add delay to ensure session is fully established before redirect
+              setTimeout(() => {
+                navigate("/dashboard");
+              }, 500);
+            }
+            return;
+          } else {
+            // User has session but incomplete onboarding - determine where they left off
+            console.log('User has session but incomplete onboarding:', profile);
+            
+            if (!profile?.full_name) {
+              // Missing profile info
+              setStep("profile");
+              setUserId(session.user.id);
+              setEmail(session.user.email || '');
+            } else if (!profile?.organization_id) {
+              // Missing organization
+              setStep("organization");
+              setUserId(session.user.id);
+              setEmail(session.user.email || '');
+              setFullName(profile.full_name);
+            }
+            return;
+          }
+        } catch (error) {
+          console.error('Error checking profile status:', error);
+          // If we can't check profile, stay on auth page
+        }
       }
 
       // Only restore auth state if we have NO session (incomplete signup flow)
@@ -150,11 +214,16 @@ const Auth = () => {
     // Listen for auth changes - handle session changes during flow
     const subscription = authStateHelpers.setupAuthListener({
       onAuthStateChange: (user, session) => {
+        const currentStep = stepRef.current;
+        const currentUserId = userIdRef.current;
+        
         console.log("Auth state changed:", { 
           user: !!user, 
           session: !!session, 
-          currentStep: step, 
-          userId: userId,
+          currentStep: currentStep,
+          staleStep: step, // This will show if we have stale values
+          userId: currentUserId,
+          staleUserId: userId,
           email: email 
         });
         
@@ -163,11 +232,23 @@ const Auth = () => {
         // - "verify-otp" step: No session yet (verifying email) 
         // - "profile", "organization", "company-info": Session required (post-OTP verification)
         
+        // Note: We need to be careful about React's async state updates here
+        // When OTP verification succeeds, the session appears before step state updates
+        
         const postOtpSteps = ["profile", "organization", "company-info"];
-        if (!session && postOtpSteps.includes(step)) {
+        
+        console.log("🔍 Session check details:", {
+          hasSession: !!session,
+          currentStep,
+          isPostOtpStep: postOtpSteps.includes(currentStep),
+          hasUserId: !!currentUserId,
+          willTriggerExpired: !session && postOtpSteps.includes(currentStep) && currentUserId
+        });
+        
+        if (!session && postOtpSteps.includes(currentStep)) {
           // After OTP verification, we expect a session. If lost, restart.
-          if (userId) {
-            console.warn('Session lost after OTP verification, restarting. Step:', step, 'UserId:', userId);
+          if (currentUserId) {
+            console.warn('🚨 Session expired triggered! Step:', currentStep, 'UserId:', currentUserId);
             clearAuthState();
             setStep("auth");
             setUserId('');
@@ -185,10 +266,10 @@ const Auth = () => {
           }
         }
         
-        // Only auto-redirect if we're on the initial auth step and fully authenticated
-        if (session && user && step === "auth") {
-          clearAuthState();
-          navigate("/dashboard");
+        // Auth listener should only handle session expiration, not redirects
+        // Let initAuth handle all redirect logic to avoid race conditions
+        if (session && user && currentStep === "auth") {
+          console.log('Auth listener: Session established, but letting initAuth handle redirects');
         }
       }
     });
@@ -231,10 +312,37 @@ const Auth = () => {
         console.log('SignIn result:', result);
         
         if (result.success) {
-          toast({
-            title: "Welcome back!",
-            description: "You've been successfully signed in.",
-          });
+          console.log('Auth form: signin success with nextStep:', result.nextStep);
+          // Handle different nextStep outcomes from signin
+          if (result.nextStep === 'complete') {
+            console.log('Auth form: User onboarding complete, redirecting to dashboard');
+            toast({
+              title: "Welcome back!",
+              description: "You've been successfully signed in.",
+            });
+            // Clear auth state and redirect immediately for completed users
+            clearAuthState();
+            redirectingRef.current = true;
+            navigate("/dashboard");
+          } else if (result.nextStep === 'profile') {
+            console.log('Signin successful - resuming onboarding at profile step');
+            setUserId(result.data?.userId || '');
+            setStep("profile");
+            saveAuthState({ step: "profile", email, userId: result.data?.userId });
+            toast({
+              title: "Welcome back!",
+              description: "Please complete your profile setup to continue.",
+            });
+          } else if (result.nextStep === 'organization') {
+            console.log('Signin successful - resuming onboarding at organization step');
+            setUserId(result.data?.userId || '');
+            setStep("organization");
+            saveAuthState({ step: "organization", email, userId: result.data?.userId });
+            toast({
+              title: "Welcome back!",
+              description: "Please complete your organization setup to continue.",
+            });
+          }
         }
       }
       
@@ -417,19 +525,21 @@ const Auth = () => {
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-background via-secondary/30 to-accent/10" />
       
-      <div className="w-full max-w-md relative z-10">
-        {/* Logo and branding section */}
-        <div className="text-center mb-8 animate-fade-in-up">
-          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-primary to-primary/80 rounded-3xl flex items-center justify-center mb-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-            <Building2 className="w-10 h-10 text-primary-foreground" />
+      <div className={`w-full relative z-10 ${step === "company-info" ? "max-w-2xl" : step === "auth" ? "max-w-lg" : "max-w-md"}`}>
+        {/* Logo and branding section - only show on auth step */}
+        {step === "auth" && (
+          <div className="text-center mb-8 animate-fade-in-up">
+            <div className="mx-auto w-20 h-20 bg-gradient-to-br from-primary to-primary/80 rounded-3xl flex items-center justify-center mb-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+              <Building2 className="w-10 h-10 text-primary-foreground" />
+            </div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent mb-2">
+              Qwohter
+            </h1>
+            <p className="text-muted-foreground text-lg font-medium">
+              Professional Quote Management
+            </p>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent mb-2">
-            AiQu
-          </h1>
-          <p className="text-muted-foreground text-lg font-medium">
-            Professional Quote Management
-          </p>
-        </div>
+        )}
 
         {/* Auth card */}
         <Card className="card-floating backdrop-blur-sm border-0 shadow-large animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
@@ -526,25 +636,35 @@ const Auth = () => {
 
         {/* Footer */}
         <div className="text-center mt-8">
-          {/* Debug button - remove in production */}
-          {import.meta.env.DEV && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-              <p className="text-xs text-red-600 mb-2">Debug Mode - Development Only</p>
+
+          {/* Production fallback for stuck sessions */}
+          {!import.meta.env.DEV && step === "auth" && (
+            <div className="mt-4">
               <button
-                onClick={() => {
-                  clearAuthState();
-                  localStorage.clear();
-                  sessionStorage.clear();
-                  window.location.reload();
+                onClick={async () => {
+                  try {
+                    await supabase.auth.signOut();
+                    clearAuthState();
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    toast({
+                      title: "Session cleared",
+                      description: "All authentication data has been cleared. Please try signing in again.",
+                    });
+                    window.location.reload();
+                  } catch (error) {
+                    console.error('Error clearing session:', error);
+                  }
                 }}
-                className="text-sm bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded font-medium"
+                className="text-xs text-muted-foreground hover:text-foreground underline"
               >
-                🚨 Clear All Auth State & Reload
+                Having login issues? Clear session data
               </button>
             </div>
           )}
+
           <p className="text-slate-500 text-sm">
-            © 2024 AiQu. All rights reserved.
+            © 2024 Qwohter. All rights reserved.
           </p>
         </div>
       </div>

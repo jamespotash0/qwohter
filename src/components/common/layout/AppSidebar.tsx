@@ -47,7 +47,7 @@ export function AppSidebar({
               <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center">
                 <Building2 className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-bold text-lg bg-gradient-to-r from-sidebar-foreground to-sidebar-foreground/80 bg-clip-text text-transparent">AiQu</span>
+              <span className="font-bold text-lg bg-gradient-to-r from-sidebar-foreground to-sidebar-foreground/80 bg-clip-text text-transparent">Qwohter</span>
             </div>
           )}
           <SidebarTrigger className="h-6 w-6" />
