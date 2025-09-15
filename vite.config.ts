@@ -5,39 +5,53 @@ import { componentTagger } from "lovable-tagger";
 import removeConsole from "vite-plugin-remove-console";
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  server: {
-    host: "::",
-    port: 8080,
-  },
-  plugins: [
-    react(),
-    mode === 'development' && componentTagger(),
-    mode === 'production' && removeConsole(),
-  ].filter(Boolean),
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+export default defineConfig(({ mode }) => {
+  const isDev = mode === 'development';
+  const isStaging = mode === 'staging';
+  const isProd = mode === 'production';
+
+  return {
+    server: {
+      host: "::",
+      port: 8080,
     },
-  },
-  build: {
-    // Security: Don't expose source maps in production
-    sourcemap: mode !== 'production',
-    // Security: Minify for production
-    minify: mode === 'production' ? 'terser' : false,
-    rollupOptions: {
-      output: {
-        // Security: Obfuscate chunk names in production
-        chunkFileNames: mode === 'production' 
-          ? 'assets/[name].[hash].js'
-          : 'assets/[name].js',
-        entryFileNames: mode === 'production'
-          ? 'assets/[name].[hash].js' 
-          : 'assets/[name].js',
-        assetFileNames: mode === 'production'
-          ? 'assets/[name].[hash].[ext]'
-          : 'assets/[name].[ext]',
+    plugins: [
+      react(),
+      isDev && componentTagger(),
+      isProd && removeConsole(),
+    ].filter(Boolean),
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
       },
     },
-  },
-}));
+    define: {
+      __DEV__: isDev,
+      __STAGING__: isStaging,
+      __PROD__: isProd,
+    },
+    build: {
+      sourcemap: !isProd,
+      minify: isProd ? 'terser' : isStaging ? 'esbuild' : false,
+      rollupOptions: {
+        output: {
+          chunkFileNames: isProd 
+            ? 'assets/[name].[hash].js'
+            : isStaging
+            ? 'assets/[name].[hash:8].js'
+            : 'assets/[name].js',
+          entryFileNames: isProd
+            ? 'assets/[name].[hash].js' 
+            : isStaging
+            ? 'assets/[name].[hash:8].js'
+            : 'assets/[name].js',
+          assetFileNames: isProd
+            ? 'assets/[name].[hash].[ext]'
+            : isStaging
+            ? 'assets/[name].[hash:8].[ext]'
+            : 'assets/[name].[ext]',
+        },
+      },
+    },
+  };
+});
