@@ -116,6 +116,15 @@ const Auth = () => {
           return;
         }
 
+        // For now, be more aggressive about clearing state
+        // Only allow restoring verify-otp state if it's very recent (< 10 minutes)
+        const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
+        if (savedState.timestamp < tenMinutesAgo) {
+          console.warn('Saved auth state is older than 10 minutes, clearing');
+          clearAuthState();
+          return;
+        }
+
         // Restore the incomplete signup state
         setStep(savedState.step);
         setEmail(savedState.email || '');
@@ -141,25 +150,39 @@ const Auth = () => {
     // Listen for auth changes - handle session changes during flow
     const subscription = authStateHelpers.setupAuthListener({
       onAuthStateChange: (user, session) => {
-        console.log("Auth state changed:", { user: !!user, session: !!session, currentStep: step });
+        console.log("Auth state changed:", { 
+          user: !!user, 
+          session: !!session, 
+          currentStep: step, 
+          userId: userId,
+          email: email 
+        });
         
-        // If session is lost during signup flow, restart
-        if (!session && ["verify-otp", "profile", "organization", "company-info"].includes(step)) {
-          console.warn('Session lost during signup flow, restarting');
-          clearAuthState();
-          setStep("auth");
-          setUserId('');
-          setEmail('');
-          setFullName('');
-          setOrgChoice(null);
-          setOrgName('');
-          setOrgCode('');
-          toast({
-            title: "Session Expired",
-            description: "Please sign in again to continue.",
-            variant: "destructive",
-          });
-          return;
+        // Session management based on auth flow stage:
+        // - "auth" step: No session expected (creating account)
+        // - "verify-otp" step: No session yet (verifying email) 
+        // - "profile", "organization", "company-info": Session required (post-OTP verification)
+        
+        const postOtpSteps = ["profile", "organization", "company-info"];
+        if (!session && postOtpSteps.includes(step)) {
+          // After OTP verification, we expect a session. If lost, restart.
+          if (userId) {
+            console.warn('Session lost after OTP verification, restarting. Step:', step, 'UserId:', userId);
+            clearAuthState();
+            setStep("auth");
+            setUserId('');
+            setEmail('');
+            setFullName('');
+            setOrgChoice(null);
+            setOrgName('');
+            setOrgCode('');
+            toast({
+              title: "Session Expired",
+              description: "Please sign in again to continue.",
+              variant: "destructive",
+            });
+            return;
+          }
         }
         
         // Only auto-redirect if we're on the initial auth step and fully authenticated
@@ -177,12 +200,21 @@ const Auth = () => {
     e.preventDefault();
     if (!email || !password) return;
 
+    console.log('=== AUTH FORM SUBMISSION ===');
+    console.log('Email:', email);
+    console.log('IsSignUp:', isSignUp);
+    console.log('Current Step:', step);
+
     setLoading(true);
     try {
       let result;
       if (isSignUp) {
+        console.log('Calling handleSignUp...');
         result = await authFlowHelpers.handleSignUp(email, password);
+        console.log('SignUp result:', result);
+        
         if (result.success && result.data?.userId) {
+          console.log('SignUp successful, setting step to verify-otp');
           setUserId(result.data.userId);
           setStep("verify-otp");
           saveAuthState({ step: "verify-otp", email, userId: result.data.userId });
@@ -190,9 +222,14 @@ const Auth = () => {
             title: "Verification code sent!",
             description: "Please check your email and enter the 6-digit code.",
           });
+        } else {
+          console.log('SignUp failed or no userId:', result);
         }
       } else {
+        console.log('Calling handleSignIn...');
         result = await authFlowHelpers.handleSignIn(email, password);
+        console.log('SignIn result:', result);
+        
         if (result.success) {
           toast({
             title: "Welcome back!",
@@ -491,17 +528,20 @@ const Auth = () => {
         <div className="text-center mt-8">
           {/* Debug button - remove in production */}
           {import.meta.env.DEV && (
-            <button
-              onClick={() => {
-                clearAuthState();
-                localStorage.clear();
-                sessionStorage.clear();
-                window.location.reload();
-              }}
-              className="text-xs text-red-500 hover:text-red-400 mb-2 block"
-            >
-              🚨 Clear All Auth State & Reload
-            </button>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+              <p className="text-xs text-red-600 mb-2">Debug Mode - Development Only</p>
+              <button
+                onClick={() => {
+                  clearAuthState();
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  window.location.reload();
+                }}
+                className="text-sm bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded font-medium"
+              >
+                🚨 Clear All Auth State & Reload
+              </button>
+            </div>
           )}
           <p className="text-slate-500 text-sm">
             © 2024 AiQu. All rights reserved.

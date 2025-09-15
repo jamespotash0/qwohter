@@ -100,15 +100,22 @@ export const authFlowHelpers = {
    * Handle user sign up with email and password
    */
   handleSignUp: async (email: string, password: string): Promise<AuthResult> => {
+    console.log('=== SIGNUP FUNCTION START ===');
+    console.log('Email:', email);
+    
     try {
       // First check if user exists in profiles table (our source of truth)
-      const { data: existingProfile } = await supabase
+      console.log('Checking if user exists in profiles...');
+      const { data: existingProfile, error: profileError } = await supabase
         .from('profiles')
         .select('email')
         .eq('email', email)
         .single();
       
+      console.log('Profile check result:', { existingProfile, profileError });
+      
       if (existingProfile) {
+        console.log('User already exists in profiles');
         return {
           success: false,
           error: "An account with this email already exists. Please sign in instead."
@@ -116,12 +123,16 @@ export const authFlowHelpers = {
       }
 
       // Attempt to sign up
+      console.log('Attempting Supabase auth.signUp...');
       const { data, error } = await supabase.auth.signUp({
         email,
         password
       });
       
+      console.log('Supabase signUp response:', { data, error });
+      
       if (error) {
+        console.log('SignUp error:', error);
         // Handle specific Supabase errors
         if (error.message.includes('User already registered') || error.message.includes('already exists')) {
           return {
@@ -136,6 +147,7 @@ export const authFlowHelpers = {
       }
       
       if (data.user) {
+        console.log('SignUp successful, user created:', data.user.id);
         return {
           success: true,
           data: { userId: data.user.id },
@@ -143,11 +155,13 @@ export const authFlowHelpers = {
         };
       }
 
+      console.log('SignUp failed - no user returned');
       return {
         success: false,
         error: "Failed to create account"
       };
     } catch (error: any) {
+      console.log('SignUp catch error:', error);
       return {
         success: false,
         error: error.message
