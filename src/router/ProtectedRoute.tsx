@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { authStateHelpers } from '@/utils/authStateHelpers';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -30,32 +31,31 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Check if user is authenticated
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        // Check if user is authenticated AND validate session
+        const session = await authStateHelpers.checkValidAuthSession();
         
-        if (authError || !user) {
+        if (!session || !session.user) {
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          return;
+        }
+
+        // Check if user has completed onboarding (has profile with full_name and organization_id)
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('full_name, organization_id, role')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profileError || !profile || !profile.full_name || !profile.organization_id) {
+          console.log('User has session but incomplete profile, redirecting to auth for onboarding');
           setIsAuthenticated(false);
           setIsLoading(false);
           return;
         }
 
         setIsAuthenticated(true);
-
-        // Get user's role from profile
-        if (requiresRole) {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-
-          if (profileError) {
-            console.error('Error fetching user role:', profileError);
-            setUserRole(null);
-          } else {
-            setUserRole(profileData?.role as 'admin' | 'member' || null);
-          }
-        }
+        // Role is already set from the profile query above
       } catch (error) {
         console.error('Auth check error:', error);
         setIsAuthenticated(false);
@@ -68,14 +68,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === 'SIGNED_IN') {
-          setIsAuthenticated(true);
+      (event, authSession) => {
+        if (event === 'SIGNED_IN' && authSession?.user) {
+          // Don't immediately set authenticated - recheck profile completion
+          checkAuth();
         } else if (event === 'SIGNED_OUT') {
           setIsAuthenticated(false);
           setUserRole(null);
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
     );
 

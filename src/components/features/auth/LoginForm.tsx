@@ -26,7 +26,7 @@ const LoginForm = ({
             <Building2 className="w-10 h-10 text-primary-foreground" />
           </div>
           <h1 className="text-3xl font-bold text-slate-900 mb-2">
-            AiQu
+            Qwohter
           </h1>
           <p className="text-slate-600 text-base">
             Professional Quote Tool
@@ -70,7 +70,7 @@ const LoginForm = ({
         {/* Footer */}
         <div className="text-center mt-8">
           <p className="text-slate-500 text-sm">
-            © 2024 AiQu. All rights reserved.
+            © 2024 Qwohter. All rights reserved.
           </p>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2 } from "lucide-react";
@@ -11,6 +11,12 @@ import { ProfileSetupForm } from "@/components/auth/ProfileSetupForm";
 import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
 import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
 import { organizationSettingsService } from "@/services/companySettingsService";
+import { supabase } from "@/integrations/supabase/client";
+
+interface ProfileData {
+  full_name: string | null;
+  organization_id: string | null;
+}
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -25,6 +31,17 @@ const Auth = () => {
   const [otpCode, setOtpCode] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Use ref to track current step for auth listener (avoids stale closure issues)
+  const stepRef = useRef(step);
+  const userIdRef = useRef(userId);
+  const redirectingRef = useRef(false); // Prevent duplicate redirects
+  
+  // Update refs when state changes
+  useEffect(() => {
+    stepRef.current = step;
+    userIdRef.current = userId;
+  }, [step, userId]);
   
   // Company information state
   const [companyPhone, setCompanyPhone] = useState("");
@@ -78,38 +95,101 @@ const Auth = () => {
   };
 
   useEffect(() => {
+    // Prevent running if already redirecting
+    if (redirectingRef.current) {
+      return;
+    }
+    
     const initAuth = async () => {
-      // Check current session first
-      const session = await authStateHelpers.checkAuthSession();
+      // Check current session first AND validate it
+      // Use signup flow validation if we're in post-OTP steps
+      const postOtpSteps = ["verify-otp", "profile", "organization", "company-info"];
+      const isSignupFlow = postOtpSteps.includes(step);
+      const session = await authStateHelpers.checkValidAuthSession(isSignupFlow);
       
-      // If user is fully authenticated, redirect to dashboard
+      // If user has a session, check if they completed onboarding
       if (session && step === "auth") {
-        clearAuthState(); // Clean up any stale state
-        navigate("/dashboard");
-        return;
+        // Check user's profile and organization status
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, organization_id')
+            .eq('id', session.user.id)
+            .single() as { data: ProfileData | null };
+          
+          // If user has completed onboarding (has name and organization), redirect to dashboard
+          if (profile && profile.full_name && profile.organization_id) {
+            if (!redirectingRef.current) {
+              console.log('User has completed onboarding, redirecting to dashboard');
+              redirectingRef.current = true;
+              clearAuthState();
+              // Add delay to ensure session is fully established before redirect
+              setTimeout(() => {
+                navigate("/dashboard");
+              }, 500);
+            }
+            return;
+          } else {
+            // User has session but incomplete onboarding - determine where they left off
+            console.log('User has session but incomplete onboarding:', profile);
+            
+            if (!profile?.full_name) {
+              // Missing profile info
+              setStep("profile");
+              setUserId(session.user.id);
+              setEmail(session.user.email || '');
+            } else if (!profile?.organization_id) {
+              // Missing organization
+              setStep("organization");
+              setUserId(session.user.id);
+              setEmail(session.user.email || '');
+              setFullName(profile.full_name);
+            }
+            return;
+          }
+        } catch (error) {
+          console.error('Error checking profile status:', error);
+          // If we can't check profile, stay on auth page
+        }
       }
 
-      // Try to restore saved auth flow state
+      // Only restore auth state if we have NO session (incomplete signup flow)
+      // AND the state is recent (less than 1 hour old)
       const savedState = loadAuthState();
-      if (savedState) {
-        // Validate the saved state makes sense
-        const validSteps = ["auth", "verify-otp", "profile", "organization", "company-info"];
-        if (!validSteps.includes(savedState.step)) {
-          console.warn('Invalid saved step, clearing state');
+      if (savedState && !session) {
+        // Check if state is too old (expire after 1 hour for incomplete flows)
+        const oneHourAgo = Date.now() - (60 * 60 * 1000);
+        if (savedState.timestamp < oneHourAgo) {
+          console.warn('Saved auth state is too old, clearing');
           clearAuthState();
           return;
         }
 
-        // For steps that require a session/userId, validate it exists
-        if (["verify-otp", "profile", "organization", "company-info"].includes(savedState.step)) {
-          if (!savedState.userId || !savedState.email) {
-            console.warn('Missing userId/email for advanced step, clearing state');
-            clearAuthState();
-            return;
-          }
+        // Validate the saved state makes sense
+        const validSteps = ["verify-otp", "profile", "organization", "company-info"];
+        if (!validSteps.includes(savedState.step)) {
+          console.warn('Invalid saved step for incomplete flow, clearing state');
+          clearAuthState();
+          return;
         }
 
-        // Restore the state
+        // For incomplete signup flows, require userId and email
+        if (!savedState.userId || !savedState.email) {
+          console.warn('Missing userId/email for incomplete signup, clearing state');
+          clearAuthState();
+          return;
+        }
+
+        // For now, be more aggressive about clearing state
+        // Only allow restoring verify-otp state if it's very recent (< 10 minutes)
+        const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
+        if (savedState.timestamp < tenMinutesAgo) {
+          console.warn('Saved auth state is older than 10 minutes, clearing');
+          clearAuthState();
+          return;
+        }
+
+        // Restore the incomplete signup state
         setStep(savedState.step);
         setEmail(savedState.email || '');
         setUserId(savedState.userId || '');
@@ -117,8 +197,14 @@ const Auth = () => {
         setOrgChoice(savedState.orgChoice || '');
         setOrgName(savedState.orgName || '');
         setOrgCode(savedState.orgCode || '');
-        console.log('Restored auth flow state:', savedState);
+        console.log('Restored incomplete signup state:', savedState);
         return;
+      }
+
+      // If we have session but also saved state, clear the saved state (completed flow)
+      if (session && savedState) {
+        console.log('User has session, clearing saved auth state');
+        clearAuthState();
       }
 
       // No saved state, proceed normally
@@ -128,31 +214,62 @@ const Auth = () => {
     // Listen for auth changes - handle session changes during flow
     const subscription = authStateHelpers.setupAuthListener({
       onAuthStateChange: (user, session) => {
-        console.log("Auth state changed:", { user: !!user, session: !!session, currentStep: step });
+        const currentStep = stepRef.current;
+        const currentUserId = userIdRef.current;
         
-        // If session is lost during signup flow, restart
-        if (!session && ["verify-otp", "profile", "organization", "company-info"].includes(step)) {
-          console.warn('Session lost during signup flow, restarting');
-          clearAuthState();
-          setStep("auth");
-          setUserId('');
-          setEmail('');
-          setFullName('');
-          setOrgChoice(null);
-          setOrgName('');
-          setOrgCode('');
-          toast({
-            title: "Session Expired",
-            description: "Please sign in again to continue.",
-            variant: "destructive",
-          });
-          return;
+        console.log("Auth state changed:", { 
+          user: !!user, 
+          session: !!session, 
+          currentStep: currentStep,
+          staleStep: step, // This will show if we have stale values
+          userId: currentUserId,
+          staleUserId: userId,
+          email: email 
+        });
+        
+        // Session management based on auth flow stage:
+        // - "auth" step: No session expected (creating account)
+        // - "verify-otp" step: No session yet (verifying email) 
+        // - "profile", "organization", "company-info": Session required (post-OTP verification)
+        
+        // Note: We need to be careful about React's async state updates here
+        // When OTP verification succeeds, the session appears before step state updates
+        
+        const postOtpSteps = ["profile", "organization", "company-info"];
+        
+        console.log("🔍 Session check details:", {
+          hasSession: !!session,
+          currentStep,
+          isPostOtpStep: postOtpSteps.includes(currentStep),
+          hasUserId: !!currentUserId,
+          willTriggerExpired: !session && postOtpSteps.includes(currentStep) && currentUserId
+        });
+        
+        if (!session && postOtpSteps.includes(currentStep)) {
+          // After OTP verification, we expect a session. If lost, restart.
+          if (currentUserId) {
+            console.warn('🚨 Session expired triggered! Step:', currentStep, 'UserId:', currentUserId);
+            clearAuthState();
+            setStep("auth");
+            setUserId('');
+            setEmail('');
+            setFullName('');
+            setOrgChoice(null);
+            setOrgName('');
+            setOrgCode('');
+            toast({
+              title: "Session Expired",
+              description: "Please sign in again to continue.",
+              variant: "destructive",
+            });
+            return;
+          }
         }
         
-        // Only auto-redirect if we're on the initial auth step and fully authenticated
-        if (session && user && step === "auth") {
-          clearAuthState();
-          navigate("/dashboard");
+        // Auth listener should only handle session expiration, not redirects
+        // Let initAuth handle all redirect logic to avoid race conditions
+        if (session && user && currentStep === "auth") {
+          console.log('Auth listener: Session established, but letting initAuth handle redirects');
         }
       }
     });
@@ -164,12 +281,21 @@ const Auth = () => {
     e.preventDefault();
     if (!email || !password) return;
 
+    console.log('=== AUTH FORM SUBMISSION ===');
+    console.log('Email:', email);
+    console.log('IsSignUp:', isSignUp);
+    console.log('Current Step:', step);
+
     setLoading(true);
     try {
       let result;
       if (isSignUp) {
+        console.log('Calling handleSignUp...');
         result = await authFlowHelpers.handleSignUp(email, password);
+        console.log('SignUp result:', result);
+        
         if (result.success && result.data?.userId) {
+          console.log('SignUp successful, setting step to verify-otp');
           setUserId(result.data.userId);
           setStep("verify-otp");
           saveAuthState({ step: "verify-otp", email, userId: result.data.userId });
@@ -177,14 +303,46 @@ const Auth = () => {
             title: "Verification code sent!",
             description: "Please check your email and enter the 6-digit code.",
           });
+        } else {
+          console.log('SignUp failed or no userId:', result);
         }
       } else {
+        console.log('Calling handleSignIn...');
         result = await authFlowHelpers.handleSignIn(email, password);
+        console.log('SignIn result:', result);
+        
         if (result.success) {
-          toast({
-            title: "Welcome back!",
-            description: "You've been successfully signed in.",
-          });
+          console.log('Auth form: signin success with nextStep:', result.nextStep);
+          // Handle different nextStep outcomes from signin
+          if (result.nextStep === 'complete') {
+            console.log('Auth form: User onboarding complete, redirecting to dashboard');
+            toast({
+              title: "Welcome back!",
+              description: "You've been successfully signed in.",
+            });
+            // Clear auth state and redirect immediately for completed users
+            clearAuthState();
+            redirectingRef.current = true;
+            navigate("/dashboard");
+          } else if (result.nextStep === 'profile') {
+            console.log('Signin successful - resuming onboarding at profile step');
+            setUserId(result.data?.userId || '');
+            setStep("profile");
+            saveAuthState({ step: "profile", email, userId: result.data?.userId });
+            toast({
+              title: "Welcome back!",
+              description: "Please complete your profile setup to continue.",
+            });
+          } else if (result.nextStep === 'organization') {
+            console.log('Signin successful - resuming onboarding at organization step');
+            setUserId(result.data?.userId || '');
+            setStep("organization");
+            saveAuthState({ step: "organization", email, userId: result.data?.userId });
+            toast({
+              title: "Welcome back!",
+              description: "Please complete your organization setup to continue.",
+            });
+          }
         }
       }
       
@@ -362,48 +520,119 @@ const Auth = () => {
     navigate("/dashboard");
   };
 
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-background via-secondary/30 to-accent/10" />
-      
-      <div className="w-full max-w-md relative z-10">
-        {/* Logo and branding section */}
-        <div className="text-center mb-8 animate-fade-in-up">
-          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-primary to-primary/80 rounded-3xl flex items-center justify-center mb-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-            <Building2 className="w-10 h-10 text-primary-foreground" />
-          </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent mb-2">
-            AiQu
-          </h1>
-          <p className="text-muted-foreground text-lg font-medium">
-            Professional Quote Management
-          </p>
-        </div>
+  // Define onboarding steps for progress tracking
+  const onboardingSteps = [
+    { key: "auth", label: "Sign In", icon: "🔐" },
+    { key: "verify-otp", label: "Verify", icon: "📧" },
+    { key: "profile", label: "Profile", icon: "👤" },
+    { key: "organization", label: "Organization", icon: "🏢" },
+    { key: "company-info", label: "Company", icon: "📋" }
+  ];
 
-        {/* Auth card */}
-        <Card className="card-floating backdrop-blur-sm border-0 shadow-large animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-          <CardHeader className="text-center space-y-4 pb-8">
-            <CardTitle className="text-2xl font-bold text-foreground">
-              {step === "auth" && (isSignUp ? "Create Account" : "Welcome")}
-              {step === "verify-otp" && "Verify Your Email"}
-              {step === "profile" && "Complete Your Profile"}
-              {step === "organization" && "Organization Setup"}
-              {step === "company-info" && "Company Information"}
-            </CardTitle>
-            <CardDescription className="text-muted-foreground text-base">
-              {step === "auth" && (isSignUp 
-                ? "Create your account to start managing quotes"
-                : "Sign in to access your quote management system"
-              )}
-              {step === "verify-otp" && "Enter the 6-digit code sent to your email"}
-              {step === "profile" && "Please provide your full name to continue"}
-              {step === "organization" && "Join an existing organization or create a new one"}
-              {step === "company-info" && "Add your company details"}
-            </CardDescription>
-          </CardHeader>
+  const getCurrentStepIndex = () => onboardingSteps.findIndex(s => s.key === step);
+  const isOnboarding = step !== "auth";
+
+  return (
+    <div className="min-h-screen bg-white relative overflow-hidden">
+      {/* Elegant background with subtle patterns */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50/50 via-white to-blue-50/30" />
+        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-br from-emerald-500/5 to-blue-500/5 rounded-full blur-3xl" />
+      </div>
+
+      {/* Simple progress indicator */}
+      {isOnboarding && (
+        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-20">
+          <div className="bg-white/90 backdrop-blur-xl rounded-full px-6 py-3 shadow-lg border border-white/20">
+            <span className="text-sm font-medium text-gray-700">
+              Step {getCurrentStepIndex()} of {onboardingSteps.length - 1}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div className="min-h-screen flex items-center justify-center p-8">
+        {/* Centered content area */}
+        <div className="w-full flex items-center justify-center">
+          <div className={`w-full relative z-10 ${
+            step === "company-info" ? "max-w-4xl" : 
+            step === "auth" ? "max-w-lg" : "max-w-2xl"
+          }`}>
+            {/* Main branding - only show on auth step */}
+            {step === "auth" && (
+              <div className="text-center mb-8">
+                <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl flex items-center justify-center mb-6 shadow-2xl animate-pulse-subtle">
+                  <Building2 className="w-10 h-10 text-white" />
+                </div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent mb-3">
+                  Qwohter
+                </h1>
+                <p className="text-xl text-gray-600 mb-6">Professional Quote Management</p>
+                <div className="flex justify-center space-x-8 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    <span className="text-gray-700">Instant Quotes</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+                    <span className="text-gray-700">Sales Pipeline</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-emerald-600 rounded-full"></div>
+                    <span className="text-gray-700">Faster Deals</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Main form card */}
+            <Card className="bg-white/70 backdrop-blur-xl border-0 shadow-2xl shadow-black/5 rounded-3xl overflow-hidden animate-slide-in-right step-transition">
+              <CardHeader className="text-center space-y-8 pb-8 pt-12 px-12">
+                {/* Step-specific icons and enhanced descriptions */}
+                {step === "verify-otp" && (
+                  <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center animate-float mb-4">
+                    <div className="text-4xl">📧</div>
+                  </div>
+                )}
+                {step === "profile" && (
+                  <div className="mx-auto w-20 h-20 bg-gradient-to-br from-emerald-100 to-blue-100 rounded-2xl flex items-center justify-center animate-float mb-4">
+                    <div className="text-4xl">👤</div>
+                  </div>
+                )}
+                {step === "organization" && (
+                  <div className="mx-auto w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center animate-float mb-4">
+                    <div className="text-4xl">🏢</div>
+                  </div>
+                )}
+                {step === "company-info" && (
+                  <div className="mx-auto w-20 h-20 bg-gradient-to-br from-orange-100 to-red-100 rounded-2xl flex items-center justify-center animate-float mb-4">
+                    <div className="text-4xl">📋</div>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <CardTitle className="text-3xl font-bold text-gray-900">
+                    {step === "auth" && (isSignUp ? "Create your account" : "Welcome back")}
+                    {step === "verify-otp" && "Check your email"}
+                    {step === "profile" && "Tell us about yourself"}
+                    {step === "organization" && "Join your team"}
+                    {step === "company-info" && "Company details"}
+                  </CardTitle>
+                  <CardDescription className="text-gray-600 text-lg leading-relaxed max-w-2xl mx-auto">
+                    {step === "auth" && (isSignUp 
+                      ? "Join thousands of professionals who trust Qwohter for their quote management"
+                      : "Sign in to continue managing your quotes and growing your business"
+                    )}
+                    {step === "verify-otp" && "We've sent a verification code to your email address. Enter it below to continue setting up your account."}
+                    {step === "profile" && "Help us personalize your experience by providing some basic information about yourself."}
+                    {step === "organization" && "Connect with your organization or create a new one to start collaborating with your team."}
+                    {step === "company-info" && "Add your company information to create professional, branded quotes that impress your clients."}
+                  </CardDescription>
+                </div>
+              </CardHeader>
           
-          <CardContent className="space-y-6">
+          <CardContent className="px-12 pb-12 space-y-8">
             {step === "auth" && (
               <AuthForm
                 isSignUp={isSignUp}
@@ -474,11 +703,49 @@ const Auth = () => {
           </CardContent>
         </Card>
 
-        {/* Footer */}
-        <div className="text-center mt-8">
-          <p className="text-slate-500 text-sm">
-            © 2024 AiQu. All rights reserved.
-          </p>
+            {/* Elegant footer */}
+            <div className="text-center mt-12">
+              {/* Production fallback for stuck sessions */}
+              {!import.meta.env.DEV && step === "auth" && (
+                <div className="mb-6">
+                  <button
+                    onClick={async () => {
+                      try {
+                        await supabase.auth.signOut();
+                        clearAuthState();
+                        localStorage.clear();
+                        sessionStorage.clear();
+                        toast({
+                          title: "Session cleared",
+                          description: "All authentication data has been cleared. Please try signing in again.",
+                        });
+                        window.location.reload();
+                      } catch (error) {
+                        console.error('Error clearing session:', error);
+                      }
+                    }}
+                    className="text-sm text-gray-500 hover:text-gray-700 underline transition-colors"
+                  >
+                    Having login issues? Clear session data
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
+                <p className="text-gray-500 text-sm font-medium">
+                  © 2024 Qwohter. Crafted with care for professionals.
+                </p>
+                <div className="flex justify-center space-x-6 text-xs">
+                  <span className="text-gray-400">Secure</span>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-gray-400">Fast</span>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-gray-400">Reliable</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
