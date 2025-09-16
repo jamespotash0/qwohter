@@ -9,16 +9,39 @@ export class SectionGenerators {
   }
 
   generateHeader(data: QuoteData): string {
-    const contactName = data.quote_details?.contactName || 'Ed Michinski';
-    const address = data.quote_details?.address || '567 Commerce St,<br> Franklin Lakes, NJ, 07417';
-    const phone = data.quote_details?.phone || '(973) 884-0474';
-    const fax = data.quote_details?.fax || '(973) 884-1606';
-    const website = data.quote_details?.website || 'contemporarywalls.com';
+    // Get organization info first, then fallback to quote details
+    const organizationInfo = data.organization_info;
+    
+    const contactName = data.quote_details?.contactName || '';
+    const address = organizationInfo?.address || data.quote_details?.address || '';
+    const phone = organizationInfo?.phone || data.quote_details?.phone || '';
+    const fax = organizationInfo?.fax || data.quote_details?.fax || '';
+    const website = organizationInfo?.website || data.quote_details?.website || '';
+    
+
+    // For now, try to use logo_public_url (should work with public bucket)
+    // If that doesn't work, we can construct the public URL from logo_url
+    let logoUrl = organizationInfo?.logo_public_url;
+    
+    // If logo_public_url doesn't work but we have logo_url (storage path), construct public URL
+    if (!logoUrl && organizationInfo?.logo_url) {
+      logoUrl = `https://piuwrlaoxuefmiisuamc.supabase.co/storage/v1/object/public/organization-logos/${organizationInfo.logo_url}`;
+    }
+    
+    
+    const hasLogo = logoUrl && logoUrl.trim() !== '';
+    const hasFax = fax && fax.trim() !== '';
+
+
+    const logoHtml = hasLogo 
+      ? `<img src="${logoUrl}" alt="Company Logo" style="max-width: 440px; max-height: 120px; object-fit: contain;" onError="this.style.display='none'" />`
+      : '';
+    
 
     return `<div class="header-section">
       <div class="company-info">
-        <div class="company-logo">
-          <!-- Image temporarily removed for testing -->
+        <div class="company-logo" style="position: absolute; top: 40px; left: 60px; width: 440px; height: 90px; display: flex; align-items: center; justify-content: center;">
+          ${logoHtml}
         </div>
       </div>
       
@@ -39,10 +62,10 @@ export class SectionGenerators {
           <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Phone:</span>
           <span class="value">${phone}</span>
         </div>
-        <div class="contact-row">
+        ${hasFax ? `<div class="contact-row">
           <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Fax:</span>
           <span class="value">${fax}</span>
-        </div>
+        </div>` : ''}
         <div class="contact-row">
           <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Website:</span>
           <span class="value website-link" style="text-decoration: underline; text-underline-offset: 3px;">${website}</span>
@@ -81,6 +104,7 @@ export class SectionGenerators {
         </table>
       </div>
       <div class="job-info-section" style="flex-grow: 1;">
+        <div style="font-weight: bold; margin-left: 40px; margin-bottom: 4px; height: 16px"></div>
         <table style="width: 80%; border-collapse: collapse; margin-left: 175px">
           <colgroup>
             <col style="width: 30%;">
@@ -90,7 +114,7 @@ export class SectionGenerators {
             <td style="font-weight: bold; padding: 4px; width: 80px; border: none; text-align: right;">
               Date:
             </td>
-            <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">
+            <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
               ${date}
             </td>
           </tr>
@@ -98,7 +122,7 @@ export class SectionGenerators {
             <td style="font-weight: bold; padding: 4px; border: none; text-align: right;">
               Proposal #:
             </td>
-            <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">
+            <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
               ${proposalNumber}
             </td>
           </tr>
@@ -106,7 +130,7 @@ export class SectionGenerators {
             <td style="font-weight: bold; padding: 4px; width: 25px; border: none; text-align: right; white-space: nowrap;">
               Job Location:
             </td>
-            <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; white-space: normal; word-break: break-word; max-width: 300px;">
+            <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black; white-space: normal; word-break: break-word; max-width: 300px;">
               ${jobLocation}
             </td>
           </tr>

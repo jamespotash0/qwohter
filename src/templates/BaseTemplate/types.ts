@@ -1,4 +1,5 @@
 import { WallSpecification } from '@/lib/types';
+import { OrganizationInfo } from '@/lib/types/settings/companySettings';
 
 export interface QuoteData {
   quote_details?: any;
@@ -16,6 +17,7 @@ export interface QuoteData {
   project_name?: string;
   customization?: any;
   created_at?: string;
+  organization_info?: OrganizationInfo;
 }
 
 export interface TemplateHelpers {

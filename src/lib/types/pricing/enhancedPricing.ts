@@ -51,8 +51,8 @@ export const defaultEnhancedPricing: EnhancedPricingData = {
   shipping_markup_percentage: 0,            // No default - user enters their own
   
   // Auto-calculated fields
-  unseen_costs: 0,
-  unseen_costs_percentage: 10,  // Default 10%
+  unseen_costs: 500,            // Default $500
+  unseen_costs_percentage: 0,   // Auto-calculated from dollar amount
   unseen_costs_locked: true,    // Start locked (auto-calculated)
   cost_subtotal: 0,
   base_selling_price: 0,
@@ -69,8 +69,11 @@ export const defaultEnhancedPricing: EnhancedPricingData = {
 
 // Helper function to calculate all auto-calculated fields
 export const calculateEnhancedPricing = (data: EnhancedPricingData): EnhancedPricingData => {
-  // Calculate unseen costs (always percentage-based, but percentage can be unlocked/customized)
-  const unseen_costs = data.kwik_wall_materials_cost * (data.unseen_costs_percentage / 100);
+  // Unseen costs are now dollar-based, calculate percentage from amount
+  const unseen_costs = data.unseen_costs;
+  const unseen_costs_percentage = data.kwik_wall_materials_cost > 0 
+    ? (unseen_costs / data.kwik_wall_materials_cost) * 100 
+    : 0;
   
   // Calculate cost subtotal
   const cost_subtotal = 
@@ -119,6 +122,7 @@ export const calculateEnhancedPricing = (data: EnhancedPricingData): EnhancedPri
     ...data,
     // Update auto-calculated fields
     unseen_costs,
+    unseen_costs_percentage,
     cost_subtotal,
     base_selling_price,
     shipping_cost_subtotal,

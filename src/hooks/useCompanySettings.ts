@@ -40,7 +40,6 @@ export function useOrganizationSettings() {
   // Check if organization has company info
   const hasCompanyInfo = (): boolean => {
     if (!organization?.organization_info) {
-      console.log('hasCompanyInfo: No organization_info found');
       return false;
     }
     
@@ -49,18 +48,9 @@ export function useOrganizationSettings() {
     const hasFax = !!(info.fax?.trim());
     const hasAddress = !!(info.address?.trim());
     const hasWebsite = !!(info.website?.trim());
-    
-    console.log('hasCompanyInfo Debug:', {
-      info,
-      hasPhone,
-      hasFax,
-      hasAddress,
-      hasWebsite
-    });
-    
+        
     // Show company info section if ANY data exists
     const result = !!(hasPhone || hasFax || hasAddress || hasWebsite);
-    console.log('hasCompanyInfo result:', result);
     return result;
   };
 

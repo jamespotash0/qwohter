@@ -173,10 +173,9 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
     // Use the comprehensive wall validation that checks all required fields
     const validation = validateWallSpecification(newWall);
     
-    // Debug logging to see what's failing
     if (!validation.isValid) {
-      console.log('AddWallDialog validation failed:', validation.errors);
-      console.log('Current wall data:', newWall);
+      // console.log('AddWallDialog validation failed:', validation.errors);
+      // console.log('Current wall data:', newWall);
     }
     
     return validation.isValid;
@@ -195,9 +194,9 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
       onClose();
       
       // Don't reload page - let the database save and state updates handle the refresh
-      console.log('✅ Wall addition completed - live preview should update automatically');
+      // console.log('✅ Wall addition completed - live preview should update automatically');
     } catch (error) {
-      console.error('❌ Error saving wall:', error);
+      // console.error('❌ Error saving wall:', error);
     }
   };
 

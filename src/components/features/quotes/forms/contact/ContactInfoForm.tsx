@@ -281,20 +281,20 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
           <div className="space-y-2">
           <Label htmlFor="fax" className="text-sm font-medium flex items-center gap-2">
             <Printer className="w-4 h-4" />
-            Fax <span className="text-red-500">*</span>
+            Fax {data.fax && <span className="text-red-500">*</span>}
           </Label>
           <Input
             id="fax"
             value={data.fax}
             readOnly
-            placeholder={organizationLoading ? "Loading..." : "From organization settings"}
-            required
+            placeholder={organizationLoading ? "Loading..." : (data.fax ? "From organization settings" : "Not set in organization")}
+            required={!!data.fax}
             className={`h-10 w-full bg-gray-50 cursor-not-allowed ${
-              data.fax ? 'border-green-500' : 'border-red-500'
+              data.fax ? 'border-green-500' : 'border-gray-300'
             }`}
           />
           <p className="text-xs text-muted-foreground">
-            🔒 Locked from organization settings
+            {data.fax ? '🔒 Locked from organization settings' : 'ℹ️ Optional - not configured in organization'}
           </p>
           </div>
         </div>

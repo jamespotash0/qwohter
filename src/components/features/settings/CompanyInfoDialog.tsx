@@ -10,9 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Lock } from "lucide-react";
+import { Lock, Info } from "lucide-react";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
+import { LogoUpload } from "@/components/common/uploads/LogoUpload";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CompanyInfoFormData } from "@/lib/types/settings/companySettings";
+import { LogoUploadResult, LogoUploadService } from "@/services/LogoUploadService";
 import { supabase } from "@/integrations/supabase/client";
 
 interface CompanyInfoDialogProps {
@@ -21,6 +24,8 @@ interface CompanyInfoDialogProps {
   onSave: (data: CompanyInfoFormData) => void;
   organizationName?: string;
   initialData?: CompanyInfoFormData | null;
+  userId: string;
+  organizationId: string;
 }
 
 export function CompanyInfoDialog({
@@ -29,6 +34,8 @@ export function CompanyInfoDialog({
   onSave,
   organizationName,
   initialData,
+  userId,
+  organizationId,
 }: CompanyInfoDialogProps) {
   const [formData, setFormData] = useState<CompanyInfoFormData>({
     phone: "",
@@ -85,6 +92,30 @@ export function CompanyInfoDialog({
     }
   };
 
+  // Handle logo upload
+  const handleLogoUpload = async (result: LogoUploadResult) => {
+    if (result.success) {
+      console.log('🎯 Logo upload successful, updating form state:', result);
+      
+      // Update local form state with new logo data
+      const updatedFormData = {
+        ...formData,
+        logo_url: result.url || '',
+        logo_file_name: result.fileName || '',
+        logo_public_url: result.publicUrl || '',
+      };
+      
+      console.log('🔄 Setting new form data:', updatedFormData);
+      setFormData(updatedFormData);
+    }
+  };
+
+  // Handle logo upload error
+  const handleLogoError = (error: string) => {
+    console.error('Logo upload error:', error);
+    // You might want to show a toast notification here
+  };
+
   useEffect(() => {
     if (isOpen) {
       checkForExistingQuotes();
@@ -97,6 +128,9 @@ export function CompanyInfoDialog({
         address: initialData.address || "",
         website: initialData.website || "",
         quote_starting_point: initialData.quote_starting_point || "",
+        logo_url: initialData.logo_url || "",
+        logo_file_name: initialData.logo_file_name || "",
+        logo_public_url: initialData.logo_public_url || "",
       });
       setIncludeFax(Boolean(initialData.fax));
     } else {
@@ -106,6 +140,9 @@ export function CompanyInfoDialog({
         address: "",
         website: "",
         quote_starting_point: "",
+        logo_url: "",
+        logo_file_name: "",
+        logo_public_url: "",
       });
       setIncludeFax(false);
     }
@@ -139,7 +176,7 @@ export function CompanyInfoDialog({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (validateForm()) {
@@ -148,6 +185,42 @@ export function CompanyInfoDialog({
         ...formData, 
         fax: includeFax ? formData.fax : '' 
       };
+
+      // If logo data exists, also save it to the database
+      if (formData.logo_url && formData.logo_file_name && formData.logo_public_url) {
+        try {
+          // Get organization ID
+          let orgId = organizationId;
+          if (!orgId) {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('organization_id')
+                .eq('id', user.id)
+                .single();
+              
+              orgId = (profile as any)?.organization_id;
+            }
+          }
+
+          if (orgId) {
+            // Save logo to database
+            await LogoUploadService.updateOrganizationLogo(
+              orgId,
+              {
+                logo_url: formData.logo_url,
+                logo_file_name: formData.logo_file_name,
+                logo_public_url: formData.logo_public_url,
+              }
+            );
+            console.log('✅ Logo saved to database during form submission');
+          }
+        } catch (error) {
+          console.error('❌ Error saving logo during form submission:', error);
+        }
+      }
+
       onSave(dataToSave);
     }
   };
@@ -174,7 +247,7 @@ export function CompanyInfoDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>
             {initialData ? "Update Company Information" : "Set Up Company Information"}
@@ -188,10 +261,36 @@ export function CompanyInfoDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Phone and Quote Starting Point */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Logo Upload Section */}
+          <div className="flex justify-center">
+            <div className="space-y-2 flex flex-col items-center max-w-md">
+              <LogoUpload
+                onUploadSuccess={handleLogoUpload}
+                onUploadError={handleLogoError}
+                currentLogoUrl={formData.logo_public_url}
+                userId={userId}
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          {/* Phone and Fax Section */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Phone Section */}
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone <span className="text-red-500">*</span></Label>
+              <div className="flex items-center gap-1">
+                <Label htmlFor="phone">Phone <span className="text-red-500">*</span></Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p>Format: (xxx) xxx-xxxx</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <Input
                 id="phone"
                 type="tel"
@@ -204,110 +303,149 @@ export function CompanyInfoDialog({
               {errors.phone && (
                 <p className="text-sm text-destructive">{errors.phone}</p>
               )}
-              <p className="text-xs text-muted-foreground">
-                Format: (xxx) xxx-xxxx
-              </p>
             </div>
 
+            {/* Fax Section */}
             <div className="space-y-2">
+              <div className="flex items-center gap-1">
+                <Label htmlFor="fax">Fax</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p>Format: (xxx) xxx-xxxx</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <Input
+                id="fax"
+                type="tel"
+                value={formData.fax}
+                onChange={(e) => handleChange("fax", e.target.value)}
+                placeholder="Enter your business fax number"
+                maxLength={14}
+                disabled={!includeFax}
+                className={`h-12 placeholder:text-muted-foreground/60 ${errors.fax ? "border-destructive" : ""} ${!includeFax ? "bg-muted cursor-not-allowed" : ""}`}
+              />
+              {errors.fax && (
+                <p className="text-sm text-destructive">{errors.fax}</p>
+              )}
+              <div className="flex items-center space-x-2 mt-2">
+                <Checkbox
+                  id="includeFax"
+                  checked={includeFax}
+                  onCheckedChange={(checked) => {
+                    setIncludeFax(checked as boolean);
+                    if (!checked) {
+                      handleChange("fax", ""); // Clear fax when unchecked
+                    }
+                  }}
+                />
+                <Label htmlFor="includeFax" className="text-sm font-medium">
+                  Optional
+                </Label>
+              </div>
+            </div>
+          </div>
+
+          {/* Quote Starting Point Section */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-1">
               <Label htmlFor="quoteStartingPoint" className="flex items-center gap-2">
                 Quote Starting Number 
                 {!hasExistingQuotes && <span className="text-red-500">*</span>}
                 {hasExistingQuotes && <Lock className="w-4 h-4 text-muted-foreground" />}
               </Label>
-              <Input
-                id="quoteStartingPoint"
-                type="text"
-                value={formData.quote_starting_point}
-                onChange={(e) => handleChange("quote_starting_point", e.target.value)}
-                placeholder="P10001, 15000, Q-10001"
-                disabled={hasExistingQuotes}
-                className={`h-12 placeholder:text-muted-foreground/60 ${errors.quote_starting_point ? "border-destructive" : ""} ${hasExistingQuotes ? "bg-muted cursor-not-allowed" : ""}`}
-              />
-              {errors.quote_starting_point && (
-                <p className="text-sm text-destructive">{errors.quote_starting_point}</p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                {hasExistingQuotes 
-                  ? "Cannot be changed - quotes already exist with this numbering system"
-                  : "Starting point for your quote numbering system"
-                }
-              </p>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p>
+                      {hasExistingQuotes 
+                        ? "Cannot be changed - quotes already exist with this numbering system"
+                        : "Starting point for your quote numbering system"
+                      }
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
-          </div>
-
-          {/* Fax Section with Optional Checkbox */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="includeFax"
-                checked={includeFax}
-                onCheckedChange={(checked) => {
-                  setIncludeFax(checked as boolean);
-                  if (!checked) {
-                    handleChange("fax", ""); // Clear fax when unchecked
-                  }
-                }}
-              />
-              <Label htmlFor="includeFax" className="text-sm font-medium">
-                Include fax number
-              </Label>
-            </div>
-
-            {includeFax && (
-              <div className="space-y-2">
-                <Label htmlFor="fax">Fax</Label>
-                <Input
-                  id="fax"
-                  type="tel"
-                  value={formData.fax}
-                  onChange={(e) => handleChange("fax", e.target.value)}
-                  placeholder="Enter your business fax number"
-                  maxLength={14}
-                  className={`h-12 placeholder:text-muted-foreground/60 ${errors.fax ? "border-destructive" : ""}`}
-                />
-                {errors.fax && (
-                  <p className="text-sm text-destructive">{errors.fax}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Format: (xxx) xxx-xxxx
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Address */}
-          <div className="space-y-2">
-            <MapboxInput
-              id="address"
-              label="Address *"
-              value={formData.address}
-              onChange={(address) => handleChange("address", address)}
-              placeholder="Start typing your business address..."
-              required={true}
-              className="placeholder:text-muted-foreground/60"
-            />
-            {errors.address && (
-              <p className="text-sm text-destructive">{errors.address}</p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Type your full business address including city, state, and ZIP code
-            </p>
-          </div>
-
-          {/* Website */}
-          <div className="space-y-2">
-            <Label htmlFor="website">Website <span className="text-red-500">*</span></Label>
             <Input
-              id="website"
-              value={formData.website}
-              onChange={(e) => handleChange("website", e.target.value)}
-              placeholder="https://www.yourcompany.com"
-              className={`h-12 placeholder:text-muted-foreground/60 ${errors.website ? "border-destructive" : ""}`}
+              id="quoteStartingPoint"
+              type="text"
+              value={formData.quote_starting_point}
+              onChange={(e) => handleChange("quote_starting_point", e.target.value)}
+              placeholder="P10001, 15000, Q-10001"
+              disabled={hasExistingQuotes}
+              className={`h-12 placeholder:text-muted-foreground/60 ${errors.quote_starting_point ? "border-destructive" : ""} ${hasExistingQuotes ? "bg-muted cursor-not-allowed" : ""}`}
             />
-            {errors.website && (
-              <p className="text-sm text-destructive">{errors.website}</p>
+            {errors.quote_starting_point && (
+              <p className="text-sm text-destructive">{errors.quote_starting_point}</p>
             )}
+          </div>
+
+          {/* Address and Website Section */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Address */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-1">
+                <Label htmlFor="address">Address <span className="text-red-500">*</span></Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p>Type your full business address including city, state, and ZIP code</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <MapboxInput
+                id="address"
+                value={formData.address}
+                onChange={(address) => handleChange("address", address)}
+                placeholder="Start typing your business address..."
+                required={true}
+                label=""
+                className="placeholder:text-muted-foreground/60"
+              />
+              {errors.address && (
+                <p className="text-sm text-destructive">{errors.address}</p>
+              )}
+            </div>
+
+            {/* Website */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-1">
+                <Label htmlFor="website">Website <span className="text-red-500">*</span></Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-4 h-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p>Your company website URL (e.g., https://www.yourcompany.com)</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <Input
+                id="website"
+                value={formData.website}
+                onChange={(e) => handleChange("website", e.target.value)}
+                placeholder="https://www.yourcompany.com"
+                className={`h-12 placeholder:text-muted-foreground/60 ${errors.website ? "border-destructive" : ""}`}
+              />
+              {errors.website && (
+                <p className="text-sm text-destructive">{errors.website}</p>
+              )}
+            </div>
           </div>
 
           {/* Action Buttons */}
