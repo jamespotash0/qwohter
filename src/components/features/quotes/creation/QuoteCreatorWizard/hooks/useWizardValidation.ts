@@ -227,56 +227,58 @@ export const useWizardValidation = (
     const hasMeaningfulCostData = costFields.some(value => value! > 0);
     
     return !!(
-      // All numeric cost fields must be valid numbers (can be 0, but not null/undefined/NaN)
+      // Required cost fields must have meaningful values (> 0)
       isNumericFieldValid(pricing.kwik_wall_materials_cost) && 
-      pricing.kwik_wall_materials_cost! >= 0 && 
+      pricing.kwik_wall_materials_cost! > 0 && 
       
       isNumericFieldValid(pricing.misc_materials_cost) && 
-      pricing.misc_materials_cost! >= 0 && 
+      pricing.misc_materials_cost! > 0 && 
       
       isNumericFieldValid(pricing.delivery_cost_track) && 
-      pricing.delivery_cost_track! >= 0 &&
+      pricing.delivery_cost_track! > 0 &&
       
       isNumericFieldValid(pricing.delivery_cost_panel) && 
-      pricing.delivery_cost_panel! >= 0 &&
+      pricing.delivery_cost_panel! > 0 &&
       
       isNumericFieldValid(pricing.track_equipment_costs) && 
-      pricing.track_equipment_costs! >= 0 &&
+      pricing.track_equipment_costs! > 0 &&
       
       isNumericFieldValid(pricing.track_labor_cost) && 
-      pricing.track_labor_cost! >= 0 &&
+      pricing.track_labor_cost! > 0 &&
       
       isNumericFieldValid(pricing.panel_equipment_costs) && 
-      pricing.panel_equipment_costs! >= 0 &&
+      pricing.panel_equipment_costs! > 0 &&
       
       isNumericFieldValid(pricing.panel_labor_cost) && 
-      pricing.panel_labor_cost! >= 0 &&
+      pricing.panel_labor_cost! > 0 &&
       
       isNumericFieldValid(pricing.track_freight_factory) && 
-      pricing.track_freight_factory! >= 0 &&
+      pricing.track_freight_factory! > 0 &&
       
       isNumericFieldValid(pricing.panel_freight_factory) && 
-      pricing.panel_freight_factory! >= 0 &&
+      pricing.panel_freight_factory! > 0 &&
       
       isNumericFieldValid(pricing.local_handling_costs) && 
-      pricing.local_handling_costs! >= 0 &&
+      pricing.local_handling_costs! > 0 &&
       
-      // Percentage fields must be valid percentages (0-100)
-      isPercentageValid(pricing.materials_markup_percentage) &&
-      isPercentageValid(pricing.shipping_markup_percentage) &&
-      isPercentageValid(pricing.unseen_costs_percentage) &&
+      // Markup percentage fields must be meaningful (> 0)
+      isNumericFieldValid(pricing.materials_markup_percentage) &&
+      pricing.materials_markup_percentage! > 0 &&
+      pricing.materials_markup_percentage! <= 100 &&
       
+      isNumericFieldValid(pricing.shipping_markup_percentage) &&
+      pricing.shipping_markup_percentage! > 0 &&
+      pricing.shipping_markup_percentage! <= 100 &&
+      
+      // Unseen costs must be valid (can be any positive number, percentage is auto-calculated)
       isNumericFieldValid(pricing.unseen_costs) && 
-      pricing.unseen_costs! >= 0 &&
+      pricing.unseen_costs! > 0 &&
       
       // String fields must be filled out
       pricing.payment_upon_drawings && 
       pricing.payment_upon_drawings.trim() !== '' &&        
       pricing.payment_upon_track_installation &&
-      pricing.payment_upon_track_installation.trim() !== '' &&
-      
-      // At least some meaningful cost data should be provided (not everything can be zero)
-      hasMeaningfulCostData
+      pricing.payment_upon_track_installation.trim() !== ''
     );
   }, [pricing]);
 

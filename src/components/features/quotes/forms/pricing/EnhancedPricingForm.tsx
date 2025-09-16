@@ -23,7 +23,6 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
   const [percentageInputs, setPercentageInputs] = useState({
     materials_markup_percentage: data.materials_markup_percentage && data.materials_markup_percentage > 0 ? data.materials_markup_percentage.toString() : '',
     shipping_markup_percentage: data.shipping_markup_percentage && data.shipping_markup_percentage > 0 ? data.shipping_markup_percentage.toString() : '',
-    unseen_costs_percentage: data.unseen_costs_percentage?.toString() || '10',
   });
 
   // Handle currency input changes - only update local state
@@ -37,7 +36,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
   }, []);
 
   // Handle percentage input changes - update both display and data state
-  const handlePercentageChange = useCallback((field: 'materials_markup_percentage' | 'shipping_markup_percentage' | 'unseen_costs_percentage', value: string) => {
+  const handlePercentageChange = useCallback((field: 'materials_markup_percentage' | 'shipping_markup_percentage', value: string) => {
     // Allow empty string and valid numbers while typing
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
       // Update display value immediately
@@ -78,7 +77,6 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
     localData.local_handling_costs,
     localData.materials_markup_percentage,
     localData.shipping_markup_percentage,
-    localData.unseen_costs_percentage,
     localData.unseen_costs_locked,
     localData.unseen_costs,
     onUpdate
@@ -110,7 +108,6 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
       setPercentageInputs({
         materials_markup_percentage: calculatedData.materials_markup_percentage > 0 ? calculatedData.materials_markup_percentage.toString() : '',
         shipping_markup_percentage: calculatedData.shipping_markup_percentage > 0 ? calculatedData.shipping_markup_percentage.toString() : '',
-        unseen_costs_percentage: calculatedData.unseen_costs_percentage?.toString() || '10',
       });
     }
   }, [data]); // React to changes in the data prop
@@ -314,12 +311,12 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
           <div className="mt-8">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Label htmlFor="unseen_costs_percentage" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="unseen_costs" className="text-sm font-medium text-gray-700">
                   Unseen Costs
                 </Label>
                 <InfoIcon 
                   title="Unseen Costs"
-                  description="Additional costs to account for unexpected expenses, waste, and miscellaneous items. Default is 10% of Kwik-Wall materials cost, but percentage can be customized by unlocking."
+                  description="Additional costs to account for unexpected expenses, waste, and miscellaneous items. Default is $500, but can be customized by unlocking."
                   size={14}
                 />
                 <button
@@ -336,33 +333,22 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
               </div>
               
               <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    id="unseen_costs_percentage"
-                    value={
-                      localData.unseen_costs_locked
-                        ? percentageInputs.unseen_costs_percentage ?? '' // show the existing value, don’t force '10'
-                        : percentageInputs.unseen_costs_percentage ?? ''
-                    }
-                    onChange={(e) => handlePercentageChange("unseen_costs_percentage", e.target.value)}
-                    placeholder="Enter a number"
+                <div className="flex-1">
+                  <CurrencyInput
+                    id="unseen_costs"
+                    value={localData.unseen_costs}
+                    onChange={(value) => handleCurrencyChange("unseen_costs", value)}
+                    placeholder="$0.00"
                     disabled={localData.unseen_costs_locked}
-                    className={`w-full h-11 pr-8 rounded-md ${
+                    className={`w-full h-11 border ${
                       localData.unseen_costs_locked
                         ? 'bg-gray-50 border-gray-200 text-gray-500'
-                        : `${
-                            percentageInputs.unseen_costs_percentage !== null &&
-                            percentageInputs.unseen_costs_percentage !== undefined &&
-                            percentageInputs.unseen_costs_percentage !== ''
-                              ? 'border-green-500'
-                              : 'border-red-500'
-                          } focus:border-blue-500 focus:ring-blue-500`
+                        : `${localData.unseen_costs ? 'border-green-500' : 'border-red-500'} focus:border-blue-500 focus:ring-blue-500`
                     }`}
                   />
-                  <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
                 </div>
-                <span className="text-lg font-semibold text-blue-600 min-w-[100px]">
-                  {formatCurrency(localData.unseen_costs)}
+                <span className="text-lg font-semibold text-blue-600 min-w-[80px]">
+                  {localData.unseen_costs_percentage.toFixed(1)}%
                 </span>
               </div>
             </div>
