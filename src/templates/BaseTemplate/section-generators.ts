@@ -9,16 +9,28 @@ export class SectionGenerators {
   }
 
   generateHeader(data: QuoteData): string {
+    // Get organization info first, then fallback to quote details
+    const organizationInfo = data.organization_info;
+    
     const contactName = data.quote_details?.contactName || 'Ed Michinski';
-    const address = data.quote_details?.address || '567 Commerce St,<br> Franklin Lakes, NJ, 07417';
-    const phone = data.quote_details?.phone || '(973) 884-0474';
-    const fax = data.quote_details?.fax || '(973) 884-1606';
-    const website = data.quote_details?.website || 'contemporarywalls.com';
+    const address = organizationInfo?.address || data.quote_details?.address || '567 Commerce St,<br> Franklin Lakes, NJ, 07417';
+    const phone = organizationInfo?.phone || data.quote_details?.phone || '(973) 884-0474';
+    const fax = organizationInfo?.fax || data.quote_details?.fax || '';
+    const website = organizationInfo?.website || data.quote_details?.website || 'contemporarywalls.com';
+    
+    // Extract logo information from organization data if available
+    const logoUrl = organizationInfo?.logo_public_url;
+    const hasLogo = logoUrl && logoUrl.trim() !== '';
+    const hasFax = fax && fax.trim() !== '';
+
+    const logoHtml = hasLogo 
+      ? `<img src="${logoUrl}" alt="Company Logo" style="max-width: 120px; max-height: 80px; object-fit: contain;" onError="this.style.display='none'" />`
+      : '';
 
     return `<div class="header-section">
       <div class="company-info">
-        <div class="company-logo">
-          <!-- Image temporarily removed for testing -->
+        <div class="company-logo" style="position: absolute; top: 0; left: 0; width: 140px; height: 90px; display: flex; align-items: center; justify-content: center;">
+          ${logoHtml}
         </div>
       </div>
       
@@ -39,10 +51,10 @@ export class SectionGenerators {
           <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Phone:</span>
           <span class="value">${phone}</span>
         </div>
-        <div class="contact-row">
+        ${hasFax ? `<div class="contact-row">
           <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Fax:</span>
           <span class="value">${fax}</span>
-        </div>
+        </div>` : ''}
         <div class="contact-row">
           <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Website:</span>
           <span class="value website-link" style="text-decoration: underline; text-underline-offset: 3px;">${website}</span>
@@ -81,6 +93,7 @@ export class SectionGenerators {
         </table>
       </div>
       <div class="job-info-section" style="flex-grow: 1;">
+        <div style="font-weight: bold; margin-left: 40px; margin-bottom: 4px; height: 16px"></div>
         <table style="width: 80%; border-collapse: collapse; margin-left: 175px">
           <colgroup>
             <col style="width: 30%;">
@@ -90,7 +103,7 @@ export class SectionGenerators {
             <td style="font-weight: bold; padding: 4px; width: 80px; border: none; text-align: right;">
               Date:
             </td>
-            <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">
+            <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
               ${date}
             </td>
           </tr>
@@ -98,7 +111,7 @@ export class SectionGenerators {
             <td style="font-weight: bold; padding: 4px; border: none; text-align: right;">
               Proposal #:
             </td>
-            <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black;">
+            <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
               ${proposalNumber}
             </td>
           </tr>
@@ -106,7 +119,7 @@ export class SectionGenerators {
             <td style="font-weight: bold; padding: 4px; width: 25px; border: none; text-align: right; white-space: nowrap;">
               Job Location:
             </td>
-            <td style="padding: 8px 8px 12px 8px; border-bottom: 0.5px solid black; white-space: normal; word-break: break-word; max-width: 300px;">
+            <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black; white-space: normal; word-break: break-word; max-width: 300px;">
               ${jobLocation}
             </td>
           </tr>

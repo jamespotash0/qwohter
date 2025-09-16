@@ -57,16 +57,6 @@ export function CompanySettingsSection() {
   // Check if user is admin
   const isAdmin = profile?.role === 'admin';
 
-  // Debug logging
-  console.log('CompanySettingsSection Debug:', {
-    organization,
-    organizationInfo: organization?.organization_info,
-    companyData,
-    hasCompanyInfoResult: hasCompanyInfo(),
-    isAdmin,
-    profile
-  });
-
   return (
     <div className="space-y-4">
       {/* Company Information Display */}
@@ -74,8 +64,24 @@ export function CompanySettingsSection() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-5 h-5" />
+              <div className="flex items-center gap-3">
+                {organization?.organization_info?.logo_public_url ? (
+                  <div className="w-8 h-8 border border-muted-foreground/20 rounded overflow-hidden bg-white flex-shrink-0">
+                    <img 
+                      src={organization.organization_info.logo_public_url} 
+                      alt="Company logo" 
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        target.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                    <Building2 className="w-5 h-5 hidden" />
+                  </div>
+                ) : (
+                  <Building2 className="w-5 h-5" />
+                )}
                 {organization?.name}
               </div>
               {isAdmin && (
@@ -153,6 +159,8 @@ export function CompanySettingsSection() {
         onSave={handleSave}
         organizationName={organization?.name}
         initialData={companyData}
+        userId={user?.id || ''}
+        organizationId={organization?.id || ''}
       />
     </div>
   );

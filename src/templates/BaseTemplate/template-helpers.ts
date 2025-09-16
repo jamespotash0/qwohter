@@ -61,10 +61,7 @@ export const createTemplateHelpers = (): TemplateHelpers => ({
     });
     
     const formatted = formatter.format(num);
-    
-    // Debug logging for development
-    // Removed console.log for production
-    
+        
     return formatted;
   },
 

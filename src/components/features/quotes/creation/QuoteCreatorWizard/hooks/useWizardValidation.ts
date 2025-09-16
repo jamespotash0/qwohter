@@ -22,7 +22,6 @@ export const useWizardValidation = (
              contactInfo.contactEmail && 
              contactInfo.address && 
              contactInfo.phone && 
-             contactInfo.fax && 
              contactInfo.website);
   }, [contactInfo]);
 

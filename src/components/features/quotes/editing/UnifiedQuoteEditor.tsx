@@ -185,7 +185,6 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         
         if (!patternMatched) {
           console.warn(`⚠️ Failed to find section ${sectionId} with className ${className} in HTML`);
-          // Debug: Show what sections actually exist
           const allSections = result.match(/<div[^>]*class="[^"]*"/g);
           if (allSections) {
             console.log('Available sections:', allSections.slice(0, 10)); // Show first 10 to avoid spam

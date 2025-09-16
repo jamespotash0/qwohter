@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
+import { LogoUpload } from "@/components/common/uploads/LogoUpload";
+import { LogoUploadResult } from "@/services/LogoUploadService";
 
 interface CompanyInfoSetupFormProps {
   organizationName: string;
@@ -19,11 +21,15 @@ interface CompanyInfoSetupFormProps {
   website: string;
   quoteStartingPoint: string;
   loading: boolean;
+  userId: string;
+  currentLogoUrl?: string;
   onPhoneChange: (phone: string) => void;
   onFaxChange: (fax: string) => void;
   onAddressChange: (address: string) => void;
   onWebsiteChange: (website: string) => void;
   onQuoteStartingPointChange: (startingPoint: string) => void;
+  onLogoUpload: (result: LogoUploadResult) => void;
+  onLogoError: (error: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   onSkip: () => void;
 }
@@ -35,11 +41,15 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
   website,
   quoteStartingPoint,
   loading,
+  userId,
+  currentLogoUrl,
   onPhoneChange,
   onFaxChange,
   onAddressChange,
   onWebsiteChange,
   onQuoteStartingPointChange,
+  onLogoUpload,
+  onLogoError,
   onSubmit,
   onSkip
 }) => {
@@ -82,6 +92,22 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
     <div className="space-y-6">
       {/* Form */}
       <form onSubmit={onSubmit} className="space-y-6">
+        {/* Logo Upload Section */}
+        <div className="space-y-2">
+          <Label>Company Logo (Optional)</Label>
+          <LogoUpload
+            onUploadSuccess={onLogoUpload}
+            onUploadError={onLogoError}
+            currentLogoUrl={currentLogoUrl}
+            userId={userId}
+            disabled={loading}
+            className="max-w-md"
+          />
+          {/* <p className="text-xs text-muted-foreground">
+            Upload your company logo to appear on quotes (JPG, JPEG, or SVG files)
+          </p> */}
+        </div>
+
         {/* Phone and Quote Starting Point */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
