@@ -4,6 +4,7 @@ import { Star } from "lucide-react";
 import { toast } from "sonner";
 
 import { useQuotes } from "@/hooks/useQuotes";
+import { useOrganizationSettings } from "@/hooks/useCompanySettings";
 import { QuoteCreatorWizardProps } from './types/wizardTypes';
 import { useWizardState } from './hooks/useWizardState';
 import { useWizardValidation } from './hooks/useWizardValidation';
@@ -45,6 +46,9 @@ const QuoteCreatorWizard = ({
     handleWallStructureSupportUpdate
   } = useWizardState(existingQuote);
 
+  // Get organization settings for conditional fax validation
+  const { organization } = useOrganizationSettings();
+
   // Use the validation hook
   const {
     isContactInfoValid,
@@ -55,7 +59,7 @@ const QuoteCreatorWizard = ({
     isDeliveryLaborValid,
     isPricingValid,
     // isQuoteStatusValid
-  } = useWizardValidation(contactInfo, jobDetails, walls, deliveryLabor, pricing, quoteStatus);
+  } = useWizardValidation(contactInfo, jobDetails, walls, deliveryLabor, pricing, quoteStatus, organization?.organization_info);
 
   // Create wizard steps with validation states
   const steps = createWizardSteps(

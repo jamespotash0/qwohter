@@ -97,13 +97,16 @@ export function CompanyInfoDialog({
     if (result.success) {
       console.log('🎯 Logo upload successful, updating form state:', result);
       
-      // Only update local form state - don't save to database yet
-      setFormData(prev => ({
-        ...prev,
+      // Update local form state with new logo data
+      const updatedFormData = {
+        ...formData,
         logo_url: result.url || '',
         logo_file_name: result.fileName || '',
         logo_public_url: result.publicUrl || '',
-      }));
+      };
+      
+      console.log('🔄 Setting new form data:', updatedFormData);
+      setFormData(updatedFormData);
     }
   };
 
@@ -197,7 +200,7 @@ export function CompanyInfoDialog({
                 .eq('id', user.id)
                 .single();
               
-              orgId = profile?.organization_id;
+              orgId = (profile as any)?.organization_id;
             }
           }
 

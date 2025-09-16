@@ -12,14 +12,21 @@ export class SectionGenerators {
     // Get organization info first, then fallback to quote details
     const organizationInfo = data.organization_info;
     
-    const contactName = data.quote_details?.contactName || 'Ed Michinski';
-    const address = organizationInfo?.address || data.quote_details?.address || '567 Commerce St,<br> Franklin Lakes, NJ, 07417';
-    const phone = organizationInfo?.phone || data.quote_details?.phone || '(973) 884-0474';
+    const contactName = data.quote_details?.contactName || '';
+    const address = organizationInfo?.address || data.quote_details?.address || '';
+    const phone = organizationInfo?.phone || data.quote_details?.phone || '';
     const fax = organizationInfo?.fax || data.quote_details?.fax || '';
-    const website = organizationInfo?.website || data.quote_details?.website || 'contemporarywalls.com';
+    const website = organizationInfo?.website || data.quote_details?.website || '';
     
-    // Extract logo information from organization data if available
-    const logoUrl = organizationInfo?.logo_public_url;
+    // For now, try to use logo_public_url (should work with public bucket)
+    // If that doesn't work, we can construct the public URL from logo_url
+    let logoUrl = organizationInfo?.logo_public_url;
+    
+    // If logo_public_url doesn't work but we have logo_url (storage path), construct public URL
+    if (!logoUrl && organizationInfo?.logo_url) {
+      logoUrl = `https://piuwrlaoxuefmiisuamc.supabase.co/storage/v1/object/public/organization-logos/${organizationInfo.logo_url}`;
+    }
+    
     const hasLogo = logoUrl && logoUrl.trim() !== '';
     const hasFax = fax && fax.trim() !== '';
 

@@ -10,7 +10,8 @@ export const useWizardValidation = (
   walls: WallDetails,
   deliveryLabor: DeliveryLabor,
   pricing: Pricing,
-  quoteStatus: string
+  quoteStatus: string,
+  organizationInfo?: any
 ) => {
   // Use centralized validation from wallValidation.ts
   const validateWallDimensionsLocal = (wall: WallSpecification, wallName: string): { isValid: boolean; errors: string[] } => {
@@ -18,12 +19,23 @@ export const useWizardValidation = (
   };
 
   const isContactInfoValid = useMemo(() => {
-    return !!(contactInfo.contactName && 
-             contactInfo.contactEmail && 
-             contactInfo.address && 
-             contactInfo.phone && 
-             contactInfo.website);
-  }, [contactInfo]);
+    // Check if fax is required based on organization info
+    const isFaxRequired = organizationInfo?.fax && organizationInfo.fax.trim() !== '';
+    
+    const basicRequirements = !!(contactInfo.contactName && 
+                                contactInfo.contactEmail && 
+                                contactInfo.address && 
+                                contactInfo.phone && 
+                                contactInfo.website);
+    
+    // If fax is required (exists in org), include it in validation
+    if (isFaxRequired) {
+      return basicRequirements && !!contactInfo.fax;
+    }
+    
+    // If fax is not required (doesn't exist in org), just check basic requirements
+    return basicRequirements;
+  }, [contactInfo, organizationInfo]);
 
   const isJobDetailsValid = useMemo(() => {
     return !!(jobDetails.date && 

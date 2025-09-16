@@ -167,8 +167,13 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
         
         console.log('✅ Logo uploaded and saved successfully');
         
-        // Don't call onUploadSuccess since we're handling everything internally
-        // This prevents triggering parent component logic that might close the dialog
+        // Call onUploadSuccess to update parent component with new logo data
+        onUploadSuccess({
+          success: true,
+          url: uploadResult.url || '',
+          publicUrl: uploadResult.publicUrl || '',
+          fileName: uploadResult.fileName || ''
+        });
 
       } catch (dbError) {
         clearInterval(progressInterval);
@@ -250,6 +255,16 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
   const hasFileSelected = uploadState.uploadedFile && !uploadState.validationError;
   const hasCurrentLogo = currentLogoUrl || uploadState.isUploaded;
 
+  // Debug logging for logo preview
+  console.log('🎯 LogoUpload Debug:', {
+    currentLogoUrl,
+    hasCurrentLogo,
+    uploadState: {
+      isUploaded: uploadState.isUploaded,
+      uploadedFile: !!uploadState.uploadedFile
+    }
+  });
+
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Upload Area */}
@@ -291,7 +306,11 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
                   src={currentLogoUrl} 
                   alt="Company logo" 
                   className="w-full h-full object-contain"
+                  onLoad={() => {
+                    console.log('✅ Logo image loaded successfully:', currentLogoUrl);
+                  }}
                   onError={(e) => {
+                    console.error('❌ Logo image failed to load:', currentLogoUrl);
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
                   }}
