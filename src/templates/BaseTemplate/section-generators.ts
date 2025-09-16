@@ -18,13 +18,6 @@ export class SectionGenerators {
     const fax = organizationInfo?.fax || data.quote_details?.fax || '';
     const website = organizationInfo?.website || data.quote_details?.website || '';
     
-    // Debug organization info and logo data
-    console.log('🎯 Template Header Debug:', {
-      organizationInfo,
-      logo_public_url: organizationInfo?.logo_public_url,
-      logo_url: organizationInfo?.logo_url,
-      logo_file_name: organizationInfo?.logo_file_name
-    });
 
     // For now, try to use logo_public_url (should work with public bucket)
     // If that doesn't work, we can construct the public URL from logo_url
@@ -35,18 +28,15 @@ export class SectionGenerators {
       logoUrl = `https://piuwrlaoxuefmiisuamc.supabase.co/storage/v1/object/public/organization-logos/${organizationInfo.logo_url}`;
     }
     
-    console.log('🔗 Template logo URL determined:', logoUrl);
     
     const hasLogo = logoUrl && logoUrl.trim() !== '';
     const hasFax = fax && fax.trim() !== '';
 
-    console.log('🖼️ Template hasLogo:', hasLogo, 'hasFax:', hasFax);
 
     const logoHtml = hasLogo 
       ? `<img src="${logoUrl}" alt="Company Logo" style="max-width: 440px; max-height: 120px; object-fit: contain;" onError="this.style.display='none'" />`
       : '';
     
-    console.log('🏗️ Generated logoHtml:', logoHtml);
 
     return `<div class="header-section">
       <div class="company-info">

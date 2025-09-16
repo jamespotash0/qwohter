@@ -19,7 +19,8 @@ export class LogoUploadService {
   private static readonly MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
   private static readonly ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/svg+xml'];
   private static readonly ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.svg'];
-  private static readonly MAX_DIMENSIONS = { width: 2000, height: 2000 };
+  // Template-optimized dimensions: 440px x 120px (template max size)
+  private static readonly TEMPLATE_DIMENSIONS = { width: 440, height: 120 };
   private static readonly BUCKET_NAME = 'organization-logos';
 
   /**
@@ -57,10 +58,12 @@ export class LogoUploadService {
 
       // Check image dimensions for raster images
       const dimensions = await this.getImageDimensions(file);
-      if (dimensions.width > this.MAX_DIMENSIONS.width || dimensions.height > this.MAX_DIMENSIONS.height) {
+      // Allow larger images but recommend template-optimized sizes
+      const maxAllowed = { width: this.TEMPLATE_DIMENSIONS.width * 10, height: this.TEMPLATE_DIMENSIONS.height * 10 };
+      if (dimensions.width > maxAllowed.width || dimensions.height > maxAllowed.height) {
         return {
           isValid: false,
-          error: `Image dimensions too large. Maximum size is ${this.MAX_DIMENSIONS.width}x${this.MAX_DIMENSIONS.height} pixels.`,
+          error: `Image dimensions too large. Maximum size is ${maxAllowed.width}x${maxAllowed.height} pixels. For best template display, use ${this.TEMPLATE_DIMENSIONS.width}x${this.TEMPLATE_DIMENSIONS.height} pixels.`,
           fileSize: file.size,
           dimensions
         };
@@ -123,14 +126,19 @@ export class LogoUploadService {
       // Load the image
       const img = await this.loadImageFromFile(file);
       
-      // Calculate new dimensions (max 800px width while maintaining aspect ratio)
-      const maxWidth = 800;
+      // Calculate new dimensions optimized for template display (440x120 max)
+      // Use template dimensions as target while maintaining aspect ratio
+      const targetWidth = this.TEMPLATE_DIMENSIONS.width;
+      const targetHeight = this.TEMPLATE_DIMENSIONS.height;
       let { width, height } = img;
       
-      if (width > maxWidth) {
-        height = (height * maxWidth) / width;
-        width = maxWidth;
-      }
+      // Calculate scaling to fit within template dimensions while maintaining aspect ratio
+      const scaleX = targetWidth / width;
+      const scaleY = targetHeight / height;
+      const scale = Math.min(scaleX, scaleY, 1); // Don't upscale
+      
+      width = Math.floor(width * scale);
+      height = Math.floor(height * scale);
 
       // Set canvas dimensions
       canvas.width = width;
