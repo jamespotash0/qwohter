@@ -255,16 +255,6 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
   const hasFileSelected = uploadState.uploadedFile && !uploadState.validationError;
   const hasCurrentLogo = currentLogoUrl || uploadState.isUploaded;
 
-  // Debug logging for logo preview
-  console.log('🎯 LogoUpload Debug:', {
-    currentLogoUrl,
-    hasCurrentLogo,
-    uploadState: {
-      isUploaded: uploadState.isUploaded,
-      uploadedFile: !!uploadState.uploadedFile
-    }
-  });
-
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Upload Area */}
@@ -306,11 +296,7 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
                   src={currentLogoUrl} 
                   alt="Company logo" 
                   className="w-full h-full object-contain"
-                  onLoad={() => {
-                    console.log('✅ Logo image loaded successfully:', currentLogoUrl);
-                  }}
                   onError={(e) => {
-                    console.error('❌ Logo image failed to load:', currentLogoUrl);
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
                   }}

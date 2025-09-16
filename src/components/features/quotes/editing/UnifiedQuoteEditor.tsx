@@ -17,6 +17,7 @@ import { MixedContentEngine, MixedContentSection } from '@/utils/mixedContentEng
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
 import { Quote } from '@/hooks/useQuotes';
 import { useCurrentQuote } from '@/stores/quotes/quotesStore';
+import { useOrganizationSettings } from '@/hooks/useCompanySettings';
 import { QuoteDataPanelCore as QuoteDataPanel } from './UnifiedQuoteEditor/QuoteDataPanel/QuoteDataPanelCore';
 import LivePreviewPanel from './UnifiedQuoteEditor/LivePreviewPanel';
 import QuickEditModal from './UnifiedQuoteEditor/QuickEditModal';
@@ -80,12 +81,26 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   // Smart PDF is now the only mode - no toggle needed
   const showSmartPDFPreview = true;
 
+  // Get organization settings to add to quote data
+  const { organization } = useOrganizationSettings();
+
   // Data sync engine
   const syncEngine = useMemo(() => ({
     // Generate base HTML from raw quote data
     generateBaseHTML: (data: QuoteData): string => {
       try {
-        return generateQuoteText(data);
+        // Add organization info to quote data before generating template
+        const dataWithOrgInfo: QuoteData = {
+          ...data,
+          organization_info: organization?.organization_info
+        };
+        
+        console.log('🏗️ Generating template with organization info:', {
+          hasOrgInfo: !!organization?.organization_info,
+          orgInfo: organization?.organization_info
+        });
+        
+        return generateQuoteText(dataWithOrgInfo);
       } catch (error) {
         console.error('Error generating base HTML:', error);
         return '';
@@ -228,7 +243,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       
       return syncEngine.applySectionOverrides(baseHTML, regularOverrides);
     }
-  }), []);
+  }), [organization?.organization_info]);
 
   // Initialize editor
   useEffect(() => {
