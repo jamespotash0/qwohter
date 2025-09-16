@@ -11,6 +11,12 @@ import { extractPrimaryContactInfo } from "@/lib/types/settings/companySettings"
 
 export function CompanySettingsSection() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Debug wrapper for setIsDialogOpen
+  const setIsDialogOpenDebug = (value: boolean) => {
+    // console.log('🚪 setIsDialogOpen called with:', value, 'Stack trace:', new Error().stack);
+    setIsDialogOpen(value);
+  };
   const [user, setUser] = useState<any>(null);
   
   const { 
@@ -34,15 +40,19 @@ export function CompanySettingsSection() {
   }, []);
 
   const handleEdit = () => {
-    setIsDialogOpen(true);
+    setIsDialogOpenDebug(true);
   };
 
   const handleSave = async (data: any) => {
+    console.log('🔍 handleSave called with data:', data);
     try {
       await updateCompanyInfo(data);
+      // console.log('✅ updateCompanyInfo completed successfully');
       toast.success("Company information updated successfully");
-      setIsDialogOpen(false);
+      // console.log('🚪 Closing dialog via handleSave');
+      setIsDialogOpenDebug(false);
     } catch (error) {
+      // console.error('❌ Error in handleSave:', error);
       toast.error("Failed to update company information");
     }
   };
@@ -155,7 +165,7 @@ export function CompanySettingsSection() {
       {/* Company Info Dialog */}
       <CompanyInfoDialog
         isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
+        onClose={() => setIsDialogOpenDebug(false)}
         onSave={handleSave}
         organizationName={organization?.name}
         initialData={companyData}

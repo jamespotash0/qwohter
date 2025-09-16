@@ -58,8 +58,35 @@ class OrganizationSettingsService {
       if (profileError) throw profileError;
       if (!profile?.organization_id) throw new Error('User not associated with an organization');
 
-      // Convert form data to JSONB structure
-      const organizationInfo = convertFormDataToOrganizationInfo(companyData);
+      // Get current organization info to preserve existing data (like logo)
+      const { data: currentOrg, error: fetchError } = await supabase
+        .from('organizations')
+        .select('organization_info')
+        .eq('id', profile.organization_id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Merge form data with existing organization info to preserve logo data
+      const currentOrgInfo = (currentOrg as any)?.organization_info || {};
+      const formOrgInfo = convertFormDataToOrganizationInfo(companyData);
+      
+      // Preserve existing logo data if not provided in form
+      const mergedOrgInfo = {
+        ...currentOrgInfo,
+        ...formOrgInfo,
+        // Keep existing logo data if form doesn't have logo data
+        logo_url: formOrgInfo.logo_url || currentOrgInfo.logo_url,
+        logo_file_name: formOrgInfo.logo_file_name || currentOrgInfo.logo_file_name,
+        logo_public_url: formOrgInfo.logo_public_url || currentOrgInfo.logo_public_url,
+        logo_updated_at: formOrgInfo.logo_url ? formOrgInfo.logo_updated_at : currentOrgInfo.logo_updated_at,
+      };
+
+      console.log('🔄 Merging organization info:', {
+        currentOrgInfo,
+        formOrgInfo,
+        mergedOrgInfo
+      });
 
       // Try to update organization with company info in JSONB format
       // If column doesn't exist, we'll catch the error and return a mock response
@@ -67,7 +94,7 @@ class OrganizationSettingsService {
         const { data, error } = await supabase
           .from('organizations')
           .update({
-            organization_info: organizationInfo,
+            organization_info: mergedOrgInfo,
             updated_at: new Date().toISOString()
           })
           .eq('id', profile.organization_id)

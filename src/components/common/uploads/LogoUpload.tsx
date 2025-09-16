@@ -3,6 +3,7 @@ import { Upload, X, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { LogoUploadService, LogoUploadResult, LogoValidationResult } from '@/services/LogoUploadService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface LogoUploadProps {
   onUploadSuccess: (result: LogoUploadResult) => void;
@@ -69,7 +70,7 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
     }));
   }, []);
 
-  // Handle file upload
+  // Handle file upload - Upload to storage AND save to database immediately
   const handleUpload = useCallback(async () => {
     if (!uploadState.uploadedFile) return;
 
@@ -80,17 +81,76 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
       const progressInterval = setInterval(() => {
         setUploadState(prev => ({
           ...prev,
-          progress: Math.min(prev.progress + 10, 90)
+          progress: Math.min(prev.progress + 10, 70)
         }));
       }, 200);
 
-      const result = await LogoUploadService.uploadLogo(uploadState.uploadedFile, userId);
+      // Step 1: Upload to storage
+      const uploadResult = await LogoUploadService.uploadLogo(uploadState.uploadedFile, userId);
+      
+      setUploadState(prev => ({ ...prev, progress: 80 }));
 
-      clearInterval(progressInterval);
-      setUploadState(prev => ({ ...prev, progress: 100 }));
+      if (!uploadResult.success) {
+        clearInterval(progressInterval);
+        onUploadError(uploadResult.error || 'Upload failed');
+        setUploadState(prev => ({ ...prev, isUploading: false, progress: 0 }));
+        return;
+      }
 
-      if (result.success) {
-        onUploadSuccess(result);
+      // Step 2: Save to database immediately
+      try {
+        // Get current authenticated user ID
+        const { data: { user } } = await supabase.auth.getUser();
+        console.log('👤 Current user:', user?.id);
+        let orgId = '';
+        
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('organization_id')
+            .eq('id', user.id)
+            .single();
+          
+          console.log('📋 User profile:', profile);
+          orgId = (profile as any)?.organization_id || '';
+          console.log('🏢 Organization ID:', orgId);
+        }
+
+        if (orgId) {
+          console.log('🔄 About to call updateOrganizationLogo with:', {
+            orgId,
+            logoData: {
+              logo_url: uploadResult.url || '',
+              logo_file_name: uploadResult.fileName || '',
+              logo_public_url: uploadResult.publicUrl || '',
+            }
+          });
+          
+          const dbResult = await LogoUploadService.updateOrganizationLogo(
+            orgId,
+            {
+              logo_url: uploadResult.url || '',
+              logo_file_name: uploadResult.fileName || '',
+              logo_public_url: uploadResult.publicUrl || '',
+            }
+          );
+          
+          console.log('🔄 updateOrganizationLogo result:', dbResult);
+
+          if (!dbResult.success) {
+            console.error('Database save failed:', dbResult.error);
+            onUploadError('Failed to save logo information');
+            setUploadState(prev => ({ ...prev, isUploading: false, progress: 0 }));
+            return;
+          }
+        } else {
+          console.error('❌ No organization ID found, cannot save logo to database');
+          console.log('🔍 Debug info:', { user: user?.id, orgId });
+        }
+
+        clearInterval(progressInterval);
+        setUploadState(prev => ({ ...prev, progress: 100 }));
+
         // Mark as uploaded and clean up
         setUploadState(prev => ({
           ...prev,
@@ -100,13 +160,23 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
           uploadedFile: undefined,
           previewUrl: undefined
         }));
+        
         if (uploadState.previewUrl) {
           URL.revokeObjectURL(uploadState.previewUrl);
         }
-      } else {
-        onUploadError(result.error || 'Upload failed');
+        
+        console.log('✅ Logo uploaded and saved successfully');
+        
+        // Don't call onUploadSuccess since we're handling everything internally
+        // This prevents triggering parent component logic that might close the dialog
+
+      } catch (dbError) {
+        clearInterval(progressInterval);
+        console.error('Database save error:', dbError);
+        onUploadError('Failed to save logo information to database');
         setUploadState(prev => ({ ...prev, isUploading: false, progress: 0 }));
       }
+
     } catch (error) {
       console.error('Upload error:', error);
       onUploadError('Upload failed. Please try again.');
@@ -227,7 +297,10 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
                   }}
                 />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center cursor-pointer"
-                     onClick={handleBrowseClick}>
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       handleBrowseClick();
+                     }}>
                   <Upload className="w-6 h-6 text-white" />
                 </div>
               </div>
@@ -275,7 +348,11 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
               <div className="space-y-3">
                 <p className="text-sm font-medium">Upload Company Logo</p>
                 <Button
-                  onClick={handleBrowseClick}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleBrowseClick();
+                  }}
                   disabled={disabled}
                   className="mx-auto bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg transition-all duration-200"
                   size="sm"
@@ -295,36 +372,31 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
         </div>
       </div>
 
-      {/* Action Buttons for Selected File */}
+
+      {/* Remove File Button - Only when file is selected */}
       {hasFileSelected && !uploadState.isUploading && (
-        <div className="flex gap-2">
-          <Button
-            onClick={handleUpload}
-            disabled={disabled}
-            className="flex-1 bg-primary hover:bg-primary/90"
-          >
-            {hasCurrentLogo ? 'Replace Logo' : 'Upload Logo'}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleRemoveFile}
-            disabled={disabled}
-            size="icon"
-          >
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleRemoveFile}
+          disabled={disabled}
+          className="w-full"
+        >
+          <X className="w-4 h-4 mr-2" />
+          Remove Selected File
+        </Button>
       )}
 
-      {/* Choose/Change File Button - No File Selected */}
-      {!hasFileSelected && !uploadState.isUploading && (
+      {/* Upload Logo Button - Depends on file selection */}
+      {!uploadState.isUploading && (
         <Button
-          onClick={handleBrowseClick}
-          disabled={disabled}
-          className={`w-full ${hasCurrentLogo ? 'bg-secondary hover:bg-secondary/90' : 'bg-primary hover:bg-primary/90'}`}
+          type="button"
+          onClick={handleUpload}
+          disabled={disabled || !hasFileSelected}
+          className={`w-full ${hasFileSelected ? 'bg-primary hover:bg-primary/90' : 'bg-muted text-muted-foreground cursor-not-allowed'}`}
           size="lg"
         >
-          {hasCurrentLogo ? 'Change Logo' : 'Choose File'}
+          Upload Logo
         </Button>
       )}
 
