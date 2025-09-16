@@ -1,5 +1,4 @@
 import { supabase } from '@/integrations/supabase/client';
-import { Database } from '@/integrations/supabase/types';
 
 export interface LogoUploadResult {
   success: boolean;
@@ -262,7 +261,7 @@ export class LogoUploadService {
 
       console.log('✅ Upload successful:', data);
 
-      // Get the public URL
+      // Get public URL (bucket will be made public)
       const { data: urlData } = supabase.storage
         .from(this.BUCKET_NAME)
         .getPublicUrl(filePath);

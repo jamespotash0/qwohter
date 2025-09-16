@@ -106,7 +106,7 @@ class OrganizationSettingsService {
         // Return the updated data with organization_info
         return {
           ...data,
-          organization_info: organizationInfo
+          organization_info: mergedOrgInfo
         } as OrganizationWithCompanyInfo;
 
       } catch (updateError: any) {
@@ -125,7 +125,7 @@ class OrganizationSettingsService {
 
           return {
             ...orgData,
-            organization_info: organizationInfo
+            organization_info: mergedOrgInfo
           } as OrganizationWithCompanyInfo;
         }
         throw updateError;

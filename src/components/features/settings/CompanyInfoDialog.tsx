@@ -125,6 +125,9 @@ export function CompanyInfoDialog({
         address: initialData.address || "",
         website: initialData.website || "",
         quote_starting_point: initialData.quote_starting_point || "",
+        logo_url: initialData.logo_url || "",
+        logo_file_name: initialData.logo_file_name || "",
+        logo_public_url: initialData.logo_public_url || "",
       });
       setIncludeFax(Boolean(initialData.fax));
     } else {
@@ -134,6 +137,9 @@ export function CompanyInfoDialog({
         address: "",
         website: "",
         quote_starting_point: "",
+        logo_url: "",
+        logo_file_name: "",
+        logo_public_url: "",
       });
       setIncludeFax(false);
     }
