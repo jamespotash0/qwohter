@@ -6,13 +6,19 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 
 - `npm run dev` - Start development server with hot reload
 - `npm run build` - Build for production
-- `npm run build:dev` - Build in development mode
+- `npm run build:development` - Build in development mode
+- `npm run build:staging` - Build in staging mode
+- `npm run build:production` - Build in production mode
 - `npm run lint` - Run ESLint to check code quality
+- `npm run lint:fix` - Run ESLint with auto-fix
 - `npm run preview` - Preview production build locally
+- `npm run test` - Run unit tests with Vitest
+- `npm run test:ui` - Run tests with UI
+- `npm run test:coverage` - Generate test coverage report
 
 ## System Overview
 
-Wall Quote Wizard is a sophisticated React-based quote generation system for wall/partition installations, featuring real-time editing, live preview, and intelligent content generation.
+Wall Quote Wizard is a sophisticated React-based quote generation system for wall/partition installations, featuring real-time editing, live preview, intelligent content generation, multi-tenant organization management, enhanced pricing with cost breakdowns, and integrated company branding with logo upload capabilities.
 
 ## Tech Stack & Dependencies
 
@@ -23,14 +29,19 @@ Wall Quote Wizard is a sophisticated React-based quote generation system for wal
 - Zustand for state management
 - React Router for navigation
 - Lucide React for iconography
+- React Hook Form for form management
+- Zod for validation
 
 **Backend & Services:**
-- Supabase (auth, database, real-time)
+- Supabase (auth, database, real-time, file storage)
 - TanStack Query for server state management
 - PDF generation via Playwright
+- Row-level security for multi-tenancy
 
 **Development Tools:**
 - ESLint + TypeScript for code quality
+- Vitest for unit testing
+- Playwright for E2E testing and PDF generation
 - PostCSS for CSS processing
 - Node.js 18+ runtime
 
@@ -43,28 +54,95 @@ Wall Quote Wizard is a sophisticated React-based quote generation system for wal
 │                    Wall Quote Wizard                            │
 ├─────────────────────────────────────────────────────────────────┤
 │  Frontend (React + TypeScript)                                 │
+│  ├── Multi-Tenant Organization Management                      │
+│  ├── Enhanced Pricing & Cost Management                        │
+│  ├── Company Branding & Logo Upload                            │
 │  ├── Quote Management System                                   │
 │  ├── Wall Specification Engine                                 │
 │  ├── Live Preview with Real-time Updates                       │
 │  ├── Template Generation System                                │
 │  └── PDF Export via Playwright                                 │
 ├─────────────────────────────────────────────────────────────────┤
-│  State Management (Zustand)                                    │
+│  State Management (Zustand + Hooks)                            │
 │  ├── QuotesStore (CRUD operations)                            │
 │  ├── AuthStore (user sessions)                                │
+│  ├── Organization Management (useOrganizations)               │
+│  ├── Company Settings (useCompanySettings)                    │
 │  └── Component State (UI-specific)                            │
 ├─────────────────────────────────────────────────────────────────┤
 │  Backend Services (Supabase)                                   │
-│  ├── PostgreSQL Database                                       │
-│  ├── Row-Level Security                                        │
+│  ├── PostgreSQL Database with JSONB                           │
+│  ├── Row-Level Security (Multi-tenant)                        │
 │  ├── Real-time Subscriptions                                   │
+│  ├── File Storage (Logo uploads)                              │
 │  └── Organization Multi-tenancy                                │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Core System Components
 
-### 1. Quote Management System
+### 1. Organization & Multi-Tenancy System
+**Location**: `/src/hooks/useOrganizations.ts`, `/src/components/features/settings/`
+**Purpose**: Complete multi-tenant organization management
+
+**Key Features:**
+- Organization creation and management
+- Team member invitations and role management
+- Cascading organization deletion (deletes all quotes)
+- Organization-based data isolation
+- Admin/Member role system
+
+**Key Components:**
+- `useOrganizations.ts` - Organization management hook
+- `OrganizationSetupForm.tsx` - Organization onboarding
+- `CompanySettingsSection.tsx` - Organization settings management
+
+### 2. Enhanced Pricing System
+**Location**: `/src/components/features/quotes/forms/pricing/`, `/src/lib/types/pricing/`
+**Purpose**: Comprehensive cost breakdown and pricing management
+
+**Key Features:**
+- Detailed cost breakdowns (materials, labor, equipment, freight)
+- **Dollar-based unseen costs** (changed from percentage to $500 default)
+- Markup percentage calculations
+- Payment terms configuration
+- Auto-calculated totals and profit margins
+- Enhanced validation requiring meaningful values (> $0)
+
+**Key Components:**
+- `EnhancedPricingForm.tsx` - Main pricing interface (215KB compiled)
+- `enhancedPricing.ts` - Data types and calculation logic
+- `useWizardValidation.ts` / `useEditingValidation.ts` - Updated validation logic
+
+**Recent Changes:**
+- Unseen costs now use dollar amount input with percentage display
+- Validation requires meaningful values instead of allowing zeros
+- Fax field made conditional based on organization settings
+
+### 3. Company Branding & Logo Upload System
+**Location**: `/src/services/LogoUploadService.ts`, `/src/components/common/uploads/`
+**Purpose**: Complete company branding with logo management
+
+**Key Features:**
+- Drag-and-drop logo upload with validation
+- Image processing and optimization (440x120px template-optimized)
+- Supabase storage integration with public URLs
+- Template integration for quote headers
+- File type validation (JPG, JPEG, SVG)
+- Size validation and automatic resizing
+
+**Key Components:**
+- `LogoUploadService.ts` - Complete upload service with image processing
+- `LogoUpload.tsx` - Drag-and-drop upload component
+- `CompanyInfoDialog.tsx` - Company information management with logo upload
+- Template integration in `section-generators.ts`
+
+**Data Flow:**
+```
+File Upload → Validation → Processing → Supabase Storage → Public URL → Template Display
+```
+
+### 4. Quote Management System
 **Location**: `/src/components/features/quotes/`
 **Architecture**: Domain-driven component organization
 
@@ -73,17 +151,20 @@ quotes/
 ├── creation/           # Quote creation wizard and workflows
 ├── editing/            # Unified quote editor with live preview
 ├── forms/              # Reusable form components by category
+│   ├── pricing/        # Enhanced pricing forms
+│   ├── contact/        # Contact information forms
+│   └── walls/          # Wall specification forms
 ├── specs/              # Wall specification creation forms
 ├── table/              # Quote listing and management
 └── viewing/            # Quote viewing interfaces
 ```
 
 **Key Components:**
-- `UnifiedQuoteEditor.tsx` (633 lines) - Main editing interface
-- `QuoteCreatorWizard.tsx` (687 lines) - Multi-step quote creation
+- `UnifiedQuoteEditor.tsx` (262KB compiled) - Main editing interface
+- `QuoteCreatorWizard.tsx` (40KB compiled) - Multi-step quote creation
 - `LivePreviewPanel.tsx` - Real-time quote preview with pagination
 
-### 2. Wall Specification Engine
+### 5. Wall Specification Engine
 **Location**: `/src/components/features/quotes/editing/WallSystemEditor/`
 **Purpose**: Comprehensive wall configuration and management
 
@@ -95,16 +176,16 @@ quotes/
 
 **Key Components:**
 - `WallSystemsSectionCore.tsx` - Central wall management
-- `AddWallDialog.tsx` (630 lines) - Wall creation interface
+- `AddWallDialog.tsx` - Wall creation interface
 - `WallCard.tsx` - Individual wall editing cards
-- Wall-specific forms: `OperableWallEditForm.tsx`, `GlassWallEditForm.tsx` (739 lines)
+- Wall-specific forms: `OperableWallEditForm.tsx`, `GlassWallEditForm.tsx`
 
 **Data Flow Pattern:**
 ```
 QuoteData → WallDetails → WallSpecification[] → Template → Live Preview
 ```
 
-### 3. Template Generation System
+### 6. Template Generation System
 **Location**: `/src/templates/`
 **Pattern**: Strategy pattern with section-based generation
 
@@ -112,28 +193,23 @@ QuoteData → WallDetails → WallSpecification[] → Template → Live Preview
 templates/
 ├── BaseTemplate/
 │   ├── BaseQuoteTemplate.ts    # Abstract base class
-│   ├── section-generators.ts   # Modular content generation (334 lines)
+│   ├── section-generators.ts   # Modular content generation with logo support
+│   ├── types.ts               # Template type definitions
 │   └── page-break-logic.ts     # Content-aware pagination
 ├── OperableWallTemplate.tsx    # Primary template implementation
 ├── SmartQuoteTemplate.ts       # Section-based approach
 └── TemplateFactory.ts          # Template routing
 ```
 
-**Template Architecture:**
-```
-BaseQuoteTemplate (abstract)
-├── OperableWallTemplate (current default)
-├── SmartQuoteTemplate (section-based approach)
-└── Future: GlassWallTemplate, AccordionTemplate
-```
-
 **Key Features:**
 - Section-based content generation
+- **Logo integration in template headers** (440x120px optimized)
+- Organization info integration
 - CSS-based pagination (reliable across browsers)
 - Smart content splitting with `ContentSplitter.ts`
 - Interactive section editing system
 
-### 4. Live Preview System
+### 7. Live Preview System
 **Location**: `/src/components/features/quotes/editing/UnifiedQuoteEditor/LivePreview/`
 **Pattern**: Real-time reactive updates with intelligent pagination
 
@@ -157,144 +233,180 @@ BaseQuoteTemplate (abstract)
 ```typescript
 interface QuoteData {
   quote_details: QuoteDetails;           // Metadata and settings
-  billing_details: BillingDetails;      // Client information
+  job_details: JobDetails;               // Project information
   wall_details: {                       // Wall specifications
     id: string;
     walls: Record<string, WallSpecification>;
   };
   delivery_details: DeliveryDetails;    // Timeline information
-  pricing_details: PricingDetails;      // Cost calculations
+  price_details: EnhancedPricingData;   // Enhanced cost calculations
+  organization_info?: OrganizationInfo; // Company branding data
   section_overrides?: SectionOverrides; // Custom section content
 }
 ```
 
-**Wall Specification Model:**
+**Enhanced Pricing Data Model:**
 ```typescript
-interface WallSpecification {
-  // Basic Properties
-  wallSystemType: string;               // 'Operable Wall' | 'Glass Wall'
-  lengthFeet: string;
-  heightFeet: string;
-  panelCount: string;
+interface EnhancedPricingData {
+  // Cost Fields (all required > 0)
+  kwik_wall_materials_cost: number;
+  misc_materials_cost: number;
+  delivery_cost_track: number;
+  delivery_cost_panel: number;
+  track_equipment_costs: number;
+  track_labor_cost: number;
+  panel_equipment_costs: number;
+  panel_labor_cost: number;
+  track_freight_factory: number;
+  panel_freight_factory: number;
+  local_handling_costs: number;
   
-  // Operable Wall Specific
-  panelConfiguration?: string;
-  series?: string;
-  model?: string;
-  panelSkin?: string;
-  stcRating?: string;
+  // Dollar-based unseen costs (changed from percentage)
+  unseen_costs: number;                 // Default $500
+  unseen_costs_percentage: number;      // Auto-calculated
+  unseen_costs_locked: boolean;
   
-  // Glass Wall Specific  
-  glasswallModel?: string;
-  glasswallOperation?: string;
-  glasswallGlassType?: string;
+  // Markup percentages (required > 0)
+  materials_markup_percentage: number;
+  shipping_markup_percentage: number;
   
-  // Accessories
-  pocketDoors?: {
-    foldType: string;
-    foldStyle: string;
-  };
-  
-  // Infrastructure
-  trackSystem?: string;
-  structureSupport?: string;
+  // Auto-calculated fields
+  cost_subtotal: number;
+  base_selling_price: number;
+  final_selling_price: number;
+  // ... profit calculations
+}
+```
+
+**Organization Info Model:**
+```typescript
+interface OrganizationInfo {
+  address?: string;
+  phone?: string;
+  fax?: string;                        // Conditional validation
+  website?: string;
+  // Logo data
+  logo_url?: string;                   // Storage path
+  logo_file_name?: string;
+  logo_public_url?: string;            // Template display URL
+  logo_updated_at?: string;
 }
 ```
 
 ### Database Schema (Supabase)
 
 **Tables:**
-- `organizations` - Multi-tenant organization management
-- `profiles` - User profiles linked to organizations  
-- `quotes` - Quote data stored as JSONB with metadata
+- `organizations` - Multi-tenant organization management with JSONB organization_info
+- `profiles` - User profiles linked to organizations with roles
+- `quotes` - Quote data stored as JSONB with metadata and organization_id (CASCADE DELETE)
+
+**Storage:**
+- `organization-logos` - Public bucket for logo files
 
 **Key Features:**
 - Row-level security for multi-tenancy
-- JSONB storage for flexible quote data structures
+- JSONB storage for flexible data structures
+- CASCADE DELETE for organization → quotes
+- Public file storage for logos
 - Custom functions for organization-based access control
 
 ## Current vs Legacy Patterns
 
 ### ✅ **Active/Current Patterns (Use These)**
 
-1. **Unified Editor Approach**
+1. **Enhanced Pricing Approach**
+   - Dollar-based unseen costs with percentage display
+   - Comprehensive cost breakdown validation
+   - Meaningful value requirements (> $0, not just ≥ $0)
+   - Auto-calculated profit margins and totals
+
+2. **Organization-Centric Architecture**
+   - Multi-tenant organization management
+   - Cascading deletion patterns
+   - Role-based access control
+   - Organization info integration in templates
+
+3. **Modern Logo & Branding System**
+   - Drag-and-drop upload with validation
+   - Template-optimized image processing (440x120px)
+   - Supabase storage integration
+   - Public URL generation for template display
+
+4. **Unified Editor Approach**
    - Single source of truth: `UnifiedQuoteEditor.tsx`
    - Real-time preview updates
    - Section override system for customization
    - Type-safe data handling throughout
 
-2. **Component-based Wall Management**
+5. **Component-based Wall Management**
    - Per-wall configuration objects
    - Flexible wall specification system
    - Database-synced state management
    - Auto-generated wall naming (Wall A, Wall B, etc.)
 
-3. **Smart Template Generation**
-   - Section-based approach with dependencies
-   - Content-aware formatting and pagination
-   - CSS-based page breaks (browser-reliable)
-   - Interactive section editing
-
-4. **Modern Form Patterns**
-   - Controlled components with validation
-   - Cascading field dependencies
-   - Real-time preview updates
-   - Type-safe form handling
-
 ### ⚠️ **Legacy/Deprecated Patterns (Avoid or Migrate)**
 
-1. **Global Pocket Door Configuration** (Deprecated)
+1. **Basic Pricing Form** (Deprecated)
+   - **Location**: `PricingForm.tsx` (marked deprecated)
+   - **Issue**: Simple base price + freight model
+   - **Current**: Use `EnhancedPricingForm.tsx` for all pricing
+
+2. **Percentage-based Unseen Costs** (Recently Changed)
+   - **Old**: Percentage input with dollar display
+   - **Current**: Dollar input with percentage display
+   - **Migration**: Updated in `enhancedPricing.ts` calculation logic
+
+3. **Global Pocket Door Configuration** (Deprecated)
    - **Location**: `PocketDoorsData` interface in `types/quote.ts`
    - **Issue**: Should use per-wall `WallSpecification.pocketDoors`
    - **Migration**: All new code should use per-wall configuration
 
-2. **Monolithic Form Components** (Refactor Needed)
-   - **Legacy**: `WallSpecificationForm.tsx` (407 lines)
-   - **Issue**: Complex monolithic forms with embedded business logic
-   - **Current**: Component-based forms in `WallSystemEditor/`
+## Recent Major Features & Updates
 
-3. **Simple Template Factory** (Enhancement Needed)
-   - **Current**: Only routes to `OperableWallTemplate`
-   - **Issue**: Should be more dynamic based on wall types
-   - **Future**: Template selection based on wall system analysis
+### 🆕 **Enhanced Pricing System (v2.0)**
+- **Dollar-based unseen costs** instead of percentage-based
+- Comprehensive cost validation requiring meaningful values
+- Auto-calculated profit margins and breakdowns
+- Payment terms integration
+
+### 🆕 **Logo Upload & Company Branding**
+- Complete logo upload system with drag-and-drop interface
+- Image processing and template optimization (440x120px)
+- Supabase storage integration with public URLs
+- Template header integration with company logos
+
+### 🆕 **Multi-Tenant Organization Management**
+- Organization creation and team management
+- Role-based access control (admin/member)
+- Cascading deletion for organization cleanup
+- Organization-based data isolation
+
+### 🆕 **Conditional Validation System**
+- Fax field made conditional based on organization settings
+- Context-aware validation in both creator and editor
+- Organization info integration in validation hooks
 
 ## Code Quality & Refactoring Guidelines
 
-### 🚨 **Large Files Requiring Immediate Refactoring**
+### 🚨 **Large Files Requiring Attention**
 
-#### **Priority 1: Critical Refactoring**
+#### **Current Large Components**
 
-1. **GlassWallEditForm.tsx** (739 lines)
-   - **Issues**: Massive component with repetitive JSX, hardcoded cascading logic
-   - **Strategy**: Split into focused sub-components by feature area
-   - **Recommended Breakdown**:
-     ```
-     GlassWallEditForm/
-     ├── GlassWallBasicFields.tsx      # model, operation, configuration
-     ├── GlassWallSpecificationFields.tsx # glass type, STC, support  
-     ├── GlassWallTrackFields.tsx       # track type, finish, guides
-     ├── GlassWallAccessoryFields.tsx   # doors, seals, closures
-     └── hooks/useGlassWallCascading.ts # business logic extraction
-     ```
+1. **EnhancedPricingForm.tsx** (215KB compiled)
+   - **Status**: Recently updated and working well
+   - **Features**: Comprehensive pricing with all cost categories
+   - **Performance**: Optimized with memoization and debounced updates
 
-2. **QuoteCreatorWizard.tsx** (687 lines)
-   - **Issues**: Monolithic wizard with complex state management
-   - **Strategy**: Extract step components and business logic
-   - **Recommended Breakdown**:
-     ```
-     QuoteCreatorWizard/
-     ├── components/WizardSteps/
-     ├── hooks/useWizardFlow.ts
-     ├── hooks/useWizardValidation.ts  
-     └── types/wizardTypes.ts
-     ```
+2. **UnifiedQuoteEditor.tsx** (262KB compiled)
+   - **Status**: Core editing interface - consider breaking down
+   - **Strategy**: Extract hooks and utility functions
+   - **Priority**: Medium (working well but could be modularized)
 
-3. **UnifiedQuoteEditor.tsx** (633 lines)
-   - **Issues**: Complex state management, mixed concerns
+3. **QuoteEdit.tsx** (262KB compiled)
    - **Strategy**: Extract custom hooks and utility functions
    - **Recommended Breakdown**:
      ```
-     UnifiedQuoteEditor/
+     QuoteEdit/
      ├── hooks/
      │   ├── useQuoteSync.ts           # data synchronization
      │   ├── usePreviewGeneration.ts   # HTML generation
@@ -302,28 +414,10 @@ interface WallSpecification {
      └── utils/quoteSyncEngine.ts      # business logic
      ```
 
-#### **Priority 2: Consolidation Opportunities**
-
-**Wall Form Duplication** - Multiple overlapping components:
-- Creation vs Edit forms (should be unified)
-- Glass vs Operable logic (should share common patterns)
-- Form validation (should be centralized)
-
-**Recommended Consolidation:**
-```
-src/components/features/quotes/walls/
-├── shared/
-│   ├── WallBasicFields.tsx      # dimensions, quantity, type
-│   ├── WallValidation.tsx       # centralized validation
-│   └── WallCascading.tsx        # field dependency logic
-├── WallEditor.tsx               # unified edit/create interface
-└── types/wallEditorTypes.ts     # consolidated types
-```
-
 ### **Clean Code Principles for This Codebase**
 
 1. **Component Size Limits**
-   - **Max 300 lines** per component file
+   - **Max 300 lines** per component file (exceptions for complex forms)
    - **Max 50 props** per component
    - **Max 10 useEffect hooks** per component
 
@@ -335,100 +429,83 @@ src/components/features/quotes/walls/
 
 3. **State Management Patterns**
    - Use Zustand stores for application state
+   - Custom hooks for feature-specific state
    - Component state only for UI-specific data
-   - React Query for server state management
    - Avoid prop drilling beyond 3 levels
-
-4. **File Organization Standards**
-   ```
-   ComponentName/
-   ├── index.ts              # Public API
-   ├── ComponentName.tsx     # Main component (< 300 lines)
-   ├── ComponentName.test.tsx
-   ├── hooks/                # Component-specific hooks
-   ├── components/           # Sub-components
-   ├── types.ts              # Component-specific types
-   └── utils.ts              # Component-specific utilities
-   ```
 
 ## Form Handling Patterns
 
 ### **Current Best Practices**
 
-1. **Cascading Field Dependencies**
+1. **Enhanced Pricing Validation**
    ```typescript
-   // ✅ Good: Declarative dependency definitions
-   const WALL_FIELD_DEPENDENCIES = {
-     wallSystemType: ['panelConfiguration', 'series', 'model'],
-     panelConfiguration: ['series', 'model'],
-     series: ['model', 'panelThickness']
-   };
-   
-   // ✅ Good: Reusable cascading hook
-   const useCascadingFields = (dependencies) => {
-     return useCallback((field, value, currentData) => {
-       const fieldsToReset = dependencies[field] || [];
-       return fieldsToReset.reduce((acc, fieldToReset) => ({
-         ...acc, [fieldToReset]: ""
-       }), { [field]: value });
-     }, [dependencies]);
-   };
+   // ✅ Current: Meaningful value validation
+   const isPricingValid = useMemo(() => {
+     return !!(
+       // Required cost fields must have meaningful values (> 0)
+       isNumericFieldValid(pricing.kwik_wall_materials_cost) && 
+       pricing.kwik_wall_materials_cost! > 0 &&
+       
+       // Markup percentages must be meaningful (> 0, <= 100)
+       isNumericFieldValid(pricing.materials_markup_percentage) &&
+       pricing.materials_markup_percentage! > 0 &&
+       pricing.materials_markup_percentage! <= 100 &&
+       
+       // Unseen costs (dollar-based, not percentage)
+       isNumericFieldValid(pricing.unseen_costs) && 
+       pricing.unseen_costs! > 0
+     );
+   }, [pricing]);
    ```
 
-2. **Form Validation Strategy**
+2. **Conditional Validation (Fax Field)**
    ```typescript
-   // ✅ Good: Centralized validation with clear rules
-   const useWallValidation = () => {
-     return useMemo(() => ({
-       required: ['wallSystemType', 'lengthFeet', 'heightFeet', 'panelCount'],
-       conditional: {
-         operableWall: ['panelConfiguration', 'series', 'model'],
-         glassWall: ['glasswallModel', 'glasswallOperation']
-       }
-     }), []);
-   };
+   // ✅ Context-aware validation based on organization
+   const isContactInfoValid = useMemo(() => {
+     const isFaxRequired = organizationInfo?.fax && organizationInfo.fax.trim() !== '';
+     const basicRequirements = !!(contactInfo.contactName && 
+                                 contactInfo.contactEmail && 
+                                 contactInfo.address && 
+                                 contactInfo.phone && 
+                                 contactInfo.website);
+     
+     return isFaxRequired ? basicRequirements && !!contactInfo.fax : basicRequirements;
+   }, [contactInfo, organizationInfo]);
    ```
 
-### **Patterns to Avoid**
-
-```typescript
-// ❌ Bad: Hardcoded dependencies in components  
-if (field === "wallSystemType") {
-  setWallData({
-    ...wallData,
-    panelConfiguration: "",
-    series: "",
-    model: "",
-    // ... 20+ field resets
-  });
-}
-
-// ❌ Bad: Mixed concerns in form components
-const WallForm = () => {
-  // UI state + business logic + API calls all mixed together
-  const [formData, setFormData] = useState({});
-  const saveToDatabase = async () => { /* API logic */ };
-  const validateFields = () => { /* Business logic */ };
-  // 500+ lines of mixed concerns
-};
-```
+3. **Logo Upload Integration**
+   ```typescript
+   // ✅ Logo data persistence in form state
+   const handleLogoUpload = async (result: LogoUploadResult) => {
+     if (result.success) {
+       const updatedFormData = {
+         ...formData,
+         logo_url: result.url || '',
+         logo_file_name: result.fileName || '',
+         logo_public_url: result.publicUrl || '',
+       };
+       setFormData(updatedFormData);
+     }
+   };
+   ```
 
 ## Testing Strategy
 
 ### **Current Test Coverage**
-- **Unit Tests**: Limited coverage, needs expansion
-- **Integration Tests**: Not implemented
-- **E2E Tests**: Not implemented
+- **Unit Tests**: Vitest setup with basic coverage
+- **Integration Tests**: Limited implementation
+- **E2E Tests**: Playwright available for PDF generation
 
 ### **Testing Recommendations**
 
 1. **Priority Testing Areas**
    ```typescript
    // High Priority
-   - Wall specification forms (complex business logic)
-   - Template generation system (critical functionality)
-   - Quote creation workflow (user journey)
-   - PDF generation (external dependency)
+   - Enhanced pricing calculations and validation
+   - Logo upload and processing workflow
+   - Organization management and multi-tenancy
+   - Quote creation wizard validation
+   - Template generation with logos
    
    // Medium Priority  
    - Component state management
@@ -440,144 +517,68 @@ const WallForm = () => {
    - Style consistency
    ```
 
-2. **Testing Stack Recommendations**
-   ```
-   Unit Tests: Vitest + React Testing Library
-   Integration Tests: Vitest + MSW (API mocking)
-   E2E Tests: Playwright (already available for PDF generation)
-   ```
-
 ## Performance Considerations
 
 ### **Current Performance Profile**
-- **Strengths**: React 18, efficient component updates, CSS-based pagination
-- **Concerns**: Large component re-renders, complex form state management
+- **Strengths**: React 18, Vite HMR, optimized pricing calculations
+- **Concerns**: Large form components, image processing
 
 ### **Optimization Opportunities**
 
-1. **Component Memoization**
+1. **Image Processing Optimization**
    ```typescript
-   // ✅ Memoize expensive computations
-   const wallValidationResults = useMemo(() => 
-     validateWallSpecification(wallData), [wallData]
+   // ✅ Logo processing with template dimensions
+   const scale = Math.min(
+     TEMPLATE_DIMENSIONS.width / width,
+     TEMPLATE_DIMENSIONS.height / height,
+     1 // Don't upscale
    );
-   
-   // ✅ Memoize callback functions
-   const handleWallChange = useCallback((field, value) => {
-     // Only recreate if dependencies change
-   }, [dependencies]);
    ```
 
-2. **State Update Optimization**
+2. **Form State Optimization**
    ```typescript
-   // ✅ Batch state updates
-   const updateWallSystem = useCallback((updates) => {
-     setWallData(prevData => ({
-       ...prevData,
-       ...updates
-     }));
-   }, []);
+   // ✅ Debounced updates for pricing calculations
+   useEffect(() => {
+     const timeoutId = setTimeout(() => {
+       onUpdate(calculatedData);
+     }, 150);
+     return () => clearTimeout(timeoutId);
+   }, [localData]);
    ```
-
-## 🔄 Frontend–Backend Sync Requirements
-
-> 📌 **Critical**: Always maintain type safety between frontend and backend
-
-### **Sync Protocol**
-
-1. **Type Definition Updates**
-   ```typescript
-   // When adding new wall fields:
-   // 1. Update WallSpecification interface in src/types/quote.ts
-   // 2. Update Supabase schema if needed
-   // 3. Update form validation rules
-   // 4. Update template generation logic
-   ```
-
-2. **Database Schema Changes**
-   - Update Supabase migrations
-   - Regenerate TypeScript types from schema
-   - Test with existing data structures
-   - Update seed data if applicable
-
-3. **API Integration Points**
-   ```typescript
-   // Key integration areas requiring sync:
-   - Quote CRUD operations (QuotesStore)
-   - Wall specification persistence
-   - Organization-based data access
-   - PDF generation workflows
-   ```
-
-## Development Workflow Best Practices
-
-### **Code Review Guidelines**
-
-1. **Architecture Review Points**
-   - Component size and single responsibility
-   - State management patterns
-   - Type safety and error handling
-   - Performance implications
-
-2. **Wall System Changes**
-   - Test with multiple wall configurations
-   - Verify template generation
-   - Check live preview updates
-   - Validate PDF output
-
-### **Debugging Strategies**
-
-1. **Common Debug Points**
-   ```typescript
-   // Wall specification issues
-   console.log('Wall data:', data.wall_details?.walls);
-   
-   // Template generation problems  
-   console.log('Template sections:', SmartQuoteHelper.extractSections(html));
-   
-   // Form state debugging
-   console.log('Form validation:', validationResults);
-   ```
-
-2. **Live Preview Debugging**
-   - Check browser console for template errors
-   - Verify section extraction in SmartQuoteHelper
-   - Monitor content splitter page calculations
-   - Test across different browser zoom levels
 
 ## Security Considerations
 
 ### **Current Security Implementation**
-- Row-level security in Supabase
-- Organization-based data isolation
-- Secure authentication flow
-- Input sanitization in forms
+- Row-level security in Supabase with organization isolation
+- Secure file upload with validation and processing
+- Input sanitization in forms and file uploads
+- Organization-based access control
 
 ### **Security Best Practices**
-- Never store sensitive data in quote JSON
-- Validate all user inputs on both client and server
-- Use parameterized queries for any raw SQL
-- Implement proper error boundaries to prevent data leaks
+- File upload validation for type, size, and content
+- Public storage bucket with secure file naming
+- Organization data isolation via RLS
+- No sensitive data in quote JSON or logs
 
-## Future Architecture Considerations
+## Development Workflow Best Practices
 
-### **Scalability Planning**
-- Component library extraction for reusability
-- Micro-frontend architecture for large teams
-- Advanced caching strategies for template generation
-- Real-time collaboration features
+### **Logo & Branding Changes**
+- Test with different image formats (JPG, SVG)
+- Verify template display across different quote types
+- Check mobile responsiveness
+- Validate storage quotas and file cleanup
 
-### **Technology Evolution**
-- React Server Components for better performance
-- Advanced PDF generation with custom layouts
-- AI-powered quote suggestions
-- Mobile-first responsive design improvements
+### **Pricing System Changes**
+- Test edge cases (zero values, large numbers)
+- Verify calculation accuracy across all cost categories
+- Test validation in both creator and editor workflows
+- Check PDF generation with pricing data
 
----
-
-## Working Directory
-
-The main application code is located in `/wall-quote-wizard/` subdirectory. Always work from this directory for npm commands and file operations.
+### **Organization Management Changes**
+- Test multi-tenant data isolation
+- Verify cascading deletion safety
+- Test role-based access controls
+- Validate member invitation workflows
 
 ## Quick Reference Commands
 
@@ -586,18 +587,58 @@ The main application code is located in `/wall-quote-wizard/` subdirectory. Alwa
 npm run dev                    # Start dev server
 npm run build                  # Production build
 npm run lint                   # Code quality check
+npm run lint:fix               # Auto-fix linting issues
 
-# Testing (when implemented)
+# Testing
 npm run test                   # Unit tests
-npm run test:e2e              # End-to-end tests
-npm run test:coverage         # Coverage report
+npm run test:ui                # Test UI
+npm run test:coverage          # Coverage report
 
-# Database
-npm run db:generate-types     # Regenerate Supabase types
-npm run db:reset              # Reset local database
+# Build variants
+npm run build:development      # Development build
+npm run build:staging          # Staging build
+npm run build:production       # Production build
+```
+
+## File Upload & Storage Integration
+
+```typescript
+// Logo upload with Supabase storage
+const { data, error } = await supabase.storage
+  .from('organization-logos')
+  .upload(filePath, processedFile, {
+    cacheControl: '3600',
+    upsert: false
+  });
+
+// Get public URL for template display
+const { data: urlData } = supabase.storage
+  .from('organization-logos')
+  .getPublicUrl(filePath);
+```
+
+## Database Migration Examples
+
+```sql
+-- Organization cascade deletion
+ALTER TABLE quotes 
+ADD CONSTRAINT fk_quotes_organization_id 
+FOREIGN KEY (organization_id) 
+REFERENCES organizations(id) 
+ON DELETE CASCADE;
+
+-- Logo storage index
+CREATE INDEX IF NOT EXISTS idx_quotes_organization_id 
+ON quotes(organization_id);
 ```
 
 ---
 
-*Last Updated: 2025-08-27*
-*Version: 2.0 - Comprehensive Architecture Analysis*
+## Working Directory
+
+The main application code is located in `/wall-quote-wizard/` subdirectory. Always work from this directory for npm commands and file operations.
+
+---
+
+*Last Updated: 2025-01-16*
+*Version: 3.0 - Enhanced Pricing, Logo Upload & Multi-Tenant Architecture*
