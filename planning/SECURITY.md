@@ -18,7 +18,6 @@ This document outlines the security measures implemented in the Wall Quote Wizar
 - **Quotes Table**: Users can only view/edit quotes in their organization
 - **Profiles Table**: Users can only view profiles in their organization  
 - **Organizations Table**: Proper isolation between organizations
-
 #### Security Functions
 - `get_organization_code_for_user()` - Admin-only organization code access
 - `user_can_access_quote()` - Validates quote access permissions
