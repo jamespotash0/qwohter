@@ -32,14 +32,15 @@ export const useWizardState = (existingQuote?: Record<string, unknown>) => {
   const priceDetailsData = getNestedProperty(existingQuoteData, 'price_details') as Record<string, unknown> | undefined;
 
   const [quoteStatus, setQuoteStatus] = useState((existingQuoteData?.status as string) || "Draft");
-  
+
   const [contactInfo, setContactInfo] = useState<ContactInfo>({
     contactName: (quoteDetails?.contactName as string) || "",
     contactEmail: (quoteDetails?.contactEmail as string) || "",
     address: (quoteDetails?.address as string) || "",
     phone: (quoteDetails?.phone as string) || "",
     fax: (quoteDetails?.fax as string) || "",
-    website: (quoteDetails?.website as string) || ""
+    website: (quoteDetails?.website as string) || "",
+    quoteSource: (existingQuoteData?.quote_source as string) || ""
   });
 
   const [jobDetails, setJobDetails] = useState<JobDetails>({

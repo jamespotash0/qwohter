@@ -174,6 +174,9 @@ const QuoteCreatorWizard = ({
         await updateQuote((existingQuoteData?.id as string), {
           project_name: localQuoteName,
           quote_details: contactInfo,
+          // created_by:
+          //quote_source
+          //status_last_updated
           job_details: {
             job_location: jobDetails.jobLocation || "",
             client_name: jobDetails.billedTo?.name || "",

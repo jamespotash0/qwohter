@@ -36,6 +36,7 @@ export const QuoteFilters: React.FC<QuoteFiltersProps> = ({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Status</SelectItem>
+          <SelectItem value="Incomplete">Incomplete</SelectItem>
           <SelectItem value="Draft">Draft</SelectItem>
           <SelectItem value="Pending">Pending</SelectItem>
           <SelectItem value="Submitted">Submitted</SelectItem>

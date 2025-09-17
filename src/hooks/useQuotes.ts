@@ -19,6 +19,10 @@ export interface Quote {
   delivery_details: any;
   labor_details: any;
   status: string;
+  quote_source?: string;
+  follow_up_days?: number;
+  created_by?: string;
+  status_last_updated?: string;
   date_last_downloaded?: string;
   version: number;
   created_at: string;
@@ -93,7 +97,7 @@ export const useQuotes = () => {
       // Get user's organization from their profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('organization_id')
+        .select('organization_id, full_name')
         .eq('id', user.id)
         .single();
 
@@ -117,6 +121,9 @@ export const useQuotes = () => {
             date: quoteData.jobDetails.date
            },
           wall_details: prepareWallDataForSave(quoteData.walls) as any,
+          quote_source: quoteData.contactInfo?.quoteSource || '',
+          created_by: profileData.full_name,
+          organization_id: profileData.organization_id,
           price_details: {
             payment_upon_drawings: quoteData.pricing.payment_upon_drawings,
             payment_upon_track_installation: quoteData.pricing.payment_upon_track_installation,
@@ -150,8 +157,9 @@ export const useQuotes = () => {
           delivery_details: quoteData.deliveryLabor.delivery || {},
           labor_details: quoteData.deliveryLabor.labor || {},
           status: quoteData.status || 'Draft',
+          status_last_updated: null,
+          follow_up_days: null,
           user_id: user.id,
-          organization_id: profileData.organization_id
         })
         .select()
         .single();
@@ -425,6 +433,32 @@ export const useQuotes = () => {
     fetchQuotes();
   }, []);
 
+  const updateFollowUpDays = async (id: string, days: number | null) => {
+    try {
+      const { data, error } = await supabase
+        .from('quotes')
+        .update({ follow_up_days: days })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      setQuotes(prev => prev.map(quote => 
+        quote.id === id ? { ...quote, ...convertRowToQuote(data) } : quote
+      ));
+      
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Error updating follow-up days",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   const createQuoteVersion = async (existingQuoteId: string) => {
     try {
       // Get the existing quote
@@ -446,7 +480,7 @@ export const useQuotes = () => {
       const { data, error } = await supabase
         .from('quotes')
         .insert({
-          ...existingQuote,
+          ...existingQuote as any,
           id: undefined, // Let Supabase generate new ID
           proposal_number: proposalInfo.fullNumber,
           created_at: new Date().toISOString(),
@@ -478,6 +512,7 @@ export const useQuotes = () => {
     createQuote,
     createQuoteVersion,
     updateQuote,
+    updateFollowUpDays,
     updateWallSystem,
     removeWallSystem,
     deleteQuote,

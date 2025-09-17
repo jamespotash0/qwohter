@@ -20,6 +20,7 @@ const Quotes = () => {
   const {
     quotes,
     updateQuote,
+    updateFollowUpDays,
     createQuoteVersion,
     deleteQuote: deleteQuoteFromDB,
     // markAsDownloaded,
@@ -85,6 +86,7 @@ const Quotes = () => {
     await deleteQuoteFromDB(id);
     setDeleteQuoteId(null);
   };
+
 
   const editQuote = (quote: Quote) => {
     const proposalNumber = quote.proposal_number;
@@ -166,6 +168,7 @@ const Quotes = () => {
                   onEditQuote={editQuote}
                   onDeleteQuote={(id) => setDeleteQuoteId(id)}
                   onStatusChange={updateQuoteStatus}
+                  onFollowUpDaysChange={updateFollowUpDays}
                   onCreateVersion={handleCreateVersion}
                 />
                 

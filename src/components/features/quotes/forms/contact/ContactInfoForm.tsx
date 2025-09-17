@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEffect, useState } from "react";
-import { User, Mail, Phone, Printer, MapPin, Globe, Plus } from "lucide-react";
+import { User, Mail, Phone, Printer, MapPin, Globe, Plus, TrendingUp } from "lucide-react";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useOrganizationSettings } from "@/hooks/useCompanySettings";
 import { extractPrimaryContactInfo } from "@/lib/types/settings/companySettings";
@@ -15,6 +15,7 @@ interface ContactInfoData {
   fax: string;
   website: string;
   organizationName?: string;
+  quoteSource: string;
 }
 
 interface ContactInfoFormProps {
@@ -27,8 +28,11 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
   const { organization, isLoading: organizationLoading } = useOrganizationSettings();
   const [showCustomNameInput, setShowCustomNameInput] = useState(false);
   const [showCustomEmailInput, setShowCustomEmailInput] = useState(false);
+  const [showCustomQuoteSourceInput, setShowCustomQuoteSourceInput] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customEmail, setCustomEmail] = useState("");
+  const [customQuoteSource, setCustomQuoteSource] = useState("");
+
 
   const handleChange = (field: keyof ContactInfoData, value: string) => {
     onUpdate({ ...data, [field]: value });
@@ -78,6 +82,19 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
     }
   };
 
+  // Handle custom quote source input
+  const handleQuoteSourceChange = (value: string) => {
+    if (value === "custom") {
+      setShowCustomQuoteSourceInput(true);
+      setCustomQuoteSource("");
+      handleChange("quoteSource", "");
+    } else {
+      setShowCustomQuoteSourceInput(false);
+      handleChange("quoteSource", value);
+    }
+  };
+
+
   // Handle when existing values don't match dropdown options (e.g., custom values from saved data)
   useEffect(() => {
     if (!loading && activeMembers.length > 0) {
@@ -93,7 +110,18 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
         setCustomEmail(data.contactEmail);
       }
     }
-  }, [loading, activeMembers, data.contactName, data.contactEmail, contactNames, contactEmails]);
+
+    // Check if current quoteSource is not in the dropdown options and set custom input if needed
+    const standardQuoteSources = [
+      'Manual', 'Website_Lead', 'Contractor_Referral', 'Phone_Inquiry', 
+      'Email_Inquiry', 'Trade_Show', 'Repeat_Customer'
+    ];
+    
+    if (data.quoteSource && !standardQuoteSources.includes(data.quoteSource)) {
+      setShowCustomQuoteSourceInput(true);
+      setCustomQuoteSource(data.quoteSource);
+    }
+  }, [loading, activeMembers, data.contactName, data.contactEmail, data.quoteSource, contactNames, contactEmails]);
 
   // Auto-set fields from organization when available (always override for company fields)
   useEffect(() => {
@@ -340,6 +368,73 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             />
             <p className="text-xs text-muted-foreground">
               🔒 Locked from organization settings
+            </p>
+          </div>
+        </div>
+        
+        {/* Row 4: Quote Source */}
+        <div className="grid grid-cols-1 gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="quoteSource" className="text-sm font-medium flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Quote Source <span className="text-red-500">*</span>
+            </Label>
+            {showCustomQuoteSourceInput ? (
+              <div className="space-y-2">
+                <Input
+                  value={customQuoteSource}
+                  onChange={(e) => {
+                    setCustomQuoteSource(e.target.value);
+                    handleChange("quoteSource", e.target.value);
+                  }}
+                  placeholder="Enter custom quote source"
+                  className={`h-10 ${
+                    customQuoteSource.trim() ? 'border-green-500' : 'border-red-500'
+                  }`}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCustomQuoteSourceInput(false);
+                    setCustomQuoteSource("");
+                    handleChange("quoteSource", "");
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                  ← Back to dropdown
+                </button>
+              </div>
+            ) : (
+              <Select
+                value={data.quoteSource}
+                onValueChange={handleQuoteSourceChange}
+                required
+              >
+                <SelectTrigger className={`h-10 w-full ${
+                  data.quoteSource ? 'border-green-500' : 'border-red-500'
+                }`}>
+                  <SelectValue placeholder="Select quote source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Manual">Manual Entry</SelectItem>
+                  <SelectItem value="Website_Lead">Website Lead</SelectItem>
+                  <SelectItem value="Contractor_Referral">Contractor Referral</SelectItem>
+                  <SelectItem value="Phone_Inquiry">Phone Inquiry</SelectItem>
+                  <SelectItem value="Email_Inquiry">Email Inquiry</SelectItem>
+                  <SelectItem value="Trade_Show">Trade Show</SelectItem>
+                  <SelectItem value="Repeat_Customer">Repeat Customer</SelectItem>
+                  <SelectItem value="custom">
+                    <div className="flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      Add custom source...
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+            <p className="text-xs text-muted-foreground">
+              How did this quote opportunity come to you?
             </p>
           </div>
         </div>

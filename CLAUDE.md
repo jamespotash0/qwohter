@@ -71,6 +71,9 @@ npm run test:coverage          # Coverage report
 - whenever working on a new feature ensure it always branched off so that it doesn't affect the current code
 - ensure you give it a proper name -> for features it should be feature/{name}, for important fixes -> hotfix/{name}...
 </branching>
+<MCP>
+- utilize context7 for better content window referencing
+</MCP>
 
 
 ## Architecture Overview

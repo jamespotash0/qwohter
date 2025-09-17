@@ -156,7 +156,8 @@ CREATE TABLE field_definitions (
     name VARCHAR(255) NOT NULL,
     label VARCHAR(255) NOT NULL,
     description TEXT,
-    field_type ENUM('text', 'number', 'email', 'phone', 'dropdown', 'multi_select', 'checkbox', 'radio', 'textarea', 'date', 'currency', 'percentage') NOT NULL,
+    field_type ENUM ('text', 'number', 'decimal', 'integer', 'email', 'phone', 'url', 'password', 'dropdown', 'multi_select', 'checkbox', 'radio','textarea', 'date', 'currency', 'percentage', 'toggle'
+    ) NOT NULL
     
     -- Field Configuration (JSONB)
     field_config JSONB DEFAULT '{}',
