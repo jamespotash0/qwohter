@@ -82,6 +82,10 @@ const Quotes = () => {
     await updateQuote(id, { status: newStatus });
   };
 
+  const updateQuoteSource = async (id: string, newSource: string) => {
+    await updateQuote(id, { quote_source: newSource });
+  };
+
   const handleDeleteQuote = async (id: string) => {
     await deleteQuoteFromDB(id);
     setDeleteQuoteId(null);
@@ -169,6 +173,7 @@ const Quotes = () => {
                   onDeleteQuote={(id) => setDeleteQuoteId(id)}
                   onStatusChange={updateQuoteStatus}
                   onFollowUpDaysChange={updateFollowUpDays}
+                  onQuoteSourceChange={updateQuoteSource}
                   onCreateVersion={handleCreateVersion}
                 />
                 

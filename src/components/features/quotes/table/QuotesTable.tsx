@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ interface QuotesTableProps {
   onDeleteQuote: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
   onFollowUpDaysChange: (id: string, days: number | null) => void;
+  onQuoteSourceChange: (id: string, source: string) => void;
   onCreateVersion?: (id: string) => void;
 }
 
@@ -31,6 +32,29 @@ const formatCurrency = (amount: number) => {
     style: 'currency',
     currency: 'USD',
   }).format(amount);
+};
+
+const formatQuoteSource = (source: string) => {
+  if (!source) return 'Not specified';
+  
+  // Convert snake_case to Title Case
+  return source
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
+// Define quote source options - matching ContactInfoForm
+const getQuoteSourceOptions = () => {
+  return [
+    { value: "Manual", label: "Manual Entry" },
+    { value: "Website_Lead", label: "Website Lead" },
+    { value: "Contractor_Referral", label: "Contractor Referral" },
+    { value: "Phone_Inquiry", label: "Phone Inquiry" },
+    { value: "Email_Inquiry", label: "Email Inquiry" },
+    { value: "Trade_Show", label: "Trade Show" },
+    { value: "Repeat_Customer", label: "Repeat Customer" }
+  ];
 };
 
 // Define which status transitions are allowed
@@ -81,11 +105,34 @@ const getFollowUpStatus = (quote: Quote) => {
   const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
   
   const isOverdue = daysRemaining < 0;
-  const displayText = isOverdue 
-    ? `${Math.abs(daysRemaining)} days overdue`
-    : daysRemaining === 0 
-    ? "Due today"
-    : `${daysRemaining} days left`;
+  
+  let displayText: string;
+  
+  if (isOverdue) {
+    const absTimeDiff = Math.abs(timeDiff);
+    const overdueDays = Math.floor(absTimeDiff / (1000 * 3600 * 24));
+    const overdueHours = Math.floor((absTimeDiff % (1000 * 3600 * 24)) / (1000 * 3600));
+    
+    if (overdueDays > 0) {
+      displayText = `${overdueDays} days overdue`;
+    } else {
+      displayText = `${overdueHours}h overdue`;
+    }
+  } else if (daysRemaining === 0) {
+    // Less than 24 hours remaining
+    const hoursRemaining = Math.floor(timeDiff / (1000 * 3600));
+    const minutesRemaining = Math.floor((timeDiff % (1000 * 3600)) / (1000 * 60));
+    
+    if (hoursRemaining > 0) {
+      displayText = `${hoursRemaining}h ${minutesRemaining}m left`;
+    } else if (minutesRemaining > 0) {
+      displayText = `${minutesRemaining}m left`;
+    } else {
+      displayText = "Due now";
+    }
+  } else {
+    displayText = `${daysRemaining} days left`;
+  }
     
   return { daysRemaining, isOverdue, displayText };
 };
@@ -96,10 +143,22 @@ export const QuotesTable: React.FC<QuotesTableProps> = ({
   onDeleteQuote,
   onStatusChange,
   onFollowUpDaysChange,
+  onQuoteSourceChange,
   onCreateVersion
 }) => {
+  const [forceUpdate, setForceUpdate] = useState(0);
+
+  // Update follow-up times every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setForceUpdate(prev => prev + 1);
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="relative max-h-[608px] overflow-hidden">
+    <div className="relative max-h-[608px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto overflow-y-auto max-h-[608px] pr-16"> {/* Leave space for sticky actions */}
         <Table className="min-w-[2400px] border-collapse"> {/* Wide enough to require horizontal scroll */}
           <colgroup>
@@ -115,7 +174,7 @@ export const QuotesTable: React.FC<QuotesTableProps> = ({
             <col className="w-[24rem]" /> {/* Follow Up Days */}
           </colgroup>
           <TableHeader className="sticky top-0 bg-white z-10">
-            <TableRow className="bg-slate-50/50 h-10">
+            <TableRow className="bg-slate-50/80 h-10 border-b border-slate-200">
               <TableHead className="font-semibold py-4 text-sm">Proposal #</TableHead>
               <TableHead className="font-semibold py-4 text-sm">Project Name</TableHead>
               <TableHead className="font-semibold py-4 text-sm">Client Name</TableHead>
@@ -175,9 +234,18 @@ export const QuotesTable: React.FC<QuotesTableProps> = ({
                 </TableCell>
                 
                 <TableCell className="py-2">
-                  <div className="text-sm text-slate-600">
-                    {quoteSource || 'Not specified'}
-                  </div>
+                  <Select value={quoteSource || ""} onValueChange={(value) => onQuoteSourceChange(quote.id, value)}>
+                    <SelectTrigger className="w-full h-8 border-0 text-xs px-3 bg-gray-100 text-gray-800 [&>svg]:hidden">
+                      <SelectValue placeholder="Select source" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border shadow-lg z-50">
+                      {getQuoteSourceOptions().map((source) => (
+                        <SelectItem key={source.value} value={source.value}>
+                          {source.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </TableCell>
 
                 <TableCell className="py-2">
@@ -267,9 +335,9 @@ export const QuotesTable: React.FC<QuotesTableProps> = ({
     </div>
     
     {/* Sticky Actions Column */}
-    <div className="absolute top-0 right-0 bg-white border-l border-slate-200 w-16 h-full">
-      <div className="sticky top-0 bg-white z-20 border-b border-slate-200">
-        <div className="h-[3.25rem] flex items-center justify-center bg-slate-50/50">
+    <div className="absolute top-0 right-0 bg-white border-l border-slate-200 w-16 h-full rounded-r-xl">
+      <div className="sticky top-0 bg-white z-20 border-b border-slate-200 rounded-tr-xl">
+        <div className="h-[3.25rem] flex items-center justify-center bg-slate-50/80 rounded-tr-xl">
           <span className="font-semibold text-sm">Actions</span>
         </div>
       </div>
