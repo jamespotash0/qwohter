@@ -368,9 +368,17 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
                 <p className="text-xs text-muted-foreground">
                   or drag and drop your logo here
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  Supports JPG, JPEG, and SVG files (max 5MB)
-                </p>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Flexible sizing:</strong> Wide, square, or landscape logos supported
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Supports JPG, JPEG, and SVG files (max 5MB)
+                  </p>
+                  <p className="text-xs text-muted-foreground text-blue-600">
+                    💡 Logo automatically resizes based on aspect ratio in quote headers
+                  </p>
+                </div>
               </div>
             </div>
           )}

@@ -58,12 +58,13 @@ export class LogoUploadService {
 
       // Check image dimensions for raster images
       const dimensions = await this.getImageDimensions(file);
-      // Allow larger images but recommend template-optimized sizes
-      const maxAllowed = { width: this.TEMPLATE_DIMENSIONS.width * 10, height: this.TEMPLATE_DIMENSIONS.height * 10 };
-      if (dimensions.width > maxAllowed.width || dimensions.height > maxAllowed.height) {
+      // Allow flexible sizing for different aspect ratios
+      // Maximum 5000px for any dimension to prevent extremely large files
+      const maxDimension = 5000;
+      if (dimensions.width > maxDimension || dimensions.height > maxDimension) {
         return {
           isValid: false,
-          error: `Image dimensions too large. Maximum size is ${maxAllowed.width}x${maxAllowed.height} pixels. For best template display, use ${this.TEMPLATE_DIMENSIONS.width}x${this.TEMPLATE_DIMENSIONS.height} pixels.`,
+          error: `Image dimensions too large. Maximum size is ${maxDimension}x${maxDimension} pixels. Image will be automatically resized for optimal template display.`,
           fileSize: file.size,
           dimensions
         };

@@ -33,19 +33,48 @@ export class SectionGenerators {
     const hasFax = fax && fax.trim() !== '';
 
 
+    // Flexible logo sizing - detects aspect ratio and adjusts container
     const logoHtml = hasLogo 
-      ? `<img src="${logoUrl}" alt="Company Logo" style="max-width: 440px; max-height: 120px; object-fit: contain;" onError="this.style.display='none'" />`
+      ? `<img 
+          src="${logoUrl}" 
+          alt="Company Logo" 
+          style="max-width: 100%; max-height: 100%; object-fit: contain; opacity: 0; transition: opacity 0.3s ease;" 
+          onError="this.style.display='none'"
+          onLoad="
+            const img = this;
+            const container = img.parentElement;
+            const aspectRatio = img.naturalWidth / img.naturalHeight;
+            
+            // Adjust container size based on aspect ratio to better fill available space
+            if (aspectRatio > 3) {
+              // Very wide logos (like 1537x409 ≈ 3.8:1) - use more width
+              container.style.width = '500px';
+              container.style.height = '90px';
+            } else if (aspectRatio < 1.5) {
+              // Square or tall logos (like 1300x1300 = 1:1) - make them bigger
+              container.style.width = '180px';
+              container.style.height = '150px';
+            } else {
+              // Standard landscape logos (1.5:1 to 3:1) - use more space
+              container.style.width = '450px';
+              container.style.height = '120px';
+            }
+            
+            // Show the image after container is properly sized
+            img.style.opacity = '1';
+          "
+        />`
       : '';
     
 
     return `<div class="header-section">
       <div class="company-info">
-        <div class="company-logo" style="position: absolute; top: 40px; left: 60px; width: 440px; height: 90px; display: flex; align-items: center; justify-content: center;">
+        <div class="company-logo" style="position: absolute; top: 40px; left: 60px; width: 120px; height: 90px; display: flex; align-items: center; justify-content: flex-start; transition: all 0.3s ease;">
           ${logoHtml}
         </div>
       </div>
       
-      <div class="contact-details" style="width: 50%; margin-left: 150px;">
+      <div class="contact-details" style="width: 40%; margin-left: 280px;">
         <div class="contact-row">
           <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Contact:</span>
           <span class="value">${contactName}</span>
@@ -81,6 +110,7 @@ export class SectionGenerators {
     const billedToName = data.job_details?.client_name || '';
     const billedToCompany = data.job_details?.client_company || '';
     const billedToAddress = data.job_details?.client_address || '';
+    const projectName = data.project_name;
 
     return `<div class="billing-job-container" style="display: flex; gap: 40px; align-items: flex-start; margin-top: -40px;">
       <div class="billing-table" style="width: 30%;">
@@ -104,7 +134,7 @@ export class SectionGenerators {
         </table>
       </div>
       <div class="job-info-section" style="flex-grow: 1;">
-        <div style="font-weight: bold; margin-left: 40px; margin-bottom: 4px; height: 16px"></div>
+        <!-- <div style="font-weight: bold; margin-left: 40px; margin-bottom: 4px; height: 16px"></div> -->
         <table style="width: 80%; border-collapse: collapse; margin-left: 175px">
           <colgroup>
             <col style="width: 30%;">
@@ -124,6 +154,14 @@ export class SectionGenerators {
             </td>
             <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
               ${proposalNumber}
+            </td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold; padding: 4px; border: none; text-align: right;">
+              Project Name:
+            </td>
+            <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
+              ${projectName}
             </td>
           </tr>
           <tr>
