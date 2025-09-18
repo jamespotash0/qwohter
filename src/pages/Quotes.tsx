@@ -21,6 +21,7 @@ const Quotes = () => {
   const [user, setUser] = useState<any>(null);
   const {
     quotes,
+    loading: quotesLoading,
     updateQuote,
     updateFollowUpDays,
     createQuoteVersion,
@@ -98,7 +99,22 @@ const Quotes = () => {
   };
 
 
-  if (!user) return null;
+  // Single loading check pattern - prevents flash by always maintaining layout
+  if (!user || quotesLoading) {
+    return (
+      <SidebarProvider>
+        <div className="h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
+          <AppSidebar user={user?.email || ""} onLogout={handleLogout} />
+          <main className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading quotes...</p>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider>

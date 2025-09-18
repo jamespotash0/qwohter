@@ -20,8 +20,8 @@ import { AnalyticsPageCharts } from "@/components/common/charts/AnalyticsPageCha
 const Analytics = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
-  const { quotes } = useQuotes();
-  const { currentOrganization } = useOrganizations();
+  const { quotes, loading: quotesLoading } = useQuotes();
+  const { currentOrganization, loading: organizationsLoading } = useOrganizations();
   const { profile } = useUserProfile(user?.id);
 
   useEffect(() => {
@@ -65,7 +65,22 @@ const Analytics = () => {
   const averageRevenuePerQuote = wonQuotes > 0 ? totalRevenue / wonQuotes : 0;
   const conversionRate = totalQuotes > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;
 
-  if (!user) return null;
+  // Single loading check pattern - prevents flash by always maintaining layout
+  if (!user || quotesLoading) {
+    return (
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100 overflow-hidden">
+          <AppSidebar user={user?.email || ""} onLogout={handleLogout} />
+          <main className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading analytics...</p>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider>

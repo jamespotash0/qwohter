@@ -44,8 +44,21 @@ const Settings = () => {
     navigate('/auth');
   };
 
+  // Single loading check pattern - prevents flash by always maintaining layout
   if (!user) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return (
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <AppSidebar user="" onLogout={handleLogout} />
+          <main className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading settings...</p>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
   }
 
   

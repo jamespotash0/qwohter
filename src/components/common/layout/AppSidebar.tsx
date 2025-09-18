@@ -34,11 +34,33 @@ export function AppSidebar({
   onLogout
 }: AppSidebarProps) {
   const {
-    state
+    state,
+    setOpen
   } = useSidebar();
   const isCollapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
+
+  const handleNavigate = (path: string) => {
+    navigate(path);
+    // Force sidebar to stay collapsed if it was collapsed
+    if (isCollapsed) {
+      // Use setTimeout to ensure the sidebar state is forced after any potential expansion
+      setTimeout(() => {
+        setOpen(false);
+      }, 0);
+    }
+  };
+
+  const handleLogout = () => {
+    onLogout();
+    // Force sidebar to stay collapsed if it was collapsed
+    if (isCollapsed) {
+      setTimeout(() => {
+        setOpen(false);
+      }, 0);
+    }
+  };
   return (
     <Sidebar 
       className={isCollapsed ? "w-16" : "w-60"} 
@@ -51,17 +73,21 @@ export function AppSidebar({
       } as any}
     >
       <SidebarHeader className="p-4 border-b border-white/20">
-        <div className="flex items-center justify-between">
-          {!isCollapsed && (
+        {isCollapsed ? (
+          <div className="flex justify-center">
+            <SidebarTrigger className="h-8 w-8 p-1 text-white hover:bg-orange-400/20 rounded-md transition-all duration-200 hover:text-white" />
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center">
                 <Building2 className="w-4 h-4 text-primary-foreground" />
               </div>
               <span className="font-bold text-lg text-white">Qwohter</span>
             </div>
-          )}
-          <SidebarTrigger className="h-6 w-6 text-white hover:text-white/80" />
-        </div>
+            <SidebarTrigger className="h-8 w-8 p-1 text-white hover:bg-orange-400/20 rounded-md transition-all duration-200 hover:text-white" />
+          </div>
+        )}
       </SidebarHeader>
 
       <SidebarContent>
@@ -75,8 +101,15 @@ export function AppSidebar({
               {menuItems.map(item => {
               const isActive = location.pathname === item.path;
               return <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild className={`w-full justify-start transition-all duration-200 ${isActive ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium shadow-md" : "text-white hover:bg-orange-400/20"}`}>
-                      <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(item.path)}>
+                    <SidebarMenuButton 
+                      className={`w-full justify-start transition-all duration-200 ${isActive ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium shadow-md" : "text-white hover:bg-orange-400/20"}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleNavigate(item.path);
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
                         <item.icon className="h-4 w-4" />
                         {!isCollapsed && <span className="flex-1">{item.title}</span>}
                       </div>
@@ -97,8 +130,15 @@ export function AppSidebar({
               {generalItems.map(item => {
                 const isActive = location.pathname === item.path;
                 return <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className={`w-full justify-start transition-all duration-200 ${isActive ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium shadow-md" : "text-white hover:bg-orange-400/20"}`}>
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(item.path!)}>
+                  <SidebarMenuButton 
+                    className={`w-full justify-start transition-all duration-200 ${isActive ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium shadow-md" : "text-white hover:bg-orange-400/20"}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleNavigate(item.path!);
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
                       <item.icon className="h-4 w-4" />
                       {!isCollapsed && <span>{item.title}</span>}
                     </div>
@@ -107,8 +147,15 @@ export function AppSidebar({
               })}
               
               <SidebarMenuItem>
-                <SidebarMenuButton asChild className="w-full justify-start hover:bg-muted text-destructive hover:text-destructive" onClick={onLogout}>
-                  <div className="flex items-center gap-3 cursor-pointer">
+                <SidebarMenuButton 
+                  className="w-full justify-start hover:bg-muted text-destructive hover:text-destructive"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleLogout();
+                  }}
+                >
+                  <div className="flex items-center gap-3">
                     <LogOut className="h-4 w-4" />
                     {!isCollapsed && <span>Logout</span>}
                   </div>

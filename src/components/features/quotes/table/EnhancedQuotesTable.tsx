@@ -1051,29 +1051,35 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                     </tr>
                   );
                 })}
-                {table.getRowModel().rows.length === 0 && (
-                  <tr>
-                    <td colSpan={table.getAllColumns().length} className="text-center py-12 text-gray-500">
-                      <div className="flex flex-col items-center space-y-2">
-                        <Search className="w-8 h-8 text-gray-400" />
-                        <div className="text-lg font-medium">No quotes found</div>
-                        <div className="text-sm">Try adjusting your search or filters</div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
         </div>
 
+        {/* Empty State - positioned in main viewing area */}
+        {table.getFilteredRowModel().rows.length === 0 && (
+          <div className="text-center py-16 px-6">
+            <div className="flex flex-col items-center space-y-3">
+              <Search className="w-12 h-12 text-gray-300" />
+              <div className="text-xl font-medium text-gray-600">No quotes found</div>
+              <div className="text-gray-500">Try adjusting your search or filters to find what you're looking for</div>
+            </div>
+          </div>
+        )}
+
         {/* Pagination */}
         <div className="bg-white px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <p className="text-sm text-gray-700">
-              Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{' '}
-              {Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, table.getFilteredRowModel().rows.length)} of{' '}
-              {table.getFilteredRowModel().rows.length} results
+              {table.getFilteredRowModel().rows.length === 0 ? (
+                'No results'
+              ) : (
+                <>
+                  Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{' '}
+                  {Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, table.getFilteredRowModel().rows.length)} of{' '}
+                  {table.getFilteredRowModel().rows.length} results
+                </>
+              )}
             </p>
           </div>
 
@@ -1134,13 +1140,6 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Empty State */}
-      {table.getFilteredRowModel().rows.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No quotes found matching your criteria.</p>
-        </div>
-      )}
     </div>
   );
 };

@@ -14,9 +14,10 @@ import {
 import { AppSidebar } from "@/components/common/layout";
 
 import { useOrganizations } from "@/hooks/useOrganizations";
-import { useQuotes } from "@/hooks/useQuotes";
+import { useQuotes, useQuotesLoading, useQuotesStore } from "@/stores/quotes/quotesStore";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { AnalyticsCharts } from "@/components/common/charts/AnalyticsCharts";
+import { useEffect } from "react";
 
 
 interface DashboardProps {
@@ -27,13 +28,43 @@ interface DashboardProps {
 
 const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
   
-  const { quotes } = useQuotes();
+  const quotes = useQuotes();
+  const quotesLoading = useQuotesLoading();
+  const isInitialized = useQuotesStore((state) => state.isInitialized);
+  const initialize = useQuotesStore((state) => state.initialize);
+  
   const {
     currentOrganization,
     members,
-    currentUserRole
+    currentUserRole,
+    loading: organizationsLoading
   } = useOrganizations();
   const { profile } = useUserProfile(userId);
+
+  // Initialize quotes store if not already initialized
+  useEffect(() => {
+    if (!isInitialized) {
+      initialize();
+    }
+  }, [isInitialized, initialize]);
+
+  // Single loading check pattern - prevents flash by always maintaining layout
+  // Only show loading if we don't have any data yet (prevents flash on navigation)
+  if ((!isInitialized || (quotesLoading && quotes.length === 0)) || (organizationsLoading && !currentOrganization)) {
+    return (
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <AppSidebar user={user} onLogout={onLogout} />
+          <main className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading dashboard...</p>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider>
