@@ -84,7 +84,7 @@ const Analytics = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
+      <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100">
         <AppSidebar user={user.email || ""} onLogout={handleLogout} />
         
         <main className="flex-1 flex flex-col overflow-hidden">
