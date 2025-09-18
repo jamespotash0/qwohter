@@ -564,7 +564,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
             <DropdownMenuItem onClick={() => onEditQuote(row.original)}>
               <Edit3 className="mr-2 h-4 w-4" />
               Edit
@@ -975,7 +975,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                         <th
                           key={header.id}
                           className={`relative px-4 py-3 text-left text-sm font-semibold text-gray-900 border-r border-gray-200 last:border-r-0 ${
-                            isActionsColumn ? 'sticky right-0 bg-gray-50/80 border-l border-gray-200 z-20' : ''
+                            isActionsColumn ? 'sticky right-0 bg-gray-50 border-l border-gray-200 z-20' : ''
                           } ${rowHeight}`}
                           style={{ width: header.getSize() }}
                         >
@@ -1039,9 +1039,9 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                             key={cell.id}
                             className={`px-4 ${paddingY} text-sm border-r border-gray-100 last:border-r-0 ${
                               isActionsColumn 
-                                ? 'sticky right-0 bg-white group-hover:bg-gray-50/50 border-l border-gray-200 z-10' 
+                                ? 'sticky right-0 bg-white group-hover:bg-gray-50 border-l border-gray-200 z-10' 
                                 : ''
-                            } ${row.getIsSelected() && isActionsColumn ? 'bg-blue-50/30' : ''}`}
+                            } ${row.getIsSelected() && isActionsColumn ? 'bg-blue-50' : ''}`}
                             style={{ width: cell.column.getSize() }}
                           >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
