@@ -72,10 +72,10 @@ export function AppSidebar({
         "--sidebar-border": "#404454",
       } as any}
     >
-      <SidebarHeader className="p-4 border-b border-white/20">
+      <SidebarHeader className="p-3 border-b border-white/20">
         {isCollapsed ? (
           <div className="flex justify-center">
-            <SidebarTrigger className="h-8 w-8 p-1 text-white hover:bg-orange-400/20 rounded-md transition-all duration-200 hover:text-white" />
+            <SidebarTrigger className="h-8 w-8 p-2 text-white hover:bg-orange-400/20 rounded-md transition-all duration-200 hover:text-white" />
           </div>
         ) : (
           <div className="flex items-center justify-between">
@@ -85,7 +85,7 @@ export function AppSidebar({
               </div>
               <span className="font-bold text-lg text-white">Qwohter</span>
             </div>
-            <SidebarTrigger className="h-8 w-8 p-1 text-white hover:bg-orange-400/20 rounded-md transition-all duration-200 hover:text-white" />
+            <SidebarTrigger className="h-10 w-10 p-2 text-white hover:bg-orange-400/20 rounded-md transition-all duration-200 hover:text-white" />
           </div>
         )}
       </SidebarHeader>
@@ -121,7 +121,7 @@ export function AppSidebar({
         </SidebarGroup>
 
         {/* General Section */}
-        <SidebarGroup>
+        <SidebarGroup className={isCollapsed ? "mt-2" : ""}>
           <SidebarGroupLabel className="text-xs font-medium text-white/70 mb-2">
             {!isCollapsed ? "GENERAL" : ""}
           </SidebarGroupLabel>
