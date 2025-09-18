@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ interface QuotesTableProps {
   onEditQuote: (quote: Quote) => void;
   onDeleteQuote: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
+  onFollowUpDaysChange: (id: string, days: number | null) => void;
+  onQuoteSourceChange: (id: string, source: string) => void;
   onCreateVersion?: (id: string) => void;
 }
 
@@ -24,11 +26,35 @@ const statusColors = {
   Rejected: "bg-red-100 text-red-800",
 };
 
+
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
   }).format(amount);
+};
+
+const formatQuoteSource = (source: string) => {
+  if (!source) return 'Not specified';
+  
+  // Convert snake_case to Title Case
+  return source
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
+// Define quote source options - matching ContactInfoForm
+const getQuoteSourceOptions = () => {
+  return [
+    { value: "Manual", label: "Manual Entry" },
+    { value: "Website_Lead", label: "Website Lead" },
+    { value: "Contractor_Referral", label: "Contractor Referral" },
+    { value: "Phone_Inquiry", label: "Phone Inquiry" },
+    { value: "Email_Inquiry", label: "Email Inquiry" },
+    { value: "Trade_Show", label: "Trade Show" },
+    { value: "Repeat_Customer", label: "Repeat Customer" }
+  ];
 };
 
 // Define which status transitions are allowed
@@ -64,64 +90,137 @@ const getAvailableStatusOptions = (currentStatus: string) => {
   return allStatuses;
 };
 
+// Helper function to calculate follow-up status
+const getFollowUpStatus = (quote: Quote) => {
+  if (!quote.follow_up_days || !quote.created_at) {
+    return { daysRemaining: null, isOverdue: false, displayText: "Not set" };
+  }
+
+  const createdAt = new Date(quote.created_at);
+  const followUpDate = new Date(createdAt);
+  followUpDate.setDate(followUpDate.getDate() + quote.follow_up_days);
+  
+  const today = new Date();
+  const timeDiff = followUpDate.getTime() - today.getTime();
+  const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
+  
+  const isOverdue = daysRemaining < 0;
+  
+  let displayText: string;
+  
+  if (isOverdue) {
+    const absTimeDiff = Math.abs(timeDiff);
+    const overdueDays = Math.floor(absTimeDiff / (1000 * 3600 * 24));
+    const overdueHours = Math.floor((absTimeDiff % (1000 * 3600 * 24)) / (1000 * 3600));
+    
+    if (overdueDays > 0) {
+      displayText = `${overdueDays} days overdue`;
+    } else {
+      displayText = `${overdueHours}h overdue`;
+    }
+  } else if (daysRemaining === 0) {
+    // Less than 24 hours remaining
+    const hoursRemaining = Math.floor(timeDiff / (1000 * 3600));
+    const minutesRemaining = Math.floor((timeDiff % (1000 * 3600)) / (1000 * 60));
+    
+    if (hoursRemaining > 0) {
+      displayText = `${hoursRemaining}h ${minutesRemaining}m left`;
+    } else if (minutesRemaining > 0) {
+      displayText = `${minutesRemaining}m left`;
+    } else {
+      displayText = "Due now";
+    }
+  } else {
+    displayText = `${daysRemaining} days left`;
+  }
+    
+  return { daysRemaining, isOverdue, displayText };
+};
+
 export const QuotesTable: React.FC<QuotesTableProps> = ({
   quotes,
   onEditQuote,
   onDeleteQuote,
   onStatusChange,
+  onFollowUpDaysChange,
+  onQuoteSourceChange,
   onCreateVersion
 }) => {
+  const [forceUpdate, setForceUpdate] = useState(0);
+
+  // Update follow-up times every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setForceUpdate(prev => prev + 1);
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="overflow-auto max-h-[608px]"> {/* Adjust max height as needed */}
-      <Table>
-        <colgroup>
-          <col className="w-24" />
-          <col />
-          <col />
-          <col className="w-20" />
-          <col className="w-24" />
-          <col className="w-24" />
-          <col className="w-16" />
-        </colgroup>
-        <TableHeader className="sticky top-0 bg-white z-10">
-          <TableRow className="bg-slate-50/50 h-10">
-            <TableHead className="font-semibold py-2 text-xs">Proposal #</TableHead>
-            <TableHead className="font-semibold py-2 text-xs">Project Name</TableHead>
-            <TableHead className="font-semibold py-2 text-xs">Client Name</TableHead>
-            <TableHead className="font-semibold py-2 text-xs">Created</TableHead>
-            <TableHead className="font-semibold py-2 text-xs">Total</TableHead>
-            <TableHead className="font-semibold py-2 text-xs">Status</TableHead>
-            <TableHead className="font-semibold py-2 text-xs">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
+    <div className="relative max-h-[608px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto overflow-y-auto max-h-[608px] pr-16"> {/* Leave space for sticky actions */}
+        <Table className="min-w-[2400px] border-collapse"> {/* Wide enough to require horizontal scroll */}
+          <colgroup>
+            <col className="w-[24rem]" /> {/* Proposal # */}
+            <col className="w-[64rem]"/> {/* Project Name */}
+            <col className="w-[32rem]"/> {/* Client Name */}
+            <col className="w-[24rem]" /> {/* Total */}
+            <col className="w-[24rem]" /> {/* Status */}
+            <col className="w-[24rem]" />  {/* Quote Source */}
+            <col className="w-[24rem]" />  {/* Creator */}
+            <col className="w-[24rem]" /> {/* Created */}
+            <col className="w-[24rem]" /> {/* Status Updated */}
+            <col className="w-[24rem]" /> {/* Follow Up Days */}
+          </colgroup>
+          <TableHeader className="sticky top-0 bg-white z-10">
+            <TableRow className="bg-slate-50/80 h-10 border-b border-slate-200">
+              <TableHead className="font-semibold py-4 text-sm">Proposal #</TableHead>
+              <TableHead className="font-semibold py-4 text-sm">Project Name</TableHead>
+              <TableHead className="font-semibold py-4 text-sm">Client Name</TableHead>
+              <TableHead className="font-semibold py-4 text-sm">Total</TableHead>
+              <TableHead className="font-semibold py-4 text-sm">Status</TableHead>
+              <TableHead className="font-semibold py-4 text-sm">Quote Source</TableHead>
+              <TableHead className="font-semibold py-4 text-sm">Creator</TableHead>
+              <TableHead className="font-semibold py-4 text-sm">Created</TableHead>
+              <TableHead className="font-semibold py-4 text-sm">Status Updated</TableHead>
+              <TableHead className="font-semibold py-4 text-sm">Follow Up Days</TableHead>
+            </TableRow>
+          </TableHeader>
         <TableBody>
           {quotes.map((quote) => {
             const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client Name";
             const projectName = quote.project_name || quote.quote_details?.project_name || "Untitled Project";
             const total = quote.price_details?.final_selling_price || 0;
             const projectLocation = quote.job_details?.job_location || "";
+            const quoteSource = quote.quote_source || "";
+            const followUpStatus = getFollowUpStatus(quote);
 
             const proposalInfo = ProposalNumberGenerator.parseProposalNumber(quote.proposal_number);
             
+            
             return (
-              <TableRow key={quote.id} className="hover:bg-slate-50/50 transition-colors h-14">
+              <TableRow key={quote.id} className="hover:bg-slate-50/50 transition-colors h-16">
                 <TableCell className="font-medium py-2 text-sm">{proposalInfo.displayNumber}</TableCell>
                 <TableCell className="py-2">
                   <div>
-                    <div className="font-medium text-sm truncate">{projectName}</div>
-                    <div className="text-xs text-slate-500 truncate">{projectLocation}</div>
+                    <div className="font-medium text-sm">
+                      {projectName}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {projectLocation}
+                    </div>
                   </div>
                 </TableCell>
                 <TableCell className="py-2">
-                  <div className="font-medium text-sm truncate">{clientName}</div>
-                </TableCell>
-                <TableCell className="text-slate-600 py-2 text-sm">
-                  {new Date(quote.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  <div className="font-medium text-sm">
+                    {clientName}
+                  </div>
                 </TableCell>
                 <TableCell className="font-semibold py-2 text-sm">{formatCurrency(total)}</TableCell>
                 <TableCell className="py-2">
                   <Select value={quote.status || "draft"} onValueChange={(value) => onStatusChange(quote.id, value)}>
-                    <SelectTrigger className={`w-22 h-7 border-0 text-xs px-2 ${statusColors[quote.status as keyof typeof statusColors]} [&>svg]:hidden`}>
+                    <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[quote.status as keyof typeof statusColors]} [&>svg]:hidden`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-background border shadow-lg z-50">
@@ -133,41 +232,100 @@ export const QuotesTable: React.FC<QuotesTableProps> = ({
                     </SelectContent>
                   </Select>
                 </TableCell>
+                
                 <TableCell className="py-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-7 w-7 p-0">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEditQuote(quote)}>
-                        <Edit3 className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      {onCreateVersion && (
-                        <DropdownMenuItem onClick={() => onCreateVersion(quote.id)}>
-                          <Copy className="mr-2 h-4 w-4" />
-                          Create Version
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={() => onDeleteQuote(quote.id)}
-                        className="text-red-600 focus:text-red-600"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Select value={quoteSource || ""} onValueChange={(value) => onQuoteSourceChange(quote.id, value)}>
+                    <SelectTrigger className="w-full h-8 border-0 text-xs px-3 bg-gray-100 text-gray-800 [&>svg]:hidden">
+                      <SelectValue placeholder="Select source" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border shadow-lg z-50">
+                      {getQuoteSourceOptions().map((source) => (
+                        <SelectItem key={source.value} value={source.value}>
+                          {source.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+
+                <TableCell className="py-2">
+                   <div className="text-slate-600 text-sm">
+                      {quote.created_by || ''}
+                  </div>
+                </TableCell>
+
+                <TableCell className="text-slate-600 py-2 text-sm">
+                  {new Date(quote.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </TableCell>
+                
+                <TableCell className="py-2 text-sm text-slate-600">
+                  {quote.status_last_updated
+                    ? new Date(quote.status_last_updated).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })
+                    : '-'}
+                </TableCell>
+
+                <TableCell className="py-2">
+                  {quote.follow_up_days === null || quote.follow_up_days === undefined ? (
+                    <Select
+                      value=""
+                      onValueChange={(value) => onFollowUpDaysChange(quote.id, parseInt(value))}
+                    >
+                      <SelectTrigger className="w-32 h-8 border-0 text-xs px-3 bg-blue-50 text-blue-700 [&>svg]:hidden">
+                        <SelectValue placeholder="Set days" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border shadow-lg z-50">
+                        {[1, 2, 3, 4, 5, 7, 10, 14, 21, 30].map((days) => (
+                          <SelectItem key={days} value={days.toString()}>
+                            {days} day{days > 1 ? "s" : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="relative group">
+                      <div className={`w-32 h-8 border-0 text-xs px-3 flex items-center rounded-md cursor-pointer ${
+                        followUpStatus.isOverdue 
+                          ? 'bg-red-100 text-red-800 font-medium' 
+                          : followUpStatus.daysRemaining === 0
+                          ? 'bg-yellow-100 text-yellow-800 font-medium'
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {followUpStatus.displayText}
+                      </div>
+                      <div className="absolute top-0 left-0 opacity-0 group-hover:opacity-100">
+                        <Select
+                          value={quote.follow_up_days.toString()}
+                          onValueChange={(value) => onFollowUpDaysChange(quote.id, value === "clear" ? null : parseInt(value))}
+                        >
+                          <SelectTrigger className="w-22 h-7 border-0 text-xs px-2 bg-blue-50 text-blue-700 [&>svg]:hidden">
+                            <SelectValue placeholder="Change..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border shadow-lg z-50">
+                            {[1, 2, 3, 4, 5, 7, 10, 14, 21, 30].map((days) => (
+                              <SelectItem key={days} value={days.toString()}>
+                                {days} day{days > 1 ? "s" : ""}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="clear" className="text-red-600">
+                              Clear follow-up
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             );
           })}
           {quotes.length === 0 && (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-6 text-slate-500 text-sm">
+              <TableCell colSpan={10} className="text-center py-6 text-slate-500 text-sm">
                 No quotes match your search criteria.
               </TableCell>
             </TableRow>
@@ -175,5 +333,53 @@ export const QuotesTable: React.FC<QuotesTableProps> = ({
         </TableBody>
       </Table>
     </div>
+    
+    {/* Sticky Actions Column */}
+    <div className="absolute top-0 right-0 bg-white border-l border-slate-200 w-16 h-full rounded-r-xl">
+      <div className="sticky top-0 bg-white z-20 border-b border-slate-200 rounded-tr-xl">
+        <div className="h-[3.25rem] flex items-center justify-center bg-slate-50/80 rounded-tr-xl">
+          <span className="font-semibold text-sm">Actions</span>
+        </div>
+      </div>
+      <div>
+        {quotes.map((quote) => (
+          <div key={quote.id} className="h-16 flex items-center justify-center border-b border-slate-100">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-7 w-7 p-0">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onEditQuote(quote)}>
+                  <Edit3 className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                {onCreateVersion && (
+                  <DropdownMenuItem onClick={() => onCreateVersion(quote.id)}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Create Version
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={() => onDeleteQuote(quote.id)}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ))}
+        {quotes.length === 0 && (
+          <div className="h-16 flex items-center justify-center">
+            <span className="text-slate-400 text-xs">-</span>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
   );
 };

@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/common/layout";
+import { AppSidebar, HeaderNav } from "@/components/common/layout";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { authStateHelpers } from "@/utils/authStateHelpers";
 import { teamManagementHelpers } from "@/utils/teamManagementHelpers";
-import { TeamHeader } from "@/components/team/TeamHeader";
+import { Building2, Copy, Check } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { TeamStatsCards } from "@/components/team/TeamStatsCards";
 import { MembersList } from "@/components/team/MembersList";
 import { InviteMemberDialog } from "@/components/team/InviteMemberDialog";
@@ -132,7 +134,7 @@ const Team = () => {
   if (loading) {
     return (
       <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-background">
+        <div className="min-h-screen flex w-full bg-theme-primary">
           <AppSidebar user={user} onLogout={handleLogout} />
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -147,21 +149,61 @@ const Team = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full bg-theme-primary">
         <AppSidebar user={user} onLogout={handleLogout} />
         
         <main className="flex-1 flex flex-col">
-          <TeamHeader 
-            organizationName={currentOrganization?.name || 'Loading...'}
-            userDisplayName={profile?.full_name || user}
-            userRole={currentUserRole || 'member'}
-            orgCode={orgCode}
-            copiedCode={copiedCode}
-            onCopyOrgCode={copyOrganizationCode}
+          {/* Header Nav Bar */}
+          <HeaderNav 
+            user={user} 
+            userProfile={profile as any}
+            onLogout={handleLogout} 
           />
+          
+          {/* Organization Header */}
+          <div className="p-6 pb-0">
+            <div className="flex items-center justify-center">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Building2 className="w-4 h-4 text-white" />
+                </div>
+                <span className="font-bold text-xl bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                  {currentOrganization?.name || 'Loading...'}
+                </span>
+              </div>
+            </div>
+            
+            {/* Team Management Header with Org Code */}
+            <div className="flex items-center justify-between mt-6">
+              <div>
+                <h1 className="text-3xl font-bold text-foreground">Team Management</h1>
+                <p className="text-muted-foreground mt-1">Manage your organization members and permissions.</p>
+              </div>
+              
+              {/* Organization Code */}
+              {orgCode && (
+                <div className="flex items-center gap-3">
+                  <Card className="px-4 py-2 bg-secondary/50">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Org Code:</span>
+                      <code className="font-mono font-semibold text-foreground">{orgCode}</code>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={copyOrganizationCode}
+                        className="h-6 w-6 p-0"
+                      >
+                        {copiedCode ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      </Button>
+                    </div>
+                  </Card>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Main Content */}
-          <div className="flex-1 p-6 pt-3 space-y-6">
+          <div className="flex-1 p-6 pt-4 space-y-6">
 
             <TeamStatsCards
               activeMembersCount={activeMembersCount}

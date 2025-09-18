@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { QuoteDataPanelProps, SectionState } from './types';
 import { ContactInfoSection } from './ContactInfoSection';
 import { ClientInfoSection } from './ClientInfoSection';

@@ -14,6 +14,10 @@ export interface Database {
           delivery_details: any;
           labor_details: any;
           status: string;
+          quote_source?: string;
+          follow_up_days?: number;
+          created_by?: string;
+          status_last_updated?: string;
           date_last_downloaded?: string;
           version: number;
           created_at: string;
@@ -33,6 +37,10 @@ export interface Database {
           delivery_details: any;
           labor_details: any;
           status?: string;
+          quote_source?: string;
+          follow_up_days?: number;
+          created_by?: string;
+          status_last_updated?: string;
           date_last_downloaded?: string;
           version?: number;
           created_at?: string;
@@ -52,6 +60,10 @@ export interface Database {
           delivery_details?: any;
           labor_details?: any;
           status?: string;
+          quote_source?: string;
+          follow_up_days?: number;
+          created_by?: string;
+          status_last_updated?: string;
           date_last_downloaded?: string;
           version?: number;
           created_at?: string;

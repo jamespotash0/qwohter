@@ -1,6 +1,7 @@
-import { BarChart3, Home, Settings, LogOut, Users, FileText, Building2 } from "lucide-react";
+import { BarChart3, Home, Users, FileText, Building2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
+import { ThemeToggleSwitch } from "@/components/common/ThemeToggleSwitch";
 interface AppSidebarProps {
   user: string;
   onLogout: () => void;
@@ -23,41 +24,80 @@ const menuItems = [{
   path: "/team"
 }
 ];
-const generalItems = [{
-  title: "Settings",
-  icon: Settings,
-  path: "/settings"
-}
-];
+// Removed generalItems - Settings and Logout moved to header
 export function AppSidebar({
   // user,
   onLogout
 }: AppSidebarProps) {
   const {
-    state
+    state,
+    setOpen
   } = useSidebar();
   const isCollapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
-  return <Sidebar className={isCollapsed ? "w-16" : "w-60"} collapsible="icon">
-      <SidebarHeader className="p-4 border-b border-sidebar-border/50">
-        <div className="flex items-center justify-between">
-          {!isCollapsed && (
+
+  const handleNavigate = (path: string) => {
+    navigate(path);
+    // Force sidebar to stay collapsed if it was collapsed
+    if (isCollapsed) {
+      // Use setTimeout to ensure the sidebar state is forced after any potential expansion
+      setTimeout(() => {
+        setOpen(false);
+      }, 0);
+    }
+  };
+
+  const handleLogout = () => {
+    onLogout();
+    // Force sidebar to stay collapsed if it was collapsed
+    if (isCollapsed) {
+      setTimeout(() => {
+        setOpen(false);
+      }, 0);
+    }
+  };
+  return (
+    <Sidebar 
+      className={`${isCollapsed ? "w-16" : "w-60"} shadow-xl sidebar-theme`} 
+      collapsible="icon" 
+      style = {{
+        backgroundColor: "var(--sidebar-bg)",
+        color: "var(--text-secondary)",
+      } as any}
+    >
+      <SidebarHeader className="p-3 border-b" style={{borderColor: "var(--border-primary)"}}>
+        {isCollapsed ? (
+          <div className="flex justify-center">
+            <SidebarTrigger 
+              className="h-8 w-8 p-2 rounded-md transition-all duration-200" 
+              style={{color: "var(--text-secondary)"}}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--sidebar-hover)"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+            />
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center">
-                <Building2 className="w-4 h-4 text-primary-foreground" />
+              <div className="w-8 h-8 bg-gradient-to-br from-[#4164df] to-[#3565f7] rounded-lg flex items-center justify-center">
+                <Building2 className="w-4 h-4" style={{color: "var(--text-secondary)"}} />
               </div>
-              <span className="font-bold text-lg bg-gradient-to-r from-sidebar-foreground to-sidebar-foreground/80 bg-clip-text text-transparent">Qwohter</span>
+              <span className="font-bold text-lg" style={{color: "var(--text-secondary)"}}>Qwohter</span>
             </div>
-          )}
-          <SidebarTrigger className="h-6 w-6" />
-        </div>
+            <SidebarTrigger 
+              className="h-10 w-10 p-2 rounded-md transition-all duration-200" 
+              style={{color: "var(--text-secondary)"}}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--sidebar-hover)"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+            />
+          </div>
+        )}
       </SidebarHeader>
 
       <SidebarContent>
         {/* Main Menu */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-medium text-muted-foreground mb-2">
+          <SidebarGroupLabel className="text-xs font-medium mb-2" style={{color: "#a3adc2"}}>
             {!isCollapsed ? "MENU" : ""}
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -65,8 +105,29 @@ export function AppSidebar({
               {menuItems.map(item => {
               const isActive = location.pathname === item.path;
               return <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild className={`w-full justify-start transition-all duration-200 ${isActive ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground font-medium shadow-md" : "hover:bg-sidebar-accent/80"}`}>
-                      <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(item.path)}>
+                    <SidebarMenuButton 
+                      className={`w-full justify-start transition-all duration-200 ${isActive ? "font-medium shadow-md" : ""}`}
+                      style={{
+                        backgroundColor: isActive ? "var(--sidebar-active)" : "transparent",
+                        color: "var(--text-secondary)"
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.backgroundColor = "var(--sidebar-hover)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.backgroundColor = "transparent";
+                        }
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleNavigate(item.path);
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
                         <item.icon className="h-4 w-4" />
                         {!isCollapsed && <span className="flex-1">{item.title}</span>}
                       </div>
@@ -77,37 +138,23 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* General Section */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-medium text-muted-foreground mb-2">
-            {!isCollapsed ? "GENERAL" : ""}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {generalItems.map(item => {
-                const isActive = location.pathname === item.path;
-                return <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className={`w-full justify-start transition-all duration-200 ${isActive ? "bg-gradient-to-r from-primary to-primary/90 text-primary-foreground font-medium shadow-md" : "hover:bg-sidebar-accent/80"}`}>
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate(item.path!)}>
-                      <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </div>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              })}
-              
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild className="w-full justify-start hover:bg-muted text-destructive hover:text-destructive" onClick={onLogout}>
-                  <div className="flex items-center gap-3 cursor-pointer">
-                    <LogOut className="h-4 w-4" />
-                    {!isCollapsed && <span>Logout</span>}
-                  </div>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Settings and Logout moved to header */}
       </SidebarContent>
 
-    </Sidebar>;
+      <SidebarFooter className="p-3 border-t" style={{borderColor: "var(--border-primary)"}}>
+        {!isCollapsed ? (
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium" style={{color: "var(--text-secondary)"}}>
+              Theme
+            </span>
+            <ThemeToggleSwitch />
+          </div>
+        ) : (
+          <div className="flex justify-center">
+            <ThemeToggleSwitch />
+          </div>
+        )}
+      </SidebarFooter>
+    </Sidebar>
+  );
 }

@@ -125,6 +125,7 @@ const QuoteEditingWizard = ({
         delivery_details: deliveryLabor.delivery,
         labor_details: deliveryLabor.labor,
         proposal_number: jobDetails.proposalNumber,
+        quote_source: contactInfo.quoteSource,
         status: quoteStatus
       });
       
@@ -181,6 +182,7 @@ const QuoteEditingWizard = ({
         delivery_details: deliveryLabor.delivery,
         labor_details: deliveryLabor.labor,
         proposal_number: jobDetails.proposalNumber || "",
+        quote_source: contactInfo.quoteSource,
         status: "Incomplete"
       });
       

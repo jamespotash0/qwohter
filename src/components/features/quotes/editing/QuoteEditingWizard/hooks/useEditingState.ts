@@ -31,7 +31,8 @@ const convertQuoteToEditingData = (quote: Quote): EditingStateData => {
       address: quoteDetails.address || "",
       phone: quoteDetails.phone || "",
       fax: quoteDetails.fax || "",
-      website: quoteDetails.website || ""
+      website: quoteDetails.website || "",
+      quoteSource: quote.quote_source || ""
     },
     jobDetails: {
       date: jobDetails.date || new Date().toISOString().split('T')[0],

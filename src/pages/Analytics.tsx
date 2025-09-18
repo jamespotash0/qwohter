@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/common/layout";
+import { AppSidebar, HeaderNav } from "@/components/common/layout";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -20,8 +20,8 @@ import { AnalyticsPageCharts } from "@/components/common/charts/AnalyticsPageCha
 const Analytics = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
-  const { quotes } = useQuotes();
-  const { currentOrganization } = useOrganizations();
+  const { quotes, loading: quotesLoading } = useQuotes();
+  const { currentOrganization, loading: organizationsLoading } = useOrganizations();
   const { profile } = useUserProfile(user?.id);
 
   useEffect(() => {
@@ -65,46 +65,41 @@ const Analytics = () => {
   const averageRevenuePerQuote = wonQuotes > 0 ? totalRevenue / wonQuotes : 0;
   const conversionRate = totalQuotes > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;
 
-  if (!user) return null;
+  // Single loading check pattern - prevents flash by always maintaining layout
+  if (!user || quotesLoading) {
+    return (
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-theme-primary overflow-hidden">
+          <AppSidebar user={user?.email || ""} onLogout={handleLogout} />
+          <main className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading analytics...</p>
+            </div>
+          </main>
+        </div>
+      </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
+      <div className="min-h-screen flex w-full bg-theme-primary">
         <AppSidebar user={user.email || ""} onLogout={handleLogout} />
         
         <main className="flex-1 flex flex-col overflow-hidden">
-          {/* Floating Header */}
-          <div className="p-6 pb-0">
-            <header className="bg-white/90 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl px-8 py-5 animate-fade-in">
-              <div className="flex items-center justify-between">
-                <div className="flex-1" />
-                <div className="flex items-center justify-center gap-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <Building2 className="w-4 h-4 text-white" />
-                  </div>
-                  <span className="font-bold text-xl bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                    {currentOrganization?.name || 'Loading...'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-4 flex-1 justify-end">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center shadow-inner">
-                      <User className="w-5 h-5 text-slate-600" />
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-slate-800">{profile?.full_name}</p>
-                      <p className="text-xs text-slate-500">{profile?.role ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1).toLowerCase() : ""}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </header>
-          </div>
+          {/* Header Nav Bar */}
+          <HeaderNav 
+            user={user.email || ""} 
+            userProfile={profile as any}
+            organizationName={currentOrganization?.name || 'Loading...'}
+            onLogout={handleLogout} 
+          />
 
           {/* Analytics Content */}
-          <div className="flex-1 p-6 pt-4 space-y-8 overflow-y-auto">
+          <div className="flex-1 p-6 space-y-8 overflow-y-auto">
             {/* Page Header */}
-            {/* <div className="animate-fade-in text-center">
+            {/* <div className=" text-center">
               <h1 className="text-5xl font-black bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent mb-4">
                 Analytics Dashboard
               </h1>
@@ -112,7 +107,7 @@ const Analytics = () => {
             </div> */}
 
             {/* Key Metrics Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 ">
               <Card className="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 border-0 shadow-2xl hover:shadow-3xl transition-shadow duration-300 group">
                 <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
                 <CardContent className="relative p-6 text-white">
@@ -191,7 +186,7 @@ const Analytics = () => {
             </div>
 
             {/* Chart.js Analytics */}
-            <div className="animate-fade-in">
+            <div className="">
               {currentOrganization ? (
                 <AnalyticsPageCharts quotes={quotes} organization={currentOrganization} />
               ) : (

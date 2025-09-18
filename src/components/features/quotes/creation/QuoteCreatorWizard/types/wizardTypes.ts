@@ -8,6 +8,7 @@ export interface ContactInfo {
   phone: string;
   fax: string;
   website: string;
+  quoteSource: string;
 }
 
 export interface JobDetails {
