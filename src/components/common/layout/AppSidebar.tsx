@@ -58,7 +58,7 @@ export function AppSidebar({
   };
   return (
     <Sidebar 
-      className={isCollapsed ? "w-16" : "w-60"} 
+      className={`${isCollapsed ? "w-16" : "w-60"} shadow-xl`} 
       collapsible="icon" 
       style = {{
         "--sidebar-bg": "#4761c2ff",
