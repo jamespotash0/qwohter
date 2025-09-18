@@ -1,7 +1,8 @@
-import { BarChart3, Home, Users, FileText, Building2 } from "lucide-react";
+import { BarChart3, Home, Users, FileText } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { ThemeToggleSwitch } from "@/components/common/ThemeToggleSwitch";
+import { QwohterLogo } from "@/components/common/QwohterLogo";
 interface AppSidebarProps {
   user: string;
   onLogout: () => void;
@@ -69,6 +70,7 @@ export function AppSidebar({
       <SidebarHeader className="p-3 border-b" style={{borderColor: "var(--border-primary)"}}>
         {isCollapsed ? (
           <div className="flex justify-center">
+            {/* Logo disappears when collapsed, only show toggle */}
             <SidebarTrigger 
               className="h-8 w-8 p-2 rounded-md transition-all duration-200" 
               style={{color: "var(--text-secondary)"}}
@@ -78,14 +80,12 @@ export function AppSidebar({
           </div>
         ) : (
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-[#4164df] to-[#3565f7] rounded-lg flex items-center justify-center">
-                <Building2 className="w-4 h-4" style={{color: "var(--text-secondary)"}} />
-              </div>
-              <span className="font-bold text-lg" style={{color: "var(--text-secondary)"}}>Qwohter</span>
+            {/* Logo takes up more room to the right when expanded */}
+            <div className="flex-1 pr-4">
+              <QwohterLogo size="md" />
             </div>
             <SidebarTrigger 
-              className="h-10 w-10 p-2 rounded-md transition-all duration-200" 
+              className="h-8 w-8 p-2 rounded-md transition-all duration-200 flex-shrink-0" 
               style={{color: "var(--text-secondary)"}}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--sidebar-hover)"}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
