@@ -804,7 +804,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="w-10 h-10 p-0"
+                    className="w-10 h-10 p-0 hover:bg-[#e98135]"
                     title={`Table Density: ${dataDensity.charAt(0).toUpperCase() + dataDensity.slice(1)}`}
                   >
                     <SlidersHorizontal className="w-4 h-4" />
@@ -862,7 +862,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="w-10 h-10 p-0"
+                    className="w-10 h-10 p-0 hover:bg-[#f57b46]"
                     title="Show/Hide Columns"
                   >
                     <Eye className="w-4 h-4" />
@@ -895,7 +895,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="w-10 h-10 p-0"
+                    className="w-10 h-10 p-0 hover:bg-[#f57b46]"
                     title="Export Data"
                   >
                     <Download className="w-4 h-4" />
@@ -940,7 +940,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    className="w-10 h-10 p-0"
+                    className="w-10 h-10 p-0 hover:bg-[#f57b46]"
                     title="Reset Options"
                   >
                     <RotateCcw className="w-4 h-4" />
@@ -962,7 +962,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="w-10 h-10 p-0"
+                className="w-10 h-10 p-0 hover:bg-[#f57b46]"
                 title="Settings"
               >
                 <Settings className="w-4 h-4" />

@@ -61,7 +61,7 @@ export function AppSidebar({
       className={`${isCollapsed ? "w-16" : "w-60"} shadow-xl`} 
       collapsible="icon" 
       style = {{
-        "--sidebar-bg": "#4761c2ff",
+        "--sidebar-bg": "#4761c2",
         "--sidebar-foreground": "#f7f2e9",
       } as any}
     >
@@ -81,7 +81,7 @@ export function AppSidebar({
               <div className="w-8 h-8 bg-gradient-to-br from-[#4164df] to-[#3565f7] rounded-lg flex items-center justify-center">
                 <Building2 className="w-4 h-4" style={{color: "#f7f2e9"}} />
               </div>
-              <span className="font-bold text-lg" style={{color: "#f7f2e9"}}>Qwohter</span>
+              <span className="font-bold text-lg" style={{color: "#e8e8e8ff"}}>Qwohter</span>
             </div>
             <SidebarTrigger 
               className="h-10 w-10 p-2 rounded-md transition-all duration-200" 
@@ -107,7 +107,7 @@ export function AppSidebar({
                     <SidebarMenuButton 
                       className={`w-full justify-start transition-all duration-200 ${isActive ? "font-medium shadow-md" : ""}`}
                       style={{
-                        backgroundColor: isActive ? "#f57b46" : "transparent",
+                        backgroundColor: isActive ? "#DE8964" : "transparent",
                         color: "#f7f2e9"
                       }}
                       onMouseEnter={(e) => {
