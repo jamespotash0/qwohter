@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Building2, User } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/common/layout";
@@ -11,7 +12,8 @@ import { useQuotes, Quote } from "@/hooks/useQuotes";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useUserProfile } from "@/hooks/useUserProfile";
 // import { useToast } from "@/hooks/use-toast";
-import { QuotesTable, QuoteFilters, QuotePagination } from "@/components/features/quotes/table";
+import { EnhancedQuotesTable } from "@/components/features/quotes/table/EnhancedQuotesTable";
+import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 
 const Quotes = () => {
   const navigate = useNavigate();
@@ -31,12 +33,8 @@ const Quotes = () => {
   const { currentOrganization } = useOrganizations();
   const { profile } = useUserProfile(user?.id);
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("all");
   const [deleteQuoteId, setDeleteQuoteId] = useState<string | null>(null);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
 
   // Check authentication
   useEffect(() => {
@@ -56,27 +54,6 @@ const Quotes = () => {
     navigate("/auth");
   };
 
-  const filteredQuotes = quotes.filter(quote => {
-    const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "";
-    const projectName = quote.project_name || quote.quote_details?.project_name || "";
-    
-    const matchesSearch = clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         quote.proposal_number.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = selectedStatus === "all" || quote.status === selectedStatus;
-    return matchesSearch && matchesStatus;
-  });
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredQuotes.length / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginatedQuotes = filteredQuotes.slice(startIndex, endIndex);
-
-  // Reset to first page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, selectedStatus]);
 
   const updateQuoteStatus = async (id: string, newStatus: string) => {
     await updateQuote(id, { status: newStatus });
@@ -131,7 +108,7 @@ const Quotes = () => {
         <main data-testid="quotes-page" className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="p-6 pb-0">
-            <header className="bg-white/80 backdrop-blur-sm border border-slate-200/50 shadow-lg rounded-[22px] px-6 py-4 animate-fade-in">
+            <header className="bg-white/80 backdrop-blur-sm border border-slate-200/50 shadow-lg rounded-[22px] px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex-1" />
                 <div className="flex items-center justify-center gap-2">
@@ -155,40 +132,53 @@ const Quotes = () => {
           </div>
 
           <div className="flex-1 p-6 pt-3 space-y-4 overflow-auto">
-            {/* Search and Filter */}
-            <QuoteFilters
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-              selectedStatus={selectedStatus}
-              onStatusChange={setSelectedStatus}
-              onNewQuote={() => setShowNewQuoteDialog(true)}
-            />
+            {/* Page Title */}
+            <div className="mb-4">
+              {/* <h1 className="text-2xl font-bold text-gray-900">Quotes</h1> */}
+              {/* <p className="text-gray-600 mt-1">Manage and track all your project quotes</p> */}
+            </div>
 
-            {/* Quotes Table with Pagination */}
-            <Card className="animate-fade-in hover:shadow-lg transition-all duration-300 flex-1 flex flex-col min-h-0">
-              <CardContent className="p-0 flex-1 flex flex-col min-h-0">
-                <QuotesTable
-                  quotes={paginatedQuotes}
-                  onEditQuote={editQuote}
-                  onDeleteQuote={(id) => setDeleteQuoteId(id)}
-                  onStatusChange={updateQuoteStatus}
-                  onFollowUpDaysChange={updateFollowUpDays}
-                  onQuoteSourceChange={updateQuoteSource}
-                  onCreateVersion={handleCreateVersion}
-                />
-                
-                <QuotePagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  pageSize={pageSize}
-                  totalItems={filteredQuotes.length}
-                  startIndex={startIndex}
-                  endIndex={endIndex}
-                  onPageChange={setCurrentPage}
-                  onPageSizeChange={setPageSize}
-                />
-              </CardContent>
-            </Card>
+            {/* Enhanced Quotes Table */}
+            <div>
+              <EnhancedQuotesTable
+                quotes={quotes}
+                onEditQuote={editQuote}
+                onDeleteQuote={(id) => setDeleteQuoteId(id)}
+                onStatusChange={updateQuoteStatus}
+                onFollowUpDaysChange={updateFollowUpDays}
+                onQuoteSourceChange={updateQuoteSource}
+                onCreateVersion={handleCreateVersion}
+                onCreateQuote={() => setShowNewQuoteDialog(true)}
+                onBulkDelete={(ids) => {
+                  // Handle bulk delete
+                  ids.forEach(id => deleteQuoteFromDB(id));
+                }}
+                onBulkStatusChange={(ids, status) => {
+                  // Handle bulk status change
+                  ids.forEach(id => updateQuoteStatus(id, status));
+                }}
+                onExport={(filteredData) => {
+                  // Handle export - convert to CSV
+                  const csvContent = "data:text/csv;charset=utf-8," 
+                    + "Proposal #,Project Name,Client Name,Total,Status,Quote Source,Creator,Created\n"
+                    + filteredData.map(quote => {
+                      const proposalInfo = ProposalNumberGenerator.parseProposalNumber(quote.proposal_number);
+                      const projectName = quote.project_name || quote.quote_details?.project_name || "Untitled Project";
+                      const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client";
+                      const total = quote.price_details?.final_selling_price || 0;
+                      return `"${proposalInfo.displayNumber}","${projectName}","${clientName}","${total}","${quote.status}","${quote.quote_source || ''}","${quote.created_by || ''}","${new Date(quote.created_at).toLocaleDateString()}"`;
+                    }).join("\n");
+                  
+                  const encodedUri = encodeURI(csvContent);
+                  const link = document.createElement("a");
+                  link.setAttribute("href", encodedUri);
+                  link.setAttribute("download", `quotes-${new Date().toISOString().split('T')[0]}.csv`);
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+              />
+            </div>
           </div>
         </main>
       </div>

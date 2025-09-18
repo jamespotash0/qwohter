@@ -43,7 +43,7 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
         <main className="flex-1 flex flex-col">
           {/* Floating Header */}
           <div className="p-6 pb-0">
-            <header className="bg-card/80 backdrop-blur-sm border border-border/50 shadow-large rounded-[22px] px-6 py-4 animate-fade-in-up">
+            <header className="bg-card/80 backdrop-blur-sm border border-border/50 shadow-large rounded-[22px] px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex-1" />
                 <div className="flex items-center justify-center gap-2">
@@ -73,7 +73,7 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
           {/* Main Dashboard Content */}
           <div className="flex-1 p-6 pt-3 space-y-6">
             {/* Dashboard Header */}
-            <div className="flex items-center justify-between animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+            <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
                   Dashboard
@@ -85,7 +85,7 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
             </div>
 
             {/* Quick Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <Card className="card-elevated hover:shadow-medium transition-shadow duration-300">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -161,7 +161,7 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
             </div>
 
             {/* Analytics Section */}
-            <div className="animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+            <div>
               <AnalyticsCharts quotes={quotes} />
             </div>
 
