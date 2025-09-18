@@ -33,7 +33,7 @@ export function HeaderNav({ user, userProfile, organizationName, onLogout }: Hea
   };
 
   return (
-    <div className="sticky top-0 z-50 flex items-center gap-3 py-3 bg-white shadow-sm" style={{borderBottom: "1px solid #e2e6ecff"}}>
+    <div className="sticky top-0 z-50 flex items-center gap-3 py-3 shadow-sm bg-theme-secondary border-theme-primary" style={{borderBottom: "1px solid var(--border-primary)"}}>
       {/* Left spacer */}
       <div className="flex-1" />
       
@@ -43,29 +43,27 @@ export function HeaderNav({ user, userProfile, organizationName, onLogout }: Hea
           {/* <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
             <Building2 className="w-4 h-4 text-white" />
           </div> */}
-          <span className="font-bold text-xl" style={{color: "#000000ff"}}>
+          <span className="font-bold text-xl text-theme-primary">
             {organizationName}
           </span>
         </div>
       )}
       
-      {/* Right side - Notifications and Profile */}
+      {/* Right side - Theme, Notifications and Profile */}
       <div className="flex items-center gap-3 flex-1 justify-end pr-4">
       
       {/* Notifications Button */}
       <Button
         variant="ghost"
         size="sm"
-        className="relative p-2 h-10 w-10 rounded-full transition-colors"
+        className="relative p-2 h-10 w-10 rounded-full transition-colors hover-theme-accent"
         style={{
-          color: "#1b2169",
+          color: "var(--text-secondary)",
           backgroundColor: "transparent"
         }}
-        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f7f2e9"}
-        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
         onClick={handleNotificationsClick}
       >
-        <Bell className="h-5 w-5" style={{color: "#1b2169"}} />
+        <Bell className="h-5 w-5" style={{color: "var(--text-secondary)"}} />
         {/* Notification badge - you can make this conditional based on actual notifications */}
         <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-white text-xs rounded-full" style={{backgroundColor: "#e98135"}}>
           3

@@ -1,6 +1,7 @@
 import { BarChart3, Home, Users, FileText, Building2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
+import { ThemeToggleSwitch } from "@/components/common/ThemeToggleSwitch";
 interface AppSidebarProps {
   user: string;
   onLogout: () => void;
@@ -58,20 +59,20 @@ export function AppSidebar({
   };
   return (
     <Sidebar 
-      className={`${isCollapsed ? "w-16" : "w-60"} shadow-xl`} 
+      className={`${isCollapsed ? "w-16" : "w-60"} shadow-xl sidebar-theme`} 
       collapsible="icon" 
       style = {{
-        "--sidebar-bg": "#4761c2",
-        "--sidebar-foreground": "#f7f2e9",
+        backgroundColor: "var(--sidebar-bg)",
+        color: "var(--text-secondary)",
       } as any}
     >
-      <SidebarHeader className="p-3 border-b" style={{borderColor: "rgba(108, 136, 211, 0.4)"}}>
+      <SidebarHeader className="p-3 border-b" style={{borderColor: "var(--border-primary)"}}>
         {isCollapsed ? (
           <div className="flex justify-center">
             <SidebarTrigger 
               className="h-8 w-8 p-2 rounded-md transition-all duration-200" 
-              style={{color: "#f7f2e9"}}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(233, 129, 53, 0.3)"}
+              style={{color: "var(--text-secondary)"}}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--sidebar-hover)"}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
             />
           </div>
@@ -79,14 +80,14 @@ export function AppSidebar({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-br from-[#4164df] to-[#3565f7] rounded-lg flex items-center justify-center">
-                <Building2 className="w-4 h-4" style={{color: "#f7f2e9"}} />
+                <Building2 className="w-4 h-4" style={{color: "var(--text-secondary)"}} />
               </div>
-              <span className="font-bold text-lg" style={{color: "#e8e8e8ff"}}>Qwohter</span>
+              <span className="font-bold text-lg" style={{color: "var(--text-secondary)"}}>Qwohter</span>
             </div>
             <SidebarTrigger 
               className="h-10 w-10 p-2 rounded-md transition-all duration-200" 
-              style={{color: "#f7f2e9"}}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(233, 129, 53, 0.3)"}
+              style={{color: "var(--text-secondary)"}}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "var(--sidebar-hover)"}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
             />
           </div>
@@ -107,12 +108,12 @@ export function AppSidebar({
                     <SidebarMenuButton 
                       className={`w-full justify-start transition-all duration-200 ${isActive ? "font-medium shadow-md" : ""}`}
                       style={{
-                        backgroundColor: isActive ? "#DE8964" : "transparent",
-                        color: "#f7f2e9"
+                        backgroundColor: isActive ? "var(--sidebar-active)" : "transparent",
+                        color: "var(--text-secondary)"
                       }}
                       onMouseEnter={(e) => {
                         if (!isActive) {
-                          e.currentTarget.style.backgroundColor = "rgba(233, 129, 53, 0.3)";
+                          e.currentTarget.style.backgroundColor = "var(--sidebar-hover)";
                         }
                       }}
                       onMouseLeave={(e) => {
@@ -139,6 +140,21 @@ export function AppSidebar({
 
         {/* Settings and Logout moved to header */}
       </SidebarContent>
+
+      <SidebarFooter className="p-3 border-t" style={{borderColor: "var(--border-primary)"}}>
+        {!isCollapsed ? (
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium" style={{color: "var(--text-secondary)"}}>
+              Theme
+            </span>
+            <ThemeToggleSwitch />
+          </div>
+        ) : (
+          <div className="flex justify-center">
+            <ThemeToggleSwitch />
+          </div>
+        )}
+      </SidebarFooter>
     </Sidebar>
   );
 }

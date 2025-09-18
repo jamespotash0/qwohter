@@ -1,0 +1,175 @@
+/* Theme-aware utility classes */
+
+/* Background colors */
+.bg-theme-primary {
+  background-color: var(--bg-primary);
+}
+
+.bg-theme-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.bg-theme-tertiary {
+  background-color: var(--bg-tertiary);
+}
+
+/* Text colors */
+.text-theme-primary {
+  color: var(--text-primary);
+}
+
+.text-theme-secondary {
+  color: var(--text-secondary);
+}
+
+.text-theme-muted {
+  color: var(--text-muted);
+}
+
+.text-theme-accent {
+  color: var(--accent-primary);
+}
+
+/* Border colors */
+.border-theme-primary {
+  border-color: var(--border-primary);
+}
+
+.border-theme-secondary {
+  border-color: var(--border-secondary);
+}
+
+/* Hover effects */
+.hover-theme-accent:hover {
+  background-color: var(--accent-hover);
+}
+
+/* Card styling */
+.card-theme {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+}
+
+.card-theme-elevated {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  color: var(--text-primary);
+}
+
+/* Dark mode specific styles */
+.dark .card-theme-elevated {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* Input styling */
+.input-theme {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+}
+
+.input-theme:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px var(--accent-primary);
+}
+
+/* Button styling */
+.btn-theme-primary {
+  background-color: var(--accent-primary);
+  color: var(--bg-secondary);
+  border: none;
+}
+
+.btn-theme-primary:hover {
+  background-color: var(--accent-hover);
+}
+
+.btn-theme-secondary {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+}
+
+.btn-theme-secondary:hover {
+  background-color: var(--accent-hover);
+}
+
+/* Sidebar theming */
+.sidebar-theme {
+  background-color: var(--sidebar-bg);
+  color: var(--text-secondary);
+}
+
+.sidebar-item-active {
+  background-color: var(--sidebar-active) !important;
+  color: var(--bg-secondary) !important;
+}
+
+.sidebar-item-hover:hover {
+  background-color: var(--sidebar-hover) !important;
+}
+
+/* Table theming */
+.table-theme {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.table-theme th {
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.table-theme td {
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.table-theme tr:hover {
+  background-color: var(--bg-tertiary);
+}
+
+/* Status colors */
+.status-success {
+  color: var(--success);
+}
+
+.status-warning {
+  color: var(--warning);
+}
+
+.status-error {
+  color: var(--error);
+}
+
+.bg-status-success {
+  background-color: var(--success);
+}
+
+.bg-status-warning {
+  background-color: var(--warning);
+}
+
+.bg-status-error {
+  background-color: var(--error);
+}
+
+/* Gradient backgrounds for dark mode */
+.dark .gradient-bg-primary {
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+}
+
+.dark .gradient-bg-secondary {
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+}
+
+/* Light mode gradients */
+.light .gradient-bg-primary {
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+}
+
+.light .gradient-bg-secondary {
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+}

@@ -1,0 +1,60 @@
+import React from 'react';
+import { Moon, Sun } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useTheme } from '@/contexts/ThemeContext';
+
+interface ThemeToggleProps {
+  variant?: 'default' | 'icon';
+  className?: string;
+}
+
+export const ThemeToggle: React.FC<ThemeToggleProps> = ({ 
+  variant = 'default',
+  className = '' 
+}) => {
+  const { theme, toggleTheme } = useTheme();
+
+  if (variant === 'icon') {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={toggleTheme}
+        className={`w-10 h-10 p-0 hover:bg-[var(--accent-hover)] ${className}`}
+        title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+      >
+        {theme === 'light' ? (
+          <Moon className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+        ) : (
+          <Sun className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+        )}
+      </Button>
+    );
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={toggleTheme}
+      className={`flex items-center gap-2 hover:bg-[var(--accent-hover)] ${className}`}
+      style={{
+        borderColor: 'var(--border-primary)',
+        backgroundColor: 'var(--bg-secondary)',
+        color: 'var(--text-secondary)'
+      }}
+    >
+      {theme === 'light' ? (
+        <>
+          <Moon className="h-4 w-4" />
+          Dark Mode
+        </>
+      ) : (
+        <>
+          <Sun className="h-4 w-4" />
+          Light Mode
+        </>
+      )}
+    </Button>
+  );
+};

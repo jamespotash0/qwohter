@@ -53,7 +53,7 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
   if ((!isInitialized || (quotesLoading && quotes.length === 0)) || (organizationsLoading && !currentOrganization)) {
     return (
       <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="min-h-screen flex w-full bg-theme-primary">
           <AppSidebar user={user} onLogout={onLogout} />
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -68,7 +68,7 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="min-h-screen flex w-full bg-theme-primary">
         <AppSidebar user={user} onLogout={onLogout} />
         
         <main className="flex-1 flex flex-col">

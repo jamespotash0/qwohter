@@ -535,7 +535,7 @@ const Auth = () => {
   const isOnboarding = step !== "auth";
 
   return (
-    <div className="min-h-screen bg-white relative overflow-hidden">
+    <div className="min-h-screen bg-theme-primary relative overflow-hidden">
       {/* Elegant background with subtle patterns */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50/50 via-white to-blue-50/30" />
