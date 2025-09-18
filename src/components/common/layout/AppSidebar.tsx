@@ -61,26 +61,34 @@ export function AppSidebar({
       className={isCollapsed ? "w-16" : "w-60"} 
       collapsible="icon" 
       style = {{
-        "--sidebar-bg": "#2a2d3a",
-        "--sidebar-foreground": "#ffffff",
-        "--sidebar-accent": "#4a3728",
-        "--sidebar-border": "#404454",
+        "--sidebar-bg": "#4761c2ff",
+        "--sidebar-foreground": "#f7f2e9",
       } as any}
     >
-      <SidebarHeader className="p-3 border-b border-white/20">
+      <SidebarHeader className="p-3 border-b" style={{borderColor: "rgba(108, 136, 211, 0.4)"}}>
         {isCollapsed ? (
           <div className="flex justify-center">
-            <SidebarTrigger className="h-8 w-8 p-2 text-white hover:bg-orange-400/20 rounded-md transition-all duration-200 hover:text-white" />
+            <SidebarTrigger 
+              className="h-8 w-8 p-2 rounded-md transition-all duration-200" 
+              style={{color: "#f7f2e9"}}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(233, 129, 53, 0.3)"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+            />
           </div>
         ) : (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center">
-                <Building2 className="w-4 h-4 text-primary-foreground" />
+              <div className="w-8 h-8 bg-gradient-to-br from-[#4164df] to-[#3565f7] rounded-lg flex items-center justify-center">
+                <Building2 className="w-4 h-4" style={{color: "#f7f2e9"}} />
               </div>
-              <span className="font-bold text-lg text-white">Qwohter</span>
+              <span className="font-bold text-lg" style={{color: "#f7f2e9"}}>Qwohter</span>
             </div>
-            <SidebarTrigger className="h-10 w-10 p-2 text-white hover:bg-orange-400/20 rounded-md transition-all duration-200 hover:text-white" />
+            <SidebarTrigger 
+              className="h-10 w-10 p-2 rounded-md transition-all duration-200" 
+              style={{color: "#f7f2e9"}}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(233, 129, 53, 0.3)"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+            />
           </div>
         )}
       </SidebarHeader>
@@ -88,7 +96,7 @@ export function AppSidebar({
       <SidebarContent>
         {/* Main Menu */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-medium text-white/70 mb-2">
+          <SidebarGroupLabel className="text-xs font-medium mb-2" style={{color: "#a3adc2"}}>
             {!isCollapsed ? "MENU" : ""}
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -97,7 +105,21 @@ export function AppSidebar({
               const isActive = location.pathname === item.path;
               return <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton 
-                      className={`w-full justify-start transition-all duration-200 ${isActive ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium shadow-md" : "text-white hover:bg-orange-400/20"}`}
+                      className={`w-full justify-start transition-all duration-200 ${isActive ? "font-medium shadow-md" : ""}`}
+                      style={{
+                        backgroundColor: isActive ? "#f57b46" : "transparent",
+                        color: "#f7f2e9"
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.backgroundColor = "rgba(233, 129, 53, 0.3)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          e.currentTarget.style.backgroundColor = "transparent";
+                        }
+                      }}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();

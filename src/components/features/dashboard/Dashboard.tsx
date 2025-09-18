@@ -53,7 +53,7 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
   if ((!isInitialized || (quotesLoading && quotes.length === 0)) || (organizationsLoading && !currentOrganization)) {
     return (
       <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-background">
+        <div className="min-h-screen flex w-full" style={{backgroundColor: "#f7f2e9"}}>
           <AppSidebar user={user} onLogout={onLogout} />
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -68,7 +68,7 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full" style={{backgroundColor: "#f7f2e9"}}>
         <AppSidebar user={user} onLogout={onLogout} />
         
         <main className="flex-1 flex flex-col">
@@ -85,10 +85,10 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
             {/* Dashboard Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+                <h1 className="text-4xl font-bold" style={{color: "#1b2169"}}>
                   Dashboard
                 </h1>
-                <p className="text-muted-foreground mt-2 text-lg">Plan, prioritize, and accomplish your tasks with ease.</p>
+                <p className="mt-2 text-lg" style={{color: "#a3adc2"}}>Plan, prioritize, and accomplish your tasks with ease.</p>
               </div>
               <div className="flex gap-3">
               </div>
@@ -96,74 +96,74 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
 
             {/* Quick Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card className="card-elevated hover:shadow-medium transition-shadow duration-300">
+              <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-300 border-0">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Total Quotes</p>
-                      <p className="text-3xl font-bold text-foreground">{quotes.length}</p>
+                      <p className="text-sm" style={{color: "#a3adc2"}}>Total Quotes</p>
+                      <p className="text-3xl font-bold" style={{color: "#1b2169"}}>{quotes.length}</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <TrendingUp className="w-3 h-3 text-primary" />
-                        <span className="text-xs text-muted-foreground">All time</span>
+                        <TrendingUp className="w-3 h-3" style={{color: "#4164df"}} />
+                        <span className="text-xs" style={{color: "#a3adc2"}}>All time</span>
                       </div>
                     </div>
-                    <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-primary" />
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{backgroundColor: "#4164df20"}}>
+                      <FileText className="w-6 h-6" style={{color: "#4164df"}} />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="card-elevated hover:shadow-medium transition-shadow duration-300">
+              <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-300 border-0">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Active Members</p>
-                      <p className="text-3xl font-bold text-foreground">{members.filter(m => m.status === 'active').length}</p>
+                      <p className="text-sm" style={{color: "#a3adc2"}}>Active Members</p>
+                      <p className="text-3xl font-bold" style={{color: "#1b2169"}}>{members.filter(m => m.status === 'active').length}</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <Users className="w-3 h-3 text-accent" />
-                        <span className="text-xs text-muted-foreground">In organization</span>
+                        <Users className="w-3 h-3" style={{color: "#3565f7"}} />
+                        <span className="text-xs" style={{color: "#a3adc2"}}>In organization</span>
                       </div>
                     </div>
-                    <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center">
-                      <Users className="w-6 h-6 text-accent" />
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{backgroundColor: "#3565f720"}}>
+                      <Users className="w-6 h-6" style={{color: "#3565f7"}} />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="card-elevated hover:shadow-medium transition-shadow duration-300">
+              <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-300 border-0">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">This Month</p>
-                      <p className="text-3xl font-bold text-foreground">{quotes.filter(q => new Date(q.created_at).getMonth() === new Date().getMonth()).length}</p>
+                      <p className="text-sm" style={{color: "#a3adc2"}}>This Month</p>
+                      <p className="text-3xl font-bold" style={{color: "#1b2169"}}>{quotes.filter(q => new Date(q.created_at).getMonth() === new Date().getMonth()).length}</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <Calendar className="w-3 h-3 text-secondary-foreground" />
-                        <span className="text-xs text-muted-foreground">New quotes</span>
+                        <Calendar className="w-3 h-3" style={{color: "#e98135"}} />
+                        <span className="text-xs" style={{color: "#a3adc2"}}>New quotes</span>
                       </div>
                     </div>
-                    <div className="w-12 h-12 bg-secondary/50 rounded-xl flex items-center justify-center">
-                      <Calendar className="w-6 h-6 text-secondary-foreground" />
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{backgroundColor: "#e9813520"}}>
+                      <Calendar className="w-6 h-6" style={{color: "#e98135"}} />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="card-elevated hover:shadow-medium transition-shadow duration-300">
+              <Card className="bg-white shadow-lg hover:shadow-xl transition-shadow duration-300 border-0">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Your Role</p>
-                      <p className="text-lg font-semibold text-foreground capitalize">{currentUserRole}</p>
+                      <p className="text-sm" style={{color: "#a3adc2"}}>Your Role</p>
+                      <p className="text-lg font-semibold capitalize" style={{color: "#1b2169"}}>{currentUserRole}</p>
                       <div className="flex items-center gap-1 mt-2">
-                        <Building2 className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Organization</span>
+                        <Building2 className="w-3 h-3" style={{color: "#a3adc2"}} />
+                        <span className="text-xs" style={{color: "#a3adc2"}}>Organization</span>
                       </div>
                     </div>
-                    <div className="w-12 h-12 bg-secondary/50 rounded-xl flex items-center justify-center">
-                      {currentUserRole === 'admin' && <Shield className="w-6 h-6 text-blue-500" />}
-                      {currentUserRole === 'member' && <User className="w-6 h-6 text-muted-foreground" />}
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{backgroundColor: "#da987220"}}>
+                      {currentUserRole === 'admin' && <Shield className="w-6 h-6" style={{color: "#da9872"}} />}
+                      {currentUserRole === 'member' && <User className="w-6 h-6" style={{color: "#da9872"}} />}
                     </div>
                   </div>
                 </CardContent>

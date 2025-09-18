@@ -33,7 +33,7 @@ export function HeaderNav({ user, userProfile, organizationName, onLogout }: Hea
   };
 
   return (
-    <div className="sticky top-0 z-50 flex items-center gap-3 py-3 bg-white border-b border-gray-200 shadow-sm">
+    <div className="sticky top-0 z-50 flex items-center gap-3 py-3 bg-white shadow-sm" style={{borderBottom: "1px solid #e2e6ecff"}}>
       {/* Left spacer */}
       <div className="flex-1" />
       
@@ -43,25 +43,31 @@ export function HeaderNav({ user, userProfile, organizationName, onLogout }: Hea
           {/* <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
             <Building2 className="w-4 h-4 text-white" />
           </div> */}
-          <span className="font-bold text-xl bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+          <span className="font-bold text-xl" style={{color: "#000000ff"}}>
             {organizationName}
           </span>
         </div>
       )}
       
       {/* Right side - Notifications and Profile */}
-      <div className="flex items-center gap-3 flex-1 justify-end">
+      <div className="flex items-center gap-3 flex-1 justify-end pr-4">
       
       {/* Notifications Button */}
       <Button
         variant="ghost"
         size="sm"
-        className="relative p-2 h-10 w-10 hover:bg-gray-100 rounded-full"
+        className="relative p-2 h-10 w-10 rounded-full transition-colors"
+        style={{
+          color: "#1b2169",
+          backgroundColor: "transparent"
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f7f2e9"}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
         onClick={handleNotificationsClick}
       >
-        <Bell className="h-5 w-5 text-gray-600" />
+        <Bell className="h-5 w-5" style={{color: "#1b2169"}} />
         {/* Notification badge - you can make this conditional based on actual notifications */}
-        <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-red-500 text-white text-xs rounded-full">
+        <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-white text-xs rounded-full" style={{backgroundColor: "#e98135"}}>
           3
         </Badge>
       </Button>
@@ -71,29 +77,34 @@ export function HeaderNav({ user, userProfile, organizationName, onLogout }: Hea
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="flex items-center gap-2 p-2 h-10 hover:bg-gray-100 rounded-full"
+            className="flex items-center gap-2 p-2 h-10 rounded-full transition-colors"
+            style={{
+              backgroundColor: "transparent"
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f7f2e9"}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
           >
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-br rounded-full flex items-center justify-center" style={{background: "linear-gradient(135deg, #4164df, #3565f7)"}}>
               <User className="w-4 h-4 text-white" />
             </div>
             <div className="hidden sm:block text-left">
-              <div className="text-sm font-medium text-gray-900">
+              <div className="text-sm font-medium" style={{color: "#1b2169"}}>
                 {userProfile?.full_name || user}
               </div>
-              <div className="text-xs text-gray-500 capitalize">
+              <div className="text-xs capitalize" style={{color: "#a3adc2"}}>
                 {userProfile?.role || "Member"}
               </div>
             </div>
-            <ChevronDown className="w-4 h-4 text-gray-500" />
+            <ChevronDown className="w-4 h-4" style={{color: "#a3adc2"}} />
           </Button>
         </DropdownMenuTrigger>
         
-        <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuContent align="end" className="w-56 bg-white shadow-lg" style={{border: "1px solid rgba(163, 173, 194, 0.3)"}}>
           <div className="px-3 py-2">
-            <div className="text-sm font-medium text-gray-900">
+            <div className="text-sm font-medium" style={{color: "#1b2169"}}>
               {userProfile?.full_name || user}
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs" style={{color: "#a3adc2"}}>
               {user}
             </div>
           </div>
@@ -102,9 +113,14 @@ export function HeaderNav({ user, userProfile, organizationName, onLogout }: Hea
           
           <DropdownMenuItem
             onClick={handleSettingsClick}
-            className="cursor-pointer"
+            className="cursor-pointer transition-colors"
+            style={{
+              color: "#1b2169"
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f7f2e9"}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
           >
-            <Settings className="w-4 h-4 mr-2" />
+            <Settings className="w-4 h-4 mr-2" style={{color: "#1b2169"}} />
             Settings
           </DropdownMenuItem>
           
@@ -112,9 +128,20 @@ export function HeaderNav({ user, userProfile, organizationName, onLogout }: Hea
           
           <DropdownMenuItem
             onClick={onLogout}
-            className="cursor-pointer text-red-600 focus:text-red-600"
+            className="cursor-pointer transition-colors"
+            style={{
+              color: "#e98135"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#f7f2e9";
+              e.currentTarget.style.color = "#e98135";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.color = "#e98135";
+            }}
           >
-            <LogOut className="w-4 h-4 mr-2" />
+            <LogOut className="w-4 h-4 mr-2" style={{color: "#e98135"}} />
             Logout
           </DropdownMenuItem>
         </DropdownMenuContent>
