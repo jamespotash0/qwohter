@@ -268,6 +268,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   });
   const [forceUpdate, setForceUpdate] = useState(0);
   const [dataDensity, setDataDensity] = useState<'compact' | 'comfortable' | 'spacious'>('comfortable');
+  const [columnVisibilityOpen, setColumnVisibilityOpen] = useState(false);
 
   // Store original column sizes for reset functionality
   const originalColumnSizes = useMemo(() => ({
@@ -292,6 +293,16 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         column.resetSize();
       }
     });
+  };
+
+  // Reset column visibility to show all columns
+  const resetColumnVisibility = () => {
+    table.getAllColumns().forEach(column => {
+      if (column.getCanHide()) {
+        column.toggleVisibility(true);
+      }
+    });
+    setColumnVisibility({});
   };
 
   // Update follow-up times every minute
@@ -846,7 +857,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               </DropdownMenu>
 
               {/* Column Visibility */}
-              <DropdownMenu>
+              <DropdownMenu open={columnVisibilityOpen} onOpenChange={setColumnVisibilityOpen}>
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="outline" 
@@ -857,8 +868,8 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                     <Eye className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <div className="p-2">
+                <DropdownMenuContent align="end" className="w-56" onPointerDownOutside={() => setColumnVisibilityOpen(false)}>
+                  <div className="p-2" onClick={(e) => e.stopPropagation()}>
                     <div className="text-xs text-gray-500 mb-2 font-medium">Show/Hide Columns</div>
                     {table.getAllColumns()
                       .filter(column => column.getCanHide())
@@ -868,6 +879,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                           className="capitalize text-sm py-2"
                           checked={column.getIsVisible()}
                           onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                          onSelect={(e) => e.preventDefault()}
                         >
                           {columnLabels[column.id] ?? column.id.replace('_', ' ')}
                           {/* {column.id.replace('_', ' ')} */}
@@ -922,16 +934,29 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Reset Column Sizes */}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-10 h-10 p-0"
-                title="Reset Column Sizes"
-                onClick={resetColumnSizes}
-              >
-                <RotateCcw className="w-4 h-4" />
-              </Button>
+              {/* Reset Options */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-10 h-10 p-0"
+                    title="Reset Options"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
+                  <DropdownMenuItem onClick={resetColumnSizes}>
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Reset Column Sizes
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={resetColumnVisibility}>
+                    <Eye className="w-4 h-4 mr-2" />
+                    Reset Column Visibility
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* Settings */}
               <Button 
