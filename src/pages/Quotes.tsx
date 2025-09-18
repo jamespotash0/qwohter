@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
-import { Building2, User } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Building2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/common/layout";
+import { AppSidebar, HeaderNav } from "@/components/common/layout";
 import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -122,32 +120,15 @@ const Quotes = () => {
         <AppSidebar user={user.email || ""} onLogout={handleLogout} />
         
         <main data-testid="quotes-page" className="flex-1 flex flex-col overflow-hidden">
-          {/* Header */}
-          <div className="p-6 pb-0">
-            <header className="bg-white/80 backdrop-blur-sm border border-slate-200/50 shadow-lg rounded-[22px] px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex-1" />
-                <div className="flex items-center justify-center gap-2">
-                  <Building2 className="w-5 h-5" />
-                  <span className="font-medium text-lg">{currentOrganization?.name || 'Loading...'}</span>
-                </div>
-                <div className="flex items-center gap-4 flex-1 justify-end">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4" />
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-foreground">{profile?.full_name}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{profile?.role ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1).toLowerCase() : ""}</p>
+          {/* Header Nav Bar */}
+          <HeaderNav 
+            user={user.email || ""} 
+            userProfile={profile}
+            organizationName={currentOrganization?.name || 'Loading...'}
+            onLogout={handleLogout} 
+          />
 
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </header>
-          </div>
-
-          <div className="flex-1 p-6 pt-3 space-y-4 overflow-auto">
+          <div className="flex-1 p-6 space-y-4 overflow-auto">
             {/* Page Title */}
             <div className="mb-4">
               {/* <h1 className="text-2xl font-bold text-gray-900">Quotes</h1> */}

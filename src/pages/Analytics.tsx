@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/common/layout";
+import { AppSidebar, HeaderNav } from "@/components/common/layout";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -88,36 +88,16 @@ const Analytics = () => {
         <AppSidebar user={user.email || ""} onLogout={handleLogout} />
         
         <main className="flex-1 flex flex-col overflow-hidden">
-          {/* Floating Header */}
-          <div className="p-6 pb-0">
-            <header className="bg-white/90 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl px-8 py-5 ">
-              <div className="flex items-center justify-between">
-                <div className="flex-1" />
-                <div className="flex items-center justify-center gap-3">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <Building2 className="w-4 h-4 text-white" />
-                  </div>
-                  <span className="font-bold text-xl bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                    {currentOrganization?.name || 'Loading...'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-4 flex-1 justify-end">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center shadow-inner">
-                      <User className="w-5 h-5 text-slate-600" />
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-slate-800">{profile?.full_name}</p>
-                      <p className="text-xs text-slate-500">{profile?.role ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1).toLowerCase() : ""}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </header>
-          </div>
+          {/* Header Nav Bar */}
+          <HeaderNav 
+            user={user.email || ""} 
+            userProfile={profile as any}
+            organizationName={currentOrganization?.name || 'Loading...'}
+            onLogout={handleLogout} 
+          />
 
           {/* Analytics Content */}
-          <div className="flex-1 p-6 pt-4 space-y-8 overflow-y-auto">
+          <div className="flex-1 p-6 space-y-8 overflow-y-auto">
             {/* Page Header */}
             {/* <div className=" text-center">
               <h1 className="text-5xl font-black bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent mb-4">

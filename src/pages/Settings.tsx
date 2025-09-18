@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/common/layout";
+import { AppSidebar, HeaderNav } from "@/components/common/layout";
 import { CompanySettingsSection } from "@/components/features/settings/CompanySettingsSection";
 import { useOrganizationSettings } from "@/hooks/useCompanySettings";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -68,32 +68,29 @@ const Settings = () => {
         <AppSidebar user={user.email || user.id} onLogout={handleLogout} />
         
         <main className="flex-1 flex flex-col">
-          {/* Header */}
+          {/* Header Nav Bar */}
+          <HeaderNav 
+            user={user.email || ""} 
+            userProfile={profile}
+            onLogout={handleLogout} 
+          />
+          
+          {/* Organization Header */}
           <div className="p-6 pb-0">
-            <header className="bg-card/80 backdrop-blur-sm border border-border/50 shadow-lg rounded-[22px] px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex-1" />
-                <div className="flex items-center justify-center gap-2">
-                  <Building2 className="w-5 h-5 text-muted-foreground" />
-                  <span className="font-medium text-lg">{organization?.name || 'Loading...'}</span>
+            <div className="flex items-center justify-center">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Building2 className="w-4 h-4 text-white" />
                 </div>
-                <div className="flex items-center gap-4 flex-1 justify-end">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
-                      <UserIcon className="w-4 h-4" />
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">{profile?.full_name}</p>
-                      <p className="text-xs text-muted-foreground">{profile?.role ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1).toLowerCase() : ""}</p>
-                    </div>
-                  </div>
-                </div>
+                <span className="font-bold text-xl bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                  {organization?.name || 'Loading...'}
+                </span>
               </div>
-            </header>
+            </div>
           </div>
 
           {/* Main Content */}
-          <div className="flex-1 p-6 pt-3 space-y-6">
+          <div className="flex-1 p-6 pt-4 space-y-6">
             {/* Company Information Section */}
             <Card className="card-elevated">
               <CardHeader className="pb-4">

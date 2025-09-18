@@ -11,7 +11,7 @@ import {
   Users,
   Shield
 } from "lucide-react";
-import { AppSidebar } from "@/components/common/layout";
+import { AppSidebar, HeaderNav } from "@/components/common/layout";
 
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useQuotes, useQuotesLoading, useQuotesStore } from "@/stores/quotes/quotesStore";
@@ -72,37 +72,16 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
         <AppSidebar user={user} onLogout={onLogout} />
         
         <main className="flex-1 flex flex-col">
-          {/* Floating Header */}
-          <div className="p-6 pb-0">
-            <header className="bg-card/80 backdrop-blur-sm border border-border/50 shadow-large rounded-[22px] px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex-1" />
-                <div className="flex items-center justify-center gap-2">
-                  <Building2 className="w-5 h-5 text-muted-foreground" />
-                  <span className="font-medium text-lg bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
-                    {currentOrganization?.name || 'Loading...'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-4 flex-1 justify-end">
-                  {/* <Button variant="ghost" size="sm" className="btn-floating">
-                    <Mail className="w-4 h-4" />
-                  </Button> */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-primary/20 to-primary/5 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 text-primary" />
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-foreground">{profile?.full_name}</p>
-                      <p className="text-xs text-muted-foreground capitalize">{currentUserRole}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </header>
-          </div>
+          {/* Header Nav Bar */}
+          <HeaderNav 
+            user={user} 
+            userProfile={profile as any}
+            organizationName={currentOrganization?.name || 'Loading...'}
+            onLogout={onLogout} 
+          />
 
           {/* Main Dashboard Content */}
-          <div className="flex-1 p-6 pt-3 space-y-6">
+          <div className="flex-1 p-6 space-y-6">
             {/* Dashboard Header */}
             <div className="flex items-center justify-between">
               <div>

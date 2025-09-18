@@ -1,4 +1,4 @@
-import { BarChart3, Home, Settings, LogOut, Users, FileText, Building2 } from "lucide-react";
+import { BarChart3, Home, Users, FileText, Building2 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 interface AppSidebarProps {
@@ -23,12 +23,7 @@ const menuItems = [{
   path: "/team"
 }
 ];
-const generalItems = [{
-  title: "Settings",
-  icon: Settings,
-  path: "/settings"
-}
-];
+// Removed generalItems - Settings and Logout moved to header
 export function AppSidebar({
   // user,
   onLogout
@@ -120,50 +115,7 @@ export function AppSidebar({
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* General Section */}
-        <SidebarGroup className={isCollapsed ? "mt-2" : ""}>
-          <SidebarGroupLabel className="text-xs font-medium text-white/70 mb-2">
-            {!isCollapsed ? "GENERAL" : ""}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {generalItems.map(item => {
-                const isActive = location.pathname === item.path;
-                return <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    className={`w-full justify-start transition-all duration-200 ${isActive ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white font-medium shadow-md" : "text-white hover:bg-orange-400/20"}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleNavigate(item.path!);
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
-                    </div>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              })}
-              
-              <SidebarMenuItem>
-                <SidebarMenuButton 
-                  className="w-full justify-start hover:bg-muted text-destructive hover:text-destructive"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleLogout();
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <LogOut className="h-4 w-4" />
-                    {!isCollapsed && <span>Logout</span>}
-                  </div>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Settings and Logout moved to header */}
       </SidebarContent>
     </Sidebar>
   );
