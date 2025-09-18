@@ -71,21 +71,14 @@ const Settings = () => {
           {/* Header Nav Bar */}
           <HeaderNav 
             user={user.email || ""} 
-            userProfile={profile}
+            userProfile={profile as any}
+            organizationName={organization?.name || 'Loading...'}
             onLogout={handleLogout} 
           />
           
           {/* Organization Header */}
           <div className="p-6 pb-0">
             <div className="flex items-center justify-center">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <Building2 className="w-4 h-4 text-white" />
-                </div>
-                <span className="font-bold text-xl bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                  {organization?.name || 'Loading...'}
-                </span>
-              </div>
             </div>
           </div>
 

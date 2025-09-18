@@ -14,7 +14,7 @@ import {
 import { AppSidebar, HeaderNav } from "@/components/common/layout";
 
 import { useOrganizations } from "@/hooks/useOrganizations";
-import { useQuotes, useQuotesLoading, useQuotesStore } from "@/stores/quotes/quotesStore";
+import { useQuotes } from "@/hooks/useQuotes";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { AnalyticsCharts } from "@/components/common/charts/AnalyticsCharts";
 import { useEffect } from "react";
@@ -28,10 +28,7 @@ interface DashboardProps {
 
 const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
   
-  const quotes = useQuotes();
-  const quotesLoading = useQuotesLoading();
-  const isInitialized = useQuotesStore((state) => state.isInitialized);
-  const initialize = useQuotesStore((state) => state.initialize);
+  const { quotes, loading: quotesLoading } = useQuotes();
   
   const {
     currentOrganization,
@@ -41,16 +38,9 @@ const Dashboard = ({ user, userId, onLogout }: DashboardProps) => {
   } = useOrganizations();
   const { profile } = useUserProfile(userId);
 
-  // Initialize quotes store if not already initialized
-  useEffect(() => {
-    if (!isInitialized) {
-      initialize();
-    }
-  }, [isInitialized, initialize]);
-
   // Single loading check pattern - prevents flash by always maintaining layout
   // Only show loading if we don't have any data yet (prevents flash on navigation)
-  if ((!isInitialized || (quotesLoading && quotes.length === 0)) || (organizationsLoading && !currentOrganization)) {
+  if ((quotesLoading && quotes.length === 0) || (organizationsLoading && !currentOrganization)) {
     return (
       <SidebarProvider>
         <div className="min-h-screen flex w-full bg-theme-primary">

@@ -33,7 +33,7 @@ export function HeaderNav({ user, userProfile, organizationName, onLogout }: Hea
   };
 
   return (
-    <div className="sticky top-0 z-50 flex items-center gap-3 py-3 shadow-sm bg-theme-secondary border-theme-primary" style={{borderBottom: "1px solid var(--border-primary)"}}>
+    <div className="sticky top-0 z-50 flex items-center gap-3 py-4 shadow-sm bg-theme-secondary border-theme-primary" style={{borderBottom: "1px solid var(--border-primary)"}}>
       {/* Left spacer */}
       <div className="flex-1" />
       
@@ -86,10 +86,10 @@ export function HeaderNav({ user, userProfile, organizationName, onLogout }: Hea
               <User className="w-4 h-4 text-white" />
             </div>
             <div className="hidden sm:block text-left">
-              <div className="text-sm font-medium" style={{color: "#1b2169"}}>
+              <div className="text-sm font-medium" style={{color: "#030410ff"}}>
                 {userProfile?.full_name || user}
               </div>
-              <div className="text-xs capitalize" style={{color: "#a3adc2"}}>
+              <div className="text-xs capitalize" style={{color: "#a4a5aeff"}}>
                 {userProfile?.role || "Member"}
               </div>
             </div>
