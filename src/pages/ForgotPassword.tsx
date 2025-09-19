@@ -52,19 +52,24 @@ const ForgotPassword = () => {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100">
-      {/* Logo in top-left corner */}
-      <div className="absolute top-6 left-6 z-30">
-        <div
-          className="flex items-center cursor-pointer"
-          onClick={() => navigate('/')}
-        >
-          <img
-            src="/logos/Landing-page-logo.svg"
-            alt="Qwohter Logo"
-            className="h-8 w-auto"
-          />
+      {/* Header with logo - matching landing page */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-transparent">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <div
+              className="flex items-center cursor-pointer"
+              onClick={() => navigate('/')}
+            >
+              <img
+                src="/logos/Landing-page-logo.svg"
+                alt="Qwohter Logo"
+                className="h-8 w-auto"
+              />
+            </div>
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* Background pattern with quote checkerboard design */}
       <div className="absolute inset-0">
