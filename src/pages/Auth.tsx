@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -23,27 +23,34 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { toast } = useToast();
+
+  // Determine if we're in create account mode based on the route
+  const isCreateAccountRoute = location.pathname === '/create-account';
+
   const [orgChoice, setOrgChoice] = useState<"join" | "create" | null>(null);
   const [orgCode, setOrgCode] = useState("");
   const [orgName, setOrgName] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(isCreateAccountRoute);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"auth" | "verify-otp" | "profile" | "organization" | "company-info">("auth");
   const [otpCode, setOtpCode] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // Use ref to track current step for auth listener (avoids stale closure issues)
   const stepRef = useRef(step);
   const userIdRef = useRef(userId);
   const redirectingRef = useRef(false); // Prevent duplicate redirects
-  
+
   // Update refs when state changes
   useEffect(() => {
     stepRef.current = step;
     userIdRef.current = userId;
   }, [step, userId]);
-  
+
   // Company information state
   const [companyPhone, setCompanyPhone] = useState("");
   const [companyFax, setCompanyFax] = useState("");
@@ -51,8 +58,11 @@ const Auth = () => {
   const [companyWebsite, setCompanyWebsite] = useState("");
   const [quoteStartingPoint, setQuoteStartingPoint] = useState("");
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | undefined>();
-  const navigate = useNavigate();
-  const { toast } = useToast();
+
+  // Update isSignUp state when route changes
+  useEffect(() => {
+    setIsSignUp(isCreateAccountRoute);
+  }, [isCreateAccountRoute]);
 
   // Auth flow state persistence helpers
   const saveAuthState = (authState: {
@@ -675,7 +685,13 @@ const Auth = () => {
                     onPasswordChange={setPassword}
                     onTogglePasswordVisibility={() => setShowPassword(!showPassword)}
                     onSubmit={handleAuth}
-                    onToggleMode={() => setIsSignUp(!isSignUp)}
+                    onToggleMode={() => {
+                      if (isSignUp) {
+                        navigate("/sign-in");
+                      } else {
+                        navigate("/create-account");
+                      }
+                    }}
                   />
                 )}
 

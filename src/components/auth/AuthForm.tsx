@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { LogIn, UserPlus, Eye, EyeOff } from "lucide-react";
 import { sanitizeInput } from "@/utils/security";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface AuthFormProps {
   isSignUp: boolean;
@@ -38,6 +39,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   onToggleMode
 }) => {
   const [rememberMe, setRememberMe] = useState(false);
+  const navigate = useNavigate();
 
   // Load saved email and remember me preference on component mount
   useEffect(() => {
@@ -133,6 +135,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             </div>
             <button
               type="button"
+              onClick={() => navigate("/forgot-password")}
               className="text-sm text-orange-500 hover:text-orange-600 transition-colors"
             >
               Forgot password?

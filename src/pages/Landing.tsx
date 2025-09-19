@@ -18,11 +18,11 @@ const Landing = () => {
   }, []);
 
   const handleGetDemo = () => {
-    navigate('/auth?mode=demo');
+    navigate('/create-account?mode=demo');
   };
 
   const handleSignIn = () => {
-    navigate('/auth');
+    navigate('/sign-in');
   };
 
   return (

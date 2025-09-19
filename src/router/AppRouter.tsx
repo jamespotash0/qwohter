@@ -12,6 +12,8 @@ const Landing = lazy(() => import("@/pages/Landing"));
 
 // Authentication pages
 const Auth = lazy(() => import("@/pages/Auth"));
+const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 
 // Main application pages
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -52,9 +54,15 @@ export const AppRouter = () => (
           <Route path="/" element={<Landing />} />
 
           {/* Authentication routes (public) */}
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/login" element={<Navigate to="/auth" replace />} />
-          <Route path="/signup" element={<Navigate to="/auth" replace />} />
+          <Route path="/sign-in" element={<Auth />} />
+          <Route path="/create-account" element={<Auth />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+
+          {/* Legacy redirects */}
+          <Route path="/auth" element={<Navigate to="/sign-in" replace />} />
+          <Route path="/login" element={<Navigate to="/sign-in" replace />} />
+          <Route path="/signup" element={<Navigate to="/create-account" replace />} />
           
           {/* Main application routes (protected) */}
           <Route path="/dashboard" element={
