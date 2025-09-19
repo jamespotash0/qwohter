@@ -7,6 +7,9 @@ import { Loader2 } from "lucide-react";
 // Lazy load pages for better performance
 import { lazy } from "react";
 
+// Public pages
+const Landing = lazy(() => import("@/pages/Landing"));
+
 // Authentication pages
 const Auth = lazy(() => import("@/pages/Auth"));
 
@@ -45,9 +48,9 @@ export const AppRouter = () => (
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* Root redirect to dashboard for authenticated users */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          
+          {/* Landing page (public) */}
+          <Route path="/" element={<Landing />} />
+
           {/* Authentication routes (public) */}
           <Route path="/auth" element={<Auth />} />
           <Route path="/login" element={<Navigate to="/auth" replace />} />

@@ -536,6 +536,20 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-theme-primary relative overflow-hidden">
+      {/* Logo in top-left corner */}
+      <div className="absolute top-6 left-6 z-30">
+        <div
+          className="flex items-center cursor-pointer"
+          onClick={() => navigate('/')}
+        >
+          <img
+            src="/logos/Landing-page-logo.svg"
+            alt="Qwohter Logo"
+            className="h-8 w-auto"
+          />
+        </div>
+      </div>
+
       {/* Elegant background with subtle patterns */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-50/50 via-white to-blue-50/30" />
