@@ -12,6 +12,7 @@ import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
 import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
 import { organizationSettingsService } from "@/services/companySettingsService";
 import { supabase } from "@/integrations/supabase/client";
+import { LogoUploadResult } from "@/services/LogoUploadService";
 
 interface ProfileData {
   full_name: string | null;
@@ -49,6 +50,7 @@ const Auth = () => {
   const [companyAddress, setCompanyAddress] = useState("");
   const [companyWebsite, setCompanyWebsite] = useState("");
   const [quoteStartingPoint, setQuoteStartingPoint] = useState("");
+  const [currentLogoUrl, setCurrentLogoUrl] = useState<string | undefined>();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -522,6 +524,22 @@ const Auth = () => {
     navigate("/dashboard");
   };
 
+  const handleLogoUpload = (result: LogoUploadResult) => {
+    setCurrentLogoUrl(result.url);
+    toast({
+      title: "Logo uploaded successfully!",
+      description: "Your company logo has been saved.",
+    });
+  };
+
+  const handleLogoError = (error: string) => {
+    toast({
+      title: "Logo upload failed",
+      description: error,
+      variant: "destructive",
+    });
+  };
+
   // Define onboarding steps for progress tracking
   const onboardingSteps = [
     { key: "auth", label: "Sign In", icon: "🔐" },
@@ -535,7 +553,7 @@ const Auth = () => {
   const isOnboarding = step !== "auth";
 
   return (
-    <div className="min-h-screen bg-theme-primary relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100">
       {/* Logo in top-left corner */}
       <div className="absolute top-6 left-6 z-30">
         <div
@@ -550,17 +568,42 @@ const Auth = () => {
         </div>
       </div>
 
-      {/* Elegant background with subtle patterns */}
+      {/* Background pattern with quote checkerboard design */}
       <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-50/50 via-white to-blue-50/30" />
-        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-br from-emerald-500/5 to-blue-500/5 rounded-full blur-3xl" />
+        {/* Repeating quotation marks in checkerboard pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.08]"
+          style={{
+            backgroundImage: `
+              url("data:image/svg+xml,%3Csvg width='120' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='30' y='60' font-family='serif' font-size='60' fill='%23334155' opacity='0.5'%3E%22%3C/text%3E%3Ctext x='90' y='60' font-family='serif' font-size='60' fill='%23f97316' opacity='0.4'%3E%22%3C/text%3E%3Ctext x='60' y='30' font-family='serif' font-size='60' fill='%23334155' opacity='0.3'%3E%22%3C/text%3E%3Ctext x='60' y='90' font-family='serif' font-size='60' fill='%23334155' opacity='0.3'%3E%22%3C/text%3E%3C/svg%3E")
+            `,
+            backgroundSize: '120px 120px',
+            backgroundRepeat: 'repeat'
+          }}
+        />
+
+        {/* Alternating quotation pattern overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.05]"
+          style={{
+            backgroundImage: `
+              url("data:image/svg+xml,%3Csvg width='120' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='15' y='45' font-family='serif' font-size='40' fill='%23475569' opacity='0.6' transform='rotate(15)'%3E%E2%80%9C%3C/text%3E%3Ctext x='75' y='75' font-family='serif' font-size='40' fill='%23475569' opacity='0.6' transform='rotate(-15)'%3E%E2%80%9D%3C/text%3E%3C/svg%3E")
+            `,
+            backgroundSize: '120px 120px',
+            backgroundRepeat: 'repeat',
+            backgroundPosition: '60px 60px'
+          }}
+        />
+
+        {/* Subtle gradient orbs for depth */}
+        <div className="absolute top-20 left-20 w-32 h-32 bg-blue-100/6 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-20 w-40 h-40 bg-orange-100/4 rounded-full blur-3xl" />
       </div>
 
       {/* Simple progress indicator */}
       {isOnboarding && (
         <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-20">
-          <div className="bg-white/90 backdrop-blur-xl rounded-full px-6 py-3 shadow-lg border border-white/20">
+          <div className="bg-white backdrop-blur-xl rounded-full px-6 py-3 border border-gray-200 shadow-sm">
             <span className="text-sm font-medium text-gray-700">
               Step {getCurrentStepIndex()} of {onboardingSteps.length - 1}
             </span>
@@ -569,163 +612,139 @@ const Auth = () => {
       )}
 
       <div className="min-h-screen flex items-center justify-center p-8">
-        {/* Centered content area */}
         <div className="w-full flex items-center justify-center">
           <div className={`w-full relative z-10 ${
-            step === "company-info" ? "max-w-4xl" : 
-            step === "auth" ? "max-w-lg" : "max-w-2xl"
+            step === "company-info" ? "max-w-4xl" :
+            step === "auth" ? "max-w-md" : "max-w-2xl"
           }`}>
-            {/* Main branding - only show on auth step */}
-            {step === "auth" && (
-              <div className="text-center mb-8">
-                <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl flex items-center justify-center mb-6 shadow-2xl animate-pulse-subtle">
-                  <Building2 className="w-10 h-10 text-white" />
-                </div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent mb-3">
-                  Qwohter
-                </h1>
-                <p className="text-xl text-gray-600 mb-6">Professional Quote Management</p>
-                <div className="flex justify-center space-x-8 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    <span className="text-gray-700">Instant Quotes</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
-                    <span className="text-gray-700">Sales Pipeline</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-emerald-600 rounded-full"></div>
-                    <span className="text-gray-700">Faster Deals</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Main form card */}
-            <Card className="bg-white/70 backdrop-blur-xl border-0 shadow-2xl shadow-black/5 rounded-3xl overflow-hidden animate-slide-in-right step-transition">
-              <CardHeader className="text-center space-y-8 pb-8 pt-12 px-12">
-                {/* Step-specific icons and enhanced descriptions */}
+            <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
+              <CardHeader className="text-center space-y-4 pb-4 pt-8 px-8">
+                {/* Step-specific icons */}
                 {step === "verify-otp" && (
-                  <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center animate-float mb-4">
-                    <div className="text-4xl">📧</div>
+                  <div className="mx-auto w-16 h-16 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 mb-4">
+                    <div className="text-3xl">📧</div>
                   </div>
                 )}
                 {step === "profile" && (
-                  <div className="mx-auto w-20 h-20 bg-gradient-to-br from-emerald-100 to-blue-100 rounded-2xl flex items-center justify-center animate-float mb-4">
-                    <div className="text-4xl">👤</div>
+                  <div className="mx-auto w-16 h-16 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 mb-4">
+                    <div className="text-3xl">👤</div>
                   </div>
                 )}
                 {step === "organization" && (
-                  <div className="mx-auto w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center animate-float mb-4">
-                    <div className="text-4xl">🏢</div>
+                  <div className="mx-auto w-16 h-16 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 mb-4">
+                    <div className="text-3xl">🏢</div>
                   </div>
                 )}
                 {step === "company-info" && (
-                  <div className="mx-auto w-20 h-20 bg-gradient-to-br from-orange-100 to-red-100 rounded-2xl flex items-center justify-center animate-float mb-4">
-                    <div className="text-4xl">📋</div>
+                  <div className="mx-auto w-16 h-16 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 mb-4">
+                    <div className="text-3xl">📋</div>
                   </div>
                 )}
 
-                <div className="space-y-4">
+                <div className="space-y-2">
                   <CardTitle className="text-3xl font-bold text-gray-900">
-                    {step === "auth" && (isSignUp ? "Create your account" : "Welcome back")}
-                    {step === "verify-otp" && "Check your email"}
-                    {step === "profile" && "Tell us about yourself"}
-                    {step === "organization" && "Join your team"}
-                    {step === "company-info" && "Company details"}
+                    {step === "auth" && (isSignUp ? "Create Account" : "Welcome back")}
+                    {step === "verify-otp" && "Check Your Email"}
+                    {step === "profile" && "Profile Setup"}
+                    {step === "organization" && "Organization"}
+                    {step === "company-info" && "Company Details"}
                   </CardTitle>
-                  <CardDescription className="text-gray-600 text-lg leading-relaxed max-w-2xl mx-auto">
-                    {step === "auth" && (isSignUp 
-                      ? "Join thousands of professionals who trust Qwohter for their quote management"
-                      : "Sign in to continue managing your quotes and growing your business"
+                  <CardDescription className="text-gray-600 text-sm leading-relaxed max-w-lg mx-auto">
+                    {step === "auth" && (isSignUp
+                      ? "Join thousands of professionals managing quotes with Qwohter"
+                      : "Sign in to your Qwohter account"
                     )}
-                    {step === "verify-otp" && "We've sent a verification code to your email address. Enter it below to continue setting up your account."}
-                    {step === "profile" && "Help us personalize your experience by providing some basic information about yourself."}
-                    {step === "organization" && "Connect with your organization or create a new one to start collaborating with your team."}
-                    {step === "company-info" && "Add your company information to create professional, branded quotes that impress your clients."}
+                    {step === "verify-otp" && "We've sent a verification code to your email address. Enter it below to continue."}
+                    {step === "profile" && "Tell us about yourself to personalize your experience."}
+                    {step === "organization" && "Connect with your organization or create a new one."}
+                    {step === "company-info" && "Add your company information for professional quotes."}
                   </CardDescription>
                 </div>
               </CardHeader>
-          
-          <CardContent className="px-12 pb-12 space-y-8">
-            {step === "auth" && (
-              <AuthForm
-                isSignUp={isSignUp}
-                email={email}
-                password={password}
-                showPassword={showPassword}
-                loading={loading}
-                onEmailChange={setEmail}
-                onPasswordChange={setPassword}
-                onTogglePasswordVisibility={() => setShowPassword(!showPassword)}
-                onSubmit={handleAuth}
-                onToggleMode={() => setIsSignUp(!isSignUp)}
-              />
-            )}
 
-            {step === "verify-otp" && (
-              <OtpVerificationForm
-                otpCode={otpCode}
-                email={email}
-                loading={loading}
-                onOtpCodeChange={setOtpCode}
-                onSubmit={handleOtpVerification}
-                onBackToSignUp={() => {
-                  setStep("auth");
-                  setOtpCode("");
-                }}
-              />
-            )}
+              <CardContent className="px-8 pb-8 space-y-4">
+                {step === "auth" && (
+                  <AuthForm
+                    isSignUp={isSignUp}
+                    email={email}
+                    password={password}
+                    showPassword={showPassword}
+                    loading={loading}
+                    onEmailChange={setEmail}
+                    onPasswordChange={setPassword}
+                    onTogglePasswordVisibility={() => setShowPassword(!showPassword)}
+                    onSubmit={handleAuth}
+                    onToggleMode={() => setIsSignUp(!isSignUp)}
+                  />
+                )}
 
-            {step === "profile" && (
-              <ProfileSetupForm
-                fullName={fullName}
-                loading={loading}
-                onFullNameChange={setFullName}
-                onSubmit={handleProfileSubmit}
-              />
-            )}
+                {step === "verify-otp" && (
+                  <OtpVerificationForm
+                    otpCode={otpCode}
+                    email={email}
+                    loading={loading}
+                    onOtpCodeChange={setOtpCode}
+                    onSubmit={handleOtpVerification}
+                    onBackToSignUp={() => {
+                      setStep("auth");
+                      setOtpCode("");
+                    }}
+                  />
+                )}
 
-            {step === "organization" && (
-              <OrganizationSetupForm
-                orgChoice={orgChoice}
-                orgCode={orgCode}
-                orgName={orgName}
-                loading={loading}
-                onOrgChoiceChange={setOrgChoice}
-                onOrgCodeChange={setOrgCode}
-                onOrgNameChange={setOrgName}
-                onSubmit={handleOrganizationSubmit}
-              />
-            )}
+                {step === "profile" && (
+                  <ProfileSetupForm
+                    fullName={fullName}
+                    loading={loading}
+                    onFullNameChange={setFullName}
+                    onSubmit={handleProfileSubmit}
+                  />
+                )}
 
-            {step === "company-info" && (
-              <CompanyInfoSetupForm
-                organizationName={orgName}
-                phone={companyPhone}
-                fax={companyFax}
-                address={companyAddress}
-                website={companyWebsite}
-                quoteStartingPoint={quoteStartingPoint}
-                loading={loading}
-                onPhoneChange={setCompanyPhone}
-                onFaxChange={setCompanyFax}
-                onAddressChange={setCompanyAddress}
-                onWebsiteChange={setCompanyWebsite}
-                onQuoteStartingPointChange={setQuoteStartingPoint}
-                onSubmit={handleCompanyInfoSubmit}
-                onSkip={handleCompanyInfoSkip}
-              />
-            )}
-          </CardContent>
-        </Card>
+                {step === "organization" && (
+                  <OrganizationSetupForm
+                    orgChoice={orgChoice}
+                    orgCode={orgCode}
+                    orgName={orgName}
+                    loading={loading}
+                    onOrgChoiceChange={setOrgChoice}
+                    onOrgCodeChange={setOrgCode}
+                    onOrgNameChange={setOrgName}
+                    onSubmit={handleOrganizationSubmit}
+                  />
+                )}
 
-            {/* Elegant footer */}
-            <div className="text-center mt-12">
+                {step === "company-info" && (
+                  <CompanyInfoSetupForm
+                    organizationName={orgName}
+                    phone={companyPhone}
+                    fax={companyFax}
+                    address={companyAddress}
+                    website={companyWebsite}
+                    quoteStartingPoint={quoteStartingPoint}
+                    loading={loading}
+                    userId={userId || ""}
+                    currentLogoUrl={currentLogoUrl}
+                    onPhoneChange={setCompanyPhone}
+                    onFaxChange={setCompanyFax}
+                    onAddressChange={setCompanyAddress}
+                    onWebsiteChange={setCompanyWebsite}
+                    onQuoteStartingPointChange={setQuoteStartingPoint}
+                    onLogoUpload={handleLogoUpload}
+                    onLogoError={handleLogoError}
+                    onSubmit={handleCompanyInfoSubmit}
+                    onSkip={handleCompanyInfoSkip}
+                  />
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Footer */}
+            <div className="text-center mt-8">
               {/* Production fallback for stuck sessions */}
               {!import.meta.env.DEV && step === "auth" && (
-                <div className="mb-6">
+                <div className="mb-4">
                   <button
                     onClick={async () => {
                       try {
@@ -749,19 +768,23 @@ const Auth = () => {
                 </div>
               )}
 
-              <div className="space-y-4">
-                <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
-                <p className="text-gray-500 text-sm font-medium">
-                  © 2024 Qwohter. Crafted with care for professionals.
+              {/* Terms and Privacy Policy - only show on auth step */}
+              {step === "auth" && (
+                <p className="text-gray-500 text-xs mb-4">
+                  By signing in, you agree to our{' '}
+                  <button className="text-orange-500 hover:text-orange-600 underline transition-colors">
+                    Terms of Service
+                  </button>
+                  {' '}and{' '}
+                  <button className="text-orange-500 hover:text-orange-600 underline transition-colors">
+                    Privacy Policy
+                  </button>
                 </p>
-                <div className="flex justify-center space-x-6 text-xs">
-                  <span className="text-gray-400">Secure</span>
-                  <span className="text-gray-400">•</span>
-                  <span className="text-gray-400">Fast</span>
-                  <span className="text-gray-400">•</span>
-                  <span className="text-gray-400">Reliable</span>
-                </div>
-              </div>
+              )}
+
+              <p className="text-gray-400 text-xs">
+                © 2024 Qwohter. Secure & Professional.
+              </p>
             </div>
           </div>
         </div>
