@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Building2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar, HeaderNav } from "@/components/common/layout";
@@ -90,7 +89,7 @@ const Quotes = () => {
   const handleCreateVersion = async (quoteId: string) => {
     try {
       const newQuote = await createQuoteVersion(quoteId);
-      navigate(`/quotes/edit/${newQuote.proposal_number}`);
+      navigate(`/quotes/edit/${newQuote.proposal_number as string}`);
     } catch (error) {
       console.error('Error creating quote version:', error);
     }
@@ -123,7 +122,7 @@ const Quotes = () => {
           {/* Header Nav Bar */}
           <HeaderNav 
             user={user.email || ""} 
-            userProfile={profile}
+            userProfile={profile as any}
             organizationName={currentOrganization?.name || 'Loading...'}
             onLogout={handleLogout} 
           />
@@ -163,7 +162,7 @@ const Quotes = () => {
                       const projectName = quote.project_name || quote.quote_details?.project_name || "Untitled Project";
                       const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client";
                       const total = quote.price_details?.final_selling_price || 0;
-                      return `"${proposalInfo.displayNumber}","${projectName}","${clientName}","${total}","${quote.status}","${quote.quote_source || ''}","${quote.created_by || ''}","${new Date(quote.created_at).toLocaleDateString()}"`;
+                      return `"${proposalInfo.displayNumber}","${projectName}","${clientName}","${total}","${quote.status}","${quote.quote_source || ''}","${quote.creator_name || ''}","${new Date(quote.created_at).toLocaleDateString()}"`;
                     }).join("\n");
                   
                   const encodedUri = encodeURI(csvContent);

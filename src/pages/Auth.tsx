@@ -1,22 +1,24 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { authFlowHelpers } from "@/utils/authFlowHelpers";
 import { authStateHelpers } from "@/utils/authStateHelpers";
+import { onboardingStateHelpers } from "@/services/onboardingStateService";
+import { OrganizationCreationLimiter } from "@/services/rateLimitingService";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { OtpVerificationForm } from "@/components/auth/OtpVerificationForm";
 import { ProfileSetupForm } from "@/components/auth/ProfileSetupForm";
 import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
 import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
+import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
 import { organizationSettingsService } from "@/services/companySettingsService";
 import { supabase } from "@/integrations/supabase/client";
 import { LogoUploadResult } from "@/services/LogoUploadService";
 
 interface ProfileData {
   full_name: string | null;
-  organization_id: string | null;
+  email: string;
 }
 
 const Auth = () => {
@@ -33,12 +35,16 @@ const Auth = () => {
   const [orgChoice, setOrgChoice] = useState<"join" | "create" | null>(null);
   const [orgCode, setOrgCode] = useState("");
   const [orgName, setOrgName] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [foundVia, setFoundVia] = useState("");
   const [isSignUp, setIsSignUp] = useState(isCreateAccountRoute);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"auth" | "verify-otp" | "profile" | "organization" | "company-info">("auth");
   const [otpCode, setOtpCode] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  const [submissionInProgress, setSubmissionInProgress] = useState(false);
 
   // Use ref to track current step for auth listener (avoids stale closure issues)
   const stepRef = useRef(step);
@@ -126,12 +132,20 @@ const Auth = () => {
         try {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('full_name, organization_id')
+            .select('full_name, email')
             .eq('id', session.user.id)
             .single() as { data: ProfileData | null };
-          
-          // If user has completed onboarding (has name and organization), redirect to dashboard
-          if (profile && profile.full_name && profile.organization_id) {
+
+          // Check if user has completed onboarding via membership
+          const { data: membership } = await supabase
+            .from('membership')
+            .select('id, status')
+            .eq('user_id', session.user.id)
+            .eq('status', 'active')
+            .single();
+
+          // If user has completed onboarding (has name and active membership), redirect to dashboard
+          if (profile && profile.full_name && membership) {
             if (!redirectingRef.current) {
               console.log('User has completed onboarding, redirecting to dashboard');
               redirectingRef.current = true;
@@ -143,20 +157,17 @@ const Auth = () => {
             }
             return;
           } else {
-            // User has session but incomplete onboarding - determine where they left off
+            // User has session but incomplete onboarding - use onboarding state helper
             console.log('User has session but incomplete onboarding:', profile);
-            
-            if (!profile?.full_name) {
-              // Missing profile info
-              setStep("profile");
+
+            const nextStep = await onboardingStateHelpers.determineOnboardingStep(session.user.id);
+            if (nextStep) {
+              setStep(nextStep as any);
               setUserId(session.user.id);
               setEmail(session.user.email || '');
-            } else if (!profile?.organization_id) {
-              // Missing organization
-              setStep("organization");
-              setUserId(session.user.id);
-              setEmail(session.user.email || '');
-              setFullName(profile.full_name);
+              if (profile?.full_name) {
+                setFullName(profile.full_name);
+              }
             }
             return;
           }
@@ -442,34 +453,59 @@ const Auth = () => {
 
   const handleOrganizationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orgChoice || !userId) return;
+    if (!orgChoice || !userId || submissionInProgress) return;
 
+    // Prevent double submission
+    setSubmissionInProgress(true);
     setLoading(true);
+
     try {
+      // Check rate limiting before creation
+      if (orgChoice === "create") {
+        const rateLimitCheck = await OrganizationCreationLimiter.canCreateOrganization(userId);
+
+        if (!rateLimitCheck.allowed) {
+          toast({
+            title: "Creation Limit Reached",
+            description: rateLimitCheck.reason,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Save current form state before submission
+      await onboardingStateHelpers.saveOnboardingProgress(userId, "organization", {
+        orgChoice,
+        orgName,
+        orgCode,
+        industry,
+        foundVia
+      });
+
       const choice = {
         type: orgChoice,
         orgName: orgChoice === "create" ? orgName : undefined,
-        orgCode: orgChoice === "join" ? orgCode : undefined
+        orgCode: orgChoice === "join" ? orgCode : undefined,
+        industry: orgChoice === "create" ? industry : undefined,
+        foundVia: orgChoice === "create" ? foundVia : undefined
       };
-      
+
       const result = await authFlowHelpers.handleOrganizationSetup({ userId, choice });
-      
+
       if (result.success) {
         if (orgChoice === "create" && result.data) {
           toast({
             title: "Organization created!",
             description: `${result.data.organizationName} has been created successfully. Your code: ${result.data.organizationCode}`,
           });
-          // Move to company info setup for new organizations
           setStep("company-info");
-          saveAuthState({ step: "company-info", email, userId, fullName, orgChoice, orgName, orgCode });
         } else if (orgChoice === "join" && result.data) {
           toast({
             title: "Join request sent!",
             description: "Your request to join the organization is pending approval.",
           });
-          // Skip company info for joining organizations
-          clearAuthState();
+          await onboardingStateHelpers.clearOnboardingProgress(userId);
           navigate("/dashboard");
         }
       } else {
@@ -488,6 +524,7 @@ const Auth = () => {
       });
     } finally {
       setLoading(false);
+      setSubmissionInProgress(false);
     }
   };
 
@@ -574,7 +611,7 @@ const Auth = () => {
               onClick={() => navigate('/')}
             >
               <img
-                src="/logos/Landing-page-logo.svg"
+                src="/logos/Landing_Page_Logo_Light.svg"
                 alt="Qwohter Logo"
                 className="h-8 w-auto"
               />
@@ -635,6 +672,11 @@ const Auth = () => {
             {/* Main form card */}
             <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
               <CardHeader className="text-center space-y-4 pb-4 pt-8 px-8">
+                {/* Progress Indicator - only show for multi-step flows */}
+                {(isSignUp || step === "verify-otp") && (
+                  <OnboardingProgress currentStep={step} isSignUp={isSignUp} />
+                )}
+
                 {/* Step-specific icons */}
                 {step === "verify-otp" && (
                   <div className="mx-auto w-16 h-16 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 mb-4">
@@ -728,10 +770,14 @@ const Auth = () => {
                     orgChoice={orgChoice}
                     orgCode={orgCode}
                     orgName={orgName}
-                    loading={loading}
+                    industry={industry}
+                    foundVia={foundVia}
+                    loading={loading || submissionInProgress}
                     onOrgChoiceChange={setOrgChoice}
                     onOrgCodeChange={setOrgCode}
                     onOrgNameChange={setOrgName}
+                    onIndustryChange={setIndustry}
+                    onFoundViaChange={setFoundVia}
                     onSubmit={handleOrganizationSubmit}
                   />
                 )}

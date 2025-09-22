@@ -59,7 +59,7 @@ import { Quote } from "@/hooks/useQuotes";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 
 // Global filter function for search across multiple fields including addresses
-const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
+const fuzzyFilter: FilterFn<any> = (row, _columnId, value, addMeta) => {
   // Get the original quote data
   const quote = row.original as Quote;
   
@@ -71,7 +71,7 @@ const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
     quote.quote_details?.project_name,
     quote.status,
     quote.quote_source,
-    quote.created_by,
+    quote.creator_name,
     
     // Client information
     quote.job_details?.client_company,
@@ -190,10 +190,6 @@ const formatLastUpdated = (time: string) => {
 };
 
 
-const formatQuoteSource = (source: string) => {
-  if (!source) return 'Not specified';
-  return source.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-};
 
 const getFollowUpStatus = (quote: Quote) => {
   if (!quote.follow_up_days || !quote.created_at) {
@@ -457,11 +453,11 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       filterFn: 'equals',
       enableSorting: false,
     }),
-    columnHelper.accessor('created_by', {
+    columnHelper.accessor('creator_name', {
       id: 'created_by',
       header: 'Created By',
       cell: ({ getValue }) => (
-        <div className="text-sm text-gray-600">{getValue() || ''}</div>
+        <div className="text-sm text-gray-600">{getValue() || 'Unknown'}</div>
       ),
       size: 200,
       enableSorting: false,

@@ -22,6 +22,7 @@ export interface Quote {
   quote_source?: string;
   follow_up_days?: number;
   created_by?: string;
+  creator_name?: string; // Full name from profiles table
   status_last_updated?: string;
   date_last_downloaded?: string;
   version: number;
@@ -53,13 +54,14 @@ const prepareWallDataForSave = (wallsData: any): WallDetails => {
 };
 
 // Helper function to convert database row to Quote interface
-const convertRowToQuote = (row: QuoteRow): Quote => {
+const convertRowToQuote = (row: any): Quote => {
   return {
     ...row,
     wall_details: row.wall_details as unknown as WallDetails,
     project_name: row.project_name || undefined,
     date_last_downloaded: row.date_last_downloaded || undefined,
     status: row.status || 'Draft',
+    creator_name: row.creator_name || 'Unknown',
   };
 };
 
@@ -73,11 +75,21 @@ export const useQuotes = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('quotes')
-        .select('*')
+        .select(`
+          *,
+          creator:profiles!created_by(full_name)
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setQuotes(data ? data.map(convertRowToQuote) : []);
+
+      // Transform the data to include creator_name
+      const quotesWithCreatorNames = data ? data.map(quote => ({
+        ...quote,
+        creator_name: quote.creator?.full_name || 'Unknown'
+      })) : [];
+
+      setQuotes(quotesWithCreatorNames.map(convertRowToQuote));
     } catch (error: any) {
       toast({
         title: "Error fetching quotes",
@@ -103,6 +115,7 @@ export const useQuotes = () => {
 
       if (profileError) throw profileError;
       if (!profileData?.organization_id) throw new Error('User not assigned to an organization');
+      if (!profileData?.full_name) throw new Error('User profile incomplete');
       
       // Generate proposal number
       const proposalInfo = await ProposalNumberGenerator.getNextProposalNumber();
@@ -122,7 +135,7 @@ export const useQuotes = () => {
            },
           wall_details: prepareWallDataForSave(quoteData.walls) as any,
           quote_source: quoteData.contactInfo?.quoteSource || '',
-          created_by: profileData.full_name,
+          created_by: user.id,
           organization_id: profileData.organization_id,
           price_details: {
             payment_upon_drawings: quoteData.pricing.payment_upon_drawings,
@@ -159,16 +172,19 @@ export const useQuotes = () => {
           status: quoteData.status || 'Draft',
           status_last_updated: null,
           follow_up_days: null,
-          user_id: user.id,
         })
         .select()
         .single();
 
       if (error) throw error;
-      
-      setQuotes(prev => [convertRowToQuote(data), ...prev]);
-      
-      return data;
+
+      const newQuote = convertRowToQuote({
+        ...data,
+        creator_name: profileData.full_name
+      });
+      setQuotes(prev => [newQuote, ...prev]);
+
+      return newQuote;
     } catch (error: any) {
       toast({
         title: "Error creating quote",
@@ -476,6 +492,15 @@ export const useQuotes = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      // Get user's profile to get full_name
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
       // Create new quote with incremented version
       const { data, error } = await supabase
         .from('quotes')
@@ -483,6 +508,7 @@ export const useQuotes = () => {
           ...existingQuote as any,
           id: undefined, // Let Supabase generate new ID
           proposal_number: proposalInfo.fullNumber,
+          created_by: user.id, // Use current user as creator
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           date_last_downloaded: null,
@@ -493,9 +519,13 @@ export const useQuotes = () => {
 
       if (error) throw error;
 
-      setQuotes(prev => [convertRowToQuote(data), ...prev]);
-      
-      return data;
+      const newQuote = convertRowToQuote({
+        ...data,
+        creator_name: profileData.full_name
+      });
+      setQuotes(prev => [newQuote, ...prev]);
+
+      return newQuote;
     } catch (error: any) {
       toast({
         title: "Error creating quote version",

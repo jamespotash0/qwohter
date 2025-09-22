@@ -17,7 +17,6 @@ export interface OrganizationMember {
   organization_id: string;
   role: 'admin' | 'member';
   status: 'pending' | 'active' | 'suspended';
-  invited_by?: string;
   joined_at: string;
   email: string;
   full_name?: string;
@@ -88,7 +87,7 @@ export const useOrganizations = () => {
       // Fetch members from profiles table
       const { data: membersData, error: membersError } = await supabase
         .from('profiles')
-        .select('id, email, full_name, role, status, invited_by, joined_at, organization_id')
+        .select('id, email, full_name, role, status, joined_at, organization_id')
         .eq('organization_id', organizationId) as any;
 
       if (membersError) throw membersError;
@@ -106,7 +105,6 @@ export const useOrganizations = () => {
           organization_id: profile.organization_id || '',
           role: (profile.role as 'admin' | 'member') || 'member',
           status: (profile.status as 'pending' | 'active' | 'suspended') || 'active',
-          invited_by: profile.invited_by || undefined,
           joined_at: profile.joined_at || new Date().toISOString(),
           email: profile.email || '',
           full_name: profile.full_name || undefined
@@ -248,7 +246,6 @@ export const useOrganizations = () => {
         .update({
           organization_id: organizationId,
           role,
-          invited_by: user.id,
           joined_at: new Date().toISOString()
         })
         .eq('id', profile.id)
@@ -284,7 +281,6 @@ export const useOrganizations = () => {
         .update({
           organization_id: null,
           role: 'member',
-          invited_by: null,
           joined_at: null
         })
         .eq('id', memberId);

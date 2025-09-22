@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PhoneInput } from "@/components/ui/phone-input";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
 import { LogoUpload } from "@/components/common/uploads/LogoUpload";
 import { LogoUploadResult } from "@/services/LogoUploadService";
+import { validators } from "@/utils/validation";
 
 interface CompanyInfoSetupFormProps {
   organizationName: string;
@@ -54,24 +56,55 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
   onSkip
 }) => {
   const [includeFax, setIncludeFax] = useState(false);
-  // Phone number formatting function
-  const formatPhoneNumber = (value: string): string => {
-    // Remove all non-numeric characters
-    const phoneNumber = value.replace(/\D/g, '');
-    
-    // Format based on length
-    if (phoneNumber.length === 0) return '';
-    if (phoneNumber.length <= 3) return `(${phoneNumber}`;
-    if (phoneNumber.length <= 6) return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
-    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
+  const [touched, setTouched] = useState<{[key: string]: boolean}>({});
+
+  const validateField = (field: string, value: string) => {
+    let validation = { isValid: true, error: undefined };
+
+    switch (field) {
+      case 'phone':
+        validation = validators.phoneNumber(value);
+        break;
+      case 'fax':
+        if (value) validation = validators.phoneNumber(value);
+        break;
+      case 'website':
+        validation = validators.website(value);
+        break;
+      default:
+        break;
+    }
+
+    setValidationErrors(prev => ({
+      ...prev,
+      [field]: validation.error
+    }));
+
+    return validation.isValid;
   };
 
   const handlePhoneChange = (value: string) => {
-    onPhoneChange(formatPhoneNumber(value));
+    onPhoneChange(value);
+    validateField('phone', value);
+    setTouched(prev => ({ ...prev, phone: true }));
   };
 
   const handleFaxChange = (value: string) => {
-    onFaxChange(formatPhoneNumber(value));
+    onFaxChange(value);
+    validateField('fax', value);
+    setTouched(prev => ({ ...prev, fax: true }));
+  };
+
+  const handleWebsiteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    onWebsiteChange(value);
+    if (value.trim()) {
+      validateField('website', value);
+    } else {
+      setValidationErrors(prev => ({ ...prev, website: undefined }));
+    }
+    setTouched(prev => ({ ...prev, website: true }));
   };
 
   // Quote starting point formatting function
@@ -88,6 +121,11 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
   const handleQuoteStartingPointChange = (value: string) => {
     onQuoteStartingPointChange(formatQuoteStartingPoint(value));
   };
+
+  // Check if form has validation errors
+  const hasValidationErrors = Object.values(validationErrors).some(error => error !== undefined);
+  const hasRequiredFieldsEmpty = !phone.trim() || !address.trim() || !website.trim() || !quoteStartingPoint.trim();
+  const isFormInvalid = hasValidationErrors || hasRequiredFieldsEmpty;
   return (
     <div className="space-y-6">
       {/* Form */}
@@ -110,21 +148,18 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
 
         {/* Phone and Quote Starting Point */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone <span className="text-red-500">*</span></Label>
-            <Input
+          <div>
+            <PhoneInput
               id="phone"
-              type="tel"
               value={phone}
-              onChange={(e) => handlePhoneChange(e.target.value)}
+              onChange={handlePhoneChange}
+              label="Phone"
               placeholder="Enter your business phone number"
-              maxLength={14}
               required
-              className="h-12 placeholder:text-muted-foreground/60"
+              disabled={loading}
+              error={touched.phone ? validationErrors.phone : undefined}
+              showValidation
             />
-            <p className="text-xs text-muted-foreground">
-              Format: (xxx) xxx-xxxx
-            </p>
           </div>
 
           <div className="space-y-2">
@@ -169,20 +204,17 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
           </div>
 
           {includeFax && (
-            <div className="space-y-2">
-              <Label htmlFor="fax">Fax</Label>
-              <Input
+            <div>
+              <PhoneInput
                 id="fax"
-                type="tel"
                 value={fax}
-                onChange={(e) => handleFaxChange(e.target.value)}
+                onChange={handleFaxChange}
+                label="Fax"
                 placeholder="Enter your business fax number"
-                maxLength={14}
-                className="h-12 placeholder:text-muted-foreground/60"
+                disabled={loading}
+                error={touched.fax ? validationErrors.fax : undefined}
+                showValidation
               />
-              <p className="text-xs text-muted-foreground">
-                Format: (xxx) xxx-xxxx
-              </p>
             </div>
           )}
         </div>
@@ -209,11 +241,17 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
           <Input
             id="website"
             value={website}
-            onChange={(e) => onWebsiteChange(e.target.value)}
+            onChange={handleWebsiteChange}
             placeholder="https://www.yourcompany.com"
             required
-            className="h-12 placeholder:text-muted-foreground/60"
+            className={`h-12 placeholder:text-muted-foreground/60 ${
+              touched.website && validationErrors.website ? 'border-red-500 focus:border-red-500' : ''
+            }`}
+            disabled={loading}
           />
+          {touched.website && validationErrors.website && (
+            <div className="text-sm text-red-600">{validationErrors.website}</div>
+          )}
         </div>
 
         {/* Action Buttons */}
@@ -230,7 +268,7 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
           <Button
             type="submit"
             className="flex-1 h-12 text-base bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 font-semibold"
-            disabled={loading}
+            disabled={loading || isFormInvalid}
           >
             {loading ? "Saving..." : "Complete Setup"}
           </Button>

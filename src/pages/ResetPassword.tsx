@@ -121,7 +121,7 @@ const ResetPassword = () => {
               onClick={() => navigate('/')}
             >
               <img
-                src="/logos/Landing-page-logo.svg"
+                src="/logos/Landing_Page_Logo_Light.svg"
                 alt="Qwohter Logo"
                 className="h-8 w-auto"
               />

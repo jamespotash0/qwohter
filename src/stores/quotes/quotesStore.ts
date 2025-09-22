@@ -185,7 +185,7 @@ export const useQuotesStore = create<QuotesState>()(
                 delivery_details: quoteData.deliveryLabor.delivery || {},
                 labor_details: quoteData.deliveryLabor.labor || {},
                 status: quoteData.status || 'Draft',
-                user_id: user.id,
+                created_by: user.id,
                 organization_id: profileData.organization_id
               })
               .select()

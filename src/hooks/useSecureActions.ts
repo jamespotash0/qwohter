@@ -50,7 +50,7 @@ export const useSecureActions = () => {
         .insert({
           ...sanitizedData,
           organization_id: profile.organization_id,
-          user_id: user?.id,
+          created_by: user?.id,
         })
         .select()
         .single();
@@ -156,7 +156,7 @@ export const useSecureActions = () => {
       }
       const { data: hasAccess, error: accessError } = await supabase
         .rpc('user_has_admin_role_in_org', {
-          org_id: profile.organization_id as string
+          org_id: profile.organization_id
         });
 
       if (accessError || !hasAccess) {

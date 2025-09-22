@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { LogIn, UserPlus, Eye, EyeOff } from "lucide-react";
 import { sanitizeInput } from "@/utils/security";
+import { validators } from "@/utils/validation";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -39,6 +40,9 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   onToggleMode
 }) => {
   const [rememberMe, setRememberMe] = useState(false);
+  const [emailError, setEmailError] = useState<string | undefined>();
+  const [passwordError, setPasswordError] = useState<string | undefined>();
+  const [touched, setTouched] = useState({ email: false, password: false });
   const navigate = useNavigate();
 
   // Load saved email and remember me preference on component mount
@@ -83,11 +87,25 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             id="email"
             type="email"
             value={email}
-            onChange={(e) => onEmailChange(sanitizeInput.email(e.target.value))}
+            onChange={(e) => {
+              const newEmail = sanitizeInput.email(e.target.value);
+              onEmailChange(newEmail);
+
+              // Validate email on change
+              const validation = validators.email(newEmail);
+              setEmailError(validation.isValid ? undefined : validation.error);
+            }}
+            onBlur={() => setTouched(prev => ({ ...prev, email: true }))}
             placeholder="Enter your email"
             required
-            className="bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
+            className={`bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500 ${
+              touched.email && emailError ? 'border-red-500 focus:border-red-500' : ''
+            }`}
+            autoComplete="email"
           />
+          {touched.email && emailError && (
+            <div className="text-sm text-red-600 mt-1">{emailError}</div>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -99,10 +117,23 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               id="password"
               type={showPassword ? "text" : "password"}
               value={password}
-              onChange={(e) => onPasswordChange(sanitizeInput.string(e.target.value))}
-              placeholder="Enter your password"
+              onChange={(e) => {
+                const newPassword = sanitizeInput.string(e.target.value);
+                onPasswordChange(newPassword);
+
+                // Validate password on change for signup
+                if (isSignUp) {
+                  const validation = validators.password(newPassword);
+                  setPasswordError(validation.isValid ? undefined : validation.error);
+                }
+              }}
+              onBlur={() => setTouched(prev => ({ ...prev, password: true }))}
+              placeholder={isSignUp ? "Create a password (8+ characters)" : "Enter your password"}
               required
-              className="bg-white border-gray-300 h-12 pr-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
+              className={`bg-white border-gray-300 h-12 pr-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500 ${
+                touched.password && passwordError ? 'border-red-500 focus:border-red-500' : ''
+              }`}
+              autoComplete={isSignUp ? "new-password" : "current-password"}
             />
             <Button
               type="button"
@@ -118,6 +149,9 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               )}
             </Button>
           </div>
+          {touched.password && passwordError && (
+            <div className="text-sm text-red-600 mt-1">{passwordError}</div>
+          )}
         </div>
 
         {!isSignUp && (
@@ -146,7 +180,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         <Button
           type="submit"
           className="w-full bg-slate-600 hover:bg-slate-700 text-white font-semibold h-12 transition-colors"
-          disabled={loading}
+          disabled={loading || (isSignUp && (emailError || passwordError))}
         >
           {loading ? (
             "Loading..."

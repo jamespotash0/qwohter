@@ -1,4 +1,4 @@
-// Updated database types to fix TypeScript errors
+// Updated database types for new schema with membership table
 export interface Database {
   public: {
     Tables: {
@@ -16,13 +16,12 @@ export interface Database {
           status: string;
           quote_source?: string;
           follow_up_days?: number;
-          created_by?: string;
+          created_by: string;
           status_last_updated?: string;
           date_last_downloaded?: string;
           version: number;
           created_at: string;
           updated_at: string;
-          user_id: string;
           organization_id: string;
           customization?: any;
         };
@@ -45,7 +44,6 @@ export interface Database {
           version?: number;
           created_at?: string;
           updated_at?: string;
-          user_id: string;
           organization_id: string;
           customization?: any;
         };
@@ -68,7 +66,6 @@ export interface Database {
           version?: number;
           created_at?: string;
           updated_at?: string;
-          user_id?: string;
           organization_id?: string;
           customization?: any;
         };
@@ -76,37 +73,22 @@ export interface Database {
       profiles: {
         Row: {
           id: string;
-          organization_id: string | null;
           email: string;
           full_name: string | null;
-          role: 'admin' | 'member' | null;
-          status: 'pending' | 'active' | 'suspended' | null;
-          invited_by: string | null;
-          joined_at: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id: string;
-          organization_id?: string | null;
-          email?: string;
+          email: string;
           full_name?: string | null;
-          role?: 'admin' | 'member' | null;
-          status?: 'pending' | 'active' | 'suspended' | null;
-          invited_by?: string | null;
-          joined_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
-          organization_id?: string | null;
           email?: string;
           full_name?: string | null;
-          role?: 'admin' | 'member' | null;
-          status?: 'pending' | 'active' | 'suspended' | null;
-          invited_by?: string | null;
-          joined_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -116,7 +98,14 @@ export interface Database {
           id: string;
           name: string;
           organization_code: string;
-          organization_info: any;
+          found_via: string;
+          phone_number: string;
+          fax_number?: string | null;
+          company_address: string;
+          website: string;
+          logo_data: any;
+          industry: string;
+          quote_starting_point: string;
           created_at: string;
           updated_at: string;
         };
@@ -124,7 +113,14 @@ export interface Database {
           id?: string;
           name: string;
           organization_code?: string;
-          organization_info?: any;
+          found_via: string;
+          phone_number: string;
+          fax_number?: string | null;
+          company_address: string;
+          website: string;
+          logo_data?: any;
+          industry: string;
+          quote_starting_point: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -132,9 +128,112 @@ export interface Database {
           id?: string;
           name?: string;
           organization_code?: string;
-          organization_info?: any;
+          found_via?: string;
+          phone_number?: string;
+          fax_number?: string | null;
+          company_address?: string;
+          website?: string;
+          logo_data?: any;
+          industry?: string;
+          quote_starting_point?: string;
           created_at?: string;
           updated_at?: string;
+        };
+      };
+      membership: {
+        Row: {
+          id: string;
+          user_id: string;
+          organization_id: string;
+          role: 'Owner' | 'Admin' | 'Member';
+          status: 'Pending' | 'Active' | 'Suspended';
+          invited_by: string | null;
+          plan: string;
+          joined_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          organization_id: string;
+          role?: 'Owner' | 'Admin' | 'Member';
+          status?: 'Pending' | 'Active' | 'Suspended';
+          invited_by?: string | null;
+          plan?: string;
+          joined_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          organization_id?: string;
+          role?: 'Owner' | 'Admin' | 'Member';
+          status?: 'Pending' | 'Active' | 'Suspended';
+          invited_by?: string | null;
+          plan?: string;
+          joined_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      organization_creation_log: {
+        Row: {
+          id: string;
+          user_id: string;
+          timestamp: string;
+          ip_address: string | null;
+          status: 'Success' | 'Failed' | 'Rate_Limited';
+          error_message?: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          timestamp?: string;
+          ip_address?: string | null;
+          status: 'Success' | 'Failed' | 'Rate_Limited';
+          error_message?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          timestamp?: string;
+          ip_address?: string | null;
+          status?: 'Success' | 'Failed' | 'Rate_Limited';
+          error_message?: string | null;
+        };
+      };
+      user_onboarding_progress: {
+        Row: {
+          id: string;
+          user_id: string;
+          current_step: string;
+          completed_steps: string[];
+          session_data: any;
+          created_at: string;
+          updated_at: string;
+          expires_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          current_step: string;
+          completed_steps?: string[];
+          session_data?: any;
+          created_at?: string;
+          updated_at?: string;
+          expires_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          current_step?: string;
+          completed_steps?: string[];
+          session_data?: any;
+          created_at?: string;
+          updated_at?: string;
+          expires_at?: string;
         };
       };
     };
@@ -142,28 +241,49 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
-      approve_member: {
+      update_user_profile: {
         Args: {
-          member_id: string;
+          user_id: string;
+          full_name_value: string;
         };
         Returns: any;
       };
-      reject_member: {
+      create_organization_and_link_user: {
         Args: {
-          member_id: string;
+          org_name: string;
+          org_code: string;
+          creator_user_id: string;
         };
         Returns: any;
       };
-      update_member_role: {
+      get_organization_by_code: {
         Args: {
-          member_id: string;
-          new_role: string;
+          input_code: string;
         };
         Returns: any;
+      };
+      update_org_creator_profile: {
+        Args: {
+          user_id: string;
+          org_id: string;
+          role_value: string;
+          status_value: string;
+        };
+        Returns: any;
+      };
+      get_current_user_organization: {
+        Args: {};
+        Returns: string;
+      };
+      cleanup_expired_onboarding: {
+        Args: {};
+        Returns: void;
       };
     };
     Enums: {
-      [_ in never]: never;
+      membership_role: 'owner' | 'admin' | 'member';
+      membership_status: 'pending' | 'active' | 'suspended';
+      creation_log_status: 'success' | 'failed' | 'rate_limited';
     };
   };
 }
