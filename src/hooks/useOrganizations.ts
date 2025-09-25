@@ -20,8 +20,8 @@ export interface Organization {
 export interface OrganizationMember {
   id: string;
   organization_id: string;
-  role: 'admin' | 'member';
-  status: 'pending' | 'active' | 'suspended';
+  role: 'Admin' | 'Member';
+  status: 'Pending' | 'Active' | 'Suspended';
   joined_at: string;
   email: string;
   full_name?: string;
@@ -126,8 +126,8 @@ export const useOrganizations = () => {
         .map((membership: any) => ({
           id: membership.user_id, // Use user_id as the member ID
           organization_id: membership.organization_id || '',
-          role: (membership.role as 'admin' | 'member') || 'member',
-          status: (membership.status as 'pending' | 'active' | 'suspended') || 'active',
+          role: (membership.role as 'Admin' | 'Member') || 'Member',
+          status: (membership.status as 'Pending' | 'Active' | 'Suspended') || 'Active',
           joined_at: membership.joined_at || new Date().toISOString(),
           email: membership.profile?.email || '',
           full_name: membership.profile?.full_name || undefined
@@ -311,7 +311,9 @@ export const useOrganizations = () => {
       if (error) throw error;
 
       setMembers(prev => prev.map(member => 
-        member.id === memberId ? { ...member, role } : member
+        member.id === memberId 
+          ? { ...member, role: role === 'admin' ? 'Admin' : 'Member' } 
+          : member
       ));
       
       toast({

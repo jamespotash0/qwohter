@@ -54,7 +54,7 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
   ).length;
 
   const recentQuotes = quotes.slice(0, 5);
-  const activeMembers = members.filter(m => m.status === 'Active' || m.status === 'active').length;
+  const activeMembers = members.filter(m => m.status === 'Active').length;
 
   if ((quotesLoading && quotes.length === 0) || (organizationsLoading && !currentOrganization)) {
     return (
@@ -103,7 +103,7 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
                 </div>
                 <Button
                   onClick={() => navigate('/quotes/new')}
-                  className="bg-accent-primary hover:bg-accent-hover text-white shadow-sm"
+                  className="bg-accent-primary hover:bg-primary text-white shadow-sm"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   New Quote
@@ -253,7 +253,7 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
                         <p className="text-text-muted">No quotes yet</p>
                         <Button
                           onClick={() => navigate('/quotes/new')}
-                          className="mt-4 bg-accent-primary hover:bg-accent-hover text-white"
+                          className="mt-4 bg-accent-primary hover:bg-primary text-white"
                         >
                           Create your first quote
                         </Button>
@@ -274,7 +274,7 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
                   <CardContent className="space-y-4">
                     <Button
                       onClick={() => navigate('/quotes/new')}
-                      className="w-full bg-accent-primary hover:bg-accent-hover text-white justify-start h-12"
+                      className="w-full bg-accent-primary hover:bg-primary text-white justify-start h-12"
                     >
                       <Plus className="h-5 w-5 mr-3" />
                       Create New Quote

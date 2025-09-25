@@ -281,9 +281,9 @@ export interface Database {
       };
     };
     Enums: {
-      membership_role: 'owner' | 'admin' | 'member';
-      membership_status: 'pending' | 'active' | 'suspended';
-      creation_log_status: 'success' | 'failed' | 'rate_limited';
+      membership_role: 'Owner' | 'Admin' | 'Member';
+      membership_status: 'Pending' | 'Active' | 'Suspended';
+      creation_log_status: 'Success' | 'Failed' | 'Rate_Limited';
     };
   };
 }

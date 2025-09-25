@@ -61,27 +61,27 @@
     --font-serif: 'Crimson Text', serif;
     --font-sans: 'Inter', sans-serif;
 
-    /* Light Theme - Cream/White Sidebar with Orange, Slate-Gray, and Blue accents */
-    --sidebar-bg: 43 24% 96%; /* #F7F5F0 - Warm cream */
-    --sidebar-border: 43 15% 88%; /* Cream border */
+    /* Light Theme - Light Gray Sidebar with subtle highlights */
+    --sidebar-bg: 210 20% 98%; /* #F9FAFB - Very light gray, almost white */
+    --sidebar-border: 220 13% 91%; /* #E5E7EB - Light gray border/dividers */
 
-    --text-primary: 215 25% 27%; /* #3F4F5F - Slate gray */
-    --text-secondary: 215 15% 45%; /* #6B7785 - Muted slate */
-    --text-muted: 215 10% 65%; /* Light slate */
+    --text-primary: 210 20% 8%; /* #111827 - Near black */
+    --text-secondary: 215 25% 27%; /* #374151 - Dark gray for inactive menu text */
+    --text-muted: 215 16% 47%; /* #6B7280 - Slate gray 500-600 */
 
-    --accent-primary: 218 100% 62%; /* #3A86FF - Blue accent */
-    --accent-secondary: 24 100% 50%; /* #FF6600 - Orange accent */
-    --accent-hover: 218 100% 68%; /* Lighter blue on hover */
+    --accent-primary: 232 64% 51%; /* #4761C2 - Brand blue */
+    --accent-secondary: 25 95% 53%; /* #F79149 - Brand orange */
+    --accent-hover: 25 78% 46%; /* #E07F35 - Darker orange hover */
 
-    --sidebar-active: 43 15% 85%; /* Light cream for active states */
-    --sidebar-hover: 43 30% 92%; /* Warm cream hover */
+    --sidebar-active: 25 95% 53%; /* #F79149 - Orange for active states */
+    --sidebar-hover: 220 13% 93%; /* Slightly lighter for hover states */
 
-    --bg-primary: 0 0% 100%; /* Pure white */
-    --bg-secondary: 43 24% 96%; /* Warm cream */
-    --bg-tertiary: 43 15% 93%; /* Slightly darker cream */
+    --bg-primary: 0 0% 100%; /* #FFFFFF - Pure white */
+    --bg-secondary: 210 20% 98%; /* #F9FAFB - Soft neutral off-white */
+    --bg-tertiary: 210 16% 93%; /* Slightly darker off-white */
 
-    --border-primary: 43 15% 88%;
-    --border-secondary: 43 10% 85%;
+    --border-primary: 220 13% 91%; /* #E5E7EB - Light gray border */
+    --border-secondary: 218 11% 65%; /* Lighter border variation */
 
     --success: 120 100% 40%;
     --warning: 45 100% 51%;
@@ -174,9 +174,13 @@
 
   .bg-accent-primary { background-color: hsl(var(--accent-primary)); }
   .bg-accent-secondary { background-color: hsl(var(--accent-secondary)); }
-  .bg-sidebar-bg { background-color: hsl(var(--sidebar-bg)); }
+  .bg-sidebar-bg {
+    background-color: hsl(var(--sidebar-bg)) !important;
+    /* Force override: very light gray */
+    background-color: #F9FAFB !important;
+  }
   .bg-sidebar-hover { background-color: hsl(var(--sidebar-hover)); }
-  .bg-sidebar-active { background-color: hsl(var(--sidebar-active)); }
+ 
 
   .border-sidebar-border { border-color: hsl(var(--sidebar-border)); }
 
@@ -184,8 +188,44 @@
   .hover\:text-text-primary:hover { color: hsl(var(--text-primary)); }
   .group-hover\:text-accent-primary:hover { color: hsl(var(--accent-primary)); }
 
-  .text-error { color: hsl(var(--error)); }
+  .text-error {
+    color: hsl(var(--error)) !important;
+    color: #DC2626 !important; /* Force red color for logout */
+  }
   .hover\:bg-error\/10:hover { background-color: hsl(var(--error) / 0.1); }
+
+  /* Force active sidebar menu item styling */
+  .bg-sidebar-active.text-white {
+    background-color: #f8e6d9 !important;
+    color: #000000 !important;
+  }
+
+  .bg-sidebar-active .text-white {
+    color: #F79149 !important;
+  }
+
+  /* Inactive sidebar menu item styling */
+  .bg-sidebar-inactive {
+    color: #6B7280 !important; /* Gray-500 for inactive text */
+  }
+
+  .bg-sidebar-inactive .text-accent-primary {
+    color: #6B7280 !important; /* Gray-500 for inactive icons */
+  }
+
+  /* Blue button styling */
+  .bg-accent-primary {
+    background-color: #4761C2 !important; /* Brand blue */
+  }
+
+  .hover\:bg-primary:hover {
+    background-color: #3B4FA0 !important; /* Darker blue on hover */
+  }
+
+  /* Ensure main content area is pure white */
+  .bg-bg-primary {
+    background-color: #FFFFFF !important; /* Pure white */
+  }
 
   /* Typography Classes */
   .font-serif {

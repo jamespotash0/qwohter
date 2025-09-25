@@ -134,7 +134,7 @@ const Team = () => {
   if (loading) {
     return (
       <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-theme-primary">
+        <div className="min-h-screen flex w-full bg-bg-primary">
           <AppSidebar user={user} onLogout={handleLogout} />
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -149,7 +149,7 @@ const Team = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-theme-primary">
+      <div className="min-h-screen flex w-full bg-bg-primary">
         <AppSidebar user={user} onLogout={handleLogout} />
         
         <main className="flex-1 flex flex-col">

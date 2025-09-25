@@ -78,7 +78,7 @@ const Analytics = () => {
   if (!user || quotesLoading) {
     return (
       <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-theme-primary overflow-hidden">
+        <div className="min-h-screen flex w-full bg-bg-primary overflow-hidden">
           <AppSidebar user={user?.email || ""} onLogout={handleLogout} />
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -93,7 +93,7 @@ const Analytics = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-theme-primary">
+      <div className="min-h-screen flex w-full bg-bg-primary">
         <AppSidebar user={user.email || ""} onLogout={handleLogout} />
         
         <main className="flex-1 flex flex-col overflow-hidden">

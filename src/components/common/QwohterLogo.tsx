@@ -2,7 +2,7 @@ import React from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 
 interface QwohterLogoProps {
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'xsm' | 'sm' | 'md' | 'lg';
   showText?: boolean;
   className?: string;
 }
@@ -16,6 +16,8 @@ export const QwohterLogo: React.FC<QwohterLogoProps> = ({
   
   // Logo dimensions - smaller sizes
   const sizeClasses = {
+    xs: 'h-6 w-auto max-w-24',   // Extra Small: 24px height, auto width, max 96px wide
+    xsm: 'h-7 w-auto max-w-28',  // Between XS and SM: 28px height, auto width, max 112px wide
     sm: 'h-8 w-auto max-w-32',   // Small: 32px height, auto width, max 128px wide
     md: 'h-10 w-auto max-w-40',  // Medium: 40px height, auto width, max 160px wide
     lg: 'h-12 w-auto max-w-48'   // Large: 48px height, auto width, max 192px wide
@@ -27,9 +29,7 @@ export const QwohterLogo: React.FC<QwohterLogoProps> = ({
       case 'dark':
         return '/logos/Logo-Light.svg';
       case 'light':
-        return '/logos/Logo-Light.svg';
-      // case 'white': // Future white sidebar theme
-      //   return '/logos/qwohter-logo-extra.svg';
+        return '/logos/Dashboard-Page-Background-White-Logo.svg';
       default:
         return '/logos/Logo-Light.svg';
     }

@@ -4,7 +4,7 @@ import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { ThemeToggleSwitch } from "@/components/common/ThemeToggleSwitch";
+import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import { QwohterLogo } from "@/components/common/QwohterLogo";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useOrganizations } from "@/hooks/useOrganizations";
@@ -40,7 +40,6 @@ const menuItems = [
 ];
 
 export function AppSidebar({
-  user,
   onLogout
 }: AppSidebarProps) {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -70,64 +69,91 @@ export function AppSidebar({
   };
 
   const userDisplayName = profile?.full_name || currentUser?.email || 'User';
-  const userInitials = getUserInitials(profile?.full_name, currentUser?.email);
+  const userInitials = getUserInitials(profile?.full_name ?? undefined, currentUser?.email);
 
-  const { state } = useSidebar();
+  const { state, setOpen } = useSidebar();
   const isCollapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleNavigate = (path: string) => {
+  const handleNavigate = (path: string, event?: React.MouseEvent) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+
+    // Remember current sidebar state
+    const wasCollapsed = isCollapsed;
+
+    // Navigate
     navigate(path);
+
+    // Force sidebar to stay in same state after navigation
+    if (wasCollapsed) {
+      setTimeout(() => setOpen(false), 0);
+    }
   };
 
   return (
     <Sidebar
-      className="border-r border-sidebar-border bg-sidebar-bg"
+      className="bg-sidebar-bg"
       collapsible="icon"
     >
       {/* Header with Logo and Collapse Toggle */}
-      <SidebarHeader className="px-4 pt-4 pb-2">
+      <SidebarHeader className={`${isCollapsed ? 'px-2 pt-3 pb-0' : 'px-4 pt-4 pb-1 pl-6'}`}>
         <div className="flex items-center justify-between">
           {/* Logo */}
           <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : ''}`}>
-            <QwohterLogo size={isCollapsed ? "sm" : "md"} />
+            <QwohterLogo size={isCollapsed ? "xsm" : "md"} />
           </div>
           {/* Collapsible trigger */}
           {!isCollapsed && (
-            <SidebarTrigger className="h-8 w-8 rounded-lg text-text-secondary hover:bg-sidebar-hover hover:text-text-primary transition-colors" />
+            <SidebarTrigger className="h-8 w-8 rounded-lg text-accent-primary hover:bg-sidebar-hover hover:text-accent-primary transition-colors" />
           )}
         </div>
       </SidebarHeader>
 
       {/* Main Navigation */}
-      <SidebarContent className="px-3 pt-2 pb-6 flex-1">
+      <SidebarContent className={`px-2 ${isCollapsed ? 'pt-2' : 'pt-4'} pb-6 flex-1`}>
         <SidebarGroup>
-          {!isCollapsed && (
-            <div className="px-3 mb-2">
+          <div
+            className={`px-0 pl-0 mb-1 flex items-center ${
+              isCollapsed ? 'justify-center flex-col space-y-1' : 'justify-between'
+            }`}
+          >
+            {/* Show collapse trigger when collapsed */}
+            {isCollapsed && (
+              <SidebarTrigger className="h-7 w-7 rounded-lg text-accent-primary hover:bg-sidebar-hover hover:text-accent-primary transition-colors" />
+            )}
+
+            {!isCollapsed && (
               <p className="text-xs font-medium text-text-muted uppercase tracking-wide">
                 General
               </p>
-            </div>
-          )}
+            )}
+            <ThemeToggleButton />
+          </div>
+
           <SidebarGroupContent>
-            <SidebarMenu className="space-y-2">
+            <SidebarMenu className={`space-y-0 ${isCollapsed ? 'space-y-1' : 'space-y-0'}`}>
               {menuItems.map(item => {
                 const isActive = location.pathname === item.path;
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
-                      className={`h-11 px-3 rounded-xl font-medium transition-all duration-200 group ${
+                      className={`h-11 rounded-xl font-medium transition-all duration-200 group flex items-center ${
+                        isCollapsed ? 'justify-center w-full px-0' : 'px-3'
+                      } ${
                         isActive
-                          ? 'bg-sidebar-active text-text-primary shadow-sm'
-                          : 'text-text-secondary hover:bg-sidebar-hover hover:text-text-primary'
+                          ? 'bg-sidebar-active text-white shadow-sm'
+                          : 'bg-sidebar-inactive hover:bg-sidebar-hover hover:text-text-primary'
                       }`}
-                      onClick={() => handleNavigate(item.path)}
+                      onClick={(e) => handleNavigate(item.path, e)}
                     >
-                      <div className="flex items-center gap-3">
-                        <item.icon className={`h-5 w-5 ${isActive ? 'text-text-primary' : 'group-hover:text-accent-primary'}`} />
-                        {!isCollapsed && <span>{item.title}</span>}
-                      </div>
+                      <item.icon
+                        className={`h-5 w-5 ${
+                          isActive ? 'text-white' : 'text-gray-500 group-hover:text-accent-primary'
+                        }`}
+                      />
+                      {!isCollapsed && <span className="ml-3">{item.title}</span>}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -138,15 +164,9 @@ export function AppSidebar({
       </SidebarContent>
 
       {/* Footer with Theme Toggle and User Profile */}
-      <SidebarFooter className="p-4">
+      <SidebarFooter className="p-2 pb-4">
         {!isCollapsed ? (
           <div className="space-y-4">
-            {/* Theme Toggle */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-text-secondary">Theme</span>
-              <ThemeToggleSwitch />
-            </div>
-
             {/* User Profile Section */}
             <div className="flex items-center justify-between p-3 rounded-xl hover:bg-sidebar-hover transition-colors group">
               <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -172,14 +192,14 @@ export function AppSidebar({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0 text-text-muted hover:text-text-primary hover:bg-sidebar-hover opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="h-8 w-8 p-0 text-accent-primary hover:text-accent-primary hover:bg-sidebar-hover opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem
-                    onClick={() => handleNavigate('/settings')}
+                    onClick={(e) => handleNavigate('/settings', e)}
                     className="flex items-center gap-2 cursor-pointer"
                   >
                     <Settings className="h-4 w-4" />
@@ -199,11 +219,6 @@ export function AppSidebar({
           </div>
         ) : (
           <div className="space-y-3">
-            {/* Theme Toggle Collapsed */}
-            <div className="flex justify-center">
-              <ThemeToggleSwitch />
-            </div>
-
             {/* User Avatar Collapsed */}
             <div className="flex justify-center">
               <DropdownMenu>
@@ -230,7 +245,7 @@ export function AppSidebar({
                     </p>
                   </div>
                   <DropdownMenuItem
-                    onClick={() => handleNavigate('/settings')}
+                    onClick={(e) => handleNavigate('/settings', e)}
                     className="flex items-center gap-2 cursor-pointer mt-1"
                   >
                     <Settings className="h-4 w-4" />
