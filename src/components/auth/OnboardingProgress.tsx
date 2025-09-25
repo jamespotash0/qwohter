@@ -42,7 +42,7 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
   const progressPercentage = ((currentStepIndex + 1) / steps.length) * 100;
 
   return (
-    <div className="w-full max-w-lg mx-auto mb-8">
+    <div className="w-full max-w-lg mx-auto mb-6">
       {/* Progress Bar */}
       <div className="relative">
         {/* Background bar with shadow */}
@@ -56,7 +56,7 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
       </div>
 
       {/* Progress Text */}
-      <div className="mt-4 text-center">
+      <div className="mt-3 text-center">
         <p className="text-sm text-gray-600 font-medium">
           Step {currentStepIndex + 1} of {steps.length}
         </p>

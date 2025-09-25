@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { sanitizeInput } from "@/utils/security";
 import { onboardingStateHelpers } from "@/services/onboardingStateService";
 import { OrganizationCreationLimiter } from "@/services/rateLimitingService";
+import { tempSignupService } from "@/services/tempSignupService";
 
 export interface AuthResult {
   success: boolean;
@@ -112,43 +113,39 @@ export const authFlowHelpers = {
   },
 
   /**
-   * Handle user sign up with email and password
+   * Handle user sign up with email and password - New approach using OTP without creating user first
    */
-  handleSignUp: async (email: string, password: string): Promise<AuthResult> => {
-    console.log('=== SIGNUP FUNCTION START ===');
+  handleSignUp: async (email: string, password: string, fullName: string): Promise<AuthResult> => {
+    console.log('=== SIGNUP FUNCTION START (NEW APPROACH) ===');
     console.log('Email:', email);
 
     try {
-      // Check if user already exists by attempting to get their profile
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', 'dummy') // This will never match, but helps us check if table exists
-        .limit(1);
-
-      // Try Supabase auth signup
-      const { data, error } = await supabase.auth.signUp({
+      // Store signup data temporarily
+      tempSignupService.store({
         email,
-        password
+        password,
+        fullName
+      });
+
+      // Send OTP to email without creating user
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false // Don't create user yet
+        }
       });
 
       if (error) {
-        console.log('SignUp error:', error);
+        console.log('OTP sending error:', error);
 
-        if (error.message.includes('User already registered') ||
-            error.message.includes('already exists') ||
-            error.message.includes('duplicate')) {
-          return {
-            success: false,
-            error: "An account with this email already exists. Please sign in instead."
-          };
-        }
+        // Clean up temp data on error
+        tempSignupService.clear();
 
         if (error.message.includes('Email rate limit exceeded') ||
             error.message.includes('rate limit')) {
           return {
             success: false,
-            error: "Too many signup attempts. Please wait a few minutes and try again."
+            error: "Too many attempts. Please wait a few minutes and try again."
           };
         }
 
@@ -159,42 +156,26 @@ export const authFlowHelpers = {
           };
         }
 
-        if (error.message.includes('Password')) {
-          return {
-            success: false,
-            error: "Password must be at least 6 characters long."
-          };
-        }
-
         return {
           success: false,
-          error: error.message || "Failed to create account. Please try again."
+          error: "Failed to send verification code. Please try again."
         };
       }
 
-      if (data.user) {
-        console.log('SignUp successful, user created:', data.user.id);
+      // Mark OTP as sent
+      tempSignupService.markOtpSent();
 
-        // Save initial onboarding state
-        await onboardingStateHelpers.saveOnboardingProgress(
-          data.user.id,
-          'verify-otp',
-          { }
-        );
-
-        return {
-          success: true,
-          data: { userId: data.user.id },
-          nextStep: 'verify-otp'
-        };
-      }
+      console.log('OTP sent successfully');
 
       return {
-        success: false,
-        error: "Failed to create account. Please try again."
+        success: true,
+        data: { email },
+        nextStep: 'verify-otp'
       };
+
     } catch (error: any) {
       console.log('SignUp catch error:', error);
+      tempSignupService.clear();
       return {
         success: false,
         error: error.message || "An unexpected error occurred during signup."
@@ -203,7 +184,7 @@ export const authFlowHelpers = {
   },
 
   /**
-   * Handle OTP verification
+   * Handle OTP verification - New approach that creates user after verification
    */
   handleOtpVerification: async (email: string, otpCode: string): Promise<AuthResult> => {
     if (!otpCode || !email) {
@@ -214,37 +195,97 @@ export const authFlowHelpers = {
     }
 
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
+      // Get temporary signup data
+      const tempData = tempSignupService.get();
+      if (!tempData || tempData.email !== email) {
+        return {
+          success: false,
+          error: "Verification session expired. Please sign up again."
+        };
+      }
+
+      // First verify the OTP
+      const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
         email,
         token: otpCode,
         type: 'email'
       });
 
-      if (error) throw error;
-
-      if (data.user) {
-        // Update onboarding state to move to profile step
-        await onboardingStateHelpers.completeStep(
-          data.user.id,
-          'verify-otp',
-          'profile'
-        );
+      if (verifyError) {
+        if (verifyError.message.includes('expired')) {
+          tempSignupService.clear();
+          return {
+            success: false,
+            error: "Verification code has expired. Please sign up again."
+          };
+        }
 
         return {
-          success: true,
-          data: { userId: data.user.id },
-          nextStep: 'profile'
+          success: false,
+          error: "Invalid verification code. Please try again."
         };
       }
 
+      // If OTP is valid, now create the actual user account
+      const { data: signupData, error: signupError } = await supabase.auth.signUp({
+        email: tempData.email,
+        password: tempData.password
+      });
+
+      if (signupError) {
+        console.error('Error creating user after OTP verification:', signupError);
+        tempSignupService.clear();
+        return {
+          success: false,
+          error: "Failed to create account. Please try again."
+        };
+      }
+
+      if (signupData.user) {
+        console.log('User created successfully after OTP verification:', signupData.user.id);
+
+        // Create profile with full name
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: signupData.user.id,
+            full_name: tempData.fullName,
+            email: tempData.email
+          });
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+        }
+
+        // Save initial onboarding state
+        await onboardingStateHelpers.saveOnboardingProgress(
+          signupData.user.id,
+          'organization',
+          { fullName: tempData.fullName }
+        );
+
+        // Clear temporary data
+        tempSignupService.clear();
+
+        return {
+          success: true,
+          data: { userId: signupData.user.id },
+          nextStep: 'organization'
+        };
+      }
+
+      tempSignupService.clear();
       return {
         success: false,
-        error: "Failed to verify email"
+        error: "Failed to create account. Please try again."
       };
+
     } catch (error: any) {
+      console.error('OTP verification error:', error);
+      tempSignupService.clear();
       return {
         success: false,
-        error: error.message
+        error: error.message || "An error occurred during verification."
       };
     }
   },

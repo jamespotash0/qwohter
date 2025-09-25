@@ -55,15 +55,21 @@ export const validators = {
       return { isValid: false, error: 'Please enter a valid email domain' };
     }
 
-    // Check for common typos in popular domains
+    // Check for common typos in popular domains (only suggest for close matches, don't reject exact matches)
     const commonDomains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com'];
-    
+
     const lowerDomain = domain!.toLowerCase();
-    const suggestedDomain = commonDomains.find(d => levenshtein(d, lowerDomain) <= 1);
-  
+
+    // Only suggest corrections for typos (distance > 0 but <= 2), don't reject exact matches
+    const suggestedDomain = commonDomains.find(d => {
+      const distance = levenshtein(d, lowerDomain);
+      return distance > 0 && distance <= 2;
+    });
+
     if (suggestedDomain) {
       return { isValid: false, error: `Did you mean ${suggestedDomain}?` };
     }
+
     return { isValid: true };
   },
 

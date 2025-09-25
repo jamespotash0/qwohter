@@ -10,6 +10,23 @@ interface ProtectedRouteProps {
 }
 
 /**
+ * Check if user has required role based on role hierarchy
+ * Owner > Admin > Member
+ */
+const hasRequiredRole = (
+  userRole: 'Owner' | 'Admin' | 'Member' | null,
+  requiredRole: 'Owner' | 'Admin' | 'Member'
+): boolean => {
+  if (!userRole) return false;
+
+  const roleHierarchy = { Owner: 3, Admin: 2, Member: 1 };
+  const userLevel = roleHierarchy[userRole] || 0;
+  const requiredLevel = roleHierarchy[requiredRole] || 0;
+
+  return userLevel >= requiredLevel;
+};
+
+/**
  * Protected route component that handles authentication and authorization
  * 
  * Features:
@@ -23,7 +40,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children, 
   requiresRole 
 }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | 'pending' | null>(null);
   const [userRole, setUserRole] = useState<'Owner' | 'Admin' | 'Member' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
@@ -58,7 +75,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           .eq('id', session.user.id)
           .single();
 
-        if (profileError || !profile || !profile.full_name) {
+        if (profileError || !profile || !(profile as any).full_name) {
           console.log('User has session but incomplete profile, redirecting to auth for onboarding');
           setIsAuthenticated(false);
           setIsLoading(false);
@@ -72,15 +89,31 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           .eq('user_id', session.user.id)
           .single();
 
-        if (membershipsError || !memberships || memberships.status !== 'Active') {
-          console.log('User has profile but no active membership, redirecting to auth for onboarding');
+        if (membershipsError || !memberships) {
+          console.log('User has profile but no membership, redirecting to auth for onboarding');
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          return;
+        }
+
+        // If membership is pending, redirect to pending approval page
+        if ((memberships as any).status === 'Pending') {
+          console.log('User has pending membership, redirecting to pending approval page');
+          setIsAuthenticated('pending');
+          setIsLoading(false);
+          return;
+        }
+
+        // If membership is not active (suspended, etc), redirect to auth
+        if ((memberships as any).status !== 'Active') {
+          console.log('User has inactive membership, redirecting to auth');
           setIsAuthenticated(false);
           setIsLoading(false);
           return;
         }
 
         setIsAuthenticated(true);
-        setUserRole(memberships.role);
+        setUserRole((memberships as any).role);
       } catch (error) {
         console.error('Auth check error:', error);
         setIsAuthenticated(false);
@@ -118,22 +151,32 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
+  // Redirect to pending approval page if membership is pending
+  if (isAuthenticated === 'pending') {
+    return <Navigate to="/pending-approval" replace />;
+  }
+
   // Redirect to auth page if not authenticated
   if (!isAuthenticated) {
     return (
-      <Navigate 
-        to="/auth" 
-        state={{ from: location }} 
-        replace 
+      <Navigate
+        to="/sign-in"
+        state={{ from: location }}
+        replace
       />
     );
   }
 
   // Check role-based access if required
-  if (requiresRole && userRole !== requiresRole) {
-    // For now, redirect to dashboard if user doesn't have required role
-    // In the future, you could show an "Access Denied" page
-    return <Navigate to="/dashboard" replace />;
+  if (requiresRole && !hasRequiredRole(userRole, requiresRole)) {
+    // Redirect to access denied page with required role info
+    return (
+      <Navigate
+        to="/access-denied"
+        state={{ requiredRole: requiresRole, userRole: userRole }}
+        replace
+      />
+    );
   }
 
   return <>{children}</>;

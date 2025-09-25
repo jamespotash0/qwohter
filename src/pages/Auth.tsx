@@ -14,6 +14,7 @@ import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
 import { organizationSettingsService } from "@/services/companySettingsService";
 import { supabase } from "@/integrations/supabase/client";
 import { LogoUploadResult } from "@/services/LogoUploadService";
+import { tempSignupService } from "@/services/tempSignupService";
 
 interface ProfileData {
   full_name: string | null;
@@ -342,20 +343,19 @@ const Auth = () => {
         const combinedFullName = `${firstName.trim()} ${lastName.trim()}`.trim();
         setFullName(combinedFullName);
 
-        result = await authFlowHelpers.handleSignUp(email, password);
+        result = await authFlowHelpers.handleSignUp(email, password, combinedFullName);
         console.log('SignUp result:', result);
 
-        if (result.success && result.data?.userId) {
+        if (result.success) {
           console.log('SignUp successful, setting step to verify-otp');
-          setUserId(result.data.userId);
           setStep("verify-otp");
-          saveAuthState({ step: "verify-otp", email, userId: result.data.userId, fullName: combinedFullName });
+          saveAuthState({ step: "verify-otp", email, fullName: combinedFullName });
           toast({
             title: "Verification code sent!",
             description: "Please check your email and enter the 6-digit code.",
           });
         } else {
-          console.log('SignUp failed or no userId:', result);
+          console.log('SignUp failed:', result);
         }
       } else {
         console.log('Calling handleSignIn...');
@@ -669,7 +669,7 @@ const Auth = () => {
                 <div className="space-y-1">
                   <CardTitle className="text-3xl font-bold text-gray-900">
                     {step === "auth" && (isSignUp ? "Create Account" : "Welcome back")}
-                    {step === "verify-otp" && "Check Your Email"}
+                    {step === "verify-otp" && ""}
                     {step === "organization" && "Organization Setup"}
                     {step === "company-info" && "Company Details"}
                   </CardTitle>
@@ -678,7 +678,7 @@ const Auth = () => {
                       ? "Create your account to start managing quotes"
                       : "Sign in to your Qwohter account"
                     )}
-                    {step === "verify-otp" && "We've sent a verification code to your email address. Enter it below to continue."}
+                    {step === "verify-otp" && ""}
                     {step === "organization" && "Connect with your organization or create a new one."}
                     {step === "company-info" && "Add your company information for professional quotes."}
                   </CardDescription>
@@ -720,9 +720,38 @@ const Auth = () => {
                     loading={loading}
                     onOtpCodeChange={setOtpCode}
                     onSubmit={handleOtpVerification}
-                    onBackToSignUp={() => {
-                      setStep("auth");
-                      setOtpCode("");
+                    onResendCode={async () => {
+                      // Check if we have temporary signup data
+                      const tempData = tempSignupService.get();
+                      if (!tempData || tempData.email !== email) {
+                        toast({
+                          title: "Session Expired",
+                          description: "Please sign up again to resend verification code.",
+                          variant: "destructive"
+                        });
+                        setStep("auth");
+                        return;
+                      }
+
+                      // Resend OTP using the same approach as initial signup
+                      const { error } = await supabase.auth.signInWithOtp({
+                        email,
+                        options: {
+                          shouldCreateUser: false
+                        }
+                      });
+
+                      if (error) {
+                        toast({
+                          title: "Error",
+                          description: "Failed to resend verification code. Please try again.",
+                          variant: "destructive"
+                        });
+                        throw error;
+                      }
+
+                      // Update the OTP sent status
+                      tempSignupService.markOtpSent();
                     }}
                   />
                 )}

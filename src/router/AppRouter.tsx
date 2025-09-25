@@ -14,6 +14,8 @@ const Landing = lazy(() => import("@/pages/Landing"));
 const Auth = lazy(() => import("@/pages/Auth"));
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+const PendingApproval = lazy(() => import("@/pages/PendingApproval"));
+const AccessDenied = lazy(() => import("@/pages/AccessDenied"));
 
 // Main application pages
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -58,6 +60,8 @@ export const AppRouter = () => (
           <Route path="/create-account" element={<Auth />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/pending-approval" element={<PendingApproval />} />
+          <Route path="/access-denied" element={<AccessDenied />} />
 
           {/* Legacy redirects */}
           <Route path="/auth" element={<Navigate to="/sign-in" replace />} />
@@ -78,9 +82,9 @@ export const AppRouter = () => (
             </ProtectedRoute>
           } />
           
-          {/* Team and organization management */}
+          {/* Team and organization management (requires Admin or Owner role) */}
           <Route path="/team" element={
-            <ProtectedRoute>
+            <ProtectedRoute requiresRole="Admin">
               <Team />
             </ProtectedRoute>
           } />
