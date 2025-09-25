@@ -2,12 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import {
   FileText,
-  TrendingUp,
-  Calendar,
-  Users,
   Plus,
   MoreHorizontal,
-  ArrowUpRight
+  ArrowUpRight,
+  TrendingUp,
+  Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppSidebar } from "@/components/common/layout";
@@ -33,8 +32,6 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
 
   const {
     currentOrganization,
-    members,
-    currentUserRole,
     loading: organizationsLoading
   } = useOrganizations();
   const { profile } = useUserProfile(userId);
@@ -48,13 +45,7 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
   }, [userId, isInitialized]);
 
   // Calculate stats
-  const thisMonth = quotes.filter(q =>
-    new Date(q.created_at).getMonth() === new Date().getMonth() &&
-    new Date(q.created_at).getFullYear() === new Date().getFullYear()
-  ).length;
-
   const recentQuotes = quotes.slice(0, 5);
-  const activeMembers = members.filter(m => m.status === 'Active').length;
 
   if ((quotesLoading && quotes.length === 0) || (organizationsLoading && !currentOrganization)) {
     return (
@@ -111,86 +102,6 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
               </div>
             </div>
 
-            {/* Quick Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Total Quotes */}
-              <Card className="bg-card border border-border-primary shadow-sm hover:shadow-md transition-all duration-300 group">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-text-secondary font-medium">Total Quotes</p>
-                      <p className="text-3xl font-bold text-text-primary mt-1">{quotes.length}</p>
-                      <div className="flex items-center gap-1 mt-3">
-                        <TrendingUp className="w-4 h-4 text-success" />
-                        <span className="text-sm text-success font-medium">All time</span>
-                      </div>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-accent-primary/10 group-hover:bg-accent-primary/20 transition-colors">
-                      <FileText className="w-6 h-6 text-accent-primary" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* This Month */}
-              <Card className="bg-card border border-border-primary shadow-sm hover:shadow-md transition-all duration-300 group">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-text-secondary font-medium">This Month</p>
-                      <p className="text-3xl font-bold text-text-primary mt-1">{thisMonth}</p>
-                      <div className="flex items-center gap-1 mt-3">
-                        <Calendar className="w-4 h-4 text-accent-secondary" />
-                        <span className="text-sm text-accent-secondary font-medium">New quotes</span>
-                      </div>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-accent-secondary/10 group-hover:bg-accent-secondary/20 transition-colors">
-                      <Calendar className="w-6 h-6 text-accent-secondary" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Team Members */}
-              <Card className="bg-card border border-border-primary shadow-sm hover:shadow-md transition-all duration-300 group">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-text-secondary font-medium">Team Members</p>
-                      <p className="text-3xl font-bold text-text-primary mt-1">{activeMembers}</p>
-                      <div className="flex items-center gap-1 mt-3">
-                        <Users className="w-4 h-4 text-accent-primary" />
-                        <span className="text-sm text-text-muted font-medium">Active</span>
-                      </div>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-accent-primary/10 group-hover:bg-accent-primary/20 transition-colors">
-                      <Users className="w-6 h-6 text-accent-primary" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Organization */}
-              <Card className="bg-card border border-border-primary shadow-sm hover:shadow-md transition-all duration-300 group">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-text-secondary font-medium">Your Role</p>
-                      <p className="text-xl font-bold text-text-primary mt-1 capitalize">
-                        {currentUserRole || 'Member'}
-                      </p>
-                      <div className="flex items-center gap-1 mt-3">
-                        <div className="w-2 h-2 rounded-full bg-success"></div>
-                        <span className="text-sm text-text-muted font-medium">Active</span>
-                      </div>
-                    </div>
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-success/10 group-hover:bg-success/20 transition-colors">
-                      <Users className="w-6 h-6 text-success" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
 
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

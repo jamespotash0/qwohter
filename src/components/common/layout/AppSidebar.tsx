@@ -43,8 +43,38 @@ export function AppSidebar({
   onLogout
 }: AppSidebarProps) {
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [cachedProfile, setCachedProfile] = useState<any>(() => {
+    // Initialize from localStorage
+    try {
+      const stored = localStorage.getItem('sidebar_cached_profile');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [cachedUserRole, setCachedUserRole] = useState<string>(() => {
+    // Initialize from localStorage
+    return localStorage.getItem('sidebar_cached_role') || '';
+  });
+
   const { profile } = useUserProfile(currentUser?.id);
   const { currentUserRole } = useOrganizations();
+
+  // Cache profile data to prevent flashing
+  useEffect(() => {
+    if (profile && JSON.stringify(profile) !== JSON.stringify(cachedProfile)) {
+      setCachedProfile(profile);
+      localStorage.setItem('sidebar_cached_profile', JSON.stringify(profile));
+    }
+  }, [profile, cachedProfile]);
+
+  // Cache user role to prevent flashing
+  useEffect(() => {
+    if (currentUserRole && currentUserRole !== cachedUserRole) {
+      setCachedUserRole(currentUserRole);
+      localStorage.setItem('sidebar_cached_role', currentUserRole);
+    }
+  }, [currentUserRole, cachedUserRole]);
 
   // Get current user
   useEffect(() => {
@@ -52,6 +82,12 @@ export function AppSidebar({
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setCurrentUser(session.user);
+      } else {
+        // Clear cache when no user session
+        setCachedProfile(null);
+        setCachedUserRole('');
+        localStorage.removeItem('sidebar_cached_profile');
+        localStorage.removeItem('sidebar_cached_role');
       }
     };
     getCurrentUser();
@@ -68,8 +104,8 @@ export function AppSidebar({
     return 'U';
   };
 
-  const userDisplayName = profile?.full_name || currentUser?.email || 'User';
-  const userInitials = getUserInitials(profile?.full_name ?? undefined, currentUser?.email);
+  const userDisplayName = cachedProfile?.full_name || currentUser?.email || 'User';
+  const userInitials = getUserInitials(cachedProfile?.full_name ?? undefined, currentUser?.email);
 
   const { state, setOpen } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -171,7 +207,7 @@ export function AppSidebar({
             <div className="flex items-center justify-between p-3 rounded-xl hover:bg-sidebar-hover transition-colors group">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Avatar className="h-9 w-9 ring-2 ring-sidebar-border">
-                  <AvatarImage src={profile?.avatar_url} />
+                  <AvatarImage src={cachedProfile?.avatar_url} />
                   <AvatarFallback className="bg-accent-primary text-white text-sm font-semibold">
                     {userInitials}
                   </AvatarFallback>
@@ -181,7 +217,7 @@ export function AppSidebar({
                     {userDisplayName}
                   </p>
                   <p className="text-xs text-text-muted truncate">
-                    {currentUserRole || 'Member'}
+                    {cachedUserRole || 'Member'}
                   </p>
                 </div>
               </div>
@@ -228,7 +264,7 @@ export function AppSidebar({
                     className="h-10 w-10 p-0 rounded-xl hover:bg-sidebar-hover"
                   >
                     <Avatar className="h-8 w-8 ring-2 ring-sidebar-border">
-                      <AvatarImage src={profile?.avatar_url} />
+                      <AvatarImage src={cachedProfile?.avatar_url} />
                       <AvatarFallback className="bg-accent-primary text-white text-xs font-semibold">
                         {userInitials}
                       </AvatarFallback>
@@ -241,7 +277,7 @@ export function AppSidebar({
                       {userDisplayName}
                     </p>
                     <p className="text-xs text-text-muted">
-                      {currentUserRole || 'Member'}
+                      {cachedUserRole || 'Member'}
                     </p>
                   </div>
                   <DropdownMenuItem

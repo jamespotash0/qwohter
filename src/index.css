@@ -176,8 +176,8 @@
   .bg-accent-secondary { background-color: hsl(var(--accent-secondary)); }
   .bg-sidebar-bg {
     background-color: hsl(var(--sidebar-bg)) !important;
-    /* Force override: very light gray */
-    background-color: #F9FAFB !important;
+    /* Force override: slightly darker light gray */
+    background-color: #F3F4F6 !important;
   }
   .bg-sidebar-hover { background-color: hsl(var(--sidebar-hover)); }
  
