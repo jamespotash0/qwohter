@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { User, Mail, Phone, Printer, MapPin, Globe, Plus, TrendingUp } from "lucide-react";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useOrganizationSettings } from "@/hooks/useCompanySettings";
-import { extractPrimaryContactInfo } from "@/lib/types/settings/companySettings";
+import { extractCompanyInfoForForm } from "@/lib/types/settings/companySettings";
 
 interface ContactInfoData {
   contactName: string;
@@ -129,14 +129,14 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
       let shouldUpdate = false;
       const updatedData = { ...data };
 
-      // Extract primary contact info from JSONB organization_info
-      const primaryContactInfo = extractPrimaryContactInfo(organization.organization_info);
+      // Extract primary contact info from organization
+      const primaryContactInfo = extractCompanyInfoForForm(organization);
 
       // Always set company fields from organization (locked fields)
       const companyFields = {
-        address: primaryContactInfo.address,
-        phone: primaryContactInfo.phone,
-        fax: primaryContactInfo.fax,
+        address: primaryContactInfo.company_address,
+        phone: primaryContactInfo.phone_number,
+        fax: primaryContactInfo.fax_number,
         website: primaryContactInfo.website
       };
 

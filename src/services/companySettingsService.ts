@@ -1,8 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  OrganizationWithCompanyInfo, 
-  CompanyInfoFormData, 
-  convertFormDataToOrganizationInfo 
+import {
+  OrganizationWithCompanyInfo,
+  CompanyInfoFormData
 } from '@/lib/types/settings/companySettings';
 
 class OrganizationSettingsService {
@@ -21,7 +20,12 @@ class OrganizationSettingsService {
             id,
             name,
             organization_code,
-            organization_info,
+            phone_number,
+            fax_number,
+            company_address,
+            website,
+            quote_start_number,
+            logo_data,
             created_at,
             updated_at
           )
@@ -34,11 +38,7 @@ class OrganizationSettingsService {
 
       const orgData = (data as any).organizations;
 
-      // Return organization data with organization_info fallback
-      return {
-        ...orgData,
-        organization_info: orgData.organization_info || {}
-      } as OrganizationWithCompanyInfo;
+      return orgData as OrganizationWithCompanyInfo;
     } catch (error) {
       console.error('Error fetching organization:', error);
       throw error;
@@ -59,7 +59,12 @@ class OrganizationSettingsService {
             id,
             name,
             organization_code,
-            organization_info,
+            phone_number,
+            fax_number,
+            company_address,
+            website,
+            quote_start_number,
+            logo_data,
             created_at,
             updated_at
           )
@@ -72,60 +77,50 @@ class OrganizationSettingsService {
 
       const orgData = (membershipData as any).organizations;
 
-      // Merge form data with existing organization info to preserve logo data
-      const currentOrgInfo = orgData.organization_info || {};
-      const formOrgInfo = convertFormDataToOrganizationInfo(companyData);
-
-      // Preserve existing logo data if not provided in form
-      const mergedOrgInfo = {
-        ...currentOrgInfo,
-        ...formOrgInfo,
-        // Keep existing logo data if form doesn't have logo data
-        logo_url: formOrgInfo.logo_url || currentOrgInfo.logo_url,
-        logo_file_name: formOrgInfo.logo_file_name || currentOrgInfo.logo_file_name,
-        logo_public_url: formOrgInfo.logo_public_url || currentOrgInfo.logo_public_url,
-        logo_updated_at: formOrgInfo.logo_url ? formOrgInfo.logo_updated_at : currentOrgInfo.logo_updated_at,
+      // Prepare update data using individual fields instead of JSONB
+      const logoData = {
+        ...(orgData.logo_data || {}),
+        ...(companyData.logo_data && companyData.logo_data)
       };
 
-      console.log('🔄 Merging organization info:', {
-        currentOrgInfo,
-        formOrgInfo,
-        mergedOrgInfo
+      const updateData = {
+        phone_number: companyData.phone_number || orgData.phone_number,
+        fax_number: companyData.fax_number || orgData.fax_number,
+        company_address: companyData.company_address || orgData.company_address,
+        website: companyData.website || orgData.website,
+        quote_start_number: companyData.quote_start_number || orgData.quote_start_number,
+        logo_data: logoData,
+        updated_at: new Date().toISOString()
+      };
+
+      console.log('🔄 Updating organization with individual fields:', {
+        orgId: (membershipData as any).organization_id,
+        updateData
       });
 
-      // Try to update organization with company info in JSONB format
-      // If column doesn't exist, we'll catch the error and return a mock response
-      try {
-        const { data, error } = await supabase
-          .from('organizations')
-          .update({
-            organization_info: mergedOrgInfo,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', (membershipData as any).organization_id)
-          .select('*')
-          .single();
+      // Update organization with individual fields
+      const { data, error } = await supabase
+        .from('organizations')
+        .update(updateData)
+        .eq('id', (membershipData as any).organization_id)
+        .select(`
+          id,
+          name,
+          organization_code,
+          phone_number,
+          fax_number,
+          company_address,
+          website,
+          quote_start_number,
+          logo_data,
+          created_at,
+          updated_at
+        `)
+        .single();
 
-        if (error) throw error;
-        // Return the updated data with organization_info
-        return {
-          ...(data as object),
-          organization_info: mergedOrgInfo
-        } as OrganizationWithCompanyInfo;
+      if (error) throw error;
 
-      } catch (updateError: any) {
-        // If organization_info column doesn't exist, fall back to just returning the organization
-        if (updateError.message?.includes('organization_info')) {
-          console.warn('organization_info column does not exist yet. Please apply the migration.');
-
-          // Return the current organization data with the organizationInfo we tried to save
-          return {
-            ...orgData,
-            organization_info: mergedOrgInfo
-          } as OrganizationWithCompanyInfo;
-        }
-        throw updateError;
-      }
+      return data as OrganizationWithCompanyInfo;
     } catch (error) {
       console.error('Error updating organization company info:', error);
       throw error;

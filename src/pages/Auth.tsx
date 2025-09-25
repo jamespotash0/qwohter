@@ -546,11 +546,11 @@ const Auth = () => {
       // Use the organization settings service to update company info
       
       await organizationSettingsService.updateCompanyInfo({
-        phone: companyPhone,
-        fax: companyFax, // Can be empty string, handled by the service
-        address: companyAddress,
+        phone_number: companyPhone,
+        fax_number: companyFax, // Can be empty string, handled by the service
+        company_address: companyAddress,
         website: companyWebsite,
-        quote_starting_point: quoteStartingPoint,
+        quote_start_number: quoteStartingPoint,
       });
 
       toast({

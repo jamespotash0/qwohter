@@ -7,7 +7,7 @@ import { CompanyInfoDialog } from "./CompanyInfoDialog";
 import { useOrganizationSettings } from "@/hooks/useCompanySettings";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { supabase } from "@/integrations/supabase/client";
-import { extractPrimaryContactInfo } from "@/lib/types/settings/companySettings";
+import { extractCompanyInfoForForm } from "@/lib/types/settings/companySettings";
 
 export function CompanySettingsSection() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -61,8 +61,8 @@ export function CompanySettingsSection() {
     return <div className="p-4 text-center text-muted-foreground">Loading...</div>;
   }
 
-  const companyData = organization ? 
-    extractPrimaryContactInfo(organization.organization_info || {}) : null;
+  const companyData = organization ?
+    extractCompanyInfoForForm(organization) : null;
   
   // Check if user is admin
   const isAdmin = profile?.role === 'admin';
@@ -75,10 +75,10 @@ export function CompanySettingsSection() {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {organization?.organization_info?.logo_public_url ? (
+                {organization?.logo_data?.logo_public_url ? (
                   <div className="w-8 h-8 border border-muted-foreground/20 rounded overflow-hidden bg-white flex-shrink-0">
                     <img 
-                      src={organization.organization_info.logo_public_url} 
+                      src={organization.logo_data.logo_public_url} 
                       alt="Company logo" 
                       className="w-full h-full object-contain"
                       onError={(e) => {
@@ -113,18 +113,18 @@ export function CompanySettingsSection() {
               <div className="space-y-4">
                 <div>
                   <span className="font-medium text-muted-foreground">Phone:</span>
-                  <p>{companyData?.phone || 'Not provided'}</p>
+                  <p>{companyData?.phone_number || 'Not provided'}</p>
                 </div>
-                {companyData?.fax && (
+                {companyData?.fax_number && (
                   <div>
                     <span className="font-medium text-muted-foreground">Fax:</span>
-                    <p>{companyData.fax}</p>
+                    <p>{companyData.fax_number}</p>
                   </div>
                 )}
                 <div>
                   <span className="font-medium text-muted-foreground">Proposal Starting Number:</span>
                   <p className="font-mono text-lg font-semibold text-blue-700">
-                    {companyData?.quote_starting_point || 'Not set'}
+                    {companyData?.quote_start_number || 'Not set'}
                   </p>
                 </div>
               </div>
@@ -137,7 +137,7 @@ export function CompanySettingsSection() {
                 </div>
                 <div>
                   <span className="font-medium text-muted-foreground">Address:</span>
-                  <p>{companyData?.address || 'Not provided'}</p>
+                  <p>{companyData?.company_address || 'Not provided'}</p>
                 </div>
               </div>
             </div>
