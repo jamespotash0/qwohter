@@ -41,9 +41,23 @@ export const onboardingStateHelpers = {
     sessionData?: OnboardingSessionData
   ): Promise<void> => {
     try {
+      // For steps before authentication (verify-otp), save to localStorage
+      if (step === 'verify-otp') {
+        const localData = {
+          userId,
+          step,
+          sessionData: sessionData || {},
+          timestamp: Date.now()
+        };
+        localStorage.setItem('temp_onboarding_progress', JSON.stringify(localData));
+        console.log('Onboarding progress saved to localStorage:', { userId, step, sessionData });
+        return;
+      }
+
+      // For authenticated steps, save to database
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // 24h expiry
 
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('user_onboarding_progress')
         .upsert({
           user_id: userId,
@@ -60,7 +74,7 @@ export const onboardingStateHelpers = {
         throw error;
       }
 
-      console.log('Onboarding progress saved:', { userId, step, sessionData });
+      console.log('Onboarding progress saved to database:', { userId, step, sessionData });
     } catch (error) {
       console.error('Error in saveOnboardingProgress:', error);
       throw error;
@@ -72,7 +86,7 @@ export const onboardingStateHelpers = {
    */
   getOnboardingProgress: async (userId: string): Promise<OnboardingProgress | null> => {
     try {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('user_onboarding_progress')
         .select('*')
         .eq('user_id', userId)
@@ -121,7 +135,7 @@ export const onboardingStateHelpers = {
         completedSteps.push(completedStep);
       }
 
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('user_onboarding_progress')
         .update({
           current_step: nextStep,
@@ -151,7 +165,7 @@ export const onboardingStateHelpers = {
     sessionData: OnboardingSessionData
   ): Promise<void> => {
     try {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('user_onboarding_progress')
         .update({
           session_data: sessionData,
@@ -174,7 +188,7 @@ export const onboardingStateHelpers = {
    */
   clearOnboardingProgress: async (userId: string): Promise<void> => {
     try {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('user_onboarding_progress')
         .delete()
         .eq('user_id', userId);
@@ -197,10 +211,10 @@ export const onboardingStateHelpers = {
   isOnboardingComplete: async (userId: string): Promise<boolean> => {
     try {
       const { data, error } = await supabase
-        .from('membership')
+        .from('memberships')
         .select('id, status')
         .eq('user_id', userId)
-        .eq('status', 'active')
+        .eq('status', 'Active')
         .single();
 
       if (error) {
@@ -251,14 +265,14 @@ export const onboardingStateHelpers = {
         return 'profile';
       }
 
-      // Profile exists, check membership
-      const { data: membership, error: membershipError } = await supabase
-        .from('membership')
+      // Profile exists, check memberships
+      const { data: memberships, error: membershipError } = await supabase
+        .from('memberships')
         .select('id')
         .eq('user_id', userId)
         .single();
 
-      if (membershipError || !membership) {
+      if (membershipError || !memberships) {
         return 'organization'; // Need to set up organization
       }
 
@@ -275,7 +289,7 @@ export const onboardingStateHelpers = {
    */
   cleanupExpiredRecords: async (): Promise<number> => {
     try {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('user_onboarding_progress')
         .delete()
         .lt('expires_at', new Date().toISOString())

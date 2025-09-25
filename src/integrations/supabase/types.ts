@@ -1,4 +1,4 @@
-// Updated database types for new schema with membership table
+// Updated database types for new schema with memberships table
 export interface Database {
   public: {
     Tables: {
@@ -140,7 +140,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      membership: {
+      memberships: {
         Row: {
           id: string;
           user_id: string;

@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiresRole?: 'admin' | 'member';
+  requiresRole?: 'Owner' | 'Admin' | 'Member';
 }
 
 /**
@@ -24,13 +24,24 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiresRole 
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'member' | null>(null);
+  const [userRole, setUserRole] = useState<'Owner' | 'Admin' | 'Member' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // Check for schema migration flag and reset session if needed
+        const needsSessionReset = localStorage.getItem('auth_schema_migration');
+        if (needsSessionReset) {
+          console.log('Resetting session due to auth schema migration');
+          await supabase.auth.signOut();
+          localStorage.removeItem('auth_schema_migration');
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          return;
+        }
+
         // Check if user is authenticated AND validate session
         const session = await authStateHelpers.checkValidAuthSession();
         
@@ -40,22 +51,36 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           return;
         }
 
-        // Check if user has completed onboarding (has profile with full_name and organization_id)
+        // Check if user has completed onboarding (has profile with full_name and active membership)
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('full_name, organization_id, role')
+          .select('full_name')
           .eq('id', session.user.id)
           .single();
 
-        if (profileError || !profile || !profile.full_name || !profile.organization_id) {
+        if (profileError || !profile || !profile.full_name) {
           console.log('User has session but incomplete profile, redirecting to auth for onboarding');
           setIsAuthenticated(false);
           setIsLoading(false);
           return;
         }
 
+        // Check membership status - user must have Active membership
+        const { data: memberships, error: membershipsError } = await supabase
+          .from('memberships')
+          .select('role, status, organization_id')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (membershipsError || !memberships || memberships.status !== 'Active') {
+          console.log('User has profile but no active membership, redirecting to auth for onboarding');
+          setIsAuthenticated(false);
+          setIsLoading(false);
+          return;
+        }
+
         setIsAuthenticated(true);
-        // Role is already set from the profile query above
+        setUserRole(memberships.role);
       } catch (error) {
         console.error('Auth check error:', error);
         setIsAuthenticated(false);

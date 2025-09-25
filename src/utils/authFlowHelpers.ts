@@ -1,7 +1,7 @@
 /**
  * Authentication Flow Helper Utilities - Updated for New Schema
  *
- * Handles authentication flow with membership table and state tracking
+ * Handles authentication flow with memberships table and state tracking
  */
 
 import { supabase } from "@/integrations/supabase/client";
@@ -261,18 +261,23 @@ export const authFlowHelpers = {
     }
 
     try {
-      console.log('Profile setup: updating full_name for userId:', userId);
+    console.log('Profile setup: updating full_name for userId:', userId);
 
-      // Create or update profile with just full_name
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: userId,
-          full_name: sanitizeInput.string(fullName),
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'id'
-        });
+    // Fetch auth user to get their email
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError || !authUser) {
+      return { success: false, error: "Failed to fetch user email" };
+    }
+
+    // Upsert profile including email
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: userId,
+        email: authUser.email, // include email from auth
+        full_name: sanitizeInput.string(fullName),
+        updated_at: new Date().toISOString()
+      } as any, { onConflict: 'id' });
 
       if (error) {
         console.error('Profile update error:', error);
@@ -301,107 +306,76 @@ export const authFlowHelpers = {
     }
   },
 
-  /**
-   * Handle organization setup (create or join) - updated for new schema
-   */
   handleOrganizationSetup: async ({ userId, choice }: OrganizationSetupData): Promise<AuthResult> => {
     if (!choice.type || !userId) {
-      return {
-        success: false,
-        error: "Organization choice and user ID are required"
-      };
+      return { success: false, error: "Organization choice and user ID are required" };
     }
 
     try {
-      if (choice.type === "create") {
+      // Validate and sanitize choice fields
+      const allowedIndustries = ['tech', 'finance', 'health', 'education', 'other'];
+      const allowedFoundVia = ['referral', 'ad', 'organic', 'unknown'];
+
+      const industry = allowedIndustries.includes(choice.industry?.toLowerCase() || '')
+        ? choice.industry
+        : 'other';
+      const foundVia = allowedFoundVia.includes(choice.foundVia?.toLowerCase() || '')
+        ? choice.foundVia
+        : 'unknown';
+
+      if (choice.type === 'create') {
         if (!choice.orgName) {
-          return {
-            success: false,
-            error: "Organization name is required"
-          };
+          return { success: false, error: "Organization name is required" };
         }
 
-        // Check rate limiting before creation
+        // Rate limiting
         const rateLimitCheck = await OrganizationCreationLimiter.canCreateOrganization(userId);
         if (!rateLimitCheck.allowed) {
           await OrganizationCreationLimiter.logCreationAttempt(userId, 'Rate_Limited');
-          return {
-            success: false,
-            error: rateLimitCheck.reason || "Rate limit exceeded"
-          };
+          return { success: false, error: rateLimitCheck.reason || "Rate limit exceeded" };
         }
 
-        // Generate organization code
+        // Generate unique org code
         let orgCode = '';
         let attempts = 0;
         const maxAttempts = 3;
 
         while (attempts < maxAttempts) {
           orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-
-          // Check if code already exists
           const { data: existingOrg } = await supabase
             .from('organizations')
             .select('id')
             .eq('organization_code', orgCode)
             .single();
-
-          if (!existingOrg) break; // Code is unique
-
+          if (!existingOrg) break;
           attempts++;
         }
 
         if (attempts >= maxAttempts) {
           await OrganizationCreationLimiter.logCreationAttempt(userId, 'Failed', undefined, 'Failed to generate unique org code');
-          return {
-            success: false,
-            error: "Failed to generate organization code. Please try again."
-          };
+          return { success: false, error: "Failed to generate organization code. Please try again." };
         }
 
-        // Create organization with basic info
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .insert({
-            name: sanitizeInput.string(choice.orgName),
-            organization_code: orgCode,
-            found_via: choice.foundVia || 'unknown',
-            industry: choice.industry || 'other',
-            phone_number: '', // Will be filled in company-info step
-            company_address: '',
-            website: '',
-            logo_data: {},
-            quote_starting_point: ''
-          })
-          .select()
-          .single();
+        // --- Transaction-safe insert via RPC function ---
+        const { data: orgData, error: rpcError } = await supabase.rpc('create_org_with_owner', {
+          org_name: sanitizeInput.string(choice.orgName),
+          org_code: orgCode,
+          found_via: foundVia,
+          industry: industry,
+          owner_id: userId
+        } as any);
 
-        if (orgError) {
-          await OrganizationCreationLimiter.logCreationAttempt(userId, 'Failed', undefined, orgError.message);
-          throw orgError;
+        if (rpcError) {
+          await OrganizationCreationLimiter.logCreationAttempt(userId, 'Failed', undefined, rpcError.message);
+          throw rpcError;
         }
 
-        // Create membership as owner
-        const { error: membershipError } = await supabase
-          .from('membership')
-          .insert({
-            user_id: userId,
-            organization_id: orgData.id,
-            role: 'Owner',
-            status: 'Active',
-            plan: 'Free',
-            joined_at: new Date().toISOString()
-          });
+        const organizationId = orgData[0].org_id;
 
-        if (membershipError) {
-          await OrganizationCreationLimiter.logCreationAttempt(userId, 'Failed', undefined, membershipError.message);
-          throw membershipError;
-        }
-
-        // Log successful creation
+        // Log success
         await OrganizationCreationLimiter.logCreationAttempt(userId, 'Success');
 
-        // Complete organization step and move to company-info
+        // Complete onboarding step
         await onboardingStateHelpers.completeStep(
           userId,
           'organization',
@@ -414,7 +388,7 @@ export const authFlowHelpers = {
           data: {
             organizationName: choice.orgName,
             organizationCode: orgCode,
-            organizationId: orgData.id
+            organizationId
           },
           nextStep: 'company-info'
         };
@@ -422,15 +396,11 @@ export const authFlowHelpers = {
       } else {
         // Join existing organization
         if (!choice.orgCode) {
-          return {
-            success: false,
-            error: "Organization code is required"
-          };
+          return { success: false, error: "Organization code is required" };
         }
 
         const cleanCode = choice.orgCode.trim().toUpperCase();
 
-        // Find organization by code
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
           .select('id, name')
@@ -438,42 +408,36 @@ export const authFlowHelpers = {
           .single();
 
         if (orgError || !orgData) {
-          return {
-            success: false,
-            error: "Organization not found. Please check the code and try again."
-          };
+          return { success: false, error: "Organization not found. Please check the code and try again." };
         }
 
-        // Create membership as pending member
-        const { error: membershipError } = await supabase
-          .from('membership')
+        const { error: membershipsError } = await supabase
+          .from('memberships')
           .insert({
             user_id: userId,
             organization_id: orgData.id,
             role: 'Member',
             status: 'Pending',
             plan: 'Free'
-          });
+          } as any);
 
-        if (membershipError) {
-          throw membershipError;
-        }
+        if (membershipsError) throw membershipsError;
 
-        // Clear onboarding progress - joining members skip company-info
+        // Clear onboarding progress
         await onboardingStateHelpers.clearOnboardingProgress(userId);
 
         return {
           success: true,
-          data: { organizationName: orgData.name },
+          data: {
+            organizationName: orgData.name,
+            organizationId: orgData.id
+          },
           nextStep: 'complete'
         };
       }
     } catch (error: any) {
       console.error('Organization setup error:', error);
-      return {
-        success: false,
-        error: error.message
-      };
+      return { success: false, error: error.message };
     }
   }
 };

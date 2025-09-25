@@ -11,9 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PhoneInput } from "@/components/ui/phone-input";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
-import { LogoUpload } from "@/components/common/uploads/LogoUpload";
-import { LogoUploadResult } from "@/services/LogoUploadService";
+import { LogoUploadResult, LogoUploadService } from "@/services/LogoUploadService";
 import { validators } from "@/utils/validation";
+import { IndustrySelector } from "@/components/auth/IndustrySelector";
+import { FoundViaSelector } from "@/components/auth/FoundViaSelector";
 
 interface CompanyInfoSetupFormProps {
   organizationName: string;
@@ -22,6 +23,8 @@ interface CompanyInfoSetupFormProps {
   address: string;
   website: string;
   quoteStartingPoint: string;
+  industry: string;
+  foundVia: string;
   loading: boolean;
   userId: string;
   currentLogoUrl?: string;
@@ -30,6 +33,8 @@ interface CompanyInfoSetupFormProps {
   onAddressChange: (address: string) => void;
   onWebsiteChange: (website: string) => void;
   onQuoteStartingPointChange: (startingPoint: string) => void;
+  onIndustryChange: (industry: string) => void;
+  onFoundViaChange: (foundVia: string) => void;
   onLogoUpload: (result: LogoUploadResult) => void;
   onLogoError: (error: string) => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -42,6 +47,8 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
   address,
   website,
   quoteStartingPoint,
+  industry,
+  foundVia,
   loading,
   userId,
   currentLogoUrl,
@@ -50,6 +57,8 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
   onAddressChange,
   onWebsiteChange,
   onQuoteStartingPointChange,
+  onIndustryChange,
+  onFoundViaChange,
   onLogoUpload,
   onLogoError,
   onSubmit,
@@ -58,6 +67,8 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
   const [includeFax, setIncludeFax] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
   const [touched, setTouched] = useState<{[key: string]: boolean}>({});
+  const [uploadedFileName, setUploadedFileName] = useState<string>('');
+  const [isUploading, setIsUploading] = useState(false);
 
   const validateField = (field: string, value: string) => {
     let validation = { isValid: true, error: undefined };
@@ -124,99 +135,147 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
 
   // Check if form has validation errors
   const hasValidationErrors = Object.values(validationErrors).some(error => error !== undefined);
-  const hasRequiredFieldsEmpty = !phone.trim() || !address.trim() || !website.trim() || !quoteStartingPoint.trim();
+  const hasRequiredFieldsEmpty = !phone.trim() || !address.trim() || !website.trim() || !quoteStartingPoint.trim() || !industry.trim() || !foundVia.trim();
   const isFormInvalid = hasValidationErrors || hasRequiredFieldsEmpty;
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Form */}
-      <form onSubmit={onSubmit} className="space-y-6">
+      <form onSubmit={onSubmit} className="space-y-4">
         {/* Logo Upload Section */}
         <div className="space-y-2">
-          <Label>Company Logo (Optional)</Label>
-          <LogoUpload
-            onUploadSuccess={onLogoUpload}
-            onUploadError={onLogoError}
-            currentLogoUrl={currentLogoUrl}
-            userId={userId}
-            disabled={loading}
-            className="max-w-md"
-          />
-          {/* <p className="text-xs text-muted-foreground">
-            Upload your company logo to appear on quotes (JPG, JPEG, or SVG files)
-          </p> */}
-        </div>
+          <Label className="text-gray-700 font-medium text-sm">Company Logo (Optional)</Label>
+          <div className="flex items-center space-x-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={async () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/jpeg,image/jpg,image/png,image/svg+xml';
+                input.onchange = async (e) => {
+                  const file = (e.target as HTMLInputElement).files?.[0];
+                  if (file) {
+                    // Basic validation
+                    if (file.size > 5 * 1024 * 1024) {
+                      onLogoError('File size must be less than 5MB');
+                      return;
+                    }
 
-        {/* Phone and Quote Starting Point */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <PhoneInput
-              id="phone"
-              value={phone}
-              onChange={handlePhoneChange}
-              label="Phone"
-              placeholder="Enter your business phone number"
-              required
-              disabled={loading}
-              error={touched.phone ? validationErrors.phone : undefined}
-              showValidation
-            />
-          </div>
+                    setIsUploading(true);
+                    setUploadedFileName(file.name);
 
-          <div className="space-y-2">
-            <Label htmlFor="quoteStartingPoint">Quote Starting Number <span className="text-red-500">*</span></Label>
-            <Input
-              id="quoteStartingPoint"
-              type="text"
-              value={quoteStartingPoint}
-              onChange={(e) => handleQuoteStartingPointChange(e.target.value)}
-              placeholder="P10001, 15000, Q-10001"
-              required
-              className="h-12 placeholder:text-muted-foreground/60"
-            />
-            {quoteStartingPoint && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm font-medium text-blue-900 mb-1">Next Proposal Number Preview:</p>
-                <p className="text-lg font-semibold text-blue-700">{quoteStartingPoint}</p>
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground">
-              Starting point for your quote numbering system
-            </p>
-          </div>
-        </div>
+                    try {
+                      // Actually upload the file
+                      const result = await LogoUploadService.uploadLogo(file, userId);
 
-        {/* Fax Section with Optional Checkbox */}
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="includeFax"
-              checked={includeFax}
-              onCheckedChange={(checked) => {
-                setIncludeFax(checked as boolean);
-                if (!checked) {
-                  onFaxChange(''); // Clear fax when unchecked
-                }
+                      if (result.success) {
+                        onLogoUpload({
+                          success: true,
+                          url: result.url,
+                          fileName: file.name
+                        });
+                      } else {
+                        onLogoError(result.error || 'Upload failed');
+                        setUploadedFileName('');
+                      }
+                    } catch (error) {
+                      onLogoError('Upload failed. Please try again.');
+                      setUploadedFileName('');
+                    } finally {
+                      setIsUploading(false);
+                    }
+                  }
+                };
+                input.click();
               }}
-            />
-            <Label htmlFor="includeFax" className="text-sm font-medium">
-              Include fax number
-            </Label>
+              disabled={loading || isUploading}
+              className="h-10"
+            >
+              {isUploading ? 'Uploading...' : 'Choose File'}
+            </Button>
+            {currentLogoUrl && uploadedFileName && (
+              <span className="text-sm text-green-600">✓ {uploadedFileName}</span>
+            )}
+            {currentLogoUrl && !uploadedFileName && (
+              <span className="text-sm text-green-600">✓ Logo uploaded</span>
+            )}
           </div>
+          <p className="text-xs text-gray-400">
+            Upload your logo to appear on quotes (JPG, JPEG, SVG, max 5MB)
+          </p>
+        </div>
 
-          {includeFax && (
-            <div>
-              <PhoneInput
-                id="fax"
-                value={fax}
-                onChange={handleFaxChange}
-                label="Fax"
-                placeholder="Enter your business fax number"
-                disabled={loading}
-                error={touched.fax ? validationErrors.fax : undefined}
-                showValidation
-              />
-            </div>
+        {/* Phone Number */}
+        <div>
+          <PhoneInput
+            id="phone"
+            value={phone}
+            onChange={handlePhoneChange}
+            label="Phone Number"
+            placeholder="Enter your business phone number"
+            required
+            disabled={loading}
+            error={touched.phone ? validationErrors.phone : undefined}
+            showValidation={false}
+          />
+          {touched.phone && validationErrors.phone && (
+            <div className="text-sm text-red-600 mt-1">{validationErrors.phone}</div>
           )}
+        </div>
+
+        {/* Fax Number */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="fax" className="text-gray-700 font-medium text-sm">
+              Fax Number (Optional)
+            </Label>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="includeFax"
+                checked={includeFax}
+                onCheckedChange={(checked) => {
+                  setIncludeFax(checked as boolean);
+                  if (!checked) {
+                    onFaxChange(''); // Clear fax when unchecked
+                  }
+                }}
+                className="size-4 !rounded-[4px] border border-gray-300 data-[state=checked]:bg-slate-600 data-[state=checked]:border-slate-600"
+              />
+              <Label htmlFor="includeFax" className="text-xs text-gray-600 cursor-pointer">
+                Enable
+              </Label>
+            </div>
+          </div>
+          <PhoneInput
+            id="fax"
+            value={fax}
+            onChange={handleFaxChange}
+            label=""
+            placeholder={includeFax ? "Enter your business fax number" : "Fax disabled"}
+            disabled={loading || !includeFax}
+            error={touched.fax ? validationErrors.fax : undefined}
+            showValidation={false}
+          />
+          {touched.fax && validationErrors.fax && includeFax && (
+            <div className="text-sm text-red-600 mt-1">{validationErrors.fax}</div>
+          )}
+        </div>
+
+        {/* Quote Starting Point */}
+        <div className="space-y-2">
+          <Label htmlFor="quoteStartingPoint" className="text-gray-700 font-medium text-sm">Quote Starting Number <span className="text-red-500">*</span></Label>
+          <Input
+            id="quoteStartingPoint"
+            type="text"
+            value={quoteStartingPoint}
+            onChange={(e) => handleQuoteStartingPointChange(e.target.value)}
+            placeholder="P10001, 15000, Q-10001"
+            required
+            className="bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
+          />
+          <p className="text-xs text-gray-400">
+            Starting point for your quote numbering system
+          </p>
         </div>
 
         {/* Address */}
@@ -228,23 +287,23 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
             onChange={onAddressChange}
             placeholder="Start typing your business address..."
             required={true}
-            className="placeholder:text-muted-foreground/60"
+            className="bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-gray-400">
             Type your full business address including city, state, and ZIP code
           </p>
         </div>
 
         {/* Website */}
         <div className="space-y-2">
-          <Label htmlFor="website">Website <span className="text-red-500">*</span></Label>
+          <Label htmlFor="website" className="text-gray-700 font-medium text-sm">Website <span className="text-red-500">*</span></Label>
           <Input
             id="website"
             value={website}
             onChange={handleWebsiteChange}
             placeholder="https://www.yourcompany.com"
             required
-            className={`h-12 placeholder:text-muted-foreground/60 ${
+            className={`bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500 ${
               touched.website && validationErrors.website ? 'border-red-500 focus:border-red-500' : ''
             }`}
             disabled={loading}
@@ -253,6 +312,22 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
             <div className="text-sm text-red-600">{validationErrors.website}</div>
           )}
         </div>
+
+        {/* Industry */}
+        <IndustrySelector
+          value={industry}
+          onChange={onIndustryChange}
+          required
+          disabled={loading}
+        />
+
+        {/* Found Via */}
+        <FoundViaSelector
+          value={foundVia}
+          onChange={onFoundViaChange}
+          required
+          disabled={loading}
+        />
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 pt-6">
@@ -267,7 +342,7 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
           </Button>
           <Button
             type="submit"
-            className="flex-1 h-12 text-base bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary/80 font-semibold"
+            className="flex-1 h-12 text-base bg-slate-600 hover:bg-slate-700 text-white font-semibold transition-colors"
             disabled={loading || isFormInvalid}
           >
             {loading ? "Saving..." : "Complete Setup"}
@@ -276,7 +351,7 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
       </form>
 
       {/* Skip Note */}
-      <p className="text-xs text-muted-foreground text-center">
+      <p className="text-xs text-gray-400 text-center">
         You can add or update this information later in Settings
       </p>
     </div>

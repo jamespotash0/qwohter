@@ -8,34 +8,36 @@ import {
 class OrganizationSettingsService {
   async getOrganization(): Promise<OrganizationWithCompanyInfo | null> {
     try {
-      // Get current user's organization
+      // Get current user's organization through membership
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Get user's profile to get organization_id
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single();
-
-      if (profileError) throw profileError;
-      if (!profile?.organization_id) throw new Error('User not associated with an organization');
-
-      // Fetch organization with company info
+      // Get organization data directly through membership join
       const { data, error } = await supabase
-        .from('organizations')
-        .select('*')
-        .eq('id', profile.organization_id)
+        .from('memberships')
+        .select(`
+          organization_id,
+          organizations (
+            id,
+            name,
+            organization_code,
+            organization_info,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('user_id', user.id)
         .single();
 
       if (error) throw error;
-      if (!data) throw new Error('Organization not found');
+      if (!data || !(data as any)?.organizations) throw new Error('User not associated with an organization');
 
-      // Return data as-is with organization_info fallback
+      const orgData = (data as any).organizations;
+
+      // Return organization data with organization_info fallback
       return {
-        ...data,
-        organization_info: data.organization_info || {}
+        ...orgData,
+        organization_info: orgData.organization_info || {}
       } as OrganizationWithCompanyInfo;
     } catch (error) {
       console.error('Error fetching organization:', error);
@@ -45,32 +47,35 @@ class OrganizationSettingsService {
 
   async updateCompanyInfo(companyData: CompanyInfoFormData): Promise<OrganizationWithCompanyInfo> {
     try {
-      // Get current user's organization
+      // Get current user's organization and existing info through membership
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', user.id)
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('memberships')
+        .select(`
+          organization_id,
+          organizations (
+            id,
+            name,
+            organization_code,
+            organization_info,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('user_id', user.id)
         .single();
 
-      if (profileError) throw profileError;
-      if (!profile?.organization_id) throw new Error('User not associated with an organization');
+      if (membershipError) throw membershipError;
+      if (!membershipData || !(membershipData as any)?.organizations) throw new Error('User not associated with an organization');
 
-      // Get current organization info to preserve existing data (like logo)
-      const { data: currentOrg, error: fetchError } = await supabase
-        .from('organizations')
-        .select('organization_info')
-        .eq('id', profile.organization_id)
-        .single();
-
-      if (fetchError) throw fetchError;
+      const orgData = (membershipData as any).organizations;
 
       // Merge form data with existing organization info to preserve logo data
-      const currentOrgInfo = (currentOrg as any)?.organization_info || {};
+      const currentOrgInfo = orgData.organization_info || {};
       const formOrgInfo = convertFormDataToOrganizationInfo(companyData);
-      
+
       // Preserve existing logo data if not provided in form
       const mergedOrgInfo = {
         ...currentOrgInfo,
@@ -97,7 +102,7 @@ class OrganizationSettingsService {
             organization_info: mergedOrgInfo,
             updated_at: new Date().toISOString()
           })
-          .eq('id', profile.organization_id)
+          .eq('id', (membershipData as any).organization_id)
           .select('*')
           .single();
 
@@ -110,19 +115,11 @@ class OrganizationSettingsService {
         } as OrganizationWithCompanyInfo;
 
       } catch (updateError: any) {
-        // If organization_info column doesn't exist, fall back to just fetching the organization
+        // If organization_info column doesn't exist, fall back to just returning the organization
         if (updateError.message?.includes('organization_info')) {
           console.warn('organization_info column does not exist yet. Please apply the migration.');
-          
-          // Just return the current organization data with the organizationInfo we tried to save
-          const { data: orgData, error: fetchError } = await supabase
-            .from('organizations')
-            .select('id, name, organization_code, created_at, updated_at')
-            .eq('id', profile.organization_id)
-            .single();
 
-          if (fetchError) throw fetchError;
-
+          // Return the current organization data with the organizationInfo we tried to save
           return {
             ...orgData,
             organization_info: mergedOrgInfo

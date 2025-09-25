@@ -26,29 +26,29 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
   onBackToSignUp
 }) => {
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      <div className="space-y-3">
-        <Label htmlFor="otpCode" className="text-slate-700 font-medium text-sm">
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="otpCode" className="text-gray-700 font-medium text-sm">
           Verification Code
         </Label>
-        <Input 
-          id="otpCode" 
-          type="text" 
-          value={otpCode} 
-          onChange={(e) => onOtpCodeChange(e.target.value)} 
-          placeholder="Enter 6-digit code" 
+        <Input
+          id="otpCode"
+          type="text"
+          value={otpCode}
+          onChange={(e) => onOtpCodeChange(e.target.value)}
+          placeholder="Enter 6-digit code"
           maxLength={6}
-          required 
-          className="bg-slate-50 border-slate-200 h-12 text-center text-lg tracking-widest" 
+          required
+          className="bg-white border-gray-300 h-12 text-center text-lg tracking-widest placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
         />
-        <p className="text-sm text-slate-500 text-center">
+        <p className="text-sm text-gray-600 text-center">
           Code sent to {email}
         </p>
       </div>
 
-      <Button 
-        type="submit" 
-        className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold h-12"
+      <Button
+        type="submit"
+        className="w-full bg-slate-600 hover:bg-slate-700 text-white font-semibold h-12 transition-colors"
         disabled={loading || otpCode.length !== 6}
       >
         {loading ? "Verifying..." : "Verify Email"}
@@ -58,9 +58,9 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
         <button
           type="button"
           onClick={onBackToSignUp}
-          className="text-primary hover:text-primary/80 text-sm font-medium"
+          className="text-sm text-orange-500 hover:text-orange-600 transition-colors"
         >
-          Back to sign up
+          ← Back to sign up
         </button>
       </div>
     </form>

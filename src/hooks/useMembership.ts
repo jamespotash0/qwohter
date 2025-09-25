@@ -1,7 +1,7 @@
 /**
  * Membership Management Hook
  *
- * Manages user membership relationships with organizations using the new membership table
+ * Manages user memberships relationships with organizations using the new membership table
  */
 
 import { useState, useEffect } from "react";
@@ -51,7 +51,7 @@ export const useMembership = () => {
 
       // Get user's membership with organization details
       const { data: membershipData, error: membershipError } = await supabase
-        .from('membership')
+        .from('memberships')
         .select(`
           *,
           organization:organizations(id, name, organization_code),
@@ -66,7 +66,7 @@ export const useMembership = () => {
           console.error('Membership error:', membershipError);
           throw membershipError;
         }
-        // No membership found - user hasn't completed onboarding
+        // No memberships found - user hasn't completed onboarding
         setCurrentMembership(null);
         return;
       }
@@ -88,7 +88,7 @@ export const useMembership = () => {
     try {
       // Fetch all members of the organization
       const { data: membersData, error: membersError } = await supabase
-        .from('membership')
+        .from('memberships')
         .select(`
           *,
           organization:organizations(id, name, organization_code),
@@ -129,7 +129,7 @@ export const useMembership = () => {
 
       // Check if user already has a membership
       const { data: existingMembership } = await supabase
-        .from('membership')
+        .from('memberships')
         .select('id')
         .eq('user_id', profile.id)
         .single();
@@ -138,9 +138,9 @@ export const useMembership = () => {
         throw new Error('User is already a member of an organization.');
       }
 
-      // Create membership invitation
+      // Create memberships invitation
       const { data, error } = await supabase
-        .from('membership')
+        .from('memberships')
         .insert({
           user_id: profile.id,
           organization_id: organizationId,
@@ -148,7 +148,7 @@ export const useMembership = () => {
           status: 'Pending',
           invited_by: user.id,
           plan: 'Free'
-        })
+        } as any)
         .select()
         .single();
 
@@ -176,7 +176,7 @@ export const useMembership = () => {
   const removeMember = async (membershipId: string) => {
     try {
       const { error } = await supabase
-        .from('membership')
+        .from('memberships')
         .delete()
         .eq('id', membershipId);
 
@@ -201,7 +201,7 @@ export const useMembership = () => {
   const updateMemberRole = async (membershipId: string, role: 'Owner' | 'Admin' | 'Member') => {
     try {
       const { data, error } = await supabase
-        .from('membership')
+        .from('memberships')
         .update({ role, updated_at: new Date().toISOString() })
         .eq('id', membershipId)
         .select()
@@ -232,7 +232,7 @@ export const useMembership = () => {
   const updateMemberStatus = async (membershipId: string, status: 'Pending' | 'Active' | 'Suspended') => {
     try {
       const { data, error } = await supabase
-        .from('membership')
+        .from('memberships')
         .update({
           status,
           updated_at: new Date().toISOString(),
