@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar, HeaderNav } from "@/components/common/layout";
+import { AppSidebar } from "@/components/common/layout";
 import { CompanySettingsSection } from "@/components/features/settings/CompanySettingsSection";
 import { useOrganizationSettings } from "@/hooks/useCompanySettings";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -67,14 +67,6 @@ const Settings = () => {
         <AppSidebar user={user.email || user.id} onLogout={handleLogout} />
         
         <main className="flex-1 flex flex-col">
-          {/* Header Nav Bar */}
-          <HeaderNav 
-            user={user.email || ""} 
-            userProfile={profile as any}
-            organizationName={organization?.name || 'Loading...'}
-            onLogout={handleLogout} 
-          />
-          
           {/* Organization Header */}
           <div className="p-6 pb-0">
             <div className="flex items-center justify-center">

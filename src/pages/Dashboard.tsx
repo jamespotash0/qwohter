@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
-import Dashboard from "@/components/features/dashboard/Dashboard";
+import ModernDashboard from "@/components/features/dashboard/ModernDashboard";
 
 const DashboardPage = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -42,10 +42,10 @@ const DashboardPage = () => {
   }
 
   return (
-    <Dashboard 
-      user={user.email || ""} 
+    <ModernDashboard
+      user={user.email || ""}
       userId={user.id}
-      onLogout={handleLogout} 
+      onLogout={handleLogout}
     />
   );
 };

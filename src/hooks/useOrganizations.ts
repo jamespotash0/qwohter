@@ -165,7 +165,7 @@ export const useOrganizations = () => {
           website: '',
           quote_start_number: '',
           logo_data: {}
-        })
+        } as any)
         .select(`
           id,
           name,
@@ -194,7 +194,7 @@ export const useOrganizations = () => {
           status: 'Active',
           plan: 'Free',
           joined_at: new Date().toISOString()
-        });
+        } as any);
 
       if (membershipError) throw membershipError;
 

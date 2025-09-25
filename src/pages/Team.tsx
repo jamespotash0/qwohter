@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar, HeaderNav } from "@/components/common/layout";
+import { AppSidebar } from "@/components/common/layout";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useToast } from "@/hooks/use-toast";
@@ -153,14 +153,6 @@ const Team = () => {
         <AppSidebar user={user} onLogout={handleLogout} />
         
         <main className="flex-1 flex flex-col">
-          {/* Header Nav Bar */}
-          <HeaderNav 
-            user={user} 
-            userProfile={profile as any}
-            organizationName={currentOrganization?.name || 'Loading...'}
-            onLogout={handleLogout} 
-          />
-          
           {/* Organization Header */}
           <div className="p-6 pb-0">
             

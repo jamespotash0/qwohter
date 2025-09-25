@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { CompanyInfoDialog } from "./CompanyInfoDialog";
 import { useOrganizationSettings } from "@/hooks/useCompanySettings";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { useOrganizations } from "@/hooks/useOrganizations";
 import { supabase } from "@/integrations/supabase/client";
 import { extractCompanyInfoForForm } from "@/lib/types/settings/companySettings";
 
@@ -27,6 +28,7 @@ export function CompanySettingsSection() {
   } = useOrganizationSettings();
   
   const { profile } = useUserProfile(user?.id);
+  const { currentUserRole } = useOrganizations();
 
   // Get current user
   useEffect(() => {
@@ -65,7 +67,7 @@ export function CompanySettingsSection() {
     extractCompanyInfoForForm(organization) : null;
   
   // Check if user is admin
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin = currentUserRole === 'admin';
 
   return (
     <div className="space-y-4">

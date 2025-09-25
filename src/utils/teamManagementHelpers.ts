@@ -161,8 +161,8 @@ export const teamManagementHelpers = {
    * Calculate team statistics from members array
    */
   calculateTeamStats: (members: any[]) => {
-    const activeMembersCount = members.filter(m => m.status === 'active').length;
-    const pendingMembersCount = members.filter(m => m.status === 'pending').length;
+    const activeMembersCount = members.filter(m => m.status === 'Active' || m.status === 'active').length;
+    const pendingMembersCount = members.filter(m => m.status === 'Pending' || m.status === 'pending').length;
     const totalMembersCount = members.length;
     
     const roleDistribution = members.reduce((acc, member) => {

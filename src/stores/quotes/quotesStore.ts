@@ -85,14 +85,11 @@ export const useQuotesStore = create<QuotesState>()(
         // Initialize quotes store
         initialize: async () => {
           const { fetchQuotes, subscribeToRealtime, _setLoading } = get();
-          
+
           try {
             _setLoading(true);
             await fetchQuotes();
-            
-            // Subscribe to realtime updates after initial fetch
             await subscribeToRealtime();
-            
             set({ isInitialized: true });
           } catch (error) {
             console.error('Quotes store initialization error:', error);
@@ -103,29 +100,81 @@ export const useQuotesStore = create<QuotesState>()(
 
         // Fetch quotes with optional refresh
         fetchQuotes: async (options = {}) => {
-          const { _setQuotes, _setLoading, _setError, pagination } = get();
-          
+          const { _setQuotes, _setLoading, _setError } = get();
+
           try {
             if (!options.refresh) _setLoading(true);
             _setError(null);
-            
-            const { data, error, count } = await supabase
-              .from('quotes')
-              .select('*', { count: 'exact' })
-              .order('created_at', { ascending: false })
-              .range(
-                (pagination.page - 1) * pagination.pageSize,
-                pagination.page * pagination.pageSize - 1
-              );
-            
-            if (error) throw error;
-            
-            const processedQuotes = data?.map(convertRowToQuote) || [];
-            _setQuotes(processedQuotes);
-            
+
+            // Check authentication first
+            const { data: { session }, error: authError } = await supabase.auth.getSession();
+            if (authError) {
+              throw new Error('Authentication failed: ' + authError.message);
+            }
+
+            if (!session?.user) {
+              throw new Error('Not authenticated');
+            }
+
+            // Check if user has any memberships first
+            const { data: userMemberships, error: membershipError } = await supabase
+              .from('memberships')
+              .select('organization_id, role, status')
+              .eq('user_id', session.user.id);
+
+            if (!userMemberships || userMemberships.length === 0) {
+              // User has no memberships, query personal quotes directly with explicit filter
+              const { data, error, count } = await supabase
+                .from('quotes')
+                .select(`
+                  id, created_by, organization_id, proposal_number, project_name,
+                  quote_details, job_details, delivery_details, labor_details,
+                  wall_details, price_details, status, date_last_downloaded,
+                  version, created_at, updated_at, customization, status_last_updated,
+                  quote_source, follow_up_days, form_data, form_profile_id
+                `, { count: 'exact' })
+                .eq('created_by', session.user.id)
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+              if (!error) {
+                const processedQuotes = data?.map(convertRowToQuote) || [];
+                _setQuotes(processedQuotes);
+                set((state) => {
+                  state.pagination.total = count || 0;
+                });
+                return;
+              }
+            } else {
+              // User has memberships, let RLS policies handle the query
+              const { data, error, count } = await supabase
+                .from('quotes')
+                .select(`
+                  id, created_by, organization_id, proposal_number, project_name,
+                  quote_details, job_details, delivery_details, labor_details,
+                  wall_details, price_details, status, date_last_downloaded,
+                  version, created_at, updated_at, customization, status_last_updated,
+                  quote_source, follow_up_days, form_data, form_profile_id
+                `, { count: 'exact' })
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+              if (!error) {
+                const processedQuotes = data?.map(convertRowToQuote) || [];
+                _setQuotes(processedQuotes);
+                set((state) => {
+                  state.pagination.total = count || 0;
+                });
+                return;
+              }
+            }
+
+            // If we reach here, there was an error in both attempts
+            _setQuotes([]);
             set((state) => {
-              state.pagination.total = count || 0;
+              state.pagination.total = 0;
             });
+
           } catch (error) {
             console.error('Fetch quotes error:', error);
             _setError(error instanceof Error ? error.message : 'Failed to fetch quotes');
@@ -640,6 +689,7 @@ export const useQuotesPagination = () => useQuotesStore((state) => state.paginat
 export const useFilteredQuotes = () => useQuotesStore((state) => state.getFilteredQuotes());
 export const useRealtimeConnection = () => useQuotesStore((state) => state.isRealtimeConnected);
 export const useQuotesActions = () => useQuotesStore((state) => ({
+  initialize: state.initialize,
   fetchQuotes: state.fetchQuotes,
   createQuote: state.createQuote,
   createQuoteVersion: state.createQuoteVersion,

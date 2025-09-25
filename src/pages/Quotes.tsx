@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar, HeaderNav } from "@/components/common/layout";
+import { AppSidebar } from "@/components/common/layout";
 import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuotes, Quote } from "@/hooks/useQuotes";
-import { useOrganizations } from "@/hooks/useOrganizations";
-import { useUserProfile } from "@/hooks/useUserProfile";
+import { useQuotesStore } from "@/stores/quotes/quotesStore";
+import type { Quote } from "@/hooks/useQuotes";
+// import { useOrganizations } from "@/hooks/useOrganizations";
+// import { useUserProfile } from "@/hooks/useUserProfile";
 // import { useToast } from "@/hooks/use-toast";
 import { EnhancedQuotesTable } from "@/components/features/quotes/table/EnhancedQuotesTable";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
@@ -16,25 +17,21 @@ const Quotes = () => {
   const navigate = useNavigate();
   // const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
-  const {
-    quotes,
-    loading: quotesLoading,
-    updateQuote,
-    updateFollowUpDays,
-    createQuoteVersion,
-    deleteQuote: deleteQuoteFromDB,
-    // markAsDownloaded,
-    // saveQuoteCustomization,
-    // refreshQuotes
-  } = useQuotes();
+  const quotes = useQuotesStore((state) => state.quotes);
+  const quotesLoading = useQuotesStore((state) => state.isLoading);
+  const isInitialized = useQuotesStore((state) => state.isInitialized);
+  const initialize = useQuotesStore((state) => state.initialize);
+  const updateQuote = useQuotesStore((state) => state.updateQuote);
+  const createQuoteVersion = useQuotesStore((state) => state.createQuoteVersion);
+  const deleteQuoteFromDB = useQuotesStore((state) => state.deleteQuote);
 
-  const { currentOrganization } = useOrganizations();
-  const { profile } = useUserProfile(user?.id);
+  // const { currentOrganization } = useOrganizations();
+  // const { profile } = useUserProfile(user?.id);
 
   const [deleteQuoteId, setDeleteQuoteId] = useState<string | null>(null);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
 
-  // Check authentication
+  // Check authentication first
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -46,6 +43,14 @@ const Quotes = () => {
     };
     checkAuth();
   }, [navigate]);
+
+  // Initialize quotes store only after user is authenticated
+  useEffect(() => {
+    if (user && !isInitialized) {
+      console.log('🔑 User authenticated, initializing quotes store...');
+      initialize();
+    }
+  }, [user, isInitialized]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -59,6 +64,10 @@ const Quotes = () => {
 
   const updateQuoteSource = async (id: string, newSource: string) => {
     await updateQuote(id, { quote_source: newSource });
+  };
+
+  const updateFollowUpDays = async (id: string, days: number | null) => {
+    await updateQuote(id, { follow_up_days: days ?? undefined });
   };
 
   const handleDeleteQuote = async (id: string) => {
@@ -119,14 +128,6 @@ const Quotes = () => {
         <AppSidebar user={user.email || ""} onLogout={handleLogout} />
         
         <main data-testid="quotes-page" className="flex-1 flex flex-col overflow-hidden">
-          {/* Header Nav Bar */}
-          <HeaderNav 
-            user={user.email || ""} 
-            userProfile={profile as any}
-            organizationName={currentOrganization?.name || 'Loading...'}
-            onLogout={handleLogout} 
-          />
-
           <div className="flex-1 p-6 space-y-4 overflow-auto">
             {/* Page Title */}
             <div className="mb-4">

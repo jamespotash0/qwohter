@@ -3,14 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar, HeaderNav } from "@/components/common/layout";
+import { AppSidebar } from "@/components/common/layout";
 import { 
   DollarSign, 
   TrendingUp, 
   FileText, 
   Target,
 } from "lucide-react";
-import { useQuotes } from "@/hooks/useQuotes";
+import { useQuotesStore } from "@/stores/quotes/quotesStore";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { AnalyticsPageCharts } from "@/components/common/charts/AnalyticsPageCharts";
@@ -18,7 +18,10 @@ import { AnalyticsPageCharts } from "@/components/common/charts/AnalyticsPageCha
 const Analytics = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
-  const { quotes, loading: quotesLoading } = useQuotes();
+  const quotes = useQuotesStore((state) => state.quotes);
+  const quotesLoading = useQuotesStore((state) => state.isLoading);
+  const isInitialized = useQuotesStore((state) => state.isInitialized);
+  const initialize = useQuotesStore((state) => state.initialize);
   const { currentOrganization, loading: organizationsLoading } = useOrganizations();
   const { profile } = useUserProfile(user?.id);
 
@@ -33,6 +36,14 @@ const Analytics = () => {
     };
     checkAuth();
   }, [navigate]);
+
+  // Initialize quotes store only after user is authenticated
+  useEffect(() => {
+    if (user && !isInitialized) {
+      console.log('🔑 User authenticated, initializing quotes store...');
+      initialize();
+    }
+  }, [user, isInitialized]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -86,14 +97,6 @@ const Analytics = () => {
         <AppSidebar user={user.email || ""} onLogout={handleLogout} />
         
         <main className="flex-1 flex flex-col overflow-hidden">
-          {/* Header Nav Bar */}
-          <HeaderNav 
-            user={user.email || ""} 
-            userProfile={profile as any}
-            organizationName={currentOrganization?.name || 'Loading...'}
-            onLogout={handleLogout} 
-          />
-
           {/* Analytics Content */}
           <div className="flex-1 p-6 space-y-8 overflow-y-auto">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 ">
