@@ -146,15 +146,15 @@ export const useQuotesStore = create<QuotesState>()(
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('User not authenticated');
             
-            // Get user's organization
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
+            // Get user's organization from memberships table
+            const { data: membershipData, error: membershipError } = await supabase
+              .from('memberships')
               .select('organization_id')
-              .eq('id', user.id)
+              .eq('user_id', user.id)
               .single();
-            
-            if (profileError) throw profileError;
-            if (!profileData?.organization_id) {
+
+            if (membershipError) throw membershipError;
+            if (!membershipData?.organization_id) {
               throw new Error('User not assigned to an organization');
             }
             
@@ -186,7 +186,7 @@ export const useQuotesStore = create<QuotesState>()(
                 labor_details: quoteData.deliveryLabor.labor || {},
                 status: quoteData.status || 'Draft',
                 created_by: user.id,
-                organization_id: profileData.organization_id
+                organization_id: membershipData.organization_id
               } as any)
               .select()
               .single();
@@ -343,19 +343,19 @@ export const useQuotesStore = create<QuotesState>()(
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('User not authenticated');
 
-            // Get user's organization
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
+            // Get user's organization from memberships table
+            const { data: membershipData, error: membershipError } = await supabase
+              .from('memberships')
               .select('organization_id')
-              .eq('id', user.id)
+              .eq('user_id', user.id)
               .single();
 
-            if (profileError) throw profileError;
-            if (!profileData?.organization_id) {
+            if (membershipError) throw membershipError;
+            if (!membershipData?.organization_id) {
               throw new Error('User not assigned to an organization');
             }
 
-            console.log('🔄 Subscribing to realtime updates for organization:', profileData.organization_id);
+            console.log('🔄 Subscribing to realtime updates for organization:', membershipData.organization_id);
 
             // Subscribe to quotes table changes for this organization
             const channel = supabase
@@ -366,7 +366,7 @@ export const useQuotesStore = create<QuotesState>()(
                   event: '*',
                   schema: 'public',
                   table: 'quotes',
-                  filter: `organization_id=eq.${profileData.organization_id}`
+                  filter: `organization_id=eq.${membershipData.organization_id}`
                 },
                 (payload) => {
                   console.log('📡 Realtime update received:', payload);

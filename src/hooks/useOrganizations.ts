@@ -93,11 +93,19 @@ export const useOrganizations = () => {
 
   const fetchMembers = async (organizationId: string) => {
     try {
-      // Fetch members from profiles table
+      // Fetch members from memberships table with profile details
       const { data: membersData, error: membersError } = await supabase
-        .from('profiles')
-        .select('id, email, full_name, role, status, joined_at, organization_id')
-        .eq('organization_id', organizationId) as any;
+        .from('memberships')
+        .select(`
+          id,
+          user_id,
+          organization_id,
+          role,
+          status,
+          joined_at,
+          profile:profiles!user_id(id, email, full_name)
+        `)
+        .eq('organization_id', organizationId);
 
       if (membersError) throw membersError;
 
@@ -108,15 +116,15 @@ export const useOrganizations = () => {
 
       // Transform data to match OrganizationMember interface
       const transformedData = (membersData || [])
-        .filter((profile: any) => profile && profile.id) // Filter out null/undefined profiles
-        .map((profile: any) => ({
-          id: profile.id,
-          organization_id: profile.organization_id || '',
-          role: (profile.role as 'admin' | 'member') || 'member',
-          status: (profile.status as 'pending' | 'active' | 'suspended') || 'active',
-          joined_at: profile.joined_at || new Date().toISOString(),
-          email: profile.email || '',
-          full_name: profile.full_name || undefined
+        .filter((membership: any) => membership && membership.user_id && membership.profile) // Filter out null/undefined memberships
+        .map((membership: any) => ({
+          id: membership.user_id, // Use user_id as the member ID
+          organization_id: membership.organization_id || '',
+          role: (membership.role as 'admin' | 'member') || 'member',
+          status: (membership.status as 'pending' | 'active' | 'suspended') || 'active',
+          joined_at: membership.joined_at || new Date().toISOString(),
+          email: membership.profile?.email || '',
+          full_name: membership.profile?.full_name || undefined
         }));
 
       setMembers(transformedData);
