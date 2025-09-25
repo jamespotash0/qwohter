@@ -65,7 +65,7 @@ export const DataFlowAnimation: React.FC = () => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeInOut {
           0%, 100% { opacity: 0.1; }
           50% { opacity: 0.3; }

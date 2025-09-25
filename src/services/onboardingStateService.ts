@@ -65,7 +65,7 @@ export const onboardingStateHelpers = {
           session_data: sessionData || {},
           updated_at: new Date().toISOString(),
           expires_at: expiresAt
-        }, {
+        } as any, {
           onConflict: 'user_id'
         });
 

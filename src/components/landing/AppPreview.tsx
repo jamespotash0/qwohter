@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, DollarSign, TrendingUp, Check, Calendar, User } from 'lucide-react';
+import { FileText, TrendingUp, Check, Calendar, User } from 'lucide-react';
 
 export const AppPreview: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
@@ -133,14 +133,14 @@ export const AppPreview: React.FC = () => {
 
           {/* Content Area */}
           <div className="min-h-[160px] transition-all duration-500">
-            {steps[activeStep].content}
+            {steps[activeStep]!.content}
           </div>
 
           {/* Action Button */}
           <div className="mt-6 pt-4 border-t border-gray-100">
             <button className={`w-full py-2 px-4 rounded-lg font-medium text-white transition-colors ${
-              steps[activeStep].color === 'blue' ? 'bg-blue-600 hover:bg-blue-700' :
-              steps[activeStep].color === 'orange' ? 'bg-orange-500 hover:bg-orange-600' :
+              steps[activeStep]!.color === 'blue' ? 'bg-blue-600 hover:bg-blue-700' :
+              steps[activeStep]!.color === 'orange' ? 'bg-orange-500 hover:bg-orange-600' :
               'bg-green-600 hover:bg-green-700'
             }`}>
               {activeStep === 0 ? 'Generate Quote' :

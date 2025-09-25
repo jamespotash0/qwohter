@@ -71,7 +71,7 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
   const [isUploading, setIsUploading] = useState(false);
 
   const validateField = (field: string, value: string) => {
-    let validation = { isValid: true, error: undefined };
+    let validation: { isValid: boolean; error?: string } = { isValid: true, error: undefined };
 
     switch (field) {
       case 'phone':
@@ -90,7 +90,7 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
     setValidationErrors(prev => ({
       ...prev,
       [field]: validation.error
-    }));
+    }) as any);
 
     return validation.isValid;
   };
@@ -113,7 +113,10 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
     if (value.trim()) {
       validateField('website', value);
     } else {
-      setValidationErrors(prev => ({ ...prev, website: undefined }));
+      setValidationErrors(prev => {
+        const { website, ...rest } = prev;
+        return rest;
+      });
     }
     setTouched(prev => ({ ...prev, website: true }));
   };

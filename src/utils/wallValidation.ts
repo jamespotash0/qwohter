@@ -1,5 +1,3 @@
-import { WallSpecification } from '@/lib/types';
-
 export const isOperableWall = (wall: any): boolean => {
   return wall?.wallSystemType === 'Operable Wall';
 };
@@ -19,17 +17,17 @@ const parseFractionalInches = (value: string): number => {
   // Handle fractions with space or dash separator: "3 3/4" or "3-3/4"
   const fractionMatch = trimmed.match(/^(\d+)\s*[-\s]\s*(\d+)\/(\d+)$/);
   if (fractionMatch) {
-    const whole = parseInt(fractionMatch[1]);
-    const numerator = parseInt(fractionMatch[2]);
-    const denominator = parseInt(fractionMatch[3]);
+    const whole = parseInt(fractionMatch[1]!);
+    const numerator = parseInt(fractionMatch[2]!);
+    const denominator = parseInt(fractionMatch[3]!);
     return whole + (numerator / denominator);
   }
   
   // Handle just fractions: "3/4"
   const pureFractionMatch = trimmed.match(/^(\d+)\/(\d+)$/);
   if (pureFractionMatch) {
-    const numerator = parseInt(pureFractionMatch[1]);
-    const denominator = parseInt(pureFractionMatch[2]);
+    const numerator = parseInt(pureFractionMatch[1]!);
+    const denominator = parseInt(pureFractionMatch[2]!);
     return numerator / denominator;
   }
   

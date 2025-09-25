@@ -37,29 +37,38 @@ export const useOrganizations = () => {
       if (!user.user) return;
 
       // Get user's profile first
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('organization_id, role')
-        .eq('id', user.user.id)
+      // Get user's organization through membership
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('memberships')
+        .select(`
+          organization_id,
+          role,
+          organizations (
+            id,
+            name,
+            organization_code,
+            created_at,
+            updated_at,
+            organization_info
+          )
+        `)
+        .eq('user_id', user.user.id)
+        .eq('status', 'Active')
         .single() as any;
 
-      if (profileError) {
-        console.error('Profile error:', profileError);
-        throw profileError;
+      if (membershipError) {
+        console.error('Membership error:', membershipError);
+        throw membershipError;
       }
 
-      if (profileData?.organization_id) {
-        // If user has an organization, try to fetch it
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .select('id, name, organization_code, created_at, updated_at, organization_info')
-          .eq('id', profileData.organization_id)
-          .single() as any;
+      if (membershipData?.organization_id) {
+        // If user has an organization, use the data from the join
+        const orgData = membershipData.organizations;
 
-        if (orgError) {
-          console.error('Organization error:', orgError);
+        if (!orgData) {
+          console.error('Organization data not found');
           // Don't throw here, just set role without organization
-          setCurrentUserRole(profileData.role as 'admin' | 'member');
+          setCurrentUserRole(membershipData.role as 'admin' | 'member');
         } else {
           // Ensure organization_info exists (handle both cases: column exists or doesn't)
           const orgWithInfo = {
@@ -67,7 +76,7 @@ export const useOrganizations = () => {
             organization_info: orgData.organization_info || {}
           } as Organization;
           setCurrentOrganization(orgWithInfo);
-          setCurrentUserRole(profileData.role as 'admin' | 'member');
+          setCurrentUserRole(membershipData.role as 'admin' | 'member');
         }
       }
     } catch (error: any) {

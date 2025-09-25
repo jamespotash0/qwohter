@@ -91,7 +91,7 @@ export function createSecurityHeadersPlugin() {
   return {
     name: 'security-headers',
     configureServer(server: any) {
-      server.middlewares.use((req: any, res: any, next: any) => {
+      server.middlewares.use((res: any, next: any) => {
         const headers = getSecurityHeaders();
         Object.entries(headers).forEach(([key, value]) => {
           res.setHeader(key, value);

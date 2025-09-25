@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+// import { Button } from "@/components/ui/button";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { 
   Building2, 
@@ -7,7 +7,7 @@ import {
   TrendingUp, 
   Calendar, 
   User,
-  Mail,
+  // Mail,
   Users,
   Shield
 } from "lucide-react";
@@ -17,7 +17,7 @@ import { useOrganizations } from "@/hooks/useOrganizations";
 import { useQuotes } from "@/hooks/useQuotes";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { AnalyticsCharts } from "@/components/common/charts/AnalyticsCharts";
-import { useEffect } from "react";
+// import { useEffect } from "react";
 
 
 interface DashboardProps {

@@ -797,21 +797,6 @@ const Auth = () => {
                   </button>
                 </div>
               )}
-
-              {/* Terms and Privacy Policy - only show on auth step */}
-              {/* {step === "auth" && (
-                <p className="text-gray-500 text-xs mb-4">
-                  By signing in, you agree to our{' '}
-                  <button className="text-orange-500 hover:text-orange-600 underline transition-colors">
-                    Terms of Service
-                  </button>
-                  {' '}and{' '}
-                  <button className="text-orange-500 hover:text-orange-600 underline transition-colors">
-                    Privacy Policy
-                  </button>
-                </p>
-              )} */}
-
               <p className="text-gray-400 text-xs">
                 © 2024 Qwohter. Secure & Professional.
               </p>

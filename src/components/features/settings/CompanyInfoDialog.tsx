@@ -194,13 +194,14 @@ export function CompanyInfoDialog({
           if (!orgId) {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-              const { data: profile } = await supabase
-                .from('profiles')
+              const { data: membershipData } = await supabase
+                .from('memberships')
                 .select('organization_id')
-                .eq('id', user.id)
+                .eq('user_id', user.id)
+                .eq('status', 'Active')
                 .single();
-              
-              orgId = (profile as any)?.organization_id;
+
+              orgId = (membershipData as any)?.organization_id;
             }
           }
 

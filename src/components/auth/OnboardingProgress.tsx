@@ -5,7 +5,6 @@
  */
 
 import React from "react";
-import { Check } from "lucide-react";
 
 type StepType = "auth" | "verify-otp" | "organization" | "company-info";
 

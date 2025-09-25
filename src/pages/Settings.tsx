@@ -2,13 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar, HeaderNav } from "@/components/common/layout";
 import { CompanySettingsSection } from "@/components/features/settings/CompanySettingsSection";
 import { useOrganizationSettings } from "@/hooks/useCompanySettings";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { Building2, User as UserIcon } from "lucide-react";
 
 const Settings = () => {
   const [user, setUser] = useState<User | null>(null);

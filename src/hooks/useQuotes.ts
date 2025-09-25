@@ -107,14 +107,23 @@ export const useQuotes = () => {
       if (!user) throw new Error('User not authenticated');
 
       // Get user's organization from their profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('organization_id, full_name')
-        .eq('id', user.id)
+      // Get user's organization through membership and profile data
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('memberships')
+        .select(`
+          organization_id,
+          profiles (
+            full_name
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('status', 'Active')
         .single();
 
-      if (profileError) throw profileError;
-      if (!profileData?.organization_id) throw new Error('User not assigned to an organization');
+      if (membershipError) throw membershipError;
+      if (!membershipData?.organization_id) throw new Error('User not assigned to an organization');
+
+      const profileData = (membershipData as any).profiles;
       if (!profileData?.full_name) throw new Error('User profile incomplete');
       
       // Generate proposal number
@@ -136,7 +145,7 @@ export const useQuotes = () => {
           wall_details: prepareWallDataForSave(quoteData.walls) as any,
           quote_source: quoteData.contactInfo?.quoteSource || '',
           created_by: user.id,
-          organization_id: profileData.organization_id,
+          organization_id: membershipData.organization_id,
           price_details: {
             payment_upon_drawings: quoteData.pricing.payment_upon_drawings,
             payment_upon_track_installation: quoteData.pricing.payment_upon_track_installation,

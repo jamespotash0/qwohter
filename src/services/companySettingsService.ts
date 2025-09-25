@@ -107,10 +107,9 @@ class OrganizationSettingsService {
           .single();
 
         if (error) throw error;
-
         // Return the updated data with organization_info
         return {
-          ...data,
+          ...(data as object),
           organization_info: mergedOrgInfo
         } as OrganizationWithCompanyInfo;
 

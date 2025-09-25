@@ -105,7 +105,7 @@ export const useAuthStore = create<AuthState>()(
         _setLoading(true);
         _setError(null);
         
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -164,7 +164,7 @@ export const useAuthStore = create<AuthState>()(
         
         if (error) throw error;
         
-        _setProfile({ ...profile, ...data });
+        _setProfile({ ...profile, ...data as object });
       } catch (error) {
         console.error('Profile update error:', error);
         _setError(error instanceof Error ? error.message : 'Failed to update profile');

@@ -105,14 +105,15 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
         let orgId = '';
         
         if (user) {
-          const { data: profile } = await supabase
-            .from('profiles')
+          const { data: membershipData } = await supabase
+            .from('memberships')
             .select('organization_id')
-            .eq('id', user.id)
+            .eq('user_id', user.id)
+            .eq('status', 'Active')
             .single();
-          
-          console.log('📋 User profile:', profile);
-          orgId = (profile as any)?.organization_id || '';
+
+          console.log('📋 User membership:', membershipData);
+          orgId = (membershipData as any)?.organization_id || '';
           console.log('🏢 Organization ID:', orgId);
         }
 

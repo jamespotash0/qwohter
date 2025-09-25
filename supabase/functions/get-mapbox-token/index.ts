@@ -12,6 +12,7 @@ serve(async (req) => {
   }
 
   try {
+    //@ts-ignore
     const mapboxToken = Deno.env.get('MAPBOX_PUBLIC_TOKEN');
     
     if (!mapboxToken) {

@@ -4,6 +4,8 @@
  * Comprehensive validation for forms with user-friendly error messages
  */
 
+import levenshtein from 'js-levenshtein';
+
 export interface ValidationResult {
   isValid: boolean;
   error?: string;
@@ -55,18 +57,18 @@ export const validators = {
 
     // Check for common typos in popular domains
     const commonDomains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com'];
-    const domainLower = domain!.toLowerCase();
-
-    // Suggest corrections for common typos
-    if (domainLower.includes('gmial.com') || domainLower.includes('gmai.com')) {
-      return { isValid: false, error: 'Did you mean gmail.com?' };
+    
+    const lowerDomain = domain!.toLowerCase();
+    const suggestedDomain = commonDomains.find(d => levenshtein(d, lowerDomain) <= 1);
+  
+    if (suggestedDomain) {
+      return { isValid: false, error: `Did you mean ${suggestedDomain}?` };
     }
-    if (domainLower.includes('yahooo.com') || domainLower.includes('yaho.com')) {
-      return { isValid: false, error: 'Did you mean yahoo.com?' };
-    }
-
     return { isValid: true };
   },
+
+  
+
 
   /**
    * Validate password with security requirements

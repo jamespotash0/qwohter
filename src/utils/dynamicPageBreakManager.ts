@@ -315,7 +315,7 @@ export class DynamicPageBreakManager {
     const spacingArray: number[] = [];
     let accumulatedHeight = 0;
 
-    contentSections.forEach((section, index) => {
+    contentSections.forEach((section, _) => {
       const estimatedHeight = this.estimateSectionHeight(section, data);
       const rule = rules.find(r => section.includes(r.sectionClass));
       
@@ -478,7 +478,7 @@ export class DynamicPageBreakManager {
   public shouldRecalculateRules(
     oldContent: string, 
     newContent: string, 
-    data: QuoteData
+    // data: QuoteData
   ): boolean {
     // Simple check - if content length changes significantly, recalculate
     const lengthDifference = Math.abs(oldContent.length - newContent.length);

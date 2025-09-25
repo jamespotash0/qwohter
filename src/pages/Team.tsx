@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { authStateHelpers } from "@/utils/authStateHelpers";
 import { teamManagementHelpers } from "@/utils/teamManagementHelpers";
-import { Building2, Copy, Check } from "lucide-react";
+import { Copy, Check } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TeamStatsCards } from "@/components/team/TeamStatsCards";

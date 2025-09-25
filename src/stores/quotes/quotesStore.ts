@@ -187,7 +187,7 @@ export const useQuotesStore = create<QuotesState>()(
                 status: quoteData.status || 'Draft',
                 created_by: user.id,
                 organization_id: profileData.organization_id
-              })
+              } as any)
               .select()
               .single();
             
@@ -233,14 +233,14 @@ export const useQuotesStore = create<QuotesState>()(
             const { data, error } = await supabase
               .from('quotes')
               .insert({
-                ...existingQuote,
+                ...existingQuote as object,
                 id: undefined,
                 proposal_number: proposalInfo.fullNumber,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 date_last_downloaded: null,
                 version: proposalInfo.version
-              })
+              } as any)
               .select()
               .single();
 
@@ -272,7 +272,7 @@ export const useQuotesStore = create<QuotesState>()(
             
             const { data, error } = await supabase
               .from('quotes')
-              .update(processedUpdates as any)
+              .update(processedUpdates)
               .eq('id', id)
               .select()
               .single();

@@ -9,8 +9,6 @@ import {
   TrendingUp, 
   FileText, 
   Target,
-  Building2,
-  User,
 } from "lucide-react";
 import { useQuotes } from "@/hooks/useQuotes";
 import { useOrganizations } from "@/hooks/useOrganizations";
@@ -98,15 +96,6 @@ const Analytics = () => {
 
           {/* Analytics Content */}
           <div className="flex-1 p-6 space-y-8 overflow-y-auto">
-            {/* Page Header */}
-            {/* <div className=" text-center">
-              <h1 className="text-5xl font-black bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent mb-4">
-                Analytics Dashboard
-              </h1>
-              <p className="text-slate-600 text-xl font-medium">Comprehensive insights into your business performance</p>
-            </div> */}
-
-            {/* Key Metrics Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 ">
               <Card className="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 border-0 shadow-2xl hover:shadow-3xl transition-shadow duration-300 group">
                 <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
