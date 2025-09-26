@@ -246,6 +246,19 @@ export const useOrganizations = () => {
           throw new Error('User is already a member of another organization.');
         }
 
+        // Check if they already have a pending invitation to this organization
+        const { data: existingInvite } = await supabase
+          .from('memberships')
+          .select('*')
+          .eq('user_id', profile.id)
+          .eq('organization_id', organizationId)
+          .eq('status', 'Pending')
+          .single();
+
+        if (existingInvite) {
+          throw new Error('User already has a pending invitation to this organization.');
+        }
+
         // Create pending membership for existing user
         const { data, error } = await supabase
           .from('memberships')
@@ -307,20 +320,20 @@ export const useOrganizations = () => {
 
   const removeMember = async (memberId: string) => {
     try {
-      // Remove organization association from profile
-      const { error } = await (supabase as any)
-        .from('profiles')
-        .update({
-          organization_id: null,
-          role: 'member',
-          joined_at: null
-        })
-        .eq('id', memberId);
+      if (!currentOrganization) throw new Error('No organization found');
+
+      // Remove membership record
+      const { error } = await supabase
+        .from('memberships')
+        .delete()
+        .eq('user_id', memberId)
+        .eq('organization_id', currentOrganization.id);
 
       if (error) throw error;
 
-      setMembers(prev => prev.filter(member => member.id !== memberId));
-      
+      // Refresh members list
+      await fetchMembers(currentOrganization.id);
+
       toast({
         title: "Member removed",
         description: "Member has been removed from the organization.",

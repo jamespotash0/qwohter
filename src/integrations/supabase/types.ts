@@ -140,6 +140,60 @@ export interface Database {
           updated_at?: string;
         };
       };
+      invite_tokens: {
+        Row: {
+          id: string;
+          token: string;
+          organization_id: string;
+          organization_code: string;
+          role: string;
+          created_by: string;
+          expires_at: string;
+          created_at: string;
+          updated_at: string;
+          is_used: boolean;
+        };
+        Insert: {
+          id?: string;
+          token: string;
+          organization_id: string;
+          organization_code: string;
+          role: string;
+          created_by: string;
+          expires_at: string;
+          created_at?: string;
+          updated_at?: string;
+          is_used?: boolean;
+        };
+        Update: {
+          id?: string;
+          token?: string;
+          organization_id?: string;
+          organization_code?: string;
+          role?: string;
+          created_by?: string;
+          expires_at?: string;
+          created_at?: string;
+          updated_at?: string;
+          is_used?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "invite_tokens_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "invite_tokens_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       memberships: {
         Row: {
           id: string;

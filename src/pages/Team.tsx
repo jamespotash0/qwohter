@@ -5,6 +5,9 @@ import { useOrganizations } from "@/hooks/useOrganizations";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { authStateHelpers } from "@/utils/authStateHelpers";
+import { getAppUrl } from "@/utils/environment";
+import { createInviteToken } from "@/utils/inviteTokens";
+import { regenerateOrganizationCode } from "@/utils/organizationCodeManagement";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, UserCheck, Clock, Shield, Plus, Search, Filter, MoreVertical, Trash2, Link2, Send, Copy } from "lucide-react";
+import { Users, UserCheck, Clock, Shield, Plus, Search, Filter, MoreVertical, Trash2, Link2, Send, Copy, X, RotateCcw, AlertTriangle } from "lucide-react";
 import type { Role } from "@/utils/teamManagementHelpers";
 
 const Team = () => {
@@ -72,14 +75,43 @@ const Team = () => {
     setInviteEmails([...inviteEmails, { email: "", role: "Member" }]);
   };
 
+  const removeInviteField = (index: number) => {
+    if (inviteEmails.length > 1) {
+      const updated = inviteEmails.filter((_, i) => i !== index);
+      setInviteEmails(updated);
+    }
+  };
 
-  const generateInviteLink = () => {
-    if (!currentOrganization) return;
 
-    const baseUrl = window.location.origin;
-    const link = `${baseUrl}/join/${currentOrganization.organization_code}`;
-    setInviteLink(link);
-    setShowInviteLink(true);
+  const generateInviteLink = async () => {
+    if (!currentOrganization || !userId) return;
+
+    try {
+      // Create a secure token that expires in 7 days
+      const { token } = await createInviteToken(
+        currentOrganization.id,
+        currentOrganization.organization_code,
+        'Member', // Default role for link invites
+        userId,
+        7 // 7 days expiry
+      );
+
+      const baseUrl = getAppUrl();
+      const link = `${baseUrl}/auth?invite=${token}`;
+      setInviteLink(link);
+      setShowInviteLink(true);
+
+      toast({
+        title: "Invite link generated",
+        description: "This link will expire in 7 days for security.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error generating invite link",
+        description: "Failed to create secure invite link. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const copyInviteLink = async () => {
@@ -128,6 +160,31 @@ const Team = () => {
       toast({
         title: "Error",
         description: "Failed to send invitations",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRegenerateOrgCode = async () => {
+    if (!currentOrganization || !currentUserRole) return;
+
+    try {
+      const { newCode, invalidatedTokens } = await regenerateOrganizationCode(
+        currentOrganization.id,
+        currentUserRole
+      );
+
+      toast({
+        title: "Organization code regenerated",
+        description: `New code: ${newCode}. ${invalidatedTokens} invite links have been invalidated for security.`,
+      });
+
+      // Refresh the organization data
+      window.location.reload(); // Simple refresh for now
+    } catch (error: any) {
+      toast({
+        title: "Error regenerating code",
+        description: error.message || "Failed to regenerate organization code",
         variant: "destructive",
       });
     }
@@ -252,7 +309,7 @@ const Team = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               {inviteEmails.map((invite, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Email Address
@@ -269,18 +326,30 @@ const Team = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Role
                     </label>
-                    <Select
-                      value={invite.role}
-                      onValueChange={(value) => updateInviteField(index, "role", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Member">Member</SelectItem>
-                        <SelectItem value="Admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <Select
+                        value={invite.role}
+                        onValueChange={(value) => updateInviteField(index, "role", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Member">Member</SelectItem>
+                          <SelectItem value="Admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {inviteEmails.length > 1 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeInviteField(index)}
+                          className="h-10 w-10 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -298,6 +367,44 @@ const Team = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Organization Security Settings - Only for Admins */}
+          {currentUserRole === 'Admin' && (
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="w-5 h-5" />
+                  Organization Security
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="font-medium text-amber-900 mb-1">Organization Code Management</h4>
+                      <p className="text-sm text-amber-800 mb-3">
+                        Current organization code: <span className="font-mono font-bold">{currentOrganization?.organization_code}</span>
+                      </p>
+                      <p className="text-xs text-amber-700 mb-3">
+                        If you suspect your organization code has been compromised, you can regenerate it.
+                        This will invalidate all existing invite links for security.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRegenerateOrgCode}
+                        className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                      >
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Regenerate Organization Code
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Team Members Table */}
           <Card>

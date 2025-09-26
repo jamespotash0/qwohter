@@ -120,6 +120,30 @@ export const authFlowHelpers = {
     console.log('Email:', email);
 
     try {
+      // Check if user already exists in profiles (should work with fixed RLS policy)
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, email, full_name')
+        .eq('email', email)
+        .single();
+
+      if (existingProfile && !profileError) {
+        console.log('User already exists in profiles:', existingProfile);
+        return {
+          success: false,
+          error: "An account with this email already exists. Please sign in instead or use a different email address."
+        };
+      }
+
+      // If profile check fails for reasons other than "not found", handle it
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Profile check error:', profileError);
+        return {
+          success: false,
+          error: `Email verification failed: ${profileError.message}. Please try again.`
+        };
+      }
+
       // Store signup data temporarily
       tempSignupService.store({
         email,

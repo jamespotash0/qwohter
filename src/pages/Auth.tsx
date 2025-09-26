@@ -15,6 +15,7 @@ import { organizationSettingsService } from "@/services/companySettingsService";
 import { supabase } from "@/integrations/supabase/client";
 import { LogoUploadResult } from "@/services/LogoUploadService";
 import { tempSignupService } from "@/services/tempSignupService";
+import { validateInviteToken, markTokenAsUsed } from "@/utils/inviteTokens";
 
 interface ProfileData {
   full_name: string | null;
@@ -72,6 +73,60 @@ const Auth = () => {
   useEffect(() => {
     setIsSignUp(isCreateAccountRoute);
   }, [isCreateAccountRoute]);
+
+  // Check for invite token or organization code in URL parameters (invite links)
+  useEffect(() => {
+    // Prevent multiple executions
+    if (orgCode || orgChoice) return;
+
+    const urlParams = new URLSearchParams(location.search);
+    const inviteToken = urlParams.get('invite');
+    const orgCodeFromUrl = urlParams.get('org');
+
+    if (inviteToken && inviteToken.trim()) {
+      // Handle secure invite token
+      const handleInviteToken = async () => {
+        try {
+          const tokenData = await validateInviteToken(inviteToken.trim());
+
+          if (tokenData) {
+            setOrgCode(tokenData.organization_code);
+            setOrgChoice('join');
+            console.log('Valid invite token detected:', {
+              org: tokenData.organization_code,
+              role: tokenData.role,
+              expires: tokenData.expires_at
+            });
+            toast({
+              title: "Invite link validated",
+              description: `You've been invited to join as ${tokenData.role}.`,
+            });
+          } else {
+            console.warn('Invalid or expired invite token');
+            toast({
+              title: "Invalid invite link",
+              description: "This invite link has expired or is invalid. Please request a new one.",
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          console.error('Error validating invite token:', error);
+          toast({
+            title: "Error validating invite",
+            description: "Unable to validate invite link. Please try again.",
+            variant: "destructive",
+          });
+        }
+      };
+
+      handleInviteToken();
+    } else if (orgCodeFromUrl && orgCodeFromUrl.trim()) {
+      // Fallback to legacy organization code (less secure)
+      setOrgCode(orgCodeFromUrl.trim().toUpperCase());
+      setOrgChoice('join');
+      console.log('Auto-filled organization code from URL:', orgCodeFromUrl);
+    }
+  }, [location.search, orgCode, orgChoice]); // Add orgCode and orgChoice to prevent re-execution
 
   // Auth flow state persistence helpers
   const saveAuthState = (authState: {
@@ -510,6 +565,20 @@ const Auth = () => {
           });
           setStep("company-info");
         } else if (orgChoice === "join" && result.data) {
+          // Check if user joined via invite token and mark it as used
+          const urlParams = new URLSearchParams(location.search);
+          const inviteToken = urlParams.get('invite');
+
+          if (inviteToken && inviteToken.trim()) {
+            try {
+              await markTokenAsUsed(inviteToken.trim());
+              console.log('Invite token marked as used');
+            } catch (error) {
+              console.error('Error marking token as used:', error);
+              // Don't fail the join process if token marking fails
+            }
+          }
+
           toast({
             title: "Join request sent!",
             description: "Your request to join the organization is pending approval.",
