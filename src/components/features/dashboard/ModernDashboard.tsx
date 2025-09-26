@@ -74,17 +74,17 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
             {/* Dashboard Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-4xl font-bold text-text-primary">
+                <h1 className="text-2xl font-semibold text-gray-900">
                   Dashboard
                 </h1>
-                <p className="mt-2 text-lg text-text-secondary">
+                <p className="mt-2 text-base text-gray-700">
                   Welcome back, {profile?.full_name || user}
                 </p>
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="text-sm text-text-muted">Today</p>
-                  <p className="text-sm font-medium text-text-secondary">
+                  <p className="text-sm text-gray-500">Today</p>
+                  <p className="text-sm font-medium text-gray-700">
                     {new Date().toLocaleDateString('en-US', {
                       weekday: 'long',
                       month: 'short',
@@ -107,17 +107,17 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Recent Quotes */}
               <div className="lg:col-span-2">
-                <Card className="bg-card border border-border-primary shadow-sm">
+                <Card>
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-xl font-semibold text-text-primary">
+                      <CardTitle className="text-lg font-medium text-gray-900">
                         Recent Quotes
                       </CardTitle>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => navigate('/quotes')}
-                        className="text-text-muted hover:text-text-primary"
+                        className="text-gray-500 hover:text-gray-900"
                       >
                         View all
                         <ArrowUpRight className="h-4 w-4 ml-1" />
@@ -127,7 +127,7 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
                   <CardContent className="space-y-4">
                     {recentQuotes.length > 0 ? (
                       recentQuotes.map((quote) => (
-                        <div key={quote.id} className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary hover:bg-bg-tertiary transition-colors group cursor-pointer"
+                        <div key={quote.id} className="flex items-center justify-between p-4 rounded-lg bg-white hover:bg-gray-50 transition-colors group cursor-pointer border border-gray-100"
                              onClick={() => navigate(`/quotes/${quote.id}/edit`)}>
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-lg bg-accent-primary/10 flex items-center justify-center">
@@ -137,7 +137,7 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
                               <p className="font-medium text-text-primary group-hover:text-accent-primary transition-colors">
                                 {(quote.quote_details as any)?.contactName || 'Untitled Quote'}
                               </p>
-                              <p className="text-sm text-text-muted">
+                              <p className="text-sm text-text-disabled">
                                 {new Date(quote.created_at).toLocaleDateString()}
                               </p>
                             </div>
@@ -160,8 +160,8 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
                       ))
                     ) : (
                       <div className="text-center py-12">
-                        <FileText className="h-12 w-12 text-text-muted mx-auto mb-4 opacity-50" />
-                        <p className="text-text-muted">No quotes yet</p>
+                        <FileText className="h-12 w-12 text-text-disabled mx-auto mb-4 opacity-50" />
+                        <p className="text-text-disabled">No quotes yet</p>
                         <Button
                           onClick={() => navigate('/quotes/new')}
                           className="mt-4 bg-accent-primary hover:bg-primary text-white"
@@ -176,9 +176,9 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
 
               {/* Quick Actions */}
               <div>
-                <Card className="bg-card border border-border-primary shadow-sm">
+                <Card>
                   <CardHeader>
-                    <CardTitle className="text-xl font-semibold text-text-primary">
+                    <CardTitle className="text-lg font-medium text-gray-900">
                       Quick Actions
                     </CardTitle>
                   </CardHeader>
@@ -194,7 +194,7 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
                     <Button
                       onClick={() => navigate('/team')}
                       variant="outline"
-                      className="w-full justify-start h-12 border-border-primary hover:bg-bg-secondary"
+                      className="w-full justify-start h-12 border-gray-200 hover:bg-gray-50"
                     >
                       <Users className="h-5 w-5 mr-3" />
                       Manage Team
@@ -203,7 +203,7 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
                     <Button
                       onClick={() => navigate('/analytics')}
                       variant="outline"
-                      className="w-full justify-start h-12 border-border-primary hover:bg-bg-secondary"
+                      className="w-full justify-start h-12 border-gray-200 hover:bg-gray-50"
                     >
                       <TrendingUp className="h-5 w-5 mr-3" />
                       View Analytics

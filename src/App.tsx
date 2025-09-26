@@ -6,7 +6,6 @@ import { AppRouter } from "@/router";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { initializeAuth } from "@/lib/auth-config";
 import { useEffect } from "react";
-import "@/styles/theme.css";
 
 const queryClient = new QueryClient();
 

@@ -1,50 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Minimalist Editorial Design System - Calm & Inspiring Palette */
-
+/* Streamlined Design System */
 @layer base {
   :root {
-    /* Core Background - Off-white cream for calm, editorial feel */
-    --background: 40 12% 97.6%; /* #F9F9F8 */
-    --foreground: 20 14% 12.2%; /* #1F1F1F - Dark charcoal */
+    /* Core System */
+    --background: 40 12% 97.6%; /* #F9F9F8 - Main page background */
+    --foreground: 20 14% 12.2%; /* #1F1F1F - Primary text */
 
-    /* Card System - Pure white with subtle shadows */
-    --card: 0 0% 100%; /* #FFFFFF */
-    --card-foreground: 20 14% 12.2%;
+    /* Card System */
+    --card: #F7F9FB; /* Card content background */
+    --card-foreground: 210 20% 8%; /* Card text */
 
-    /* Popover System */
-    --popover: 0 0% 100%;
-    --popover-foreground: 20 14% 12.2%;
+    /* Form Elements */
+    --border: 40 15% 90%; /* Border color */
+    --input: 40 15% 88%; /* Input background */
+    --ring: 218 100% 62%; /* Focus rings */
 
-    /* Primary Accent - Sky Blue for trust and clarity */
-    --primary: 218 100% 62%; /* #3A86FF */
-    --primary-foreground: 0 0% 100%;
+    /* Border Radius */
+    --radius: 1rem; /* Standard radius */
+    --radius-card: 2rem; /* Card-specific radius */
 
-    /* Secondary System - Soft, muted tones */
+    /* Colors */
+    --primary: 218 100% 62%; /* #3A86FF - Blue */
+    --primary-foreground: 0 0% 100%; /* White text on primary */
+
     --secondary: 40 25% 95%; /* Soft cream */
-    --secondary-foreground: 20 14% 12.2%;
+    --secondary-foreground: 20 14% 12.2%; /* Dark text on secondary */
 
-    /* Muted Elements - Subtle grays for less important content */
-    --muted: 40 20% 93%;
-    --muted-foreground: 20 8% 45%;
+    --muted: 40 20% 93%; /* Muted background */
+    --muted-foreground: 20 8% 45%; /* Muted text */
 
-    /* Accent - Sunlight Yellow for warmth and energy */
-    --accent: 46 100% 52%; /* #FFBE0B */
-    --accent-foreground: 20 14% 12.2%;
+    --accent: 46 100% 52%; /* #FFBE0B - Yellow accent */
+    --accent-foreground: 20 14% 12.2%; /* Dark text on accent */
 
-    /* Destructive - Subtle red */
-    --destructive: 0 75% 55%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 75% 55%; /* Red */
+    --destructive-foreground: 0 0% 100%; /* White text on red */
 
-    /* Borders & Inputs - Very light, barely visible */
-    --border: 40 15% 90%;
-    --input: 40 15% 88%;
-    --ring: 218 100% 62%;
-
-    /* Radius - Soft, modern curves */
-    --radius: 0.75rem;
+    /* Popover */
+    --popover: 0 0% 100%; /* White */
+    --popover-foreground: 20 14% 12.2%; /* Dark text */
 
     /* Custom Design Tokens */
     --quote-bg: 30 20% 98%; /* #FFF8F2 - Warm white for quote cards */
@@ -57,35 +55,13 @@
     --gradient-accent: linear-gradient(135deg, hsl(46, 100%, 52%), hsl(46, 85%, 65%));
     --gradient-subtle: linear-gradient(180deg, hsl(40, 12%, 97.6%), hsl(40, 15%, 95%));
     
-    /* Typography Scale */
+    /* Typography */
     --font-serif: 'Crimson Text', serif;
-    --font-sans: 'Inter', sans-serif;
+    --font-sans: 'Space Grotesk', 'Inter', sans-serif;
 
-    /* Light Theme - Light Gray Sidebar with subtle highlights */
-    --sidebar-bg: 210 20% 98%; /* #F9FAFB - Very light gray, almost white */
-    --sidebar-border: 220 13% 91%; /* #E5E7EB - Light gray border/dividers */
-
-    --text-primary: 210 20% 8%; /* #111827 - Near black */
-    --text-secondary: 215 25% 27%; /* #374151 - Dark gray for inactive menu text */
-    --text-muted: 215 16% 47%; /* #6B7280 - Slate gray 500-600 */
-
-    --accent-primary: 232 64% 51%; /* #4761C2 - Brand blue */
-    --accent-secondary: 25 95% 53%; /* #F79149 - Brand orange */
-    --accent-hover: 25 78% 46%; /* #E07F35 - Darker orange hover */
-
-    --sidebar-active: 25 95% 53%; /* #F79149 - Orange for active states */
-    --sidebar-hover: 220 13% 93%; /* Slightly lighter for hover states */
-
-    --bg-primary: 0 0% 100%; /* #FFFFFF - Pure white */
-    --bg-secondary: 210 20% 98%; /* #F9FAFB - Soft neutral off-white */
-    --bg-tertiary: 210 16% 93%; /* Slightly darker off-white */
-
-    --border-primary: 220 13% 91%; /* #E5E7EB - Light gray border */
-    --border-secondary: 218 11% 65%; /* Lighter border variation */
-
-    --success: 120 100% 40%;
-    --warning: 45 100% 51%;
-    --error: 0 75% 55%;
+    /* App-specific */
+    --sidebar-background: 210 20% 98%; /* #F9FAFB */
+    --sidebar-border: 220 13% 91%; /* #E5E7EB */
   }
 
   .dark {
@@ -167,64 +143,14 @@
     letter-spacing: -0.01em;
   }
 
-  /* Custom color utilities */
-  .text-text-primary { color: hsl(var(--text-primary)); }
-  .text-text-secondary { color: hsl(var(--text-secondary)); }
-  .text-text-muted { color: hsl(var(--text-muted)); }
-
-  .bg-accent-primary { background-color: hsl(var(--accent-primary)); }
-  .bg-accent-secondary { background-color: hsl(var(--accent-secondary)); }
-  .bg-sidebar-bg {
-    background-color: hsl(var(--sidebar-bg)) !important;
-    /* Force override: slightly darker light gray */
-    background-color: #F3F4F6 !important;
-  }
-  .bg-sidebar-hover { background-color: hsl(var(--sidebar-hover)); }
- 
-
-  .border-sidebar-border { border-color: hsl(var(--sidebar-border)); }
-
-  .hover\:bg-sidebar-hover:hover { background-color: hsl(var(--sidebar-hover)); }
-  .hover\:text-text-primary:hover { color: hsl(var(--text-primary)); }
-  .group-hover\:text-accent-primary:hover { color: hsl(var(--accent-primary)); }
-
-  .text-error {
-    color: hsl(var(--error)) !important;
-    color: #DC2626 !important; /* Force red color for logout */
-  }
-  .hover\:bg-error\/10:hover { background-color: hsl(var(--error) / 0.1); }
-
-  /* Force active sidebar menu item styling */
-  .bg-sidebar-active.text-white {
-    background-color: #f8e6d9 !important;
-    color: #000000 !important;
+  /* Sidebar styling */
+  .bg-sidebar {
+    background-color: #F3F4F6;
   }
 
-  .bg-sidebar-active .text-white {
-    color: #F79149 !important;
-  }
-
-  /* Inactive sidebar menu item styling */
-  .bg-sidebar-inactive {
-    color: #6B7280 !important; /* Gray-500 for inactive text */
-  }
-
-  .bg-sidebar-inactive .text-accent-primary {
-    color: #6B7280 !important; /* Gray-500 for inactive icons */
-  }
-
-  /* Blue button styling */
-  .bg-accent-primary {
-    background-color: #4761C2 !important; /* Brand blue */
-  }
-
-  .hover\:bg-primary:hover {
-    background-color: #3B4FA0 !important; /* Darker blue on hover */
-  }
-
-  /* Ensure main content area is pure white */
-  .bg-bg-primary {
-    background-color: #FFFFFF !important; /* Pure white */
+  .hover\:bg-sidebar-hover:hover {
+    background-color: #F5F7FA;
+    transition: all 0.3s ease;
   }
 
   /* Typography Classes */
@@ -256,6 +182,21 @@
     box-shadow: var(--shadow-soft);
     border-radius: var(--radius);
     border: 1px solid hsl(var(--border));
+  }
+
+  /* Unified Card Style */
+  .card {
+    background: var(--card);
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius-card);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    transition: all 0.3s ease;
+  }
+
+  .card:hover {
+    background: #F5F7FA;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    transform: translateY(-1px);
   }
 
   .card-floating {

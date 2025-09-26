@@ -14,9 +14,9 @@ import { /*useOrganizations,*/ OrganizationMember, Organization } from "@/hooks/
 interface MemberManagementProps {
   organization: Organization;
   members: OrganizationMember[];
-  onInviteMember: (email: string, role: 'admin' | 'member') => void;
+  onInviteMember: (email: string, role: 'Admin' | 'Member') => void;
   onRemoveMember: (memberId: string) => void;
-  onUpdateRole: (memberId: string, role: 'admin' | 'member') => void;
+  onUpdateRole: (memberId: string, role: 'Admin' | 'Member') => void;
   onApproveMember: (memberId: string) => void;
   onRejectMember: (memberId: string) => void;
   onRefresh: () => void;
@@ -24,9 +24,9 @@ interface MemberManagementProps {
 
 const getRoleIcon = (role: string) => {
   switch (role) {
-    case 'admin':
+    case 'Admin':
       return <Shield className="w-4 h-4 text-blue-500" />;
-    case 'member':
+    case 'Member':
       return <UserIcon className="w-4 h-4 text-gray-500" />;
     default:
       return <UserIcon className="w-4 h-4 text-gray-500" />;
@@ -35,9 +35,9 @@ const getRoleIcon = (role: string) => {
 
 const getRoleBadgeVariant = (role: string) => {
   switch (role) {
-    case 'admin':
+    case 'Admin':
       return 'secondary';
-    case 'member':
+    case 'Member':
       return 'outline';
     default:
       return 'outline';
@@ -56,7 +56,7 @@ export const MemberManagement = ({
 }: MemberManagementProps) => {
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
+  const [inviteRole, setInviteRole] = useState<'Admin' | 'Member'>('Member');
   const [isInviting, setIsInviting] = useState(false);
   // const { toast } = useToast();
 
@@ -70,7 +70,7 @@ export const MemberManagement = ({
     try {
       await onInviteMember(inviteEmail.trim(), inviteRole);
       setInviteEmail("");
-      setInviteRole('member');
+      setInviteRole('Member');
       setShowInviteDialog(false);
     } catch (error) {
       // Error handling is done in the hook
@@ -110,13 +110,13 @@ export const MemberManagement = ({
               </div>
               <div>
                 <Label htmlFor="role">Role</Label>
-                <Select value={inviteRole} onValueChange={(value: 'admin' | 'member') => setInviteRole(value)}>
+                <Select value={inviteRole} onValueChange={(value: 'Admin' | 'Member') => setInviteRole(value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="member">Member</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="Member">Member</SelectItem>
+                    <SelectItem value="Admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -155,7 +155,7 @@ export const MemberManagement = ({
                   {getRoleIcon(member?.role || 'member')}
                   {member?.role || 'member'}
                 </Badge>
-                {member && member.role !== 'admin' && (
+                {member && member.role !== 'Admin' && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm">
@@ -164,7 +164,7 @@ export const MemberManagement = ({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        onClick={() => onUpdateRole(member.id, 'admin')}
+                        onClick={() => onUpdateRole(member.id, 'Admin')}
                       >
                         Make Admin
                       </DropdownMenuItem>

@@ -31,7 +31,7 @@ export interface OrganizationMember {
 export const useOrganizations = () => {
   const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
-  const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'member' | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<'Admin' | 'Member' | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -78,11 +78,11 @@ export const useOrganizations = () => {
         if (!orgData) {
           console.error('Organization data not found');
           // Don't throw here, just set role without organization
-          setCurrentUserRole(membershipData.role as 'admin' | 'member');
+          setCurrentUserRole(membershipData.role as 'Admin' | 'Member');
         } else {
           const orgWithInfo = orgData as Organization;
           setCurrentOrganization(orgWithInfo);
-          setCurrentUserRole(membershipData.role as 'admin' | 'member');
+          setCurrentUserRole(membershipData.role as 'Admin' | 'Member');
         }
       }
     } catch (error: any) {
@@ -222,48 +222,82 @@ export const useOrganizations = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Check if user exists
+      // Check if user exists in profiles
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('email', email)
         .single() as any;
 
-      if (profileError || !profile) {
-        throw new Error('User not found. They need to sign up first.');
+      if (profileError && profileError.code !== 'PGRST116') {
+        throw new Error('Error checking user profile.');
       }
 
-      // Check if user already has an organization
-      if (profile.organization_id) {
-        throw new Error('User is already a member of another organization.');
+      if (profile) {
+        // User exists - check if they're already in an organization
+        const { data: existingMembership } = await supabase
+          .from('memberships')
+          .select('*')
+          .eq('user_id', profile.id)
+          .eq('status', 'Active')
+          .single();
+
+        if (existingMembership) {
+          throw new Error('User is already a member of another organization.');
+        }
+
+        // Create pending membership for existing user
+        const { data, error } = await supabase
+          .from('memberships')
+          .insert({
+            user_id: profile.id,
+            organization_id: organizationId,
+            role: role === 'admin' ? 'Admin' : 'Member',
+            status: 'Pending',
+            joined_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+      } else {
+        // User doesn't exist - create invitation record with email only
+        // For now, we'll create a placeholder membership record
+        const { data, error } = await supabase
+          .from('invitations')
+          .insert({
+            email: email,
+            organization_id: organizationId,
+            role: role === 'admin' ? 'Admin' : 'Member',
+            status: 'Pending',
+            invited_by: user.id,
+            invited_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (error && error.code !== '42P01') { // Table doesn't exist error
+          throw error;
+        }
+
+        // If invitations table doesn't exist, fall back to old behavior
+        if (error && error.code === '42P01') {
+          throw new Error('User not found. They need to sign up first.');
+        }
       }
-
-      // Update user's profile to join organization
-      const { data, error } = await (supabase as any)
-        .from('profiles')
-        .update({
-          organization_id: organizationId,
-          role,
-          joined_at: new Date().toISOString()
-        })
-        .eq('id', profile.id)
-        .select()
-        .single();
-
-      if (error) throw error;
 
       // Refresh members list
       await fetchMembers(organizationId);
-      
+
       toast({
-        title: "Member invited",
-        description: `${email} has been added to the organization.`,
+        title: "Invitation sent",
+        description: `Invitation sent to ${email}.`,
       });
-      
-      return data;
+
+      return { email, role };
     } catch (error: any) {
       toast({
-        title: "Error inviting member",
+        title: "Error sending invitation",
         description: error.message,
         variant: "destructive",
       });

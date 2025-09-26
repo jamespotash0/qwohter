@@ -9,6 +9,7 @@ import { lazy } from "react";
 
 // Public pages
 const Landing = lazy(() => import("@/pages/Landing"));
+const DemoContact = lazy(() => import("@/pages/DemoContact"));
 
 // Authentication pages
 const Auth = lazy(() => import("@/pages/Auth"));
@@ -54,6 +55,9 @@ export const AppRouter = () => (
         <Routes>
           {/* Landing page (public) */}
           <Route path="/" element={<Landing />} />
+
+          {/* Demo contact page (public) */}
+          <Route path="/demo-contact" element={<DemoContact />} />
 
           {/* Authentication routes (public) */}
           <Route path="/sign-in" element={<Auth />} />

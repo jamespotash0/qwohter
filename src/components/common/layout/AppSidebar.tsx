@@ -1,4 +1,4 @@
-import { BarChart3, Home, Users, FileText, MoreVertical, LogOut, Settings } from "lucide-react";
+import { BarChart3, Home, Users, FileText, MoreVertical, LogOut, Settings, Menu } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -43,6 +43,7 @@ export function AppSidebar({
   onLogout
 }: AppSidebarProps) {
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isHovered, setIsHovered] = useState(false);
   const [cachedProfile, setCachedProfile] = useState<any>(() => {
     // Initialize from localStorage
     try {
@@ -137,13 +138,28 @@ export function AppSidebar({
     <Sidebar
       className="bg-sidebar-bg"
       collapsible="icon"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Header with Logo and Collapse Toggle */}
       <SidebarHeader className={`${isCollapsed ? 'px-2 pt-3 pb-0' : 'px-4 pt-4 pb-1 pl-6'}`}>
         <div className="flex items-center justify-between">
-          {/* Logo */}
+          {/* Logo or Menu Icon Toggle */}
           <div className={`flex items-center ${isCollapsed ? 'justify-center w-full' : ''}`}>
-            <QwohterLogo size={isCollapsed ? "xsm" : "md"} />
+            {isCollapsed ? (
+              <div className="relative">
+                {/* Logo shown by default when collapsed */}
+                <div className={`transition-opacity duration-200 ${isHovered ? 'opacity-0' : 'opacity-100'}`}>
+                  <QwohterLogo size="sm" />
+                </div>
+                {/* Menu icon shown on hover when collapsed */}
+                <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+                  <SidebarTrigger className="h-8 w-8 rounded-lg text-accent-primary hover:bg-sidebar-hover hover:text-accent-primary transition-colors" />
+                </div>
+              </div>
+            ) : (
+              <QwohterLogo size="sm" />
+            )}
           </div>
           {/* Collapsible trigger */}
           {!isCollapsed && (
@@ -157,14 +173,9 @@ export function AppSidebar({
         <SidebarGroup>
           <div
             className={`px-0 pl-0 mb-1 flex items-center ${
-              isCollapsed ? 'justify-center flex-col space-y-1' : 'justify-between'
+              isCollapsed ? 'justify-center' : 'justify-between'
             }`}
           >
-            {/* Show collapse trigger when collapsed */}
-            {isCollapsed && (
-              <SidebarTrigger className="h-7 w-7 rounded-lg text-accent-primary hover:bg-sidebar-hover hover:text-accent-primary transition-colors" />
-            )}
-
             {!isCollapsed && (
               <p className="text-xs font-medium text-text-muted uppercase tracking-wide">
                 General

@@ -71,35 +71,37 @@ export const useQuotes = () => {
   const { toast } = useToast();
 
   const fetchQuotes = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('quotes')
-        .select(`
-          *,
-          creator:profiles!created_by(full_name)
-        `)
-        .order('created_at', { ascending: false });
+  try {
+    setLoading(true);
 
+    const { data, error } = await supabase
+      .from('quotes')
+      .select(`
+        *,
+        creator:profiles!quotes_created_by_fkey(full_name)
+      `)
+      .order('created_at', { ascending: false });
+    
       if (error) throw error;
 
-      // Transform the data to include creator_name
-      const quotesWithCreatorNames = data ? data.map(quote => ({
-        ...quote,
-        creator_name: quote.creator?.full_name || 'Unknown'
-      })) : [];
+    const quotesWithCreatorNames = data
+      ? data.map(quote => ({
+          ...quote as object,
+          creator_name: quote.creator?.full_name || 'Unknown',
+        }))
+      : [];
 
-      setQuotes(quotesWithCreatorNames.map(convertRowToQuote));
-    } catch (error: any) {
-      toast({
-        title: "Error fetching quotes",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    setQuotes(quotesWithCreatorNames.map(convertRowToQuote));
+  } catch (error: any) {
+    toast({
+      title: "Error fetching quotes",
+      description: error.message,
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const createQuote = async (quoteData: any) => {
     try {
@@ -181,14 +183,14 @@ export const useQuotes = () => {
           status: quoteData.status || 'Draft',
           status_last_updated: null,
           follow_up_days: null,
-        })
+        } as any)
         .select()
         .single();
 
       if (error) throw error;
 
       const newQuote = convertRowToQuote({
-        ...data,
+        ...data as object,
         creator_name: profileData.full_name
       });
       setQuotes(prev => [newQuote, ...prev]);
@@ -529,7 +531,7 @@ export const useQuotes = () => {
       if (error) throw error;
 
       const newQuote = convertRowToQuote({
-        ...data,
+        ...data as object,
         creator_name: profileData.full_name
       });
       setQuotes(prev => [newQuote, ...prev]);

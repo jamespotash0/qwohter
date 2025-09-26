@@ -18,7 +18,7 @@ const Landing = () => {
   }, []);
 
   const handleGetDemo = () => {
-    navigate('/create-account?mode=demo');
+    navigate('/demo-contact');
   };
 
   const handleSignIn = () => {

@@ -7,7 +7,7 @@
 
 import { sanitizeInput } from "@/utils/security";
 
-export type Role = 'admin' | 'member' | 'owner';
+export type Role = 'Admin' | 'Member' | 'Owner';
 
 export interface InviteMemberData {
   organizationId: string;
@@ -72,7 +72,7 @@ export const teamManagementHelpers = {
    */
   inviteMember: async (
     { organizationId, email, role }: InviteMemberData,
-    inviteFunction: (orgId: string, email: string, role?: 'admin' | 'member') => Promise<any>
+    inviteFunction: (orgId: string, email: string, role?: 'Admin' | 'Member') => Promise<any>
   ): Promise<TeamOperationResult> => {
     if (!email || !organizationId) {
       return {
@@ -86,7 +86,7 @@ export const teamManagementHelpers = {
       const sanitizedEmail = sanitizeInput.email(email);
       
       // Filter role to match what inviteFunction accepts (owner role is not supported for invitations)
-      const inviteRole = role === 'owner' ? 'admin' : role as 'admin' | 'member';
+      const inviteRole = role === 'Owner' ? 'Admin' : role as 'Admin' | 'Member';
       await inviteFunction(organizationId, sanitizedEmail, inviteRole);
       
       return {
@@ -194,12 +194,12 @@ export const teamManagementHelpers = {
     }
 
     // Only admins and owners can manage members
-    if (!['admin', 'owner'].includes(currentUserRole || '')) {
+    if (!['Admin', 'Owner'].includes(currentUserRole || '')) {
       return false;
     }
 
     // Can't modify owner roles
-    if (targetMemberRole === 'owner' && action.includes('role')) {
+    if (targetMemberRole === 'Owner' && action.includes('role')) {
       return false;
     }
 
