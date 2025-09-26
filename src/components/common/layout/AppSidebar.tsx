@@ -60,17 +60,17 @@ export function AppSidebar({
   const { profile } = useUserProfile(currentUser?.id);
   const { currentUserRole } = useOrganizations();
 
-  // Cache profile data to prevent flashing
+  // Cache profile data to prevent flashing - only update if we have real data
   useEffect(() => {
-    if (profile && JSON.stringify(profile) !== JSON.stringify(cachedProfile)) {
+    if (profile && profile.id && JSON.stringify(profile) !== JSON.stringify(cachedProfile)) {
       setCachedProfile(profile);
       localStorage.setItem('sidebar_cached_profile', JSON.stringify(profile));
     }
   }, [profile, cachedProfile]);
 
-  // Cache user role to prevent flashing
+  // Cache user role to prevent flashing - only update if we have a non-empty role
   useEffect(() => {
-    if (currentUserRole && currentUserRole !== cachedUserRole) {
+    if (currentUserRole && currentUserRole.trim() && currentUserRole !== cachedUserRole) {
       setCachedUserRole(currentUserRole);
       localStorage.setItem('sidebar_cached_role', currentUserRole);
     }
@@ -104,8 +104,13 @@ export function AppSidebar({
     return 'U';
   };
 
-  const userDisplayName = cachedProfile?.full_name || currentUser?.email || 'User';
-  const userInitials = getUserInitials(cachedProfile?.full_name ?? undefined, currentUser?.email);
+  // Always prefer cached data to prevent flashing, fallback to live data only if no cache
+  // If we have cached data, ignore any falsy hook returns (this prevents dashboard interference)
+  const effectiveProfile = cachedProfile || (profile?.id ? profile : null);
+  const effectiveRole = cachedUserRole || (currentUserRole?.trim() ? currentUserRole : 'Member');
+
+  const userDisplayName = effectiveProfile?.full_name || currentUser?.email || 'User';
+  const userInitials = getUserInitials(effectiveProfile?.full_name ?? undefined, currentUser?.email);
 
   const { state, setOpen } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -207,7 +212,7 @@ export function AppSidebar({
             <div className="flex items-center justify-between p-3 rounded-xl hover:bg-sidebar-hover transition-colors group">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Avatar className="h-9 w-9 ring-2 ring-sidebar-border">
-                  <AvatarImage src={cachedProfile?.avatar_url} />
+                  <AvatarImage src={effectiveProfile?.avatar_url} />
                   <AvatarFallback className="bg-accent-primary text-white text-sm font-semibold">
                     {userInitials}
                   </AvatarFallback>
@@ -217,7 +222,7 @@ export function AppSidebar({
                     {userDisplayName}
                   </p>
                   <p className="text-xs text-text-muted truncate">
-                    {cachedUserRole || 'Member'}
+                    {effectiveRole}
                   </p>
                 </div>
               </div>
@@ -264,7 +269,7 @@ export function AppSidebar({
                     className="h-10 w-10 p-0 rounded-xl hover:bg-sidebar-hover"
                   >
                     <Avatar className="h-8 w-8 ring-2 ring-sidebar-border">
-                      <AvatarImage src={cachedProfile?.avatar_url} />
+                      <AvatarImage src={effectiveProfile?.avatar_url} />
                       <AvatarFallback className="bg-accent-primary text-white text-xs font-semibold">
                         {userInitials}
                       </AvatarFallback>
@@ -277,7 +282,7 @@ export function AppSidebar({
                       {userDisplayName}
                     </p>
                     <p className="text-xs text-text-muted">
-                      {cachedUserRole || 'Member'}
+                      {effectiveRole}
                     </p>
                   </div>
                   <DropdownMenuItem

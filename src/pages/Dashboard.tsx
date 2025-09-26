@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { forceLogout } from "@/lib/auth-config";
 import { User } from "@supabase/supabase-js";
 import ModernDashboard from "@/components/features/dashboard/ModernDashboard";
 
@@ -33,8 +34,7 @@ const DashboardPage = () => {
   }, [navigate]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
+    await forceLogout();
   };
 
   if (!user) {

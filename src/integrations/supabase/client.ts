@@ -22,5 +22,14 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-  }
+    detectSessionInUrl: true,
+    // Set JWT expiry to 8 hours (28800 seconds)
+    // This will automatically log users out after 8 hours of inactivity
+    storageKey: 'sb-auth-token',
+  },
+  global: {
+    headers: {
+      'x-client-info': 'wall-quote-wizard@1.0.0',
+    },
+  },
 });
