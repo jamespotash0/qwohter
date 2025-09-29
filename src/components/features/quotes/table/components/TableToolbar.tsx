@@ -3,7 +3,7 @@ import { Table, Row } from '@tanstack/react-table';
 import {
   Plus, RotateCcw, CheckSquare, Square, Minus,
   SlidersHorizontal, Eye, Download, ChevronDown, Trash2,
-  Copy, FileSpreadsheet
+  Copy, FileSpreadsheet, FileText
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
@@ -22,7 +22,8 @@ interface TableToolbarProps {
   onBulkDelete?: (ids: string[]) => void;
   onBulkStatusChange?: (ids: string[], status: string) => void;
   onCreateVersion?: (id: string) => void;
-  onExport?: (quotes: Quote[]) => void;
+  onExportCSV?: (quotes: Quote[]) => void;
+  onExportPDF?: (quotes: Quote[]) => void;
   setRowSelection: (selection: any) => void;
 }
 
@@ -39,7 +40,8 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
   onBulkDelete,
   onBulkStatusChange,
   onCreateVersion,
-  onExport,
+  onExportCSV,
+  onExportPDF,
   setRowSelection,
 }) => {
   const selectedRows = table.getFilteredSelectedRowModel().rows;

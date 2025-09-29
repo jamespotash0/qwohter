@@ -156,25 +156,199 @@ const Quotes = () => {
                   // Handle bulk status change
                   ids.forEach(id => updateQuoteStatus(id, status));
                 }}
-                onExport={(filteredData) => {
-                  // Handle export - convert to CSV
-                  const csvContent = "data:text/csv;charset=utf-8," 
-                    + "Proposal #,Project Name,Client Name,Total,Status,Quote Source,Creator,Created\n"
-                    + filteredData.map(quote => {
-                      const proposalInfo = ProposalNumberGenerator.parseProposalNumber(quote.proposal_number);
-                      const projectName = quote.project_name || quote.quote_details?.project_name || "Untitled Project";
-                      const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client";
-                      const total = quote.price_details?.final_selling_price || 0;
-                      return `"${proposalInfo.displayNumber}","${projectName}","${clientName}","${total}","${quote.status}","${quote.quote_source || ''}","${quote.creator_name || ''}","${new Date(quote.created_at).toLocaleDateString()}"`;
-                    }).join("\n");
-                  
-                  const encodedUri = encodeURI(csvContent);
+                onExportCSV={(filteredData) => {
+                  // Helper function to escape CSV fields
+                  const escapeCsvField = (field: any): string => {
+                    const str = String(field || '');
+                    // If field contains comma, quote, or newline, wrap in quotes and escape internal quotes
+                    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+                      return `"${str.replace(/"/g, '""')}"`;
+                    }
+                    return str;
+                  };
+
+                  // Format currency
+                  const formatCurrency = (amount: number): string => {
+                    return new Intl.NumberFormat('en-US', {
+                      style: 'currency',
+                      currency: 'USD',
+                      minimumFractionDigits: 2
+                    }).format(amount);
+                  };
+
+                  // Create CSV header
+                  const headers = ['Proposal #', 'Project Name', 'Client Name', 'Total', 'Status', 'Quote Source', 'Creator', 'Created', 'Follow Up'];
+
+                  // Create CSV rows
+                  const rows = filteredData.map(quote => {
+                    const proposalInfo = ProposalNumberGenerator.parseProposalNumber(quote.proposal_number);
+                    const projectName = quote.project_name || quote.quote_details?.project_name || "Untitled Project";
+                    const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client";
+                    const total = formatCurrency(quote.price_details?.final_selling_price || 0);
+                    const status = quote.status || 'Draft';
+                    const source = quote.quote_source || '';
+                    const creator = quote.creator_name || '';
+                    const created = new Date(quote.created_at).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    });
+
+                    // Follow up status
+                    let followUp = 'Not set';
+                    if (quote.follow_up_days && quote.follow_up_days > 0) {
+                      const baseDate = quote.status_last_updated ? new Date(quote.status_last_updated) : new Date(quote.created_at);
+                      const followUpDate = new Date(baseDate);
+                      followUpDate.setDate(followUpDate.getDate() + quote.follow_up_days);
+                      const today = new Date();
+                      const timeDiff = followUpDate.getTime() - today.getTime();
+                      const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+                      if (daysRemaining < 0) {
+                        followUp = `${Math.abs(daysRemaining)}d overdue`;
+                      } else if (daysRemaining === 0) {
+                        followUp = 'Due today';
+                      } else {
+                        followUp = `${daysRemaining}d remaining`;
+                      }
+                    }
+
+                    return [
+                      proposalInfo.displayNumber,
+                      projectName,
+                      clientName,
+                      total,
+                      status,
+                      source,
+                      creator,
+                      created,
+                      followUp
+                    ].map(escapeCsvField).join(',');
+                  });
+
+                  // Combine headers and rows
+                  const csvContent = [headers.join(','), ...rows].join('\n');
+
+                  // Create and download the file
+                  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                   const link = document.createElement("a");
-                  link.setAttribute("href", encodedUri);
-                  link.setAttribute("download", `quotes-${new Date().toISOString().split('T')[0]}.csv`);
+                  const url = URL.createObjectURL(blob);
+                  link.setAttribute("href", url);
+                  link.setAttribute("download", `quotes-export-${new Date().toISOString().split('T')[0]}.csv`);
+                  link.style.visibility = 'hidden';
                   document.body.appendChild(link);
                   link.click();
                   document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                }}
+                onExportPDF={async (filteredData) => {
+                  // Dynamic import to avoid loading jsPDF unless needed
+                  const { jsPDF } = await import('jspdf');
+                  const autoTable = (await import('jspdf-autotable')).default;
+
+                  const doc = new jsPDF();
+
+                  // Add title
+                  doc.setFontSize(16);
+                  doc.text('Quotes Export', 14, 15);
+
+                  // Add export date
+                  doc.setFontSize(10);
+                  doc.text(`Exported on: ${new Date().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}`, 14, 25);
+
+                  // Format currency for PDF
+                  const formatCurrency = (amount: number): string => {
+                    return new Intl.NumberFormat('en-US', {
+                      style: 'currency',
+                      currency: 'USD',
+                      minimumFractionDigits: 2
+                    }).format(amount);
+                  };
+
+                  // Prepare table data
+                  const tableData = filteredData.map(quote => {
+                    const proposalInfo = ProposalNumberGenerator.parseProposalNumber(quote.proposal_number);
+                    const projectName = quote.project_name || quote.quote_details?.project_name || "Untitled Project";
+                    const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client";
+                    const total = formatCurrency(quote.price_details?.final_selling_price || 0);
+                    const status = quote.status || 'Draft';
+                    const source = quote.quote_source || '';
+                    const creator = quote.creator_name || '';
+                    const created = new Date(quote.created_at).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    });
+
+                    // Follow up status
+                    let followUp = 'Not set';
+                    if (quote.follow_up_days && quote.follow_up_days > 0) {
+                      const baseDate = quote.status_last_updated ? new Date(quote.status_last_updated) : new Date(quote.created_at);
+                      const followUpDate = new Date(baseDate);
+                      followUpDate.setDate(followUpDate.getDate() + quote.follow_up_days);
+                      const today = new Date();
+                      const timeDiff = followUpDate.getTime() - today.getTime();
+                      const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+                      if (daysRemaining < 0) {
+                        followUp = `${Math.abs(daysRemaining)}d overdue`;
+                      } else if (daysRemaining === 0) {
+                        followUp = 'Due today';
+                      } else {
+                        followUp = `${daysRemaining}d remaining`;
+                      }
+                    }
+
+                    return [
+                      proposalInfo.displayNumber,
+                      projectName,
+                      clientName,
+                      total,
+                      status,
+                      source,
+                      creator,
+                      created,
+                      followUp
+                    ];
+                  });
+
+                  // Add table
+                  autoTable(doc, {
+                    head: [['Proposal #', 'Project Name', 'Client Name', 'Total', 'Status', 'Quote Source', 'Creator', 'Created', 'Follow Up']],
+                    body: tableData,
+                    startY: 35,
+                    styles: {
+                      fontSize: 8,
+                      cellPadding: 2
+                    },
+                    headStyles: {
+                      fillColor: [63, 81, 181],
+                      textColor: [255, 255, 255],
+                      fontSize: 9,
+                      fontStyle: 'bold'
+                    },
+                    alternateRowStyles: {
+                      fillColor: [245, 245, 245]
+                    },
+                    columnStyles: {
+                      0: { cellWidth: 20 }, // Proposal #
+                      1: { cellWidth: 30 }, // Project Name
+                      2: { cellWidth: 25 }, // Client Name
+                      3: { cellWidth: 20, halign: 'right' }, // Total
+                      4: { cellWidth: 18 }, // Status
+                      5: { cellWidth: 20 }, // Quote Source
+                      6: { cellWidth: 20 }, // Creator
+                      7: { cellWidth: 20 }, // Created
+                      8: { cellWidth: 22 }  // Follow Up
+                    }
+                  });
+
+                  // Save the PDF
+                  doc.save(`quotes-export-${new Date().toISOString().split('T')[0]}.pdf`);
                 }}
               />
             </div>

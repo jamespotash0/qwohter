@@ -36,7 +36,8 @@ import {
   Plus,
   FileSpreadsheet,
   X,
-  HelpCircle
+  HelpCircle,
+  FileText
 } from 'lucide-react';
 
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,8 @@ interface EnhancedQuotesTableProps {
   onCreateQuote?: () => void;
   onBulkDelete?: (ids: string[]) => void;
   onBulkStatusChange?: (ids: string[], status: string) => void;
-  onExport?: (filteredData: Quote[]) => void;
+  onExportCSV?: (filteredData: Quote[]) => void;
+  onExportPDF?: (filteredData: Quote[]) => void;
 }
 
 const statusColors = {
@@ -204,7 +206,8 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   onCreateQuote,
   onBulkDelete,
   onBulkStatusChange,
-  onExport
+  onExportCSV,
+  onExportPDF
 }) => {
   const [globalFilter, setGlobalFilter] = useState('');
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -793,12 +796,20 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => {
-                  if (onExport) {
-                    onExport(table.getFilteredRowModel().rows.map(row => row.original));
+                  if (onExportCSV) {
+                    onExportCSV(table.getFilteredRowModel().rows.map(row => row.original));
                   }
                 }}>
                   <FileSpreadsheet className="w-4 h-4 mr-2" />
-                  Export All
+                  Export as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  if (onExportPDF) {
+                    onExportPDF(table.getFilteredRowModel().rows.map(row => row.original));
+                  }
+                }}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export as PDF
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -857,7 +868,8 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
             onBulkDelete={onBulkDelete}
             onBulkStatusChange={onBulkStatusChange}
             onCreateVersion={onCreateVersion}
-            onExport={onExport}
+            onExportCSV={onExportCSV}
+            onExportPDF={onExportPDF}
             setRowSelection={setRowSelection}
           />
         )}
