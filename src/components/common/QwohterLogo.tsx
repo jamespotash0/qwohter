@@ -27,11 +27,11 @@ export const QwohterLogo: React.FC<QwohterLogoProps> = ({
   const getLogoSrc = () => {
     switch (theme) {
       case 'dark':
-        return '/logos/Logo-Light.svg';
+        return '/logos/Dashboard-Page-Background-Dark-Logo.svg';
       case 'light':
         return '/logos/Dashboard-Page-Background-White-Logo.svg';
       default:
-        return '/logos/Logo-Light.svg';
+        return '/logos/Dashboard-Page-Background-Dark-Logo.svg';
     }
   };
 
@@ -69,10 +69,7 @@ export const QwohterLogo: React.FC<QwohterLogoProps> = ({
             <path d="M8 12h6v1.5H8z"/>
           </svg>
         </div>
-        <span
-          className="font-bold text-sm"
-          style={{ color: "var(--text-secondary)" }}
-        >
+        <span className="font-bold text-sm text-muted">
           Qwohter
         </span>
       </div>
