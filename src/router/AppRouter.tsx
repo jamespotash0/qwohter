@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary, QuoteErrorBoundary } from "@/components/ErrorBoundary";
 import { ProtectedRoute } from "./ProtectedRoute";
+import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -51,8 +52,9 @@ const PageLoader = () => (
 export const AppRouter = () => (
   <ErrorBoundary>
     <BrowserRouter>
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
+      <MainLayout>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
           {/* Landing page (public) */}
           <Route path="/" element={<Landing />} />
 
@@ -72,83 +74,55 @@ export const AppRouter = () => (
           <Route path="/login" element={<Navigate to="/sign-in" replace />} />
           <Route path="/signup" element={<Navigate to="/create-account" replace />} />
           
-          {/* Main application routes (protected) */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } />
-          
+          {/* Main application routes (protected by MainLayout) */}
+          <Route path="/dashboard" element={<Dashboard />} />
+
           {/* Analytics and reporting */}
-          <Route path="/analytics" element={
-            <ProtectedRoute>
-              <Analytics />
-            </ProtectedRoute>
-          } />
-          
+          <Route path="/analytics" element={<Analytics />} />
+
           {/* Team and organization management (requires Admin or Owner role) */}
           <Route path="/team" element={
             <ProtectedRoute requiresRole="Admin">
               <Team />
             </ProtectedRoute>
           } />
-          
+
           {/* Application settings */}
-          <Route path="/settings" element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          } />
-          
+          <Route path="/settings" element={<Settings />} />
+
           {/* Quote management routes (nested structure) */}
-          <Route path="/quotes" element={
-            <ProtectedRoute>
-              <QuotesList />
-            </ProtectedRoute>
-          } />
-          
+          <Route path="/quotes" element={<QuotesList />} />
+
           {/* Quote creation workflow */}
           <Route path="/quotes/new" element={
-            <ProtectedRoute>
-              <QuoteErrorBoundary>
-                <NewQuote />
-              </QuoteErrorBoundary>
-            </ProtectedRoute>
+            <QuoteErrorBoundary>
+              <NewQuote />
+            </QuoteErrorBoundary>
           } />
-          
+
           {/* Quote editing by proposal number */}
           <Route path="/quotes/edit/:proposalNumber" element={
-            <ProtectedRoute>
-              <QuoteErrorBoundary>
-                <QuoteEdit />
-              </QuoteErrorBoundary>
-            </ProtectedRoute>
+            <QuoteErrorBoundary>
+              <QuoteEdit />
+            </QuoteErrorBoundary>
           } />
-          
+
           {/* Incomplete quote editing with dedicated wizard */}
           <Route path="/quotes/edit-incomplete/:proposalNumber" element={
-            <ProtectedRoute>
-              <QuoteErrorBoundary>
-                <QuoteEditIncomplete />
-              </QuoteErrorBoundary>
-            </ProtectedRoute>
+            <QuoteErrorBoundary>
+              <QuoteEditIncomplete />
+            </QuoteErrorBoundary>
           } />
-          
+
           {/* Quote viewing (read-only) - for now, use same component as edit */}
           <Route path="/quotes/view/:proposalNumber" element={
-            <ProtectedRoute>
-              <QuoteErrorBoundary>
-                <QuoteEdit />
-              </QuoteErrorBoundary>
-            </ProtectedRoute>
+            <QuoteErrorBoundary>
+              <QuoteEdit />
+            </QuoteErrorBoundary>
           } />
-          
+
           {/* Future: Quote templates management */}
-          <Route path="/quotes/templates" element={
-            <ProtectedRoute>
-              <Navigate to="/settings" replace />
-            </ProtectedRoute>
-          } />
+          <Route path="/quotes/templates" element={<Navigate to="/settings" replace />} />
           
           {/* Legacy route redirects for backward compatibility */}
           <Route path="/newquote" element={<Navigate to="/quotes/new" replace />} />
@@ -158,8 +132,9 @@ export const AppRouter = () => (
           
           {/* 404 page */}
           <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Suspense>
+          </Routes>
+        </Suspense>
+      </MainLayout>
     </BrowserRouter>
   </ErrorBoundary>
 );

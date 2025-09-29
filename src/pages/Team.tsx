@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/common/layout";
+import { PageContent } from "@/components/common/layout";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { authStateHelpers } from "@/utils/authStateHelpers";
 import { getAppUrl } from "@/utils/environment";
 import { createInviteToken } from "@/utils/inviteTokens";
-import { hasAdminPermissions, canManageTeam } from "@/utils/permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,12 +14,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, UserCheck, Clock, Shield, Plus, Search, Filter, MoreVertical, Trash2, Link2, Send, Copy, X, RotateCcw, Mail, CheckCircle, XCircle } from "lucide-react";
+import { Users, UserCheck, Clock, Plus, MoreVertical, Trash2, Link2, Send, Copy, X, RotateCcw, Mail, CheckCircle, XCircle } from "lucide-react";
 import type { Role } from "@/utils/teamManagementHelpers";
 
 const Team = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<string>("");
   const [userId, setUserId] = useState<string>("");
   const [inviteEmails, setInviteEmails] = useState([{ email: "", role: "Member" as Role }]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -47,14 +44,13 @@ const Team = () => {
     rejectMember
   } = useOrganizations();
 
-  // Authentication check
+  // Get user ID for team operations
   useEffect(() => {
     const initAuth = async () => {
       const result = await authStateHelpers.initializePageAuth({
         onRedirectToAuth: () => navigate("/auth"),
         onAuthStateChange: (user, session) => {
           if (session) {
-            setUser(user?.email || "");
             setUserId(user?.id || "");
           } else {
             navigate("/auth");
@@ -63,18 +59,12 @@ const Team = () => {
       });
 
       if (result?.user) {
-        setUser(result.user.email);
         setUserId(result.user.id);
       }
     };
 
     initAuth();
   }, [navigate]);
-
-  const handleLogout = async () => {
-    await authStateHelpers.handleLogout();
-    navigate("/auth");
-  };
 
   const addInviteField = () => {
     setInviteEmails([...inviteEmails, { email: "", role: "Member" }]);
@@ -185,31 +175,17 @@ const Team = () => {
 
   if (loading) {
     return (
-      <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-bg-primary">
-          <AppSidebar user={user} onLogout={handleLogout} />
-          <main className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading team...</p>
-            </div>
-          </main>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted">Loading team...</p>
         </div>
-      </SidebarProvider>
+      </div>
     );
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-gray-50 dark:bg-gray-900">
-        <AppSidebar user={user} onLogout={handleLogout} />
-
-        <main className="flex-1 p-6 space-y-6">
-          {/* Header */}
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Team Management</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your team members and their permissions</p>
-          </div>
+    <PageContent title="Team Management" subtitle="Manage your team members and their permissions" showPageHeader={true}>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -695,41 +671,39 @@ const Team = () => {
               </CardContent>
             </Tabs>
           </Card>
-        </main>
 
-        {/* Invite Link Dialog */}
-        <Dialog open={showInviteLink} onOpenChange={setShowInviteLink}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Organization Invite Link</DialogTitle>
-              <DialogDescription>
-                Share this link with people you want to invite to your organization
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                <div className="flex-1 text-sm font-mono break-all">
-                  {inviteLink}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={copyInviteLink}
-                  className="shrink-0"
-                >
-                  <Copy className="w-4 h-4" />
-                </Button>
+      {/* Invite Link Dialog */}
+      <Dialog open={showInviteLink} onOpenChange={setShowInviteLink}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Organization Invite Link</DialogTitle>
+            <DialogDescription>
+              Share this link with people you want to invite to your organization
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+              <div className="flex-1 text-sm font-mono break-all">
+                {inviteLink}
               </div>
-              <div className="flex justify-end">
-                <Button variant="outline" onClick={() => setShowInviteLink(false)}>
-                  Close
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={copyInviteLink}
+                className="shrink-0"
+              >
+                <Copy className="w-4 h-4" />
+              </Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </SidebarProvider>
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => setShowInviteLink(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </PageContent>
   );
 };
 

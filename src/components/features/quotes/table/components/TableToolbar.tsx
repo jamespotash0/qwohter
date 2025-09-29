@@ -1,7 +1,7 @@
 import React from 'react';
-import { Table, Row } from '@tanstack/react-table';
+import { Table } from '@tanstack/react-table';
 import {
-  Plus, RotateCcw, CheckSquare, Square, Minus,
+  Plus, RotateCcw, 
   SlidersHorizontal, Eye, Download, ChevronDown, Trash2,
   Copy, FileSpreadsheet, FileText
 } from 'lucide-react';
@@ -42,19 +42,19 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
   onCreateVersion,
   onExportCSV,
   onExportPDF,
-  setRowSelection,
+  // setRowSelection,
 }) => {
   const selectedRows = table.getFilteredSelectedRowModel().rows;
   const selectedCount = selectedRows.length;
   const totalSelectableRows = table.getFilteredRowModel().rows.length;
 
   return (
-    <div className="flex items-center justify-between py-3 px-4 bg-white border-b border-gray-200">
+    <div className="flex items-center justify-between py-3 px-4 bg-surface border-b border-primary">
       <div className="flex items-center space-x-3">
         {/* Bulk Selection Info */}
         {selectedCount > 0 && (
           <div className="flex items-center space-x-3">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-secondary">
               {selectedCount} of {totalSelectableRows} row{selectedCount > 1 ? 's' : ''} selected
             </div>
 
@@ -62,7 +62,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
               {/* Bulk Status Change */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-blue-700 hover:text-blue-800 hover:bg-blue-100 px-3">
+                  <Button variant="ghost" size="sm" className="text-primary hover:text-primary hover:bg-[var(--brand-primary-light)] hover:bg-opacity-10 px-3">
                     Change Status
                     <ChevronDown className="w-3 h-3 ml-1" />
                   </Button>
@@ -124,19 +124,27 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
               {/* More Actions */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-blue-700 hover:text-blue-800 hover:bg-blue-100 px-3">
+                  <Button variant="ghost" size="sm" className="text-primary hover:text-primary hover:bg-[var(--brand-primary-light)] hover:bg-opacity-10 px-3">
                     More Actions
                     <ChevronDown className="w-3 h-3 ml-1" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem onClick={() => {
-                    if (onExport) {
-                      onExport(selectedRows.map(row => row.original));
+                    if (onExportCSV) {
+                      onExportCSV(selectedRows.map(row => row.original));
                     }
                   }}>
                     <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    Export Selected
+                    Export Selected (CSV)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    if (onExportPDF) {
+                      onExportPDF(selectedRows.map(row => row.original));
+                    }
+                  }}>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Export Selected (PDF)
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
                     selectedRows.forEach(row => {
@@ -168,7 +176,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
 
         {/* Show message when no rows selected */}
         {selectedCount === 0 && (
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-muted">
             Select rows to perform bulk actions
           </div>
         )}
@@ -181,7 +189,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
             <Button
               variant="outline"
               size="sm"
-              className="w-10 h-10 p-0 hover:bg-[#e98135]"
+              className="w-10 h-10 p-0 hover:bg-[var(--brand-secondary)]"
               title={`Table Density: ${dataDensity.charAt(0).toUpperCase() + dataDensity.slice(1)}`}
             >
               <SlidersHorizontal className="w-4 h-4" />
@@ -190,43 +198,43 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
           <DropdownMenuContent align="end" className="w-40">
             <DropdownMenuItem
               onClick={() => setDataDensity('compact')}
-              className={dataDensity === 'compact' ? 'bg-blue-50 text-blue-700' : ''}
+              className={dataDensity === 'compact' ? 'bg-[var(--brand-primary-light)] bg-opacity-10 text-primary' : ''}
             >
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center">
-                  <div className="w-2 h-1 bg-gray-400 rounded mr-2"></div>
+                  <div className="w-2 h-1 bg-[var(--text-muted)] rounded mr-2"></div>
                   Compact
                 </div>
                 {dataDensity === 'compact' && (
-                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-[var(--brand-primary)] rounded-full"></div>
                 )}
               </div>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setDataDensity('comfortable')}
-              className={dataDensity === 'comfortable' ? 'bg-blue-50 text-blue-700' : ''}
+              className={dataDensity === 'comfortable' ? 'bg-[var(--brand-primary-light)] bg-opacity-10 text-primary' : ''}
             >
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center">
-                  <div className="w-2 h-2 bg-gray-400 rounded mr-2"></div>
+                  <div className="w-2 h-2 bg-[var(--text-muted)] rounded mr-2"></div>
                   Comfortable
                 </div>
                 {dataDensity === 'comfortable' && (
-                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-[var(--brand-primary)] rounded-full"></div>
                 )}
               </div>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setDataDensity('spacious')}
-              className={dataDensity === 'spacious' ? 'bg-blue-50 text-blue-700' : ''}
+              className={dataDensity === 'spacious' ? 'bg-[var(--brand-primary-light)] bg-opacity-10 text-primary' : ''}
             >
               <div className="flex items-center justify-between w-full">
                 <div className="flex items-center">
-                  <div className="w-2 h-3 bg-gray-400 rounded mr-2"></div>
+                  <div className="w-2 h-3 bg-[var(--text-muted)] rounded mr-2"></div>
                   Spacious
                 </div>
                 {dataDensity === 'spacious' && (
-                  <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                  <div className="w-2 h-2 bg-[var(--brand-primary)] rounded-full"></div>
                 )}
               </div>
             </DropdownMenuItem>
@@ -239,7 +247,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
             <Button
               variant="outline"
               size="sm"
-              className="w-10 h-10 p-0 hover:bg-[#f57b46]"
+              className="w-10 h-10 p-0 hover:bg-[var(--brand-secondary)]"
               title="Show/Hide Columns"
             >
               <Eye className="w-4 h-4" />
@@ -247,7 +255,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56" onPointerDownOutside={() => setColumnVisibilityOpen(false)}>
             <div className="p-2" onClick={(e) => e.stopPropagation()}>
-              <div className="text-xs text-gray-500 mb-2 font-medium">Show/Hide Columns</div>
+              <div className="text-xs text-muted mb-2 font-medium">Show/Hide Columns</div>
               {table.getAllColumns()
                 .filter(column => column.getCanHide())
                 .map(column => (
@@ -271,7 +279,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
             <Button
               variant="outline"
               size="sm"
-              className="w-10 h-10 p-0 hover:bg-[#f57b46]"
+              className="w-10 h-10 p-0 hover:bg-[var(--brand-secondary)]"
               title="Export Data"
             >
               <Download className="w-4 h-4" />
@@ -279,22 +287,40 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => {
-              if (onExport) {
-                onExport(table.getFilteredRowModel().rows.map(row => row.original));
+              if (onExportCSV) {
+                onExportCSV(table.getFilteredRowModel().rows.map(row => row.original));
               }
             }}>
               <FileSpreadsheet className="w-4 h-4 mr-2" />
-              Export All
+              Export All (CSV)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              if (onExportPDF) {
+                onExportPDF(table.getFilteredRowModel().rows.map(row => row.original));
+              }
+            }}>
+              <FileText className="w-4 h-4 mr-2" />
+              Export All (PDF)
             </DropdownMenuItem>
             {selectedCount > 0 && (
-              <DropdownMenuItem onClick={() => {
-                if (onExport) {
-                  onExport(selectedRows.map(row => row.original));
-                }
-              }}>
-                <FileSpreadsheet className="w-4 h-4 mr-2" />
-                Export Selected ({selectedCount})
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuItem onClick={() => {
+                  if (onExportCSV) {
+                    onExportCSV(selectedRows.map(row => row.original));
+                  }
+                }}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Export Selected ({selectedCount}) - CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  if (onExportPDF) {
+                    onExportPDF(selectedRows.map(row => row.original));
+                  }
+                }}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export Selected ({selectedCount}) - PDF
+                </DropdownMenuItem>
+              </>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -305,7 +331,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
             <Button
               variant="outline"
               size="sm"
-              className="w-10 h-10 p-0 hover:bg-[#f57b46]"
+              className="w-10 h-10 p-0 hover:bg-[var(--brand-secondary)]"
               title="Reset Table"
             >
               <RotateCcw className="w-4 h-4" />
@@ -329,7 +355,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
             onClick={onCreateQuote}
             variant="outline"
             size="sm"
-            className="w-10 h-10 p-0 bg-[#e98135] hover:bg-[#d4751f] text-white border-[#e98135] hover:border-[#d4751f]"
+            className="w-10 h-10 p-0 bg-[var(--brand-secondary)] hover:bg-[var(--brand-secondary-dark)] text-white border-[var(--brand-secondary)] hover:border-[var(--brand-secondary-dark)]"
             title="Create New Quote"
           >
             <Plus className="w-5 h-5" />

@@ -1,19 +1,27 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+/*
+ * 🎨 WALL QUOTE WIZARD - MAIN STYLESHEET
+ *
+ * This file imports the consolidated design system.
+ * All styling is now centralized in design-system.css
+ */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Import the complete design system */
+@import './styles/design-system.css';
 
-/* Streamlined Design System */
+/* ============================================
+   🏗️ TAILWIND COMPATIBILITY LAYER
+   ============================================ */
+
 @layer base {
+  /* Additional Tailwind/Shadcn compatibility overrides */
   :root {
-    /* Core System */
-    --background: 40 12% 97.6%; /* #F9F9F8 - Main page background */
-    --foreground: 20 14% 12.2%; /* #1F1F1F - Primary text */
+    /* Core System (for Shadcn/ui components) */
+    --background: hsl(40 12% 97.6%); /* #F9F9F8 - Main page background */
+    --foreground: hsl(20 14% 12.2%); /* #1F1F1F - Primary text */
 
     /* Card System */
     --card: #F7F9FB; /* Card content background */
-    --card-foreground: 210 20% 8%; /* Card text */
+    --card-foreground: hsl(210 20% 8%);/* Card text */
 
     /* Form Elements */
     --border: 40 15% 90%; /* Border color */
@@ -49,295 +57,18 @@
     --shadow-soft: 0 2px 20px hsla(20, 14%, 12%, 0.08);
     --shadow-medium: 0 8px 40px hsla(20, 14%, 12%, 0.12);
     --shadow-large: 0 20px 60px hsla(20, 14%, 12%, 0.15);
-    
+
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(218, 100%, 62%), hsl(218, 85%, 70%));
     --gradient-accent: linear-gradient(135deg, hsl(46, 100%, 52%), hsl(46, 85%, 65%));
     --gradient-subtle: linear-gradient(180deg, hsl(40, 12%, 97.6%), hsl(40, 15%, 95%));
-    
+
     /* Typography */
     --font-serif: 'Crimson Text', serif;
     --font-sans: 'Space Grotesk', 'Inter', sans-serif;
 
     /* App-specific */
-    --sidebar-background: 210 20% 98%; /* #F9FAFB */
-    --sidebar-border: 220 13% 91%; /* #E5E7EB */
-  }
-
-  .dark {
-    /* Dark mode maintains editorial sophistication */
-    --background: 20 12% 8%; /* Deep charcoal */
-    --foreground: 40 12% 95%;
-
-    --card: 20 12% 10%;
-    --card-foreground: 40 12% 95%;
-
-    --popover: 20 12% 10%;
-    --popover-foreground: 40 12% 95%;
-
-    --primary: 218 100% 70%;
-    --primary-foreground: 20 12% 8%;
-
-    --secondary: 20 10% 15%;
-    --secondary-foreground: 40 12% 95%;
-
-    --muted: 20 10% 15%;
-    --muted-foreground: 40 8% 65%;
-
-    --accent: 46 100% 60%;
-    --accent-foreground: 20 12% 8%;
-
-    --destructive: 0 75% 60%;
-    --destructive-foreground: 40 12% 95%;
-
-    --border: 20 10% 18%;
-    --input: 20 10% 18%;
-    --ring: 218 100% 70%;
-
-    /* Dark mode custom tokens */
-    --quote-bg: 20 12% 12%;
-    --shadow-soft: 0 2px 20px hsla(0, 0%, 0%, 0.3);
-    --shadow-medium: 0 8px 40px hsla(0, 0%, 0%, 0.4);
-    --shadow-large: 0 20px 60px hsla(0, 0%, 0%, 0.5);
-    
-    --gradient-primary: linear-gradient(135deg, hsl(218, 100%, 70%), hsl(218, 85%, 80%));
-    --gradient-accent: linear-gradient(135deg, hsl(46, 100%, 60%), hsl(46, 85%, 70%));
-    --gradient-subtle: linear-gradient(180deg, hsl(20, 12%, 8%), hsl(20, 10%, 12%));
-
-    /* Dark Theme - Dark sidebar with same accent colors */
-    --sidebar-bg: 215 25% 12%; /* #1C2125 - Dark slate */
-    --sidebar-border: 215 20% 18%; /* Darker border */
-
-    --text-primary: 0 0% 95%; /* Almost white */
-    --text-secondary: 215 10% 75%; /* Light gray */
-    --text-muted: 215 8% 55%; /* Muted gray */
-
-    --accent-primary: 218 100% 70%; /* Brighter blue for dark mode */
-    --accent-secondary: 24 100% 60%; /* Brighter orange for dark mode */
-    --accent-hover: 218 100% 75%; /* Even brighter blue on hover */
-
-    --sidebar-active: 215 15% 25%; /* Light gray for active states */
-    --sidebar-hover: 215 20% 18%; /* Dark hover */
-
-    --bg-primary: 215 25% 8%; /* Very dark */
-    --bg-secondary: 215 25% 12%; /* Dark slate */
-    --bg-tertiary: 215 20% 18%; /* Lighter dark */
-
-    --border-primary: 215 20% 18%;
-    --border-secondary: 215 15% 22%;
-
-    --success: 120 100% 50%;
-    --warning: 45 100% 60%;
-    --error: 0 75% 60%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: var(--font-sans);
-    letter-spacing: -0.01em;
-  }
-
-  /* Sidebar styling */
-  .bg-sidebar {
-    background-color: #F3F4F6;
-  }
-
-  .hover\:bg-sidebar-hover:hover {
-    background-color: #F5F7FA;
-    transition: all 0.3s ease;
-  }
-
-  /* Typography Classes */
-  .font-serif {
-    font-family: var(--font-serif);
-  }
-
-  .font-sans {
-    font-family: var(--font-sans);
-  }
-
-  /* Quote-specific typography */
-  .quote-text {
-    font-family: var(--font-serif);
-    font-weight: 400;
-    line-height: 1.6;
-    letter-spacing: 0.01em;
-  }
-
-  .quote-author {
-    font-family: var(--font-sans);
-    font-weight: 500;
-    letter-spacing: -0.02em;
-  }
-
-  /* Custom Components */
-  .card-elevated {
-    background: hsl(var(--card));
-    box-shadow: var(--shadow-soft);
-    border-radius: var(--radius);
-    border: 1px solid hsl(var(--border));
-  }
-
-  /* Unified Card Style */
-  .card {
-    background: var(--card);
-    border: 1px solid hsl(var(--border));
-    border-radius: var(--radius-card);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-    transition: all 0.3s ease;
-  }
-
-  .card:hover {
-    background: #F5F7FA;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-    transform: translateY(-1px);
-  }
-
-  .card-floating {
-    background: hsl(var(--quote-bg));
-    box-shadow: var(--shadow-medium);
-    border-radius: calc(var(--radius) + 0.25rem);
-    border: 1px solid hsl(var(--border));
-  }
-
-  .btn-floating {
-    box-shadow: var(--shadow-soft);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .btn-floating:hover {
-    box-shadow: var(--shadow-medium);
-    transform: translateY(-2px);
-  }
-
-  /* Gentle animations */
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease-out;
-  }
-
-  .animate-fade-in-up {
-    animation: fadeInUp 0.6s ease-out;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .animate-slide-in {
-    animation: slideIn 0.4s ease-out;
-  }
-
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateX(-20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  /* Enhanced Onboarding Animations */
-  @keyframes slideInFromLeft {
-    from {
-      opacity: 0;
-      transform: translateX(-50px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  @keyframes slideInFromRight {
-    from {
-      opacity: 0;
-      transform: translateX(50px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  @keyframes pulse {
-    0%, 100% {
-      transform: scale(1);
-    }
-    50% {
-      transform: scale(1.05);
-    }
-  }
-
-  @keyframes float {
-    0%, 100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-10px);
-    }
-  }
-
-  .animate-slide-in-left {
-    animation: slideInFromLeft 0.7s ease-out forwards;
-  }
-
-  .animate-slide-in-right {
-    animation: slideInFromRight 0.7s ease-out forwards;
-  }
-
-  .animate-pulse-subtle {
-    animation: pulse 3s ease-in-out infinite;
-  }
-
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
-
-  /* Beautiful glass effect for modern UI */
-  .glass-effect {
-    backdrop-filter: blur(20px);
-    background: rgba(255, 255, 255, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-  }
-
-  /* Smooth transitions */
-  .step-transition {
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .progress-step {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .progress-step.active {
-    transform: scale(1.1);
-  }
-
-  .progress-step.completed {
-    transform: scale(1.05);
+    --sidebar-background: hsl(210 20% 98%); /* #F9FAFB */
+    --sidebar-border: hsl(220 13% 91%); /* #E5E7EB */
   }
 }

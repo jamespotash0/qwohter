@@ -1,4 +1,4 @@
-import { BarChart3, Home, Users, FileText, MoreVertical, LogOut, Settings, Menu } from "lucide-react";
+import { BarChart3, Home, Users, FileText, MoreVertical, LogOut, Settings } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -113,25 +113,16 @@ export function AppSidebar({
   const userDisplayName = effectiveProfile?.full_name || currentUser?.email || 'User';
   const userInitials = getUserInitials(effectiveProfile?.full_name ?? undefined, currentUser?.email);
 
-  const { state, setOpen } = useSidebar();
+  const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
 
+
   const handleNavigate = (path: string, event?: React.MouseEvent) => {
     event?.preventDefault();
     event?.stopPropagation();
-
-    // Remember current sidebar state
-    const wasCollapsed = isCollapsed;
-
-    // Navigate
     navigate(path);
-
-    // Force sidebar to stay in same state after navigation
-    if (wasCollapsed) {
-      setTimeout(() => setOpen(false), 0);
-    }
   };
 
   return (
@@ -150,7 +141,7 @@ export function AppSidebar({
               <div className="relative">
                 {/* Logo shown by default when collapsed */}
                 <div className={`transition-opacity duration-200 ${isHovered ? 'opacity-0' : 'opacity-100'}`}>
-                  <QwohterLogo size="sm" />
+                <QwohterLogo size="sm" />
                 </div>
                 {/* Menu icon shown on hover when collapsed */}
                 <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
@@ -202,7 +193,7 @@ export function AppSidebar({
                     >
                       <item.icon
                         className={`h-5 w-5 ${
-                          isActive ? 'text-white' : 'text-gray-500 group-hover:text-accent-primary'
+                          isActive ? 'text-white' : 'text-text-muted group-hover:text-accent-primary'
                         }`}
                       />
                       {!isCollapsed && <span className="ml-3">{item.title}</span>}
