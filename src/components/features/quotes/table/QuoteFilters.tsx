@@ -1,3 +1,9 @@
+// DEPRECATED: This file has been replaced by TableFilters.tsx + EnhancedSearchInput.tsx
+// The new components provide enhanced search with Fuse.js, field-specific search, and better UX
+// See: src/components/features/quotes/table/components/TableFilters.tsx
+// Migration completed: September 28, 2025
+
+/*
 import React from 'react';
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -53,3 +59,4 @@ export const QuoteFilters: React.FC<QuoteFiltersProps> = ({
     </div>
   );
 };
+*/

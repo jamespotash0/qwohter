@@ -1,3 +1,9 @@
+// DEPRECATED: This file has been replaced by dynamicPageBreakManager.ts
+// All functionality has been migrated to the dynamic page break system
+// See: src/utils/dynamicPageBreakManager.ts
+// Migration completed: September 28, 2025
+
+/*
 /**
  * Enhanced page break management system for visual page layout
  * Builds upon existing smartPageBreak functionality
@@ -39,9 +45,7 @@ export class PageBreakManager {
     this.contentHeight = this.config.pageHeight - this.config.marginTop - this.config.marginBottom;
   }
 
-  /**
-   * Analyzes HTML content and determines optimal page break points
-   */
+ 
   analyzeContent(htmlContent: string): ContentSection[] {
     const tempDiv = this.createTempContainer(htmlContent);
     const sections: ContentSection[] = [];
@@ -371,19 +375,20 @@ export const calculateSmartPageBreak = (
   const manager = new PageBreakManager(options);
   const sections = manager.analyzeContent(htmlContent);
   const pages = manager.distributeContentAcrossPages(sections);
-  
+
   // Return enhanced HTML with better page breaks
   if (pages.length <= 1) {
     return htmlContent; // No page breaks needed
   }
-  
+
   // Insert page break markers where new pages should start
   let result = htmlContent;
   const pageBreakMarker = '<div class="page-break" style="height: 200px; page-break-before: always;"></div>';
-  
+
   // This is a simplified approach - in practice you'd need more sophisticated content analysis
   return result.replace(
     /<div style="height: 120px;"><\/div>/g,
     pageBreakMarker
   );
 };
+*/

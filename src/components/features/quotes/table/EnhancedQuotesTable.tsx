@@ -8,23 +8,16 @@ import {
   getSortedRowModel,
   useReactTable,
   ColumnDef,
-  FilterFn,
   SortingState,
   ColumnFiltersState,
   VisibilityState,
   PaginationState,
   ColumnResizeMode,
 } from '@tanstack/react-table';
-import { rankItem } from '@tanstack/match-sorter-utils';
-import { 
-  Search, 
-  ChevronDown, 
-  ChevronUp, 
+import {
+  ChevronDown,
+  ChevronUp,
   ArrowUpDown,
-  Filter,
-  Eye,
-  EyeOff,
-  Download,
   MoreHorizontal,
   Edit3,
   Trash2,
@@ -35,70 +28,29 @@ import {
   Building,
   DollarSign,
   Tag,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  Plus,
-  Settings,
-  RotateCcw,
-  CheckSquare,
-  Square,
-  Minus,
+  Search,
   SlidersHorizontal,
+  Eye,
+  Download,
+  RotateCcw,
+  Plus,
   FileSpreadsheet,
-  Archive
+  X,
+  HelpCircle
 } from 'lucide-react';
 
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Quote } from "@/hooks/useQuotes";
+import { Quote } from "@/stores/quotes/quotesStore";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
+import useEnhancedSearch from '@/hooks/useEnhancedSearch';
+import { TableToolbar } from './components/TableToolbar';
+import { PaginationControls } from './components/PaginationControls';
+import { EnhancedSearchInput } from './components/EnhancedSearchInput';
 
-// Global filter function for search across multiple fields including addresses
-const fuzzyFilter: FilterFn<any> = (row, _columnId, value, addMeta) => {
-  // Get the original quote data
-  const quote = row.original as Quote;
-  
-  // Build a searchable string from all relevant fields
-  const searchableFields = [
-    // Basic fields
-    quote.proposal_number,
-    quote.project_name,
-    quote.quote_details?.project_name,
-    quote.status,
-    quote.quote_source,
-    quote.creator_name,
-    
-    // Client information
-    quote.job_details?.client_company,
-    quote.job_details?.client_name,
-    
-    // Address/Location fields - this is the key fix
-    quote.job_details?.job_location,
-    quote.job_details?.address,
-    quote.job_details?.city,
-    quote.job_details?.state,
-    quote.job_details?.zip_code,
-    
-    // Additional searchable fields
-    quote.price_details?.final_selling_price?.toString(),
-  ];
-  
-  // Join all non-empty fields into a single searchable string
-  const searchableText = searchableFields
-    .filter(field => field !== null && field !== undefined && field !== '')
-    .join(' ')
-    .toLowerCase();
-  
-  // Use rankItem to fuzzy search across the combined text
-  const itemRank = rankItem(searchableText, value);
-  addMeta({ itemRank });
-  return itemRank.passed;
-};
 
 interface EnhancedQuotesTableProps {
   quotes: Quote[];
@@ -265,6 +217,21 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   const [forceUpdate, setForceUpdate] = useState(0);
   const [dataDensity, setDataDensity] = useState<'compact' | 'comfortable' | 'spacious'>('comfortable');
   const [columnVisibilityOpen, setColumnVisibilityOpen] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+
+  // Enhanced search functionality
+  const { search, getSearchExamples } = useEnhancedSearch(quotes);
+  const searchExamples = getSearchExamples();
+
+  // Custom filter function using enhanced search
+  const enhancedFilter = React.useCallback((row: any, _columnId: string, filterValue: string) => {
+    if (!filterValue) return true;
+
+    const searchResults = search(filterValue);
+    const resultIds = new Set(searchResults.map(result => result.item.id));
+
+    return resultIds.has(row.original.id);
+  }, [search]);
 
   // Store original column sizes for reset functionality
   const originalColumnSizes = useMemo(() => ({
@@ -602,7 +569,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
     data: quotes,
     columns,
     filterFns: {
-      fuzzy: fuzzyFilter,
+      enhanced: enhancedFilter,
     },
     state: {
       sorting,
@@ -625,356 +592,269 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    globalFilterFn: fuzzyFilter,
+    globalFilterFn: enhancedFilter,
   });
-
-  // Get selected rows for bulk actions
-  const selectedRows = table.getFilteredSelectedRowModel().rows;
-  const hasSelection = selectedRows.length > 0;
 
   return (
     <div className="space-y-0">
       {/* Table with integrated header */}
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        {/* Search and Controls Header - Attached to table */}
-        <div className="bg-white border-b border-gray-200 p-4">
-          <div className="flex items-center space-x-3">
-            {/* Search - Full Width */}
-            <div className="flex items-center space-x-3 flex-1">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                <Input
-                  placeholder="Search quotes, clients, projects, addresses..."
-                  value={globalFilter ?? ''}
-                  onChange={(e) => setGlobalFilter(e.target.value)}
-                  className="pl-10 h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                />
-              </div>
+        {/* Combined Search and Toolbar */}
+        <div className="flex items-center py-4 px-4 bg-white border-b border-gray-200">
+          {/* Search Input - Very wide, takes most space */}
+          <div className="relative flex-1 mr-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search quotes... (try: client:ABC Corp, status:Draft)"
+              value={globalFilter ?? ''}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="w-full pl-10 pr-20 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+
+            <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
               {globalFilter && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setGlobalFilter('')}
-                  className="text-gray-400 hover:text-gray-600 w-10 h-10 p-0"
+                  className="w-8 h-6 p-0 hover:bg-gray-100 rounded-full"
                   title="Clear search"
                 >
-                  <RotateCcw className="w-4 h-4" />
+                  <X className="w-3 h-3" />
                 </Button>
               )}
-            </div>
 
-            {/* Right Side Controls - All Icon Only */}
-            <div className="flex items-center space-x-2">
-              {/* Bulk Actions - Only show when items selected */}
-              {hasSelection && (
-                <div className="flex items-center space-x-3 bg-blue-50 text-blue-800 px-4 py-2 rounded-lg border border-blue-200 mr-2">
-                  <div className="flex items-center space-x-2">
-                    <CheckSquare className="w-4 h-4" />
-                    <span className="text-sm font-medium">
-                      {selectedRows.length} quote{selectedRows.length > 1 ? 's' : ''} selected
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    {/* Quick Status Actions */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-blue-700 hover:text-blue-800 hover:bg-blue-100 px-3">
-                          Change Status
-                          <ChevronDown className="w-3 h-3 ml-1" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => {
-                          if (onBulkStatusChange) {
-                            onBulkStatusChange(selectedRows.map(row => row.original.id), 'Draft');
-                          }
-                        }}>
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-blue-500 rounded mr-2"></div>
-                            Set to Draft
-                          </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          if (onBulkStatusChange) {
-                            onBulkStatusChange(selectedRows.map(row => row.original.id), 'Pending');
-                          }
-                        }}>
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-yellow-500 rounded mr-2"></div>
-                            Set to Pending
-                          </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          if (onBulkStatusChange) {
-                            onBulkStatusChange(selectedRows.map(row => row.original.id), 'Submitted');
-                          }
-                        }}>
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-green-500 rounded mr-2"></div>
-                            Set to Submitted
-                          </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          if (onBulkStatusChange) {
-                            onBulkStatusChange(selectedRows.map(row => row.original.id), 'Won');
-                          }
-                        }}>
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-blue-600 rounded mr-2"></div>
-                            Set to Won
-                          </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          if (onBulkStatusChange) {
-                            onBulkStatusChange(selectedRows.map(row => row.original.id), 'Rejected');
-                          }
-                        }}>
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-red-500 rounded mr-2"></div>
-                            Set to Rejected
-                          </div>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* More Actions */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-blue-700 hover:text-blue-800 hover:bg-blue-100 px-3">
-                          More Actions
-                          <ChevronDown className="w-3 h-3 ml-1" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => {
-                          if (onExport) {
-                            onExport(selectedRows.map(row => row.original));
-                          }
-                        }}>
-                          <FileSpreadsheet className="w-4 h-4 mr-2" />
-                          Export Selected
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          // Duplicate selected quotes
-                          selectedRows.forEach(row => {
-                            if (onCreateVersion) {
-                              onCreateVersion(row.original.id);
-                            }
-                          });
-                        }}>
-                          <Copy className="w-4 h-4 mr-2" />
-                          Duplicate Selected
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            if (onBulkDelete && confirm(`Are you sure you want to delete ${selectedRows.length} quote${selectedRows.length > 1 ? 's' : ''}?`)) {
-                              onBulkDelete(selectedRows.map(row => row.original.id));
-                            }
-                          }}
-                          className="text-red-600 focus:text-red-600"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete Selected
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
+              {!globalFilter && (
+                <Popover open={showHelp} onOpenChange={setShowHelp}>
+                  <PopoverTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setRowSelection({})}
-                      className="text-blue-700 hover:text-blue-800 hover:bg-blue-100 w-8 h-8 p-0"
-                      title="Clear selection"
+                      className="w-8 h-6 p-0 hover:bg-gray-100 rounded-full"
+                      title="Search help"
                     >
-                      <Minus className="w-4 h-4" />
+                      <HelpCircle className="w-3 h-3" />
                     </Button>
-                  </div>
-                </div>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-80">
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="font-medium text-sm mb-2">Search Tips</h4>
+                        <div className="text-xs text-gray-600 space-y-1">
+                          <p>• Regular search: Just type anything</p>
+                          <p>• Field-specific: Use "field:value" format</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-medium text-sm mb-2">Field-Specific Examples</h4>
+                        <div className="space-y-1">
+                          {searchExamples.map((example, index) => (
+                            <button
+                              key={index}
+                              onClick={() => {
+                                setGlobalFilter(example);
+                                setShowHelp(false);
+                              }}
+                              className="block w-full text-left"
+                            >
+                              <Badge
+                                variant="outline"
+                                className="text-xs hover:bg-blue-50 cursor-pointer w-full justify-start"
+                              >
+                                {example}
+                              </Badge>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-gray-500">
+                        <p><strong>Available fields:</strong></p>
+                        <p>proposal, client, location, status, creator, project</p>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               )}
+            </div>
+          </div>
 
-              {/* Data Density */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-10 h-10 p-0 hover:bg-[#e98135]"
-                    title={`Table Density: ${dataDensity.charAt(0).toUpperCase() + dataDensity.slice(1)}`}
-                  >
-                    <SlidersHorizontal className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
-                  <DropdownMenuItem 
-                    onClick={() => setDataDensity('compact')}
-                    className={dataDensity === 'compact' ? 'bg-blue-50 text-blue-700' : ''}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center">
-                        <div className="w-2 h-1 bg-gray-400 rounded mr-2"></div>
-                        Compact
-                      </div>
-                      {dataDensity === 'compact' && (
-                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                      )}
+          {/* Toolbar Controls */}
+          <div className="flex items-center space-x-2">
+            {/* Data Density */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-10 h-10 p-0 hover:bg-[#e98135]"
+                  title={`Table Density: ${dataDensity.charAt(0).toUpperCase() + dataDensity.slice(1)}`}
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem
+                  onClick={() => setDataDensity('compact')}
+                  className={dataDensity === 'compact' ? 'bg-blue-50 text-blue-700' : ''}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center">
+                      <div className="w-2 h-1 bg-gray-400 rounded mr-2"></div>
+                      Compact
                     </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setDataDensity('comfortable')}
-                    className={dataDensity === 'comfortable' ? 'bg-blue-50 text-blue-700' : ''}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center">
-                        <div className="w-2 h-2 bg-gray-400 rounded mr-2"></div>
-                        Comfortable
-                      </div>
-                      {dataDensity === 'comfortable' && (
-                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                      )}
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setDataDensity('spacious')}
-                    className={dataDensity === 'spacious' ? 'bg-blue-50 text-blue-700' : ''}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center">
-                        <div className="w-2 h-3 bg-gray-400 rounded mr-2"></div>
-                        Spacious
-                      </div>
-                      {dataDensity === 'spacious' && (
-                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                      )}
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Column Visibility */}
-              <DropdownMenu open={columnVisibilityOpen} onOpenChange={setColumnVisibilityOpen}>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-10 h-10 p-0 hover:bg-[#f57b46]"
-                    title="Show/Hide Columns"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56" onPointerDownOutside={() => setColumnVisibilityOpen(false)}>
-                  <div className="p-2" onClick={(e) => e.stopPropagation()}>
-                    <div className="text-xs text-gray-500 mb-2 font-medium">Show/Hide Columns</div>
-                    {table.getAllColumns()
-                      .filter(column => column.getCanHide())
-                      .map(column => (
-                        <DropdownMenuCheckboxItem
-                          key={column.id}
-                          className="capitalize text-sm py-2"
-                          checked={column.getIsVisible()}
-                          onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                          onSelect={(e) => e.preventDefault()}
-                        >
-                          {columnLabels[column.id] ?? column.id.replace('_', ' ')}
-                          {/* {column.id.replace('_', ' ')} */}
-                        </DropdownMenuCheckboxItem>
-                      ))}
+                    {dataDensity === 'compact' && (
+                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    )}
                   </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setDataDensity('comfortable')}
+                  className={dataDensity === 'comfortable' ? 'bg-blue-50 text-blue-700' : ''}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center">
+                      <div className="w-2 h-2 bg-gray-400 rounded mr-2"></div>
+                      Comfortable
+                    </div>
+                    {dataDensity === 'comfortable' && (
+                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    )}
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setDataDensity('spacious')}
+                  className={dataDensity === 'spacious' ? 'bg-blue-50 text-blue-700' : ''}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center">
+                      <div className="w-2 h-3 bg-gray-400 rounded mr-2"></div>
+                      Spacious
+                    </div>
+                    {dataDensity === 'spacious' && (
+                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    )}
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-              {/* Export */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-10 h-10 p-0 hover:bg-[#f57b46]"
-                    title="Export Data"
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => {
-                    if (onExport) {
-                      onExport(table.getFilteredRowModel().rows.map(row => row.original));
-                    }
-                  }}>
-                    <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    Export as CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    if (onExport) {
-                      onExport(table.getFilteredRowModel().rows.map(row => row.original));
-                    }
-                  }}>
-                    <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    Export as Excel
-                  </DropdownMenuItem>
-                  {hasSelection && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => {
-                        if (onExport) {
-                          onExport(selectedRows.map(row => row.original));
-                        }
-                      }}>
-                        <Archive className="w-4 h-4 mr-2" />
-                        Export Selected ({selectedRows.length})
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+            {/* Column Visibility */}
+            <DropdownMenu open={columnVisibilityOpen} onOpenChange={setColumnVisibilityOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-10 h-10 p-0 hover:bg-[#f57b46]"
+                  title="Show/Hide Columns"
+                >
+                  <Eye className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56" onPointerDownOutside={() => setColumnVisibilityOpen(false)}>
+                <div className="p-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="text-xs text-gray-500 mb-2 font-medium">Show/Hide Columns</div>
+                  {table.getAllColumns()
+                    .filter(column => column.getCanHide())
+                    .map(column => (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        className="capitalize text-sm py-2"
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        {columnLabels[column.id] ?? column.id.replace('_', ' ')}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-              {/* Reset Options */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-10 h-10 p-0 hover:bg-[#f57b46]"
-                    title="Reset Options"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
-                  <DropdownMenuItem onClick={resetColumnSizes}>
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Reset Column Sizes
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={resetColumnVisibility}>
-                    <Eye className="w-4 h-4 mr-2" />
-                    Reset Column Visibility
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            {/* Export */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-10 h-10 p-0 hover:bg-[#f57b46]"
+                  title="Export Data"
+                >
+                  <Download className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => {
+                  if (onExport) {
+                    onExport(table.getFilteredRowModel().rows.map(row => row.original));
+                  }
+                }}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Export All
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-              {/* Settings */}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-10 h-10 p-0 hover:bg-[#f57b46]"
-                title="Settings"
-              >
-                <Settings className="w-4 h-4" />
-              </Button>
+            {/* Reset Controls */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-10 h-10 p-0 hover:bg-[#f57b46]"
+                  title="Reset Table"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={resetColumnSizes}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Reset Column Sizes
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={resetColumnVisibility}>
+                  <Eye className="w-4 h-4 mr-2" />
+                  Show All Columns
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-              {/* Create Quote Button */}
-              <Button 
+            {/* Create Quote Button - Just a plus icon */}
+            {onCreateQuote && (
+              <Button
                 onClick={onCreateQuote}
-                className="bg-blue-600 hover:bg-blue-700 text-white w-10 h-10 p-0 rounded-lg shadow-md"
+                variant="outline"
+                size="sm"
+                className="w-10 h-10 p-0 bg-[#e98135] hover:bg-[#d4751f] text-white border-[#e98135] hover:border-[#d4751f]"
                 title="Create New Quote"
               >
                 <Plus className="w-5 h-5" />
               </Button>
-            </div>
+            )}
           </div>
         </div>
+
+        {/* Bulk Actions Toolbar - Only show when items selected */}
+        {table.getFilteredSelectedRowModel().rows.length > 0 && (
+          <TableToolbar
+            table={table}
+            dataDensity={dataDensity}
+            setDataDensity={setDataDensity}
+            columnVisibilityOpen={columnVisibilityOpen}
+            setColumnVisibilityOpen={setColumnVisibilityOpen}
+            columnLabels={columnLabels}
+            resetColumnSizes={resetColumnSizes}
+            resetColumnVisibility={resetColumnVisibility}
+            onCreateQuote={undefined}
+            onBulkDelete={onBulkDelete}
+            onBulkStatusChange={onBulkStatusChange}
+            onCreateVersion={onCreateVersion}
+            onExport={onExport}
+            setRowSelection={setRowSelection}
+          />
+        )}
         <div className="relative">
           {/* Scrollable Table Area */}
           <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
@@ -1089,77 +969,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         )}
 
         {/* Pagination */}
-        <div className="bg-white px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <p className="text-sm text-gray-700">
-              {table.getFilteredRowModel().rows.length === 0 ? (
-                'No results'
-              ) : (
-                <>
-                  Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{' '}
-                  {Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, table.getFilteredRowModel().rows.length)} of{' '}
-                  {table.getFilteredRowModel().rows.length} results
-                </>
-              )}
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Select
-              value={table.getState().pagination.pageSize.toString()}
-              onValueChange={(value) => table.setPageSize(Number(value))}
-            >
-              <SelectTrigger className="w-20 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[10, 20, 30, 40, 50].map(pageSize => (
-                  <SelectItem key={pageSize} value={pageSize.toString()}>
-                    {pageSize}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <div className="flex items-center space-x-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <ChevronsLeft className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <span className="text-sm text-gray-700 px-2">
-                Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage()}
-              >
-                <ChevronsRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
+        <PaginationControls table={table} />
       </div>
     </div>
   );
