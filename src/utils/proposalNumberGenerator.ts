@@ -21,7 +21,7 @@ export class ProposalNumberGenerator {
     try {
       // Get organization's quote starting point
       const organization = await organizationSettingsService.getOrganization();
-      const quoteStartingPoint = organization?.organization_info?.quote_starting_point || 'P100001';
+      const quoteStartingPoint = organization?.quote_start_number || 'P100001';
       
       const { data, error } = await supabase
         .from('quotes')

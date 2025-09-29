@@ -502,7 +502,10 @@ export const useQuotes = () => {
     try {
       const { data, error } = await supabase
         .from('quotes')
-        .update({ follow_up_days: days })
+        .update({
+          follow_up_days: days,
+          status_last_updated: new Date().toISOString()
+        })
         .eq('id', id)
         .select()
         .single();

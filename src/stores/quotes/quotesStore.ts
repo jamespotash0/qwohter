@@ -398,15 +398,27 @@ export const useQuotesStore = create<QuotesState>()(
             if (error) throw error;
             
             const updatedQuote = convertRowToQuote(data);
-            
+
             set((state) => {
               const index = state.quotes.findIndex(q => q.id === id);
               if (index !== -1) {
-                state.quotes[index] = updatedQuote;
+                // Preserve existing creator_name if the update doesn't include it
+                const existingQuote = state.quotes[index];
+                state.quotes[index] = {
+                  ...updatedQuote,
+                  creator_name: updatedQuote.creator_name === 'Unknown' && existingQuote.creator_name !== 'Unknown'
+                    ? existingQuote.creator_name
+                    : updatedQuote.creator_name
+                };
               }
-              
+
               if (state.currentQuote?.id === id) {
-                state.currentQuote = updatedQuote;
+                state.currentQuote = {
+                  ...updatedQuote,
+                  creator_name: updatedQuote.creator_name === 'Unknown' && state.currentQuote.creator_name !== 'Unknown'
+                    ? state.currentQuote.creator_name
+                    : updatedQuote.creator_name
+                };
               }
             });
             

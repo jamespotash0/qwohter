@@ -41,6 +41,18 @@ export interface LogoData {
   logo_updated_at?: string;
 }
 
+// Organization info structure for templates (flattened from individual fields)
+export interface OrganizationInfo {
+  name?: string;
+  industry?: string;
+  phone?: string;
+  fax?: string;
+  address?: string;
+  website?: string;
+  logo_url?: string;
+  logo_public_url?: string;
+}
+
 // Organization with company information (matches actual database schema)
 export interface OrganizationWithCompanyInfo {
   id: string;

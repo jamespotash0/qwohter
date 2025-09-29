@@ -60,7 +60,7 @@ const QuoteCreatorWizard = ({
     isDeliveryLaborValid,
     isPricingValid,
     // isQuoteStatusValid
-  } = useWizardValidation(contactInfo, jobDetails, walls, deliveryLabor, pricing, quoteStatus, organization?.organization_info);
+  } = useWizardValidation(contactInfo, jobDetails, walls, deliveryLabor, pricing, quoteStatus, organization);
 
   // Create wizard steps with validation states
   const steps = createWizardSteps(

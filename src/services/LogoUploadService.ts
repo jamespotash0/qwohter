@@ -350,45 +350,16 @@ export class LogoUploadService {
         logoData
       });
 
-      // Get current organization info first
-      const { data: currentOrg, error: fetchError } = await supabase
-        .from('organizations')
-        .select('organization_info')
-        .eq('id', organizationId)
-        .single();
-
-      if (fetchError) {
-        console.error('❌ Error fetching organization:', fetchError);
-        return {
-          success: false,
-          error: fetchError.message
-        };
-      }
-
-      console.log('✅ Current organization data:', currentOrg);
-
-      // Merge logo data with existing organization_info
-      const currentOrgInfo = (currentOrg as any)?.organization_info || {};
-      console.log('📋 Current organization_info:', currentOrgInfo);
-
-      const updatedOrgInfo = {
-        ...currentOrgInfo,
-        ...(logoData ? {
+      // Update logo_data field directly
+      const updatePayload = {
+        logo_data: logoData ? {
           logo_url: logoData.logo_url,
           logo_file_name: logoData.logo_file_name,
           logo_public_url: logoData.logo_public_url,
           logo_updated_at: new Date().toISOString()
-        } : {
-          logo_url: null,
-          logo_file_name: null,
-          logo_public_url: null,
-          logo_updated_at: null
-        })
+        } : null
       };
 
-      console.log('📝 Updated organization_info:', updatedOrgInfo);
-
-      const updatePayload = { organization_info: updatedOrgInfo };
       console.log('📤 Update payload:', updatePayload);
 
       const { data: updateResult, error } = await (supabase as any)

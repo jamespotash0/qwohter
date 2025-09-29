@@ -144,12 +144,13 @@ const formatLastUpdated = (time: string) => {
 
 
 const getFollowUpStatus = (quote: Quote) => {
-  if (!quote.follow_up_days || !quote.created_at) {
+  if (!quote.follow_up_days || quote.follow_up_days <= 0) {
     return { daysRemaining: null, isOverdue: false, displayText: "Not set", colorClass: "text-gray-500" };
   }
 
-  const createdAt = new Date(quote.created_at);
-  const followUpDate = new Date(createdAt);
+  // Use status_last_updated if available, otherwise fall back to created_at
+  const baseDate = quote.status_last_updated ? new Date(quote.status_last_updated) : new Date(quote.created_at);
+  const followUpDate = new Date(baseDate);
   followUpDate.setDate(followUpDate.getDate() + quote.follow_up_days);
   
   const today = new Date();
@@ -471,14 +472,18 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           Follow Up
         </div>
       ),
-      cell: ({ row, getValue }) => {
-        const followUpStatus = getFollowUpStatus(row.original);
-        
-        if (getValue() === null || getValue() === undefined) {
+      cell: ({ row }) => {
+        const quote = row.original;
+        const followUpStatus = getFollowUpStatus(quote);
+        const followUpDays = quote.follow_up_days;
+
+        // Show "Set days" dropdown if no follow-up is set
+        if (followUpDays === null || followUpDays === undefined || followUpDays <= 0) {
           return (
             <Select
+              key={`empty-${quote.id}-${followUpDays}-${forceUpdate}`}
               value=""
-              onValueChange={(value) => onFollowUpDaysChange(row.original.id, parseInt(value))}
+              onValueChange={(value) => onFollowUpDaysChange(quote.id, parseInt(value))}
             >
               <SelectTrigger className="w-32 h-8 border-0 text-xs px-3 bg-blue-50 text-blue-700">
                 <SelectValue placeholder="Set days" />
@@ -494,18 +499,19 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           );
         }
 
+        // Show badge with follow-up status and hover menu to change
         return (
-          <div className="relative group">
-            <Badge 
-              variant="outline" 
+          <div key={`status-${quote.id}-${followUpDays}-${forceUpdate}`} className="relative group">
+            <Badge
+              variant="outline"
               className={`${followUpStatus.colorClass} border-0 cursor-pointer`}
             >
               {followUpStatus.displayText}
             </Badge>
-            <div className="absolute top-0 left-0 opacity-0 group-hover:opacity-100">
+            <div className="absolute top-0 left-0 opacity-0 group-hover:opacity-100 transition-opacity z-10">
               <Select
-                value={getValue()?.toString()}
-                onValueChange={(value) => onFollowUpDaysChange(row.original.id, value === "clear" ? null : parseInt(value))}
+                value={followUpDays?.toString() || ""}
+                onValueChange={(value) => onFollowUpDaysChange(quote.id, value === "clear" ? null : parseInt(value))}
               >
                 <SelectTrigger className="w-24 h-7 border-0 text-xs px-2 bg-blue-50 text-blue-700">
                   <SelectValue placeholder="Change" />

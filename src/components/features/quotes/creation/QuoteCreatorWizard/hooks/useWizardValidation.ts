@@ -4,6 +4,10 @@ import { WallDetails, WallSpecification, isOperableWall, isGlassWall, isAccordio
 import { AccordionWallSpecification } from '@/lib/types/walls/accordion';
 import { validateWallDimensions } from '@/utils/wallValidation';
 
+interface OrganizationData {
+  fax_number?: string | null;
+}
+
 export const useWizardValidation = (
   contactInfo: ContactInfo,
   jobDetails: JobDetails,
@@ -11,7 +15,7 @@ export const useWizardValidation = (
   deliveryLabor: DeliveryLabor,
   pricing: Pricing,
   quoteStatus: string,
-  organizationInfo?: any
+  organization?: OrganizationData
 ) => {
   // Use centralized validation from wallValidation.ts
   const validateWallDimensionsLocal = (wall: WallSpecification, wallName: string): { isValid: boolean; errors: string[] } => {
@@ -19,23 +23,23 @@ export const useWizardValidation = (
   };
 
   const isContactInfoValid = useMemo(() => {
-    // Check if fax is required based on organization info
-    const isFaxRequired = organizationInfo?.fax && organizationInfo.fax.trim() !== '';
-    
-    const basicRequirements = !!(contactInfo.contactName && 
-                                contactInfo.contactEmail && 
-                                contactInfo.address && 
-                                contactInfo.phone && 
+    // Check if fax is required based on organization data
+    const isFaxRequired = organization?.fax_number && organization.fax_number.trim() !== '';
+
+    const basicRequirements = !!(contactInfo.contactName &&
+                                contactInfo.contactEmail &&
+                                contactInfo.address &&
+                                contactInfo.phone &&
                                 contactInfo.website);
-    
+
     // If fax is required (exists in org), include it in validation
     if (isFaxRequired) {
       return basicRequirements && !!contactInfo.fax;
     }
-    
+
     // If fax is not required (doesn't exist in org), just check basic requirements
     return basicRequirements;
-  }, [contactInfo, organizationInfo]);
+  }, [contactInfo, organization]);
 
   const isJobDetailsValid = useMemo(() => {
     return !!(jobDetails.date && 

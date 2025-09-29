@@ -177,9 +177,9 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
       const updateData = {
         name: editedData.name,
         industry: editedData.industry,
-        phone_number: editedData.phone_number || null,
+        phone_number: editedData.phone_number,
         fax_number: editedData.fax_number || null,
-        company_address: editedData.company_address || null,
+        company_address: editedData.company_address,
         website: editedData.website || null
       };
 
@@ -187,7 +187,14 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
 
       const { error, data } = await supabase
         .from('organizations')
-        .update(updateData)
+        .update(updateData as {
+          name: string;
+          industry: string;
+          phone_number: string | null;
+          fax_number: string | null;
+          company_address: string | null;
+          website: string | null;
+        })
         .eq('id', organization.id)
         .select();
 

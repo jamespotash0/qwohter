@@ -65,8 +65,11 @@ const Quotes = () => {
     await updateQuote(id, { quote_source: newSource });
   };
 
-  const updateFollowUpDays = async (id: string, days: number | null) => {
-    await updateQuote(id, { follow_up_days: days ?? undefined });
+  const handleFollowUpDaysChange = async (id: string, days: number | null) => {
+    await updateQuote(id, {
+      follow_up_days: days,
+      status_last_updated: new Date().toISOString()
+    });
   };
 
   const handleDeleteQuote = async (id: string) => {
@@ -141,7 +144,7 @@ const Quotes = () => {
                 onEditQuote={editQuote}
                 onDeleteQuote={(id) => setDeleteQuoteId(id)}
                 onStatusChange={updateQuoteStatus}
-                onFollowUpDaysChange={updateFollowUpDays}
+                onFollowUpDaysChange={handleFollowUpDaysChange}
                 onQuoteSourceChange={updateQuoteSource}
                 onCreateVersion={handleCreateVersion}
                 onCreateQuote={() => setShowNewQuoteDialog(true)}

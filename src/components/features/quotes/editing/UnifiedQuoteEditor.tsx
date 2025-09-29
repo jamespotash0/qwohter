@@ -89,17 +89,25 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
     // Generate base HTML from raw quote data
     generateBaseHTML: (data: QuoteData): string => {
       try {
-        // Add organization info to quote data before generating template
+        // Add organization data to quote data before generating template
         const dataWithOrgInfo: QuoteData = {
           ...data,
-          organization_info: organization?.organization_info
+          organization_info: organization ? {
+            name: organization.name,
+            industry: organization.industry,
+            phone: organization.phone_number,
+            fax: organization.fax_number,
+            address: organization.company_address,
+            website: organization.website,
+            logo_url: organization.logo_data?.logo_public_url || organization.logo_data?.logo_url
+          } : undefined
         };
-        
+
         console.log('🏗️ Generating template with organization info:', {
-          hasOrgInfo: !!organization?.organization_info,
-          orgInfo: organization?.organization_info
+          hasOrgInfo: !!organization,
+          orgInfo: dataWithOrgInfo.organization_info
         });
-        
+
         return generateQuoteText(dataWithOrgInfo);
       } catch (error) {
         console.error('Error generating base HTML:', error);
@@ -243,7 +251,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       
       return syncEngine.applySectionOverrides(baseHTML, regularOverrides);
     }
-  }), [organization?.organization_info]);
+  }), [organization]);
 
   // Initialize editor
   useEffect(() => {
