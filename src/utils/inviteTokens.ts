@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface InviteToken {
   id: string;
   token: string;
+  email: string;
   organization_id: string;
   organization_code: string;
   role: 'Admin' | 'Member';

@@ -28,10 +28,24 @@ export interface OrganizationMember {
 }
 
 
+export interface InviteToken {
+  id: string;
+  token: string;
+  email: string;
+  organization_id: string;
+  organization_code: string;
+  role: 'Admin' | 'Member';
+  created_by: string;
+  expires_at: string;
+  created_at: string;
+  is_used: boolean;
+}
+
 export const useOrganizations = () => {
   const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
-  const [currentUserRole, setCurrentUserRole] = useState<'Admin' | 'Member' | null>(null);
+  const [inviteTokens, setInviteTokens] = useState<InviteToken[]>([]);
+  const [currentUserRole, setCurrentUserRole] = useState<'Owner' | 'Admin' | 'Member' | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -78,11 +92,11 @@ export const useOrganizations = () => {
         if (!orgData) {
           console.error('Organization data not found');
           // Don't throw here, just set role without organization
-          setCurrentUserRole(membershipData.role as 'Admin' | 'Member');
+          setCurrentUserRole(membershipData.role as 'Owner' | 'Admin' | 'Member');
         } else {
           const orgWithInfo = orgData as Organization;
           setCurrentOrganization(orgWithInfo);
-          setCurrentUserRole(membershipData.role as 'Admin' | 'Member');
+          setCurrentUserRole(membershipData.role as 'Owner' | 'Admin' | 'Member');
         }
       }
     } catch (error: any) {
@@ -219,98 +233,147 @@ export const useOrganizations = () => {
 
   const inviteMember = async (organizationId: string, email: string, role: 'admin' | 'member' = 'member') => {
     try {
+      console.log('🔄 Starting invitation process for:', email);
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Check if user exists in profiles
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('email', email)
-        .single() as any;
-
-      if (profileError && profileError.code !== 'PGRST116') {
-        throw new Error('Error checking user profile.');
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Please enter a valid email address.');
       }
 
+      // Get organization details for the invitation
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .select('name, organization_code')
+        .eq('id', organizationId)
+        .single();
+
+      if (orgError || !orgData) {
+        throw new Error('Organization not found.');
+      }
+
+      console.log('📧 Organization found:', orgData.name);
+
+      // Check if this email already has a pending invitation
+      const { data: existingInvites } = await supabase
+        .from('invite_tokens')
+        .select('*')
+        .eq('email', email)
+        .eq('organization_id', organizationId)
+        .eq('is_used', false)
+        .gt('expires_at', new Date().toISOString())
+        .limit(1);
+
+      if (existingInvites && existingInvites.length > 0) {
+        throw new Error('An invitation has already been sent to this email address.');
+      }
+
+      // Check if user exists and is already a member
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .single();
+
       if (profile) {
-        // User exists - check if they're already in an organization
         const { data: existingMembership } = await supabase
           .from('memberships')
           .select('*')
           .eq('user_id', profile.id)
-          .eq('status', 'Active')
           .single();
 
         if (existingMembership) {
-          throw new Error('User is already a member of another organization.');
-        }
-
-        // Check if they already have a pending invitation to this organization
-        const { data: existingInvite } = await supabase
-          .from('memberships')
-          .select('*')
-          .eq('user_id', profile.id)
-          .eq('organization_id', organizationId)
-          .eq('status', 'Pending')
-          .single();
-
-        if (existingInvite) {
-          throw new Error('User already has a pending invitation to this organization.');
-        }
-
-        // Create pending membership for existing user
-        const { error } = await supabase
-          .from('memberships')
-          .insert({
-            user_id: profile.id,
-            organization_id: organizationId,
-            role: role === 'admin' ? 'Admin' : 'Member',
-            status: 'Pending',
-            joined_at: new Date().toISOString()
-          } as any)
-          .select()
-          .single();
-
-        if (error) throw error;
-      } else {
-        // User doesn't exist - create invitation record with email only
-        // For now, we'll create a placeholder membership record
-        const { error } = await supabase
-          .from('invitations')
-          .insert({
-            email: email,
-            organization_id: organizationId,
-            role: role === 'admin' ? 'Admin' : 'Member',
-            status: 'Pending',
-            invited_by: user.id,
-            invited_at: new Date().toISOString()
-          } as any)
-          .select()
-          .single();
-
-        if (error && error.code !== '42P01') { // Table doesn't exist error
-          throw error;
-        }
-
-        // If invitations table doesn't exist, fall back to old behavior
-        if (error && error.code === '42P01') {
-          throw new Error('User not found. They need to sign up first.');
+          if (existingMembership.status === 'Active') {
+            throw new Error('User is already a member of an organization.');
+          } else if (existingMembership.organization_id === organizationId && existingMembership.status === 'Pending') {
+            throw new Error('User already has a pending invitation to this organization.');
+          }
         }
       }
 
-      // Refresh members list
-      await fetchMembers(organizationId);
+      // Create an invite token
+      const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // Expires in 7 days
 
-      toast({
-        title: "Invitation sent",
-        description: `Invitation sent to ${email}.`,
-      });
+      const { error: tokenError } = await supabase
+        .from('invite_tokens')
+        .insert({
+          token,
+          email,
+          organization_id: organizationId,
+          organization_code: orgData.organization_code,
+          role: role === 'admin' ? 'Admin' : 'Member',
+          created_by: user.id,
+          expires_at: expiresAt.toISOString(),
+          is_used: false
+        });
 
-      return { email, role };
+      if (tokenError) {
+        console.error('Token creation error:', tokenError);
+        throw new Error('Failed to create invitation token.');
+      }
+
+      console.log('✅ Invitation token created');
+
+      // Create the invitation link
+      const inviteLink = `${window.location.origin}/auth?invite=${token}`;
+
+      // Send email using a simple email service or function
+      // For now, we'll create a Supabase Edge Function call or use a simple email service
+      try {
+        const { error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+          body: {
+            to: email,
+            organizationName: orgData.name,
+            inviteLink: inviteLink,
+            inviterName: user.email,
+            role: role === 'admin' ? 'Admin' : 'Member',
+            expiresAt: expiresAt.toISOString()
+          }
+        });
+
+        if (emailError) {
+          console.error('Email function error:', emailError);
+          // For now, don't fail the whole process - just show the link
+          console.warn('Email service not available, invitation created but not sent');
+
+          toast({
+            title: "Invitation created",
+            description: `Invitation token created. Please manually share this link: ${inviteLink}`,
+          });
+        } else {
+          console.log('📧 Email sent successfully via Edge Function');
+
+          toast({
+            title: "Invitation sent!",
+            description: `Invitation email sent to ${email}. They will receive a link to join ${orgData.name}.`,
+          });
+        }
+      } catch (emailError) {
+        console.warn('Email function not available, showing invite link:', emailError);
+
+        // Fallback: Show the invite link to the user to share manually
+        toast({
+          title: "Invitation link created",
+          description: `Please share this link with ${email}: ${inviteLink}`,
+        });
+      }
+
+      // Refresh invite tokens list
+      await fetchInviteTokens(organizationId);
+
+      console.log('✅ Invitation process completed successfully');
+
+      return { email, role, inviteLink };
     } catch (error: any) {
+      console.error('❌ Invitation error:', error);
+
       toast({
-        title: "Error sending invitation",
+        title: "Failed to send invitation",
         description: error.message,
         variant: "destructive",
       });
@@ -437,6 +500,102 @@ export const useOrganizations = () => {
     }
   };
 
+  const fetchInviteTokens = async (organizationId: string) => {
+    try {
+      const { data: tokensData, error: tokensError } = await supabase
+        .from('invite_tokens')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('is_used', false)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false });
+
+      if (tokensError) {
+        console.error('Error fetching invite tokens:', tokensError);
+        setInviteTokens([]);
+        return;
+      }
+
+      setInviteTokens(tokensData || []);
+    } catch (error: any) {
+      console.error('Error fetching invite tokens:', error);
+      setInviteTokens([]);
+    }
+  };
+
+  const resendInvite = async (tokenId: string, email: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const token = inviteTokens.find(t => t.id === tokenId);
+      if (!token) throw new Error('Token not found');
+
+      const inviteLink = `${window.location.origin}/auth?invite=${token.token}`;
+
+      // Try to send email
+      try {
+        const { error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+          body: {
+            to: email,
+            organizationName: currentOrganization?.name,
+            inviteLink: inviteLink,
+            inviterName: user?.email || 'Someone',
+            role: token.role,
+            expiresAt: token.expires_at
+          }
+        });
+
+        if (emailError) {
+          console.warn('Email service failed, showing link to copy');
+          toast({
+            title: "Email service unavailable",
+            description: `Please share this link manually: ${inviteLink}`,
+          });
+        } else {
+          toast({
+            title: "Invitation resent!",
+            description: `Invitation email sent to ${email}.`,
+          });
+        }
+      } catch (emailError) {
+        toast({
+          title: "Invitation link ready",
+          description: `Please share this link with ${email}: ${inviteLink}`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error resending invitation",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const revokeInvite = async (tokenId: string, email: string) => {
+    try {
+      const { error } = await supabase
+        .from('invite_tokens')
+        .delete()
+        .eq('id', tokenId);
+
+      if (error) throw error;
+
+      // Remove from local state
+      setInviteTokens(prev => prev.filter(token => token.id !== tokenId));
+
+      toast({
+        title: "Invitation revoked",
+        description: `Invitation for ${email} has been revoked.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error revoking invitation",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     fetchUserOrganization();
   }, []);
@@ -444,12 +603,14 @@ export const useOrganizations = () => {
   useEffect(() => {
     if (currentOrganization) {
       fetchMembers(currentOrganization.id);
+      fetchInviteTokens(currentOrganization.id);
     }
   }, [currentOrganization]);
 
   return {
     currentOrganization,
     members,
+    inviteTokens,
     currentUserRole,
     loading,
     createOrganization,
@@ -458,6 +619,8 @@ export const useOrganizations = () => {
     updateMemberRole,
     approveMember,
     rejectMember,
+    resendInvite,
+    revokeInvite,
     refreshOrganizations: fetchUserOrganization
   };
 };
