@@ -19,7 +19,7 @@ const Settings = () => {
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState("profile");
   const navigate = useNavigate();
-  const { organization, refetch: refetchOrganization } = useOrganizationSettings();
+  const { organization, fetchOrganization: refetchOrganization } = useOrganizationSettings();
   const { profile } = useUserProfile(user?.id);
   const { currentMembership } = useMembership();
   const userRole = currentMembership?.role;
