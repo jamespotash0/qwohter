@@ -3,6 +3,9 @@ import { subscribeWithSelector, devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { supabase } from '@/integrations/supabase/client';
 import type { Quote } from '@/hooks/useQuotes';
+
+// Re-export Quote type for convenience
+export type { Quote };
 import type { WallSpecification, WallDetails } from '@/lib/types';
 // Note: filterWallDetailsForSave removed - discriminated union types now prevent invalid data
 import { ProposalNumberGenerator } from '@/utils/proposalNumberGenerator';
@@ -49,6 +52,10 @@ interface QuotesState {
   setPagination: (pagination: Partial<QuotesState['pagination']>) => void;
   clearFilters: () => void;
   
+  // Quote utilities
+  markAsDownloaded: (id: string) => Promise<Quote>;
+  saveQuoteCustomization: (id: string, customization: any) => Promise<Quote>;
+
   // Utilities
   getQuoteById: (id: string) => Quote | undefined;
   getFilteredQuotes: () => Quote[];
@@ -122,9 +129,13 @@ export const useQuotesStore = create<QuotesState>()(
               .select('organization_id, role, status')
               .eq('user_id', session.user.id);
 
+            let quotesData: any[] = [];
+            let count = 0;
+            let queryError: any = null;
+
             if (!userMemberships || userMemberships.length === 0) {
               // User has no memberships, query personal quotes directly with explicit filter
-              const { data, error, count } = await supabase
+              const { data, error, count: totalCount } = await supabase
                 .from('quotes')
                 .select(`
                   id, created_by, organization_id, proposal_number, project_name,
@@ -137,17 +148,16 @@ export const useQuotesStore = create<QuotesState>()(
                 .order('created_at', { ascending: false })
                 .limit(50);
 
-              if (!error) {
-                const processedQuotes = data?.map(convertRowToQuote) || [];
-                _setQuotes(processedQuotes);
-                set((state) => {
-                  state.pagination.total = count || 0;
-                });
-                return;
+              if (error) {
+                console.error('Personal quotes query error:', error);
+                queryError = error;
+              } else {
+                quotesData = data || [];
+                count = totalCount || 0;
               }
             } else {
               // User has memberships, let RLS policies handle the query
-              const { data, error, count } = await supabase
+              const { data, error, count: totalCount } = await supabase
                 .from('quotes')
                 .select(`
                   id, created_by, organization_id, proposal_number, project_name,
@@ -159,21 +169,80 @@ export const useQuotesStore = create<QuotesState>()(
                 .order('created_at', { ascending: false })
                 .limit(50);
 
-              if (!error) {
-                const processedQuotes = data?.map(convertRowToQuote) || [];
-                _setQuotes(processedQuotes);
-                set((state) => {
-                  state.pagination.total = count || 0;
-                });
-                return;
+              if (error) {
+                console.error('Organization quotes query error:', error);
+                queryError = error;
+              } else {
+                quotesData = data || [];
+                count = totalCount || 0;
               }
             }
 
-            // If we reach here, there was an error in both attempts
-            _setQuotes([]);
-            set((state) => {
-              state.pagination.total = 0;
-            });
+            // If there was a query error, throw it to be handled by the catch block
+            if (queryError) {
+              throw queryError;
+            }
+
+            // If we have quotes, fetch creator names
+            if (quotesData.length > 0) {
+              console.log('Fetched quotes data:', quotesData.slice(0, 2)); // Debug
+
+              // Get unique creator IDs (use created_by since that's what the database has)
+              const creatorIds = [...new Set(
+                quotesData
+                  .map(quote => {
+                    const creatorId = quote.created_by;
+                    console.log('Quote creator ID:', creatorId, 'from quote:', quote.id);
+                    return creatorId;
+                  })
+                  .filter(Boolean)
+              )];
+
+              console.log('Creator IDs to fetch:', creatorIds);
+
+              // Fetch creator names
+              const { data: profilesData, error: profilesError } = await supabase
+                .from('profiles')
+                .select('id, full_name')
+                .in('id', creatorIds);
+
+              if (profilesError) {
+                console.warn('Failed to fetch creator profiles:', profilesError);
+              }
+
+              console.log('Profiles data:', profilesData);
+
+              // Create a map of creator IDs to names
+              const creatorMap = new Map();
+              if (profilesData) {
+                profilesData.forEach((profile: any) => {
+                  creatorMap.set(profile.id, profile.full_name);
+                  console.log('Mapping:', profile.id, '->', profile.full_name);
+                });
+              }
+
+              // Combine quotes with creator names
+              const quotesWithCreatorNames = quotesData.map(quote => {
+                const creatorId = quote.created_by;
+                const creatorName = creatorMap.get(creatorId) || 'Unknown';
+                console.log('Quote', quote.id, 'creator ID:', creatorId, 'name:', creatorName);
+                return {
+                  ...quote,
+                  creator_name: creatorName,
+                };
+              });
+
+              const processedQuotes = quotesWithCreatorNames.map(convertRowToQuote);
+              _setQuotes(processedQuotes);
+              set((state) => {
+                state.pagination.total = count;
+              });
+            } else {
+              _setQuotes([]);
+              set((state) => {
+                state.pagination.total = 0;
+              });
+            }
 
           } catch (error) {
             console.error('Fetch quotes error:', error);
@@ -625,6 +694,99 @@ export const useQuotesStore = create<QuotesState>()(
           });
         },
 
+        // Mark quote as downloaded
+        markAsDownloaded: async (id: string) => {
+          const { _setLoading, _setError } = get();
+
+          try {
+            _setLoading(true);
+            _setError(null);
+
+            const { data, error } = await supabase
+              .from('quotes')
+              .update({ date_last_downloaded: new Date().toISOString() })
+              .eq('id', id)
+              .select()
+              .single();
+
+            if (error) throw error;
+
+            const updatedQuote = convertRowToQuote(data);
+
+            set((state) => {
+              const index = state.quotes.findIndex(q => q.id === id);
+              if (index !== -1) {
+                state.quotes[index] = updatedQuote;
+              }
+
+              if (state.currentQuote?.id === id) {
+                state.currentQuote = updatedQuote;
+              }
+            });
+
+            return updatedQuote;
+          } catch (error) {
+            console.error('Mark as downloaded error:', error);
+            _setError(error instanceof Error ? error.message : 'Failed to mark as downloaded');
+            throw error;
+          } finally {
+            _setLoading(false);
+          }
+        },
+
+        // Save quote customization
+        saveQuoteCustomization: async (id: string, customization: any) => {
+          const { quotes, _setLoading, _setError } = get();
+
+          try {
+            _setLoading(true);
+            _setError(null);
+
+            // Update the version for customization tracking
+            const currentQuote = quotes.find(q => q.id === id);
+            const newVersion = (currentQuote?.version || 0) + 1;
+
+            const updateData = {
+              customization: {
+                ...customization,
+                lastModified: new Date().toISOString(),
+                version: newVersion
+              },
+              version: newVersion
+            };
+
+            const { data, error } = await supabase
+              .from('quotes')
+              .update(updateData)
+              .eq('id', id)
+              .select()
+              .single();
+
+            if (error) throw error;
+
+            const updatedQuote = convertRowToQuote(data);
+
+            set((state) => {
+              const index = state.quotes.findIndex(q => q.id === id);
+              if (index !== -1) {
+                state.quotes[index] = updatedQuote;
+              }
+
+              if (state.currentQuote?.id === id) {
+                state.currentQuote = updatedQuote;
+              }
+            });
+
+            return updatedQuote;
+          } catch (error) {
+            console.error('Save customization error:', error);
+            _setError(error instanceof Error ? error.message : 'Failed to save customization');
+            throw error;
+          } finally {
+            _setLoading(false);
+          }
+        },
+
         // Clear error
         clearError: () => set({ error: null }),
 
@@ -675,7 +837,8 @@ const convertRowToQuote = (row: any): Quote => {
     wall_details: migrateWallDetails(row.wall_details),
     project_name: row.project_name || undefined,
     date_last_downloaded: row.date_last_downloaded || undefined,
-    status: row.status || undefined
+    status: row.status || undefined,
+    creator_name: row.creator_name || 'Unknown'
   };
 };
 
@@ -701,6 +864,8 @@ export const useQuotesActions = () => useQuotesStore((state) => ({
   updateWallSystem: state.updateWallSystem,
   removeWallSystem: state.removeWallSystem,
   addWallSystem: state.addWallSystem,
+  markAsDownloaded: state.markAsDownloaded,
+  saveQuoteCustomization: state.saveQuoteCustomization,
   setFilters: state.setFilters,
   setPagination: state.setPagination,
   clearFilters: state.clearFilters,

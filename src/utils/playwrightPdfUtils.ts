@@ -1,4 +1,4 @@
-import { Quote } from '@/hooks/useQuotes';
+import { Quote } from '@/stores/quotes/quotesStore';
 
 /**
  * Adds section header repetition logic to HTML content

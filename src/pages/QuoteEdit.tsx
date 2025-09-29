@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuotes, Quote } from "@/hooks/useQuotes";
+import { useQuotesStore, Quote } from "@/stores/quotes/quotesStore";
 import { useToast } from "@/hooks/use-toast";
 import UnifiedQuoteEditor from "@/components/features/quotes/editing/UnifiedQuoteEditor";
 import { SmartQuoteData } from "@/templates/SmartQuoteTemplate";
@@ -16,15 +16,16 @@ const QuoteEdit = () => {
   const [user, setUser] = useState<any>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
-  const {
-    updateQuote,
-    updateWallSystem,
-    removeWallSystem,
-    markAsDownloaded,
-    saveQuoteCustomization,
-    refreshQuotes
-  } = useQuotes();
+
+  const updateQuote = useQuotesStore((state) => state.updateQuote);
+  const updateWallSystem = useQuotesStore((state) => state.updateWallSystem);
+  const removeWallSystem = useQuotesStore((state) => state.removeWallSystem);
+  const markAsDownloaded = useQuotesStore((state) => state.markAsDownloaded);
+  const saveQuoteCustomization = useQuotesStore((state) => state.saveQuoteCustomization);
+  const fetchQuotes = useQuotesStore((state) => state.fetchQuotes);
+
+  // Alias for compatibility
+  const refreshQuotes = fetchQuotes;
 
   // Check authentication
   useEffect(() => {
@@ -149,15 +150,15 @@ const QuoteEdit = () => {
   };
 
   const handleUnifiedQuoteDownload = async (html: string, isSmartPDF: boolean = false) => {
-    console.log('🔍 Starting unified quote download with live preview HTML');
+    // console.log('🔍 Starting unified quote download with live preview HTML');
     
     if (!quote) {
-      console.error('❌ No quote available');
+      // console.error('❌ No quote available');
       return;
     }
     
     if (!html) {
-      console.error('❌ No HTML content provided for PDF generation');
+      // console.error('❌ No HTML content provided for PDF generation');
       toast({
         title: "Download failed",
         description: "No preview content available. Please wait for the preview to load.",
@@ -190,7 +191,7 @@ const QuoteEdit = () => {
       }
       
     } catch (error) {
-      console.error('❌ PDF download failed:', error);
+      // console.error('❌ PDF download failed:', error);
       toast({
         title: "Download failed",
         description: "There was an error generating the PDF. Please try again.",

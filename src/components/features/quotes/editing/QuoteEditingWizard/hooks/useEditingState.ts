@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Quote } from '@/hooks/useQuotes';
+import { Quote } from '@/stores/quotes/quotesStore';
 import { ContactInfo, JobDetails, DeliveryLabor, Pricing } from '@/components/features/quotes/creation/QuoteCreatorWizard/types/wizardTypes';
 import { WallDetails, WallSpecification } from '@/lib/types';
 import { defaultEnhancedPricing } from '@/lib/types/pricing/enhancedPricing';

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 
-import { useQuotes } from "@/hooks/useQuotes";
+import { useQuotesStore } from "@/stores/quotes/quotesStore";
 import { useOrganizationSettings } from "@/hooks/useCompanySettings";
 import { QuoteCreatorWizardProps } from './types/wizardTypes';
 import { useWizardState } from './hooks/useWizardState';
@@ -20,7 +20,8 @@ const QuoteCreatorWizard = ({
   onQuoteNameChange, 
   existingQuote 
 }: QuoteCreatorWizardProps) => {
-  const { createQuote, updateQuote } = useQuotes();
+  const createQuote = useQuotesStore((state) => state.createQuote);
+  const updateQuote = useQuotesStore((state) => state.updateQuote);
   const [activeStep, setActiveStep] = useState(0);
   const [editingQuoteName, setEditingQuoteName] = useState(false);
   const [localQuoteName, setLocalQuoteName] = useState(quoteName);

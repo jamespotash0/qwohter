@@ -260,7 +260,7 @@ export const useOrganizations = () => {
         }
 
         // Create pending membership for existing user
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('memberships')
           .insert({
             user_id: profile.id,
@@ -268,7 +268,7 @@ export const useOrganizations = () => {
             role: role === 'admin' ? 'Admin' : 'Member',
             status: 'Pending',
             joined_at: new Date().toISOString()
-          })
+          } as any)
           .select()
           .single();
 
@@ -276,7 +276,7 @@ export const useOrganizations = () => {
       } else {
         // User doesn't exist - create invitation record with email only
         // For now, we'll create a placeholder membership record
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('invitations')
           .insert({
             email: email,
@@ -285,7 +285,7 @@ export const useOrganizations = () => {
             status: 'Pending',
             invited_by: user.id,
             invited_at: new Date().toISOString()
-          })
+          } as any)
           .select()
           .single();
 

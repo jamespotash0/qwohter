@@ -23,7 +23,7 @@ import {
   Target,
   Maximize2
 } from 'lucide-react';
-import { Quote } from '@/hooks/useQuotes';
+import { Quote } from '@/stores/quotes/quotesStore';
 import { Organization } from '@/hooks/useOrganizations';
 
 ChartJS.register(

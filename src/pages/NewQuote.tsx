@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import QuoteCreatorWizard from "@/components/features/quotes/creation/QuoteCreatorWizard";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuotes } from "@/hooks/useQuotes";
+import { useQuotesStore } from "@/stores/quotes/quotesStore";
 
 const NewQuote = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [user, setUser] = useState<any>(null);
-  const { quotes } = useQuotes();
+  const quotes = useQuotesStore((state) => state.quotes);
   
   // Check if we're editing a draft quote
   const editProposalNumber = searchParams.get('edit');
@@ -31,7 +31,7 @@ const NewQuote = () => {
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       if (!session) {
         navigate("/auth");
       } else {

@@ -15,7 +15,7 @@ import {
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, DollarSign, Calendar, BarChart3 } from 'lucide-react';
-import { Quote } from '@/hooks/useQuotes';
+import { Quote } from '@/stores/quotes/quotesStore';
 
 ChartJS.register(
   CategoryScale,

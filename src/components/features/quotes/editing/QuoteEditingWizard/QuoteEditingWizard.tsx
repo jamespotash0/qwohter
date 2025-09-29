@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 
-import { useQuotes } from "@/hooks/useQuotes";
+import { useQuotesStore } from "@/stores/quotes/quotesStore";
 import { QuoteEditingWizardProps } from './types/editingTypes';
 import { useEditingState } from './hooks/useEditingState';
 import { useEditingValidation } from './hooks/useEditingValidation';
@@ -17,7 +17,7 @@ const QuoteEditingWizard = ({
   onBackToDashboard, 
   onQuoteNameChange
 }: QuoteEditingWizardProps) => {
-  const { updateQuote } = useQuotes();
+  const updateQuote = useQuotesStore((state) => state.updateQuote);
   const [activeStep, setActiveStep] = useState(0);
   const [editingQuoteName, setEditingQuoteName] = useState(false);
 

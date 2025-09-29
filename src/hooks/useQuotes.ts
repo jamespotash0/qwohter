@@ -1,3 +1,9 @@
+// DEPRECATED: This file has been replaced by quotesStore.ts
+// All functionality has been migrated to the Zustand store for better state management
+// See: src/stores/quotes/quotesStore.ts
+// Migration completed: September 28, 2025
+
+/*
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -30,7 +36,11 @@ export interface Quote {
   updated_at: string;
   customization?: QuoteCustomization;
 }
+*/
 
+
+/*
+// DEPRECATED: All functionality moved to quotesStore.ts
 
 // Helper function to prepare wall data for database save
 const prepareWallDataForSave = (wallsData: any): WallDetails => {
@@ -74,22 +84,50 @@ export const useQuotes = () => {
   try {
     setLoading(true);
 
-    const { data, error } = await supabase
+    // First, fetch quotes
+    const { data: quotesData, error: quotesError } = await supabase
       .from('quotes')
-      .select(`
-        *,
-        creator:profiles!quotes_created_by_fkey(full_name)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
-    
-      if (error) throw error;
 
-    const quotesWithCreatorNames = data
-      ? data.map(quote => ({
-          ...quote as object,
-          creator_name: quote.creator?.full_name || 'Unknown',
-        }))
-      : [];
+    if (quotesError) throw quotesError;
+
+    if (!quotesData || quotesData.length === 0) {
+      setQuotes([]);
+      return;
+    }
+
+    // Get unique creator IDs (check both created_by and user_id for compatibility)
+    const creatorIds = [...new Set(
+      quotesData
+        .map(quote => quote.created_by || quote.user_id)
+        .filter(Boolean)
+    )];
+
+    // Fetch creator names
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', creatorIds);
+
+    if (profilesError) {
+      console.warn('Failed to fetch creator profiles:', profilesError);
+      // Continue without creator names
+    }
+
+    // Create a map of creator IDs to names
+    const creatorMap = new Map();
+    if (profilesData) {
+      profilesData.forEach(profile => {
+        creatorMap.set(profile.id, profile.full_name);
+      });
+    }
+
+    // Combine quotes with creator names
+    const quotesWithCreatorNames = quotesData.map(quote => ({
+      ...quote as object,
+      creator_name: creatorMap.get(quote.created_by || quote.user_id) || 'Unknown',
+    }));
 
     setQuotes(quotesWithCreatorNames.map(convertRowToQuote));
   } catch (error: any) {
@@ -127,10 +165,10 @@ export const useQuotes = () => {
 
       const profileData = (membershipData as any).profiles;
       if (!profileData?.full_name) throw new Error('User profile incomplete');
-      
+
       // Generate proposal number
       const proposalInfo = await ProposalNumberGenerator.getNextProposalNumber();
-      
+
       const { data, error } = await supabase
         .from('quotes')
         .insert({
@@ -151,7 +189,7 @@ export const useQuotes = () => {
           price_details: {
             payment_upon_drawings: quoteData.pricing.payment_upon_drawings,
             payment_upon_track_installation: quoteData.pricing.payment_upon_track_installation,
-      
+
             kwik_wall_materials_cost: quoteData.pricing.kwik_wall_materials_cost || 0,
             misc_materials_cost: quoteData.pricing.misc_materials_cost || 0,
             delivery_cost_track: quoteData.pricing.delivery_cost_track || 0,
@@ -219,11 +257,11 @@ export const useQuotes = () => {
         .single();
 
       if (error) throw error;
-      
-      setQuotes(prev => prev.map(quote => 
+
+      setQuotes(prev => prev.map(quote =>
         quote.id === id ? { ...quote, ...convertRowToQuote(data) } : quote
       ));
-      
+
       return data;
     } catch (error: any) {
       toast({
@@ -243,7 +281,7 @@ export const useQuotes = () => {
         .eq('id', id);
 
       if (error) throw error;
-      
+
       setQuotes(prev => prev.filter(quote => quote.id !== id));
       toast({
         title: "Quote deleted",
@@ -269,11 +307,11 @@ export const useQuotes = () => {
         .single();
 
       if (error) throw error;
-      
-      setQuotes(prev => prev.map(quote => 
+
+      setQuotes(prev => prev.map(quote =>
         quote.id === id ? { ...quote, ...convertRowToQuote(data) } : quote
       ));
-      
+
       return data;
     } catch (error: any) {
       toast({
@@ -290,7 +328,7 @@ export const useQuotes = () => {
       // Update the version for customization tracking
       const currentQuote = quotes.find(q => q.id === id);
       const newVersion = (currentQuote?.version || 0) + 1;
-      
+
       const updateData = {
         customization: {
           ...customization,
@@ -308,16 +346,16 @@ export const useQuotes = () => {
         .single();
 
       if (error) throw error;
-      
-      setQuotes(prev => prev.map(quote => 
+
+      setQuotes(prev => prev.map(quote =>
         quote.id === id ? { ...quote, ...convertRowToQuote(data) } : quote
       ));
-      
+
       toast({
         title: "Customization saved",
         description: "Quote customization has been saved successfully.",
       });
-      
+
       return data;
     } catch (error: any) {
       toast({
@@ -354,7 +392,7 @@ export const useQuotes = () => {
       // Update only the wall_details field
       const { data, error } = await supabase
         .from('quotes')
-        .update({ 
+        .update({
           wall_details: updatedWallDetails as any,
           updated_at: new Date().toISOString()
         })
@@ -365,7 +403,7 @@ export const useQuotes = () => {
       if (error) throw error;
 
       // Update local state
-      setQuotes(prev => prev.map(quote => 
+      setQuotes(prev => prev.map(quote =>
         quote.id === quoteId ? { ...quote, ...convertRowToQuote(data) } : quote
       ));
 
@@ -397,7 +435,7 @@ export const useQuotes = () => {
 
       if (fetchError) throw fetchError;
 
-      // Get current wall details  
+      // Get current wall details
       const currentWallDetails = currentQuote.wall_details as unknown as WallDetails;
       const currentWalls = { ...currentWallDetails.walls };
 
@@ -425,7 +463,7 @@ export const useQuotes = () => {
       // Update the database
       const { data, error } = await supabase
         .from('quotes')
-        .update({ 
+        .update({
           wall_details: updatedWallDetails as any,
           updated_at: new Date().toISOString()
         })
@@ -436,7 +474,7 @@ export const useQuotes = () => {
       if (error) throw error;
 
       // Update local state
-      setQuotes(prev => prev.map(quote => 
+      setQuotes(prev => prev.map(quote =>
         quote.id === quoteId ? { ...quote, ...convertRowToQuote(data) } : quote
       ));
 
@@ -470,11 +508,11 @@ export const useQuotes = () => {
         .single();
 
       if (error) throw error;
-      
-      setQuotes(prev => prev.map(quote => 
+
+      setQuotes(prev => prev.map(quote =>
         quote.id === id ? { ...quote, ...convertRowToQuote(data) } : quote
       ));
-      
+
       return data;
     } catch (error: any) {
       toast({
@@ -562,3 +600,4 @@ export const useQuotes = () => {
     refreshQuotes: fetchQuotes
   };
 };
+*/

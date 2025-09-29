@@ -15,7 +15,7 @@ import { generateQuoteText } from '@/components/features/quotes/generation/Quote
 import { SmartQuoteHelper, QuoteSection, SmartQuoteData } from '@/templates/SmartQuoteTemplate';
 import { MixedContentEngine, MixedContentSection } from '@/utils/mixedContentEngine';
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
-import { Quote } from '@/hooks/useQuotes';
+import { Quote } from '@/stores/quotes/quotesStore';
 import { useCurrentQuote } from '@/stores/quotes/quotesStore';
 import { useOrganizationSettings } from '@/hooks/useCompanySettings';
 import { QuoteDataPanelCore as QuoteDataPanel } from './UnifiedQuoteEditor/QuoteDataPanel/QuoteDataPanelCore';
