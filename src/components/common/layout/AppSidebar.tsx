@@ -188,20 +188,21 @@ export function AppSidebar({
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
-                      className={`h-11 rounded-xl font-medium transition-all duration-200 flex items-center relative group/item ${
+                      className={`h-11 font-medium transition-all duration-200 flex items-center relative group/item ${
                         isCollapsed ? 'justify-center w-full px-0' : 'px-3'
                       } ${
                         isActive
                           ? 'text-[var(--sidebar-nav-text-active)] shadow-sm'
                           : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)]'
                       }`}
-                      style={
-                        isActive
+                      style={{
+                        borderRadius: 'var(--sidebar-nav-border-radius)',
+                        ...(isActive
                           ? {
                               backgroundColor: 'var(--sidebar-nav-bg-active)',
                             }
-                          : {}
-                      }
+                          : {})
+                      }}
                       onClick={(e) => handleNavigate(item.path, e)}
                       onMouseEnter={(e) => {
                         const target = e.currentTarget;

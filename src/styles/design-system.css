@@ -214,6 +214,7 @@
     --sidebar-nav-bg-active: rgba(247, 159, 65, 0.45); /* Active nav background - Orange with 45% opacity (darker for light mode) */
     --sidebar-nav-bg-inactive: transparent;       /* Inactive nav background */
     --sidebar-nav-border-active: #F79F41;         /* Active nav border - Orange */
+    --sidebar-nav-border-radius: 0.75rem;         /* 12px - Navigation item border radius */
 
     /* Section Labels */
     --sidebar-section-label: #777572;             /* Section label text (e.g., "General") */
