@@ -201,28 +201,38 @@
        ======================================== */
 
     /* Sidebar Container */
-    --sidebar-bg: var(--neutral-white);           /* Sidebar background */
+    --sidebar-bg: #F3F4F6;                        /* Sidebar background - Light mode */
     --sidebar-border: var(--neutral-200);         /* Sidebar border */
     --sidebar-width-expanded: 16rem;              /* 256px expanded width */
     --sidebar-width-collapsed: 4rem;              /* 64px collapsed width */
 
     /* Navigation Items */
-    --sidebar-nav-text: var(--neutral-600);       /* Nav item text */
-    --sidebar-nav-text-hover: var(--brand-blue-500); /* Nav hover text */
-    --sidebar-nav-text-active: var(--neutral-white); /* Active nav text */
-    --sidebar-nav-bg-hover: var(--neutral-100);   /* Nav hover background */
-    --sidebar-nav-bg-active: var(--brand-blue-500); /* Active nav background */
+    --sidebar-nav-text: #9C9898;                  /* Nav item text - Inactive */
+    --sidebar-nav-text-hover: #000000;            /* Nav hover text */
+    --sidebar-nav-text-active: #000000;           /* Active nav text - Black */
+    --sidebar-nav-bg-hover: #E8E9EA;              /* Nav hover background - Light gray, lighter than sidebar */
+    --sidebar-nav-bg-active: rgba(247, 159, 65, 0.45); /* Active nav background - Orange with 45% opacity (darker for light mode) */
     --sidebar-nav-bg-inactive: transparent;       /* Inactive nav background */
+    --sidebar-nav-border-active: #F79F41;         /* Active nav border - Orange */
+
+    /* Section Labels */
+    --sidebar-section-label: #777572;             /* Section label text (e.g., "General") */
 
     /* Sidebar Icons */
-    --sidebar-icon-default: var(--neutral-500);   /* Default icon color */
-    --sidebar-icon-hover: var(--brand-blue-500);  /* Hover icon color */
-    --sidebar-icon-active: var(--neutral-white);  /* Active icon color */
+    --sidebar-icon-default: #9C9898;              /* Default icon color - Inactive */
+    --sidebar-icon-hover: #9C9898;                /* Hover icon color - Stays same */
+    --sidebar-icon-active: #A0522D;               /* Active icon color - Dark orange/brown for contrast */
+
+    /* Theme Toggle Icons */
+    --sidebar-icon-sun: #E5C719;                  /* Sun icon color */
+    --sidebar-icon-moon: #777572;                 /* Moon icon color */
 
     /* User Profile in Sidebar */
-    --sidebar-user-bg: var(--neutral-50);         /* User section background */
-    --sidebar-user-text: var(--neutral-700);      /* User text */
-    --sidebar-user-hover-bg: var(--neutral-100);  /* User hover background */
+    --sidebar-user-bg: transparent;               /* User section background */
+    --sidebar-user-text: #000000;                 /* User name text - Black */
+    --sidebar-user-subtitle: #9C9898;             /* User role text - Gray */
+    --sidebar-user-hover-bg: #E8E9EA;             /* User hover background - Light gray */
+    --sidebar-user-avatar-bg: #A0522D;            /* Avatar background/border color - Dark orange/brown */
 
     /* ========================================
        📊 TABLE SYSTEM
@@ -311,10 +321,11 @@
     --height-btn-sm: 2rem;     /* 32px - Small button height */
     --height-btn-md: 2.5rem;   /* 40px - Standard button height */
     --height-btn-lg: 3rem;     /* 48px - Large button height */
+  }
 
-    /* ========================================
-       🌙 DARK MODE OVERRIDES
-       ======================================== */
+  /* ========================================
+     🌙 DARK MODE OVERRIDES
+     ======================================== */
 
   /* Manual dark mode (controlled by ThemeToggleButton) */
   .dark {
@@ -346,12 +357,32 @@
     --input-border: var(--neutral-500);
     --input-text: var(--neutral-100);
 
-    /* Sidebar */
-    --sidebar-bg: var(--neutral-800);
-    --sidebar-border: var(--neutral-600);
-    --sidebar-nav-text: var(--neutral-300);
-    --sidebar-nav-bg-hover: var(--neutral-700);
-    --sidebar-nav-bg-active: var(--brand-blue-600);
+    /* Sidebar - Deep Space Gray Theme */
+    --sidebar-bg: #1C1E26;                        /* Deep space gray background */
+    --sidebar-border: #2A2D38;                    /* Slightly lighter border */
+
+    /* Navigation Items - Dark Mode */
+    --sidebar-nav-text: #7C7E8C;                  /* Muted gray for inactive text */
+    --sidebar-nav-text-hover: #FFFFFF;            /* White on hover */
+    --sidebar-nav-text-active: #FFFFFF;           /* White for active text */
+    --sidebar-nav-bg-hover: #252834;              /* Slightly lighter gray for hover */
+    --sidebar-nav-bg-active: rgba(247, 159, 65, 0.15); /* Orange with 15% opacity (lighter for dark mode) */
+    --sidebar-nav-text-color-hover: #FFFFFF;      /* Ensure text turns white on hover */
+
+    /* Section Labels - Dark Mode */
+    --sidebar-section-label: #6B6D7A;             /* Muted gray for "General" text */
+
+    /* Sidebar Icons - Dark Mode */
+    --sidebar-icon-default: #7C7E8C;              /* Muted gray for inactive icons */
+    --sidebar-icon-active: #F79F41;               /* Orange for active icon */
+    --sidebar-icon-sun: #E5C719;                  /* Keep sun yellow */
+    --sidebar-icon-moon: #A8AAB8;                 /* Lighter moon for dark mode */
+
+    /* User Profile - Dark Mode */
+    --sidebar-user-text: #FFFFFF;                 /* White for user name */
+    --sidebar-user-subtitle: #7C7E8C;             /* Muted gray for role */
+    --sidebar-user-hover-bg: #252834;             /* Slightly lighter gray for hover */
+    --sidebar-user-avatar-bg: #6B6D7A;            /* Muted gray for avatar */
 
     /* Tables */
     --table-bg: var(--neutral-800);
@@ -394,7 +425,6 @@
     --gradient-primary: linear-gradient(135deg, hsl(218, 100%, 70%), hsl(218, 85%, 80%));
     --gradient-accent: linear-gradient(135deg, hsl(46, 100%, 60%), hsl(46, 85%, 70%));
     --gradient-subtle: linear-gradient(180deg, hsl(20, 12%, 8%), hsl(20, 10%, 12%));
-  }
   }
 
   /* ========================================

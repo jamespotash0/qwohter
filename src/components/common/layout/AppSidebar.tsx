@@ -1,4 +1,5 @@
-import { BarChart3, Home, Users, FileText, MoreVertical, LogOut, Settings } from "lucide-react";
+import { MoreVertical, LogOut, Settings } from "lucide-react";
+import { House, FileText, ChartBar, Users, List } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -19,7 +20,7 @@ interface AppSidebarProps {
 const menuItems = [
   {
     title: "Dashboard",
-    icon: Home,
+    icon: House,
     path: "/dashboard"
   },
   {
@@ -29,7 +30,7 @@ const menuItems = [
   },
   {
     title: "Analytics",
-    icon: BarChart3,
+    icon: ChartBar,
     path: "/analytics"
   },
   {
@@ -145,7 +146,9 @@ export function AppSidebar({
                 </div>
                 {/* Menu icon shown on hover when collapsed */}
                 <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-                  <SidebarTrigger className="h-8 w-8 rounded-lg text-accent-primary hover:bg-sidebar-hover hover:text-accent-primary transition-colors" />
+                  <SidebarTrigger className="h-8 w-8 rounded-lg text-[var(--sidebar-section-label)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)] transition-colors">
+                    <List size={20} weight="regular" />
+                  </SidebarTrigger>
                 </div>
               </div>
             ) : (
@@ -154,7 +157,9 @@ export function AppSidebar({
           </div>
           {/* Collapsible trigger */}
           {!isCollapsed && (
-            <SidebarTrigger className="h-8 w-8 rounded-lg text-accent-primary hover:bg-sidebar-hover hover:text-accent-primary transition-colors" />
+            <SidebarTrigger className="h-8 w-8 rounded-lg text-[var(--sidebar-section-label)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)] transition-colors">
+              <List size={20} weight="regular" />
+            </SidebarTrigger>
           )}
         </div>
       </SidebarHeader>
@@ -168,7 +173,7 @@ export function AppSidebar({
             }`}
           >
             {!isCollapsed && (
-              <p className="text-xs font-medium text-text-muted uppercase tracking-wide">
+              <p className="text-xs font-medium text-[var(--sidebar-section-label)] uppercase tracking-wide">
                 General
               </p>
             )}
@@ -179,21 +184,44 @@ export function AppSidebar({
             <SidebarMenu className={`space-y-0 ${isCollapsed ? 'space-y-1' : 'space-y-0'}`}>
               {menuItems.map(item => {
                 const isActive = location.pathname === item.path;
+                const Icon = item.icon;
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
-                      className={`h-11 rounded-xl font-medium transition-all duration-200 group flex items-center ${
+                      className={`h-11 rounded-xl font-medium transition-all duration-200 flex items-center relative group/item ${
                         isCollapsed ? 'justify-center w-full px-0' : 'px-3'
                       } ${
                         isActive
-                          ? 'bg-sidebar-active text-white shadow-sm'
-                          : 'bg-sidebar-inactive hover:bg-sidebar-hover hover:text-text-primary'
+                          ? 'text-[var(--sidebar-nav-text-active)] shadow-sm'
+                          : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)]'
                       }`}
+                      style={
+                        isActive
+                          ? {
+                              backgroundColor: 'var(--sidebar-nav-bg-active)',
+                            }
+                          : {}
+                      }
                       onClick={(e) => handleNavigate(item.path, e)}
+                      onMouseEnter={(e) => {
+                        const target = e.currentTarget;
+                        target.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) {
+                          const target = e.currentTarget;
+                          target.style.backgroundColor = 'transparent';
+                        } else {
+                          const target = e.currentTarget;
+                          target.style.backgroundColor = 'var(--sidebar-nav-bg-active)';
+                        }
+                      }}
                     >
-                      <item.icon
-                        className={`h-5 w-5 ${
-                          isActive ? 'text-white' : 'text-text-muted group-hover:text-accent-primary'
+                      <Icon
+                        size={20}
+                        weight="regular"
+                        className={`transition-colors ${
+                          isActive ? 'text-[var(--sidebar-icon-active)]' : 'text-[var(--sidebar-icon-default)]'
                         }`}
                       />
                       {!isCollapsed && <span className="ml-3">{item.title}</span>}
@@ -211,19 +239,19 @@ export function AppSidebar({
         {!isCollapsed ? (
           <div className="space-y-4">
             {/* User Profile Section */}
-            <div className="flex items-center justify-between p-3 rounded-xl hover:bg-sidebar-hover transition-colors group">
+            <div className="flex items-center justify-between p-3 rounded-xl hover:bg-[var(--sidebar-user-hover-bg)] transition-colors group">
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <Avatar className="h-9 w-9 ring-2 ring-sidebar-border">
+                <Avatar className="h-9 w-9 ring-2 ring-[var(--sidebar-user-avatar-bg)]">
                   <AvatarImage src={effectiveProfile?.avatar_url} />
-                  <AvatarFallback className="bg-accent-primary text-white text-sm font-semibold">
+                  <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-sm font-semibold">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-text-primary truncate">
+                  <p className="text-sm font-semibold text-[var(--sidebar-user-text)] truncate">
                     {userDisplayName}
                   </p>
-                  <p className="text-xs text-text-muted truncate">
+                  <p className="text-xs text-[var(--sidebar-user-subtitle)] truncate">
                     {effectiveRole}
                   </p>
                 </div>
@@ -268,11 +296,11 @@ export function AppSidebar({
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="h-10 w-10 p-0 rounded-xl hover:bg-sidebar-hover"
+                    className="h-10 w-10 p-0 rounded-xl hover:bg-[var(--sidebar-user-hover-bg)]"
                   >
-                    <Avatar className="h-8 w-8 ring-2 ring-sidebar-border">
+                    <Avatar className="h-8 w-8 ring-2 ring-[var(--sidebar-user-avatar-bg)]">
                       <AvatarImage src={effectiveProfile?.avatar_url} />
-                      <AvatarFallback className="bg-accent-primary text-white text-xs font-semibold">
+                      <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-xs font-semibold">
                         {userInitials}
                       </AvatarFallback>
                     </Avatar>
