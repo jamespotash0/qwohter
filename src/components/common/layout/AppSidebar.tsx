@@ -219,10 +219,12 @@ export function AppSidebar({
                       }}
                     >
                       <Icon
-                        size={20}
-                        weight="regular"
+                        size={28}
+                        weight="bold"
                         className={`transition-colors ${
-                          isActive ? 'text-[var(--sidebar-icon-active)]' : 'text-[var(--sidebar-icon-default)]'
+                          isActive
+                            ? 'text-[var(--sidebar-icon-active)]'
+                            : 'text-[var(--sidebar-icon-default)] hover:text-[var(--sidebar-icon-hover)]'
                         }`}
                       />
                       {!isCollapsed && <span className="ml-3">{item.title}</span>}

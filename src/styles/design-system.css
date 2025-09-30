@@ -214,14 +214,14 @@
     --sidebar-nav-bg-active: rgba(247, 159, 65, 0.45); /* Active nav background - Orange with 45% opacity (darker for light mode) */
     --sidebar-nav-bg-inactive: transparent;       /* Inactive nav background */
     --sidebar-nav-border-active: #F79F41;         /* Active nav border - Orange */
-    --sidebar-nav-border-radius: 0.75rem;         /* 12px - Navigation item border radius */
+    --sidebar-nav-border-radius: 1rem;         /* 12px - Navigation item border radius */
 
     /* Section Labels */
     --sidebar-section-label: #777572;             /* Section label text (e.g., "General") */
 
     /* Sidebar Icons */
     --sidebar-icon-default: #9C9898;              /* Default icon color - Inactive */
-    --sidebar-icon-hover: #9C9898;                /* Hover icon color - Stays same */
+    --sidebar-icon-hover: #A0522D;                /* Hover icon color - Dark orange/brown */
     --sidebar-icon-active: #A0522D;               /* Active icon color - Dark orange/brown for contrast */
 
     /* Theme Toggle Icons */
@@ -375,6 +375,7 @@
 
     /* Sidebar Icons - Dark Mode */
     --sidebar-icon-default: #7C7E8C;              /* Muted gray for inactive icons */
+    --sidebar-icon-hover: #FFFFFF;                /* White on hover in dark mode */
     --sidebar-icon-active: #F79F41;               /* Orange for active icon */
     --sidebar-icon-sun: #E5C719;                  /* Keep sun yellow */
     --sidebar-icon-moon: #A8AAB8;                 /* Lighter moon for dark mode */
