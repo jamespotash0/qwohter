@@ -1,0 +1,266 @@
+/**
+ * ☀️ LIGHT MODE THEME
+ *
+ * All color tokens and styling for light mode
+ */
+
+@layer base {
+  :root {
+    /* ========================================
+       🧭 SIDEBAR - LIGHT MODE
+       ======================================== */
+
+    /* Sidebar Container */
+    --sidebar-bg: #F3F4F6;                        /* Sidebar background */
+    --sidebar-border: #E5E7EB;                    /* Sidebar border */
+
+    /* Navigation Items */
+    --sidebar-nav-text: #9C9898;                  /* Inactive nav text/icons */
+    --sidebar-nav-text-hover: #000000;            /* Hover nav text - black */
+    --sidebar-nav-text-active: #000000;           /* Active nav text - black */
+    --sidebar-nav-bg-hover: #E8E9EA;              /* Hover background - light gray */
+    --sidebar-nav-bg-active: rgba(247, 159, 65, 0.45); /* Active bg - orange 45% */
+
+    /* Section Labels */
+    --sidebar-section-label: #777572;             /* Section label - "General" */
+
+    /* Sidebar Icons */
+    --sidebar-icon-default: #9C9898;              /* Inactive icons */
+    --sidebar-icon-hover: #A0522D;                /* Hover icons - dark orange/brown */
+    --sidebar-icon-active: #A0522D;               /* Active icons - dark orange/brown */
+    --sidebar-icon-sun: #E5C719;                  /* Sun icon - yellow */
+
+    /* User Profile in Sidebar */
+    --sidebar-user-text: #000000;                 /* User name - black */
+    --sidebar-user-subtitle: #9C9898;             /* User role - gray */
+    --sidebar-user-hover-bg: #E8E9EA;             /* User hover background */
+    --sidebar-user-avatar-bg: #A0522D;            /* Avatar bg/border - dark orange/brown */
+
+    /* ========================================
+       🎨 MAIN CONTENT AREA - LIGHT MODE
+       ======================================== */
+
+    /* Content Backgrounds */
+    --content-bg: #FFFFFF;                        /* Pure white main background */
+
+    /* Content Text Colors */
+    --content-header-text: #1F2937;               /* Dark gray headings */
+    --content-body-text: #374151;                 /* Medium dark gray body */
+    --content-muted-text: #6B7280;                /* Muted gray secondary */
+
+    /* Content Cards */
+    --content-card-bg: #F9FAFB;                   /* Light gray card background */
+    --content-card-border: #E5E7EB;               /* Light gray border */
+    --content-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
+    --content-card-hover-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+
+    /* Analytics Numbers */
+    --content-number-primary: #A0522D;            /* Dark orange/brown */
+    --content-number-success: #059669;            /* Green */
+    --content-number-warning: #D97706;            /* Amber */
+    --content-number-info: #2563EB;               /* Blue */
+
+    /* Content Tables */
+    --content-table-bg: #FFFFFF;                  /* White table background */
+    --content-table-row-hover: #F9FAFB;           /* Very light gray hover */
+    --content-table-row-selected: rgba(160, 82, 45, 0.08); /* Light brown tint */
+    --content-table-border: #E5E7EB;              /* Light gray borders */
+
+    /* Content Buttons */
+    --content-button-primary-bg: #A0522D;         /* Dark orange/brown */
+    --content-button-primary-hover: #8B4513;      /* Darker brown hover */
+    --content-button-secondary-bg: #F3F4F6;       /* Light gray */
+    --content-button-secondary-hover: #E5E7EB;    /* Medium light gray hover */
+
+    /* ========================================
+       📄 PAGE & LAYOUT
+       ======================================== */
+
+    /* Main Page Background */
+    --page-bg-primary: #FFFFFF;                   /* Main app background */
+    --page-bg-secondary: #F9FAFB;                 /* Alternative page bg */
+    --page-bg-tertiary: #F3F4F6;                  /* Subtle accent areas */
+
+    /* Content Areas */
+    --content-area-bg: #FFFFFF;                   /* Main content wrapper */
+    --content-section-bg: #F9FAFB;                /* Section backgrounds */
+
+    /* Text Colors for Content */
+    --page-title-text: #1F2937;                   /* Main page headings */
+    --page-subtitle-text: #6B7280;                /* Page descriptions */
+    --body-text-primary: #374151;                 /* Main body text */
+    --body-text-secondary: #6B7280;               /* Secondary text */
+    --body-text-muted: #9CA3AF;                   /* Muted/disabled text */
+
+    /* ========================================
+       📦 CARD SYSTEM (Additional component-level tokens)
+       ======================================== */
+
+    /* Card Headers */
+    --card-header-bg: #F9FAFB;                    /* Card header background */
+    --card-header-text: #1F2937;                  /* Card header text */
+    --card-header-border: #E5E7EB;                /* Header bottom border */
+
+    /* Card Content */
+    --card-content-bg: #FFFFFF;                   /* Card body background */
+    --card-content-text: #4B5563;                 /* Card body text */
+
+    /* Card Interactive States */
+    --card-hover-bg: #F9FAFB;                     /* Card hover background */
+    --card-active-bg: #F3F4F6;                    /* Card active background */
+
+    /* ========================================
+       🔘 BUTTON SYSTEM
+       ======================================== */
+
+    /* Primary Button */
+    --btn-primary-bg: #3A86FF;                    /* Primary button background */
+    --btn-primary-text: #FFFFFF;                  /* Primary button text */
+    --btn-primary-hover-bg: #2563EB;              /* Primary hover background */
+    --btn-primary-active-bg: #1D4ED8;             /* Primary active background */
+    --btn-primary-disabled-bg: #D1D5DB;           /* Primary disabled background */
+    --btn-primary-disabled-text: #9CA3AF;         /* Primary disabled text */
+
+    /* Secondary Button */
+    --btn-secondary-bg: transparent;              /* Secondary background */
+    --btn-secondary-text: #3A86FF;                /* Secondary text */
+    --btn-secondary-border: #3A86FF;              /* Secondary border */
+    --btn-secondary-hover-bg: #3A86FF;            /* Secondary hover bg */
+    --btn-secondary-hover-text: #FFFFFF;          /* Secondary hover text */
+
+    /* Ghost Button */
+    --btn-ghost-bg: transparent;                  /* Ghost background */
+    --btn-ghost-text: #374151;                    /* Ghost text */
+    --btn-ghost-hover-bg: #F3F4F6;                /* Ghost hover background */
+    --btn-ghost-hover-text: #1F2937;              /* Ghost hover text */
+
+    /* Danger Button */
+    --btn-danger-bg: #EF4444;                     /* Danger background */
+    --btn-danger-text: #FFFFFF;                   /* Danger text */
+    --btn-danger-hover-bg: #DC2626;               /* Danger hover background */
+
+    /* Success Button */
+    --btn-success-bg: #10B981;                    /* Success background */
+    --btn-success-text: #FFFFFF;                  /* Success text */
+    --btn-success-hover-bg: #059669;              /* Success hover background */
+
+    /* ========================================
+       📋 FORM SYSTEM
+       ======================================== */
+
+    /* Input Fields */
+    --input-bg: #FFFFFF;                          /* Input background */
+    --input-border: #D1D5DB;                      /* Input border */
+    --input-text: #1F2937;                        /* Input text */
+    --input-placeholder-text: #9CA3AF;            /* Placeholder text */
+    --input-focus-border: #3A86FF;                /* Focus border */
+    --input-focus-ring: #EBF4FF;                  /* Focus ring */
+    --input-error-border: #EF4444;                /* Error border */
+    --input-error-ring: #FEE2E2;                  /* Error ring */
+    --input-disabled-bg: #F3F4F6;                 /* Disabled background */
+    --input-disabled-text: #9CA3AF;               /* Disabled text */
+
+    /* Form Labels */
+    --form-label-text: #374151;                   /* Form label text */
+    --form-label-required: #EF4444;               /* Required indicator */
+
+    /* Help Text */
+    --form-help-text: #6B7280;                    /* Help/description text */
+    --form-error-text: #991B1B;                   /* Error message text */
+    --form-success-text: #065F46;                 /* Success message text */
+
+    /* ========================================
+       📊 TABLE SYSTEM
+       ======================================== */
+
+    /* Table Container */
+    --table-bg: #FFFFFF;                          /* Table background */
+    --table-border: #E5E7EB;                      /* Table borders */
+
+    /* Table Header */
+    --table-header-bg: #F9FAFB;                   /* Header background */
+    --table-header-text: #374151;                 /* Header text */
+    --table-header-border: #E5E7EB;               /* Header border */
+
+    /* Table Rows */
+    --table-row-bg: #FFFFFF;                      /* Row background */
+    --table-row-hover-bg: #F9FAFB;                /* Row hover background */
+    --table-row-selected-bg: #EBF4FF;             /* Selected row background */
+    --table-row-text: #4B5563;                    /* Row text */
+
+    /* Table Controls */
+    --table-toolbar-bg: #F9FAFB;                  /* Toolbar background */
+    --table-toolbar-border: #E5E7EB;              /* Toolbar border */
+
+    /* ========================================
+       🔔 NOTIFICATION SYSTEM
+       ======================================== */
+
+    /* Toast Notifications */
+    --toast-bg: #FFFFFF;                          /* Toast background */
+    --toast-border: #E5E7EB;                      /* Toast border */
+    --toast-text: #374151;                        /* Toast text */
+    --toast-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+
+    /* Toast Variants */
+    --toast-success-bg: #D1FAE5;                  /* Success toast bg */
+    --toast-success-border: #10B981;              /* Success border */
+    --toast-error-bg: #FEE2E2;                    /* Error toast bg */
+    --toast-error-border: #EF4444;                /* Error border */
+    --toast-warning-bg: #FEF3C7;                  /* Warning toast bg */
+    --toast-warning-border: #F59E0B;              /* Warning border */
+    --toast-info-bg: #DBEAFE;                     /* Info toast bg */
+    --toast-info-border: #3B82F6;                 /* Info border */
+
+    /* ========================================
+       🎯 MODAL & OVERLAY SYSTEM
+       ======================================== */
+
+    /* Modal Background */
+    --modal-overlay-bg: rgba(0, 0, 0, 0.5);       /* Modal overlay */
+    --modal-bg: #FFFFFF;                          /* Modal background */
+    --modal-border: #E5E7EB;                      /* Modal border */
+    --modal-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+
+    /* Modal Header */
+    --modal-header-bg: #F9FAFB;                   /* Modal header bg */
+    --modal-header-text: #1F2937;                 /* Modal header text */
+    --modal-header-border: #E5E7EB;               /* Modal header border */
+
+    /* Modal Content */
+    --modal-content-bg: #FFFFFF;                  /* Modal content bg */
+    --modal-content-text: #4B5563;                /* Modal content text */
+
+    /* ========================================
+       🎨 TAILWIND/SHADCN COMPATIBILITY
+       ======================================== */
+
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 46 100% 50%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 217 91% 60%;
+    --radius: 0.5rem;
+    --quote-bg: 0 0% 100%;
+    --shadow-soft: 0 1px 10px hsla(0, 0%, 0%, 0.05);
+    --shadow-medium: 0 4px 20px hsla(0, 0%, 0%, 0.08);
+    --shadow-large: 0 10px 40px hsla(0, 0%, 0%, 0.1);
+    --gradient-primary: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(217, 91%, 70%));
+    --gradient-accent: linear-gradient(135deg, hsl(46, 100%, 50%), hsl(46, 100%, 60%));
+    --gradient-subtle: linear-gradient(180deg, hsl(0, 0%, 100%), hsl(210, 40%, 98%));
+  }
+}

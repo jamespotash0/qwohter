@@ -283,7 +283,7 @@ export function AppSidebar({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={onLogout}
-                    className="flex items-center gap-2 text-error hover:text-error hover:bg-error/10 cursor-pointer"
+                    className="flex items-center gap-2 text-destructive hover:bg-[var(--sidebar-nav-bg-hover)] cursor-pointer"
                   >
                     <LogOut className="h-4 w-4" />
                     Logout
@@ -329,7 +329,7 @@ export function AppSidebar({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={onLogout}
-                    className="flex items-center gap-2 text-error hover:text-error hover:bg-error/10 cursor-pointer"
+                    className="flex items-center gap-2 text-destructive hover:bg-[var(--sidebar-nav-bg-hover)] cursor-pointer"
                   >
                     <LogOut className="h-4 w-4" />
                     Logout
