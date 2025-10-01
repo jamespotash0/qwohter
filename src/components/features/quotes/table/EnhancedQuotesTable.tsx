@@ -85,6 +85,7 @@ const statusColors = {
   Submitted: "bg-blue-100 text-blue-800",
   Won: "bg-emerald-100 text-emerald-800",
   Rejected: "bg-red-100 text-red-800",
+  Completed: "bg-purple-100 text-purple-800",
 };
 
 const getQuoteSourceOptions = () => [
@@ -118,13 +119,14 @@ const getAvailableStatusOptions = (currentStatus: string) => {
     { value: "Pending", label: "Pending" },
     { value: "Submitted", label: "Submitted" },
     { value: "Won", label: "Won" },
-    { value: "Rejected", label: "Rejected" }
+    { value: "Rejected", label: "Rejected" },
+    { value: "Completed", label: "Completed" }
   ];
 
   if (currentStatus === "Incomplete") return allStatuses;
   if (currentStatus === "Draft") return allStatuses.filter(s => s.value !== "Incomplete");
-  
-  const completedStatuses = ["Pending", "Submitted", "Won", "Rejected"];
+
+  const completedStatuses = ["Pending", "Submitted", "Won", "Rejected", "Completed"];
   if (completedStatuses.includes(currentStatus)) {
     return allStatuses.filter(s => s.value !== "Incomplete" && s.value !== "Draft");
   }

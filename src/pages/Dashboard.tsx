@@ -15,9 +15,13 @@ import {
   FileSpreadsheet,
   Upload,
   Bell,
-  ArrowUpRight
+  ArrowUpRight,
+  Archive,
+  ArchiveRestore,
+  CheckCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useQuotesStore } from "@/stores/quotes/quotesStore";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -33,6 +37,15 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [recentActivities, setRecentActivities] = useState<QuoteActivity[]>([]);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [cachedProfile, setCachedProfile] = useState<any>(() => {
+    // Read from localStorage cache (same as sidebar)
+    try {
+      const stored = localStorage.getItem('sidebar_cached_profile');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
 
   const quotes = useQuotesStore((state) => state.quotes);
   const quotesLoading = useQuotesStore((state) => state.isLoading);
@@ -53,6 +66,17 @@ const Dashboard = () => {
   }, []);
 
   const { profile } = useUserProfile(user?.id);
+
+  // Update cache when profile loads (sidebar already does this, but just in case)
+  useEffect(() => {
+    if (profile && profile.id && JSON.stringify(profile) !== JSON.stringify(cachedProfile)) {
+      setCachedProfile(profile);
+      localStorage.setItem('sidebar_cached_profile', JSON.stringify(profile));
+    }
+  }, [profile, cachedProfile]);
+
+  // Always prefer cached data to prevent flashing
+  const effectiveProfile = cachedProfile || (profile?.id ? profile : null);
 
   // Get organization ID for activity fetching
   useEffect(() => {
@@ -104,10 +128,13 @@ const Dashboard = () => {
     thisMonth.setDate(1);
     thisMonth.setHours(0, 0, 0, 0);
 
+    // Use won_date to track when quotes were first marked as Won
+    // This prevents double-counting if status is changed back and forth
     const wonQuotesThisMonth = quotes.filter(q => {
-      if (q.status !== 'Won') return false;
-      const statusDate = q.status_last_updated ? new Date(q.status_last_updated) : new Date(q.created_at);
-      return statusDate >= thisMonth;
+      if (q.status !== 'Won' && q.status !== 'Completed') return false;
+      if (!q.won_date) return false; // Skip quotes without won_date set
+      const wonDate = new Date(q.won_date);
+      return wonDate >= thisMonth;
     });
 
     const totalRevenue = wonQuotesThisMonth.reduce((sum, q) =>
@@ -191,6 +218,7 @@ const Dashboard = () => {
         else if (newStatus === 'Rejected') type = 'lost';
         else if (newStatus === 'Submitted') type = 'submitted';
         else if (newStatus === 'Pending') type = 'pending';
+        else if (newStatus === 'Completed') type = 'completed';
         else if (newStatus === 'Incomplete') type = 'incomplete';
       } else if (activity.activity_type === 'archived') {
         message = `${userName} Archived ${projectName} (Quote #${quoteNumber})`;
@@ -252,7 +280,7 @@ const Dashboard = () => {
       {/* Dashboard Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-semibold text-[var(--content-header-text)] dark:text-[var(--content-header-text)]">
-          Welcome back, {profile?.full_name || user?.email?.split('@')[0] || 'User'}
+          Welcome back, {effectiveProfile?.full_name || user?.email?.split('@')[0] || 'User'}
         </h1>
         <p className="mt-2 text-base text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)]">
           Here's what's happening with your quotes today
@@ -261,65 +289,86 @@ const Dashboard = () => {
 
       {/* Key Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Total Revenue */}
-        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800">
-                <DollarSign className="w-6 h-6 text-green-600 dark:text-green-300" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Revenue This Month</h3>
-                <p className="text-2xl font-bold text-[var(--content-header-text)]">{formatCurrency(metrics.totalRevenue)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {quotesLoading ? (
+          <>
+            {/* Loading Skeletons for Metrics */}
+            {[...Array(4)].map((_, i) => (
+              <Card key={i} className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0">
+                <CardContent className="p-6">
+                  <div className="flex items-center">
+                    <Skeleton className="w-12 h-12 rounded-full" />
+                    <div className="ml-4 flex-1">
+                      <Skeleton className="h-4 w-24 mb-2" />
+                      <Skeleton className="h-8 w-32" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </>
+        ) : (
+          <>
+            {/* Total Revenue */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800">
+                    <DollarSign className="w-6 h-6 text-green-600 dark:text-green-300" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Revenue This Month</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{formatCurrency(metrics.totalRevenue)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Active Quotes */}
-        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800">
-                <FileText className="w-6 h-6 text-blue-600 dark:text-blue-300" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Active Quotes</h3>
-                <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.activeQuotes}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            {/* Active Quotes */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800">
+                    <FileText className="w-6 h-6 text-blue-600 dark:text-blue-300" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Active Quotes</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.activeQuotes}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Win Rate */}
-        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
-                <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-300" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Win Rate</h3>
-                <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.winRate}%</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            {/* Win Rate */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
+                    <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-300" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Win Rate</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.winRate}%</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        {/* Overdue Follow-ups */}
-        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className={`p-3 rounded-full bg-gradient-to-br ${metrics.overdueFollowups > 0 ? 'from-red-100 to-red-200 dark:from-red-900 dark:to-red-800' : 'from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600'}`}>
-                <AlertCircle className={`w-6 h-6 ${metrics.overdueFollowups > 0 ? 'text-red-600 dark:text-red-300' : 'text-gray-600 dark:text-gray-300'}`} />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Overdue Follow-ups</h3>
-                <p className={`text-2xl font-bold ${metrics.overdueFollowups > 0 ? 'text-red-600 dark:text-red-400' : 'text-[var(--content-header-text)]'}`}>{metrics.overdueFollowups}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            {/* Overdue Follow-ups */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className={`p-3 rounded-full bg-gradient-to-br ${metrics.overdueFollowups > 0 ? 'from-red-100 to-red-200 dark:from-red-900 dark:to-red-800' : 'from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600'}`}>
+                    <AlertCircle className={`w-6 h-6 ${metrics.overdueFollowups > 0 ? 'text-red-600 dark:text-red-300' : 'text-gray-600 dark:text-gray-300'}`} />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Overdue Follow-ups</h3>
+                    <p className={`text-2xl font-bold ${metrics.overdueFollowups > 0 ? 'text-red-600 dark:text-red-400' : 'text-[var(--content-header-text)]'}`}>{metrics.overdueFollowups}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Main Content Grid */}
@@ -337,31 +386,39 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-            <div className="space-y-3">
-              <Button
-                onClick={() => navigate('/newquote')}
-                className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white"
-              >
-                <Plus className="w-5 h-5" />
-                <span className="font-medium">Create New Quote</span>
-              </Button>
+            {quotesLoading ? (
+              <div className="space-y-3">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="w-full h-12" />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <Button
+                  onClick={() => navigate('/newquote')}
+                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span className="font-medium">Create New Quote</span>
+                </Button>
 
-              <Button
-                onClick={() => navigate('/quotes')}
-                className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-white hover:bg-blue-50 text-[var(--content-header-text)] border border-gray-200"
-              >
-                <FileSpreadsheet className="w-5 h-5" />
-                <span className="font-medium">Use Template</span>
-              </Button>
+                <Button
+                  onClick={() => navigate('/quotes')}
+                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-white hover:bg-blue-50 text-[var(--content-header-text)] border border-gray-200"
+                >
+                  <FileSpreadsheet className="w-5 h-5" />
+                  <span className="font-medium">Use Template</span>
+                </Button>
 
-              <Button
-                onClick={() => navigate('/quotes')}
-                className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-white hover:bg-blue-50 text-[var(--content-header-text)] border border-gray-200"
-              >
-                <Upload className="w-5 h-5" />
-                <span className="font-medium">Import from Form</span>
-              </Button>
-            </div>
+                <Button
+                  onClick={() => navigate('/quotes')}
+                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-white hover:bg-blue-50 text-[var(--content-header-text)] border border-gray-200"
+                >
+                  <Upload className="w-5 h-5" />
+                  <span className="font-medium">Import from Form</span>
+                </Button>
+              </div>
+            )}
             </CardContent>
             </Card>
 
@@ -374,7 +431,19 @@ const Dashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="relative">
-                {recentActivity.length > 0 ? (
+                {quotesLoading ? (
+                  <div className="space-y-2">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="flex gap-3 p-4 bg-white rounded-lg border border-gray-200">
+                        <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-3 w-1/2" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : recentActivity.length > 0 ? (
                   <>
                     <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 -mr-2 scroll-smooth [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
                     {recentActivity.map((activity) => {
@@ -394,12 +463,21 @@ const Dashboard = () => {
                               ? 'bg-blue-100 dark:bg-blue-900/30'
                               : activity.type === 'pending'
                               ? 'bg-yellow-100 dark:bg-yellow-900/30'
+                              : activity.type === 'completed'
+                              ? 'bg-purple-100 dark:bg-purple-900/30'
+                              : activity.type === 'archived'
+                              ? 'bg-slate-100 dark:bg-slate-900/30'
+                              : activity.type === 'unarchived'
+                              ? 'bg-sky-100 dark:bg-sky-900/30'
                               : 'bg-gray-100 dark:bg-gray-800/30'
                           }`}>
                             {activity.type === 'won' && <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />}
                             {activity.type === 'lost' && <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />}
                             {activity.type === 'submitted' && <ArrowUpRight className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
                             {activity.type === 'pending' && <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />}
+                            {activity.type === 'completed' && <CheckCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
+                            {activity.type === 'archived' && <Archive className="w-4 h-4 text-slate-600 dark:text-slate-400" />}
+                            {activity.type === 'unarchived' && <ArchiveRestore className="w-4 h-4 text-sky-600 dark:text-sky-400" />}
                             {activity.type === 'created' && <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
                             {activity.type === 'incomplete' && <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
                           </div>
@@ -440,7 +518,25 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-            {reminders.length > 0 ? (
+            {quotesLoading ? (
+              <div className="space-y-2">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="p-4 rounded-lg border border-gray-200 bg-white">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                        <Skeleton className="h-3 w-2/3" />
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-3 w-20" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : reminders.length > 0 ? (
               <div className="space-y-2 max-h-[320px] overflow-y-auto pr-2 -mr-2">
                 {reminders.map((reminder) => {
                   const followUpDate = reminder.followUpDate;

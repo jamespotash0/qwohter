@@ -64,6 +64,11 @@ const Quotes = () => {
   // Quote management functions
   const updateQuoteStatus = async (id: string, newStatus: string) => {
     await updateQuote(id, { status: newStatus as any });
+
+    // Auto-archive when status is set to "Completed"
+    if (newStatus === 'Completed') {
+      await archiveQuote(id);
+    }
   };
 
   const updateQuoteSource = async (id: string, newSource: string) => {
@@ -349,38 +354,36 @@ const Quotes = () => {
         </ContentCard>
       ) : (
         /* Main quotes table with archive toggle */
-        <ContentCard>
-          <EnhancedQuotesTable
-            quotes={showArchived ? archivedQuotes : filteredQuotes}
-            onEditQuote={editQuote}
-            onDeleteQuote={(id) => setDeleteQuoteId(id)}
-            onStatusChange={updateQuoteStatus}
-            onFollowUpDaysChange={handleFollowUpDaysChange}
-            onQuoteSourceChange={updateQuoteSource}
-            onCreateVersion={handleCreateVersion}
-            onCreateQuote={() => setShowNewQuoteDialog(true)}
-            onArchiveQuote={showArchived ? undefined : archiveQuote}
-            onUnarchiveQuote={showArchived ? unarchiveQuote : undefined}
-            isArchiveView={showArchived}
-            showArchived={showArchived}
-            archivedCount={archivedQuotes.length}
-            onToggleArchive={() => setShowArchived(!showArchived)}
-            onBulkDelete={(ids) => {
-              ids.forEach(id => deleteQuoteFromDB(id));
-            }}
-            onBulkStatusChange={(ids, status) => {
-              ids.forEach(id => updateQuoteStatus(id, status));
-            }}
-            onBulkArchive={showArchived ? undefined : (ids) => {
-              ids.forEach(id => archiveQuote(id));
-            }}
-            onBulkUnarchive={showArchived ? (ids) => {
-              ids.forEach(id => unarchiveQuote(id));
-            } : undefined}
-            onExportCSV={handleExportCSV}
-            onExportPDF={handleExportPDF}
-          />
-        </ContentCard>
+        <EnhancedQuotesTable
+          quotes={showArchived ? archivedQuotes : filteredQuotes}
+          onEditQuote={editQuote}
+          onDeleteQuote={(id) => setDeleteQuoteId(id)}
+          onStatusChange={updateQuoteStatus}
+          onFollowUpDaysChange={handleFollowUpDaysChange}
+          onQuoteSourceChange={updateQuoteSource}
+          onCreateVersion={handleCreateVersion}
+          onCreateQuote={() => setShowNewQuoteDialog(true)}
+          onArchiveQuote={showArchived ? undefined : archiveQuote}
+          onUnarchiveQuote={showArchived ? unarchiveQuote : undefined}
+          isArchiveView={showArchived}
+          showArchived={showArchived}
+          archivedCount={archivedQuotes.length}
+          onToggleArchive={() => setShowArchived(!showArchived)}
+          onBulkDelete={(ids) => {
+            ids.forEach(id => deleteQuoteFromDB(id));
+          }}
+          onBulkStatusChange={(ids, status) => {
+            ids.forEach(id => updateQuoteStatus(id, status));
+          }}
+          onBulkArchive={showArchived ? undefined : (ids) => {
+            ids.forEach(id => archiveQuote(id));
+          }}
+          onBulkUnarchive={showArchived ? (ids) => {
+            ids.forEach(id => unarchiveQuote(id));
+          } : undefined}
+          onExportCSV={handleExportCSV}
+          onExportPDF={handleExportPDF}
+        />
       )}
 
       {/* Delete Confirmation Dialog */}

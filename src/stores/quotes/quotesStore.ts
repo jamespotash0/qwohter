@@ -41,6 +41,7 @@ export interface Quote {
   form_profile_id?: string;
   creator_name?: string;
   archived?: boolean;
+  won_date?: string;
 }
 
 interface QuotesState {
@@ -466,6 +467,14 @@ export const useQuotesStore = create<QuotesState>()(
             // Note: wall_details filtering removed - discriminated unions ensure type safety
             let processedUpdates = { ...updates };
 
+            // Set won_date when quote is first marked as "Won" or "Completed"
+            // (Completed means job is done and should count as revenue)
+            if ((newStatus === 'Won' || newStatus === 'Completed') &&
+                (oldStatus !== 'Won' && oldStatus !== 'Completed') &&
+                !currentQuote.won_date) {
+              processedUpdates.won_date = new Date().toISOString();
+            }
+
             const { data, error } = await supabase
               .from('quotes')
               .update(processedUpdates)
@@ -500,43 +509,46 @@ export const useQuotesStore = create<QuotesState>()(
               }
             });
 
-            // Log activity
-            if (statusChanged && oldStatus && newStatus) {
-              // Status change
-              await quoteActivityService.logStatusChange({
-                quoteId: id,
-                quoteNumber: currentQuote.proposal_number,
-                projectName: currentQuote.project_name || 'Untitled',
-                userId: user.id,
-                userName: userName,
-                organizationId: organizationId,
-                oldStatus: oldStatus,
-                newStatus: newStatus
-              });
-            } else if (updates.follow_up_days && updates.follow_up_days !== currentQuote.follow_up_days) {
-              // Reminder set
-              await quoteActivityService.logReminderSet({
-                quoteId: id,
-                quoteNumber: currentQuote.proposal_number,
-                projectName: currentQuote.project_name || 'Untitled',
-                userId: user.id,
-                userName: userName,
-                organizationId: organizationId,
-                followUpDays: updates.follow_up_days
-              });
-            } else {
-              // General update
-              const changedFields = Object.keys(updates).filter(key => key !== 'updated_at');
-              if (changedFields.length > 0) {
-                await quoteActivityService.logUpdate({
+            // Log activity only if quote is not archived
+            // (archived quotes shouldn't push updates to recent activity)
+            if (!currentQuote.archived) {
+              if (statusChanged && oldStatus && newStatus) {
+                // Status change
+                await quoteActivityService.logStatusChange({
                   quoteId: id,
                   quoteNumber: currentQuote.proposal_number,
                   projectName: currentQuote.project_name || 'Untitled',
                   userId: user.id,
                   userName: userName,
                   organizationId: organizationId,
-                  changedFields: changedFields
+                  oldStatus: oldStatus,
+                  newStatus: newStatus
                 });
+              } else if (updates.follow_up_days && updates.follow_up_days !== currentQuote.follow_up_days) {
+                // Reminder set
+                await quoteActivityService.logReminderSet({
+                  quoteId: id,
+                  quoteNumber: currentQuote.proposal_number,
+                  projectName: currentQuote.project_name || 'Untitled',
+                  userId: user.id,
+                  userName: userName,
+                  organizationId: organizationId,
+                  followUpDays: updates.follow_up_days
+                });
+              } else {
+                // General update
+                const changedFields = Object.keys(updates).filter(key => key !== 'updated_at');
+                if (changedFields.length > 0) {
+                  await quoteActivityService.logUpdate({
+                    quoteId: id,
+                    quoteNumber: currentQuote.proposal_number,
+                    projectName: currentQuote.project_name || 'Untitled',
+                    userId: user.id,
+                    userName: userName,
+                    organizationId: organizationId,
+                    changedFields: changedFields
+                  });
+                }
               }
             }
 
