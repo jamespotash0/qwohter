@@ -48,8 +48,21 @@ export const SidebarProvider = React.forwardRef<HTMLDivElement, SidebarProviderP
     const isMobile = useIsMobile();
     const [openMobile, setOpenMobile] = React.useState(false);
 
+    // Read initial state from cookie if available
+    const getInitialOpenState = () => {
+      if (typeof document !== 'undefined') {
+        const cookies = document.cookie.split('; ');
+        const sidebarCookie = cookies.find(cookie => cookie.startsWith(`${SIDEBAR_COOKIE_NAME}=`));
+        if (sidebarCookie) {
+          const value = sidebarCookie.split('=')[1];
+          return value === 'true';
+        }
+      }
+      return defaultOpen;
+    };
+
     // Internal state for uncontrolled mode
-    const [_open, _setOpen] = React.useState(defaultOpen);
+    const [_open, _setOpen] = React.useState(getInitialOpenState);
     const open = openProp ?? _open;
     
     const setOpen = React.useCallback(
