@@ -18,7 +18,10 @@ import {
   ArrowUpRight,
   Archive,
   ArchiveRestore,
-  CheckCheck
+  CheckCheck,
+  Edit3,
+  Trash2,
+  BellRing
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -129,11 +132,15 @@ const Dashboard = () => {
     thisMonth.setHours(0, 0, 0, 0);
 
     // Use won_date to track when quotes were first marked as Won
-    // This prevents double-counting if status is changed back and forth
+    // Falls back to status_last_updated or created_at for quotes without won_date
     const wonQuotesThisMonth = quotes.filter(q => {
       if (q.status !== 'Won' && q.status !== 'Completed') return false;
-      if (!q.won_date) return false; // Skip quotes without won_date set
-      const wonDate = new Date(q.won_date);
+
+      // Use won_date if available, otherwise fall back to status_last_updated or created_at
+      const dateToUse = q.won_date || q.status_last_updated || q.created_at;
+      if (!dateToUse) return false;
+
+      const wonDate = new Date(dateToUse);
       return wonDate >= thisMonth;
     });
 
@@ -229,7 +236,11 @@ const Dashboard = () => {
         eventText = 'Unarchived';
         type = 'unarchived';
       } else if (activity.activity_type === 'updated') {
-        message = `${userName} updated ${projectName} (Quote #${quoteNumber})`;
+        const changedFields = activity.activity_details?.changed_fields || [];
+        const fieldList = changedFields.length > 0
+          ? ` (${changedFields.join(', ')})`
+          : '';
+        message = `${userName} updated ${projectName} (Quote #${quoteNumber})${fieldList}`;
         eventText = 'Updated';
         type = 'updated';
       } else if (activity.activity_type === 'deleted') {
@@ -469,6 +480,12 @@ const Dashboard = () => {
                               ? 'bg-slate-100 dark:bg-slate-900/30'
                               : activity.type === 'unarchived'
                               ? 'bg-sky-100 dark:bg-sky-900/30'
+                              : activity.type === 'updated'
+                              ? 'bg-indigo-100 dark:bg-indigo-900/30'
+                              : activity.type === 'deleted'
+                              ? 'bg-red-100 dark:bg-red-900/30'
+                              : activity.type === 'reminder'
+                              ? 'bg-amber-100 dark:bg-amber-900/30'
                               : 'bg-gray-100 dark:bg-gray-800/30'
                           }`}>
                             {activity.type === 'won' && <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />}
@@ -478,6 +495,9 @@ const Dashboard = () => {
                             {activity.type === 'completed' && <CheckCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
                             {activity.type === 'archived' && <Archive className="w-4 h-4 text-slate-600 dark:text-slate-400" />}
                             {activity.type === 'unarchived' && <ArchiveRestore className="w-4 h-4 text-sky-600 dark:text-sky-400" />}
+                            {activity.type === 'updated' && <Edit3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
+                            {activity.type === 'deleted' && <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />}
+                            {activity.type === 'reminder' && <BellRing className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
                             {activity.type === 'created' && <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
                             {activity.type === 'incomplete' && <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
                           </div>

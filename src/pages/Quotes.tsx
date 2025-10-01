@@ -75,11 +75,16 @@ const Quotes = () => {
     await updateQuote(id, { quote_source: newSource });
   };
 
-  const handleFollowUpDaysChange = async (id: string, days: number | null) => {
-    await updateQuote(id, {
-      follow_up_days: days as any,
-      status_last_updated: new Date().toISOString()
-    });
+  const handleFollowUpDateChange = async (id: string, date: Date | null) => {
+    console.log('🔔 handleFollowUpDateChange called:', { id, date, isoString: date ? date.toISOString() : null });
+    try {
+      const result = await updateQuote(id, {
+        follow_up_date: date ? date.toISOString() : null
+      });
+      console.log('✅ Quote updated successfully:', result);
+    } catch (error) {
+      console.error('❌ Error updating quote:', error);
+    }
   };
 
   const handleDeleteQuote = async (id: string) => {
@@ -146,10 +151,8 @@ const Quotes = () => {
       });
 
       let followUp = 'Not set';
-      if (quote.follow_up_days && quote.follow_up_days > 0) {
-        const baseDate = quote.status_last_updated ? new Date(quote.status_last_updated) : new Date(quote.created_at);
-        const followUpDate = new Date(baseDate);
-        followUpDate.setDate(followUpDate.getDate() + quote.follow_up_days);
+      if (quote.follow_up_date) {
+        const followUpDate = new Date(quote.follow_up_date);
         const today = new Date();
         const timeDiff = followUpDate.getTime() - today.getTime();
         const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
@@ -226,10 +229,8 @@ const Quotes = () => {
       });
 
       let followUp = 'Not set';
-      if (quote.follow_up_days && quote.follow_up_days > 0) {
-        const baseDate = quote.status_last_updated ? new Date(quote.status_last_updated) : new Date(quote.created_at);
-        const followUpDate = new Date(baseDate);
-        followUpDate.setDate(followUpDate.getDate() + quote.follow_up_days);
+      if (quote.follow_up_date) {
+        const followUpDate = new Date(quote.follow_up_date);
         const today = new Date();
         const timeDiff = followUpDate.getTime() - today.getTime();
         const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
@@ -315,14 +316,6 @@ const Quotes = () => {
                 <Plus className="w-5 h-5 mr-2" />
                 Create Your First Quote
               </Button>
-
-              <Button
-                variant="outline"
-                onClick={() => navigate('/settings')}
-                className="border-gray-300 dark:border-[var(--content-card-border)] hover:bg-[var(--sidebar-nav-bg-hover)]"
-              >
-                Configure Settings
-              </Button>
             </div>
 
             <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl">
@@ -359,7 +352,7 @@ const Quotes = () => {
           onEditQuote={editQuote}
           onDeleteQuote={(id) => setDeleteQuoteId(id)}
           onStatusChange={updateQuoteStatus}
-          onFollowUpDaysChange={handleFollowUpDaysChange}
+          onFollowUpDateChange={handleFollowUpDateChange}
           onQuoteSourceChange={updateQuoteSource}
           onCreateVersion={handleCreateVersion}
           onCreateQuote={() => setShowNewQuoteDialog(true)}

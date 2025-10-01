@@ -39,7 +39,8 @@ import {
   HelpCircle,
   FileText,
   Archive,
-  ArchiveRestore
+  ArchiveRestore,
+  CheckCircle
 } from 'lucide-react';
 
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
+import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { Quote } from "@/stores/quotes/quotesStore";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 import useEnhancedSearch from '@/hooks/useEnhancedSearch';
@@ -60,7 +62,7 @@ interface EnhancedQuotesTableProps {
   onEditQuote: (quote: Quote) => void;
   onDeleteQuote: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
-  onFollowUpDaysChange: (id: string, days: number | null) => void;
+  onFollowUpDateChange?: (id: string, date: Date | null) => void;
   onQuoteSourceChange: (id: string, source: string) => void;
   onCreateVersion?: (id: string) => void;
   onCreateQuote?: () => void;
@@ -109,6 +111,7 @@ const columnLabels: Record<string, string> = {
   created_at: "Date Created",
   status_last_updated: "Status Updated",
   follow_up_days: "Follow Up",
+  won_date: "Won Date",
   actions: "Actions"
 };
 
@@ -158,15 +161,12 @@ const formatLastUpdated = (time: string) => {
 
 
 const getFollowUpStatus = (quote: Quote) => {
-  if (!quote.follow_up_days || quote.follow_up_days <= 0) {
+  if (!quote.follow_up_date) {
     return { daysRemaining: null, isOverdue: false, displayText: "Not set", colorClass: "text-gray-500" };
   }
 
-  // Use status_last_updated if available, otherwise fall back to created_at
-  const baseDate = quote.status_last_updated ? new Date(quote.status_last_updated) : new Date(quote.created_at);
-  const followUpDate = new Date(baseDate);
-  followUpDate.setDate(followUpDate.getDate() + quote.follow_up_days);
-  
+  const followUpDate = new Date(quote.follow_up_date);
+
   const today = new Date();
   const timeDiff = followUpDate.getTime() - today.getTime();
   const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
@@ -180,25 +180,39 @@ const getFollowUpStatus = (quote: Quote) => {
     const absTimeDiff = Math.abs(timeDiff);
     const overdueDays = Math.floor(absTimeDiff / (1000 * 3600 * 24));
     const overdueHours = Math.floor((absTimeDiff % (1000 * 3600 * 24)) / (1000 * 3600));
-    
+    const overdueMinutes = Math.floor((absTimeDiff % (1000 * 3600)) / (1000 * 60));
+    const overdueSeconds = Math.floor((absTimeDiff % (1000 * 60)) / 1000);
+
     if (overdueDays > 0) {
       displayText = `${overdueDays}d overdue`;
+    } else if (overdueHours > 0) {
+      displayText = `${overdueHours}h ${overdueMinutes}m overdue`;
+    } else if (overdueMinutes > 0) {
+      displayText = `${overdueMinutes}m ${overdueSeconds}s overdue`;
     } else {
-      displayText = `${overdueHours}h overdue`;
+      displayText = `${overdueSeconds}s overdue`;
     }
     colorClass = "text-red-600 font-medium";
   } else if (daysRemaining === 0) {
     const hoursRemaining = Math.floor(timeDiff / (1000 * 3600));
     const minutesRemaining = Math.floor((timeDiff % (1000 * 3600)) / (1000 * 60));
-    
+    const secondsRemaining = Math.floor((timeDiff % (1000 * 60)) / 1000);
+
     if (hoursRemaining > 0) {
       displayText = `${hoursRemaining}h ${minutesRemaining}m left`;
     } else if (minutesRemaining > 0) {
-      displayText = `${minutesRemaining}m left`;
+      displayText = `${minutesRemaining}m ${secondsRemaining}s left`;
+    } else if (secondsRemaining > 0) {
+      displayText = `${secondsRemaining}s left`;
     } else {
       displayText = "Due now";
     }
     colorClass = "text-yellow-600 font-medium";
+  } else if (daysRemaining < 2) {
+    // Show hours for less than 2 days remaining
+    const hoursRemaining = Math.floor(timeDiff / (1000 * 3600));
+    displayText = `${hoursRemaining}h left`;
+    colorClass = "text-yellow-600";
   } else {
     displayText = `${daysRemaining}d left`;
     colorClass = "text-green-600";
@@ -487,8 +501,8 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       size: 200,
       enableSorting: true,
     }),
-    columnHelper.accessor('follow_up_days', {
-      id: 'follow_up_days',
+    columnHelper.accessor('follow_up_date', {
+      id: 'follow_up_date',
       header: () => (
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4" />
@@ -498,64 +512,59 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       cell: ({ row }) => {
         const quote = row.original;
         const followUpStatus = getFollowUpStatus(quote);
-        const followUpDays = quote.follow_up_days;
+        const followUpDate = quote.follow_up_date;
 
-        // Show "Set days" dropdown if no follow-up is set
-        if (followUpDays === null || followUpDays === undefined || followUpDays <= 0) {
+        // Show DateTimePicker button if no follow-up is set
+        if (!followUpDate) {
           return (
-            <Select
-              key={`empty-${quote.id}-${followUpDays}-${forceUpdate}`}
-              value=""
-              onValueChange={(value) => onFollowUpDaysChange(quote.id, parseInt(value))}
-            >
-              <SelectTrigger className="w-32 h-8 border-0 text-xs px-3 bg-blue-50 text-blue-700">
-                <SelectValue placeholder="Set days" />
-              </SelectTrigger>
-              <SelectContent>
-                {[1, 2, 3, 4, 5, 7, 10, 14, 21, 30].map((days) => (
-                  <SelectItem key={days} value={days.toString()}>
-                    {days} day{days > 1 ? "s" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <DateTimePicker
+              date={undefined}
+              onDateChange={(date) => {
+                if (date && onFollowUpDateChange) {
+                  onFollowUpDateChange(quote.id, date);
+                }
+              }}
+              placeholder="Set deadline"
+              className="h-8 text-xs bg-blue-50 text-blue-700 border-0 hover:bg-blue-100"
+            />
           );
         }
 
-        // Show badge with follow-up status and hover menu to change
+        // Show DateTimePicker for updating/clearing when follow-up is set
         return (
-          <div key={`status-${quote.id}-${followUpDays}-${forceUpdate}`} className="relative">
-            <Badge
-              variant="outline"
-              className={`${followUpStatus.colorClass} border-0 cursor-pointer`}
-            >
-              {followUpStatus.displayText}
-            </Badge>
-            <div className="absolute top-0 left-0 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-              <Select
-                value={followUpDays?.toString() || ""}
-                onValueChange={(value) => onFollowUpDaysChange(quote.id, value === "clear" ? null : parseInt(value))}
-              >
-                <SelectTrigger className="w-24 h-7 border-0 text-xs px-2 bg-blue-50 text-blue-700">
-                  <SelectValue placeholder="Change" />
-                </SelectTrigger>
-                <SelectContent>
-                  {[1, 2, 3, 4, 5, 7, 10, 14, 21, 30].map((days) => (
-                    <SelectItem key={days} value={days.toString()}>
-                      {days}d
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="clear" className="text-red-600">
-                    Clear
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <DateTimePicker
+            date={followUpDate ? new Date(followUpDate) : undefined}
+            onDateChange={(date) => {
+              if (onFollowUpDateChange) {
+                onFollowUpDateChange(quote.id, date || null);
+              }
+            }}
+            placeholder={followUpStatus.displayText}
+            className={`h-8 text-xs ${followUpStatus.colorClass} border-0`}
+          />
         );
       },
       size: 140,
       enableSorting: false,
+    }),
+    columnHelper.accessor('won_date', {
+      id: 'won_date',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <CheckCircle className="w-4 h-4" />
+          Won Date
+        </div>
+      ),
+      cell: ({ getValue }) => {
+        const wonDate = getValue();
+        return wonDate ? (
+          <div className="text-sm text-gray-600">{formatLastUpdated(wonDate)}</div>
+        ) : (
+          <div className="text-sm text-gray-400">-</div>
+        );
+      },
+      size: 200,
+      enableSorting: true,
     }),
     columnHelper.display({
       id: 'actions',

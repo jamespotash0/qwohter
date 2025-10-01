@@ -36,7 +36,7 @@ export interface Quote {
   customization?: QuoteCustomization;
   status_last_updated?: string;
   quote_source?: string;
-  follow_up_days?: number;
+  follow_up_date?: string | null;
   form_data?: Record<string, any>;
   form_profile_id?: string;
   creator_name?: string;
@@ -179,7 +179,7 @@ export const useQuotesStore = create<QuotesState>()(
                   quote_details, job_details, delivery_details, labor_details,
                   wall_details, price_details, status, date_last_downloaded,
                   version, created_at, updated_at, customization, status_last_updated,
-                  quote_source, follow_up_days, form_data, form_profile_id
+                  quote_source, follow_up_date, won_date, archived, form_data, form_profile_id
                 `, { count: 'exact' })
                 .eq('created_by', session.user.id)
                 .order('created_at', { ascending: false })
@@ -201,7 +201,7 @@ export const useQuotesStore = create<QuotesState>()(
                   quote_details, job_details, delivery_details, labor_details,
                   wall_details, price_details, status, date_last_downloaded,
                   version, created_at, updated_at, customization, status_last_updated,
-                  quote_source, follow_up_days, form_data, form_profile_id
+                  quote_source, follow_up_date, won_date, archived, form_data, form_profile_id
                 `, { count: 'exact' })
                 .order('created_at', { ascending: false })
                 .limit(50);
