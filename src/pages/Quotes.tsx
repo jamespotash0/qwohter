@@ -26,11 +26,21 @@ const Quotes = () => {
   const isInitialized = useQuotesStore((state) => state.isInitialized);
   const initialize = useQuotesStore((state) => state.initialize);
   const updateQuote = useQuotesStore((state) => state.updateQuote);
+  const archiveQuote = useQuotesStore((state) => state.archiveQuote);
+  const unarchiveQuote = useQuotesStore((state) => state.unarchiveQuote);
   const createQuoteVersion = useQuotesStore((state) => state.createQuoteVersion);
   const deleteQuoteFromDB = useQuotesStore((state) => state.deleteQuote);
 
+  // Get filtered quotes using the selector
+  const getFilteredQuotes = useQuotesStore((state) => state.getFilteredQuotes);
+  const getArchivedQuotes = useQuotesStore((state) => state.getArchivedQuotes);
+
+  const filteredQuotes = getFilteredQuotes();
+  const archivedQuotes = getArchivedQuotes();
+
   const [deleteQuoteId, setDeleteQuoteId] = useState<string | null>(null);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   // Get current user for quotes initialization
   useEffect(() => {
@@ -53,7 +63,7 @@ const Quotes = () => {
 
   // Quote management functions
   const updateQuoteStatus = async (id: string, newStatus: string) => {
-    await updateQuote(id, { status: newStatus });
+    await updateQuote(id, { status: newStatus as any });
   };
 
   const updateQuoteSource = async (id: string, newSource: string) => {
@@ -62,7 +72,7 @@ const Quotes = () => {
 
   const handleFollowUpDaysChange = async (id: string, days: number | null) => {
     await updateQuote(id, {
-      follow_up_days: days,
+      follow_up_days: days as any,
       status_last_updated: new Date().toISOString()
     });
   };
@@ -338,10 +348,10 @@ const Quotes = () => {
           </div>
         </ContentCard>
       ) : (
-        /* Main quotes table - wrapped in consistent card styling */
+        /* Main quotes table with archive toggle */
         <ContentCard>
           <EnhancedQuotesTable
-            quotes={quotes}
+            quotes={showArchived ? archivedQuotes : filteredQuotes}
             onEditQuote={editQuote}
             onDeleteQuote={(id) => setDeleteQuoteId(id)}
             onStatusChange={updateQuoteStatus}
@@ -349,12 +359,24 @@ const Quotes = () => {
             onQuoteSourceChange={updateQuoteSource}
             onCreateVersion={handleCreateVersion}
             onCreateQuote={() => setShowNewQuoteDialog(true)}
+            onArchiveQuote={showArchived ? undefined : archiveQuote}
+            onUnarchiveQuote={showArchived ? unarchiveQuote : undefined}
+            isArchiveView={showArchived}
+            showArchived={showArchived}
+            archivedCount={archivedQuotes.length}
+            onToggleArchive={() => setShowArchived(!showArchived)}
             onBulkDelete={(ids) => {
               ids.forEach(id => deleteQuoteFromDB(id));
             }}
             onBulkStatusChange={(ids, status) => {
               ids.forEach(id => updateQuoteStatus(id, status));
             }}
+            onBulkArchive={showArchived ? undefined : (ids) => {
+              ids.forEach(id => archiveQuote(id));
+            }}
+            onBulkUnarchive={showArchived ? (ids) => {
+              ids.forEach(id => unarchiveQuote(id));
+            } : undefined}
             onExportCSV={handleExportCSV}
             onExportPDF={handleExportPDF}
           />

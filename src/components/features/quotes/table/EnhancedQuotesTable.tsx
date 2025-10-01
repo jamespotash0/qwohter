@@ -37,7 +37,9 @@ import {
   FileSpreadsheet,
   X,
   HelpCircle,
-  FileText
+  FileText,
+  Archive,
+  ArchiveRestore
 } from 'lucide-react';
 
 import { Button } from "@/components/ui/button";
@@ -62,8 +64,16 @@ interface EnhancedQuotesTableProps {
   onQuoteSourceChange: (id: string, source: string) => void;
   onCreateVersion?: (id: string) => void;
   onCreateQuote?: () => void;
+  onArchiveQuote?: (id: string) => void;
+  onUnarchiveQuote?: (id: string) => void;
+  isArchiveView?: boolean;
+  showArchived?: boolean;
+  archivedCount?: number;
+  onToggleArchive?: () => void;
   onBulkDelete?: (ids: string[]) => void;
   onBulkStatusChange?: (ids: string[], status: string) => void;
+  onBulkArchive?: (ids: string[]) => void;
+  onBulkUnarchive?: (ids: string[]) => void;
   onExportCSV?: (filteredData: Quote[]) => void;
   onExportPDF?: (filteredData: Quote[]) => void;
 }
@@ -72,7 +82,7 @@ const statusColors = {
   Incomplete: "bg-gray-100 text-gray-800",
   Draft: "bg-blue-100 text-blue-800",
   Pending: "bg-yellow-100 text-yellow-800",
-  Submitted: "bg-green-100 text-green-800",
+  Submitted: "bg-blue-100 text-blue-800",
   Won: "bg-emerald-100 text-emerald-800",
   Rejected: "bg-red-100 text-red-800",
 };
@@ -204,8 +214,16 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   onQuoteSourceChange,
   onCreateVersion,
   onCreateQuote,
+  onArchiveQuote,
+  onUnarchiveQuote,
+  isArchiveView = false,
+  showArchived = false,
+  archivedCount = 0,
+  onToggleArchive,
   onBulkDelete,
   onBulkStatusChange,
+  onBulkArchive,
+  onBulkUnarchive,
   onExportCSV,
   onExportPDF
 }) => {
@@ -504,7 +522,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
 
         // Show badge with follow-up status and hover menu to change
         return (
-          <div key={`status-${quote.id}-${followUpDays}-${forceUpdate}`} className="relative group">
+          <div key={`status-${quote.id}-${followUpDays}-${forceUpdate}`} className="relative">
             <Badge
               variant="outline"
               className={`${followUpStatus.colorClass} border-0 cursor-pointer`}
@@ -559,7 +577,19 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
+            {isArchiveView && onUnarchiveQuote ? (
+              <DropdownMenuItem onClick={() => onUnarchiveQuote(row.original.id)}>
+                <ArchiveRestore className="mr-2 h-4 w-4" />
+                Unarchive
+              </DropdownMenuItem>
+            ) : onArchiveQuote && (
+              <DropdownMenuItem onClick={() => onArchiveQuote(row.original.id)}>
+                <Archive className="mr-2 h-4 w-4" />
+                Archive
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
               onClick={() => onDeleteQuote(row.original.id)}
               className="text-red-600 focus:text-red-600"
             >
@@ -572,7 +602,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       size: 80,
       enableSorting: false,
     }),
-  ], [onEditQuote, onDeleteQuote, onStatusChange, onFollowUpDaysChange, onQuoteSourceChange, onCreateVersion, forceUpdate]);
+  ], [onEditQuote, onDeleteQuote, onStatusChange, onFollowUpDaysChange, onQuoteSourceChange, onCreateVersion, onArchiveQuote, onUnarchiveQuote, isArchiveView, forceUpdate]);
 
   const table = useReactTable({
     data: quotes,
@@ -693,6 +723,25 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           {/* Toolbar Controls - Hide when rows are selected */}
           {table.getFilteredSelectedRowModel().rows.length === 0 && (
           <div className="flex items-center space-x-2">
+            {/* Archive Toggle Button */}
+            {onToggleArchive && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onToggleArchive}
+                className={`w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)] ${
+                  showArchived ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : ''
+                }`}
+                title={showArchived ? 'Show Active Quotes' : `View Archives (${archivedCount})`}
+              >
+                {showArchived ? (
+                  <ArchiveRestore className="w-4 h-4" />
+                ) : (
+                  <Archive className="w-4 h-4" />
+                )}
+              </Button>
+            )}
+
             {/* Data Density */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

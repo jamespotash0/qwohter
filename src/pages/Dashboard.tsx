@@ -19,8 +19,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOrganizations } from "@/hooks/useOrganizations";
-import { useQuotesStore, type Quote } from "@/stores/quotes/quotesStore";
+import { useQuotesStore } from "@/stores/quotes/quotesStore";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { quoteActivityService, type QuoteActivity } from "@/services/quoteActivityService";
 
 /**
  * Dashboard - Executive Overview
@@ -30,6 +31,8 @@ import { useUserProfile } from "@/hooks/useUserProfile";
 const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const [recentActivities, setRecentActivities] = useState<QuoteActivity[]>([]);
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
 
   const quotes = useQuotesStore((state) => state.quotes);
   const quotesLoading = useQuotesStore((state) => state.isLoading);
@@ -51,6 +54,24 @@ const Dashboard = () => {
 
   const { profile } = useUserProfile(user?.id);
 
+  // Get organization ID for activity fetching
+  useEffect(() => {
+    const getOrganizationId = async () => {
+      if (!user?.id) return;
+
+      const { data } = await supabase
+        .from('memberships')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (data?.organization_id) {
+        setOrganizationId(data.organization_id);
+      }
+    };
+    getOrganizationId();
+  }, [user?.id]);
+
   // Initialize quotes store
   useEffect(() => {
     if (user?.id && !isInitialized) {
@@ -58,6 +79,24 @@ const Dashboard = () => {
       initialize();
     }
   }, [user?.id, isInitialized, initialize]);
+
+  // Fetch recent activities from database
+  useEffect(() => {
+    const fetchRecentActivities = async () => {
+      if (!organizationId) return;
+
+      const { data } = await quoteActivityService.getRecentActivities({
+        organizationId,
+        limit: 10
+      });
+
+      if (data) {
+        setRecentActivities(data);
+      }
+    };
+
+    fetchRecentActivities();
+  }, [organizationId]);
 
   // Calculate key metrics
   const metrics = useMemo(() => {
@@ -127,64 +166,64 @@ const Dashboard = () => {
       .sort((a, b) => a.daysRemaining - b.daysRemaining);
   }, [quotes]);
 
-  // Get recent activity - shows both creation and status update events
+  // Format activities from database for display
   const recentActivity = useMemo(() => {
-    const activities: any[] = [];
+    return recentActivities.map(activity => {
+      const projectName = activity.project_name || 'Untitled';
+      const userName = activity.user_name || 'Unknown';
+      const quoteNumber = activity.quote_number;
 
-    quotes.forEach(q => {
-      const projectName = q.project_name || q.quote_details?.project_name || 'Untitled';
-      const userName = q.creator_name || 'Unknown';
+      let message = '';
+      let eventText = '';
+      let type = 'created';
 
-      // Always add creation event
-      activities.push({
-        id: `${q.id}-created`,
-        type: 'created',
-        quote: q,
-        timestamp: q.created_at,
-        message: `${userName} created a ${projectName} (Quote #${q.proposal_number})`,
-        eventText: 'Created'
-      });
+      if (activity.activity_type === 'created') {
+        message = `${userName} created a ${projectName} (Quote #${quoteNumber})`;
+        eventText = 'Created';
+        type = 'created';
+      } else if (activity.activity_type === 'status_changed') {
+        const newStatus = activity.activity_details?.new_status || 'Unknown';
+        message = `${userName} marked ${projectName} (Quote #${quoteNumber}) as ${newStatus}`;
+        eventText = newStatus;
 
-      // Add status update event if status was updated after creation
-      if (q.status_last_updated && q.status_last_updated !== q.created_at) {
-        let eventText = '';
-        let type = 'created';
-
-        if (q.status === 'Won') {
-          eventText = 'Won';
-          type = 'won';
-        } else if (q.status === 'Rejected') {
-          eventText = 'Rejected';
-          type = 'lost';
-        } else if (q.status === 'Submitted') {
-          eventText = 'Submitted';
-          type = 'submitted';
-        } else if (q.status === 'Pending') {
-          eventText = 'Pending';
-          type = 'pending';
-        } else if (q.status === 'Incomplete') {
-          eventText = 'Incomplete';
-          type = 'incomplete';
-        }
-
-        if (eventText) {
-          activities.push({
-            id: `${q.id}-${q.status}`,
-            type,
-            quote: q,
-            timestamp: q.status_last_updated,
-            message: `${userName} marked ${projectName} (Quote #${q.proposal_number}) as ${eventText}`,
-            eventText
-          });
-        }
+        // Map status to type for icon coloring
+        if (newStatus === 'Won') type = 'won';
+        else if (newStatus === 'Rejected') type = 'lost';
+        else if (newStatus === 'Submitted') type = 'submitted';
+        else if (newStatus === 'Pending') type = 'pending';
+        else if (newStatus === 'Incomplete') type = 'incomplete';
+      } else if (activity.activity_type === 'archived') {
+        message = `${userName} Archived ${projectName} (Quote #${quoteNumber})`;
+        eventText = 'Archived';
+        type = 'archived';
+      } else if (activity.activity_type === 'unarchived') {
+        message = `${userName} Unarchived ${projectName} (Quote #${quoteNumber})`;
+        eventText = 'Unarchived';
+        type = 'unarchived';
+      } else if (activity.activity_type === 'updated') {
+        message = `${userName} updated ${projectName} (Quote #${quoteNumber})`;
+        eventText = 'Updated';
+        type = 'updated';
+      } else if (activity.activity_type === 'deleted') {
+        message = `${userName} deleted ${projectName} (Quote #${quoteNumber})`;
+        eventText = 'Deleted';
+        type = 'deleted';
+      } else if (activity.activity_type === 'reminder_set') {
+        const days = activity.activity_details?.follow_up_days || 0;
+        message = `${userName} set ${days}d reminder for ${projectName} (Quote #${quoteNumber})`;
+        eventText = 'Reminder Set';
+        type = 'reminder';
       }
-    });
 
-    // Sort by timestamp (most recent first) and take top 10
-    return activities
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 10);
-  }, [quotes]);
+      return {
+        id: activity.id,
+        type,
+        timestamp: activity.created_at,
+        message,
+        eventText
+      };
+    });
+  }, [recentActivities]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
