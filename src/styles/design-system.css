@@ -8,6 +8,59 @@
  * - Component-specific: btn-primary-bg, card-header-text
  * - Context-aware: sidebar-nav-hover, content-card-bg
  * - State-aware: input-focus-border, btn-hover-bg
+ *
+ * ========================================
+ * 📋 COLOR USAGE STATUS
+ * ========================================
+ *
+ * ✅ ACTIVELY USED - Custom Colors (Light Mode):
+ * --sidebar-bg: #F3F4F6                     (Sidebar background)
+ * --sidebar-nav-text: #9C9898               (Inactive nav text/icons)
+ * --sidebar-nav-text-hover: #000000         (Hover nav text - black)
+ * --sidebar-nav-text-active: #000000        (Active nav text - black)
+ * --sidebar-nav-bg-hover: #E8E9EA           (Hover background - light gray)
+ * --sidebar-nav-bg-active: rgba(247,159,65,0.45) (Active bg - orange 45%)
+ * --sidebar-nav-border-radius: 1rem         (Nav item radius - 16px)
+ * --sidebar-section-label: #777572          (Section label - "General")
+ * --sidebar-icon-default: #9C9898           (Inactive icons)
+ * --sidebar-icon-hover: #A0522D             (Hover icons - dark orange/brown)
+ * --sidebar-icon-active: #A0522D            (Active icons - dark orange/brown)
+ * --sidebar-icon-sun: #E5C719               (Sun icon - yellow, light mode only)
+ * --sidebar-icon-moon: #A8AAB8              (Moon icon - light gray, dark mode only)
+ * --sidebar-user-text: #000000              (User name - black)
+ * --sidebar-user-subtitle: #9C9898          (User role - gray)
+ * --sidebar-user-hover-bg: #E8E9EA          (User section hover)
+ * --sidebar-user-avatar-bg: #A0522D         (Avatar bg/border - dark orange/brown)
+ *
+ * ✅ ACTIVELY USED - Custom Colors (Dark Mode):
+ * --sidebar-bg: #1C1E26                     (Deep space gray background)
+ * --sidebar-border: #2A2D38                 (Sidebar border)
+ * --sidebar-nav-text: #7C7E8C               (Inactive nav text - muted gray)
+ * --sidebar-nav-text-hover: #FFFFFF         (Hover text - white)
+ * --sidebar-nav-text-active: #FFFFFF        (Active text - white)
+ * --sidebar-nav-bg-hover: #252834           (Hover bg - lighter gray)
+ * --sidebar-nav-bg-active: rgba(247,159,65,0.15) (Active bg - orange 15%)
+ * --sidebar-section-label: #6B6D7A          (Section label)
+ * --sidebar-icon-default: #7C7E8C           (Inactive icons)
+ * --sidebar-icon-hover: #FFFFFF             (Hover icons - white)
+ * --sidebar-icon-active: #F79F41            (Active icons - bright orange)
+ * --sidebar-user-text: #FFFFFF              (User name - white)
+ * --sidebar-user-subtitle: #7C7E8C          (User role - muted gray)
+ * --sidebar-user-hover-bg: #252834          (User section hover)
+ * --sidebar-user-avatar-bg: #6B6D7A         (Avatar bg/border)
+ *
+ * ⚠️ LEGACY/UNUSED - May need review or removal:
+ * --sidebar-nav-bg-inactive: transparent    (Redundant - default is transparent)
+ *
+ * 📦 STANDARD TOKENS - Used Throughout App:
+ * - Neutral colors (--neutral-50 to --neutral-900)
+ * - Brand colors (--brand-blue-*, --brand-yellow-*)
+ * - Status colors (--status-success-*, --status-error-*, etc.)
+ * - Spacing scale (--space-xs to --space-3xl)
+ * - Border radius (--radius-sm to --radius-2xl)
+ * - Typography (--font-primary, --text-*, --leading-*)
+ *
+ * ========================================
  */
 
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
@@ -212,8 +265,6 @@
     --sidebar-nav-text-active: #000000;           /* Active nav text - Black */
     --sidebar-nav-bg-hover: #E8E9EA;              /* Nav hover background - Light gray, lighter than sidebar */
     --sidebar-nav-bg-active: rgba(247, 159, 65, 0.45); /* Active nav background - Orange with 45% opacity (darker for light mode) */
-    --sidebar-nav-bg-inactive: transparent;       /* Inactive nav background */
-    --sidebar-nav-border-active: #F79F41;         /* Active nav border - Orange */
     --sidebar-nav-border-radius: 1rem;         /* 12px - Navigation item border radius */
 
     /* Section Labels */
@@ -225,11 +276,10 @@
     --sidebar-icon-active: #A0522D;               /* Active icon color - Dark orange/brown for contrast */
 
     /* Theme Toggle Icons */
-    --sidebar-icon-sun: #E5C719;                  /* Sun icon color */
-    --sidebar-icon-moon: #777572;                 /* Moon icon color */
+    --sidebar-icon-sun: #E5C719;                  /* Sun icon color - light mode only */
 
     /* User Profile in Sidebar */
-    --sidebar-user-bg: transparent;               /* User section background */
+   /* --sidebar-user-bg: transparent;                User section background */
     --sidebar-user-text: #000000;                 /* User name text - Black */
     --sidebar-user-subtitle: #9C9898;             /* User role text - Gray */
     --sidebar-user-hover-bg: #E8E9EA;             /* User hover background - Light gray */
@@ -377,8 +427,9 @@
     --sidebar-icon-default: #7C7E8C;              /* Muted gray for inactive icons */
     --sidebar-icon-hover: #FFFFFF;                /* White on hover in dark mode */
     --sidebar-icon-active: #F79F41;               /* Orange for active icon */
-    --sidebar-icon-sun: #E5C719;                  /* Keep sun yellow */
-    --sidebar-icon-moon: #A8AAB8;                 /* Lighter moon for dark mode */
+
+    /* Theme Toggle Icons - Dark Mode */
+    --sidebar-icon-moon: #A8AAB8;                 /* Moon icon color - dark mode only */
 
     /* User Profile - Dark Mode */
     --sidebar-user-text: #FFFFFF;                 /* White for user name */

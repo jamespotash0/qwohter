@@ -188,44 +188,45 @@ export function AppSidebar({
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
-                      className={`h-11 font-medium transition-all duration-200 flex items-center relative group/item ${
+                      className={`h-11 font-medium flex items-center relative group/item ${
                         isCollapsed ? 'justify-center w-full px-0' : 'px-3'
                       } ${
                         isActive
-                          ? 'text-[var(--sidebar-nav-text-active)] shadow-sm'
-                          : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)]'
+                          ? 'text-[var(--sidebar-nav-text-active)] shadow-sm [&:hover]:text-[var(--sidebar-nav-text-active)]'
+                          : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] transition-all duration-200'
                       }`}
                       style={{
                         borderRadius: 'var(--sidebar-nav-border-radius)',
                         ...(isActive
                           ? {
                               backgroundColor: 'var(--sidebar-nav-bg-active)',
+                              color: 'var(--sidebar-nav-text-active)',
                             }
                           : {})
                       }}
                       onClick={(e) => handleNavigate(item.path, e)}
                       onMouseEnter={(e) => {
-                        const target = e.currentTarget;
-                        target.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
+                        if (!isActive) {
+                          const target = e.currentTarget;
+                          target.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
+                        }
                       }}
                       onMouseLeave={(e) => {
                         if (!isActive) {
                           const target = e.currentTarget;
                           target.style.backgroundColor = 'transparent';
-                        } else {
-                          const target = e.currentTarget;
-                          target.style.backgroundColor = 'var(--sidebar-nav-bg-active)';
                         }
                       }}
                     >
                       <Icon
                         size={28}
                         weight="bold"
-                        className={`transition-colors ${
+                        className={`${
                           isActive
-                            ? 'text-[var(--sidebar-icon-active)]'
-                            : 'text-[var(--sidebar-icon-default)] hover:text-[var(--sidebar-icon-hover)]'
+                            ? 'text-[var(--sidebar-icon-active)] [&:hover]:text-[var(--sidebar-icon-active)]'
+                            : 'text-[var(--sidebar-icon-default)] hover:text-[var(--sidebar-icon-hover)] transition-colors'
                         }`}
+                        style={isActive ? { color: 'var(--sidebar-icon-active)' } : {}}
                       />
                       {!isCollapsed && <span className="ml-3">{item.title}</span>}
                     </SidebarMenuButton>
@@ -242,7 +243,7 @@ export function AppSidebar({
         {!isCollapsed ? (
           <div className="space-y-4">
             {/* User Profile Section */}
-            <div className="flex items-center justify-between p-3 rounded-xl hover:bg-[var(--sidebar-user-hover-bg)] transition-colors group">
+            <div className="flex items-center justify-between p-3 rounded-xl group">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Avatar className="h-9 w-9 ring-2 ring-[var(--sidebar-user-avatar-bg)]">
                   <AvatarImage src={effectiveProfile?.avatar_url} />
@@ -266,7 +267,7 @@ export function AppSidebar({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0 text-accent-primary hover:text-accent-primary hover:bg-sidebar-hover opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="h-8 w-8 p-0 text-[var(--sidebar-user-text)] hover:text-[var(--sidebar-user-text)] hover:bg-[var(--sidebar-user-hover-bg)] opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
