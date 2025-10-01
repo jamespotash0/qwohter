@@ -387,7 +387,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[getValue() as keyof typeof statusColors]}`}>
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-background border shadow-lg z-50">
+          <SelectContent>
             {getAvailableStatusOptions(getValue() || "Incomplete").map((status) => (
               <SelectItem key={status.value} value={status.value}>
                 {status.label}
@@ -408,7 +408,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           value={getValue() || ""} 
           onValueChange={(value) => onQuoteSourceChange(row.original.id, value)}
         >
-          <SelectTrigger className="w-full h-8 border-0 text-xs px-3 bg-gray-100 text-gray-800">
+          <SelectTrigger className="w-full h-8 border-0 text-xs px-3 bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
             <SelectValue placeholder="Select source" />
           </SelectTrigger>
           <SelectContent>
@@ -607,7 +607,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   return (
     <div className="space-y-0">
       {/* Table with integrated header */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div style={{ borderRadius: 'var(--radius-quotes-table)' }} className="border border-gray-200 bg-white dark:bg-[var(--content-card-bg)] dark:border-[var(--content-card-border)] shadow-sm overflow-hidden">
         {/* Combined Search and Toolbar */}
         <div className="flex items-center py-4 px-4 bg-white border-b border-gray-200">
           {/* Search Input - Very wide, takes most space */}
@@ -618,7 +618,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               placeholder="Search quotes... (try: client:ABC Corp, status:Draft)"
               value={globalFilter ?? ''}
               onChange={(e) => setGlobalFilter(e.target.value)}
-              className="w-full pl-10 pr-20 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-20 py-2 text-sm border border-gray-300 dark:border-[var(--input-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--sidebar-icon-active)] dark:focus:ring-[var(--sidebar-icon-active)] focus:border-[var(--sidebar-icon-active)] dark:bg-[var(--input-bg)] dark:text-[var(--input-text)]"
             />
 
             <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
@@ -627,7 +627,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => setGlobalFilter('')}
-                  className="w-8 h-6 p-0 hover:bg-gray-100 rounded-full"
+                  className="w-8 h-6 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)] rounded-full"
                   title="Clear search"
                 >
                   <X className="w-3 h-3" />
@@ -640,7 +640,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="w-8 h-6 p-0 hover:bg-gray-100 rounded-full"
+                      className="w-8 h-6 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)] rounded-full"
                       title="Search help"
                     >
                       <HelpCircle className="w-3 h-3" />
@@ -690,7 +690,8 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
             </div>
           </div>
 
-          {/* Toolbar Controls */}
+          {/* Toolbar Controls - Hide when rows are selected */}
+          {table.getFilteredSelectedRowModel().rows.length === 0 && (
           <div className="flex items-center space-x-2">
             {/* Data Density */}
             <DropdownMenu>
@@ -698,7 +699,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-10 h-10 p-0 hover:bg-[#e98135]"
+                  className="w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)]"
                   title={`Table Density: ${dataDensity.charAt(0).toUpperCase() + dataDensity.slice(1)}`}
                 >
                   <SlidersHorizontal className="w-4 h-4" />
@@ -707,44 +708,29 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               <DropdownMenuContent align="end" className="w-40">
                 <DropdownMenuItem
                   onClick={() => setDataDensity('compact')}
-                  className={dataDensity === 'compact' ? 'bg-blue-50 text-blue-700' : ''}
+                  className={dataDensity === 'compact' ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center">
-                      <div className="w-2 h-1 bg-gray-400 rounded mr-2"></div>
-                      Compact
-                    </div>
-                    {dataDensity === 'compact' && (
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    )}
+                  <div className="flex items-center">
+                    <div className={`w-2 h-1 rounded mr-2 ${dataDensity === 'compact' ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
+                    <span className={dataDensity === 'compact' ? 'font-semibold' : ''}>Compact</span>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setDataDensity('comfortable')}
-                  className={dataDensity === 'comfortable' ? 'bg-blue-50 text-blue-700' : ''}
+                  className={dataDensity === 'comfortable' ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center">
-                      <div className="w-2 h-2 bg-gray-400 rounded mr-2"></div>
-                      Comfortable
-                    </div>
-                    {dataDensity === 'comfortable' && (
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    )}
+                  <div className="flex items-center">
+                    <div className={`w-2 h-2 rounded mr-2 ${dataDensity === 'comfortable' ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
+                    <span className={dataDensity === 'comfortable' ? 'font-semibold' : ''}>Comfortable</span>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setDataDensity('spacious')}
-                  className={dataDensity === 'spacious' ? 'bg-blue-50 text-blue-700' : ''}
+                  className={dataDensity === 'spacious' ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center">
-                      <div className="w-2 h-3 bg-gray-400 rounded mr-2"></div>
-                      Spacious
-                    </div>
-                    {dataDensity === 'spacious' && (
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    )}
+                  <div className="flex items-center">
+                    <div className={`w-2 h-3 rounded mr-2 ${dataDensity === 'spacious' ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
+                    <span className={dataDensity === 'spacious' ? 'font-semibold' : ''}>Spacious</span>
                   </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -756,7 +742,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-10 h-10 p-0 hover:bg-[#f57b46]"
+                  className="w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)]"
                   title="Show/Hide Columns"
                 >
                   <Eye className="w-4 h-4" />
@@ -788,7 +774,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-10 h-10 p-0 hover:bg-[#f57b46]"
+                  className="w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)]"
                   title="Export Data"
                 >
                   <Download className="w-4 h-4" />
@@ -820,7 +806,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-10 h-10 p-0 hover:bg-[#f57b46]"
+                  className="w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)]"
                   title="Reset Table"
                 >
                   <RotateCcw className="w-4 h-4" />
@@ -844,43 +830,131 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 onClick={onCreateQuote}
                 variant="outline"
                 size="sm"
-                className="w-10 h-10 p-0 bg-[#e98135] hover:bg-[#d4751f] text-white border-[#e98135] hover:border-[#d4751f]"
+                className="w-10 h-10 p-0 bg-[var(--sidebar-icon-active)] hover:bg-[var(--sidebar-icon-hover)] text-white hover:text-white border-[var(--sidebar-icon-active)] hover:border-[var(--sidebar-icon-hover)] dark:bg-[var(--sidebar-icon-active)] dark:hover:bg-[var(--brand-orange-700)]"
                 title="Create New Quote"
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-5 h-5 text-white" />
               </Button>
             )}
           </div>
+          )}
+
+          {/* Bulk Actions - Show when rows are selected */}
+          {table.getFilteredSelectedRowModel().rows.length > 0 && (
+            <div className="flex items-center space-x-4">
+              <div className="text-sm font-medium text-[var(--content-header-text)] dark:text-[var(--content-header-text)]">
+                {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row{table.getFilteredSelectedRowModel().rows.length > 1 ? 's' : ''} selected
+              </div>
+
+              {/* Change Status */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-[var(--sidebar-nav-bg-hover)] px-3">
+                    Change Status
+                    <ChevronDown className="w-3 h-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => {
+                    if (onBulkStatusChange) {
+                      onBulkStatusChange(table.getFilteredSelectedRowModel().rows.map(row => row.original.id), 'Draft');
+                    }
+                  }}>
+                    Set to Draft
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    if (onBulkStatusChange) {
+                      onBulkStatusChange(table.getFilteredSelectedRowModel().rows.map(row => row.original.id), 'Pending');
+                    }
+                  }}>
+                    Set to Pending
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    if (onBulkStatusChange) {
+                      onBulkStatusChange(table.getFilteredSelectedRowModel().rows.map(row => row.original.id), 'Submitted');
+                    }
+                  }}>
+                    Set to Submitted
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    if (onBulkStatusChange) {
+                      onBulkStatusChange(table.getFilteredSelectedRowModel().rows.map(row => row.original.id), 'Won');
+                    }
+                  }}>
+                    Set to Won
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    if (onBulkStatusChange) {
+                      onBulkStatusChange(table.getFilteredSelectedRowModel().rows.map(row => row.original.id), 'Rejected');
+                    }
+                  }}>
+                    Set to Rejected
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* More Actions */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-[var(--sidebar-nav-bg-hover)] px-3">
+                    More Actions
+                    <ChevronDown className="w-3 h-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => {
+                    if (onExportCSV) {
+                      onExportCSV(table.getFilteredSelectedRowModel().rows.map(row => row.original));
+                    }
+                  }}>
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    Export Selected (CSV)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    if (onExportPDF) {
+                      onExportPDF(table.getFilteredSelectedRowModel().rows.map(row => row.original));
+                    }
+                  }}>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Export Selected (PDF)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    table.getFilteredSelectedRowModel().rows.forEach(row => {
+                      if (onCreateVersion) {
+                        onCreateVersion(row.original.id);
+                      }
+                    });
+                  }}>
+                    <Copy className="w-4 h-4 mr-2" />
+                    Duplicate Selected
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (onBulkDelete && confirm(`Are you sure you want to delete ${table.getFilteredSelectedRowModel().rows.length} quote${table.getFilteredSelectedRowModel().rows.length > 1 ? 's' : ''}?`)) {
+                        onBulkDelete(table.getFilteredSelectedRowModel().rows.map(row => row.original.id));
+                      }
+                    }}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Selected
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
 
-        {/* Bulk Actions Toolbar - Only show when items selected */}
-        {table.getFilteredSelectedRowModel().rows.length > 0 && (
-          <TableToolbar
-            table={table}
-            dataDensity={dataDensity}
-            setDataDensity={setDataDensity}
-            columnVisibilityOpen={columnVisibilityOpen}
-            setColumnVisibilityOpen={setColumnVisibilityOpen}
-            columnLabels={columnLabels}
-            resetColumnSizes={resetColumnSizes}
-            resetColumnVisibility={resetColumnVisibility}
-            onCreateQuote={undefined}
-            onBulkDelete={onBulkDelete}
-            onBulkStatusChange={onBulkStatusChange}
-            onCreateVersion={onCreateVersion}
-            onExportCSV={onExportCSV}
-            onExportPDF={onExportPDF}
-            setRowSelection={setRowSelection}
-          />
-        )}
         <div className="relative">
           {/* Scrollable Table Area */}
-          <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
-            <table 
-              className="border-collapse" 
-              style={{ 
+          <div className="overflow-x-auto overflow-y-auto max-h-[600px] scroll-smooth [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+            <table
+              className="border-collapse font-table"
+              style={{
                 width: Math.max(table.getTotalSize(), 1900),
-                minWidth: '1900px'
+                minWidth: '1900px',
+                fontFamily: 'var(--font-table)'
               }}
             >
               <thead className="bg-gray-50/80 border-b border-gray-200 sticky top-0 z-10">
@@ -945,22 +1019,20 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                   const paddingY = dataDensity === 'compact' ? 'py-1' : dataDensity === 'comfortable' ? 'py-2' : 'py-4';
                   
                   return (
-                    <tr 
-                      key={row.id} 
-                      className={`group hover:bg-gray-50/50 transition-colors border-b border-gray-100 last:border-b-0 ${rowHeight} ${
-                        row.getIsSelected() ? 'bg-blue-50/30' : ''
-                      }`}
+                    <tr
+                      key={row.id}
+                      className={`group hover:bg-gray-50/50 dark:hover:bg-[var(--content-table-row-hover)] transition-colors border-b border-gray-100 dark:border-[var(--content-table-border)] last:border-b-0 ${rowHeight}`}
                     >
                       {row.getVisibleCells().map((cell) => {
                         const isActionsColumn = cell.column.id === 'actions';
                         return (
                           <td
                             key={cell.id}
-                            className={`px-4 ${paddingY} text-sm border-r border-gray-100 last:border-r-0 ${
-                              isActionsColumn 
-                                ? 'sticky right-0 bg-white group-hover:bg-gray-50 border-l border-gray-200 z-10' 
+                            className={`px-4 ${paddingY} text-sm border-r border-gray-100 dark:border-[var(--content-table-border)] last:border-r-0 ${
+                              isActionsColumn
+                                ? 'sticky right-0 bg-white dark:bg-[var(--content-table-bg)] group-hover:bg-gray-50 dark:group-hover:bg-[var(--content-table-row-hover)] border-l border-gray-200 dark:border-[var(--content-table-border)] z-10'
                                 : ''
-                            } ${row.getIsSelected() && isActionsColumn ? 'bg-blue-50' : ''}`}
+                            }`}
                             style={{ width: cell.column.getSize() }}
                           >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}

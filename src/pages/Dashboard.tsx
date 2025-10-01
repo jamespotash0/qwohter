@@ -1,27 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { PageContent, ContentCard } from "@/components/common/layout";
+import { PageContent } from "@/components/common/layout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   FileText,
   Plus,
-  MoreHorizontal,
-  ArrowUpRight,
+  DollarSign,
   TrendingUp,
-  Users
+  AlertCircle,
+  Clock,
+  CheckCircle,
+  XCircle,
+  FileSpreadsheet,
+  Upload,
+  Bell,
+  ArrowUpRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOrganizations } from "@/hooks/useOrganizations";
-import { useQuotesStore } from "@/stores/quotes/quotesStore";
+import { useQuotesStore, type Quote } from "@/stores/quotes/quotesStore";
 import { useUserProfile } from "@/hooks/useUserProfile";
 
 /**
- * Streamlined Dashboard using AppLayout
+ * Dashboard - Executive Overview
  *
- * This demonstrates the new unified approach:
- * - AppLayout handles authentication, layout, sidebar automatically
- * - ContentCard provides consistent card styling
- * - Focus only on dashboard-specific content
+ * Shows key metrics, quick actions, reminders, and recent activity
  */
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -32,9 +36,9 @@ const Dashboard = () => {
   const isInitialized = useQuotesStore((state) => state.isInitialized);
   const initialize = useQuotesStore((state) => state.initialize);
 
-  useOrganizations(); // Keep for side effects
+  useOrganizations();
 
-  // Get current user for dashboard data
+  // Get current user
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -47,7 +51,7 @@ const Dashboard = () => {
 
   const { profile } = useUserProfile(user?.id);
 
-  // Initialize quotes store only once when user is available
+  // Initialize quotes store
   useEffect(() => {
     if (user?.id && !isInitialized) {
       console.log('🔑 Dashboard: User authenticated, initializing quotes store...');
@@ -55,153 +59,406 @@ const Dashboard = () => {
     }
   }, [user?.id, isInitialized, initialize]);
 
-  // Calculate stats
-  const recentQuotes = quotes.slice(0, 5);
+  // Calculate key metrics
+  const metrics = useMemo(() => {
+    const thisMonth = new Date();
+    thisMonth.setDate(1);
+    thisMonth.setHours(0, 0, 0, 0);
+
+    const wonQuotesThisMonth = quotes.filter(q => {
+      if (q.status !== 'Won') return false;
+      const statusDate = q.status_last_updated ? new Date(q.status_last_updated) : new Date(q.created_at);
+      return statusDate >= thisMonth;
+    });
+
+    const totalRevenue = wonQuotesThisMonth.reduce((sum, q) =>
+      sum + (q.price_details?.final_selling_price || 0), 0
+    );
+
+    const activeQuotes = quotes.filter(q =>
+      ['Pending', 'Submitted'].includes(q.status || '')
+    ).length;
+
+    const wonQuotes = quotes.filter(q => q.status === 'Won').length;
+    const rejectedQuotes = quotes.filter(q => q.status === 'Rejected').length;
+    const totalDecidedQuotes = wonQuotes + rejectedQuotes;
+    const winRate = totalDecidedQuotes > 0 ? ((wonQuotes / totalDecidedQuotes) * 100).toFixed(1) : '0';
+
+    // Calculate overdue follow-ups
+    const today = new Date();
+    const overdueFollowups = quotes.filter(q => {
+      if (!q.follow_up_days || q.follow_up_days <= 0) return false;
+      const baseDate = q.status_last_updated ? new Date(q.status_last_updated) : new Date(q.created_at);
+      const followUpDate = new Date(baseDate);
+      followUpDate.setDate(followUpDate.getDate() + q.follow_up_days);
+      return followUpDate < today;
+    }).length;
+
+    return {
+      totalRevenue,
+      activeQuotes,
+      winRate,
+      overdueFollowups
+    };
+  }, [quotes]);
+
+  // Get reminders (all quotes with follow-up days set)
+  const reminders = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return quotes
+      .filter(q => q.follow_up_days && q.follow_up_days > 0)
+      .map(q => {
+        const baseDate = q.status_last_updated ? new Date(q.status_last_updated) : new Date(q.created_at);
+        baseDate.setHours(0, 0, 0, 0);
+        const followUpDate = new Date(baseDate);
+        followUpDate.setDate(followUpDate.getDate() + (q.follow_up_days || 0));
+        const daysRemaining = Math.ceil((followUpDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+
+        return {
+          quote: q,
+          followUpDate,
+          daysRemaining,
+          isOverdue: daysRemaining < 0,
+          isUpcoming: daysRemaining >= 0
+        };
+      })
+      .sort((a, b) => a.daysRemaining - b.daysRemaining);
+  }, [quotes]);
+
+  // Get recent activity - shows both creation and status update events
+  const recentActivity = useMemo(() => {
+    const activities: any[] = [];
+
+    quotes.forEach(q => {
+      const projectName = q.project_name || q.quote_details?.project_name || 'Untitled';
+      const userName = q.creator_name || 'Unknown';
+
+      // Always add creation event
+      activities.push({
+        id: `${q.id}-created`,
+        type: 'created',
+        quote: q,
+        timestamp: q.created_at,
+        message: `${userName} created a ${projectName} (Quote #${q.proposal_number})`,
+        eventText: 'Created'
+      });
+
+      // Add status update event if status was updated after creation
+      if (q.status_last_updated && q.status_last_updated !== q.created_at) {
+        let eventText = '';
+        let type = 'created';
+
+        if (q.status === 'Won') {
+          eventText = 'Won';
+          type = 'won';
+        } else if (q.status === 'Rejected') {
+          eventText = 'Rejected';
+          type = 'lost';
+        } else if (q.status === 'Submitted') {
+          eventText = 'Submitted';
+          type = 'submitted';
+        } else if (q.status === 'Pending') {
+          eventText = 'Pending';
+          type = 'pending';
+        } else if (q.status === 'Incomplete') {
+          eventText = 'Incomplete';
+          type = 'incomplete';
+        }
+
+        if (eventText) {
+          activities.push({
+            id: `${q.id}-${q.status}`,
+            type,
+            quote: q,
+            timestamp: q.status_last_updated,
+            message: `${userName} marked ${projectName} (Quote #${q.proposal_number}) as ${eventText}`,
+            eventText
+          });
+        }
+      }
+    });
+
+    // Sort by timestamp (most recent first) and take top 10
+    return activities
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 10);
+  }, [quotes]);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  const getTimeAgo = (date: string) => {
+    const now = new Date();
+    const past = new Date(date);
+    const diffMs = now.getTime() - past.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+    return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+  };
 
   return (
     <PageContent>
       {/* Dashboard Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-semibold text-[var(--content-header-text)]">
-            Dashboard
-          </h1>
-          <p className="mt-2 text-base text-[var(--content-body-text)]">
-            Welcome back, {profile?.full_name || user?.email || 'User'}
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <p className="text-sm text-[var(--content-muted-text)]">Today</p>
-            <p className="text-sm font-medium text-[var(--content-body-text)]">
-              {new Date().toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'short',
-                day: 'numeric'
-              })}
-            </p>
-          </div>
-          <Button
-            onClick={() => navigate('/quotes/new')}
-            className="bg-[var(--content-button-primary-bg)] hover:bg-[var(--content-button-primary-hover)] text-white"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Quote
-          </Button>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-semibold text-[var(--content-header-text)] dark:text-[var(--content-header-text)]">
+          Welcome back, {profile?.full_name || user?.email?.split('@')[0] || 'User'}
+        </h1>
+        <p className="mt-2 text-base text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)]">
+          Here's what's happening with your quotes today
+        </p>
+      </div>
+
+      {/* Key Metrics Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Total Revenue */}
+        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800">
+                <DollarSign className="w-6 h-6 text-green-600 dark:text-green-300" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Revenue This Month</h3>
+                <p className="text-2xl font-bold text-[var(--content-header-text)]">{formatCurrency(metrics.totalRevenue)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Active Quotes */}
+        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800">
+                <FileText className="w-6 h-6 text-blue-600 dark:text-blue-300" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Active Quotes</h3>
+                <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.activeQuotes}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Win Rate */}
+        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
+                <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-300" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Win Rate</h3>
+                <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.winRate}%</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Overdue Follow-ups */}
+        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className={`p-3 rounded-full bg-gradient-to-br ${metrics.overdueFollowups > 0 ? 'from-red-100 to-red-200 dark:from-red-900 dark:to-red-800' : 'from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600'}`}>
+                <AlertCircle className={`w-6 h-6 ${metrics.overdueFollowups > 0 ? 'text-red-600 dark:text-red-300' : 'text-gray-600 dark:text-gray-300'}`} />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Overdue Follow-ups</h3>
+                <p className={`text-2xl font-bold ${metrics.overdueFollowups > 0 ? 'text-red-600 dark:text-red-400' : 'text-[var(--content-header-text)]'}`}>{metrics.overdueFollowups}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Quotes */}
-        <div className="lg:col-span-2">
-          <ContentCard title="Recent Quotes">
-            <div className="space-y-4">
-              {quotesLoading ? (
-                <div className="text-center py-12">
-                  <div className="w-8 h-8 border-4 border-[var(--content-button-primary-bg)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-[var(--content-muted-text)]">Loading quotes...</p>
-                </div>
-              ) : recentQuotes.length > 0 ? (
-                <>
-                  {recentQuotes.map((quote) => (
-                    <div key={quote.id} className="flex items-center justify-between p-4 rounded-lg hover:bg-[var(--content-table-row-hover)] transition-colors group cursor-pointer border border-[var(--content-card-border)]"
-                         onClick={() => navigate(`/quotes/edit/${quote.proposal_number}`)}>
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-lg bg-[var(--content-button-primary-bg)] bg-opacity-10 flex items-center justify-center">
-                          <FileText className="w-5 h-5 text-[var(--content-button-primary-bg)]" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-[var(--content-header-text)] group-hover:text-[var(--content-button-primary-bg)] transition-colors">
-                            {quote.project_name || quote.quote_details?.project_name || 'Untitled Project'}
-                          </p>
-                          <p className="text-sm text-[var(--content-muted-text)]">
-                            {new Date(quote.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          quote.status === 'Draft'
-                            ? 'bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]'
-                            : quote.status === 'Submitted'
-                            ? 'bg-[var(--brand-primary)] bg-opacity-10 text-[var(--brand-primary)]'
-                            : quote.status === 'Won'
-                            ? 'bg-[var(--status-success-bg)] text-[var(--status-success-text)]'
-                            : 'bg-[var(--text-muted)] bg-opacity-10 text-[var(--text-muted)]'
-                        }`}>
-                          {quote.status}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Add more actions here
-                          }}
+      <div className="space-y-8">
+        {/* Main Layout: Left Column (Quick Actions + Recent Activity) and Right Column (Reminders & Alerts) */}
+        <div className="grid grid-cols-1 lg:grid-cols-[480px_600px] xl:grid-cols-[480px_1fr] gap-8">
+          {/* Left Column */}
+          <div className="space-y-8">
+            {/* Quick Actions Card */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-[var(--content-header-text)]">
+                <Plus className="w-5 h-5" />
+                Quick Actions
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <Button
+                onClick={() => navigate('/newquote')}
+                className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white"
+              >
+                <Plus className="w-5 h-5" />
+                <span className="font-medium">Create New Quote</span>
+              </Button>
+
+              <Button
+                onClick={() => navigate('/quotes')}
+                className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-white hover:bg-blue-50 text-[var(--content-header-text)] border border-gray-200"
+              >
+                <FileSpreadsheet className="w-5 h-5" />
+                <span className="font-medium">Use Template</span>
+              </Button>
+
+              <Button
+                onClick={() => navigate('/quotes')}
+                className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-white hover:bg-blue-50 text-[var(--content-header-text)] border border-gray-200"
+              >
+                <Upload className="w-5 h-5" />
+                <span className="font-medium">Import from Form</span>
+              </Button>
+            </div>
+            </CardContent>
+            </Card>
+
+            {/* Recent Activity Card */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-[var(--content-header-text)]">
+                  <Clock className="w-5 h-5" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="relative">
+                {recentActivity.length > 0 ? (
+                  <>
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 -mr-2 scroll-smooth [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+                    {recentActivity.map((activity) => {
+                      const activityTime = getTimeAgo(activity.timestamp);
+
+                      return (
+                        <div
+                          key={activity.id}
+                          className="relative flex gap-3 p-4 bg-white rounded-lg border border-gray-200"
                         >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                            activity.type === 'won'
+                              ? 'bg-green-100 dark:bg-green-900/30'
+                              : activity.type === 'lost'
+                              ? 'bg-red-100 dark:bg-red-900/30'
+                              : activity.type === 'submitted'
+                              ? 'bg-blue-100 dark:bg-blue-900/30'
+                              : activity.type === 'pending'
+                              ? 'bg-yellow-100 dark:bg-yellow-900/30'
+                              : 'bg-gray-100 dark:bg-gray-800/30'
+                          }`}>
+                            {activity.type === 'won' && <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />}
+                            {activity.type === 'lost' && <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />}
+                            {activity.type === 'submitted' && <ArrowUpRight className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                            {activity.type === 'pending' && <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />}
+                            {activity.type === 'created' && <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
+                            {activity.type === 'incomplete' && <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="absolute top-2 right-2 text-xs text-[var(--content-muted-text)] whitespace-nowrap">
+                              {activityTime}
+                            </div>
+                            <p className="text-sm text-[var(--content-header-text)] pr-20 break-words">
+                              {activity.message}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    </div>
+                    {recentActivity.length > 3 && (
+                      <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[var(--content-card-bg)] to-transparent pointer-events-none" />
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-12">
+                    <Clock className="w-12 h-12 text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
+                    <p className="text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)]">
+                      No recent activity
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - Reminders & Alerts */}
+          <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-[var(--content-header-text)]">
+                <Bell className="w-5 h-5" />
+                Reminders & Alerts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+            {reminders.length > 0 ? (
+              <div className="space-y-2 max-h-[320px] overflow-y-auto pr-2 -mr-2">
+                {reminders.map((reminder) => {
+                  const followUpDate = reminder.followUpDate;
+                  const formattedDate = followUpDate.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  });
+
+                  return (
+                    <div
+                      key={reminder.quote.id}
+                      onClick={() => navigate('/quotes')}
+                      className={`p-4 rounded-lg border transition-colors cursor-pointer ${
+                        reminder.isOverdue
+                          ? 'bg-red-50 hover:bg-red-100 border-red-200'
+                          : 'bg-white hover:bg-blue-50 border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-[var(--content-header-text)] truncate mb-1">
+                            {reminder.quote.project_name || reminder.quote.quote_details?.project_name || 'Untitled Project'} - #{reminder.quote.proposal_number}
+                          </p>
+                          <div className="space-y-0.5 text-xs text-[var(--content-muted-text)]">
+                            {(reminder.quote.job_details?.client_company || reminder.quote.job_details?.client_name) && (
+                              <p className="truncate">{reminder.quote.job_details?.client_company || reminder.quote.job_details?.client_name}</p>
+                            )}
+                            {reminder.quote.creator_name && (
+                              <p>Created by {reminder.quote.creator_name}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                          <p className={`text-xs font-semibold ${reminder.isOverdue ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
+                            {reminder.isOverdue ? `${Math.abs(reminder.daysRemaining)}d overdue` : reminder.daysRemaining === 0 ? 'Due today' : `${reminder.daysRemaining}d left`}
+                          </p>
+                          <span className="text-xs text-[var(--content-muted-text)]">{formattedDate}</span>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                  <div className="pt-4 border-t border-[var(--content-card-border)]">
-                    <Button
-                      variant="ghost"
-                      onClick={() => navigate('/quotes')}
-                      className="w-full text-[var(--content-button-primary-bg)] hover:bg-[var(--content-button-primary-bg)] hover:bg-opacity-10"
-                    >
-                      View all quotes
-                      <ArrowUpRight className="h-4 w-4 ml-1" />
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-12">
-                  <FileText className="h-12 w-12 text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
-                  <p className="text-[var(--content-muted-text)] mb-4">No quotes yet</p>
-                  <Button
-                    onClick={() => navigate('/quotes/new')}
-                    className="bg-[var(--content-button-primary-bg)] hover:bg-[var(--content-button-primary-hover)] text-white"
-                  >
-                    Create your first quote
-                  </Button>
-                </div>
-              )}
-            </div>
-          </ContentCard>
-        </div>
-
-        {/* Quick Actions */}
-        <div>
-          <ContentCard title="Quick Actions">
-            <div className="space-y-4">
-              <Button
-                onClick={() => navigate('/quotes/new')}
-                className="w-full bg-[var(--content-button-primary-bg)] hover:bg-[var(--content-button-primary-hover)] text-white justify-start h-12"
-              >
-                <Plus className="h-5 w-5 mr-3" />
-                Create New Quote
-              </Button>
-
-              <Button
-                onClick={() => navigate('/team')}
-                className="w-full bg-[var(--content-button-secondary-bg)] hover:bg-[var(--content-button-secondary-hover)] text-[var(--content-body-text)] justify-start h-12 border-0"
-              >
-                <Users className="h-5 w-5 mr-3" />
-                Manage Team
-              </Button>
-
-              <Button
-                onClick={() => navigate('/analytics')}
-                className="w-full bg-[var(--content-button-secondary-bg)] hover:bg-[var(--content-button-secondary-hover)] text-[var(--content-body-text)] justify-start h-12 border-0"
-              >
-                <TrendingUp className="h-5 w-5 mr-3" />
-                View Analytics
-              </Button>
-            </div>
-          </ContentCard>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Bell className="w-12 h-12 text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
+                <p className="text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)]">
+                  No reminders or alerts
+                </p>
+                <p className="text-sm text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] mt-1">
+                  All caught up!
+                </p>
+              </div>
+            )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </PageContent>

@@ -138,6 +138,7 @@
     --radius-xl: 1rem;       /* 16px - Large cards */
     --radius-2xl: 1.5rem;    /* 24px - Modal, dialogs */
     --radius-full: 9999px;   /* Full rounded (pills, circles) */
+    --radius-quotes-table: 0.5rem; /* 8px - Quotes table card (less rounded) */
 
     /* ========================================
        📏 SIDEBAR DIMENSIONS

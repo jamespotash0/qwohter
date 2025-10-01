@@ -190,7 +190,7 @@ const Team = () => {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 transition-all duration-300 hover:scale-[1.02] hover:shadow-[var(--content-card-hover-shadow)] cursor-pointer">
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="p-3 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800">
@@ -204,7 +204,7 @@ const Team = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 transition-all duration-300 hover:scale-[1.02] hover:shadow-[var(--content-card-hover-shadow)] cursor-pointer">
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800">
@@ -218,7 +218,7 @@ const Team = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 transition-all duration-300 hover:scale-[1.02] hover:shadow-[var(--content-card-hover-shadow)] cursor-pointer">
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="p-3 rounded-full bg-gradient-to-br from-amber-100 to-amber-200 dark:from-amber-900 dark:to-amber-800">
@@ -232,7 +232,7 @@ const Team = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 transition-all duration-300 hover:scale-[1.02] hover:shadow-[var(--content-card-hover-shadow)] cursor-pointer">
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-bg)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="p-3 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900 dark:to-orange-800">

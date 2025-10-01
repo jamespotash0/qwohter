@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuotesStore, type Quote } from "@/stores/quotes/quotesStore";
 import { EnhancedQuotesTable } from "@/components/features/quotes/table/EnhancedQuotesTable";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
+import { FileText, Plus, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 /**
  * Streamlined Quotes Page using AppLayout
@@ -269,27 +271,95 @@ const Quotes = () => {
 
   return (
     <PageContent title="Quotes" subtitle="Manage and track all your project quotes" showPageHeader={true}>
-      {/* Main quotes table - wrapped in consistent card styling */}
-      <ContentCard>
-        <EnhancedQuotesTable
-          quotes={quotes}
-          onEditQuote={editQuote}
-          onDeleteQuote={(id) => setDeleteQuoteId(id)}
-          onStatusChange={updateQuoteStatus}
-          onFollowUpDaysChange={handleFollowUpDaysChange}
-          onQuoteSourceChange={updateQuoteSource}
-          onCreateVersion={handleCreateVersion}
-          onCreateQuote={() => setShowNewQuoteDialog(true)}
-          onBulkDelete={(ids) => {
-            ids.forEach(id => deleteQuoteFromDB(id));
-          }}
-          onBulkStatusChange={(ids, status) => {
-            ids.forEach(id => updateQuoteStatus(id, status));
-          }}
-          onExportCSV={handleExportCSV}
-          onExportPDF={handleExportPDF}
-        />
-      </ContentCard>
+      {/* Empty State - Show when no quotes exist */}
+      {!quotesLoading && quotes.length === 0 ? (
+        <ContentCard>
+          <div className="flex flex-col items-center justify-center py-16 px-6">
+            <div className="relative mb-6">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 flex items-center justify-center">
+                <FileText className="w-12 h-12 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-lg">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+            </div>
+
+            <h3 className="text-2xl font-semibold text-[var(--content-header-text)] dark:text-[var(--content-header-text)] mb-2">
+              No quotes yet
+            </h3>
+
+            <p className="text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] text-center max-w-md mb-8">
+              Start creating professional quotes for your wall covering projects. Track proposals, manage client communications, and win more business.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={() => setShowNewQuoteDialog(true)}
+                className="bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white px-6 py-2.5"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Create Your First Quote
+              </Button>
+
+              <Button
+                variant="outline"
+                onClick={() => navigate('/settings')}
+                className="border-gray-300 dark:border-[var(--content-card-border)] hover:bg-[var(--sidebar-nav-bg-hover)]"
+              >
+                Configure Settings
+              </Button>
+            </div>
+
+            <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl">
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-3">
+                  <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h4 className="font-medium text-sm text-[var(--content-header-text)] mb-1">Professional Templates</h4>
+                <p className="text-xs text-[var(--content-muted-text)]">Pre-built templates for faster quote creation</p>
+              </div>
+
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-3">
+                  <Sparkles className="w-6 h-6 text-green-600 dark:text-green-400" />
+                </div>
+                <h4 className="font-medium text-sm text-[var(--content-header-text)] mb-1">Smart Tracking</h4>
+                <p className="text-xs text-[var(--content-muted-text)]">Follow-ups and status management built-in</p>
+              </div>
+
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mx-auto mb-3">
+                  <Plus className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                </div>
+                <h4 className="font-medium text-sm text-[var(--content-header-text)] mb-1">Easy Collaboration</h4>
+                <p className="text-xs text-[var(--content-muted-text)]">Share quotes with your team seamlessly</p>
+              </div>
+            </div>
+          </div>
+        </ContentCard>
+      ) : (
+        /* Main quotes table - wrapped in consistent card styling */
+        <ContentCard>
+          <EnhancedQuotesTable
+            quotes={quotes}
+            onEditQuote={editQuote}
+            onDeleteQuote={(id) => setDeleteQuoteId(id)}
+            onStatusChange={updateQuoteStatus}
+            onFollowUpDaysChange={handleFollowUpDaysChange}
+            onQuoteSourceChange={updateQuoteSource}
+            onCreateVersion={handleCreateVersion}
+            onCreateQuote={() => setShowNewQuoteDialog(true)}
+            onBulkDelete={(ids) => {
+              ids.forEach(id => deleteQuoteFromDB(id));
+            }}
+            onBulkStatusChange={(ids, status) => {
+              ids.forEach(id => updateQuoteStatus(id, status));
+            }}
+            onExportCSV={handleExportCSV}
+            onExportPDF={handleExportPDF}
+          />
+        </ContentCard>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteQuoteId} onOpenChange={() => setDeleteQuoteId(null)}>
