@@ -526,7 +526,7 @@
     --sidebar-user-text: #FFFFFF;                 /* White for user name */
     --sidebar-user-subtitle: #7C7E8C;             /* Muted gray for role */
     --sidebar-user-hover-bg: #252834;             /* Slightly lighter gray for hover */
-    --sidebar-user-avatar-bg: #6B6D7A;            /* Muted gray for avatar */
+    --sidebar-user-avatar-bg: #F79F41;            /* Orange for avatar */
 
     /* ========================================
        🎨 MAIN CONTENT AREA - DARK MODE
