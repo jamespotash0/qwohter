@@ -28,10 +28,10 @@ export const PageContent: React.FC<PageContentProps> = ({
       {showPageHeader && (title || subtitle) && (
         <div className="mb-6">
           {title && (
-            <h1 className="text-2xl font-bold text-primary mb-1">{title}</h1>
+            <h1 className="text-2xl font-bold text-[var(--content-header-text)] mb-1">{title}</h1>
           )}
           {subtitle && (
-            <p className="text-secondary">{subtitle}</p>
+            <p className="text-[var(--content-muted-text)]">{subtitle}</p>
           )}
         </div>
       )}

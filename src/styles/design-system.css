@@ -61,6 +61,62 @@
  * - Typography (--font-primary, --text-*, --leading-*)
  *
  * ========================================
+ * 🎨 MAIN CONTENT AREA COLOR SCHEME
+ * ========================================
+ *
+ * ✅ LIGHT MODE - Main Content:
+ * --content-bg: #FFFFFF                     (Pure white background)
+ * --content-header-text: #1F2937            (Dark gray - headings)
+ * --content-body-text: #374151              (Medium dark gray - body text)
+ * --content-muted-text: #6B7280             (Muted gray - secondary text)
+ *
+ * --content-card-bg: #FAFAFA                (Off-white card background)
+ * --content-card-border: #E5E7EB            (Light gray border)
+ * --content-card-shadow: 0 1px 3px rgba(0,0,0,0.08) (Subtle shadow)
+ * --content-card-hover-shadow: 0 4px 12px rgba(0,0,0,0.12) (Elevated shadow)
+ *
+ * --content-number-primary: #A0522D         (Dark orange/brown - primary metrics)
+ * --content-number-success: #059669         (Green - positive metrics)
+ * --content-number-warning: #D97706         (Amber - warning metrics)
+ * --content-number-info: #2563EB            (Blue - info metrics)
+ *
+ * --content-table-bg: #FFFFFF               (White table background)
+ * --content-table-row-hover: #F9FAFB        (Very light gray hover)
+ * --content-table-row-selected: rgba(160,82,45,0.08) (Light brown tint)
+ * --content-table-border: #E5E7EB           (Light gray borders)
+ *
+ * --content-button-primary-bg: #A0522D      (Dark orange/brown)
+ * --content-button-primary-hover: #8B4513   (Darker brown on hover)
+ * --content-button-secondary-bg: #F3F4F6    (Light gray)
+ * --content-button-secondary-hover: #E5E7EB (Medium light gray)
+ *
+ * ✅ DARK MODE - Main Content:
+ * --content-bg: #0F1419                     (Deep dark blue-gray)
+ * --content-header-text: #F9FAFB            (Off-white headings)
+ * --content-body-text: #D1D5DB              (Light gray body text)
+ * --content-muted-text: #9CA3AF             (Muted gray secondary text)
+ *
+ * --content-card-bg: #1A1F2E                (Slightly lighter than background)
+ * --content-card-border: #2A2D38            (Subtle border)
+ * --content-card-shadow: 0 2px 8px rgba(0,0,0,0.4) (Stronger shadow for depth)
+ * --content-card-hover-shadow: 0 6px 16px rgba(0,0,0,0.5) (Elevated shadow)
+ *
+ * --content-number-primary: #F79F41         (Bright orange - primary metrics)
+ * --content-number-success: #10B981         (Bright green - positive)
+ * --content-number-warning: #F59E0B         (Bright amber - warning)
+ * --content-number-info: #60A5FA            (Bright blue - info)
+ *
+ * --content-table-bg: #1A1F2E               (Card background)
+ * --content-table-row-hover: #242938        (Lighter hover)
+ * --content-table-row-selected: rgba(247,159,65,0.12) (Orange tint)
+ * --content-table-border: #2A2D38           (Subtle borders)
+ *
+ * --content-button-primary-bg: #F79F41      (Bright orange)
+ * --content-button-primary-hover: #FF8C42   (Lighter orange hover)
+ * --content-button-secondary-bg: #242938    (Dark gray)
+ * --content-button-secondary-hover: #2D3548 (Lighter dark gray)
+ *
+ * ========================================
  */
 
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
@@ -279,11 +335,46 @@
     --sidebar-icon-sun: #E5C719;                  /* Sun icon color - light mode only */
 
     /* User Profile in Sidebar */
-   /* --sidebar-user-bg: transparent;                User section background */
     --sidebar-user-text: #000000;                 /* User name text - Black */
     --sidebar-user-subtitle: #9C9898;             /* User role text - Gray */
     --sidebar-user-hover-bg: #E8E9EA;             /* User hover background - Light gray */
     --sidebar-user-avatar-bg: #A0522D;            /* Avatar background/border color - Dark orange/brown */
+
+    /* ========================================
+       🎨 MAIN CONTENT AREA - LIGHT MODE
+       ======================================== */
+
+    /* Content Backgrounds */
+    --content-bg: #FFFFFF;                        /* Pure white main background */
+
+    /* Content Text Colors */
+    --content-header-text: #1F2937;               /* Dark gray headings */
+    --content-body-text: #374151;                 /* Medium dark gray body */
+    --content-muted-text: #6B7280;                /* Muted gray secondary */
+
+    /* Content Cards */
+    --content-card-bg: #F9FAFB;                   /* Light gray card background - distinct from sidebar */
+    --content-card-border: #E5E7EB;               /* Light gray border */
+    --content-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06); /* Medium elevation shadow */
+    --content-card-hover-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); /* Elevated shadow */
+
+    /* Analytics Numbers */
+    --content-number-primary: #A0522D;            /* Dark orange/brown - primary metrics */
+    --content-number-success: #059669;            /* Green - positive metrics */
+    --content-number-warning: #D97706;            /* Amber - warning metrics */
+    --content-number-info: #2563EB;               /* Blue - info metrics */
+
+    /* Content Tables */
+    --content-table-bg: #FFFFFF;                  /* White table background */
+    --content-table-row-hover: #F9FAFB;           /* Very light gray hover */
+    --content-table-row-selected: rgba(160, 82, 45, 0.08); /* Light brown tint */
+    --content-table-border: #E5E7EB;              /* Light gray borders */
+
+    /* Content Buttons */
+    --content-button-primary-bg: #A0522D;         /* Dark orange/brown primary */
+    --content-button-primary-hover: #8B4513;      /* Darker brown hover */
+    --content-button-secondary-bg: #F3F4F6;       /* Light gray secondary */
+    --content-button-secondary-hover: #E5E7EB;    /* Medium light gray hover */
 
     /* ========================================
        📊 TABLE SYSTEM
@@ -437,6 +528,42 @@
     --sidebar-user-hover-bg: #252834;             /* Slightly lighter gray for hover */
     --sidebar-user-avatar-bg: #6B6D7A;            /* Muted gray for avatar */
 
+    /* ========================================
+       🎨 MAIN CONTENT AREA - DARK MODE
+       ======================================== */
+
+    /* Content Backgrounds */
+    --content-bg: #0F1419;                        /* Deep dark blue-gray background */
+
+    /* Content Text Colors */
+    --content-header-text: #F9FAFB;               /* Off-white headings */
+    --content-body-text: #D1D5DB;                 /* Light gray body text */
+    --content-muted-text: #9CA3AF;                /* Muted gray secondary */
+
+    /* Content Cards */
+    --content-card-bg: #1A1F2E;                   /* Slightly lighter than background */
+    --content-card-border: #2A2D38;               /* Subtle border */
+    --content-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); /* Stronger shadow */
+    --content-card-hover-shadow: 0 6px 16px rgba(0, 0, 0, 0.5); /* Elevated shadow */
+
+    /* Analytics Numbers */
+    --content-number-primary: #F79F41;            /* Bright orange - primary metrics */
+    --content-number-success: #10B981;            /* Bright green - positive */
+    --content-number-warning: #F59E0B;            /* Bright amber - warning */
+    --content-number-info: #60A5FA;               /* Bright blue - info */
+
+    /* Content Tables */
+    --content-table-bg: #1A1F2E;                  /* Card background for tables */
+    --content-table-row-hover: #242938;           /* Lighter hover */
+    --content-table-row-selected: rgba(247, 159, 65, 0.12); /* Orange tint */
+    --content-table-border: #2A2D38;              /* Subtle borders */
+
+    /* Content Buttons */
+    --content-button-primary-bg: #F79F41;         /* Bright orange primary */
+    --content-button-primary-hover: #FF8C42;      /* Lighter orange hover */
+    --content-button-secondary-bg: #242938;       /* Dark gray secondary */
+    --content-button-secondary-hover: #2D3548;    /* Lighter dark gray hover */
+
     /* Tables */
     --table-bg: var(--neutral-800);
     --table-header-bg: var(--neutral-700);
@@ -537,10 +664,6 @@
     border: 1px solid var(--content-card-border);
     border-radius: var(--radius-lg);
     box-shadow: var(--content-card-shadow);
-    transition: all 0.2s ease;
-  }
-  .card:hover {
-    box-shadow: var(--content-card-shadow-hover);
   }
   .card-elevated {
     box-shadow: var(--content-card-shadow-elevated);
@@ -650,13 +773,6 @@
     border: 1px solid hsl(var(--border));
     border-radius: var(--radius-card);
     box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-    transition: all 0.3s ease;
-  }
-
-  .card:hover {
-    background: var(--surface-hover);
-    box-shadow: var(--card-shadow-hover);
-    transform: translateY(-1px);
   }
 
   .card-floating {

@@ -63,17 +63,17 @@ const Dashboard = () => {
       {/* Dashboard Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-semibold text-primary">
+          <h1 className="text-2xl font-semibold text-[var(--content-header-text)]">
             Dashboard
           </h1>
-          <p className="mt-2 text-base text-secondary">
+          <p className="mt-2 text-base text-[var(--content-body-text)]">
             Welcome back, {profile?.full_name || user?.email || 'User'}
           </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="text-sm text-muted">Today</p>
-            <p className="text-sm font-medium text-secondary">
+            <p className="text-sm text-[var(--content-muted-text)]">Today</p>
+            <p className="text-sm font-medium text-[var(--content-body-text)]">
               {new Date().toLocaleDateString('en-US', {
                 weekday: 'long',
                 month: 'short',
@@ -83,7 +83,7 @@ const Dashboard = () => {
           </div>
           <Button
             onClick={() => navigate('/quotes/new')}
-            className="btn-primary"
+            className="bg-[var(--content-button-primary-bg)] hover:bg-[var(--content-button-primary-hover)] text-white"
           >
             <Plus className="h-4 w-4 mr-2" />
             New Quote
@@ -99,23 +99,23 @@ const Dashboard = () => {
             <div className="space-y-4">
               {quotesLoading ? (
                 <div className="text-center py-12">
-                  <div className="w-8 h-8 border-4 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-muted">Loading quotes...</p>
+                  <div className="w-8 h-8 border-4 border-[var(--content-button-primary-bg)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-[var(--content-muted-text)]">Loading quotes...</p>
                 </div>
               ) : recentQuotes.length > 0 ? (
                 <>
                   {recentQuotes.map((quote) => (
-                    <div key={quote.id} className="flex items-center justify-between p-4 rounded-lg hover:bg-[var(--surface-hover)] transition-colors group cursor-pointer border border-[var(--border-primary)]"
+                    <div key={quote.id} className="flex items-center justify-between p-4 rounded-lg hover:bg-[var(--content-table-row-hover)] transition-colors group cursor-pointer border border-[var(--content-card-border)]"
                          onClick={() => navigate(`/quotes/edit/${quote.proposal_number}`)}>
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-lg bg-[var(--brand-primary)] bg-opacity-10 flex items-center justify-center">
-                          <FileText className="w-5 h-5 text-[var(--brand-primary)]" />
+                        <div className="w-10 h-10 rounded-lg bg-[var(--content-button-primary-bg)] bg-opacity-10 flex items-center justify-center">
+                          <FileText className="w-5 h-5 text-[var(--content-button-primary-bg)]" />
                         </div>
                         <div>
-                          <p className="font-medium text-primary group-hover:text-[var(--brand-primary)] transition-colors">
+                          <p className="font-medium text-[var(--content-header-text)] group-hover:text-[var(--content-button-primary-bg)] transition-colors">
                             {quote.project_name || quote.quote_details?.project_name || 'Untitled Project'}
                           </p>
-                          <p className="text-sm text-muted">
+                          <p className="text-sm text-[var(--content-muted-text)]">
                             {new Date(quote.created_at).toLocaleDateString()}
                           </p>
                         </div>
@@ -146,11 +146,11 @@ const Dashboard = () => {
                       </div>
                     </div>
                   ))}
-                  <div className="pt-4 border-t border-[var(--border-primary)]">
+                  <div className="pt-4 border-t border-[var(--content-card-border)]">
                     <Button
                       variant="ghost"
                       onClick={() => navigate('/quotes')}
-                      className="w-full text-[var(--brand-primary)] hover:bg-[var(--brand-primary)] hover:bg-opacity-10"
+                      className="w-full text-[var(--content-button-primary-bg)] hover:bg-[var(--content-button-primary-bg)] hover:bg-opacity-10"
                     >
                       View all quotes
                       <ArrowUpRight className="h-4 w-4 ml-1" />
@@ -159,11 +159,11 @@ const Dashboard = () => {
                 </>
               ) : (
                 <div className="text-center py-12">
-                  <FileText className="h-12 w-12 text-muted mx-auto mb-4 opacity-50" />
-                  <p className="text-muted mb-4">No quotes yet</p>
+                  <FileText className="h-12 w-12 text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
+                  <p className="text-[var(--content-muted-text)] mb-4">No quotes yet</p>
                   <Button
                     onClick={() => navigate('/quotes/new')}
-                    className="btn-primary"
+                    className="bg-[var(--content-button-primary-bg)] hover:bg-[var(--content-button-primary-hover)] text-white"
                   >
                     Create your first quote
                   </Button>
@@ -179,7 +179,7 @@ const Dashboard = () => {
             <div className="space-y-4">
               <Button
                 onClick={() => navigate('/quotes/new')}
-                className="w-full btn-primary justify-start h-12"
+                className="w-full bg-[var(--content-button-primary-bg)] hover:bg-[var(--content-button-primary-hover)] text-white justify-start h-12"
               >
                 <Plus className="h-5 w-5 mr-3" />
                 Create New Quote
@@ -187,8 +187,7 @@ const Dashboard = () => {
 
               <Button
                 onClick={() => navigate('/team')}
-                variant="outline"
-                className="w-full justify-start h-12"
+                className="w-full bg-[var(--content-button-secondary-bg)] hover:bg-[var(--content-button-secondary-hover)] text-[var(--content-body-text)] justify-start h-12 border-0"
               >
                 <Users className="h-5 w-5 mr-3" />
                 Manage Team
@@ -196,8 +195,7 @@ const Dashboard = () => {
 
               <Button
                 onClick={() => navigate('/analytics')}
-                variant="outline"
-                className="w-full justify-start h-12"
+                className="w-full bg-[var(--content-button-secondary-bg)] hover:bg-[var(--content-button-secondary-hover)] text-[var(--content-body-text)] justify-start h-12 border-0"
               >
                 <TrendingUp className="h-5 w-5 mr-3" />
                 View Analytics

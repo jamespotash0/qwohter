@@ -88,16 +88,19 @@ const Settings = () => {
 
   return (
     <PageContent title="Settings" subtitle="Manage your profile, organization, and permissions" showPageHeader={true}>
-      <Card className="card-elevated">
+      <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0">
         <CardContent className="p-0">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="border-b border-gray-200 px-6 pt-6">
-              <TabsList className="grid w-full max-w-md grid-cols-3">
+            <div className="border-b border-[var(--content-card-border)] px-6 pt-6">
+              <TabsList className="grid w-full max-w-md grid-cols-3 bg-[var(--content-bg)] p-1">
                 {availableTabs.map((tab) => (
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 data-[state=active]:bg-[var(--sidebar-nav-bg-active)] data-[state=active]:text-[var(--sidebar-nav-text-active)] data-[state=active]:shadow-sm"
+                    style={{
+                      borderRadius: 'var(--sidebar-nav-border-radius)'
+                    }}
                   >
                     {tab.icon}
                     {tab.label}

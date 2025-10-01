@@ -50,12 +50,12 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
   if ((quotesLoading && quotes.length === 0) || (organizationsLoading && !currentOrganization)) {
     return (
       <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-bg-primary">
+        <div className="min-h-screen flex w-full bg-[var(--content-bg)]">
           <AppSidebar user={user} onLogout={onLogout} />
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <div className="w-12 h-12 border-4 border-accent-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-text-secondary">Loading dashboard...</p>
+              <div className="w-12 h-12 border-4 border-[var(--content-button-primary-bg)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-[var(--content-body-text)]">Loading dashboard...</p>
             </div>
           </main>
         </div>
@@ -65,7 +65,7 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-bg-primary">
+      <div className="min-h-screen flex w-full bg-[var(--content-bg)]">
         <AppSidebar user={user} onLogout={onLogout} />
 
         <main className="flex-1 flex flex-col">
@@ -74,17 +74,17 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
             {/* Dashboard Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-semibold text-gray-900">
+                <h1 className="text-2xl font-semibold text-[var(--content-header-text)]">
                   Dashboard
                 </h1>
-                <p className="mt-2 text-base text-gray-700">
+                <p className="mt-2 text-base text-[var(--content-body-text)]">
                   Welcome back, {profile?.full_name || user}
                 </p>
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="text-sm text-gray-500">Today</p>
-                  <p className="text-sm font-medium text-gray-700">
+                  <p className="text-sm text-[var(--content-muted-text)]">Today</p>
+                  <p className="text-sm font-medium text-[var(--content-body-text)]">
                     {new Date().toLocaleDateString('en-US', {
                       weekday: 'long',
                       month: 'short',
@@ -94,7 +94,7 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
                 </div>
                 <Button
                   onClick={() => navigate('/quotes/new')}
-                  className="bg-accent-primary hover:bg-primary text-white shadow-sm"
+                  className="bg-[var(--content-button-primary-bg)] hover:bg-[var(--content-button-primary-hover)] text-white shadow-sm"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   New Quote
@@ -110,14 +110,14 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
                 <Card>
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg font-medium text-gray-900">
+                      <CardTitle className="text-lg font-medium text-[var(--content-header-text)]">
                         Recent Quotes
                       </CardTitle>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => navigate('/quotes')}
-                        className="text-gray-500 hover:text-gray-900"
+                        className="text-[var(--content-muted-text)] hover:text-[var(--content-header-text)]"
                       >
                         View all
                         <ArrowUpRight className="h-4 w-4 ml-1" />
@@ -127,17 +127,17 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
                   <CardContent className="space-y-4">
                     {recentQuotes.length > 0 ? (
                       recentQuotes.map((quote) => (
-                        <div key={quote.id} className="flex items-center justify-between p-4 rounded-lg bg-white hover:bg-gray-50 transition-colors group cursor-pointer border border-gray-100"
+                        <div key={quote.id} className="flex items-center justify-between p-4 rounded-lg hover:bg-[var(--content-table-row-hover)] transition-colors group cursor-pointer border border-[var(--content-card-border)]"
                              onClick={() => navigate(`/quotes/${quote.id}/edit`)}>
                           <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-lg bg-accent-primary/10 flex items-center justify-center">
-                              <FileText className="w-5 h-5 text-accent-primary" />
+                            <div className="w-10 h-10 rounded-lg bg-[var(--content-button-primary-bg)] bg-opacity-10 flex items-center justify-center">
+                              <FileText className="w-5 h-5 text-[var(--content-button-primary-bg)]" />
                             </div>
                             <div>
-                              <p className="font-medium text-text-primary group-hover:text-accent-primary transition-colors">
+                              <p className="font-medium text-[var(--content-header-text)] group-hover:text-[var(--content-button-primary-bg)] transition-colors">
                                 {(quote.quote_details as any)?.contactName || 'Untitled Quote'}
                               </p>
-                              <p className="text-sm text-text-disabled">
+                              <p className="text-sm text-[var(--content-muted-text)]">
                                 {new Date(quote.created_at).toLocaleDateString()}
                               </p>
                             </div>
@@ -160,11 +160,11 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
                       ))
                     ) : (
                       <div className="text-center py-12">
-                        <FileText className="h-12 w-12 text-text-disabled mx-auto mb-4 opacity-50" />
-                        <p className="text-text-disabled">No quotes yet</p>
+                        <FileText className="h-12 w-12 text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
+                        <p className="text-[var(--content-muted-text)]">No quotes yet</p>
                         <Button
                           onClick={() => navigate('/quotes/new')}
-                          className="mt-4 bg-accent-primary hover:bg-primary text-white"
+                          className="mt-4 bg-[var(--content-button-primary-bg)] hover:bg-[var(--content-button-primary-hover)] text-white"
                         >
                           Create your first quote
                         </Button>
@@ -178,14 +178,14 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
               <div>
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg font-medium text-gray-900">
+                    <CardTitle className="text-lg font-medium text-[var(--content-header-text)]">
                       Quick Actions
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <Button
                       onClick={() => navigate('/quotes/new')}
-                      className="w-full bg-accent-primary hover:bg-primary text-white justify-start h-12"
+                      className="w-full bg-[var(--content-button-primary-bg)] hover:bg-[var(--content-button-primary-hover)] text-white justify-start h-12"
                     >
                       <Plus className="h-5 w-5 mr-3" />
                       Create New Quote
@@ -193,8 +193,7 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
 
                     <Button
                       onClick={() => navigate('/team')}
-                      variant="outline"
-                      className="w-full justify-start h-12 border-gray-200 hover:bg-gray-50"
+                      className="w-full bg-[var(--content-button-secondary-bg)] hover:bg-[var(--content-button-secondary-hover)] text-[var(--content-body-text)] justify-start h-12 border-0"
                     >
                       <Users className="h-5 w-5 mr-3" />
                       Manage Team
@@ -202,8 +201,7 @@ const ModernDashboard = ({ user, userId, onLogout }: DashboardProps) => {
 
                     <Button
                       onClick={() => navigate('/analytics')}
-                      variant="outline"
-                      className="w-full justify-start h-12 border-gray-200 hover:bg-gray-50"
+                      className="w-full bg-[var(--content-button-secondary-bg)] hover:bg-[var(--content-button-secondary-hover)] text-[var(--content-body-text)] justify-start h-12 border-0"
                     >
                       <TrendingUp className="h-5 w-5 mr-3" />
                       View Analytics

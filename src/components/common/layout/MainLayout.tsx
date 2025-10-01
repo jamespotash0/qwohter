@@ -69,12 +69,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   if (isLoading || !user) {
     return (
       <SidebarProvider defaultOpen={false}>
-        <div className="h-screen flex w-full bg-primary overflow-hidden">
+        <div className="h-screen flex w-full bg-[var(--content-bg)] overflow-hidden">
           <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
           <main className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <div className="w-12 h-12 border-4 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-muted">Loading...</p>
+              <div className="w-12 h-12 border-4 border-[var(--content-button-primary-bg)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-[var(--content-muted-text)]">Loading...</p>
             </div>
           </main>
         </div>
@@ -85,11 +85,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // Main layout with persistent sidebar
   return (
     <SidebarProvider defaultOpen={false}>
-      <div className="h-screen flex w-full bg-primary overflow-hidden">
+      <div className="h-screen flex w-full bg-[var(--content-bg)] overflow-hidden">
         <AppSidebar user={user.email || ''} onLogout={handleLogout} />
         <main className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 p-6 space-y-4 overflow-auto">
-            {children}
+          <div className="flex-1 py-8 px-8 lg:px-12 space-y-4 overflow-auto">
+            <div className="max-w-[1350px] mx-auto w-full">
+              {children}
+            </div>
           </div>
         </main>
       </div>
