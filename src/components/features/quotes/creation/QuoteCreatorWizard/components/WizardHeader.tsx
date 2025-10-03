@@ -33,11 +33,9 @@ export const WizardHeader = ({
   onQuoteNameSave
 }: WizardHeaderProps) => {
   return (
-    <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-white/20 shadow-lg flex-shrink-0">
-      <div className="max-w-full mx-auto px-6 py-3">
-        <div className="flex items-center justify-between">
-          {/* Left - Back button */}
-          <Button
+    <>
+      {/* Left - Back button */}
+      <Button
             variant="ghost"
             size="sm"
             onClick={onBackToDashboard}
@@ -122,9 +120,7 @@ export const WizardHeader = ({
               <Save className="w-4 h-4 mr-1" />
               Save Quote
             </Button>
-          </div>
-        </div>
       </div>
-    </div>
+    </>
   );
 };

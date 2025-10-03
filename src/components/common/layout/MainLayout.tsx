@@ -39,6 +39,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     '/demo-contact'
   ].includes(location.pathname);
 
+  // Check if we're on a full-screen wizard page (no padding/max-width)
+  const isFullScreenPage = ['/quotes/new'].includes(location.pathname) ||
+    location.pathname.startsWith('/quotes/edit-incomplete/');
+
   // Authentication check for protected routes
   useEffect(() => {
     if (!shouldShowSidebar) return;
@@ -82,11 +86,19 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <div className="h-screen flex w-full bg-[var(--content-bg)] overflow-hidden">
         <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
         <main className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 py-8 px-8 lg:px-12 space-y-4 overflow-auto">
-            <div className="max-w-[1350px] mx-auto w-full">
+          {isFullScreenPage ? (
+            // Full-screen layout for wizards (no padding, no max-width)
+            <div className="flex-1 overflow-auto">
               {children}
             </div>
-          </div>
+          ) : (
+            // Standard layout with padding and max-width
+            <div className="flex-1 py-8 px-8 lg:px-12 space-y-4 overflow-auto">
+              <div className="max-w-[1350px] mx-auto w-full">
+                {children}
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </SidebarProvider>

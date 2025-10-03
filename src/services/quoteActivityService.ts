@@ -63,10 +63,12 @@ export const quoteActivityService = {
     userId: string;
     userName: string;
     organizationId: string;
+    status?: string;
   }) {
     return this.logActivity({
       ...params,
-      activityType: 'created'
+      activityType: 'created',
+      activityDetails: params.status ? { status: params.status } : undefined
     });
   },
 

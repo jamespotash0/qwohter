@@ -276,7 +276,8 @@ const Dashboard = () => {
       let type = 'created';
 
       if (activity.activity_type === 'created') {
-        message = `${userName} created a New Quote called ${projectName} (#${quoteNumber})`;
+        const status = activity.activity_details?.status || 'Draft';
+        message = `${userName} created a new ${status} Quote called ${projectName} (#${quoteNumber})`;
         eventText = 'Created';
         type = 'created';
       } else if (activity.activity_type === 'status_changed') {

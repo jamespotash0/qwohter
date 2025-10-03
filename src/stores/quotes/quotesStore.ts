@@ -367,7 +367,8 @@ export const useQuotesStore = create<QuotesState>()(
               projectName: projectName,
               userId: user.id,
               userName: userName,
-              organizationId: membershipData.organization_id
+              organizationId: membershipData.organization_id,
+              status: quoteData.status || 'Draft'
             });
 
             return newQuote;
