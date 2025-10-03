@@ -1,13 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { PageContent, ContentCard } from "@/components/common/layout";
+import { PageContent } from "@/components/common/layout";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   DollarSign,
   TrendingUp,
   FileText,
   Target,
+  Users,
+  Calendar,
 } from "lucide-react";
 import { useQuotesStore } from "@/stores/quotes/quotesStore";
 import { useOrganizations } from "@/hooks/useOrganizations";
@@ -25,6 +28,7 @@ import { AnalyticsPageCharts } from "@/components/common/charts/AnalyticsPageCha
 const Analytics = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const [viewMode, setViewMode] = useState<'monthly' | 'annual'>('monthly');
   const quotes = useQuotesStore((state) => state.quotes);
   const quotesLoading = useQuotesStore((state) => state.isLoading);
   const isInitialized = useQuotesStore((state) => state.isInitialized);
@@ -56,99 +60,184 @@ const Analytics = () => {
     return Number(formatted.toString().replace(/[^0-9.-]+/g, ''));
   };
 
-  // Calculate metrics
-  const totalQuotes = quotes.length;
-  const totalRevenue = quotes.reduce((sum, quote) => {
-    const total = quote.price_details?.final_selling_price || 0;
+  // Calculate metrics based on view mode
+  const metrics = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
 
-    // Only add if job is won
-    if (quote.status === 'Won') {
-      return sum + parseCurrency(total);
+    // Filter quotes based on view mode
+    const filteredQuotes = viewMode === 'monthly'
+      ? quotes.filter(q => {
+          const createdDate = new Date(q.created_at);
+          return createdDate.getFullYear() === currentYear && createdDate.getMonth() === currentMonth;
+        })
+      : quotes.filter(q => {
+          const createdDate = new Date(q.created_at);
+          return createdDate.getFullYear() === currentYear;
+        });
+
+    // Quotes by user
+    const quotesByUser: Record<string, number> = {};
+    filteredQuotes.forEach(q => {
+      const userName = q.creator_name || 'Unknown';
+      quotesByUser[userName] = (quotesByUser[userName] || 0) + 1;
+    });
+
+    // Quotes per month (for current year)
+    const quotesPerMonth: Record<string, number> = {};
+    if (viewMode === 'annual') {
+      for (let month = 0; month < 12; month++) {
+        const monthQuotes = quotes.filter(q => {
+          const createdDate = new Date(q.created_at);
+          return createdDate.getFullYear() === currentYear && createdDate.getMonth() === month;
+        });
+        const monthName = new Date(currentYear, month).toLocaleDateString('en-US', { month: 'short' });
+        quotesPerMonth[monthName] = monthQuotes.length;
+      }
+    } else {
+      // For monthly view, show weeks
+      const startOfMonth = new Date(currentYear, currentMonth, 1);
+      const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
+      const weeks = Math.ceil(endOfMonth.getDate() / 7);
+
+      for (let week = 0; week < weeks; week++) {
+        const weekStart = week * 7 + 1;
+        const weekEnd = Math.min((week + 1) * 7, endOfMonth.getDate());
+        const weekQuotes = filteredQuotes.filter(q => {
+          const day = new Date(q.created_at).getDate();
+          return day >= weekStart && day <= weekEnd;
+        });
+        quotesPerMonth[`Week ${week + 1}`] = weekQuotes.length;
+      }
     }
-    return sum;
-  }, 0);
 
-  const wonQuotes = quotes.filter(q => q.status === 'Won').length;
-  const rejectedQuotes = quotes.filter(q => q.status === 'Rejected').length;
+    const totalRevenue = filteredQuotes.reduce((sum, quote) => {
+      const total = quote.price_details?.final_selling_price || 0;
+      if (quote.status === 'Won') {
+        return sum + parseCurrency(total);
+      }
+      return sum;
+    }, 0);
 
-  const averageRevenuePerQuote = wonQuotes > 0 ? totalRevenue / wonQuotes : 0;
-  const conversionRate = totalQuotes > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;
+    const wonQuotes = filteredQuotes.filter(q => q.status === 'Won').length;
+    const rejectedQuotes = filteredQuotes.filter(q => q.status === 'Rejected').length;
+
+    // Win Rate = Won / (Won + Lost)
+    const winRate = (wonQuotes + rejectedQuotes) > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;
+
+    // Conversion Rate = Won / Total
+    const conversionRate = filteredQuotes.length > 0 ? (wonQuotes / filteredQuotes.length) * 100 : 0;
+
+    return {
+      totalQuotes: filteredQuotes.length,
+      totalRevenue,
+      quotesByUser,
+      quotesPerMonth,
+      topUser: Object.entries(quotesByUser).sort((a, b) => b[1] - a[1])[0] || ['None', 0],
+      averageRevenuePerQuote: wonQuotes > 0 ? totalRevenue / wonQuotes : 0,
+      winRate,
+      conversionRate,
+    };
+  }, [quotes, viewMode]);
 
   return (
-    <PageContent title="Analytics" subtitle="Track your business performance and quote insights" showPageHeader={true}>
+    <PageContent
+      title="Analytics"
+      subtitle="Track your business performance and quote insights"
+      showPageHeader={true}
+      headerActions={
+        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-[var(--sidebar-bg)] p-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setViewMode('monthly')}
+            className={`transition-all duration-200 ${
+              viewMode === 'monthly'
+                ? 'bg-[var(--sidebar-nav-bg-active)] text-[var(--sidebar-nav-text-active)] hover:bg-[var(--sidebar-nav-bg-active)] hover:text-[var(--sidebar-nav-text-active)]'
+                : 'text-[var(--sidebar-nav-text)] hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]'
+            }`}
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Monthly
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setViewMode('annual')}
+            className={`transition-all duration-200 ${
+              viewMode === 'annual'
+                ? 'bg-[var(--sidebar-nav-bg-active)] text-[var(--sidebar-nav-text-active)] hover:bg-[var(--sidebar-nav-bg-active)] hover:text-[var(--sidebar-nav-text-active)]'
+                : 'text-[var(--sidebar-nav-text)] hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]'
+            }`}
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Annual
+          </Button>
+        </div>
+      }
+    >
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card className="relative overflow-hidden bg-gradient-to-br from-[var(--brand-primary)] to-blue-600 border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 group">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-          <CardContent className="relative p-6 text-white">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-blue-100 text-xs font-medium">Total Revenue</p>
-                <p className="text-2xl font-bold truncate">${totalRevenue.toLocaleString()}</p>
-                <div className="flex items-center gap-1 mt-2">
-                  <TrendingUp className="w-3 h-3 text-blue-200" />
-                  <span className="text-xs text-blue-200 font-medium">Won quotes only</span>
-                </div>
+        {/* Total Revenue */}
+        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800">
+                <DollarSign className="w-6 h-6 text-green-600 dark:text-green-300" />
               </div>
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shadow-xl group-hover:rotate-12 transition-transform duration-300 flex-shrink-0">
-                <DollarSign className="w-6 h-6 text-white" />
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">{viewMode === 'monthly' ? 'Revenue This Month' : 'Revenue This Year'}</h3>
+                <p className="text-2xl font-bold text-[var(--content-header-text)]">${(Math.round(metrics.totalRevenue * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-xs mt-1 text-[var(--content-muted-text)]">Won quotes only</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 group">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-          <CardContent className="relative p-6 text-white">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-emerald-100 text-xs font-medium">Total Quotes</p>
-                <p className="text-2xl font-bold truncate">{totalQuotes}</p>
-                <div className="flex items-center gap-1 mt-2">
-                  <FileText className="w-3 h-3 text-emerald-200" />
-                  <span className="text-xs text-emerald-200 font-medium">All status</span>
-                </div>
+        {/* Top User */}
+        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800">
+                <Users className="w-6 h-6 text-blue-600 dark:text-blue-300" />
               </div>
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shadow-xl group-hover:rotate-12 transition-transform duration-300 flex-shrink-0">
-                <FileText className="w-6 h-6 text-white" />
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Top Contributor</h3>
+                <p className="text-2xl font-bold text-[var(--content-header-text)] truncate">{metrics.topUser[0]}</p>
+                <p className="text-xs mt-1 text-[var(--content-muted-text)]">{metrics.topUser[1]} quotes</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden bg-gradient-to-br from-purple-500 to-purple-600 border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 group">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-          <CardContent className="relative p-6 text-white">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-purple-100 text-xs font-medium">Avg Revenue/Quote</p>
-                <p className="text-2xl font-bold truncate">${Math.round(averageRevenuePerQuote).toLocaleString()}</p>
-                <div className="flex items-center gap-1 mt-2">
-                  <Target className="w-3 h-3 text-purple-200" />
-                  <span className="text-xs text-purple-200 font-medium">Won quotes</span>
-                </div>
+        {/* Average Revenue Per Quote */}
+        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
+                <DollarSign className="w-6 h-6 text-purple-600 dark:text-purple-300" />
               </div>
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shadow-xl group-hover:rotate-12 transition-transform duration-300 flex-shrink-0">
-                <Target className="w-6 h-6 text-white" />
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Avg Revenue/Quote</h3>
+                <p className="text-2xl font-bold text-[var(--content-header-text)]">${Math.round(metrics.averageRevenuePerQuote).toLocaleString()}</p>
+                <p className="text-xs mt-1 text-[var(--content-muted-text)]">Won quotes only</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden bg-gradient-to-br from-[var(--brand-secondary)] to-yellow-600 border-0 shadow-lg hover:shadow-xl transition-shadow duration-300 group">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-          <CardContent className="relative p-6 text-white">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-yellow-100 text-xs font-medium">Conversion Rate</p>
-                <p className="text-2xl font-bold truncate">{Math.round(conversionRate)}%</p>
-                <div className="flex items-center gap-1 mt-2">
-                  <TrendingUp className="w-3 h-3 text-yellow-200" />
-                  <span className="text-xs text-yellow-200 font-medium">Win/Loss ratio</span>
-                </div>
+        {/* Conversion Rate */}
+        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900 dark:to-orange-800">
+                <Target className="w-6 h-6 text-orange-600 dark:text-orange-300" />
               </div>
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shadow-xl group-hover:rotate-12 transition-transform duration-300 flex-shrink-0">
-                <TrendingUp className="w-6 h-6 text-white" />
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Conversion Rate</h3>
+                <p className="text-2xl font-bold text-[var(--content-header-text)]">{Math.round(metrics.conversionRate)}%</p>
+                <p className="text-xs mt-1 text-[var(--content-muted-text)]">Won vs Total quotes</p>
               </div>
             </div>
           </CardContent>
@@ -156,22 +245,20 @@ const Analytics = () => {
       </div>
 
       {/* Charts Section */}
-      <ContentCard title="Quote Analytics" subtitle="Visual representation of your quote data">
-        {quotesLoading ? (
-          <div className="text-center py-12">
-            <div className="w-8 h-8 border-4 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-muted">Loading analytics data...</p>
-          </div>
-        ) : quotes.length > 0 ? (
-          <AnalyticsPageCharts quotes={quotes} />
-        ) : (
-          <div className="text-center py-12">
-            <FileText className="h-12 w-12 text-muted mx-auto mb-4 opacity-50" />
-            <p className="text-muted mb-4">No quotes data available</p>
-            <p className="text-sm text-muted">Create some quotes to see analytics</p>
-          </div>
-        )}
-      </ContentCard>
+      {quotesLoading ? (
+        <div className="text-center py-12">
+          <div className="w-8 h-8 border-4 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted">Loading analytics data...</p>
+        </div>
+      ) : quotes.length > 0 ? (
+        <AnalyticsPageCharts quotes={quotes} viewMode={viewMode} />
+      ) : (
+        <div className="text-center py-12">
+          <FileText className="h-12 w-12 text-muted mx-auto mb-4 opacity-50" />
+          <p className="text-muted mb-4">No quotes data available</p>
+          <p className="text-sm text-muted">Create some quotes to see analytics</p>
+        </div>
+      )}
     </PageContent>
   );
 };

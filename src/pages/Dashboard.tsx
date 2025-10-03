@@ -236,6 +236,8 @@ const Dashboard = () => {
       winRate,
       winRateThisMonth,
       winRateLastMonth,
+      wonQuotes,
+      rejectedQuotes,
       overdueFollowups
     };
   }, [quotes]);
@@ -274,7 +276,7 @@ const Dashboard = () => {
       let type = 'created';
 
       if (activity.activity_type === 'created') {
-        message = `${userName} created a ${projectName} (#${quoteNumber})`;
+        message = `${userName} created a New Quote called ${projectName} (#${quoteNumber})`;
         eventText = 'Created';
         type = 'created';
       } else if (activity.activity_type === 'status_changed') {
@@ -489,22 +491,11 @@ const Dashboard = () => {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Win Rate</h3>
-                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.winRate}%</p>
-                    <p className={`text-xs mt-1 ${
-                      parseFloat(metrics.winRateThisMonth) > parseFloat(metrics.winRateLastMonth)
-                        ? 'text-green-600 dark:text-green-400'
-                        : parseFloat(metrics.winRateThisMonth) < parseFloat(metrics.winRateLastMonth)
-                        ? 'text-red-600 dark:text-red-400'
-                        : 'text-gray-600 dark:text-gray-400'
-                    }`}>
-                      {parseFloat(metrics.winRateLastMonth) > 0 ? (
-                        <>
-                          {parseFloat(metrics.winRateThisMonth) > parseFloat(metrics.winRateLastMonth) ? '+' : ''}
-                          {(parseFloat(metrics.winRateThisMonth) - parseFloat(metrics.winRateLastMonth)).toFixed(1)}% vs last month
-                        </>
-                      ) : (
-                        'No data last month'
-                      )}
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">
+                      {metrics.winRate}%
+                    </p>
+                    <p className="text-xs mt-1 text-[var(--content-muted-text)]">
+                      Won / Rejected
                     </p>
                   </div>
                 </div>

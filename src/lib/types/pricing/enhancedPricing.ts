@@ -67,16 +67,23 @@ export const defaultEnhancedPricing: EnhancedPricingData = {
   payment_upon_track_installation: '33'
 };
 
+// Helper function to round to 2 decimal places (cents for currency, 2 decimals for percentages)
+const roundToTwoDecimals = (value: number): number => {
+  return Math.round(value * 100) / 100;
+};
+
 // Helper function to calculate all auto-calculated fields
 export const calculateEnhancedPricing = (data: EnhancedPricingData): EnhancedPricingData => {
-  // Unseen costs are now dollar-based, calculate percentage from amount
-  const unseen_costs = data.unseen_costs;
-  const unseen_costs_percentage = data.kwik_wall_materials_cost > 0 
-    ? (unseen_costs / data.kwik_wall_materials_cost) * 100 
-    : 0;
-  
-  // Calculate cost subtotal
-  const cost_subtotal = 
+  // Unseen costs are now dollar-based, calculate percentage from amount - round to 2 decimals
+  const unseen_costs = roundToTwoDecimals(data.unseen_costs);
+  const unseen_costs_percentage = roundToTwoDecimals(
+    data.kwik_wall_materials_cost > 0
+      ? (unseen_costs / data.kwik_wall_materials_cost) * 100
+      : 0
+  );
+
+  // Calculate cost subtotal - round to cents
+  const cost_subtotal = roundToTwoDecimals(
     data.kwik_wall_materials_cost +
     data.misc_materials_cost +
     data.delivery_cost_track +
@@ -85,39 +92,47 @@ export const calculateEnhancedPricing = (data: EnhancedPricingData): EnhancedPri
     data.track_labor_cost +
     data.panel_equipment_costs +
     data.panel_labor_cost +
-    unseen_costs;
-  
-  // Calculate base selling price (cost + markup)
-  const base_selling_price = cost_subtotal + (cost_subtotal * data.materials_markup_percentage / 100);
-  
-  // Calculate shipping & handling subtotal
-  const shipping_cost_subtotal = 
+    unseen_costs
+  );
+
+  // Calculate base selling price (cost + markup) - round to cents
+  const base_selling_price = roundToTwoDecimals(cost_subtotal + (cost_subtotal * data.materials_markup_percentage / 100));
+
+  // Calculate shipping & handling subtotal - round to cents
+  const shipping_cost_subtotal = roundToTwoDecimals(
     data.track_freight_factory +
     data.panel_freight_factory +
-    data.local_handling_costs;
-  
-  // Calculate shipping/freight subtotal (shipping + margin)
-  const shipping_selling_price = shipping_cost_subtotal + (shipping_cost_subtotal * data.shipping_markup_percentage / 100);
-  
-  // Calculate final selling price
-  const final_selling_price = base_selling_price + shipping_selling_price;
+    data.local_handling_costs
+  );
 
-  // Calculate gross profit percentages - handle division by zero
-  const base_selling_gross_profit_percentage = base_selling_price > 0 && cost_subtotal > 0 
-    ? ((base_selling_price - cost_subtotal) / base_selling_price * 100) 
-    : 0;
-    
-  const shipping_selling_gross_profit_percentage = shipping_selling_price > 0 && shipping_cost_subtotal > 0 
-    ? ((shipping_selling_price - shipping_cost_subtotal) / shipping_selling_price * 100) 
-    : 0;
-    
-  const final_selling_gross_profit_percentage = final_selling_price > 0 && (cost_subtotal > 0 || shipping_cost_subtotal > 0)
-    ? (((base_selling_price - cost_subtotal) + (shipping_selling_price - shipping_cost_subtotal)) / final_selling_price * 100)
-    : 0;
-    
-  const final_selling_price_profit_amount = (base_selling_price - cost_subtotal) + (shipping_selling_price - shipping_cost_subtotal);
+  // Calculate shipping/freight subtotal (shipping + margin) - round to cents
+  const shipping_selling_price = roundToTwoDecimals(shipping_cost_subtotal + (shipping_cost_subtotal * data.shipping_markup_percentage / 100));
 
-  
+  // Calculate final selling price - round to cents
+  const final_selling_price = roundToTwoDecimals(base_selling_price + shipping_selling_price);
+
+  // Calculate gross profit percentages - handle division by zero, round to 2 decimals
+  const base_selling_gross_profit_percentage = roundToTwoDecimals(
+    base_selling_price > 0 && cost_subtotal > 0
+      ? ((base_selling_price - cost_subtotal) / base_selling_price * 100)
+      : 0
+  );
+
+  const shipping_selling_gross_profit_percentage = roundToTwoDecimals(
+    shipping_selling_price > 0 && shipping_cost_subtotal > 0
+      ? ((shipping_selling_price - shipping_cost_subtotal) / shipping_selling_price * 100)
+      : 0
+  );
+
+  const final_selling_gross_profit_percentage = roundToTwoDecimals(
+    final_selling_price > 0 && (cost_subtotal > 0 || shipping_cost_subtotal > 0)
+      ? (((base_selling_price - cost_subtotal) + (shipping_selling_price - shipping_cost_subtotal)) / final_selling_price * 100)
+      : 0
+  );
+
+  const final_selling_price_profit_amount = roundToTwoDecimals((base_selling_price - cost_subtotal) + (shipping_selling_price - shipping_cost_subtotal));
+
+
   return {
     ...data,
     // Update auto-calculated fields

@@ -173,17 +173,6 @@ const Team = () => {
     userRole: currentUserRole || "Member"
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted">Loading team...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <PageContent title="Team Management" subtitle="Manage your team members and their permissions" showPageHeader={true}>
       <div className="max-w-7xl mx-auto space-y-8">
