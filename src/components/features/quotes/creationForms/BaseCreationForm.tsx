@@ -137,7 +137,7 @@ const BaseCreationForm = ({ wall, wallName, onWallChange }: BaseCreationFormProp
               <SelectTrigger className={wall.wallSystemType ? 'border-green-500' : 'border-red-500'}>
                 <SelectValue placeholder="Select wall system type" />
               </SelectTrigger>
-              <SelectContent className="bg-background border z-50">
+              <SelectContent className="bg-white dark:bg-gray-800 border z-50">
                 {wallSystemTypes.map((type) => (
                   <SelectItem key={type} value={type}>
                     {type}
