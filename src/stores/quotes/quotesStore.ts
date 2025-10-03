@@ -509,7 +509,14 @@ export const useQuotesStore = create<QuotesState>()(
 
             // Log activity only if quote is not archived
             // (archived quotes shouldn't push updates to recent activity)
-            if (!currentQuote.archived) {
+            // Also skip logging if quote was just created (within last 30 seconds)
+            // to avoid duplicate "created" and "updated" entries
+            const createdAt = new Date(currentQuote.created_at);
+            const now = new Date();
+            const secondsSinceCreation = (now.getTime() - createdAt.getTime()) / 1000;
+            const isNewlyCreated = secondsSinceCreation < 30;
+
+            if (!currentQuote.archived && !isNewlyCreated) {
               if (statusChanged && oldStatus && newStatus) {
                 // Status change
                 await quoteActivityService.logStatusChange({

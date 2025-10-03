@@ -205,9 +205,9 @@ const getFollowUpStatus = (quote: Quote) => {
     } else if (secondsRemaining > 0) {
       displayText = `${secondsRemaining}s left`;
     } else {
-      displayText = "Due now";
+      displayText = "Overdue";
     }
-    colorClass = "text-yellow-600 font-medium";
+    colorClass = secondsRemaining <= 0 ? "text-red-600 font-medium" : "text-yellow-600 font-medium";
   } else if (daysRemaining < 2) {
     // Show hours for less than 2 days remaining
     const hoursRemaining = Math.floor(timeDiff / (1000 * 3600));
@@ -458,49 +458,6 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       filterFn: 'equals',
       enableSorting: false,
     }),
-    columnHelper.accessor('creator_name', {
-      id: 'created_by',
-      header: 'Created By',
-      cell: ({ getValue }) => (
-        <div className="text-sm text-gray-600">{getValue() || 'Unknown'}</div>
-      ),
-      size: 200,
-      enableSorting: false,
-    }),
-    columnHelper.accessor('created_at', {
-      id: 'created_at',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4" />
-          Created At
-        </div>
-      ),
-      cell: ({ getValue }) => (
-        <div className="text-sm text-gray-600">
-          {new Date(getValue()).toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric',
-            year: 'numeric',
-          })}
-        </div>
-      ),
-      size: 200,
-      enableSorting: true,
-    }),
-    columnHelper.accessor('status_last_updated', {
-      id: 'status_last_updated',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4" />
-          Status Updated
-        </div>
-      ),
-      cell: ({ getValue }) => (
-        <div className="font-smn= text-gray-600">{formatLastUpdated(getValue())}</div>
-      ),
-      size: 200,
-      enableSorting: true,
-    }),
     columnHelper.accessor('follow_up_date', {
       id: 'follow_up_date',
       header: () => (
@@ -548,6 +505,35 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       size: 140,
       enableSorting: false,
     }),
+    columnHelper.accessor('creator_name', {
+      id: 'created_by',
+      header: 'Created By',
+      cell: ({ getValue }) => (
+        <div className="text-sm text-gray-600">{getValue() || 'Unknown'}</div>
+      ),
+      size: 200,
+      enableSorting: false,
+    }),
+    columnHelper.accessor('created_at', {
+      id: 'created_at',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4" />
+          Created At
+        </div>
+      ),
+      cell: ({ getValue }) => (
+        <div className="text-sm text-gray-600">
+          {new Date(getValue()).toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric',
+            year: 'numeric',
+          })}
+        </div>
+      ),
+      size: 200,
+      enableSorting: true,
+    }),
     columnHelper.accessor('won_date', {
       id: 'won_date',
       header: () => (
@@ -564,6 +550,20 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           <div className="text-sm text-gray-400">-</div>
         );
       },
+      size: 200,
+      enableSorting: true,
+    }),
+    columnHelper.accessor('status_last_updated', {
+      id: 'status_last_updated',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4" />
+          Status Updated
+        </div>
+      ),
+      cell: ({ getValue }) => (
+        <div className="font-smn= text-gray-600">{formatLastUpdated(getValue())}</div>
+      ),
       size: 200,
       enableSorting: true,
     }),
@@ -1078,11 +1078,20 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 {table.getRowModel().rows.map(row => {
                   const rowHeight = dataDensity === 'compact' ? 'h-10' : dataDensity === 'comfortable' ? 'h-14' : 'h-18';
                   const paddingY = dataDensity === 'compact' ? 'py-1' : dataDensity === 'comfortable' ? 'py-2' : 'py-4';
-                  
+
+                  // Check if row has overdue follow-up
+                  const quote = row.original;
+                  const followUpStatus = getFollowUpStatus(quote);
+                  const isOverdue = followUpStatus.isOverdue;
+
                   return (
                     <tr
                       key={row.id}
-                      className={`group hover:bg-gray-50/50 dark:hover:bg-[var(--content-table-row-hover)] transition-colors border-b border-gray-100 dark:border-[var(--content-table-border)] last:border-b-0 ${rowHeight}`}
+                      className={`group transition-colors border-b border-gray-100 dark:border-[var(--content-table-border)] last:border-b-0 ${rowHeight} ${
+                        isOverdue
+                          ? 'bg-red-50/70 hover:bg-red-100/70 dark:bg-red-900/10 dark:hover:bg-red-900/20'
+                          : 'hover:bg-gray-50/50 dark:hover:bg-[var(--content-table-row-hover)]'
+                      }`}
                     >
                       {row.getVisibleCells().map((cell) => {
                         const isActionsColumn = cell.column.id === 'actions';

@@ -21,10 +21,21 @@ import {
   CheckCheck,
   Edit3,
   Trash2,
-  BellRing
+  BellRing,
+  X,
+  MoreVertical,
+  Calendar
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useQuotesStore } from "@/stores/quotes/quotesStore";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -40,6 +51,9 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [recentActivities, setRecentActivities] = useState<QuoteActivity[]>([]);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [openCalendarQuoteId, setOpenCalendarQuoteId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [cachedProfile, setCachedProfile] = useState<any>(() => {
     // Read from localStorage cache (same as sidebar)
     try {
@@ -54,6 +68,7 @@ const Dashboard = () => {
   const quotesLoading = useQuotesStore((state) => state.isLoading);
   const isInitialized = useQuotesStore((state) => state.isInitialized);
   const initialize = useQuotesStore((state) => state.initialize);
+  const updateQuote = useQuotesStore((state) => state.updateQuote);
 
   useOrganizations();
 
@@ -114,7 +129,7 @@ const Dashboard = () => {
 
       const { data } = await quoteActivityService.getRecentActivities({
         organizationId,
-        limit: 10
+        limit: 100
       });
 
       if (data) {
@@ -125,11 +140,21 @@ const Dashboard = () => {
     fetchRecentActivities();
   }, [organizationId]);
 
+  // Update current time every second for real-time countdown
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Calculate key metrics
   const metrics = useMemo(() => {
-    const thisMonth = new Date();
-    thisMonth.setDate(1);
-    thisMonth.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
     // Use won_date to track when quotes were first marked as Won
     // Falls back to status_last_updated or created_at for quotes without won_date
@@ -144,7 +169,21 @@ const Dashboard = () => {
       return wonDate >= thisMonth;
     });
 
+    const wonQuotesLastMonth = quotes.filter(q => {
+      if (q.status !== 'Won' && q.status !== 'Completed') return false;
+
+      const dateToUse = q.won_date || q.status_last_updated || q.created_at;
+      if (!dateToUse) return false;
+
+      const wonDate = new Date(dateToUse);
+      return wonDate >= lastMonth && wonDate <= lastMonthEnd;
+    });
+
     const totalRevenue = wonQuotesThisMonth.reduce((sum, q) =>
+      sum + (q.price_details?.final_selling_price || 0), 0
+    );
+
+    const lastMonthRevenue = wonQuotesLastMonth.reduce((sum, q) =>
       sum + (q.price_details?.final_selling_price || 0), 0
     );
 
@@ -152,38 +191,63 @@ const Dashboard = () => {
       ['Pending', 'Submitted'].includes(q.status || '')
     ).length;
 
+    // Current overall win rate (all time)
     const wonQuotes = quotes.filter(q => q.status === 'Won').length;
     const rejectedQuotes = quotes.filter(q => q.status === 'Rejected').length;
     const totalDecidedQuotes = wonQuotes + rejectedQuotes;
     const winRate = totalDecidedQuotes > 0 ? ((wonQuotes / totalDecidedQuotes) * 100).toFixed(1) : '0';
 
+    // This month's win rate
+    const wonThisMonth = wonQuotesThisMonth.length;
+    const rejectedThisMonth = quotes.filter(q => {
+      if (q.status !== 'Rejected') return false;
+      const dateToUse = q.status_last_updated || q.created_at;
+      if (!dateToUse) return false;
+      const statusDate = new Date(dateToUse);
+      return statusDate >= thisMonth;
+    }).length;
+    const decidedThisMonth = wonThisMonth + rejectedThisMonth;
+    const winRateThisMonth = decidedThisMonth > 0 ? ((wonThisMonth / decidedThisMonth) * 100).toFixed(1) : '0';
+
+    // Last month's win rate
+    const wonLastMonth = wonQuotesLastMonth.length;
+    const rejectedLastMonth = quotes.filter(q => {
+      if (q.status !== 'Rejected') return false;
+      const dateToUse = q.status_last_updated || q.created_at;
+      if (!dateToUse) return false;
+      const statusDate = new Date(dateToUse);
+      return statusDate >= lastMonth && statusDate <= lastMonthEnd;
+    }).length;
+    const decidedLastMonth = wonLastMonth + rejectedLastMonth;
+    const winRateLastMonth = decidedLastMonth > 0 ? ((wonLastMonth / decidedLastMonth) * 100).toFixed(1) : '0';
+
     // Calculate overdue follow-ups
     const today = new Date();
     const overdueFollowups = quotes.filter(q => {
-      if (!q.follow_up_days || q.follow_up_days <= 0) return false;
-      const baseDate = q.status_last_updated ? new Date(q.status_last_updated) : new Date(q.created_at);
-      const followUpDate = new Date(baseDate);
-      followUpDate.setDate(followUpDate.getDate() + q.follow_up_days);
+      if (!q.follow_up_date) return false;
+      const followUpDate = new Date(q.follow_up_date);
       return followUpDate < today;
     }).length;
 
     return {
       totalRevenue,
+      lastMonthRevenue,
       activeQuotes,
       winRate,
+      winRateThisMonth,
+      winRateLastMonth,
       overdueFollowups
     };
   }, [quotes]);
 
   // Get reminders (all quotes with follow-up date set)
+  // Uses currentTime for real-time countdown updates
   const reminders = useMemo(() => {
-    const today = new Date();
-
     return quotes
       .filter(q => q.follow_up_date)
       .map(q => {
         const followUpDate = new Date(q.follow_up_date!);
-        const timeDiff = followUpDate.getTime() - today.getTime();
+        const timeDiff = followUpDate.getTime() - currentTime.getTime();
         const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
         return {
@@ -196,7 +260,7 @@ const Dashboard = () => {
         };
       })
       .sort((a, b) => a.daysRemaining - b.daysRemaining);
-  }, [quotes]);
+  }, [quotes, currentTime]);
 
   // Format activities from database for display
   const recentActivity = useMemo(() => {
@@ -210,12 +274,12 @@ const Dashboard = () => {
       let type = 'created';
 
       if (activity.activity_type === 'created') {
-        message = `${userName} created a ${projectName} (Quote #${quoteNumber})`;
+        message = `${userName} created a ${projectName} (#${quoteNumber})`;
         eventText = 'Created';
         type = 'created';
       } else if (activity.activity_type === 'status_changed') {
         const newStatus = activity.activity_details?.new_status || 'Unknown';
-        message = `${userName} marked ${projectName} (Quote #${quoteNumber}) as ${newStatus}`;
+        message = `${userName} marked ${projectName} (#${quoteNumber}) as ${newStatus}`;
         eventText = newStatus;
 
         // Map status to type for icon coloring
@@ -226,11 +290,11 @@ const Dashboard = () => {
         else if (newStatus === 'Completed') type = 'completed';
         else if (newStatus === 'Incomplete') type = 'incomplete';
       } else if (activity.activity_type === 'archived') {
-        message = `${userName} Archived ${projectName} (Quote #${quoteNumber})`;
+        message = `${userName} Archived ${projectName} (#${quoteNumber})`;
         eventText = 'Archived';
         type = 'archived';
       } else if (activity.activity_type === 'unarchived') {
-        message = `${userName} Unarchived ${projectName} (Quote #${quoteNumber})`;
+        message = `${userName} Unarchived ${projectName} (#${quoteNumber})`;
         eventText = 'Unarchived';
         type = 'unarchived';
       } else if (activity.activity_type === 'updated') {
@@ -242,7 +306,7 @@ const Dashboard = () => {
         const fieldList = formattedFields.length > 0
           ? ` ${formattedFields.join(', ')}`
           : '';
-        message = `${userName} updated ${projectName} (Quote #${quoteNumber})${fieldList}`;
+        message = `${userName} updated ${projectName} ${quoteNumber}${fieldList}`;
         eventText = 'Updated';
         type = 'updated';
       } else if (activity.activity_type === 'deleted') {
@@ -300,14 +364,38 @@ const Dashboard = () => {
     }).format(amount);
   };
 
+  const handleClearFollowUp = async (e: React.MouseEvent, quoteId: string) => {
+    e.stopPropagation(); // Prevent navigating to quotes page
+    try {
+      await updateQuote(quoteId, {
+        follow_up_date: null
+      });
+    } catch (error) {
+      console.error('Failed to clear follow-up:', error);
+    }
+  };
+
+  const handleUpdateFollowUpDate = async (quoteId: string, date: Date) => {
+    try {
+      await updateQuote(quoteId, {
+        follow_up_date: date.toISOString()
+      });
+      setOpenCalendarQuoteId(null);
+      setSelectedDate(undefined);
+    } catch (error) {
+      console.error('Failed to update follow-up date:', error);
+    }
+  };
+
   const getTimeAgo = (date: string) => {
-    const now = new Date();
     const past = new Date(date);
-    const diffMs = now.getTime() - past.getTime();
+    const diffMs = currentTime.getTime() - past.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
+    if (diffSecs < 60) return `${diffSecs} second${diffSecs !== 1 ? 's' : ''} ago`;
     if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
     if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
     return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
@@ -356,6 +444,22 @@ const Dashboard = () => {
                   <div className="ml-4">
                     <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Revenue This Month</h3>
                     <p className="text-2xl font-bold text-[var(--content-header-text)]">{formatCurrency(metrics.totalRevenue)}</p>
+                    <p className={`text-xs mt-1 ${
+                      metrics.totalRevenue > metrics.lastMonthRevenue
+                        ? 'text-green-600 dark:text-green-400'
+                        : metrics.totalRevenue < metrics.lastMonthRevenue
+                        ? 'text-red-600 dark:text-red-400'
+                        : 'text-gray-600 dark:text-gray-400'
+                    }`}>
+                      {metrics.lastMonthRevenue > 0 ? (
+                        <>
+                          {metrics.totalRevenue > metrics.lastMonthRevenue ? '+' : ''}
+                          {(((metrics.totalRevenue - metrics.lastMonthRevenue) / metrics.lastMonthRevenue) * 100).toFixed(1)}% vs last month
+                        </>
+                      ) : (
+                        'No data last month'
+                      )}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -386,6 +490,22 @@ const Dashboard = () => {
                   <div className="ml-4">
                     <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Win Rate</h3>
                     <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.winRate}%</p>
+                    <p className={`text-xs mt-1 ${
+                      parseFloat(metrics.winRateThisMonth) > parseFloat(metrics.winRateLastMonth)
+                        ? 'text-green-600 dark:text-green-400'
+                        : parseFloat(metrics.winRateThisMonth) < parseFloat(metrics.winRateLastMonth)
+                        ? 'text-red-600 dark:text-red-400'
+                        : 'text-gray-600 dark:text-gray-400'
+                    }`}>
+                      {parseFloat(metrics.winRateLastMonth) > 0 ? (
+                        <>
+                          {parseFloat(metrics.winRateThisMonth) > parseFloat(metrics.winRateLastMonth) ? '+' : ''}
+                          {(parseFloat(metrics.winRateThisMonth) - parseFloat(metrics.winRateLastMonth)).toFixed(1)}% vs last month
+                        </>
+                      ) : (
+                        'No data last month'
+                      )}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -411,7 +531,7 @@ const Dashboard = () => {
 
       {/* Main Content Grid */}
       <div className="space-y-8">
-        {/* Main Layout: Left Column (Quick Actions + Recent Activity) and Right Column (Reminders & Alerts) */}
+        {/* Main Layout: Left Column (Quick Actions + Reminders & Alerts) and Right Column (Recent Activity) */}
         <div className="grid grid-cols-1 lg:grid-cols-[480px_600px] xl:grid-cols-[480px_1fr] gap-8">
           {/* Left Column */}
           <div className="space-y-8">
@@ -460,204 +580,272 @@ const Dashboard = () => {
             </CardContent>
             </Card>
 
-            {/* Recent Activity Card */}
+            {/* Reminders & Alerts Card */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0">
               <CardHeader className="pb-4">
                 <CardTitle className="flex items-center gap-2 text-[var(--content-header-text)]">
-                  <Clock className="w-5 h-5" />
-                  Recent Activity
+                  <Bell className="w-5 h-5" />
+                  Reminders & Alerts
                 </CardTitle>
               </CardHeader>
-              <CardContent className="relative">
+              <CardContent className="pb-4">
                 {quotesLoading ? (
-                  <div className="space-y-2">
-                    {[...Array(5)].map((_, i) => (
-                      <div key={i} className="flex gap-3 p-4 bg-white rounded-lg border border-gray-200">
-                        <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
-                        <div className="flex-1 space-y-2">
-                          <Skeleton className="h-4 w-3/4" />
-                          <Skeleton className="h-3 w-1/2" />
+                  <div className="space-y-2 h-[600px]">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="p-4 rounded-lg border border-gray-200 bg-white">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-3 w-1/2" />
+                            <Skeleton className="h-3 w-2/3" />
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <Skeleton className="h-4 w-16" />
+                            <Skeleton className="h-3 w-20" />
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
-                ) : recentActivity.length > 0 ? (
-                  <>
-                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 -mr-2 scroll-smooth [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
-                    {recentActivity.map((activity) => {
-                      const activityTime = getTimeAgo(activity.timestamp);
+                ) : reminders.length > 0 ? (
+                  <div className="space-y-2 min-h-[200px] max-h-[600px] overflow-y-auto pr-2 -mr-2">
+                    {reminders.map((reminder) => {
+                      const followUpDate = reminder.followUpDate;
+                      const formattedDate = followUpDate.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      });
 
                       return (
                         <div
-                          key={activity.id}
-                          className="relative flex gap-3 p-4 bg-white rounded-lg border border-gray-200"
+                          key={reminder.quote.id}
+                          className={`p-4 rounded-lg border transition-colors relative group ${
+                            reminder.isOverdue
+                              ? 'bg-red-50 hover:bg-red-100 border-red-200'
+                              : 'bg-white hover:bg-blue-50 border-gray-200'
+                          }`}
                         >
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                            activity.type === 'won'
-                              ? 'bg-green-100 dark:bg-green-900/30'
-                              : activity.type === 'lost'
-                              ? 'bg-red-100 dark:bg-red-900/30'
-                              : activity.type === 'submitted'
-                              ? 'bg-blue-100 dark:bg-blue-900/30'
-                              : activity.type === 'pending'
-                              ? 'bg-yellow-100 dark:bg-yellow-900/30'
-                              : activity.type === 'completed'
-                              ? 'bg-purple-100 dark:bg-purple-900/30'
-                              : activity.type === 'archived'
-                              ? 'bg-slate-100 dark:bg-slate-900/30'
-                              : activity.type === 'unarchived'
-                              ? 'bg-sky-100 dark:bg-sky-900/30'
-                              : activity.type === 'updated'
-                              ? 'bg-indigo-100 dark:bg-indigo-900/30'
-                              : activity.type === 'deleted'
-                              ? 'bg-red-100 dark:bg-red-900/30'
-                              : activity.type === 'reminder'
-                              ? 'bg-amber-100 dark:bg-amber-900/30'
-                              : 'bg-gray-100 dark:bg-gray-800/30'
-                          }`}>
-                            {activity.type === 'won' && <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />}
-                            {activity.type === 'lost' && <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />}
-                            {activity.type === 'submitted' && <ArrowUpRight className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
-                            {activity.type === 'pending' && <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />}
-                            {activity.type === 'completed' && <CheckCheck className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
-                            {activity.type === 'archived' && <Archive className="w-4 h-4 text-slate-600 dark:text-slate-400" />}
-                            {activity.type === 'unarchived' && <ArchiveRestore className="w-4 h-4 text-sky-600 dark:text-sky-400" />}
-                            {activity.type === 'updated' && <Edit3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
-                            {activity.type === 'deleted' && <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />}
-                            {activity.type === 'reminder' && <BellRing className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
-                            {activity.type === 'created' && <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
-                            {activity.type === 'incomplete' && <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="absolute top-2 right-2 text-xs text-[var(--content-muted-text)] whitespace-nowrap">
-                              {activityTime}
+                          <div
+                            onClick={() => navigate('/quotes')}
+                            className="cursor-pointer"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-sm text-[var(--content-header-text)] truncate mb-1">
+                                  {reminder.quote.project_name || reminder.quote.quote_details?.project_name || 'Untitled Project'} - #{reminder.quote.proposal_number}
+                                </p>
+                                <div className="space-y-0.5 text-xs text-[var(--content-muted-text)]">
+                                  {(reminder.quote.job_details?.client_company || reminder.quote.job_details?.client_name) && (
+                                    <p className="truncate">{reminder.quote.job_details?.client_company || reminder.quote.job_details?.client_name}</p>
+                                  )}
+                                  {reminder.quote.creator_name && (
+                                    <p>Created by {reminder.quote.creator_name}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-0.5 flex-shrink-0 relative">
+                                {/* Countdown and date - hidden on hover */}
+                                <div className="group-hover:opacity-0 transition-opacity">
+                                  <p className={`text-xs font-semibold ${reminder.isOverdue ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
+                                    {(() => {
+                                      const absTimeDiff = Math.abs(reminder.timeDiff);
+                                      const days = Math.floor(absTimeDiff / (1000 * 3600 * 24));
+                                      const hours = Math.floor((absTimeDiff % (1000 * 3600 * 24)) / (1000 * 3600));
+                                      const minutes = Math.floor((absTimeDiff % (1000 * 3600)) / (1000 * 60));
+                                      const seconds = Math.floor((absTimeDiff % (1000 * 60)) / 1000);
+
+                                      let timeText = '';
+                                      if (days > 0) {
+                                        timeText = `${days}d`;
+                                      } else if (hours > 0) {
+                                        timeText = `${hours}h ${minutes}m`;
+                                      } else if (minutes > 0) {
+                                        timeText = `${minutes}m ${seconds}s`;
+                                      } else {
+                                        timeText = `${seconds}s`;
+                                      }
+
+                                      return reminder.isOverdue ? `${timeText} overdue` : reminder.daysRemaining === 0 ? 'Due today' : `${timeText} left`;
+                                    })()}
+                                  </p>
+                                  <span className="text-xs text-[var(--content-muted-text)]">{formattedDate}</span>
+                                </div>
+
+                                {/* Actions menu - shown on hover in place of countdown */}
+                                <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <button
+                                        onClick={(e) => e.stopPropagation()}
+                                        className={`p-2 rounded-md ${
+                                          reminder.isOverdue
+                                            ? 'bg-red-200 hover:bg-red-300 text-red-700'
+                                            : 'bg-blue-200 hover:bg-blue-300 text-blue-700'
+                                        }`}
+                                        title="Reminder actions"
+                                      >
+                                        <MoreVertical className="w-5 h-5" />
+                                      </button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                      <Popover
+                                        open={openCalendarQuoteId === reminder.quote.id}
+                                        onOpenChange={(open) => {
+                                          if (!open) {
+                                            setOpenCalendarQuoteId(null);
+                                            setSelectedDate(undefined);
+                                          }
+                                        }}
+                                      >
+                                        <PopoverTrigger asChild>
+                                          <DropdownMenuItem
+                                            onSelect={(e) => {
+                                              e.preventDefault();
+                                              setOpenCalendarQuoteId(reminder.quote.id);
+                                              setSelectedDate(reminder.followUpDate);
+                                            }}
+                                          >
+                                            <Calendar className="w-4 h-4 mr-2" />
+                                            Update Date
+                                          </DropdownMenuItem>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="end" side="left">
+                                          <CalendarComponent
+                                            mode="single"
+                                            selected={selectedDate}
+                                            onSelect={(date) => {
+                                              if (date) {
+                                                handleUpdateFollowUpDate(reminder.quote.id, date);
+                                              }
+                                            }}
+                                            initialFocus
+                                          />
+                                        </PopoverContent>
+                                      </Popover>
+                                      <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleClearFollowUp(e as any, reminder.quote.id);
+                                        }}
+                                        className="text-red-600"
+                                      >
+                                        <X className="w-4 h-4 mr-2" />
+                                        Clear Reminder
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </div>
                             </div>
-                            <p className="text-sm text-[var(--content-header-text)] pr-20 break-words">
-                              {activity.message}
-                            </p>
                           </div>
                         </div>
                       );
                     })}
-                    </div>
-                    {recentActivity.length > 3 && (
-                      <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[var(--content-card-bg)] to-transparent pointer-events-none" />
-                    )}
-                  </>
+                  </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <Clock className="w-12 h-12 text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
-                    <p className="text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)]">
-                      No recent activity
-                    </p>
+                  <div className="h-[600px] flex items-center justify-center">
+                    <div className="text-center">
+                      <Bell className="w-12 h-12 text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
+                      <p className="text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)]">
+                        No reminders or alerts
+                      </p>
+                      <p className="text-sm text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] mt-1">
+                        All caught up!
+                      </p>
+                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Right Column - Reminders & Alerts */}
+          {/* Right Column - Recent Activity */}
           <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-[var(--content-header-text)]">
-                <Bell className="w-5 h-5" />
-                Reminders & Alerts
+                <Clock className="w-5 h-5" />
+                Recent Activity
               </CardTitle>
             </CardHeader>
-            <CardContent>
-            {quotesLoading ? (
-              <div className="space-y-2">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="p-4 rounded-lg border border-gray-200 bg-white">
-                    <div className="flex items-start justify-between gap-3">
+            <CardContent className="relative pb-4">
+              {quotesLoading ? (
+                <div className="space-y-2 h-[600px]">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
+                      <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
                       <div className="flex-1 space-y-2">
                         <Skeleton className="h-4 w-3/4" />
                         <Skeleton className="h-3 w-1/2" />
-                        <Skeleton className="h-3 w-2/3" />
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <Skeleton className="h-4 w-16" />
-                        <Skeleton className="h-3 w-20" />
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            ) : reminders.length > 0 ? (
-              <div className="space-y-2 max-h-[320px] overflow-y-auto pr-2 -mr-2">
-                {reminders.map((reminder) => {
-                  const followUpDate = reminder.followUpDate;
-                  const formattedDate = followUpDate.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                  });
+                  ))}
+                </div>
+              ) : recentActivity.length > 0 ? (
+                <div className="space-y-2 min-h-[200px] max-h-[600px] overflow-y-auto pr-2 -mr-2">
+                  {recentActivity.map((activity) => {
+                    const getActivityIcon = () => {
+                      switch (activity.type) {
+                        case 'created':
+                          return <Plus className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+                        case 'won':
+                          return <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />;
+                        case 'lost':
+                          return <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />;
+                        case 'submitted':
+                          return <Upload className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
+                        case 'pending':
+                          return <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />;
+                        case 'updated':
+                          return <Edit3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+                        case 'archived':
+                          return <Archive className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
+                        case 'unarchived':
+                          return <ArchiveRestore className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
+                        case 'deleted':
+                          return <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />;
+                        case 'reminder':
+                          return <BellRing className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
+                        case 'completed':
+                          return <CheckCheck className="w-4 h-4 text-green-600 dark:text-green-400" />;
+                        default:
+                          return <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
+                      }
+                    };
 
-                  return (
-                    <div
-                      key={reminder.quote.id}
-                      onClick={() => navigate('/quotes')}
-                      className={`p-4 rounded-lg border transition-colors cursor-pointer ${
-                        reminder.isOverdue
-                          ? 'bg-red-50 hover:bg-red-100 border-red-200'
-                          : 'bg-white hover:bg-blue-50 border-gray-200'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
+                    return (
+                      <div
+                        key={activity.id}
+                        className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50"
+                      >
+                        <div className="p-2 rounded-full bg-gray-100 dark:bg-gray-700 flex-shrink-0">
+                          {getActivityIcon()}
+                        </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm text-[var(--content-header-text)] truncate mb-1">
-                            {reminder.quote.project_name || reminder.quote.quote_details?.project_name || 'Untitled Project'} - #{reminder.quote.proposal_number}
+                          <p className="text-sm text-[var(--content-text)] break-words">
+                            {activity.message}
                           </p>
-                          <div className="space-y-0.5 text-xs text-[var(--content-muted-text)]">
-                            {(reminder.quote.job_details?.client_company || reminder.quote.job_details?.client_name) && (
-                              <p className="truncate">{reminder.quote.job_details?.client_company || reminder.quote.job_details?.client_name}</p>
-                            )}
-                            {reminder.quote.creator_name && (
-                              <p>Created by {reminder.quote.creator_name}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                          <p className={`text-xs font-semibold ${reminder.isOverdue ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
-                            {(() => {
-                              const absTimeDiff = Math.abs(reminder.timeDiff);
-                              const days = Math.floor(absTimeDiff / (1000 * 3600 * 24));
-                              const hours = Math.floor((absTimeDiff % (1000 * 3600 * 24)) / (1000 * 3600));
-                              const minutes = Math.floor((absTimeDiff % (1000 * 3600)) / (1000 * 60));
-                              const seconds = Math.floor((absTimeDiff % (1000 * 60)) / 1000);
-
-                              let timeText = '';
-                              if (days > 0) {
-                                timeText = `${days}d`;
-                              } else if (hours > 0) {
-                                timeText = `${hours}h ${minutes}m`;
-                              } else if (minutes > 0) {
-                                timeText = `${minutes}m ${seconds}s`;
-                              } else {
-                                timeText = `${seconds}s`;
-                              }
-
-                              return reminder.isOverdue ? `${timeText} overdue` : reminder.daysRemaining === 0 ? 'Due today' : `${timeText} left`;
-                            })()}
+                          <p className="text-xs text-[var(--content-muted-text)] mt-1">
+                            {getTimeAgo(activity.timestamp)}
                           </p>
-                          <span className="text-xs text-[var(--content-muted-text)]">{formattedDate}</span>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Bell className="w-12 h-12 text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
-                <p className="text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)]">
-                  No reminders or alerts
-                </p>
-                <p className="text-sm text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] mt-1">
-                  All caught up!
-                </p>
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="h-[600px] flex items-center justify-center">
+                  <div className="text-center">
+                    <Clock className="w-12 h-12 text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] mx-auto mb-3 opacity-50" />
+                    <p className="text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)]">
+                      No recent activity
+                    </p>
+                    <p className="text-sm text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] mt-1">
+                      Activities will appear here
+                    </p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
