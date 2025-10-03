@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary, QuoteErrorBoundary } from "@/components/ErrorBoundary";
-import { ProtectedRoute } from "./ProtectedRoute";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
@@ -81,11 +80,7 @@ export const AppRouter = () => (
           <Route path="/analytics" element={<Analytics />} />
 
           {/* Team and organization management (requires Admin or Owner role) */}
-          <Route path="/team" element={
-            <ProtectedRoute requiresRole="Admin">
-              <Team />
-            </ProtectedRoute>
-          } />
+          <Route path="/team" element={<Team />} />
 
           {/* Application settings */}
           <Route path="/settings" element={<Settings />} />

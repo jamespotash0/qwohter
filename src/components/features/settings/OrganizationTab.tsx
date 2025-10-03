@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Building, Shield, AlertTriangle, RotateCcw, Copy, Globe, Phone, Printer, MapPin, Save, Edit3, X, Upload } from 'lucide-react';
+import { Building, Globe, Phone, Printer, MapPin, Save, Edit3, X, Upload, Briefcase } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { regenerateOrganizationCode } from "@/utils/organizationCodeManagement";
-import { canRegenerateOrgCode, hasAdminPermissions } from "@/utils/permissions";
+import { hasAdminPermissions } from "@/utils/permissions";
 import { supabase } from "@/integrations/supabase/client";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
 import { LogoUpload } from "@/components/common/uploads/LogoUpload";
 import { LogoUploadResult } from "@/services/LogoUploadService";
+import { useAuthStore } from "@/stores/auth/authStore";
 
 interface OrganizationTabProps {
   organization: any;
@@ -23,10 +23,9 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
   userRole,
   onOrganizationUpdate
 }) => {
-  const [isRegenerating, setIsRegenerating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const currentUser = useAuthStore((state) => state.user);
   const [editedData, setEditedData] = useState({
     name: organization?.name || '',
     industry: organization?.industry || '',
@@ -37,15 +36,6 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
   });
 
   const hasEditPermission = hasAdminPermissions(userRole);
-
-  // Get current user
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUser(user);
-    };
-    getCurrentUser();
-  }, []);
 
   // Update editedData when organization changes
   useEffect(() => {
@@ -83,63 +73,6 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
       description: error,
       variant: "destructive",
     });
-  };
-
-  const handleRegenerateOrgCode = async () => {
-    console.log('🔄 Regenerate button clicked');
-    console.log('Organization:', organization);
-    console.log('User Role:', userRole);
-    console.log('Can regenerate?', canRegenerateOrgCode(userRole));
-
-    if (!organization?.id || !canRegenerateOrgCode(userRole)) {
-      console.log('❌ Permission denied or no organization ID');
-      toast({
-        title: "Permission Denied",
-        description: "You don't have permission to regenerate the organization code.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsRegenerating(true);
-    console.log('🚀 Starting regeneration process...');
-
-    try {
-      const result = await regenerateOrganizationCode(organization.id, userRole);
-      console.log('✅ Regeneration successful:', result);
-
-      toast({
-        title: "Organization Code Regenerated",
-        description: `New code: ${result.newCode}. ${result.invalidatedTokens} invite tokens were invalidated for security.`,
-      });
-
-      console.log('🔄 About to call onOrganizationUpdate (regenerate):', typeof onOrganizationUpdate);
-      if (typeof onOrganizationUpdate === 'function') {
-        onOrganizationUpdate();
-      } else {
-        console.error('❌ onOrganizationUpdate is not a function:', onOrganizationUpdate);
-      }
-    } catch (error) {
-      console.error('❌ Error regenerating organization code:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to regenerate organization code",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRegenerating(false);
-      console.log('🏁 Regeneration process finished');
-    }
-  };
-
-  const copyOrgCode = () => {
-    if (organization?.organization_code) {
-      navigator.clipboard.writeText(organization.organization_code);
-      toast({
-        title: "Copied!",
-        description: "Organization code copied to clipboard.",
-      });
-    }
   };
 
   const handleSaveOrganization = async () => {
@@ -256,17 +189,15 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Company Logo */}
-      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5" />
-            Company Logo
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {currentUser ? (
+      <div className="pb-8 border-b border-[var(--content-card-border)]">
+        <h2 className="text-lg font-semibold text-[var(--content-header-text)] mb-6 flex items-center gap-2">
+          <Upload className="w-5 h-5" />
+          Company Logo
+        </h2>
+        <div>
+          {currentUser && (
             <LogoUpload
               onUploadSuccess={handleLogoUploadSuccess}
               onUploadError={handleLogoUploadError}
@@ -274,61 +205,60 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
               userId={currentUser.id}
               disabled={isEditing}
             />
-          ) : (
-            <div className="text-center py-8">
-              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading...</p>
-            </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Organization Information */}
-      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Building className="w-5 h-5" />
-              Organization Information
-            </div>
-            {!isEditing && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditing(true)}
-              >
-                <Edit3 className="w-4 h-4 mr-2" />
-                Edit
-              </Button>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <div className="pb-8 border-b border-[var(--content-card-border)]">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-[var(--content-header-text)] flex items-center gap-2">
+            <Building className="w-5 h-5" />
+            Organization Information
+          </h2>
+          {!isEditing && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditing(true)}
+            >
+              <Edit3 className="w-4 h-4 mr-2" />
+              Edit
+            </Button>
+          )}
+        </div>
+        <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Organization Name */}
             <div className="space-y-2">
               <Label htmlFor="org-name">Organization Name</Label>
-              <Input
-                id="org-name"
-                value={isEditing ? editedData.name : organization?.name || ''}
-                onChange={(e) => isEditing && setEditedData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Your organization name"
-                disabled={!isEditing}
-                className={!isEditing ? "bg-gray-50" : ""}
-              />
+              <div className="flex items-center gap-2">
+                <Building className="w-4 h-4 text-gray-500" />
+                <Input
+                  id="org-name"
+                  value={isEditing ? editedData.name : organization?.name || ''}
+                  onChange={(e) => isEditing && setEditedData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Your organization name"
+                  disabled={!isEditing}
+                  className={!isEditing ? "bg-gray-50" : ""}
+                />
+              </div>
             </div>
 
             {/* Industry */}
             <div className="space-y-2">
               <Label htmlFor="industry">Industry</Label>
-              <Input
-                id="industry"
-                value={isEditing ? editedData.industry : organization?.industry || ''}
-                onChange={(e) => isEditing && setEditedData(prev => ({ ...prev, industry: e.target.value }))}
-                placeholder="Enter an industry"
-                disabled={!isEditing}
-                className={!isEditing ? "bg-gray-50" : ""}
-              />
+              <div className="flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-gray-500" />
+                <Input
+                  id="industry"
+                  value={isEditing ? editedData.industry : organization?.industry || ''}
+                  onChange={(e) => isEditing && setEditedData(prev => ({ ...prev, industry: e.target.value }))}
+                  placeholder="Enter an industry"
+                  disabled={!isEditing}
+                  className={!isEditing ? "bg-gray-50" : ""}
+                />
+              </div>
             </div>
 
             {/* Phone Number */}
@@ -363,24 +293,8 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
               </div>
             </div>
 
-            {/* Website */}
-            <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
-              <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4 text-gray-500" />
-                <Input
-                  id="website"
-                  value={isEditing ? editedData.website : organization?.website || ''}
-                  onChange={(e) => isEditing && setEditedData(prev => ({ ...prev, website: e.target.value }))}
-                  placeholder="https://www.example.com"
-                  disabled={!isEditing}
-                  className={!isEditing ? "bg-gray-50" : ""}
-                />
-              </div>
-            </div>
-
             {/* Company Address */}
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2">
               {isEditing ? (
                 <MapboxInput
                   id="address"
@@ -404,6 +318,22 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
                   </div>
                 </>
               )}
+            </div>
+
+            {/* Website */}
+            <div className="space-y-2">
+              <Label htmlFor="website">Website</Label>
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-gray-500" />
+                <Input
+                  id="website"
+                  value={isEditing ? editedData.website : organization?.website || ''}
+                  onChange={(e) => isEditing && setEditedData(prev => ({ ...prev, website: e.target.value }))}
+                  placeholder="https://www.example.com"
+                  disabled={!isEditing}
+                  className={!isEditing ? "bg-gray-50" : ""}
+                />
+              </div>
             </div>
           </div>
 
@@ -434,65 +364,8 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
               </Button>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Organization Security */}
-      {canRegenerateOrgCode(userRole) && (
-        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              Organization Security
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <h4 className="font-medium text-amber-900 mb-1">Organization Code Management</h4>
-
-                  <div className="flex items-center gap-2 mb-3">
-                    <Label className="text-amber-800">Current code:</Label>
-                    <code className="bg-amber-100 px-2 py-1 rounded text-amber-900 font-mono text-sm">
-                      {organization?.organization_code}
-                    </code>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={copyOrgCode}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </Button>
-                  </div>
-
-                  <p className="text-xs text-amber-700 mb-3">
-                    If you suspect your organization code has been compromised, you can regenerate it.
-                    This will invalidate all existing invite links for security.
-                  </p>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRegenerateOrgCode}
-                    disabled={isRegenerating}
-                    className="border-amber-300 text-amber-700 hover:bg-amber-100"
-                  >
-                    {isRegenerating ? (
-                      <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin mr-2" />
-                    ) : (
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                    )}
-                    {isRegenerating ? 'Regenerating...' : 'Regenerate Code'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        </div>
+      </div>
 
     </div>
   );

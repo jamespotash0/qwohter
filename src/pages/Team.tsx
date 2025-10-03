@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { PageContent } from "@/components/common/layout";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth/authStore";
 import { getAppUrl } from "@/utils/environment";
 import { createInviteToken } from "@/utils/inviteTokens";
@@ -45,6 +45,17 @@ const Team = () => {
     approveMember,
     rejectMember
   } = useOrganizations();
+
+  // Role-based access control: Only Admin and Owner can access Team page
+  if (currentUserRole && currentUserRole !== 'Admin' && currentUserRole !== 'Owner') {
+    return (
+      <Navigate
+        to="/access-denied"
+        state={{ requiredRole: 'Admin', userRole: currentUserRole }}
+        replace
+      />
+    );
+  }
 
   const addInviteField = () => {
     setInviteEmails([...inviteEmails, { email: "", role: "Member" }]);

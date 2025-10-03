@@ -46,6 +46,10 @@ interface OrganizationState {
   members: OrganizationMember[];
   inviteTokens: InviteToken[];
   currentUserRole: 'Owner' | 'Admin' | 'Member' | null;
+  currentUserMembership: {
+    joined_at: string;
+    plan: string;
+  } | null;
   loading: boolean;
   error: string | null;
 
@@ -69,6 +73,7 @@ export const useOrganizationStore = create<OrganizationState>()(
       members: [],
       inviteTokens: [],
       currentUserRole: null,
+      currentUserMembership: null,
       loading: false,
       error: null,
 
@@ -95,6 +100,8 @@ export const useOrganizationStore = create<OrganizationState>()(
             .select(`
               organization_id,
               role,
+              joined_at,
+              plan,
               organizations (
                 id,
                 name,
@@ -120,6 +127,10 @@ export const useOrganizationStore = create<OrganizationState>()(
             set({
               currentOrganization: org,
               currentUserRole: membershipData.role as 'Owner' | 'Admin' | 'Member',
+              currentUserMembership: {
+                joined_at: membershipData.joined_at,
+                plan: membershipData.plan || 'Free'
+              },
               loading: false,
             });
 
@@ -242,6 +253,7 @@ export const useOrganizationStore = create<OrganizationState>()(
           members: [],
           inviteTokens: [],
           currentUserRole: null,
+          currentUserMembership: null,
           loading: false,
           error: null,
         });

@@ -5,13 +5,14 @@ import { User } from "@supabase/supabase-js";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageContent } from "@/components/common/layout";
-import { User as UserIcon, Building, Key, Settings as SettingsIcon } from "lucide-react";
+import { User as UserIcon, Building, Key, Shield } from "lucide-react";
 import { useOrganizationSettings } from "@/hooks/useCompanySettings";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useMembership } from "@/hooks/useMembership";
 import { ProfileTab } from "@/components/features/settings/ProfileTab";
 import { OrganizationTab } from "@/components/features/settings/OrganizationTab";
 import { PermissionsTab } from "@/components/features/settings/PermissionsTab";
+import { SecurityTab } from "@/components/features/settings/SecurityTab";
 import { canAccessSettingsTab } from "@/utils/permissions";
 
 const Settings = () => {
@@ -78,6 +79,17 @@ const Settings = () => {
       requiresPermission: "organization"
     },
     {
+      id: "security",
+      label: "Security",
+      icon: <Shield className="w-4 h-4" />,
+      component: <SecurityTab
+        organization={organization}
+        userRole={userRole || 'Member'}
+        onOrganizationUpdate={refetchOrganization}
+      />,
+      requiresPermission: "security"
+    },
+    {
       id: "permissions",
       label: "Permissions",
       icon: <Key className="w-4 h-4" />,
@@ -87,39 +99,58 @@ const Settings = () => {
   ].filter(tab => !tab.requiresPermission || canAccessSettingsTab(tab.requiresPermission, userRole || 'Member'));
 
   return (
-    <PageContent title="Settings" subtitle="Manage your profile, organization, and permissions" showPageHeader={true}>
-      <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0">
-        <CardContent className="p-0">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="border-b border-[var(--content-card-border)] px-6 pt-6">
-              <TabsList className="grid w-full max-w-md grid-cols-3 bg-[var(--content-bg)] p-1">
-                {availableTabs.map((tab) => (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    className="flex items-center gap-2 data-[state=active]:bg-[var(--sidebar-nav-bg-active)] data-[state=active]:text-[var(--sidebar-nav-text-active)] data-[state=active]:shadow-sm"
-                    style={{
-                      borderRadius: 'var(--sidebar-nav-border-radius)'
-                    }}
-                  >
-                    {tab.icon}
-                    {tab.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </div>
+    <div>
+      <div className="mb-6 pb-4 border-b border-[var(--content-card-border)]">
+        <h1 className="text-2xl font-bold text-[var(--content-header-text)] mb-1">Settings</h1>
+        <p className="text-[var(--content-muted-text)]">Manage your profile, organization, and permissions</p>
+      </div>
 
-            <div className="p-6">
-              {availableTabs.map((tab) => (
-                <TabsContent key={tab.id} value={tab.id} className="mt-0">
-                  {tab.component}
-                </TabsContent>
-              ))}
+      {/* Header Navigation Bar */}
+      <nav className="flex gap-1 px-6 mb-6">
+        {availableTabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 text-sm font-medium transition-all duration-200 ${
+              activeTab === tab.id
+                ? 'text-[var(--sidebar-nav-text-active)] shadow-sm'
+                : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)]'
+            }`}
+            style={{
+              borderRadius: 'var(--sidebar-nav-border-radius)',
+              ...(activeTab === tab.id
+                ? {
+                    backgroundColor: 'var(--sidebar-nav-bg-active)',
+                  }
+                : {})
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== tab.id) {
+                e.currentTarget.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== tab.id) {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      {/* Content Area */}
+      <div className="px-6">
+        {availableTabs.map((tab) => (
+          activeTab === tab.id && (
+            <div key={tab.id}>
+              {tab.component}
             </div>
-          </Tabs>
-        </CardContent>
-      </Card>
-    </PageContent>
+          )
+        ))}
+      </div>
+    </div>
   );
 };
 

@@ -224,16 +224,14 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Profile Information */}
-      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="w-5 h-5" />
-            Profile Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
+      <div className="pb-8 border-b border-[var(--content-card-border)]">
+        <h2 className="text-lg font-semibold text-[var(--content-header-text)] mb-6 flex items-center gap-2">
+          <User className="w-5 h-5" />
+          Profile Information
+        </h2>
+        <div className="space-y-6">
           <div className="flex items-start gap-6">
             <Avatar className="w-20 h-20">
               <AvatarImage src={profile?.avatar_url} />
@@ -471,19 +469,17 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Danger Zone - Hidden for Owners */}
       {userRole !== 'Owner' && (
-        <Card className="bg-white dark:bg-gray-800 border border-red-200 dark:border-red-900">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="w-5 h-5" />
-              Danger Zone
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="pb-8">
+          <h2 className="text-lg font-semibold text-red-600 mb-6 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5" />
+            Danger Zone
+          </h2>
+          <div>
             <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-200">
               <div>
                 <h4 className="font-medium text-red-900">Delete Account</h4>
@@ -547,8 +543,8 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
                 </DialogContent>
               </Dialog>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );

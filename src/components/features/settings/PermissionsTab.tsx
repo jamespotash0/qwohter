@@ -104,16 +104,14 @@ export const PermissionsTab: React.FC<PermissionsTabProps> = ({ userRole }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Current Role Overview */}
-      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Key className="w-5 h-5" />
-            Your Access Level
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="pb-8 border-b border-[var(--content-card-border)]">
+        <h2 className="text-lg font-semibold text-[var(--content-header-text)] mb-6 flex items-center gap-2">
+          <Key className="w-5 h-5" />
+          Your Access Level
+        </h2>
+        <div>
           <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
             <div>
               <h3 className="font-semibold text-blue-900">Current Role: {userRole}</h3>
@@ -123,19 +121,17 @@ export const PermissionsTab: React.FC<PermissionsTabProps> = ({ userRole }) => {
               {userRole}
             </Badge>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Permissions Breakdown */}
       {permissionSections.map((section, sectionIndex) => (
-        <Card key={section.title} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              {section.icon}
-              {section.title}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div key={section.title} className="pb-8 border-b border-[var(--content-card-border)] last:border-0 last:pb-0">
+          <h2 className="text-lg font-semibold text-[var(--content-header-text)] mb-6 flex items-center gap-2">
+            {section.icon}
+            {section.title}
+          </h2>
+          <div>
             <div className="space-y-4">
               {section.permissions.map((permission, index) => (
                 <div key={permission.name}>
@@ -162,8 +158,8 @@ export const PermissionsTab: React.FC<PermissionsTabProps> = ({ userRole }) => {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ))}
     </div>
   );
