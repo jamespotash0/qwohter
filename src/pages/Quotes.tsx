@@ -104,7 +104,7 @@ const Quotes = () => {
 
   const handleCreateQuote = (quoteName: string) => {
     setShowNewQuoteDialog(false);
-    navigate(`/newquote?name=${encodeURIComponent(quoteName)}`);
+    navigate(`/quotes/new?name=${encodeURIComponent(quoteName)}`);
   };
 
   const handleCreateVersion = async (quoteId: string) => {

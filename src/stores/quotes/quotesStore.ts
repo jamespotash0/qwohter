@@ -333,6 +333,7 @@ export const useQuotesStore = create<QuotesState>()(
                 proposal_number: proposalInfo.fullNumber,
                 project_name: projectName,
                 quote_details: quoteData.contactInfo || {},
+                quote_source: quoteData.contactInfo?.quoteSource || 'Manual',
                 job_details: {
                   job_location: quoteData.jobDetails.jobLocation || '',
                   client_name: quoteData.jobDetails.billedTo.name || '',
@@ -341,13 +342,7 @@ export const useQuotesStore = create<QuotesState>()(
                   date: quoteData.jobDetails.date
                 },
                 wall_details: quoteData.walls || {},
-                price_details: {
-                  base_price: quoteData.pricing.basePrice,
-                  freight: quoteData.pricing.freight,
-                  total: quoteData.pricing.total,
-                  payment_upon_drawings: quoteData.pricing.paymentUponDrawings,
-                  payment_upon_track_installation: quoteData.pricing.paymentUponTrackInstallation
-                },
+                price_details: quoteData.pricing || {},
                 delivery_details: quoteData.deliveryLabor.delivery || {},
                 labor_details: quoteData.deliveryLabor.labor || {},
                 status: quoteData.status || 'Draft',
@@ -359,7 +354,10 @@ export const useQuotesStore = create<QuotesState>()(
 
             if (error) throw error;
 
-            const newQuote = convertRowToQuote(data);
+            const newQuote = convertRowToQuote({
+              ...data,
+              creator_name: userName
+            });
             _setQuotes([newQuote, ...quotes]);
 
             // Log quote creation activity

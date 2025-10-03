@@ -14,8 +14,8 @@ const NewQuote = () => {
   const editProposalNumber = searchParams.get('edit');
   const existingQuote = editProposalNumber ? quotes.find(q => q.proposal_number === editProposalNumber) : null;
   
-  // Get quote name from URL params or existing quote, fallback to "New Quote"
-  const initialQuoteName = existingQuote?.project_name || searchParams.get('name') || "New Quote";
+  // Get quote name from URL params or existing quote, fallback to empty string
+  const initialQuoteName = existingQuote?.project_name || searchParams.get('name') || "";
   const [quoteName, setQuoteName] = useState(initialQuoteName);
 
   useEffect(() => {

@@ -46,7 +46,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
   }, [currentOrganization, data.organizationName]);
 
   // Get active members from the organization
-  const activeMembers = members.filter(member => member.status === 'active');
+  const activeMembers = members.filter(member => member.status === 'Active');
   
   // Create contact options from organization members
   const contactNames = activeMembers

@@ -94,7 +94,6 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           ...data,
           organization_info: organization ? {
             name: organization.name,
-            industry: organization.industry,
             phone: organization.phone_number,
             fax: organization.fax_number,
             address: organization.company_address,

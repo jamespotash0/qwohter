@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
@@ -46,6 +46,13 @@ const QuoteCreatorWizard = ({
     handleWallPocketDoorsUpdate,
     handleWallStructureSupportUpdate
   } = useWizardState(existingQuote);
+
+  // Sync localQuoteName with quoteName prop when it changes
+  useEffect(() => {
+    if (quoteName !== localQuoteName) {
+      setLocalQuoteName(quoteName);
+    }
+  }, [quoteName]);
 
   // Get organization settings for conditional fax validation
   const { organization } = useOrganizationSettings();

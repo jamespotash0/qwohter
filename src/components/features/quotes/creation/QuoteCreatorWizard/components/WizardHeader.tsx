@@ -66,7 +66,7 @@ export const WizardHeader = ({
                 className="text-lg font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent cursor-pointer hover:opacity-70 transition-opacity"
                 onClick={() => onEditingQuoteNameChange(true)}
               >
-                {localQuoteName}
+                {localQuoteName || "Click to add quote name"}
               </h1>
             )}
             
