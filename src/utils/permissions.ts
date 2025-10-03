@@ -104,6 +104,8 @@ export const canAccessSettingsTab = (tabName: string, userRole: string): boolean
       return true; // All users can access profile
     case 'organization':
       return canManageOrganization(userRole);
+    case 'billing':
+      return hasAdminPermissions(userRole); // Admin and Owner can access billing
     case 'security':
       return hasAdminPermissions(userRole); // Admin and Owner can access security
     case 'permissions':

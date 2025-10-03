@@ -813,12 +813,14 @@ const Dashboard = () => {
                           {getActivityIcon()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-[var(--content-text)] break-words">
-                            {activity.message}
-                          </p>
-                          <p className="text-xs text-[var(--content-muted-text)] mt-1">
-                            {getTimeAgo(activity.timestamp)}
-                          </p>
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-3">
+                            <p className="text-sm text-[var(--content-text)] break-words flex-1">
+                              {activity.message}
+                            </p>
+                            <p className="text-xs text-[var(--content-muted-text)] sm:flex-shrink-0 sm:whitespace-nowrap">
+                              {getTimeAgo(activity.timestamp)}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     );

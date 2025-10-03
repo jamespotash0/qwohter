@@ -1,54 +1,29 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageContent } from "@/components/common/layout";
-import { User as UserIcon, Building, Key, Shield } from "lucide-react";
+import { User as UserIcon, Building, Key, Shield, CreditCard } from "lucide-react";
 import { useOrganizationSettings } from "@/hooks/useCompanySettings";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useMembership } from "@/hooks/useMembership";
+import { useAuthStore } from "@/stores/auth/authStore";
 import { ProfileTab } from "@/components/features/settings/ProfileTab";
 import { OrganizationTab } from "@/components/features/settings/OrganizationTab";
 import { PermissionsTab } from "@/components/features/settings/PermissionsTab";
 import { SecurityTab } from "@/components/features/settings/SecurityTab";
+import { BillingTab } from "@/components/features/settings/BillingTab";
 import { canAccessSettingsTab } from "@/utils/permissions";
 
 const Settings = () => {
-  const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState("profile");
-  const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
   const { organization, fetchOrganization: refetchOrganization } = useOrganizationSettings();
   const { profile } = useUserProfile(user?.id);
-  const { currentMembership } = useMembership();
+  const { currentMembership, loading: membershipLoading } = useMembership();
   const userRole = currentMembership?.role;
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/auth');
-        return;
-      }
-      setUser(session.user);
-    };
-
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        navigate('/auth');
-      } else {
-        setUser(session.user);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  // Loading state for settings
-  if (!user) {
+  // Wait for membership to load to get correct role
+  if (membershipLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -77,6 +52,16 @@ const Settings = () => {
         onOrganizationUpdate={refetchOrganization}
       />,
       requiresPermission: "organization"
+    },
+    {
+      id: "billing",
+      label: "Billing",
+      icon: <CreditCard className="w-4 h-4" />,
+      component: <BillingTab
+        organization={organization}
+        userRole={userRole || 'Member'}
+      />,
+      requiresPermission: "billing"
     },
     {
       id: "security",
