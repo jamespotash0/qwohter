@@ -11,13 +11,15 @@ interface DateTimePickerProps {
   onDateChange: (date: Date | undefined) => void;
   placeholder?: string;
   className?: string;
+  displayText?: string; // Optional custom display text instead of formatted date
 }
 
 export function DateTimePicker({
   date,
   onDateChange,
   placeholder = "Pick a date and time",
-  className
+  className,
+  displayText
 }: DateTimePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [tempDate, setTempDate] = React.useState<Date | undefined>();
@@ -81,13 +83,7 @@ export function DateTimePicker({
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {date ? (
-            <>
-              {format(date, "PPP 'at' p")}
-              <X
-                className="ml-2 h-4 w-4 hover:text-red-600 flex-shrink-0"
-                onClick={handleClear}
-              />
-            </>
+            displayText || format(date, "PPP 'at' p")
           ) : (
             <span>{placeholder}</span>
           )}

@@ -144,7 +144,7 @@ export const quoteActivityService = {
     userId: string;
     userName: string;
     organizationId: string;
-    followUpDays: number;
+    followUpDate: string;
   }) {
     return this.logActivity({
       quoteId: params.quoteId,
@@ -155,7 +155,7 @@ export const quoteActivityService = {
       organizationId: params.organizationId,
       activityType: 'reminder_set',
       activityDetails: {
-        follow_up_days: params.followUpDays
+        follow_up_date: params.followUpDate
       }
     });
   },

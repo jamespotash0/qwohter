@@ -226,7 +226,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   onEditQuote,
   onDeleteQuote,
   onStatusChange,
-  onFollowUpDaysChange,
+  onFollowUpDateChange,
   onQuoteSourceChange,
   onCreateVersion,
   onCreateQuote,
@@ -540,6 +540,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               }
             }}
             placeholder={followUpStatus.displayText}
+            displayText={followUpDate ? followUpStatus.displayText : undefined}
             className={`h-8 text-xs ${followUpStatus.colorClass} border-0`}
           />
         );
@@ -613,7 +614,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       size: 80,
       enableSorting: false,
     }),
-  ], [onEditQuote, onDeleteQuote, onStatusChange, onFollowUpDaysChange, onQuoteSourceChange, onCreateVersion, onArchiveQuote, onUnarchiveQuote, isArchiveView, forceUpdate]);
+  ], [onEditQuote, onDeleteQuote, onStatusChange, onFollowUpDateChange, onQuoteSourceChange, onCreateVersion, onArchiveQuote, onUnarchiveQuote, isArchiveView, forceUpdate]);
 
   const table = useReactTable({
     data: quotes,

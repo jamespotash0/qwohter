@@ -175,26 +175,24 @@ const Dashboard = () => {
     };
   }, [quotes]);
 
-  // Get reminders (all quotes with follow-up days set)
+  // Get reminders (all quotes with follow-up date set)
   const reminders = useMemo(() => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
     return quotes
-      .filter(q => q.follow_up_days && q.follow_up_days > 0)
+      .filter(q => q.follow_up_date)
       .map(q => {
-        const baseDate = q.status_last_updated ? new Date(q.status_last_updated) : new Date(q.created_at);
-        baseDate.setHours(0, 0, 0, 0);
-        const followUpDate = new Date(baseDate);
-        followUpDate.setDate(followUpDate.getDate() + (q.follow_up_days || 0));
-        const daysRemaining = Math.ceil((followUpDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+        const followUpDate = new Date(q.follow_up_date!);
+        const timeDiff = followUpDate.getTime() - today.getTime();
+        const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
         return {
           quote: q,
           followUpDate,
           daysRemaining,
-          isOverdue: daysRemaining < 0,
-          isUpcoming: daysRemaining >= 0
+          timeDiff,
+          isOverdue: timeDiff < 0,
+          isUpcoming: timeDiff >= 0
         };
       })
       .sort((a, b) => a.daysRemaining - b.daysRemaining);
@@ -237,8 +235,12 @@ const Dashboard = () => {
         type = 'unarchived';
       } else if (activity.activity_type === 'updated') {
         const changedFields = activity.activity_details?.changed_fields || [];
-        const fieldList = changedFields.length > 0
-          ? ` (${changedFields.join(', ')})`
+        // Format field names: capitalize and replace underscores with spaces
+        const formattedFields = changedFields.map(field =>
+          field.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+        );
+        const fieldList = formattedFields.length > 0
+          ? ` ${formattedFields.join(', ')}`
           : '';
         message = `${userName} updated ${projectName} (Quote #${quoteNumber})${fieldList}`;
         eventText = 'Updated';
@@ -248,8 +250,33 @@ const Dashboard = () => {
         eventText = 'Deleted';
         type = 'deleted';
       } else if (activity.activity_type === 'reminder_set') {
-        const days = activity.activity_details?.follow_up_days || 0;
-        message = `${userName} set ${days}d reminder for ${projectName} (Quote #${quoteNumber})`;
+        const followUpDate = activity.activity_details?.follow_up_date;
+        let timeDescription = '';
+
+        if (followUpDate) {
+          const targetDate = new Date(followUpDate);
+          const now = new Date();
+          const timeDiff = targetDate.getTime() - now.getTime();
+          const isOverdue = timeDiff < 0;
+          const absTimeDiff = Math.abs(timeDiff);
+
+          const days = Math.floor(absTimeDiff / (1000 * 3600 * 24));
+          const hours = Math.floor((absTimeDiff % (1000 * 3600 * 24)) / (1000 * 3600));
+          const minutes = Math.floor((absTimeDiff % (1000 * 3600)) / (1000 * 60));
+          const seconds = Math.floor((absTimeDiff % (1000 * 60)) / 1000);
+
+          if (days > 0) {
+            timeDescription = `${days}d ${isOverdue ? 'overdue' : 'remaining'}`;
+          } else if (hours > 0) {
+            timeDescription = `${hours}h ${minutes}m ${isOverdue ? 'overdue' : 'remaining'}`;
+          } else if (minutes > 0) {
+            timeDescription = `${minutes}m ${seconds}s ${isOverdue ? 'overdue' : 'remaining'}`;
+          } else {
+            timeDescription = `${seconds}s ${isOverdue ? 'overdue' : 'remaining'}`;
+          }
+        }
+
+        message = `${userName} set reminder for ${projectName} (Quote #${quoteNumber})${timeDescription ? ` - ${timeDescription}` : ''}`;
         eventText = 'Reminder Set';
         type = 'reminder';
       }
@@ -592,7 +619,26 @@ const Dashboard = () => {
                         </div>
                         <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
                           <p className={`text-xs font-semibold ${reminder.isOverdue ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
-                            {reminder.isOverdue ? `${Math.abs(reminder.daysRemaining)}d overdue` : reminder.daysRemaining === 0 ? 'Due today' : `${reminder.daysRemaining}d left`}
+                            {(() => {
+                              const absTimeDiff = Math.abs(reminder.timeDiff);
+                              const days = Math.floor(absTimeDiff / (1000 * 3600 * 24));
+                              const hours = Math.floor((absTimeDiff % (1000 * 3600 * 24)) / (1000 * 3600));
+                              const minutes = Math.floor((absTimeDiff % (1000 * 3600)) / (1000 * 60));
+                              const seconds = Math.floor((absTimeDiff % (1000 * 60)) / 1000);
+
+                              let timeText = '';
+                              if (days > 0) {
+                                timeText = `${days}d`;
+                              } else if (hours > 0) {
+                                timeText = `${hours}h ${minutes}m`;
+                              } else if (minutes > 0) {
+                                timeText = `${minutes}m ${seconds}s`;
+                              } else {
+                                timeText = `${seconds}s`;
+                              }
+
+                              return reminder.isOverdue ? `${timeText} overdue` : reminder.daysRemaining === 0 ? 'Due today' : `${timeText} left`;
+                            })()}
                           </p>
                           <span className="text-xs text-[var(--content-muted-text)]">{formattedDate}</span>
                         </div>

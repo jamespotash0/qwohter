@@ -524,7 +524,7 @@ export const useQuotesStore = create<QuotesState>()(
                   oldStatus: oldStatus,
                   newStatus: newStatus
                 });
-              } else if (updates.follow_up_days && updates.follow_up_days !== currentQuote.follow_up_days) {
+              } else if (updates.follow_up_date && updates.follow_up_date !== currentQuote.follow_up_date) {
                 // Reminder set
                 await quoteActivityService.logReminderSet({
                   quoteId: id,
@@ -533,7 +533,7 @@ export const useQuotesStore = create<QuotesState>()(
                   userId: user.id,
                   userName: userName,
                   organizationId: organizationId,
-                  followUpDays: updates.follow_up_days
+                  followUpDate: updates.follow_up_date
                 });
               } else {
                 // General update
