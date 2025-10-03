@@ -106,7 +106,7 @@ export const PermissionsTab: React.FC<PermissionsTabProps> = ({ userRole }) => {
   return (
     <div className="space-y-6">
       {/* Current Role Overview */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Key className="w-5 h-5" />
@@ -128,7 +128,7 @@ export const PermissionsTab: React.FC<PermissionsTabProps> = ({ userRole }) => {
 
       {/* Permissions Breakdown */}
       {permissionSections.map((section, sectionIndex) => (
-        <Card key={section.title}>
+        <Card key={section.title} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               {section.icon}

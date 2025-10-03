@@ -258,7 +258,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
   return (
     <div className="space-y-6">
       {/* Company Logo */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="w-5 h-5" />
@@ -284,7 +284,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
       </Card>
 
       {/* Organization Information */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -412,7 +412,8 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
               <Button
                 onClick={handleSaveOrganization}
                 disabled={isUpdating}
-                className="flex-1"
+                size="sm"
+                className="bg-blue-600 hover:bg-[var(--sidebar-nav-bg-hover)] text-white"
               >
                 {isUpdating ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
@@ -423,8 +424,10 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
               </Button>
               <Button
                 variant="outline"
+                size="sm"
                 onClick={handleCancelEdit}
                 disabled={isUpdating}
+                className="hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]"
               >
                 <X className="w-4 h-4 mr-2" />
                 Cancel
@@ -436,7 +439,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
 
       {/* Organization Security */}
       {canRegenerateOrgCode(userRole) && (
-        <Card>
+        <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="w-5 h-5" />

@@ -247,8 +247,8 @@
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 46 100% 50%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 210 8% 91%;  /* #E8E9EA - Sidebar hover grayish blue */
+    --accent-foreground: 0 0% 0%;  /* Black text on accent */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
     --border: 214.3 31.8% 91.4%;

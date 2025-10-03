@@ -235,7 +235,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         <p>No walls added yet. Click "Add Wall" to get started.</p>
         <Button
           onClick={addNewWall}
-          className="mt-4"
+          className="mt-4 bg-blue-600 text-white hover:bg-blue-700"
         >
           Add Wall
         </Button>
@@ -249,7 +249,7 @@ const WallSpecificationForm = ({ walls, onUpdate }: WallSpecificationFormProps) 
         <h2 className="text-xl font-semibold">Wall Specifications</h2>
         <Button
           onClick={addNewWall}
-          className="bg-primary text-white hover:bg-primary/90"
+          className="bg-blue-600 text-white hover:bg-blue-700"
         >
           Add Wall
         </Button>

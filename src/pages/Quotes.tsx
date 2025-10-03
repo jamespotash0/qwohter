@@ -545,7 +545,7 @@ const Quotes = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteQuoteId && handleDeleteQuote(deleteQuoteId)}
-              className="bg-[var(--status-error)] hover:bg-[var(--status-error)] hover:brightness-90"
+              className="bg-red-600 hover:bg-red-700 text-white"
             >
               Delete
             </AlertDialogAction>

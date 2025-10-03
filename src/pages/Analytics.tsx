@@ -66,15 +66,21 @@ const Analytics = () => {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
-    // Filter quotes based on view mode
+    // Filter quotes based on view mode - use won_date for won quotes, created_at for others
     const filteredQuotes = viewMode === 'monthly'
       ? quotes.filter(q => {
-          const createdDate = new Date(q.created_at);
-          return createdDate.getFullYear() === currentYear && createdDate.getMonth() === currentMonth;
+          // For won/completed quotes, use won_date; otherwise use created_at
+          const dateToCheck = (q.status === 'Won' || q.status === 'Completed') && q.won_date
+            ? new Date(q.won_date)
+            : new Date(q.created_at);
+          return dateToCheck.getFullYear() === currentYear && dateToCheck.getMonth() === currentMonth;
         })
       : quotes.filter(q => {
-          const createdDate = new Date(q.created_at);
-          return createdDate.getFullYear() === currentYear;
+          // For won/completed quotes, use won_date; otherwise use created_at
+          const dateToCheck = (q.status === 'Won' || q.status === 'Completed') && q.won_date
+            ? new Date(q.won_date)
+            : new Date(q.created_at);
+          return dateToCheck.getFullYear() === currentYear;
         });
 
     // Quotes by user

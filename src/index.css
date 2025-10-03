@@ -42,8 +42,8 @@
     --muted: 40 20% 93%; /* Muted background */
     --muted-foreground: 20 8% 45%; /* Muted text */
 
-    --accent: 46 100% 52%; /* #FFBE0B - Yellow accent */
-    --accent-foreground: 20 14% 12.2%; /* Dark text on accent */
+    --accent: 210 8% 91%; /* #E8E9EA - Sidebar hover grayish blue */
+    --accent-foreground: 0 0% 0%; /* Black text on accent */
 
     --destructive: 0 75% 55%; /* Red */
     --destructive-foreground: 0 0% 100%; /* White text on red */

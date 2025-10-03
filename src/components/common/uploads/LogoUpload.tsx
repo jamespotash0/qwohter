@@ -39,6 +39,8 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
     isUploaded: !!currentLogoUrl
   });
 
+  const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
 
@@ -167,7 +169,13 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
         }
         
         console.log('✅ Logo uploaded and saved successfully');
-        
+
+        // Show success overlay for 3 seconds
+        setShowSuccessOverlay(true);
+        setTimeout(() => {
+          setShowSuccessOverlay(false);
+        }, 3000);
+
         // Call onUploadSuccess to update parent component with new logo data
         onUploadSuccess({
           success: true,
@@ -261,9 +269,9 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
       {/* Upload Area */}
       <div
         className={`
-          relative border-2 border-dashed rounded-lg transition-all duration-200 p-10
-          ${uploadState.isDragging 
-            ? 'border-primary bg-primary/5 scale-[1.02]' 
+          relative border-2 border-dashed rounded-lg transition-all duration-200 p-6
+          ${uploadState.isDragging
+            ? 'border-primary bg-primary/5 scale-[1.02]'
             : 'border-muted-foreground/25 hover:border-muted-foreground/40'
           }
           ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
@@ -311,7 +319,6 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
                 </div>
               </div>
               <div className="space-y-2">
-                <p className="text-sm font-medium text-green-700">Logo Uploaded</p>
                 <p className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                   Hover and click to change logo
                 </p>
@@ -414,13 +421,15 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
         </Button>
       )}
 
-      {/* Success State Display */}
-      {hasCurrentLogo && !uploadState.isUploading && !hasFileSelected && (
-        <div className="text-center py-2">
-          <p className="text-sm text-green-700 flex items-center justify-center gap-2">
-            <CheckCircle className="w-4 h-4" />
-            Logo Uploaded Successfully
-          </p>
+      {/* Success Overlay */}
+      {showSuccessOverlay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-4 animate-in fade-in zoom-in duration-200">
+            <p className="text-sm text-green-700 flex items-center gap-2">
+              <CheckCircle className="w-5 h-5" />
+              Logo Uploaded Successfully
+            </p>
+          </div>
         </div>
       )}
 

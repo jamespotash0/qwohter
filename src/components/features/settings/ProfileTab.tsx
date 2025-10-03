@@ -18,7 +18,7 @@ interface ProfileTabProps {
 
 export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole }) => {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editedFullName, setEditedFullName] = useState(profile?.full_name || '');
+  const [editedFullName, setEditedFullName] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Email change dialog states
@@ -37,8 +37,26 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const getInitials = (email: string) => {
-    return email.split('@')[0]!.slice(0, 2).toUpperCase();
+  // Update editedFullName when profile loads
+  React.useEffect(() => {
+    if (profile?.full_name) {
+      setEditedFullName(profile.full_name);
+    }
+  }, [profile?.full_name]);
+
+  const getInitials = (fullName?: string, email?: string) => {
+    if (fullName) {
+      const nameParts = fullName.trim().split(' ');
+      if (nameParts.length >= 2) {
+        // First initial + Last initial
+        return (nameParts[0]![0] + nameParts[nameParts.length - 1]![0]).toUpperCase();
+      } else if (nameParts.length === 1) {
+        // If only one name, use first two characters
+        return nameParts[0]!.slice(0, 2).toUpperCase();
+      }
+    }
+    // Fallback to email if no full name
+    return email ? email.split('@')[0]!.slice(0, 2).toUpperCase() : '??';
   };
 
 
@@ -208,7 +226,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
   return (
     <div className="space-y-6">
       {/* Profile Information */}
-      <Card>
+      <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="w-5 h-5" />
@@ -220,7 +238,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
             <Avatar className="w-20 h-20">
               <AvatarImage src={profile?.avatar_url} />
               <AvatarFallback className="text-lg">
-                {getInitials(user.email || user.id)}
+                {getInitials(profile?.full_name, user.email)}
               </AvatarFallback>
             </Avatar>
 
@@ -243,7 +261,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
                           size="sm"
                           onClick={handleSaveProfile}
                           disabled={isUpdating}
-                          className="h-8 px-3"
+                          className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-white"
                         >
                           {isUpdating ? 'Saving...' : 'Save'}
                         </Button>
@@ -251,7 +269,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
                           size="sm"
                           variant="outline"
                           onClick={handleCancelEdit}
-                          className="h-8 px-3"
+                          className="h-8 px-3 hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]"
                         >
                           Cancel
                         </Button>
@@ -269,7 +287,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
                           size="sm"
                           variant="outline"
                           onClick={() => setIsEditingProfile(true)}
-                          className="h-8 px-3"
+                          className="h-8 px-3 hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]"
                         >
                           Edit
                         </Button>
@@ -293,7 +311,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 px-3"
+                          className="h-8 px-3 hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]"
                         >
                           Change
                         </Button>
@@ -350,6 +368,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
                           <Button
                             onClick={handleEmailChange}
                             disabled={isUpdatingEmail || !newEmail || !currentPassword}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
                           >
                             {isUpdatingEmail ? 'Updating...' : 'Update Email'}
                           </Button>
@@ -375,7 +394,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 px-3"
+                          className="h-8 px-3 hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]"
                         >
                           Reset
                         </Button>
@@ -383,13 +402,13 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Reset Password</DialogTitle>
-                          <DialogDescription>
-                            We'll send a password reset link to your email address.
-                          </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4">
                           {!passwordResetSent ? (
                             <>
+                              <p className="text-sm text-gray-600">
+                                You'll receive an email with instructions and a secure link to reset your password.
+                              </p>
                               <div>
                                 <Label htmlFor="reset-email">Email Address</Label>
                                 <Input
@@ -398,15 +417,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
                                   disabled
                                   className="bg-gray-50"
                                 />
-                              </div>
-                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <div className="flex items-center space-x-2">
-                                  <Mail className="w-5 h-5 text-blue-600" />
-                                  <p className="text-sm font-medium text-blue-800">Password Reset Instructions</p>
-                                </div>
-                                <p className="text-sm text-blue-700 mt-1">
-                                  You'll receive an email with a secure link to reset your password.
-                                </p>
                               </div>
                             </>
                           ) : (
@@ -437,6 +447,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
                             <Button
                               onClick={handlePasswordReset}
                               disabled={isResettingPassword}
+                              className="bg-blue-600 hover:bg-blue-700 text-white"
                             >
                               {isResettingPassword ? 'Sending...' : 'Send Reset Link'}
                             </Button>
@@ -465,7 +476,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
 
       {/* Danger Zone - Hidden for Owners */}
       {userRole !== 'Owner' && (
-        <Card className="border-red-200">
+        <Card className="bg-white dark:bg-gray-800 border border-red-200 dark:border-red-900">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="w-5 h-5" />
