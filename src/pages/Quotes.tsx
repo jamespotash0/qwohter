@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageContent, ContentCard } from "@/components/common/layout";
 import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
@@ -7,8 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuotesStore, type Quote } from "@/stores/quotes/quotesStore";
 import { EnhancedQuotesTable } from "@/components/features/quotes/table/EnhancedQuotesTable";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
-import { FileText, Plus, Sparkles } from "lucide-react";
+import { FileText, Plus, Sparkles, DollarSign, TrendingUp, Clock, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 /**
  * Streamlined Quotes Page using AppLayout
@@ -91,6 +92,66 @@ const Quotes = () => {
     await deleteQuoteFromDB(id);
     setDeleteQuoteId(null);
   };
+
+  // Calculate quote statistics
+  const metrics = useMemo(() => {
+    const activeQuotes = quotes.filter(q => !q.archived);
+
+    // Get current month start date
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Filter quotes created this month
+    const createdThisMonth = activeQuotes.filter(q => {
+      const createdDate = new Date(q.created_at);
+      return createdDate >= monthStart;
+    });
+
+    // Filter quotes that changed to Won status this month
+    const wonThisMonth = activeQuotes.filter(q => {
+      if (q.status !== 'Won' || !q.status_last_updated) return false;
+      const statusDate = new Date(q.status_last_updated);
+      return statusDate >= monthStart;
+    });
+
+    // Filter quotes that changed to Pending/Submitted status this month
+    const pendingThisMonth = activeQuotes.filter(q => {
+      if (q.status !== 'Pending' && q.status !== 'Submitted') return false;
+      if (!q.status_last_updated) return false;
+      const statusDate = new Date(q.status_last_updated);
+      return statusDate >= monthStart;
+    });
+
+    // Overall metrics
+    const totalQuotes = activeQuotes.length;
+    const pendingQuotes = activeQuotes.filter(q => q.status === 'Pending' || q.status === 'Submitted').length;
+    const wonQuotes = activeQuotes.filter(q => q.status === 'Won').length;
+    const draftQuotes = activeQuotes.filter(q => q.status === 'Draft').length;
+
+    // Calculate total value of all active quotes
+    const totalValue = activeQuotes.reduce((sum, quote) => {
+      const finalPrice = quote.price_details?.final_selling_price || 0;
+      return sum + finalPrice;
+    }, 0);
+
+    // Calculate value added this month (quotes created this month)
+    const valueThisMonth = createdThisMonth.reduce((sum, quote) => {
+      const finalPrice = quote.price_details?.final_selling_price || 0;
+      return sum + finalPrice;
+    }, 0);
+
+    return {
+      totalQuotes,
+      totalQuotesThisMonth: createdThisMonth.length,
+      pendingQuotes,
+      pendingQuotesThisMonth: pendingThisMonth.length,
+      wonQuotes,
+      wonQuotesThisMonth: wonThisMonth.length,
+      draftQuotes,
+      totalValue,
+      valueThisMonth
+    };
+  }, [quotes]);
 
   const editQuote = (quote: Quote) => {
     const proposalNumber = quote.proposal_number;
@@ -346,8 +407,99 @@ const Quotes = () => {
           </div>
         </ContentCard>
       ) : (
-        /* Main quotes table with archive toggle */
-        <EnhancedQuotesTable
+        <>
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Total Quotes */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800">
+                    <FileText className="w-6 h-6 text-blue-600 dark:text-blue-300" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Total Quotes</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.totalQuotes}</p>
+                    {metrics.totalQuotesThisMonth > 0 && (
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                        +{metrics.totalQuotesThisMonth} this month
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Pending Quotes */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-900 dark:to-yellow-800">
+                    <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-300" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Pending Quotes</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.pendingQuotes}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Won Quotes */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800">
+                    <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-300" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Won Quotes</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.wonQuotes}</p>
+                    {metrics.wonQuotesThisMonth > 0 && (
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                        +{metrics.wonQuotesThisMonth} this month
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Total Value */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
+                    <DollarSign className="w-6 h-6 text-purple-600 dark:text-purple-300" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Total Value</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">
+                      {new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: 'USD',
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                      }).format(metrics.totalValue)}
+                    </p>
+                    {metrics.valueThisMonth > 0 && (
+                      <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
+                        +{new Intl.NumberFormat('en-US', {
+                          style: 'currency',
+                          currency: 'USD',
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0
+                        }).format(metrics.valueThisMonth)} this month
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main quotes table with archive toggle */}
+          <EnhancedQuotesTable
           quotes={showArchived ? archivedQuotes : filteredQuotes}
           onEditQuote={editQuote}
           onDeleteQuote={(id) => setDeleteQuoteId(id)}
@@ -377,6 +529,7 @@ const Quotes = () => {
           onExportCSV={handleExportCSV}
           onExportPDF={handleExportPDF}
         />
+        </>
       )}
 
       {/* Delete Confirmation Dialog */}
