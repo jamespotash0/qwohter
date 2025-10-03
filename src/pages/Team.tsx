@@ -3,7 +3,7 @@ import { PageContent } from "@/components/common/layout";
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { authStateHelpers } from "@/utils/authStateHelpers";
+import { useAuthStore } from "@/stores/auth/authStore";
 import { getAppUrl } from "@/utils/environment";
 import { createInviteToken } from "@/utils/inviteTokens";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,6 @@ import type { Role } from "@/utils/teamManagementHelpers";
 
 const Team = () => {
   const navigate = useNavigate();
-  const [userId, setUserId] = useState<string>("");
   const [inviteEmails, setInviteEmails] = useState([{ email: "", role: "Member" as Role }]);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -30,12 +29,15 @@ const Team = () => {
   const itemsPerPage = 10;
   const { toast } = useToast();
 
+  // Get user from auth store (already initialized in App.tsx)
+  const user = useAuthStore((state) => state.user);
+  const userId = user?.id || "";
+
   const {
     currentOrganization,
     members,
     inviteTokens,
     currentUserRole,
-    loading,
     inviteMember,
     removeMember,
     resendInvite,
@@ -43,28 +45,6 @@ const Team = () => {
     approveMember,
     rejectMember
   } = useOrganizations();
-
-  // Get user ID for team operations
-  useEffect(() => {
-    const initAuth = async () => {
-      const result = await authStateHelpers.initializePageAuth({
-        onRedirectToAuth: () => navigate("/auth"),
-        onAuthStateChange: (user, session) => {
-          if (session) {
-            setUserId(user?.id || "");
-          } else {
-            navigate("/auth");
-          }
-        }
-      });
-
-      if (result?.user) {
-        setUserId(result.user.id);
-      }
-    };
-
-    initAuth();
-  }, [navigate]);
 
   const addInviteField = () => {
     setInviteEmails([...inviteEmails, { email: "", role: "Member" }]);

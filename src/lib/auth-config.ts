@@ -5,13 +5,16 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useAuthStore } from '@/stores/auth/authStore';
 
 /**
  * Initialize auth configuration with session monitoring
  * This will automatically handle JWT token expiry and refresh
  */
-export const initializeAuth = () => {
+export const initializeAuth = async () => {
+  // Initialize the auth store first
+  await useAuthStore.getState().initialize();
+
   // Listen for auth state changes and handle session expiry
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'TOKEN_REFRESHED') {

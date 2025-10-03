@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuthStore } from '@/stores/auth/authStore';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -20,8 +20,11 @@ interface MainLayoutProps {
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+
+  // Use auth store instead of local state for cached auth
+  const user = useAuthStore((state) => state.user);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
+  const signOut = useAuthStore((state) => state.signOut);
 
   // Check if current route should show sidebar
   const shouldShowSidebar = ![
@@ -38,25 +41,16 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   // Authentication check for protected routes
   useEffect(() => {
-    const checkAuth = async () => {
-      if (!shouldShowSidebar) {
-        setIsLoading(false);
-        return;
-      }
+    if (!shouldShowSidebar) return;
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/sign-in');
-        return;
-      }
-      setUser(session.user);
-      setIsLoading(false);
-    };
-    checkAuth();
-  }, [navigate, shouldShowSidebar]);
+    // Only redirect if auth is initialized and user is not logged in
+    if (isInitialized && !user) {
+      navigate('/sign-in');
+    }
+  }, [navigate, shouldShowSidebar, isInitialized, user]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     navigate('/sign-in');
   };
 
@@ -65,8 +59,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     return <>{children}</>;
   }
 
-  // Loading state for protected routes
-  if (isLoading || !user) {
+  // Only show loading on first initialization, not on subsequent navigations
+  if (!isInitialized) {
     return (
       <SidebarProvider defaultOpen={false}>
         <div className="h-screen flex w-full bg-[var(--content-bg)] overflow-hidden">
@@ -86,7 +80,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="h-screen flex w-full bg-[var(--content-bg)] overflow-hidden">
-        <AppSidebar user={user.email || ''} onLogout={handleLogout} />
+        <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
         <main className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 py-8 px-8 lg:px-12 space-y-4 overflow-auto">
             <div className="max-w-[1350px] mx-auto w-full">

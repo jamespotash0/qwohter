@@ -1,162 +1,32 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { LogoData } from "@/lib/types/settings/companySettings";
+import { useOrganizationStore } from "@/stores/organization/organizationStore";
+import type { Organization, OrganizationMember, InviteToken } from "@/stores/organization/organizationStore";
 
-export interface Organization {
-  id: string;
-  name: string;
-  organization_code: string;
-  phone_number?: string;
-  fax_number?: string;
-  company_address?: string;
-  website?: string;
-  quote_start_number?: string;
-  logo_data?: LogoData;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface OrganizationMember {
-  id: string;
-  organization_id: string;
-  role: 'Admin' | 'Member';
-  status: 'Pending' | 'Active' | 'Suspended';
-  joined_at: string;
-  email: string;
-  full_name?: string;
-}
-
-
-export interface InviteToken {
-  id: string;
-  token: string;
-  email: string;
-  organization_id: string;
-  organization_code: string;
-  role: 'Admin' | 'Member';
-  created_by: string;
-  expires_at: string;
-  created_at: string;
-  is_used: boolean;
-}
+// Re-export types from store for backward compatibility
+export type { Organization, OrganizationMember, InviteToken };
 
 export const useOrganizations = () => {
-  const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
-  const [members, setMembers] = useState<OrganizationMember[]>([]);
-  const [inviteTokens, setInviteTokens] = useState<InviteToken[]>([]);
-  const [currentUserRole, setCurrentUserRole] = useState<'Owner' | 'Admin' | 'Member' | null>(null);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchUserOrganization = async () => {
-    try {
-      setLoading(true);
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return;
+  // Get state and actions from Zustand store
+  const currentOrganization = useOrganizationStore(state => state.currentOrganization);
+  const members = useOrganizationStore(state => state.members);
+  const inviteTokens = useOrganizationStore(state => state.inviteTokens);
+  const currentUserRole = useOrganizationStore(state => state.currentUserRole);
+  const loading = useOrganizationStore(state => state.loading);
+  const storeFetchOrganization = useOrganizationStore(state => state.fetchOrganization);
+  const storeFetchMembers = useOrganizationStore(state => state.fetchMembers);
+  const storeFetchInviteTokens = useOrganizationStore(state => state.fetchInviteTokens);
+  const storeSetMembers = useOrganizationStore(state => state.setMembers);
+  const storeSetInviteTokens = useOrganizationStore(state => state.setInviteTokens);
+  const storeSetOrganization = useOrganizationStore(state => state.setOrganization);
 
-      // Get user's profile first
-      // Get user's organization through membership
-      const { data: membershipData, error: membershipError } = await supabase
-        .from('memberships')
-        .select(`
-          organization_id,
-          role,
-          organizations (
-            id,
-            name,
-            organization_code,
-            created_at,
-            updated_at,
-            phone_number,
-            fax_number,
-            company_address,
-            website,
-            quote_start_number,
-            logo_data
-          )
-        `)
-        .eq('user_id', user.user.id)
-        .eq('status', 'Active')
-        .single() as any;
-
-      if (membershipError) {
-        console.error('Membership error:', membershipError);
-        throw membershipError;
-      }
-
-      if (membershipData?.organization_id) {
-        // If user has an organization, use the data from the join
-        const orgData = membershipData.organizations;
-
-        if (!orgData) {
-          console.error('Organization data not found');
-          // Don't throw here, just set role without organization
-          setCurrentUserRole(membershipData.role as 'Owner' | 'Admin' | 'Member');
-        } else {
-          const orgWithInfo = orgData as Organization;
-          setCurrentOrganization(orgWithInfo);
-          setCurrentUserRole(membershipData.role as 'Owner' | 'Admin' | 'Member');
-        }
-      }
-    } catch (error: any) {
-      console.error('Fetch organization error:', error);
-      toast({
-        title: "Error fetching organization",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchMembers = async (organizationId: string) => {
-    try {
-      // Fetch members from memberships table with profile details
-      const { data: membersData, error: membersError } = await supabase
-        .from('memberships')
-        .select(`
-          id,
-          user_id,
-          organization_id,
-          role,
-          status,
-          joined_at,
-          profile:profiles!user_id(id, email, full_name)
-        `)
-        .eq('organization_id', organizationId);
-
-      if (membersError) throw membersError;
-
-      if (!membersData || membersData.length === 0) {
-        setMembers([]);
-        return;
-      }
-
-      // Transform data to match OrganizationMember interface
-      const transformedData = (membersData || [])
-        .filter((membership: any) => membership && membership.user_id && membership.profile) // Filter out null/undefined memberships
-        .map((membership: any) => ({
-          id: membership.user_id, // Use user_id as the member ID
-          organization_id: membership.organization_id || '',
-          role: (membership.role as 'Admin' | 'Member') || 'Member',
-          status: (membership.status as 'Pending' | 'Active' | 'Suspended') || 'Active',
-          joined_at: membership.joined_at || new Date().toISOString(),
-          email: membership.profile?.email || '',
-          full_name: membership.profile?.full_name || undefined
-        }));
-
-      setMembers(transformedData);
-    } catch (error: any) {
-      toast({
-        title: "Error fetching members",
-        description: error.message,
-        variant: "destructive",
-      });
-      setMembers([]);
-    }
-  };
+  // These functions are now handled by the store
+  // Keep references for backward compatibility
+  const fetchUserOrganization = storeFetchOrganization;
+  const fetchMembers = storeFetchMembers;
 
   const createOrganization = async (name: string) => {
     try {
@@ -213,7 +83,7 @@ export const useOrganizations = () => {
       if (membershipError) throw membershipError;
 
       const createdOrganization: Organization = orgData;
-      setCurrentOrganization(createdOrganization);
+      storeSetOrganization(createdOrganization);
 
       toast({
         title: "Organization created",
@@ -420,9 +290,9 @@ export const useOrganizations = () => {
 
       if (error) throw error;
 
-      setMembers(prev => prev.map(member => 
-        member.id === memberId 
-          ? { ...member, role: role === 'admin' ? 'Admin' : 'Member' } 
+      storeSetMembers(members.map(member =>
+        member.id === memberId
+          ? { ...member, role: role === 'admin' ? 'Admin' : 'Member' }
           : member
       ));
       
@@ -500,28 +370,8 @@ export const useOrganizations = () => {
     }
   };
 
-  const fetchInviteTokens = async (organizationId: string) => {
-    try {
-      const { data: tokensData, error: tokensError } = await supabase
-        .from('invite_tokens')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .eq('is_used', false)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false });
-
-      if (tokensError) {
-        console.error('Error fetching invite tokens:', tokensError);
-        setInviteTokens([]);
-        return;
-      }
-
-      setInviteTokens(tokensData || []);
-    } catch (error: any) {
-      console.error('Error fetching invite tokens:', error);
-      setInviteTokens([]);
-    }
-  };
+  // fetchInviteTokens is now handled by the store
+  const fetchInviteTokens = storeFetchInviteTokens;
 
   const resendInvite = async (tokenId: string, email: string) => {
     try {
@@ -581,7 +431,7 @@ export const useOrganizations = () => {
       if (error) throw error;
 
       // Remove from local state
-      setInviteTokens(prev => prev.filter(token => token.id !== tokenId));
+      storeSetInviteTokens(inviteTokens.filter(token => token.id !== tokenId));
 
       toast({
         title: "Invitation revoked",
@@ -597,15 +447,17 @@ export const useOrganizations = () => {
   };
 
   useEffect(() => {
-    fetchUserOrganization();
-  }, []);
+    // Fetch organization from store (will skip if already cached)
+    storeFetchOrganization();
+  }, [storeFetchOrganization]);
 
   useEffect(() => {
     if (currentOrganization) {
-      fetchMembers(currentOrganization.id);
-      fetchInviteTokens(currentOrganization.id);
+      // Fetch members and tokens from store (will skip if already cached)
+      storeFetchMembers(currentOrganization.id);
+      storeFetchInviteTokens(currentOrganization.id);
     }
-  }, [currentOrganization]);
+  }, [currentOrganization, storeFetchMembers, storeFetchInviteTokens]);
 
   return {
     currentOrganization,

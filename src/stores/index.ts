@@ -59,6 +59,18 @@ export {
 } from './app/appStore';
 
 // ====================================================================
+// ORGANIZATION STORE - Organization and team management
+// ====================================================================
+export {
+  useOrganizationStore,
+  useCurrentOrganization,
+  useOrganizationMembers,
+  useInviteTokens,
+  useCurrentUserRole,
+  useOrganizationLoading
+} from './organization/organizationStore';
+
+// ====================================================================
 // STORE UTILITIES AND HOOKS
 // ====================================================================
 
@@ -170,10 +182,12 @@ import { useAuthStore } from './auth/authStore';
 import { useQuotesStore } from './quotes/quotesStore';
 import { useUIStore } from './ui/uiStore';
 import { useAppStore } from './app/appStore';
+import { useOrganizationStore } from './organization/organizationStore';
 
 export const stores = {
   auth: useAuthStore,
   quotes: useQuotesStore,
   ui: useUIStore,
   app: useAppStore,
+  organization: useOrganizationStore,
 };
