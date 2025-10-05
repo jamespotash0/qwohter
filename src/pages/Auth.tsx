@@ -295,22 +295,28 @@ const Auth = () => {
           {/* Company Info Form */}
           {authFlow.step === "company-info" && (
             <CompanyInfoSetupForm
-              companyPhone={companyInfo.companyPhone}
-              setCompanyPhone={companyInfo.setCompanyPhone}
-              companyFax={companyInfo.companyFax}
-              setCompanyFax={companyInfo.setCompanyFax}
-              companyAddress={companyInfo.companyAddress}
-              setCompanyAddress={companyInfo.setCompanyAddress}
-              companyWebsite={companyInfo.companyWebsite}
-              setCompanyWebsite={companyInfo.setCompanyWebsite}
+              organizationName={formState.orgName}
+              phone={companyInfo.companyPhone}
+              fax={companyInfo.companyFax}
+              address={companyInfo.companyAddress}
+              website={companyInfo.companyWebsite}
               quoteStartingPoint={companyInfo.quoteStartingPoint}
-              setQuoteStartingPoint={companyInfo.setQuoteStartingPoint}
-              currentLogoUrl={companyInfo.currentLogoUrl}
+              industry={formState.industry}
+              foundVia={formState.foundVia}
               loading={authFlow.loading}
-              onSubmit={onCompanyInfoSubmit}
-              onSkip={onCompanyInfoSkip}
+              userId={authFlow.userId || ""}
+              currentLogoUrl={companyInfo.currentLogoUrl}
+              onPhoneChange={companyInfo.setCompanyPhone}
+              onFaxChange={companyInfo.setCompanyFax}
+              onAddressChange={companyInfo.setCompanyAddress}
+              onWebsiteChange={companyInfo.setCompanyWebsite}
+              onQuoteStartingPointChange={companyInfo.setQuoteStartingPoint}
+              onIndustryChange={formState.setIndustry}
+              onFoundViaChange={formState.setFoundVia}
               onLogoUpload={onLogoUpload}
               onLogoError={onLogoError}
+              onSubmit={onCompanyInfoSubmit}
+              onSkip={onCompanyInfoSkip}
             />
           )}
         </CardContent>
