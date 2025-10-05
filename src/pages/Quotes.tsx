@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuotesStore, type Quote } from "@/stores/quotes/quotesStore";
 import { EnhancedQuotesTable } from "@/components/features/quotes/table/EnhancedQuotesTable";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
-import { FileText, Plus, Sparkles, DollarSign, TrendingUp, Clock, CheckCircle } from "lucide-react";
+import { FileText, Plus, Sparkles, DollarSign, Clock, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -92,6 +92,7 @@ const Quotes = () => {
     await deleteQuoteFromDB(id);
     setDeleteQuoteId(null);
   };
+
 
   // Calculate quote statistics
   const metrics = useMemo(() => {
@@ -508,6 +509,7 @@ const Quotes = () => {
           onQuoteSourceChange={updateQuoteSource}
           onCreateVersion={handleCreateVersion}
           onCreateQuote={() => setShowNewQuoteDialog(true)}
+          // onSetReminder={handleSetReminder}
           onArchiveQuote={showArchived ? undefined : archiveQuote}
           onUnarchiveQuote={showArchived ? unarchiveQuote : undefined}
           isArchiveView={showArchived}
@@ -559,6 +561,7 @@ const Quotes = () => {
         onOpenChange={setShowNewQuoteDialog}
         onCreateQuote={handleCreateQuote}
       />
+
     </PageContent>
   );
 };

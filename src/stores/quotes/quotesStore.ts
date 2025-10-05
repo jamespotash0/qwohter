@@ -1053,7 +1053,7 @@ export const useQuotesStore = create<QuotesState>()(
               projectName: quoteToArchive.project_name || 'Untitled',
               userId: user.id,
               userName: userName,
-              activityType: 'archived',
+              activityType: 'Archived',
               organizationId: organizationId
             });
 
@@ -1119,7 +1119,7 @@ export const useQuotesStore = create<QuotesState>()(
               projectName: quoteToUnarchive.project_name || 'Untitled',
               userId: user.id,
               userName: userName,
-              activityType: 'unarchived',
+              activityType: 'Unarchived',
               organizationId: organizationId
             });
 

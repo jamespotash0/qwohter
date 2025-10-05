@@ -15,27 +15,16 @@ import {
   FileSpreadsheet,
   Upload,
   Bell,
-  ArrowUpRight,
   Archive,
   ArchiveRestore,
   CheckCheck,
   Edit3,
   Trash2,
-  BellRing,
-  X,
-  MoreVertical,
-  Calendar
+  BellRing
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useQuotesStore } from "@/stores/quotes/quotesStore";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -51,9 +40,6 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [recentActivities, setRecentActivities] = useState<QuoteActivity[]>([]);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [openCalendarQuoteId, setOpenCalendarQuoteId] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [cachedProfile, setCachedProfile] = useState<any>(() => {
     // Read from localStorage cache (same as sidebar)
     try {
@@ -68,7 +54,6 @@ const Dashboard = () => {
   const quotesLoading = useQuotesStore((state) => state.isLoading);
   const isInitialized = useQuotesStore((state) => state.isInitialized);
   const initialize = useQuotesStore((state) => state.initialize);
-  const updateQuote = useQuotesStore((state) => state.updateQuote);
 
   useOrganizations();
 
@@ -98,17 +83,23 @@ const Dashboard = () => {
 
   // Get organization ID for activity fetching
   useEffect(() => {
+    console.log('🎬 useEffect [GET ORG ID] TRIGGERED', { userId: user?.id });
     const getOrganizationId = async () => {
-      if (!user?.id) return;
+      if (!user?.id) {
+        console.log('⏭️ No user ID, skipping org fetch');
+        return;
+      }
 
+      console.log('🔍 Fetching organization for user:', user.id);
       const { data } = await supabase
         .from('memberships')
         .select('organization_id')
         .eq('user_id', user.id)
         .single();
 
-      if (data?.organization_id) {
-        setOrganizationId(data.organization_id);
+      if (data && 'organization_id' in data) {
+        console.log('🏢 Setting organizationId:', (data as any).organization_id);
+        setOrganizationId((data as any).organization_id);
       }
     };
     getOrganizationId();
@@ -116,16 +107,24 @@ const Dashboard = () => {
 
   // Initialize quotes store
   useEffect(() => {
+    console.log('🎬 useEffect [INITIALIZE QUOTES] TRIGGERED', { userId: user?.id, isInitialized });
     if (user?.id && !isInitialized) {
       console.log('🔑 Dashboard: User authenticated, initializing quotes store...');
       initialize();
+    } else {
+      console.log('⏭️ Skipping quotes init:', { hasUser: !!user?.id, isInitialized });
     }
-  }, [user?.id, isInitialized, initialize]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isInitialized]);
 
-  // Fetch recent activities from database
+  // Fetch recent activities from database and subscribe to real-time updates
   useEffect(() => {
+    console.log('🎬 useEffect [FETCH & SUBSCRIBE ACTIVITIES] TRIGGERED', { organizationId });
     const fetchRecentActivities = async () => {
-      if (!organizationId) return;
+      if (!organizationId) {
+        console.log('⏭️ No organizationId, skipping activities fetch');
+        return;
+      }
 
       const { data } = await quoteActivityService.getRecentActivities({
         organizationId,
@@ -138,16 +137,46 @@ const Dashboard = () => {
     };
 
     fetchRecentActivities();
+
+    // Subscribe to real-time quote_activities updates
+    if (!organizationId) return;
+
+    console.log('🔄 Subscribing to realtime quote_activities updates for organization:', organizationId);
+
+    const channel = supabase
+      .channel('quote-activities-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'quote_activities',
+          filter: `organization_id=eq.${organizationId}`
+        },
+        (payload) => {
+          console.log('📡 Realtime quote_activity update received:', payload);
+
+          if (payload.new) {
+            setRecentActivities((prev) => {
+              // Add new activity to the beginning, keep only latest 100
+              const newActivity = payload.new as QuoteActivity;
+              const updated = [newActivity, ...prev];
+              return updated.slice(0, 100);
+            });
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Realtime quote_activities subscription status:', status);
+      });
+
+    // Cleanup: unsubscribe on unmount
+    return () => {
+      console.log('🔌 Unsubscribing from realtime quote_activities updates');
+      supabase.removeChannel(channel);
+    };
   }, [organizationId]);
 
-  // Update current time every second for real-time countdown
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Calculate key metrics
   const metrics = useMemo(() => {
@@ -242,27 +271,6 @@ const Dashboard = () => {
     };
   }, [quotes]);
 
-  // Get reminders (all quotes with follow-up date set)
-  // Uses currentTime for real-time countdown updates
-  const reminders = useMemo(() => {
-    return quotes
-      .filter(q => q.follow_up_date)
-      .map(q => {
-        const followUpDate = new Date(q.follow_up_date!);
-        const timeDiff = followUpDate.getTime() - currentTime.getTime();
-        const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
-
-        return {
-          quote: q,
-          followUpDate,
-          daysRemaining,
-          timeDiff,
-          isOverdue: timeDiff < 0,
-          isUpcoming: timeDiff >= 0
-        };
-      })
-      .sort((a, b) => a.daysRemaining - b.daysRemaining);
-  }, [quotes, currentTime]);
 
   // Format activities from database for display
   const recentActivity = useMemo(() => {
@@ -273,50 +281,50 @@ const Dashboard = () => {
 
       let message = '';
       let eventText = '';
-      let type = 'created';
+      let type = 'Created';
 
-      if (activity.activity_type === 'created') {
+      if (activity.activity_type === 'Created') {
         const status = activity.activity_details?.status || 'Draft';
         message = `${userName} created a new ${status} Quote called ${projectName} (#${quoteNumber})`;
         eventText = 'Created';
-        type = 'created';
-      } else if (activity.activity_type === 'status_changed') {
+        type = 'Created';
+      } else if (activity.activity_type === 'Status_Changed') {
         const newStatus = activity.activity_details?.new_status || 'Unknown';
         message = `${userName} marked ${projectName} (#${quoteNumber}) as ${newStatus}`;
         eventText = newStatus;
 
         // Map status to type for icon coloring
-        if (newStatus === 'Won') type = 'won';
-        else if (newStatus === 'Rejected') type = 'lost';
-        else if (newStatus === 'Submitted') type = 'submitted';
-        else if (newStatus === 'Pending') type = 'pending';
-        else if (newStatus === 'Completed') type = 'completed';
-        else if (newStatus === 'Incomplete') type = 'incomplete';
-      } else if (activity.activity_type === 'archived') {
+        if (newStatus === 'Won') type = 'Won';
+        else if (newStatus === 'Rejected') type = 'Lost';
+        else if (newStatus === 'Submitted') type = 'Submitted';
+        else if (newStatus === 'Pending') type = 'Pending';
+        else if (newStatus === 'Completed') type = 'Completed';
+        else if (newStatus === 'Incomplete') type = 'Incomplete';
+      } else if (activity.activity_type === 'Archived') {
         message = `${userName} Archived ${projectName} (#${quoteNumber})`;
         eventText = 'Archived';
-        type = 'archived';
-      } else if (activity.activity_type === 'unarchived') {
+        type = 'Archived';
+      } else if (activity.activity_type === 'Unarchived') {
         message = `${userName} Unarchived ${projectName} (#${quoteNumber})`;
         eventText = 'Unarchived';
-        type = 'unarchived';
-      } else if (activity.activity_type === 'updated') {
+        type = 'Unarchived';
+      } else if (activity.activity_type === 'Updated') {
         const changedFields = activity.activity_details?.changed_fields || [];
         // Format field names: capitalize and replace underscores with spaces
-        const formattedFields = changedFields.map(field =>
-          field.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+        const formattedFields = changedFields.map((field: string) =>
+          field.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
         );
         const fieldList = formattedFields.length > 0
           ? ` ${formattedFields.join(', ')}`
           : '';
         message = `${userName} updated ${projectName} ${quoteNumber}${fieldList}`;
         eventText = 'Updated';
-        type = 'updated';
-      } else if (activity.activity_type === 'deleted') {
-        message = `${userName} deleted ${projectName} (Quote #${quoteNumber})`;
+        type = 'Updated';
+      } else if (activity.activity_type === 'Deleted') {
+        message = `${userName} deleted ${projectName} (#${quoteNumber})`;
         eventText = 'Deleted';
-        type = 'deleted';
-      } else if (activity.activity_type === 'reminder_set') {
+        type = 'Deleted';
+      } else if (activity.activity_type === 'Reminder_Set') {
         const followUpDate = activity.activity_details?.follow_up_date;
         let timeDescription = '';
 
@@ -333,19 +341,19 @@ const Dashboard = () => {
           const seconds = Math.floor((absTimeDiff % (1000 * 60)) / 1000);
 
           if (days > 0) {
-            timeDescription = `${days}d ${isOverdue ? 'overdue' : 'remaining'}`;
+            timeDescription = `${days}d ${isOverdue ? 'Overdue' : 'Remaining'}`;
           } else if (hours > 0) {
-            timeDescription = `${hours}h ${minutes}m ${isOverdue ? 'overdue' : 'remaining'}`;
+            timeDescription = `${hours}h ${minutes}m ${isOverdue ? 'Overdue' : 'Remaining'}`;
           } else if (minutes > 0) {
-            timeDescription = `${minutes}m ${seconds}s ${isOverdue ? 'overdue' : 'remaining'}`;
+            timeDescription = `${minutes}m ${seconds}s ${isOverdue ? 'Overdue' : 'Remaining'}`;
           } else {
-            timeDescription = `${seconds}s ${isOverdue ? 'overdue' : 'remaining'}`;
+            timeDescription = `${seconds}s ${isOverdue ? 'Overdue' : 'Remaining'}`;
           }
         }
 
-        message = `${userName} set reminder for ${projectName} (Quote #${quoteNumber})${timeDescription ? ` - ${timeDescription}` : ''}`;
+        message = `${userName} set reminder for ${projectName} (#${quoteNumber})${timeDescription ? ` - ${timeDescription}` : ''}`;
         eventText = 'Reminder Set';
-        type = 'reminder';
+        type = 'Reminder';
       }
 
       return {
@@ -367,32 +375,10 @@ const Dashboard = () => {
     }).format(amount);
   };
 
-  const handleClearFollowUp = async (e: React.MouseEvent, quoteId: string) => {
-    e.stopPropagation(); // Prevent navigating to quotes page
-    try {
-      await updateQuote(quoteId, {
-        follow_up_date: null
-      });
-    } catch (error) {
-      console.error('Failed to clear follow-up:', error);
-    }
-  };
-
-  const handleUpdateFollowUpDate = async (quoteId: string, date: Date) => {
-    try {
-      await updateQuote(quoteId, {
-        follow_up_date: date.toISOString()
-      });
-      setOpenCalendarQuoteId(null);
-      setSelectedDate(undefined);
-    } catch (error) {
-      console.error('Failed to update follow-up date:', error);
-    }
-  };
-
   const getTimeAgo = (date: string) => {
     const past = new Date(date);
-    const diffMs = currentTime.getTime() - past.getTime();
+    const now = new Date();
+    const diffMs = now.getTime() - past.getTime();
     const diffSecs = Math.floor(diffMs / 1000);
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
@@ -575,179 +561,33 @@ const Dashboard = () => {
             {/* Reminders & Alerts Card */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0">
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-[var(--content-header-text)]">
-                  <Bell className="w-5 h-5" />
-                  Reminders & Alerts
+                <CardTitle className="flex items-center justify-between text-[var(--content-header-text)]">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-5 h-5" />
+                    Reminders & Alerts
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => {/* TODO: Implement add reminder */}}
+                    className="h-8 px-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add
+                  </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent className="pb-4">
-                {quotesLoading ? (
-                  <div className="space-y-2 h-[600px]">
-                    {[...Array(4)].map((_, i) => (
-                      <div key={i} className="p-4 rounded-lg border border-gray-200 bg-white">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 space-y-2">
-                            <Skeleton className="h-4 w-3/4" />
-                            <Skeleton className="h-3 w-1/2" />
-                            <Skeleton className="h-3 w-2/3" />
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <Skeleton className="h-4 w-16" />
-                            <Skeleton className="h-3 w-20" />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                <div className="h-[550px] flex items-center justify-center">
+                  <div className="text-center">
+                    <Bell className="w-12 h-12 text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
+                    <p className="text-[var(--content-muted-text)]">
+                      No reminders
+                    </p>
+                    <p className="text-sm text-[var(--content-muted-text)] mt-1">
+                      Click "Add" to create a reminder
+                    </p>
                   </div>
-                ) : reminders.length > 0 ? (
-                  <div className="space-y-2 min-h-[200px] max-h-[600px] overflow-y-auto pr-2 -mr-2">
-                    {reminders.map((reminder) => {
-                      const followUpDate = reminder.followUpDate;
-                      const formattedDate = followUpDate.toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      });
-
-                      return (
-                        <div
-                          key={reminder.quote.id}
-                          className={`p-4 rounded-lg border transition-colors relative group ${
-                            reminder.isOverdue
-                              ? 'bg-red-50 hover:bg-red-100 border-red-200'
-                              : 'bg-white hover:bg-blue-50 border-gray-200'
-                          }`}
-                        >
-                          <div
-                            onClick={() => navigate('/quotes')}
-                            className="cursor-pointer"
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-sm text-[var(--content-header-text)] truncate mb-1">
-                                  {reminder.quote.project_name || reminder.quote.quote_details?.project_name || 'Untitled Project'} - #{reminder.quote.proposal_number}
-                                </p>
-                                <div className="space-y-0.5 text-xs text-[var(--content-muted-text)]">
-                                  {(reminder.quote.job_details?.client_company || reminder.quote.job_details?.client_name) && (
-                                    <p className="truncate">{reminder.quote.job_details?.client_company || reminder.quote.job_details?.client_name}</p>
-                                  )}
-                                  {reminder.quote.creator_name && (
-                                    <p>Created by {reminder.quote.creator_name}</p>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex flex-col items-end gap-0.5 flex-shrink-0 relative">
-                                {/* Countdown and date - hidden on hover */}
-                                <div className="group-hover:opacity-0 transition-opacity">
-                                  <p className={`text-xs font-semibold ${reminder.isOverdue ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
-                                    {(() => {
-                                      const absTimeDiff = Math.abs(reminder.timeDiff);
-                                      const days = Math.floor(absTimeDiff / (1000 * 3600 * 24));
-                                      const hours = Math.floor((absTimeDiff % (1000 * 3600 * 24)) / (1000 * 3600));
-                                      const minutes = Math.floor((absTimeDiff % (1000 * 3600)) / (1000 * 60));
-                                      const seconds = Math.floor((absTimeDiff % (1000 * 60)) / 1000);
-
-                                      let timeText = '';
-                                      if (days > 0) {
-                                        timeText = `${days}d`;
-                                      } else if (hours > 0) {
-                                        timeText = `${hours}h ${minutes}m`;
-                                      } else if (minutes > 0) {
-                                        timeText = `${minutes}m ${seconds}s`;
-                                      } else {
-                                        timeText = `${seconds}s`;
-                                      }
-
-                                      return reminder.isOverdue ? `${timeText} overdue` : reminder.daysRemaining === 0 ? 'Due today' : `${timeText} left`;
-                                    })()}
-                                  </p>
-                                  <span className="text-xs text-[var(--content-muted-text)]">{formattedDate}</span>
-                                </div>
-
-                                {/* Actions menu - shown on hover in place of countdown */}
-                                <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <button
-                                        onClick={(e) => e.stopPropagation()}
-                                        className={`p-2 rounded-md ${
-                                          reminder.isOverdue
-                                            ? 'bg-red-200 hover:bg-red-300 text-red-700'
-                                            : 'bg-blue-200 hover:bg-blue-300 text-blue-700'
-                                        }`}
-                                        title="Reminder actions"
-                                      >
-                                        <MoreVertical className="w-5 h-5" />
-                                      </button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                      <Popover
-                                        open={openCalendarQuoteId === reminder.quote.id}
-                                        onOpenChange={(open) => {
-                                          if (!open) {
-                                            setOpenCalendarQuoteId(null);
-                                            setSelectedDate(undefined);
-                                          }
-                                        }}
-                                      >
-                                        <PopoverTrigger asChild>
-                                          <DropdownMenuItem
-                                            onSelect={(e) => {
-                                              e.preventDefault();
-                                              setOpenCalendarQuoteId(reminder.quote.id);
-                                              setSelectedDate(reminder.followUpDate);
-                                            }}
-                                          >
-                                            <Calendar className="w-4 h-4 mr-2" />
-                                            Update Date
-                                          </DropdownMenuItem>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="end" side="left">
-                                          <CalendarComponent
-                                            mode="single"
-                                            selected={selectedDate}
-                                            onSelect={(date) => {
-                                              if (date) {
-                                                handleUpdateFollowUpDate(reminder.quote.id, date);
-                                              }
-                                            }}
-                                            initialFocus
-                                          />
-                                        </PopoverContent>
-                                      </Popover>
-                                      <DropdownMenuItem
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleClearFollowUp(e as any, reminder.quote.id);
-                                        }}
-                                        className="text-red-600"
-                                      >
-                                        <X className="w-4 h-4 mr-2" />
-                                        Clear Reminder
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="h-[600px] flex items-center justify-center">
-                    <div className="text-center">
-                      <Bell className="w-12 h-12 text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
-                      <p className="text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)]">
-                        No reminders or alerts
-                      </p>
-                      <p className="text-sm text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] mt-1">
-                        All caught up!
-                      </p>
-                    </div>
-                  </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -778,27 +618,27 @@ const Dashboard = () => {
                   {recentActivity.map((activity) => {
                     const getActivityIcon = () => {
                       switch (activity.type) {
-                        case 'created':
+                        case 'Created':
                           return <Plus className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
-                        case 'won':
+                        case 'Won':
                           return <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />;
-                        case 'lost':
+                        case 'Lost':
                           return <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />;
-                        case 'submitted':
+                        case 'Submitted':
                           return <Upload className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
-                        case 'pending':
+                        case 'Pending':
                           return <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />;
-                        case 'updated':
+                        case 'Updated':
                           return <Edit3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
-                        case 'archived':
+                        case 'Archived':
                           return <Archive className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
-                        case 'unarchived':
+                        case 'Unarchived':
                           return <ArchiveRestore className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
-                        case 'deleted':
+                        case 'Deleted':
                           return <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />;
-                        case 'reminder':
+                        case 'Reminder':
                           return <BellRing className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
-                        case 'completed':
+                        case 'Completed':
                           return <CheckCheck className="w-4 h-4 text-green-600 dark:text-green-400" />;
                         default:
                           return <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
@@ -844,6 +684,7 @@ const Dashboard = () => {
           </Card>
         </div>
       </div>
+
     </PageContent>
   );
 };

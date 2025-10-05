@@ -23,7 +23,6 @@ import {
   Trash2,
   Copy,
   Calendar,
-  Clock,
   User,
   Building,
   DollarSign,
@@ -40,7 +39,8 @@ import {
   FileText,
   Archive,
   ArchiveRestore,
-  CheckCircle
+  CheckCircle,
+  Bell
 } from 'lucide-react';
 
 import { Button } from "@/components/ui/button";
@@ -48,13 +48,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { Quote } from "@/stores/quotes/quotesStore";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 import useEnhancedSearch from '@/hooks/useEnhancedSearch';
-import { TableToolbar } from './components/TableToolbar';
 import { PaginationControls } from './components/PaginationControls';
-import { EnhancedSearchInput } from './components/EnhancedSearchInput';
 
 
 interface EnhancedQuotesTableProps {
@@ -63,6 +60,7 @@ interface EnhancedQuotesTableProps {
   onDeleteQuote: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
   onFollowUpDateChange?: (id: string, date: Date | null) => void;
+  onSetReminder?: (id: string) => void;
   onQuoteSourceChange: (id: string, source: string) => void;
   onCreateVersion?: (id: string) => void;
   onCreateQuote?: () => void;
@@ -110,7 +108,6 @@ const columnLabels: Record<string, string> = {
   created_by: "Creator",
   created_at: "Date Created",
   status_last_updated: "Status Updated",
-  follow_up_days: "Follow Up",
   won_date: "Won Date",
   actions: "Actions"
 };
@@ -160,67 +157,6 @@ const formatLastUpdated = (time: string) => {
 
 
 
-const getFollowUpStatus = (quote: Quote) => {
-  if (!quote.follow_up_date) {
-    return { daysRemaining: null, isOverdue: false, displayText: "Not set", colorClass: "text-gray-500" };
-  }
-
-  const followUpDate = new Date(quote.follow_up_date);
-
-  const today = new Date();
-  const timeDiff = followUpDate.getTime() - today.getTime();
-  const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
-  
-  const isOverdue = daysRemaining < 0;
-  
-  let displayText: string;
-  let colorClass: string;
-  
-  if (isOverdue) {
-    const absTimeDiff = Math.abs(timeDiff);
-    const overdueDays = Math.floor(absTimeDiff / (1000 * 3600 * 24));
-    const overdueHours = Math.floor((absTimeDiff % (1000 * 3600 * 24)) / (1000 * 3600));
-    const overdueMinutes = Math.floor((absTimeDiff % (1000 * 3600)) / (1000 * 60));
-    const overdueSeconds = Math.floor((absTimeDiff % (1000 * 60)) / 1000);
-
-    if (overdueDays > 0) {
-      displayText = `${overdueDays}d overdue`;
-    } else if (overdueHours > 0) {
-      displayText = `${overdueHours}h ${overdueMinutes}m overdue`;
-    } else if (overdueMinutes > 0) {
-      displayText = `${overdueMinutes}m ${overdueSeconds}s overdue`;
-    } else {
-      displayText = `${overdueSeconds}s overdue`;
-    }
-    colorClass = "text-red-600 font-medium";
-  } else if (daysRemaining === 0) {
-    const hoursRemaining = Math.floor(timeDiff / (1000 * 3600));
-    const minutesRemaining = Math.floor((timeDiff % (1000 * 3600)) / (1000 * 60));
-    const secondsRemaining = Math.floor((timeDiff % (1000 * 60)) / 1000);
-
-    if (hoursRemaining > 0) {
-      displayText = `${hoursRemaining}h ${minutesRemaining}m left`;
-    } else if (minutesRemaining > 0) {
-      displayText = `${minutesRemaining}m ${secondsRemaining}s left`;
-    } else if (secondsRemaining > 0) {
-      displayText = `${secondsRemaining}s left`;
-    } else {
-      displayText = "Overdue";
-    }
-    colorClass = secondsRemaining <= 0 ? "text-red-600 font-medium" : "text-yellow-600 font-medium";
-  } else if (daysRemaining < 2) {
-    // Show hours for less than 2 days remaining
-    const hoursRemaining = Math.floor(timeDiff / (1000 * 3600));
-    displayText = `${hoursRemaining}h left`;
-    colorClass = "text-yellow-600";
-  } else {
-    displayText = `${daysRemaining}d left`;
-    colorClass = "text-green-600";
-  }
-    
-  return { daysRemaining, isOverdue, displayText, colorClass };
-};
-
 export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   quotes,
   onEditQuote,
@@ -229,6 +165,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   onFollowUpDateChange,
   onQuoteSourceChange,
   onCreateVersion,
+  onSetReminder,
   onCreateQuote,
   onArchiveQuote,
   onUnarchiveQuote,
@@ -238,8 +175,8 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   onToggleArchive,
   onBulkDelete,
   onBulkStatusChange,
-  onBulkArchive,
-  onBulkUnarchive,
+  // onBulkArchive,
+  // onBulkUnarchive,
   onExportCSV,
   onExportPDF
 }) => {
@@ -282,7 +219,6 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
     quote_source: 180,
     created_by: 150,
     created_at: 120,
-    follow_up_days: 140,
     actions: 80,
   }), []);
 
@@ -458,53 +394,6 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       filterFn: 'equals',
       enableSorting: false,
     }),
-    columnHelper.accessor('follow_up_date', {
-      id: 'follow_up_date',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4" />
-          Follow Up
-        </div>
-      ),
-      cell: ({ row }) => {
-        const quote = row.original;
-        const followUpStatus = getFollowUpStatus(quote);
-        const followUpDate = quote.follow_up_date;
-
-        // Show DateTimePicker button if no follow-up is set
-        if (!followUpDate) {
-          return (
-            <DateTimePicker
-              date={undefined}
-              onDateChange={(date) => {
-                if (date && onFollowUpDateChange) {
-                  onFollowUpDateChange(quote.id, date);
-                }
-              }}
-              placeholder="Set deadline"
-              className="h-8 text-xs bg-blue-50 text-blue-700 border-0 hover:bg-blue-100"
-            />
-          );
-        }
-
-        // Show DateTimePicker for updating/clearing when follow-up is set
-        return (
-          <DateTimePicker
-            date={followUpDate ? new Date(followUpDate) : undefined}
-            onDateChange={(date) => {
-              if (onFollowUpDateChange) {
-                onFollowUpDateChange(quote.id, date || null);
-              }
-            }}
-            placeholder={followUpStatus.displayText}
-            displayText={followUpDate ? followUpStatus.displayText : undefined}
-            className={`h-8 text-xs ${followUpStatus.colorClass} border-0`}
-          />
-        );
-      },
-      size: 140,
-      enableSorting: false,
-    }),
     columnHelper.accessor('creator_name', {
       id: 'created_by',
       header: 'Created By',
@@ -588,6 +477,12 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 Create Version
               </DropdownMenuItem>
             )}
+            {onSetReminder && (
+              <DropdownMenuItem onClick={() => onSetReminder(row.original.id)}>
+                <Bell className="mr-2 h-4 w-4" />
+                Set Reminder
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             {isArchiveView && onUnarchiveQuote ? (
               <DropdownMenuItem onClick={() => onUnarchiveQuote(row.original.id)}>
@@ -614,7 +509,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       size: 80,
       enableSorting: false,
     }),
-  ], [onEditQuote, onDeleteQuote, onStatusChange, onFollowUpDateChange, onQuoteSourceChange, onCreateVersion, onArchiveQuote, onUnarchiveQuote, isArchiveView, forceUpdate]);
+  ], [onEditQuote, onDeleteQuote, onStatusChange, onFollowUpDateChange, onQuoteSourceChange, onCreateVersion, onSetReminder, onArchiveQuote, onUnarchiveQuote, isArchiveView, forceUpdate]);
 
   const table = useReactTable({
     data: quotes,
@@ -1079,19 +974,10 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                   const rowHeight = dataDensity === 'compact' ? 'h-10' : dataDensity === 'comfortable' ? 'h-14' : 'h-18';
                   const paddingY = dataDensity === 'compact' ? 'py-1' : dataDensity === 'comfortable' ? 'py-2' : 'py-4';
 
-                  // Check if row has overdue follow-up
-                  const quote = row.original;
-                  const followUpStatus = getFollowUpStatus(quote);
-                  const isOverdue = followUpStatus.isOverdue;
-
                   return (
                     <tr
                       key={row.id}
-                      className={`group transition-colors border-b border-gray-100 dark:border-[var(--content-table-border)] last:border-b-0 ${rowHeight} ${
-                        isOverdue
-                          ? 'bg-red-50/70 hover:bg-red-100/70 dark:bg-red-900/10 dark:hover:bg-red-900/20'
-                          : 'hover:bg-gray-50/50 dark:hover:bg-[var(--content-table-row-hover)]'
-                      }`}
+                      className={`group transition-colors border-b border-gray-100 dark:border-[var(--content-table-border)] last:border-b-0 ${rowHeight} hover:bg-gray-50/50 dark:hover:bg-[var(--content-table-row-hover)]`}
                     >
                       {row.getVisibleCells().map((cell) => {
                         const isActionsColumn = cell.column.id === 'actions';

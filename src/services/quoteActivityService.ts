@@ -7,7 +7,7 @@ export interface QuoteActivity {
   project_name: string | null;
   user_id: string | null;
   user_name: string;
-  activity_type: 'created' | 'status_changed' | 'updated' | 'deleted' | 'reminder_set' | 'archived' | 'unarchived';
+  activity_type: 'Created' | 'Status_Changed' | 'Updated' | 'Deleted' | 'Reminder_Set' | 'Archived' | 'Unarchived';
   activity_details: Record<string, any> | null;
   organization_id: string;
   created_at: string;
@@ -67,7 +67,7 @@ export const quoteActivityService = {
   }) {
     return this.logActivity({
       ...params,
-      activityType: 'created',
+      activityType: 'Created',
       activityDetails: params.status ? { status: params.status } : undefined
     });
   },
@@ -92,7 +92,7 @@ export const quoteActivityService = {
       userId: params.userId,
       userName: params.userName,
       organizationId: params.organizationId,
-      activityType: 'status_changed',
+      activityType: 'Status_Changed',
       activityDetails: {
         old_status: params.oldStatus,
         new_status: params.newStatus
@@ -114,7 +114,7 @@ export const quoteActivityService = {
   }) {
     return this.logActivity({
       ...params,
-      activityType: 'updated',
+      activityType: 'Updated',
       activityDetails: params.changedFields ? { changed_fields: params.changedFields } : undefined
     });
   },
@@ -132,7 +132,7 @@ export const quoteActivityService = {
   }) {
     return this.logActivity({
       ...params,
-      activityType: 'deleted'
+      activityType: 'Deleted'
     });
   },
 
@@ -155,7 +155,7 @@ export const quoteActivityService = {
       userId: params.userId,
       userName: params.userName,
       organizationId: params.organizationId,
-      activityType: 'reminder_set',
+      activityType: 'Reminder_Set',
       activityDetails: {
         follow_up_date: params.followUpDate
       }
