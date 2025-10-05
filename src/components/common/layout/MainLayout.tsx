@@ -48,7 +48,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     '/access-denied',
     '/demo-contact',
     '/subscription'
-  ].includes(location.pathname);
+  ].includes(location.pathname) && !location.pathname.startsWith('/editor/');
 
   // Check if we're on a full-screen wizard page (no padding/max-width)
   const isFullScreenPage = ['/quotes/new'].includes(location.pathname) ||
@@ -126,6 +126,17 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   // For public routes, render children directly without layout
   if (!shouldShowSidebar) {
+    // Editor route needs auth check but no sidebar
+    if (location.pathname.startsWith('/editor/')) {
+      // Check auth for editor
+      if (isInitialized && !user) {
+        navigate('/sign-in');
+        return null;
+      }
+      // Render editor with auth but no layout wrapper
+      return <>{children}</>;
+    }
+    // Other public routes render directly
     return <>{children}</>;
   }
 

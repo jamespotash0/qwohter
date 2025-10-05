@@ -73,6 +73,8 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   // UI state
   const [isLoading, setIsLoading] = useState(true);
   const [documentTitle, setDocumentTitle] = useState('');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState('');
   const [zoomLevel, setZoomLevel] = useState(100);
   const [selectedSection, setSelectedSection] = useState<QuoteSection | null>(null);
   const [showDataPanel, setShowDataPanel] = useState(true);
@@ -613,6 +615,42 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
     setSelectedSection(null);
   }, []);
 
+  // Handle title editing
+  const handleTitleClick = useCallback(() => {
+    setEditedTitle(documentTitle);
+    setIsEditingTitle(true);
+  }, [documentTitle]);
+
+  const handleTitleSave = useCallback(() => {
+    if (editedTitle.trim() && editedTitle !== documentTitle) {
+      setDocumentTitle(editedTitle);
+      // Update the quote data with new project name
+      const updatedData = {
+        ...state.rawData,
+        project_name: editedTitle
+      };
+      setState(prev => ({
+        ...prev,
+        rawData: updatedData,
+        isDirty: true
+      }));
+    }
+    setIsEditingTitle(false);
+  }, [editedTitle, documentTitle, state.rawData]);
+
+  const handleTitleCancel = useCallback(() => {
+    setIsEditingTitle(false);
+    setEditedTitle(documentTitle);
+  }, [documentTitle]);
+
+  const handleTitleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleTitleSave();
+    } else if (e.key === 'Escape') {
+      handleTitleCancel();
+    }
+  }, [handleTitleSave, handleTitleCancel]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-[#f8f9fa]">
@@ -625,169 +663,186 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   }
 
   return (
-    <div data-testid="unified-quote-editor" className={`min-h-screen bg-[#f8f9fa] ${className}`}>
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-        <div className="px-6 py-3">
-          <div className="flex items-center justify-between">
-            {/* Left: Title and Status */}
-            <div className="flex items-center gap-4">
-              <FileText className="w-6 h-6 text-blue-500" />
-              <div className="text-lg font-medium px-2 py-1">
-                {documentTitle || 'Untitled document'}
-              </div>
-              {state.isDirty ? (
-                <span className="text-sm text-amber-600 bg-amber-50 px-3 py-1 rounded whitespace-nowrap">
-                  Unsaved Changes
-                </span>
-              ) : state.lastSaved ? (
-                <span className="text-sm text-green-600 bg-green-50 px-3 py-1 rounded whitespace-nowrap">
-                  Saved {(() => {
-                    const savedTime = new Date(state.lastSaved);
-                    const diffInMinutes = Math.floor((currentTime.getTime() - savedTime.getTime()) / (1000 * 60));
-                    
-                    if (diffInMinutes < 1) return 'just now';
-                    if (diffInMinutes === 1) return '1 minute ago';
-                    if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
-                    
-                    const diffInHours = Math.floor(diffInMinutes / 60);
-                    if (diffInHours === 1) return '1 hour ago';
-                    if (diffInHours < 24) return `${diffInHours} hours ago`;
-                    
-                    // For older saves, show the actual time
-                    return `on ${savedTime.toLocaleDateString()} at ${savedTime.toLocaleTimeString([], { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}`;
-                  })()}
-                </span>
-              ) : null}
-              {hoveredSectionId && (
-                <span className="text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded whitespace-nowrap">
-                  Hover: {hoveredSectionId.replace(/-/g, ' ')}
-                </span>
-              )}
-            </div>
-
-            {/* Center: Zoom Controls */}
-            <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleZoomOut}
-                className="h-7 w-7 p-0"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </Button>
-              <span className="text-sm font-medium min-w-[3rem] text-center">
-                {zoomLevel}%
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleZoomIn}
-                className="h-7 w-7 p-0"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {/* Right: Actions */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDataPanel(!showDataPanel)}
-                title="Toggle data panel"
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                {showDataPanel ? 'Hide' : 'Show'} Panel
-              </Button>
-
-              {onBack && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onBack}
-                >
-                  Back
-                </Button>
-              )}
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleReset}
-                disabled={!state.isDirty}
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Reset
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSave}
-                disabled={!state.isDirty}
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Save
-              </Button>
-              
-              <Button
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={handleDownload}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download PDF
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Layout */}
-      <div className="flex">
-        {/* Data Panel - Floating Design */}
+    <div data-testid="unified-quote-editor" className={`fixed inset-0 bg-white ${className}`}>
+      {/* Full-page layout with sidebar and content */}
+      <div className="flex h-full">
+        {/* Elevated Sidebar - Extends to top */}
         {showDataPanel && (
-          <div className="w-[400px] relative">
-            <div className="fixed top-[90px] left-4 bottom-4 w-[360px] bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-xl shadow-lg shadow-slate-200/50 overflow-hidden z-40">
-              <div className="h-full flex flex-col">
-                <div className="px-4 py-3 bg-white/60 backdrop-blur-sm border-b border-slate-200/50">
-                  <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                    <Edit3 className="w-4 h-4" />
-                    Quote Data
-                  </h3>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  <div className="p-4 pb-20">
-                    <QuoteDataPanel 
-                      data={state.rawData}
-                      onChange={handleFormDataChange}
-                      onDatabaseSave={handleSave}
-                      onUpdateWallSystem={onUpdateWallSystem ? (wallName: string, wallData: any) => onUpdateWallSystem(quote.id, wallName, wallData) : undefined}
-                      onRemoveWallSystem={onRemoveWallSystem ? (wallName: string) => onRemoveWallSystem(quote.id, wallName) : undefined}
-                    />
-                  </div>
-                </div>
+          <div className="w-80 flex-shrink-0 bg-white border-r border-gray-200 shadow-xl z-50 flex flex-col">
+            {/* Sidebar Header - Match nav bar height of 64px (h-16) */}
+            <div className="h-16 px-6 flex items-center border-b border-gray-200 bg-gradient-to-br from-slate-50 to-blue-50 flex-shrink-0">
+              <h3 className="text-base font-semibold text-slate-800 flex items-center gap-2">
+                <Edit3 className="w-5 h-5" />
+                Quote Data
+              </h3>
+            </div>
+
+            {/* Sidebar Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50/30 to-blue-50/30">
+              <div className="p-6">
+                <QuoteDataPanel
+                  data={state.rawData}
+                  onChange={handleFormDataChange}
+                  onDatabaseSave={handleSave}
+                  onUpdateWallSystem={onUpdateWallSystem ? (wallName: string, wallData: any) => onUpdateWallSystem(quote.id, wallName, wallData) : undefined}
+                  onRemoveWallSystem={onRemoveWallSystem ? (wallName: string) => onRemoveWallSystem(quote.id, wallName) : undefined}
+                />
               </div>
             </div>
           </div>
         )}
 
-        {/* Live Preview Panel */}
-        <LivePreviewPanel
-          previewHTML={state.previewHTML}
-          zoomLevel={zoomLevel}
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onSectionClick={(/*sectionId,*/_, sectionData) => {
-            setSelectedSection(sectionData);
-          }}
-          onSectionHover={setHoveredSectionId}
-          showSmartPDFPreview={showSmartPDFPreview}
-        />
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Top Navigation Bar - Runs up to sidebar */}
+          <div className="h-16 bg-white border-b border-gray-200 shadow-sm flex-shrink-0 z-40">
+            <div className="h-full px-6 flex items-center justify-between">
+              {/* Left: Title and Status */}
+              <div className="flex items-center gap-4">
+                <FileText className="w-5 h-5 text-blue-500" />
+                {isEditingTitle ? (
+                  <input
+                    type="text"
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    onBlur={handleTitleSave}
+                    onKeyDown={handleTitleKeyDown}
+                    autoFocus
+                    className="text-base font-semibold text-gray-800 bg-white border border-blue-500 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ minWidth: '200px', maxWidth: '400px' }}
+                  />
+                ) : (
+                  <div
+                    className="text-base font-semibold text-gray-800 cursor-pointer hover:text-blue-600 transition-colors"
+                    onClick={handleTitleClick}
+                    title="Click to edit quote name"
+                  >
+                    {documentTitle || 'Untitled Quote'}
+                  </div>
+                )}
+                {state.isDirty ? (
+                  <span className="text-xs text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full font-medium whitespace-nowrap">
+                    Unsaved Changes
+                  </span>
+                ) : state.lastSaved ? (
+                  <span className="text-xs text-green-700 bg-green-100 px-2.5 py-1 rounded-full font-medium whitespace-nowrap">
+                    Saved {(() => {
+                      const savedTime = new Date(state.lastSaved);
+                      const diffInMinutes = Math.floor((currentTime.getTime() - savedTime.getTime()) / (1000 * 60));
+
+                      if (diffInMinutes < 1) return 'just now';
+                      if (diffInMinutes === 1) return '1 min ago';
+                      if (diffInMinutes < 60) return `${diffInMinutes} mins ago`;
+
+                      const diffInHours = Math.floor(diffInMinutes / 60);
+                      if (diffInHours === 1) return '1 hr ago';
+                      if (diffInHours < 24) return `${diffInHours} hrs ago`;
+
+                      return `${savedTime.toLocaleDateString()}`;
+                    })()}
+                  </span>
+                ) : null}
+              </div>
+
+              {/* Right: Zoom Controls and Actions */}
+              <div className="flex items-center gap-3">
+                {/* Zoom Controls */}
+                <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-md">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleZoomOut}
+                    className="h-7 w-7 p-0 hover:bg-gray-200"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </Button>
+                  <span className="text-sm font-medium min-w-[3rem] text-center text-gray-700">
+                    {zoomLevel}%
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleZoomIn}
+                    className="h-7 w-7 p-0 hover:bg-gray-200"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <div className="w-px h-6 bg-gray-300" />
+
+                {/* Action Buttons */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDataPanel(!showDataPanel)}
+                  className="text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                >
+                  <Settings className="w-4 h-4 mr-1.5" />
+                  {showDataPanel ? 'Hide' : 'Show'} Panel
+                </Button>
+
+                {onBack && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onBack}
+                    className="border-gray-300"
+                  >
+                    Back
+                  </Button>
+                )}
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleReset}
+                  disabled={!state.isDirty}
+                  className="text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                >
+                  <RefreshCw className="w-4 h-4 mr-1.5" />
+                  Reset
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={!state.isDirty}
+                  className="border-gray-300"
+                >
+                  <Save className="w-4 h-4 mr-1.5" />
+                  Save
+                </Button>
+
+                <Button
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={handleDownload}
+                >
+                  <Download className="w-4 h-4 mr-1.5" />
+                  Download PDF
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Live Preview Panel - Takes remaining space */}
+          <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
+            <LivePreviewPanel
+              className="flex-1"
+              previewHTML={state.previewHTML}
+              zoomLevel={zoomLevel}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onSectionClick={(/*sectionId,*/_, sectionData) => {
+                setSelectedSection(sectionData);
+              }}
+              onSectionHover={setHoveredSectionId}
+              showSmartPDFPreview={showSmartPDFPreview}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Quick Edit Modal */}

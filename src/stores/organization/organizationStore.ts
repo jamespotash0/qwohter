@@ -11,6 +11,8 @@ export interface Organization {
   fax_number?: string;
   company_address?: string;
   website?: string;
+  industry?: string;
+  found_via?: string;
   quote_start_number?: string;
   logo_data?: LogoData;
   created_at: string;
@@ -118,6 +120,8 @@ export const useOrganizationStore = create<OrganizationState>()(
                 fax_number,
                 company_address,
                 website,
+                industry,
+                found_via,
                 quote_start_number,
                 logo_data
               )

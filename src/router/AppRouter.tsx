@@ -118,8 +118,8 @@ export const AppRouter = () => (
             </QuoteErrorBoundary>
           } />
 
-          {/* Quote editing by proposal number */}
-          <Route path="/quotes/edit/:proposalNumber" element={
+          {/* Quote editing - cleaner route */}
+          <Route path="/editor/:proposalNumber" element={
             <QuoteErrorBoundary>
               <QuoteEdit />
             </QuoteErrorBoundary>
@@ -132,21 +132,14 @@ export const AppRouter = () => (
             </QuoteErrorBoundary>
           } />
 
-          {/* Quote viewing (read-only) - for now, use same component as edit */}
-          <Route path="/quotes/view/:proposalNumber" element={
-            <QuoteErrorBoundary>
-              <QuoteEdit />
-            </QuoteErrorBoundary>
-          } />
-
           {/* Future: Quote templates management */}
           <Route path="/quotes/templates" element={<Navigate to="/settings" replace />} />
-          
+
           {/* Legacy route redirects for backward compatibility */}
           <Route path="/newquote" element={<Navigate to="/quotes/new" replace />} />
-          <Route path="/quoteedit/:proposalNumber" element={
-            <Navigate to="/quotes/edit/:proposalNumber" replace />
-          } />
+          <Route path="/quoteedit/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
+          <Route path="/quotes/edit/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
+          <Route path="/quotes/view/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
           
           {/* 404 page */}
           <Route path="*" element={<NotFound />} />

@@ -160,7 +160,7 @@ const Quotes = () => {
     if (quote.status === "Incomplete") {
       navigate(`/quotes/edit-incomplete/${proposalNumber}`);
     } else {
-      navigate(`/quotes/edit/${proposalNumber}`);
+      navigate(`/editor/${proposalNumber}`);
     }
   };
 
@@ -172,7 +172,7 @@ const Quotes = () => {
   const handleCreateVersion = async (quoteId: string) => {
     try {
       const newQuote = await createQuoteVersion(quoteId);
-      navigate(`/quotes/edit/${newQuote.proposal_number as string}`);
+      navigate(`/editor/${newQuote.proposal_number as string}`);
     } catch (error) {
       console.error('Error creating quote version:', error);
     }

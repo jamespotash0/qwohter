@@ -50,7 +50,7 @@ const QuoteEditIncomplete = () => {
         if (existingQuote.status === "Draft") {
           navigate(`/quotes/new?edit=${encodeURIComponent(proposalNumber!)}`);
         } else {
-          navigate(`/quotes/edit/${proposalNumber}`);
+          navigate(`/editor/${proposalNumber}`);
         }
         return;
       }
