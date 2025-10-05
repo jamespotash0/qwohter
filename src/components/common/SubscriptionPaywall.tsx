@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Loader2, AlertCircle } from 'lucide-react';
+import { CreditCard, Loader2, AlertCircle, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { stripeService } from '@/services/stripeService';
 import { useOrganizationStore } from '@/stores/organization/organizationStore';
+import { useAuthStore } from '@/stores/auth/authStore';
 
 interface SubscriptionPaywallProps {
   organizationId: string;
@@ -20,6 +21,7 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   children,
 }) => {
   const navigate = useNavigate();
+  const signOut = useAuthStore((state) => state.signOut);
 
   // Get cached subscription status from store
   const cachedStatus = useOrganizationStore((state) => state.subscriptionStatus);
@@ -29,6 +31,7 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   const [loading, setLoading] = useState(!cachedStatus);
   const [hasAccess, setHasAccess] = useState(cachedStatus?.hasAccess ?? false);
   const [blockReason, setBlockReason] = useState<string>(cachedStatus?.reason ?? '');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     checkSubscription();
@@ -63,6 +66,17 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await signOut();
+      navigate('/sign-in');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      setIsLoggingOut(false);
     }
   };
 
@@ -110,6 +124,17 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
               >
                 Go to Billing Settings
               </Button>
+              <div className="pt-2 border-t border-gray-200">
+                <Button
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  variant="ghost"
+                  className="w-full text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  {isLoggingOut ? 'Logging out...' : 'Sign Out'}
+                </Button>
+              </div>
               <p className="text-xs text-gray-500 text-center mt-2">
                 View billing history in the Stripe portal
               </p>
