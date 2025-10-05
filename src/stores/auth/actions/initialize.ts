@@ -104,6 +104,12 @@ export const createInitializeAction = (get: () => FullAuthState, set: (partial: 
       localStorage.removeItem('org_cached_organization');
       localStorage.removeItem('org_cached_user_role');
       localStorage.removeItem('org_cached_membership');
+
+      // Clear organization store (including subscription status)
+      // Import at runtime to avoid circular dependency
+      import('@/stores/organization/organizationStore').then(({ useOrganizationStore }) => {
+        useOrganizationStore.getState().reset();
+      });
     }
   };
 };
