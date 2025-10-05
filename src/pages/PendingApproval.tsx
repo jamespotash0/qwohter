@@ -23,7 +23,7 @@ interface MembershipData {
   };
 }
 
-export const PendingApproval: React.FC = () => {
+const PendingApproval: React.FC = () => {
   const [membershipData, setMembershipData] = useState<MembershipData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -198,3 +198,5 @@ export const PendingApproval: React.FC = () => {
     </div>
   );
 };
+
+export default PendingApproval;

@@ -23,6 +23,7 @@ const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Analytics = lazy(() => import("@/pages/Analytics"));
 const Team = lazy(() => import("@/pages/Team"));
 const Settings = lazy(() => import("@/pages/Settings"));
+const Subscription = lazy(() => import("@/pages/Subscription"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 // Quote-related pages (grouped under quotes namespace)
@@ -73,6 +74,9 @@ export const AppRouter = () => (
           <Route path="/login" element={<Navigate to="/sign-in" replace />} />
           <Route path="/signup" element={<Navigate to="/create-account" replace />} />
           
+          {/* Subscription/billing page */}
+          <Route path="/subscription" element={<Subscription />} />
+
           {/* Main application routes (protected by MainLayout) */}
           <Route path="/dashboard" element={<Dashboard />} />
 

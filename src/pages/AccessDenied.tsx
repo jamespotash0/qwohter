@@ -19,7 +19,7 @@ interface UserData {
   };
 }
 
-export const AccessDenied: React.FC = () => {
+const AccessDenied: React.FC = () => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -187,3 +187,5 @@ export const AccessDenied: React.FC = () => {
     </div>
   );
 };
+
+export default AccessDenied;

@@ -202,7 +202,6 @@ export interface Database {
           role: 'Owner' | 'Admin' | 'Member';
           status: 'Pending' | 'Active' | 'Suspended';
           invited_by: string | null;
-          plan: string;
           joined_at: string | null;
           created_at: string;
           updated_at: string;
@@ -214,7 +213,6 @@ export interface Database {
           role?: 'Owner' | 'Admin' | 'Member';
           status?: 'Pending' | 'Active' | 'Suspended';
           invited_by?: string | null;
-          plan?: string;
           joined_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -226,7 +224,6 @@ export interface Database {
           role?: 'Owner' | 'Admin' | 'Member';
           status?: 'Pending' | 'Active' | 'Suspended';
           invited_by?: string | null;
-          plan?: string;
           joined_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -288,6 +285,97 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           expires_at?: string;
+        };
+      };
+      subscription_plans: {
+        Row: {
+          id: string;
+          name: string;
+          display_name: string;
+          description: string | null;
+          stripe_product_id: string | null;
+          stripe_price_id_monthly: string | null;
+          stripe_price_id_yearly: string | null;
+          features: any;
+          is_active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          display_name: string;
+          description?: string | null;
+          stripe_product_id?: string | null;
+          stripe_price_id_monthly?: string | null;
+          stripe_price_id_yearly?: string | null;
+          features?: any;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          display_name?: string;
+          description?: string | null;
+          stripe_product_id?: string | null;
+          stripe_price_id_monthly?: string | null;
+          stripe_price_id_yearly?: string | null;
+          features?: any;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      subscriptions: {
+        Row: {
+          id: string;
+          organization_id: string;
+          plan_id: string;
+          stripe_customer_id: string | null;
+          stripe_subscription_id: string | null;
+          stripe_subscription_status: string | null;
+          current_period_end: string | null;
+          is_active: boolean;
+          access_blocked: boolean;
+          access_blocked_reason: string | null;
+          metadata: any;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          plan_id: string;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          stripe_subscription_status?: string | null;
+          current_period_end?: string | null;
+          is_active?: boolean;
+          access_blocked?: boolean;
+          access_blocked_reason?: string | null;
+          metadata?: any;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          plan_id?: string;
+          stripe_customer_id?: string | null;
+          stripe_subscription_id?: string | null;
+          stripe_subscription_status?: string | null;
+          current_period_end?: string | null;
+          is_active?: boolean;
+          access_blocked?: boolean;
+          access_blocked_reason?: string | null;
+          metadata?: any;
+          created_at?: string;
+          updated_at?: string;
         };
       };
     };

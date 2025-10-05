@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { useAuthStore } from '@/stores/auth/authStore';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -26,6 +27,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const isInitialized = useAuthStore((state) => state.isInitialized);
   const signOut = useAuthStore((state) => state.signOut);
 
+  // Membership status tracking
+  const [membershipStatus, setMembershipStatus] = useState<string | null>(null);
+  const [checkingMembership, setCheckingMembership] = useState(false);
+
   // Check if current route should show sidebar
   const shouldShowSidebar = ![
     '/',
@@ -36,12 +41,58 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     '/reset-password',
     '/pending-approval',
     '/access-denied',
-    '/demo-contact'
+    '/demo-contact',
+    '/subscription'
   ].includes(location.pathname);
 
   // Check if we're on a full-screen wizard page (no padding/max-width)
   const isFullScreenPage = ['/quotes/new'].includes(location.pathname) ||
     location.pathname.startsWith('/quotes/edit-incomplete/');
+
+  // Check membership status for protected routes
+  useEffect(() => {
+    const checkMembershipStatus = async () => {
+      // Skip if not on protected route, not initialized, or no user
+      if (!shouldShowSidebar || !isInitialized || !user) {
+        setMembershipStatus(null);
+        return;
+      }
+
+      setCheckingMembership(true);
+
+      try {
+        const { data: membership, error } = await supabase
+          .from('memberships')
+          .select('status, role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error checking membership:', error);
+          setMembershipStatus(null);
+        } else if (membership) {
+          // Only check pending status for non-Owners
+          // Owners (who created the org) should always have Active status
+          // But just in case, don't redirect Owners to pending approval
+          if (membership.status === 'Pending' && membership.role !== 'Owner') {
+            setMembershipStatus('Pending');
+          } else {
+            setMembershipStatus(membership.status);
+          }
+        } else {
+          // No membership found - user might not be in an org
+          setMembershipStatus(null);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        setMembershipStatus(null);
+      } finally {
+        setCheckingMembership(false);
+      }
+    };
+
+    checkMembershipStatus();
+  }, [user, isInitialized, shouldShowSidebar]);
 
   // Authentication check for protected routes
   useEffect(() => {
@@ -52,6 +103,16 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       navigate('/sign-in');
     }
   }, [navigate, shouldShowSidebar, isInitialized, user]);
+
+  // Redirect to pending approval if membership is pending
+  useEffect(() => {
+    if (!shouldShowSidebar) return;
+    if (location.pathname === '/pending-approval') return; // Prevent redirect loop
+
+    if (membershipStatus === 'Pending' && !checkingMembership) {
+      navigate('/pending-approval');
+    }
+  }, [membershipStatus, checkingMembership, shouldShowSidebar, location.pathname, navigate]);
 
   const handleLogout = async () => {
     await signOut();
