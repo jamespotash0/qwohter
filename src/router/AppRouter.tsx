@@ -18,11 +18,11 @@ const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const PendingApproval = lazy(() => import("@/pages/PendingApproval"));
 const AccessDenied = lazy(() => import("@/pages/AccessDenied"));
 
-// Main application pages
-const Dashboard = lazy(() => import("@/pages/Dashboard"));
-const Analytics = lazy(() => import("@/pages/Analytics"));
-const Team = lazy(() => import("@/pages/Team"));
-const Settings = lazy(() => import("@/pages/Settings"));
+// Main application pages - import eagerly to prevent navigation flicker
+import Dashboard from "@/pages/Dashboard";
+import Analytics from "@/pages/Analytics";
+import Team from "@/pages/Team";
+import Settings from "@/pages/Settings";
 const Subscription = lazy(() => import("@/pages/Subscription"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 

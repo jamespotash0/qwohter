@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Calendar, TrendingUp, Download, CheckCircle, Loader2, ExternalLink, Users } from 'lucide-react';
+import { CreditCard, Calendar, Download, CheckCircle, Loader2, ExternalLink, Users } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
@@ -141,7 +141,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         <Card>
           <CardContent className="pt-6">
             {subscription ? (
-              <div className="flex items-start justify-between">
+              <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-2xl font-bold text-[var(--content-header-text)]">
@@ -170,26 +170,14 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                     </div>
                   )}
                 </div>
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-blue-600 text-white border-blue-600 hover:bg-blue-700 hover:text-white"
-                    onClick={handleManageSubscription}
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Manage Billing
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                    onClick={handleUpgrade}
-                  >
-                    <TrendingUp className="w-4 h-4 mr-2" />
-                    Change Plan
-                  </Button>
-                </div>
+                <Button
+                  size="sm"
+                  className="bg-orange-600 text-white hover:bg-orange-700"
+                  onClick={handleUpgrade}
+                >
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Manage Plan
+                </Button>
               </div>
             ) : (
               <div className="text-center py-8">
@@ -207,28 +195,20 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       <div className="pb-8">
         <h2 className="text-lg font-semibold text-[var(--content-header-text)] mb-6 flex items-center gap-2">
           <Download className="w-5 h-5" />
-          Billing Management
+          Billing History
         </h2>
         <Card>
           <CardContent className="pt-6">
-            <div className="space-y-4">
+            <div className="flex items-center justify-between">
               <p className="text-gray-700">
-                Click "Manage Billing" to access the Stripe Customer Portal where you can:
+                You can view your billing history via the Stripe Portal
               </p>
-              <ul className="list-disc list-inside space-y-2 text-gray-600 ml-4">
-                <li>View and download invoices</li>
-                <li>Update payment methods</li>
-                <li>View billing history</li>
-                <li>Cancel or pause subscription</li>
-                <li>Update billing information</li>
-              </ul>
               <Button
                 onClick={handleManageSubscription}
                 variant="outline"
-                className="mt-4"
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
-                Open Stripe Customer Portal
+                Open Stripe Portal
               </Button>
             </div>
           </CardContent>

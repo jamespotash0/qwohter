@@ -13,8 +13,8 @@ import {
   Calendar,
 } from "lucide-react";
 import { useQuotesStore } from "@/stores/quotes/quotesStore";
-import { useOrganizations } from "@/hooks/useOrganizations";
-import { useUserProfile } from "@/hooks/useUserProfile";
+import { useOrganizationStore } from "@/stores/organization/organizationStore";
+import { useAuthStore } from "@/stores/auth/authStore";
 import { AnalyticsPageCharts } from "@/components/common/charts/AnalyticsPageCharts";
 
 /**
@@ -33,8 +33,9 @@ const Analytics = () => {
   const quotesLoading = useQuotesStore((state) => state.isLoading);
   const isInitialized = useQuotesStore((state) => state.isInitialized);
   const initialize = useQuotesStore((state) => state.initialize);
-  // const { currentOrganization, loading: organizationsLoading } = useOrganizations();
-  const { profile } = useUserProfile(user?.id);
+  // Use Zustand stores directly to avoid re-fetches
+  const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
+  const profile = useAuthStore((state) => state.profile);
 
   // Get current user for analytics data
   useEffect(() => {

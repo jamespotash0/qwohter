@@ -1,18 +1,16 @@
-import { MoreVertical, LogOut, Settings, CreditCard } from "lucide-react";
-import { House, FileText, ChartBar, Users, List } from "@phosphor-icons/react";
+import { MoreVertical, LogOut, CreditCard } from "lucide-react";
+import { House, FileText, ChartBar, Users, List, Gear } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+// import { Card, CardContent } from "@/components/ui/card";
 import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import { QwohterLogo } from "@/components/common/QwohterLogo";
-import { useUserProfile } from "@/hooks/useUserProfile";
-import { useOrganizations } from "@/hooks/useOrganizations";
 import { useOrganizationStore } from "@/stores/organization/organizationStore";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuthStore } from "@/stores/auth/authStore";
+import { useState } from "react";
 
 interface AppSidebarProps {
   user: string;
@@ -39,63 +37,23 @@ const menuItems = [
     title: "Team",
     icon: Users,
     path: "/team"
+  },
+  {
+    title: "Settings",
+    icon: Gear,
+    path: "/settings"
   }
 ];
 
 export function AppSidebar({
   onLogout
 }: AppSidebarProps) {
-  const [currentUser, setCurrentUser] = useState<any>(null);
   const [isHovered, setIsHovered] = useState(false);
-  const [cachedProfile, setCachedProfile] = useState<any>(() => {
-    // Initialize from localStorage
-    try {
-      const stored = localStorage.getItem('sidebar_cached_profile');
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [cachedUserRole, setCachedUserRole] = useState<string>(() => {
-    // Initialize from localStorage
-    return localStorage.getItem('sidebar_cached_role') || '';
-  });
 
-  const { profile } = useUserProfile(currentUser?.id);
-  const { currentUserRole } = useOrganizations();
-
-  // Cache profile data to prevent flashing - only update if we have real data
-  useEffect(() => {
-    if (profile && profile.id && JSON.stringify(profile) !== JSON.stringify(cachedProfile)) {
-      setCachedProfile(profile);
-      localStorage.setItem('sidebar_cached_profile', JSON.stringify(profile));
-    }
-  }, [profile, cachedProfile]);
-
-  // Cache user role to prevent flashing - only update if we have a non-empty role
-  useEffect(() => {
-    if (currentUserRole && currentUserRole.trim() && currentUserRole !== cachedUserRole) {
-      setCachedUserRole(currentUserRole);
-      localStorage.setItem('sidebar_cached_role', currentUserRole);
-    }
-  }, [currentUserRole, cachedUserRole]);
-
-  // Get current user
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setCurrentUser(session.user);
-      } else {
-        // Clear cache when no user session
-        setCachedProfile(null);
-        setCachedUserRole('');
-        localStorage.removeItem('sidebar_cached_profile');
-        localStorage.removeItem('sidebar_cached_role');
-      }
-    };
-    getCurrentUser();
-  }, []);
+  // Use Zustand stores directly - they're already cached and won't cause re-fetches
+  const user = useAuthStore((state) => state.user);
+  const userProfile = useAuthStore((state) => state.profile);
+  const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
 
   // Generate user initials
   const getUserInitials = (name?: string, email?: string) => {
@@ -108,13 +66,9 @@ export function AppSidebar({
     return 'U';
   };
 
-  // Always prefer cached data to prevent flashing, fallback to live data only if no cache
-  // If we have cached data, ignore any falsy hook returns (this prevents dashboard interference)
-  const effectiveProfile = cachedProfile || (profile?.id ? profile : null);
-  const effectiveRole = cachedUserRole || (currentUserRole?.trim() ? currentUserRole : 'Member');
-
-  const userDisplayName = effectiveProfile?.full_name || currentUser?.email || 'User';
-  const userInitials = getUserInitials(effectiveProfile?.full_name ?? undefined, currentUser?.email);
+  const userDisplayName = userProfile?.full_name || user?.email || 'User';
+  const userInitials = getUserInitials(userProfile?.full_name ?? undefined, user?.email);
+  const effectiveRole = currentUserRole || 'Member';
 
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -187,6 +141,7 @@ export function AppSidebar({
               {menuItems.map(item => {
                 const isActive = location.pathname === item.path;
                 const Icon = item.icon;
+
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
@@ -221,8 +176,8 @@ export function AppSidebar({
                       }}
                     >
                       <Icon
-                        size={28}
-                        weight="bold"
+                        size={18}
+                        weight="regular"
                         className={`${
                           isActive
                             ? 'text-[var(--sidebar-icon-active)] [&:hover]:text-[var(--sidebar-icon-active)]'
@@ -248,7 +203,6 @@ export function AppSidebar({
             <div className="flex items-center justify-between p-3 rounded-xl group">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Avatar className="h-9 w-9 ring-2 ring-[var(--sidebar-user-avatar-bg)]">
-                  <AvatarImage src={effectiveProfile?.avatar_url} />
                   <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-sm font-semibold">
                     {userInitials}
                   </AvatarFallback>
@@ -276,14 +230,6 @@ export function AppSidebar({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem
-                    onClick={(e) => handleNavigate('/settings', e)}
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    <Settings className="h-4 w-4" />
-                    Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
                     onClick={onLogout}
                     className="flex items-center gap-2 text-destructive hover:bg-[var(--sidebar-nav-bg-hover)] cursor-pointer"
                   >
@@ -305,7 +251,6 @@ export function AppSidebar({
                     className="h-10 w-10 p-0 rounded-xl hover:bg-[var(--sidebar-user-hover-bg)]"
                   >
                     <Avatar className="h-8 w-8 ring-2 ring-[var(--sidebar-user-avatar-bg)]">
-                      <AvatarImage src={effectiveProfile?.avatar_url} />
                       <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-xs font-semibold">
                         {userInitials}
                       </AvatarFallback>
@@ -322,16 +267,8 @@ export function AppSidebar({
                     </p>
                   </div>
                   <DropdownMenuItem
-                    onClick={(e) => handleNavigate('/settings', e)}
-                    className="flex items-center gap-2 cursor-pointer mt-1"
-                  >
-                    <Settings className="h-4 w-4" />
-                    Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
                     onClick={onLogout}
-                    className="flex items-center gap-2 text-destructive hover:bg-[var(--sidebar-nav-bg-hover)] cursor-pointer"
+                    className="flex items-center gap-2 text-destructive hover:bg-[var(--sidebar-nav-bg-hover)] cursor-pointer mt-1"
                   >
                     <LogOut className="h-4 w-4" />
                     Logout

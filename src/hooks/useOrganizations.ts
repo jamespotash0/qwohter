@@ -180,7 +180,7 @@ export const useOrganizations = () => {
           created_by: user.id,
           expires_at: expiresAt.toISOString(),
           is_used: false
-        });
+        } as any);
 
       if (tokenError) {
         console.error('Token creation error:', tokenError);
@@ -447,17 +447,19 @@ export const useOrganizations = () => {
   };
 
   useEffect(() => {
-    // Fetch organization from store (will skip if already cached)
-    storeFetchOrganization();
-  }, [storeFetchOrganization]);
+    // Only fetch if organization is not already cached
+    if (!currentOrganization) {
+      storeFetchOrganization();
+    }
+  }, []); // Empty deps - only run once on mount
 
   useEffect(() => {
-    if (currentOrganization) {
-      // Fetch members and tokens from store (will skip if already cached)
+    // Only fetch members/tokens if we have an organization and they're not already loaded
+    if (currentOrganization && members.length === 0 && inviteTokens.length === 0) {
       storeFetchMembers(currentOrganization.id);
       storeFetchInviteTokens(currentOrganization.id);
     }
-  }, [currentOrganization, storeFetchMembers, storeFetchInviteTokens]);
+  }, []); // Empty deps - only run once on mount
 
   return {
     currentOrganization,

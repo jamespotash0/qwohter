@@ -1,12 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PageContent } from "@/components/common/layout";
 import { User as UserIcon, Building, Key, Shield, CreditCard } from "lucide-react";
-import { useOrganizationSettings } from "@/hooks/useCompanySettings";
+import { useCurrentOrganization, useOrganizationStore } from "@/stores/organization/organizationStore";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { useMembership } from "@/hooks/useMembership";
 import { useAuthStore } from "@/stores/auth/authStore";
 import { ProfileTab } from "@/components/features/settings/ProfileTab";
 import { OrganizationTab } from "@/components/features/settings/OrganizationTab";
@@ -16,41 +12,38 @@ import { BillingTab } from "@/components/features/settings/BillingTab";
 import { canAccessSettingsTab } from "@/utils/permissions";
 
 const Settings = () => {
-  const [searchParams] = useSearchParams();
-  const tabFromUrl = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabFromUrl || "profile");
-  const user = useAuthStore((state) => state.user);
-  const { organization, fetchOrganization: refetchOrganization } = useOrganizationSettings();
-  const { profile } = useUserProfile(user?.id);
-  const { currentMembership, loading: membershipLoading } = useMembership();
-  const userRole = currentMembership?.role;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab') || 'profile';
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
 
-  // Update active tab when URL parameter changes
+  const user = useAuthStore((state) => state.user);
+  const organization = useCurrentOrganization();
+  const refetchOrganization = useOrganizationStore((state) => state.fetchOrganization);
+  const userRole = useOrganizationStore((state) => state.currentUserRole);
+  const { profile } = useUserProfile(user?.id);
+
+  // Sync activeTab with URL
   useEffect(() => {
-    if (tabFromUrl) {
+    if (tabFromUrl && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl);
     }
   }, [tabFromUrl]);
 
-  // Wait for membership to load to get correct role
-  if (membershipLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted">Loading settings...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    setSearchParams({ tab: tabId });
+  };
 
+  // Don't show loading spinner - organization and role should be cached
+  // If they're not available, show settings anyway with default values
 
-  const availableTabs = [
+  // Memoize tabs to prevent recreation on every render
+  const availableTabs = useMemo(() => [
     {
       id: "profile",
       label: "Profile",
       icon: <UserIcon className="w-4 h-4" />,
-      component: <ProfileTab user={user} profile={profile} userRole={userRole || 'Member'} />
+      component: <ProfileTab user={user as any} profile={profile} userRole={userRole || 'Member'} />
     },
     {
       id: "organization",
@@ -91,7 +84,7 @@ const Settings = () => {
       component: <PermissionsTab userRole={userRole || 'Member'} />,
       requiresPermission: "permissions"
     }
-  ].filter(tab => !tab.requiresPermission || canAccessSettingsTab(tab.requiresPermission, userRole || 'Member'));
+  ].filter(tab => !tab.requiresPermission || canAccessSettingsTab(tab.requiresPermission, userRole || 'Member')), [user, organization, userRole, profile, refetchOrganization]);
 
   return (
     <div>
@@ -105,30 +98,12 @@ const Settings = () => {
         {availableTabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-sm font-medium transition-all duration-200 ${
+            onClick={() => handleTabChange(tab.id)}
+            className={`px-4 py-2 text-sm font-medium transition-all duration-200 rounded-lg ${
               activeTab === tab.id
-                ? 'text-[var(--sidebar-nav-text-active)] shadow-sm'
-                : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)]'
+                ? 'text-[var(--sidebar-nav-text-active)] shadow-sm bg-[var(--sidebar-nav-bg-active)]'
+                : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)]'
             }`}
-            style={{
-              borderRadius: 'var(--sidebar-nav-border-radius)',
-              ...(activeTab === tab.id
-                ? {
-                    backgroundColor: 'var(--sidebar-nav-bg-active)',
-                  }
-                : {})
-            }}
-            onMouseEnter={(e) => {
-              if (activeTab !== tab.id) {
-                e.currentTarget.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeTab !== tab.id) {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }
-            }}
           >
             {tab.label}
           </button>

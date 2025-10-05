@@ -4,6 +4,7 @@ import { useOrganizations } from "@/hooks/useOrganizations";
 import { useToast } from "@/hooks/use-toast";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth/authStore";
+import { useOrganizationStore } from "@/stores/organization/organizationStore";
 import { getAppUrl } from "@/utils/environment";
 import { createInviteToken } from "@/utils/inviteTokens";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,11 +34,14 @@ const Team = () => {
   const user = useAuthStore((state) => state.user);
   const userId = user?.id || "";
 
+  // Use Zustand store directly to avoid re-fetches
+  const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
+  const members = useOrganizationStore((state) => state.members);
+  const inviteTokens = useOrganizationStore((state) => state.inviteTokens);
+  const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
+
+  // Get the hook only for methods we need
   const {
-    currentOrganization,
-    members,
-    inviteTokens,
-    currentUserRole,
     inviteMember,
     removeMember,
     resendInvite,

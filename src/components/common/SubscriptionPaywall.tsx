@@ -88,6 +88,9 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
               >
                 Go to Billing Settings
               </Button>
+              <p className="text-xs text-gray-500 text-center mt-2">
+                View billing history in the Stripe portal
+              </p>
             </CardContent>
           </Card>
         </div>
