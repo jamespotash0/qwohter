@@ -255,28 +255,90 @@ const Auth = () => {
   // ============================================================================
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            {authFlow.step === "auth" && (authFlow.isSignUp ? "Create Account" : "Welcome Back")}
-            {authFlow.step === "verify-otp" && "Verify Your Email"}
-            {authFlow.step === "organization" && "Organization Setup"}
-            {authFlow.step === "company-info" && "Company Information"}
-          </CardTitle>
-          <CardDescription className="text-center">
-            {authFlow.step === "auth" && (authFlow.isSignUp
-              ? "Create your account to get started"
-              : "Sign in to your account"
-            )}
-            {authFlow.step === "verify-otp" && "Enter the code sent to your email"}
-            {authFlow.step === "organization" && "Join or create your organization"}
-            {authFlow.step === "company-info" && "Add your company details"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* Progress Indicator */}
-          <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} />
+    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100">
+      {/* Header with logo - matching landing page */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-transparent">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <div
+              className="flex items-center cursor-pointer"
+              onClick={() => navigate('/')}
+            >
+              <img
+                src="/logos/Landing_Page_Logo_Light.svg"
+                alt="Qwohter Logo"
+                className="h-8 w-auto"
+              />
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Background pattern with quote checkerboard design */}
+      <div className="absolute inset-0">
+        {/* Repeating quotation marks in checkerboard pattern */}
+        <div
+          className="absolute inset-0 opacity-[0.08]"
+          style={{
+            backgroundImage: `
+              url("data:image/svg+xml,%3Csvg width='120' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='30' y='60' font-family='serif' font-size='60' fill='%23334155' opacity='0.5'%3E%22%3C/text%3E%3Ctext x='90' y='60' font-family='serif' font-size='60' fill='%23f97316' opacity='0.4'%3E%22%3C/text%3E%3Ctext x='60' y='30' font-family='serif' font-size='60' fill='%23334155' opacity='0.3'%3E%22%3C/text%3E%3Ctext x='60' y='90' font-family='serif' font-size='60' fill='%23334155' opacity='0.3'%3E%22%3C/text%3E%3C/svg%3E")
+            `,
+            backgroundSize: '120px 120px',
+            backgroundRepeat: 'repeat'
+          }}
+        />
+
+        {/* Alternating quotation pattern overlay */}
+        <div
+          className="absolute inset-0 opacity-[0.05]"
+          style={{
+            backgroundImage: `
+              url("data:image/svg+xml,%3Csvg width='120' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='15' y='45' font-family='serif' font-size='40' fill='%23475569' opacity='0.6' transform='rotate(15)'%3E%E2%80%9C%3C/text%3E%3Ctext x='75' y='75' font-family='serif' font-size='40' fill='%23475569' opacity='0.6' transform='rotate(-15)'%3E%E2%80%9D%3C/text%3E%3C/svg%3E")
+            `,
+            backgroundSize: '120px 120px',
+            backgroundRepeat: 'repeat',
+            backgroundPosition: '60px 60px'
+          }}
+        />
+
+        {/* Subtle gradient orbs for depth */}
+        <div className="absolute top-20 left-20 w-32 h-32 bg-blue-100/6 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-20 w-40 h-40 bg-orange-100/4 rounded-full blur-3xl" />
+      </div>
+
+      <div className="min-h-screen flex items-center justify-center p-8">
+        <div className="w-full flex items-center justify-center">
+          <div className={`w-full relative z-10 ${
+            authFlow.step === "company-info" ? "max-w-lg" : "max-w-md"
+          }`}>
+            {/* Main form card */}
+            <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
+              <CardHeader className="text-center space-y-3 pb-2 pt-6 px-8">
+                {/* Progress Indicator - show for all onboarding steps */}
+                {authFlow.step !== "auth" && (
+                  <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} />
+                )}
+
+                <div className="space-y-1">
+                  <CardTitle className="text-2xl font-bold text-center">
+                    {authFlow.step === "auth" && (authFlow.isSignUp ? "Create Account" : "Welcome Back")}
+                    {authFlow.step === "verify-otp" && "Verify Your Email"}
+                    {authFlow.step === "organization" && "Organization Setup"}
+                    {authFlow.step === "company-info" && "Company Information"}
+                  </CardTitle>
+                  <CardDescription className="text-center">
+                    {authFlow.step === "auth" && (authFlow.isSignUp
+                      ? "Create your account to get started"
+                      : "Sign in to your account"
+                    )}
+                    {authFlow.step === "verify-otp" && "Enter the code sent to your email"}
+                    {authFlow.step === "organization" && "Join or create your organization"}
+                    {authFlow.step === "company-info" && "Add your company details"}
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="px-8 pb-8 space-y-4">
 
           {/* Auth Form (Sign-in / Sign-up) */}
           {authFlow.step === "auth" && (
@@ -359,8 +421,11 @@ const Auth = () => {
               onSkip={onCompanyInfoSkip}
             />
           )}
-        </CardContent>
-      </Card>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
