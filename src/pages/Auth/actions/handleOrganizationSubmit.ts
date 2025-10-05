@@ -14,6 +14,8 @@ interface HandleOrganizationSubmitParams {
   userId: string | null;
   orgName: string;
   orgCode: string;
+  industry: string;
+  foundVia: string;
   submissionInProgress: boolean;
   setSubmissionInProgress: (inProgress: boolean) => void;
   setStep: (step: 'auth' | 'verify-otp' | 'organization' | 'company-info') => void;
@@ -30,6 +32,8 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
     userId,
     orgName,
     orgCode,
+    industry,
+    foundVia,
     submissionInProgress,
     setSubmissionInProgress,
     setStep,
@@ -66,12 +70,16 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
       orgChoice,
       orgName,
       orgCode,
+      industry,
+      foundVia,
     });
 
     const choice = {
       type: orgChoice,
       orgName: orgChoice === 'create' ? orgName : undefined,
       orgCode: orgChoice === 'join' ? orgCode : undefined,
+      industry,
+      foundVia,
     };
 
     const result = await authFlowHelpers.handleOrganizationSetup({ userId, choice });

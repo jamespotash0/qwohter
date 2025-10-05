@@ -374,16 +374,9 @@ export const authFlowHelpers = {
     }
 
     try {
-      // Validate and sanitize choice fields
-      const allowedIndustries = ['tech', 'finance', 'health', 'education', 'other'];
-      const allowedFoundVia = ['referral', 'ad', 'organic', 'unknown'];
-
-      const industry = allowedIndustries.includes(choice.industry?.toLowerCase() || '')
-        ? choice.industry
-        : 'other';
-      const foundVia = allowedFoundVia.includes(choice.foundVia?.toLowerCase() || '')
-        ? choice.foundVia
-        : 'unknown';
+      // Get industry and foundVia from choice, with fallbacks
+      const industry = choice.industry || null;
+      const foundVia = choice.foundVia || null;
 
       if (choice.type === 'create') {
         if (!choice.orgName) {
@@ -480,7 +473,7 @@ export const authFlowHelpers = {
             organization_id: orgData.id,
             role: 'Member',
             status: 'Pending'
-          });
+          } as any);
 
         if (membershipsError) throw membershipsError;
 

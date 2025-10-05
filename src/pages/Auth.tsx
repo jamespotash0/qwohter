@@ -251,6 +251,8 @@ const Auth = () => {
       userId: authFlow.userId,
       orgName: formState.orgName,
       orgCode: formState.orgCode,
+      industry: formState.industry,
+      foundVia: formState.foundVia,
       submissionInProgress: authFlow.submissionInProgress,
       setSubmissionInProgress: authFlow.setSubmissionInProgress,
       setStep: authFlow.setStep,
