@@ -53,10 +53,51 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    // ============================================================================
+    // AUTHENTICATION: Verify user is authenticated
+    // ============================================================================
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized: Missing token' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const supabaseAuth = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_ANON_KEY!
+    );
+
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token);
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+    }
+
     const { organizationId } = req.body;
 
     if (!organizationId) {
       return res.status(400).json({ error: 'organizationId required' });
+    }
+
+    // ============================================================================
+    // AUTHORIZATION: Verify user is Owner/Admin of this organization
+    // ============================================================================
+    const { data: membership, error: membershipError } = await supabase
+      .from('memberships')
+      .select('role, status')
+      .eq('user_id', user.id)
+      .eq('organization_id', organizationId)
+      .single();
+
+    if (membershipError || !membership) {
+      return res.status(403).json({ error: 'Forbidden: Not a member of this organization' });
+    }
+
+    if (membership.status !== 'Active') {
+      return res.status(403).json({ error: 'Forbidden: Membership not active' });
+    }
+
+    if (!['Owner', 'Admin'].includes(membership.role)) {
+      return res.status(403).json({ error: 'Forbidden: Only Owner/Admin can manage billing' });
     }
 
     // Get subscription details
