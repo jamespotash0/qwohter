@@ -8,6 +8,14 @@ import type { EnhancedPricingData } from '@/lib/types/pricing/enhancedPricing';
 // Note: filterWallDetailsForSave removed - discriminated union types now prevent invalid data
 import { ProposalNumberGenerator } from '@/utils/proposalNumberGenerator';
 import { quoteActivityService } from '@/services/quoteActivityService';
+import { useAuthStore } from '@/stores/auth/authStore';
+
+// Helper to get current user from auth store (avoid redundant API calls)
+const getCurrentUser = () => {
+  const user = useAuthStore.getState().user;
+  if (!user) throw new Error('User not authenticated');
+  return user;
+};
 
 // Define Quote interface directly in store
 export interface Quote {
@@ -292,8 +300,7 @@ export const useQuotesStore = create<QuotesState>()(
             _setLoading(true);
             _setError(null);
 
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('User not authenticated');
+            const user = getCurrentUser();
 
             // Get user's organization from memberships table
             const { data: membershipData, error: membershipError } = await supabase
@@ -395,8 +402,7 @@ export const useQuotesStore = create<QuotesState>()(
             // Generate new version number
             const proposalInfo = await ProposalNumberGenerator.getNextProposalNumber(existingQuote.proposal_number);
 
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('User not authenticated');
+            const user = getCurrentUser();
 
             // Create new quote with incremented version
             const { data, error } = await supabase
@@ -440,8 +446,7 @@ export const useQuotesStore = create<QuotesState>()(
             const currentQuote = quotes.find(q => q.id === id);
             if (!currentQuote) throw new Error('Quote not found');
 
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('User not authenticated');
+            const user = getCurrentUser();
 
             // Get user's name and organization
             const [profileResult, membershipResult] = await Promise.all([
@@ -574,8 +579,7 @@ export const useQuotesStore = create<QuotesState>()(
             const quoteToDelete = quotes.find(q => q.id === id);
             if (!quoteToDelete) throw new Error('Quote not found');
 
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('User not authenticated');
+            const user = getCurrentUser();
 
             // Get user's name and organization
             const [profileResult, membershipResult] = await Promise.all([
@@ -627,8 +631,7 @@ export const useQuotesStore = create<QuotesState>()(
         // Subscribe to realtime updates
         subscribeToRealtime: async () => {
           try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('User not authenticated');
+            const user = getCurrentUser();
 
             // Get user's organization from memberships table
             const { data: membershipData, error: membershipError } = await supabase
@@ -1002,8 +1005,7 @@ export const useQuotesStore = create<QuotesState>()(
             const quoteToArchive = quotes.find(q => q.id === id);
             if (!quoteToArchive) throw new Error('Quote not found');
 
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('User not authenticated');
+            const user = getCurrentUser();
 
             // Get user's name and organization
             const [profileResult, membershipResult] = await Promise.all([
@@ -1068,8 +1070,7 @@ export const useQuotesStore = create<QuotesState>()(
             const quoteToUnarchive = quotes.find(q => q.id === id);
             if (!quoteToUnarchive) throw new Error('Quote not found');
 
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('User not authenticated');
+            const user = getCurrentUser();
 
             // Get user's name and organization
             const [profileResult, membershipResult] = await Promise.all([

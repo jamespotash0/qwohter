@@ -112,18 +112,27 @@ export const useOrganizationStore = create<OrganizationState>()(
       subscriptionStatus: null,
 
       // Fetch organization
-      fetchOrganization: async () => {
+      fetchOrganization: async (userId?: string) => {
         const { currentOrganization } = get();
 
         // Skip if already fetched
         if (currentOrganization) {
+          console.log('✅ Organization already cached, skipping fetch');
           return;
         }
 
         try {
           set({ loading: true, error: null });
-          const { data: user } = await supabase.auth.getUser();
-          if (!user.user) {
+
+          // Use provided userId or fetch from auth
+          let currentUserId = userId;
+          if (!currentUserId) {
+            const { data: user } = await supabase.auth.getUser();
+            currentUserId = user.user?.id;
+          }
+
+          if (!currentUserId) {
+            console.log('⏭️ No user ID, skipping organization fetch');
             set({ loading: false });
             return;
           }
@@ -150,7 +159,7 @@ export const useOrganizationStore = create<OrganizationState>()(
                 logo_data
               )
             `)
-            .eq('user_id', user.user.id)
+            .eq('user_id', currentUserId)
             .eq('status', 'Active')
             .single() as any;
 

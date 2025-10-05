@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useOrganizationStore } from "@/stores/organization/organizationStore";
+import { useAuthStore } from "@/stores/auth/authStore";
 import type { Organization, OrganizationMember, InviteToken } from "@/stores/organization/organizationStore";
 
 // Re-export types from store for backward compatibility
@@ -9,6 +10,9 @@ export type { Organization, OrganizationMember, InviteToken };
 
 export const useOrganizations = () => {
   const { toast } = useToast();
+
+  // Get user from auth store (avoid redundant auth calls)
+  const user = useAuthStore(state => state.user);
 
   // Get state and actions from Zustand store
   const currentOrganization = useOrganizationStore(state => state.currentOrganization);
@@ -443,11 +447,14 @@ export const useOrganizations = () => {
   };
 
   useEffect(() => {
-    // Only fetch if organization is not already cached
-    if (!currentOrganization) {
-      storeFetchOrganization();
+    // Only fetch if organization is not already cached AND user is available
+    if (!currentOrganization && user?.id) {
+      console.log('📦 Fetching organization for user:', user.id);
+      storeFetchOrganization(user.id);
+    } else if (currentOrganization) {
+      console.log('✅ Organization already loaded from cache');
     }
-  }, []); // Empty deps - only run once on mount
+  }, [user?.id]); // Re-run only if user ID changes
 
   useEffect(() => {
     // Only fetch members/tokens if we have an organization and they're not already loaded
