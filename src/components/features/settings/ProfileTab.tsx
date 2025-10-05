@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { User, Mail, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,8 @@ interface ProfileTabProps {
 
 export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole }) => {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [editedFullName, setEditedFullName] = useState('');
+  // Initialize with profile value immediately to prevent flash of empty field
+  const [editedFullName, setEditedFullName] = useState(profile?.full_name || '');
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Email change dialog states
@@ -37,9 +38,9 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Update editedFullName when profile loads
+  // Update editedFullName when profile changes
   React.useEffect(() => {
-    if (profile?.full_name) {
+    if (profile?.full_name && editedFullName !== profile.full_name) {
       setEditedFullName(profile.full_name);
     }
   }, [profile?.full_name]);

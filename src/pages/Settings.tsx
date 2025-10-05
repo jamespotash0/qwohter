@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { User as UserIcon, Building, Key, Shield, CreditCard } from "lucide-react";
 import { useCurrentOrganization, useOrganizationStore } from "@/stores/organization/organizationStore";
-import { useUserProfile } from "@/hooks/useUserProfile";
 import { useAuthStore } from "@/stores/auth/authStore";
 import { ProfileTab } from "@/components/features/settings/ProfileTab";
 import { OrganizationTab } from "@/components/features/settings/OrganizationTab";
@@ -17,10 +16,10 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState(tabFromUrl);
 
   const user = useAuthStore((state) => state.user);
+  const profile = useAuthStore((state) => state.profile);
   const organization = useCurrentOrganization();
   const refetchOrganization = useOrganizationStore((state) => state.fetchOrganization);
   const userRole = useOrganizationStore((state) => state.currentUserRole);
-  const { profile } = useUserProfile(user?.id);
 
   // Sync activeTab with URL
   useEffect(() => {

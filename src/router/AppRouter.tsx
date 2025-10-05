@@ -3,9 +3,28 @@ import { ErrorBoundary, QuoteErrorBoundary } from "@/components/ErrorBoundary";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
+import { useAuthStore } from "@/stores/auth/authStore";
 
 // Lazy load pages for better performance
 import { lazy } from "react";
+
+// Protected auth route wrapper - redirects to dashboard if already logged in
+const AuthRoute = ({ children }: { children: React.ReactNode }) => {
+  const user = useAuthStore((state) => state.user);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
+
+  // Don't redirect until auth is initialized
+  if (!isInitialized) {
+    return <>{children}</>;
+  }
+
+  // If user is logged in, redirect to dashboard
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
 
 // Public pages
 const Landing = lazy(() => import("@/pages/Landing"));
@@ -61,11 +80,11 @@ export const AppRouter = () => (
           {/* Demo contact page (public) */}
           <Route path="/demo-contact" element={<DemoContact />} />
 
-          {/* Authentication routes (public) */}
-          <Route path="/sign-in" element={<Auth />} />
-          <Route path="/create-account" element={<Auth />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+          {/* Authentication routes - redirect to dashboard if already logged in */}
+          <Route path="/sign-in" element={<AuthRoute><Auth /></AuthRoute>} />
+          <Route path="/create-account" element={<AuthRoute><Auth /></AuthRoute>} />
+          <Route path="/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
+          <Route path="/reset-password" element={<AuthRoute><ResetPassword /></AuthRoute>} />
           <Route path="/pending-approval" element={<PendingApproval />} />
           <Route path="/access-denied" element={<AccessDenied />} />
 
