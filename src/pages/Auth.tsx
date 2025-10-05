@@ -20,6 +20,8 @@ import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
 import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
 import { LogoUploadResult } from "@/services/LogoUploadService";
 import { validateInviteToken } from "@/utils/inviteTokens";
+import { tempSignupService } from "@/services/tempSignupService";
+import { supabase } from "@/integrations/supabase/client";
 
 // Import extracted hooks
 import { useAuthFlow, useAuthFormState, useCompanyInfoState } from "./Auth/hooks";
@@ -64,14 +66,14 @@ const Auth = () => {
       // Handle secure invite token
       const handleInviteToken = async () => {
         try {
-          const validation = await validateInviteToken(inviteToken.trim());
+          const tokenData = await validateInviteToken(inviteToken.trim());
 
-          if (validation.valid && validation.organizationCode) {
-            formState.setOrgCode(validation.organizationCode);
+          if (tokenData) {
+            formState.setOrgCode(tokenData.organization_code);
             authFlow.setOrgChoice('join');
             toast({
               title: "Invite link detected",
-              description: `You're joining ${validation.organizationName || 'an organization'}`,
+              description: `You're joining an organization`,
             });
           } else {
             toast({
@@ -162,6 +164,40 @@ const Auth = () => {
     });
   };
 
+  const onResendCode = async () => {
+    // Check if we have temporary signup data
+    const tempData = tempSignupService.get();
+    if (!tempData || tempData.email !== formState.email) {
+      toast({
+        title: "Session Expired",
+        description: "Please sign up again to resend verification code.",
+        variant: "destructive"
+      });
+      authFlow.setStep("auth");
+      return;
+    }
+
+    // Resend OTP using the same approach as initial signup
+    const { error } = await supabase.auth.signInWithOtp({
+      email: formState.email,
+      options: {
+        shouldCreateUser: false
+      }
+    });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to resend verification code. Please try again.",
+        variant: "destructive"
+      });
+      throw error;
+    }
+
+    // Update the OTP sent status
+    tempSignupService.markOtpSent();
+  };
+
   const onOrganizationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await handleOrganizationSubmit({
@@ -240,26 +276,33 @@ const Auth = () => {
         </CardHeader>
         <CardContent>
           {/* Progress Indicator */}
-          <OnboardingProgress currentStep={authFlow.step} />
+          <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} />
 
           {/* Auth Form (Sign-in / Sign-up) */}
           {authFlow.step === "auth" && (
             <AuthForm
-              email={formState.email}
-              setEmail={formState.setEmail}
-              password={formState.password}
-              setPassword={formState.setPassword}
-              confirmPassword={formState.confirmPassword}
-              setConfirmPassword={formState.setConfirmPassword}
-              firstName={formState.firstName}
-              setFirstName={formState.setFirstName}
-              lastName={formState.lastName}
-              setLastName={formState.setLastName}
               isSignUp={authFlow.isSignUp}
-              loading={authFlow.loading}
+              email={formState.email}
+              password={formState.password}
+              confirmPassword={formState.confirmPassword}
+              firstName={formState.firstName}
+              lastName={formState.lastName}
               showPassword={formState.showPassword}
-              setShowPassword={formState.setShowPassword}
+              loading={authFlow.loading}
+              onEmailChange={formState.setEmail}
+              onPasswordChange={formState.setPassword}
+              onConfirmPasswordChange={formState.setConfirmPassword}
+              onFirstNameChange={formState.setFirstName}
+              onLastNameChange={formState.setLastName}
+              onTogglePasswordVisibility={() => formState.setShowPassword(!formState.showPassword)}
               onSubmit={onAuthSubmit}
+              onToggleMode={() => {
+                if (authFlow.isSignUp) {
+                  navigate("/sign-in");
+                } else {
+                  navigate("/create-account");
+                }
+              }}
             />
           )}
 
@@ -267,10 +310,11 @@ const Auth = () => {
           {authFlow.step === "verify-otp" && (
             <OtpVerificationForm
               otpCode={formState.otpCode}
-              setOtpCode={formState.setOtpCode}
               email={formState.email}
               loading={authFlow.loading}
+              onOtpCodeChange={formState.setOtpCode}
               onSubmit={onOtpSubmit}
+              onResendCode={onResendCode}
             />
           )}
 
@@ -278,16 +322,12 @@ const Auth = () => {
           {authFlow.step === "organization" && (
             <OrganizationSetupForm
               orgChoice={authFlow.orgChoice}
-              setOrgChoice={authFlow.setOrgChoice}
-              orgName={formState.orgName}
-              setOrgName={formState.setOrgName}
               orgCode={formState.orgCode}
-              setOrgCode={formState.setOrgCode}
-              industry={formState.industry}
-              setIndustry={formState.setIndustry}
-              foundVia={formState.foundVia}
-              setFoundVia={formState.setFoundVia}
+              orgName={formState.orgName}
               loading={authFlow.loading}
+              onOrgChoiceChange={authFlow.setOrgChoice}
+              onOrgCodeChange={formState.setOrgCode}
+              onOrgNameChange={formState.setOrgName}
               onSubmit={onOrganizationSubmit}
             />
           )}
