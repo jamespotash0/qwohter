@@ -176,7 +176,6 @@ export class SmartQuoteHelper {
       
       // Skip read-only sections like wall-specifications-list (Wall A table) 
       if (readOnlySections.includes(className)) {
-        console.log(`Skipping read-only section: ${className}`);
         continue;
       }
       
@@ -185,7 +184,6 @@ export class SmartQuoteHelper {
       const headerText = this.extractSectionHeader(html, match.index);
       
       if (sectionContent) {
-        console.log(`✅ Extracting section: ${className} -> id: ${id} (${sectionContent.length} chars), header: "${headerText}"`);
         sections.push({
           id,
           title: this.formatSectionTitle(id),
@@ -195,7 +193,6 @@ export class SmartQuoteHelper {
           isRequired: this.isRequiredSection(id),
           dependencies: this.getSectionDependencies(id)
         });
-        console.log(`📝 Added section with id: "${id}" to sections array. Total sections: ${sections.length}`);
       }
     }
     
@@ -210,7 +207,6 @@ export class SmartQuoteHelper {
       
       // Skip sections that are already handled or should be read-only
       if (sections.find(s => s.id === id) || readOnlySections.includes(id)) {
-        console.log(`⚠️ Skipping duplicate section from header pattern: ${id}`);
         continue;
       }
       

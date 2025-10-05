@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useCallback } from 'react';
 
 /**
- * Enhanced navigation hook for Wall Quote Wizard
+ * Enhanced navigation hook for Qwohter
  * 
  * Provides type-safe navigation methods for all application routes
  * with additional context and error handling.
@@ -42,7 +42,7 @@ export const useNavigation = () => {
       console.error('Proposal number is required for quote editing');
       return;
     }
-    navigate(`/quotes/edit/${encodeURIComponent(proposalNumber)}`);
+    navigate(`/editor/${encodeURIComponent(proposalNumber)}`);
   }, [navigate]);
 
   const viewQuote = useCallback((proposalNumber: string) => {
@@ -50,7 +50,7 @@ export const useNavigation = () => {
       console.error('Proposal number is required for quote viewing');
       return;
     }
-    navigate(`/quotes/view/${encodeURIComponent(proposalNumber)}`);
+    navigate(`/editor/${encodeURIComponent(proposalNumber)}`);
   }, [navigate]);
 
   // Utility navigation methods
@@ -83,47 +83,43 @@ export const useNavigation = () => {
   }, [location.pathname]);
 
   const isQuoteRoute = useCallback(() => {
-    return location.pathname.startsWith('/quotes');
+    return location.pathname.startsWith('/quotes') || location.pathname.startsWith('/editor');
   }, [location.pathname]);
 
   const getCurrentQuoteProposalNumber = useCallback((): string | null => {
-    const match = location.pathname.match(/\/quotes\/(?:edit|view)\/(.+)/);
+    const match = location.pathname.match(/\/editor\/(.+)/);
     return match ? decodeURIComponent(match[1] as any) : null;
   }, [location.pathname]);
 
   const isEditMode = useCallback(() => {
-    return location.pathname.includes('/quotes/edit/');
+    return location.pathname.startsWith('/editor/');
   }, [location.pathname]);
 
   const isViewMode = useCallback(() => {
-    return location.pathname.includes('/quotes/view/');
+    return location.pathname.startsWith('/editor/');
   }, [location.pathname]);
 
   // Breadcrumb helper
   const getBreadcrumbs = useCallback(() => {
     const path = location.pathname;
     const segments = path.split('/').filter(Boolean);
-    
+
     const breadcrumbs = [
       { label: 'Dashboard', path: '/dashboard' }
     ];
 
     if (segments[0] === 'quotes') {
       breadcrumbs.push({ label: 'Quotes', path: '/quotes' });
-      
+
       if (segments[1] === 'new') {
         breadcrumbs.push({ label: 'New Quote', path: '/quotes/new' });
-      } else if (segments[1] === 'edit' && segments[2]) {
-        breadcrumbs.push({ 
-          label: `Edit Quote ${decodeURIComponent(segments[2])}`, 
-          path: `/quotes/edit/${segments[2]}` 
-        });
-      } else if (segments[1] === 'view' && segments[2]) {
-        breadcrumbs.push({ 
-          label: `View Quote ${decodeURIComponent(segments[2])}`, 
-          path: `/quotes/view/${segments[2]}` 
-        });
       }
+    } else if (segments[0] === 'editor' && segments[1]) {
+      breadcrumbs.push({ label: 'Quotes', path: '/quotes' });
+      breadcrumbs.push({
+        label: `Edit Quote ${decodeURIComponent(segments[1])}`,
+        path: `/editor/${segments[1]}`
+      });
     } else if (segments[0] === 'analytics') {
       breadcrumbs.push({ label: 'Analytics', path: '/analytics' });
     } else if (segments[0] === 'team') {

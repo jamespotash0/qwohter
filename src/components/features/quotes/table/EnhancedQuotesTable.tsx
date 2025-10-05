@@ -8,119 +8,84 @@ import {
   getSortedRowModel,
   useReactTable,
   ColumnDef,
-  FilterFn,
   SortingState,
   ColumnFiltersState,
   VisibilityState,
   PaginationState,
   ColumnResizeMode,
 } from '@tanstack/react-table';
-import { rankItem } from '@tanstack/match-sorter-utils';
-import { 
-  Search, 
-  ChevronDown, 
-  ChevronUp, 
+import {
+  ChevronDown,
+  ChevronUp,
   ArrowUpDown,
-  Filter,
-  Eye,
-  EyeOff,
-  Download,
   MoreHorizontal,
   Edit3,
   Trash2,
   Copy,
   Calendar,
-  Clock,
   User,
   Building,
   DollarSign,
   Tag,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  Plus,
-  Settings,
-  RotateCcw,
-  CheckSquare,
-  Square,
-  Minus,
+  Search,
   SlidersHorizontal,
+  Eye,
+  Download,
+  RotateCcw,
+  Plus,
   FileSpreadsheet,
-  Archive
+  X,
+  HelpCircle,
+  FileText,
+  Archive,
+  ArchiveRestore,
+  CheckCircle,
+  Bell
 } from 'lucide-react';
 
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Quote } from "@/hooks/useQuotes";
+import { Quote } from "@/stores/quotes/quotesStore";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
+import useEnhancedSearch from '@/hooks/useEnhancedSearch';
+import { PaginationControls } from './components/PaginationControls';
 
-// Global filter function for search across multiple fields including addresses
-const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
-  // Get the original quote data
-  const quote = row.original as Quote;
-  
-  // Build a searchable string from all relevant fields
-  const searchableFields = [
-    // Basic fields
-    quote.proposal_number,
-    quote.project_name,
-    quote.quote_details?.project_name,
-    quote.status,
-    quote.quote_source,
-    quote.created_by,
-    
-    // Client information
-    quote.job_details?.client_company,
-    quote.job_details?.client_name,
-    
-    // Address/Location fields - this is the key fix
-    quote.job_details?.job_location,
-    quote.job_details?.address,
-    quote.job_details?.city,
-    quote.job_details?.state,
-    quote.job_details?.zip_code,
-    
-    // Additional searchable fields
-    quote.price_details?.final_selling_price?.toString(),
-  ];
-  
-  // Join all non-empty fields into a single searchable string
-  const searchableText = searchableFields
-    .filter(field => field !== null && field !== undefined && field !== '')
-    .join(' ')
-    .toLowerCase();
-  
-  // Use rankItem to fuzzy search across the combined text
-  const itemRank = rankItem(searchableText, value);
-  addMeta({ itemRank });
-  return itemRank.passed;
-};
 
 interface EnhancedQuotesTableProps {
   quotes: Quote[];
   onEditQuote: (quote: Quote) => void;
   onDeleteQuote: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
-  onFollowUpDaysChange: (id: string, days: number | null) => void;
+  onFollowUpDateChange?: (id: string, date: Date | null) => void;
+  onSetReminder?: (id: string) => void;
   onQuoteSourceChange: (id: string, source: string) => void;
   onCreateVersion?: (id: string) => void;
   onCreateQuote?: () => void;
+  onArchiveQuote?: (id: string) => void;
+  onUnarchiveQuote?: (id: string) => void;
+  isArchiveView?: boolean;
+  showArchived?: boolean;
+  archivedCount?: number;
+  onToggleArchive?: () => void;
   onBulkDelete?: (ids: string[]) => void;
   onBulkStatusChange?: (ids: string[], status: string) => void;
-  onExport?: (filteredData: Quote[]) => void;
+  onBulkArchive?: (ids: string[]) => void;
+  onBulkUnarchive?: (ids: string[]) => void;
+  onExportCSV?: (filteredData: Quote[]) => void;
+  onExportPDF?: (filteredData: Quote[]) => void;
 }
 
 const statusColors = {
   Incomplete: "bg-gray-100 text-gray-800",
   Draft: "bg-blue-100 text-blue-800",
   Pending: "bg-yellow-100 text-yellow-800",
-  Submitted: "bg-green-100 text-green-800",
+  Submitted: "bg-blue-100 text-blue-800",
   Won: "bg-emerald-100 text-emerald-800",
   Rejected: "bg-red-100 text-red-800",
+  Completed: "bg-purple-100 text-purple-800",
 };
 
 const getQuoteSourceOptions = () => [
@@ -143,7 +108,7 @@ const columnLabels: Record<string, string> = {
   created_by: "Creator",
   created_at: "Date Created",
   status_last_updated: "Status Updated",
-  follow_up_days: "Follow Up",
+  won_date: "Won Date",
   actions: "Actions"
 };
 
@@ -154,13 +119,14 @@ const getAvailableStatusOptions = (currentStatus: string) => {
     { value: "Pending", label: "Pending" },
     { value: "Submitted", label: "Submitted" },
     { value: "Won", label: "Won" },
-    { value: "Rejected", label: "Rejected" }
+    { value: "Rejected", label: "Rejected" },
+    { value: "Completed", label: "Completed" }
   ];
 
   if (currentStatus === "Incomplete") return allStatuses;
   if (currentStatus === "Draft") return allStatuses.filter(s => s.value !== "Incomplete");
-  
-  const completedStatuses = ["Pending", "Submitted", "Won", "Rejected"];
+
+  const completedStatuses = ["Pending", "Submitted", "Won", "Rejected", "Completed"];
   if (completedStatuses.includes(currentStatus)) {
     return allStatuses.filter(s => s.value !== "Incomplete" && s.value !== "Draft");
   }
@@ -190,72 +156,29 @@ const formatLastUpdated = (time: string) => {
 };
 
 
-const formatQuoteSource = (source: string) => {
-  if (!source) return 'Not specified';
-  return source.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-};
-
-const getFollowUpStatus = (quote: Quote) => {
-  if (!quote.follow_up_days || !quote.created_at) {
-    return { daysRemaining: null, isOverdue: false, displayText: "Not set", colorClass: "text-gray-500" };
-  }
-
-  const createdAt = new Date(quote.created_at);
-  const followUpDate = new Date(createdAt);
-  followUpDate.setDate(followUpDate.getDate() + quote.follow_up_days);
-  
-  const today = new Date();
-  const timeDiff = followUpDate.getTime() - today.getTime();
-  const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
-  
-  const isOverdue = daysRemaining < 0;
-  
-  let displayText: string;
-  let colorClass: string;
-  
-  if (isOverdue) {
-    const absTimeDiff = Math.abs(timeDiff);
-    const overdueDays = Math.floor(absTimeDiff / (1000 * 3600 * 24));
-    const overdueHours = Math.floor((absTimeDiff % (1000 * 3600 * 24)) / (1000 * 3600));
-    
-    if (overdueDays > 0) {
-      displayText = `${overdueDays}d overdue`;
-    } else {
-      displayText = `${overdueHours}h overdue`;
-    }
-    colorClass = "text-red-600 font-medium";
-  } else if (daysRemaining === 0) {
-    const hoursRemaining = Math.floor(timeDiff / (1000 * 3600));
-    const minutesRemaining = Math.floor((timeDiff % (1000 * 3600)) / (1000 * 60));
-    
-    if (hoursRemaining > 0) {
-      displayText = `${hoursRemaining}h ${minutesRemaining}m left`;
-    } else if (minutesRemaining > 0) {
-      displayText = `${minutesRemaining}m left`;
-    } else {
-      displayText = "Due now";
-    }
-    colorClass = "text-yellow-600 font-medium";
-  } else {
-    displayText = `${daysRemaining}d left`;
-    colorClass = "text-green-600";
-  }
-    
-  return { daysRemaining, isOverdue, displayText, colorClass };
-};
 
 export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   quotes,
   onEditQuote,
   onDeleteQuote,
   onStatusChange,
-  onFollowUpDaysChange,
+  onFollowUpDateChange,
   onQuoteSourceChange,
   onCreateVersion,
+  onSetReminder,
   onCreateQuote,
+  onArchiveQuote,
+  onUnarchiveQuote,
+  isArchiveView = false,
+  showArchived = false,
+  archivedCount = 0,
+  onToggleArchive,
   onBulkDelete,
   onBulkStatusChange,
-  onExport
+  // onBulkArchive,
+  // onBulkUnarchive,
+  onExportCSV,
+  onExportPDF
 }) => {
   const [globalFilter, setGlobalFilter] = useState('');
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -269,6 +192,21 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   const [forceUpdate, setForceUpdate] = useState(0);
   const [dataDensity, setDataDensity] = useState<'compact' | 'comfortable' | 'spacious'>('comfortable');
   const [columnVisibilityOpen, setColumnVisibilityOpen] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+
+  // Enhanced search functionality
+  const { search, getSearchExamples } = useEnhancedSearch(quotes);
+  const searchExamples = getSearchExamples();
+
+  // Custom filter function using enhanced search
+  const enhancedFilter = React.useCallback((row: any, _columnId: string, filterValue: string) => {
+    if (!filterValue) return true;
+
+    const searchResults = search(filterValue);
+    const resultIds = new Set(searchResults.map(result => result.item.id));
+
+    return resultIds.has(row.original.id);
+  }, [search]);
 
   // Store original column sizes for reset functionality
   const originalColumnSizes = useMemo(() => ({
@@ -281,7 +219,6 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
     quote_source: 180,
     created_by: 150,
     created_at: 120,
-    follow_up_days: 140,
     actions: 80,
   }), []);
 
@@ -420,7 +357,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[getValue() as keyof typeof statusColors]}`}>
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-background border shadow-lg z-50">
+          <SelectContent>
             {getAvailableStatusOptions(getValue() || "Incomplete").map((status) => (
               <SelectItem key={status.value} value={status.value}>
                 {status.label}
@@ -441,7 +378,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           value={getValue() || ""} 
           onValueChange={(value) => onQuoteSourceChange(row.original.id, value)}
         >
-          <SelectTrigger className="w-full h-8 border-0 text-xs px-3 bg-gray-100 text-gray-800">
+          <SelectTrigger className="w-full h-8 border-0 text-xs px-3 bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
             <SelectValue placeholder="Select source" />
           </SelectTrigger>
           <SelectContent>
@@ -457,11 +394,11 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       filterFn: 'equals',
       enableSorting: false,
     }),
-    columnHelper.accessor('created_by', {
+    columnHelper.accessor('creator_name', {
       id: 'created_by',
       header: 'Created By',
       cell: ({ getValue }) => (
-        <div className="text-sm text-gray-600">{getValue() || ''}</div>
+        <div className="text-sm text-gray-600">{getValue() || 'Unknown'}</div>
       ),
       size: 200,
       enableSorting: false,
@@ -486,6 +423,25 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       size: 200,
       enableSorting: true,
     }),
+    columnHelper.accessor('won_date', {
+      id: 'won_date',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <CheckCircle className="w-4 h-4" />
+          Won Date
+        </div>
+      ),
+      cell: ({ getValue }) => {
+        const wonDate = getValue();
+        return wonDate ? (
+          <div className="text-sm text-gray-600">{formatLastUpdated(wonDate)}</div>
+        ) : (
+          <div className="text-sm text-gray-400">-</div>
+        );
+      },
+      size: 200,
+      enableSorting: true,
+    }),
     columnHelper.accessor('status_last_updated', {
       id: 'status_last_updated',
       header: () => (
@@ -499,71 +455,6 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       ),
       size: 200,
       enableSorting: true,
-    }),
-    columnHelper.accessor('follow_up_days', {
-      id: 'follow_up_days',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4" />
-          Follow Up
-        </div>
-      ),
-      cell: ({ row, getValue }) => {
-        const followUpStatus = getFollowUpStatus(row.original);
-        
-        if (getValue() === null || getValue() === undefined) {
-          return (
-            <Select
-              value=""
-              onValueChange={(value) => onFollowUpDaysChange(row.original.id, parseInt(value))}
-            >
-              <SelectTrigger className="w-32 h-8 border-0 text-xs px-3 bg-blue-50 text-blue-700">
-                <SelectValue placeholder="Set days" />
-              </SelectTrigger>
-              <SelectContent>
-                {[1, 2, 3, 4, 5, 7, 10, 14, 21, 30].map((days) => (
-                  <SelectItem key={days} value={days.toString()}>
-                    {days} day{days > 1 ? "s" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          );
-        }
-
-        return (
-          <div className="relative group">
-            <Badge 
-              variant="outline" 
-              className={`${followUpStatus.colorClass} border-0 cursor-pointer`}
-            >
-              {followUpStatus.displayText}
-            </Badge>
-            <div className="absolute top-0 left-0 opacity-0 group-hover:opacity-100">
-              <Select
-                value={getValue()?.toString()}
-                onValueChange={(value) => onFollowUpDaysChange(row.original.id, value === "clear" ? null : parseInt(value))}
-              >
-                <SelectTrigger className="w-24 h-7 border-0 text-xs px-2 bg-blue-50 text-blue-700">
-                  <SelectValue placeholder="Change" />
-                </SelectTrigger>
-                <SelectContent>
-                  {[1, 2, 3, 4, 5, 7, 10, 14, 21, 30].map((days) => (
-                    <SelectItem key={days} value={days.toString()}>
-                      {days}d
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="clear" className="text-red-600">
-                    Clear
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        );
-      },
-      size: 140,
-      enableSorting: false,
     }),
     columnHelper.display({
       id: 'actions',
@@ -586,8 +477,26 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 Create Version
               </DropdownMenuItem>
             )}
+            {onSetReminder && (
+              <DropdownMenuItem onClick={() => onSetReminder(row.original.id)}>
+                <Bell className="mr-2 h-4 w-4" />
+                Set Reminder
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
+            {isArchiveView && onUnarchiveQuote ? (
+              <DropdownMenuItem onClick={() => onUnarchiveQuote(row.original.id)}>
+                <ArchiveRestore className="mr-2 h-4 w-4" />
+                Unarchive
+              </DropdownMenuItem>
+            ) : onArchiveQuote && (
+              <DropdownMenuItem onClick={() => onArchiveQuote(row.original.id)}>
+                <Archive className="mr-2 h-4 w-4" />
+                Archive
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
               onClick={() => onDeleteQuote(row.original.id)}
               className="text-red-600 focus:text-red-600"
             >
@@ -600,13 +509,13 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       size: 80,
       enableSorting: false,
     }),
-  ], [onEditQuote, onDeleteQuote, onStatusChange, onFollowUpDaysChange, onQuoteSourceChange, onCreateVersion, forceUpdate]);
+  ], [onEditQuote, onDeleteQuote, onStatusChange, onFollowUpDateChange, onQuoteSourceChange, onCreateVersion, onSetReminder, onArchiveQuote, onUnarchiveQuote, isArchiveView, forceUpdate]);
 
   const table = useReactTable({
     data: quotes,
     columns,
     filterFns: {
-      fuzzy: fuzzyFilter,
+      enhanced: enhancedFilter,
     },
     state: {
       sorting,
@@ -629,364 +538,379 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    globalFilterFn: fuzzyFilter,
+    globalFilterFn: enhancedFilter,
   });
-
-  // Get selected rows for bulk actions
-  const selectedRows = table.getFilteredSelectedRowModel().rows;
-  const hasSelection = selectedRows.length > 0;
 
   return (
     <div className="space-y-0">
       {/* Table with integrated header */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        {/* Search and Controls Header - Attached to table */}
-        <div className="bg-white border-b border-gray-200 p-4">
-          <div className="flex items-center space-x-3">
-            {/* Search - Full Width */}
-            <div className="flex items-center space-x-3 flex-1">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                <Input
-                  placeholder="Search quotes, clients, projects, addresses..."
-                  value={globalFilter ?? ''}
-                  onChange={(e) => setGlobalFilter(e.target.value)}
-                  className="pl-10 h-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                />
-              </div>
+      <div style={{ borderRadius: 'var(--radius-quotes-table)' }} className="border border-gray-200 bg-white dark:bg-[var(--content-card-bg)] dark:border-[var(--content-card-border)] shadow-sm overflow-hidden">
+        {/* Combined Search and Toolbar */}
+        <div className="flex items-center py-4 px-4 bg-white border-b border-gray-200">
+          {/* Search Input - Very wide, takes most space */}
+          <div className="relative flex-1 mr-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search quotes... (try: client:ABC Corp, status:Draft)"
+              value={globalFilter ?? ''}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="w-full pl-10 pr-20 py-2 text-sm border border-gray-300 dark:border-[var(--input-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--sidebar-icon-active)] dark:focus:ring-[var(--sidebar-icon-active)] focus:border-[var(--sidebar-icon-active)] dark:bg-[var(--input-bg)] dark:text-[var(--input-text)]"
+            />
+
+            <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
               {globalFilter && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setGlobalFilter('')}
-                  className="text-gray-400 hover:text-gray-600 w-10 h-10 p-0"
+                  className="w-8 h-6 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)] rounded-full"
                   title="Clear search"
                 >
-                  <RotateCcw className="w-4 h-4" />
+                  <X className="w-3 h-3" />
                 </Button>
               )}
-            </div>
 
-            {/* Right Side Controls - All Icon Only */}
-            <div className="flex items-center space-x-2">
-              {/* Bulk Actions - Only show when items selected */}
-              {hasSelection && (
-                <div className="flex items-center space-x-3 bg-blue-50 text-blue-800 px-4 py-2 rounded-lg border border-blue-200 mr-2">
-                  <div className="flex items-center space-x-2">
-                    <CheckSquare className="w-4 h-4" />
-                    <span className="text-sm font-medium">
-                      {selectedRows.length} quote{selectedRows.length > 1 ? 's' : ''} selected
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    {/* Quick Status Actions */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-blue-700 hover:text-blue-800 hover:bg-blue-100 px-3">
-                          Change Status
-                          <ChevronDown className="w-3 h-3 ml-1" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => {
-                          if (onBulkStatusChange) {
-                            onBulkStatusChange(selectedRows.map(row => row.original.id), 'Draft');
-                          }
-                        }}>
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-blue-500 rounded mr-2"></div>
-                            Set to Draft
-                          </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          if (onBulkStatusChange) {
-                            onBulkStatusChange(selectedRows.map(row => row.original.id), 'Pending');
-                          }
-                        }}>
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-yellow-500 rounded mr-2"></div>
-                            Set to Pending
-                          </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          if (onBulkStatusChange) {
-                            onBulkStatusChange(selectedRows.map(row => row.original.id), 'Submitted');
-                          }
-                        }}>
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-green-500 rounded mr-2"></div>
-                            Set to Submitted
-                          </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          if (onBulkStatusChange) {
-                            onBulkStatusChange(selectedRows.map(row => row.original.id), 'Won');
-                          }
-                        }}>
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-blue-600 rounded mr-2"></div>
-                            Set to Won
-                          </div>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          if (onBulkStatusChange) {
-                            onBulkStatusChange(selectedRows.map(row => row.original.id), 'Rejected');
-                          }
-                        }}>
-                          <div className="flex items-center">
-                            <div className="w-2 h-2 bg-red-500 rounded mr-2"></div>
-                            Set to Rejected
-                          </div>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {/* More Actions */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-blue-700 hover:text-blue-800 hover:bg-blue-100 px-3">
-                          More Actions
-                          <ChevronDown className="w-3 h-3 ml-1" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onClick={() => {
-                          if (onExport) {
-                            onExport(selectedRows.map(row => row.original));
-                          }
-                        }}>
-                          <FileSpreadsheet className="w-4 h-4 mr-2" />
-                          Export Selected
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          // Duplicate selected quotes
-                          selectedRows.forEach(row => {
-                            if (onCreateVersion) {
-                              onCreateVersion(row.original.id);
-                            }
-                          });
-                        }}>
-                          <Copy className="w-4 h-4 mr-2" />
-                          Duplicate Selected
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => {
-                            if (onBulkDelete && confirm(`Are you sure you want to delete ${selectedRows.length} quote${selectedRows.length > 1 ? 's' : ''}?`)) {
-                              onBulkDelete(selectedRows.map(row => row.original.id));
-                            }
-                          }}
-                          className="text-red-600 focus:text-red-600"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete Selected
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
+              {!globalFilter && (
+                <Popover open={showHelp} onOpenChange={setShowHelp}>
+                  <PopoverTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setRowSelection({})}
-                      className="text-blue-700 hover:text-blue-800 hover:bg-blue-100 w-8 h-8 p-0"
-                      title="Clear selection"
+                      className="w-8 h-6 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)] rounded-full"
+                      title="Search help"
                     >
-                      <Minus className="w-4 h-4" />
+                      <HelpCircle className="w-3 h-3" />
                     </Button>
-                  </div>
-                </div>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-80">
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="font-medium text-sm mb-2">Search Tips</h4>
+                        <div className="text-xs text-gray-600 space-y-1">
+                          <p>• Regular search: Just type anything</p>
+                          <p>• Field-specific: Use "field:value" format</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-medium text-sm mb-2">Field-Specific Examples</h4>
+                        <div className="space-y-1">
+                          {searchExamples.map((example, index) => (
+                            <button
+                              key={index}
+                              onClick={() => {
+                                setGlobalFilter(example);
+                                setShowHelp(false);
+                              }}
+                              className="block w-full text-left"
+                            >
+                              <Badge
+                                variant="outline"
+                                className="text-xs hover:bg-blue-50 cursor-pointer w-full justify-start"
+                              >
+                                {example}
+                              </Badge>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-gray-500">
+                        <p><strong>Available fields:</strong></p>
+                        <p>proposal, client, location, status, creator, project</p>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               )}
-
-              {/* Data Density */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-10 h-10 p-0 hover:bg-[#e98135]"
-                    title={`Table Density: ${dataDensity.charAt(0).toUpperCase() + dataDensity.slice(1)}`}
-                  >
-                    <SlidersHorizontal className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-40">
-                  <DropdownMenuItem 
-                    onClick={() => setDataDensity('compact')}
-                    className={dataDensity === 'compact' ? 'bg-blue-50 text-blue-700' : ''}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center">
-                        <div className="w-2 h-1 bg-gray-400 rounded mr-2"></div>
-                        Compact
-                      </div>
-                      {dataDensity === 'compact' && (
-                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                      )}
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setDataDensity('comfortable')}
-                    className={dataDensity === 'comfortable' ? 'bg-blue-50 text-blue-700' : ''}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center">
-                        <div className="w-2 h-2 bg-gray-400 rounded mr-2"></div>
-                        Comfortable
-                      </div>
-                      {dataDensity === 'comfortable' && (
-                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                      )}
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setDataDensity('spacious')}
-                    className={dataDensity === 'spacious' ? 'bg-blue-50 text-blue-700' : ''}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center">
-                        <div className="w-2 h-3 bg-gray-400 rounded mr-2"></div>
-                        Spacious
-                      </div>
-                      {dataDensity === 'spacious' && (
-                        <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                      )}
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Column Visibility */}
-              <DropdownMenu open={columnVisibilityOpen} onOpenChange={setColumnVisibilityOpen}>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-10 h-10 p-0 hover:bg-[#f57b46]"
-                    title="Show/Hide Columns"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56" onPointerDownOutside={() => setColumnVisibilityOpen(false)}>
-                  <div className="p-2" onClick={(e) => e.stopPropagation()}>
-                    <div className="text-xs text-gray-500 mb-2 font-medium">Show/Hide Columns</div>
-                    {table.getAllColumns()
-                      .filter(column => column.getCanHide())
-                      .map(column => (
-                        <DropdownMenuCheckboxItem
-                          key={column.id}
-                          className="capitalize text-sm py-2"
-                          checked={column.getIsVisible()}
-                          onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                          onSelect={(e) => e.preventDefault()}
-                        >
-                          {columnLabels[column.id] ?? column.id.replace('_', ' ')}
-                          {/* {column.id.replace('_', ' ')} */}
-                        </DropdownMenuCheckboxItem>
-                      ))}
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Export */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-10 h-10 p-0 hover:bg-[#f57b46]"
-                    title="Export Data"
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => {
-                    if (onExport) {
-                      onExport(table.getFilteredRowModel().rows.map(row => row.original));
-                    }
-                  }}>
-                    <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    Export as CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    if (onExport) {
-                      onExport(table.getFilteredRowModel().rows.map(row => row.original));
-                    }
-                  }}>
-                    <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    Export as Excel
-                  </DropdownMenuItem>
-                  {hasSelection && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => {
-                        if (onExport) {
-                          onExport(selectedRows.map(row => row.original));
-                        }
-                      }}>
-                        <Archive className="w-4 h-4 mr-2" />
-                        Export Selected ({selectedRows.length})
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Reset Options */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-10 h-10 p-0 hover:bg-[#f57b46]"
-                    title="Reset Options"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
-                  <DropdownMenuItem onClick={resetColumnSizes}>
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Reset Column Sizes
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={resetColumnVisibility}>
-                    <Eye className="w-4 h-4 mr-2" />
-                    Reset Column Visibility
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Settings */}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-10 h-10 p-0 hover:bg-[#f57b46]"
-                title="Settings"
-              >
-                <Settings className="w-4 h-4" />
-              </Button>
-
-              {/* Create Quote Button */}
-              <Button 
-                onClick={onCreateQuote}
-                className="bg-blue-600 hover:bg-blue-700 text-white w-10 h-10 p-0 rounded-lg shadow-md"
-                title="Create New Quote"
-              >
-                <Plus className="w-5 h-5" />
-              </Button>
             </div>
           </div>
+
+          {/* Toolbar Controls - Hide when rows are selected */}
+          {table.getFilteredSelectedRowModel().rows.length === 0 && (
+          <div className="flex items-center space-x-2">
+            {/* Archive Toggle Button */}
+            {onToggleArchive && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onToggleArchive}
+                className={`w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)] ${
+                  showArchived ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : ''
+                }`}
+                title={showArchived ? 'Show Active Quotes' : `View Archives (${archivedCount})`}
+              >
+                {showArchived ? (
+                  <ArchiveRestore className="w-4 h-4" />
+                ) : (
+                  <Archive className="w-4 h-4" />
+                )}
+              </Button>
+            )}
+
+            {/* Data Density */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)]"
+                  title={`Table Density: ${dataDensity.charAt(0).toUpperCase() + dataDensity.slice(1)}`}
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem
+                  onClick={() => setDataDensity('compact')}
+                  className={dataDensity === 'compact' ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
+                >
+                  <div className="flex items-center">
+                    <div className={`w-2 h-1 rounded mr-2 ${dataDensity === 'compact' ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
+                    <span className={dataDensity === 'compact' ? 'font-semibold' : ''}>Compact</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setDataDensity('comfortable')}
+                  className={dataDensity === 'comfortable' ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
+                >
+                  <div className="flex items-center">
+                    <div className={`w-2 h-2 rounded mr-2 ${dataDensity === 'comfortable' ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
+                    <span className={dataDensity === 'comfortable' ? 'font-semibold' : ''}>Comfortable</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setDataDensity('spacious')}
+                  className={dataDensity === 'spacious' ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
+                >
+                  <div className="flex items-center">
+                    <div className={`w-2 h-3 rounded mr-2 ${dataDensity === 'spacious' ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
+                    <span className={dataDensity === 'spacious' ? 'font-semibold' : ''}>Spacious</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Column Visibility */}
+            <DropdownMenu open={columnVisibilityOpen} onOpenChange={setColumnVisibilityOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)]"
+                  title="Show/Hide Columns"
+                >
+                  <Eye className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56" onPointerDownOutside={() => setColumnVisibilityOpen(false)}>
+                <div className="p-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="text-xs text-gray-500 mb-2 font-medium">Show/Hide Columns</div>
+                  {table.getAllColumns()
+                    .filter(column => column.getCanHide())
+                    .map(column => (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        className="capitalize text-sm py-2"
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        {columnLabels[column.id] ?? column.id.replace('_', ' ')}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Export */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)]"
+                  title="Export Data"
+                >
+                  <Download className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => {
+                  if (onExportCSV) {
+                    onExportCSV(table.getFilteredRowModel().rows.map(row => row.original));
+                  }
+                }}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Export as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  if (onExportPDF) {
+                    onExportPDF(table.getFilteredRowModel().rows.map(row => row.original));
+                  }
+                }}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export as PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Reset Controls */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)]"
+                  title="Reset Table"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={resetColumnSizes}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Reset Column Sizes
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={resetColumnVisibility}>
+                  <Eye className="w-4 h-4 mr-2" />
+                  Show All Columns
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Create Quote Button - Just a plus icon */}
+            {onCreateQuote && (
+              <Button
+                onClick={onCreateQuote}
+                variant="outline"
+                size="sm"
+                className="w-10 h-10 p-0 bg-[var(--sidebar-icon-active)] hover:bg-[var(--sidebar-icon-hover)] text-white hover:text-white border-[var(--sidebar-icon-active)] hover:border-[var(--sidebar-icon-hover)] dark:bg-[var(--sidebar-icon-active)] dark:hover:bg-[var(--brand-orange-700)]"
+                title="Create New Quote"
+              >
+                <Plus className="w-5 h-5 text-white" />
+              </Button>
+            )}
+          </div>
+          )}
+
+          {/* Bulk Actions - Show when rows are selected */}
+          {table.getFilteredSelectedRowModel().rows.length > 0 && (
+            <div className="flex items-center space-x-4">
+              <div className="text-sm font-medium text-[var(--content-header-text)] dark:text-[var(--content-header-text)]">
+                {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row{table.getFilteredSelectedRowModel().rows.length > 1 ? 's' : ''} selected
+              </div>
+
+              {/* Change Status */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-[var(--sidebar-nav-bg-hover)] px-3">
+                    Change Status
+                    <ChevronDown className="w-3 h-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => {
+                    if (onBulkStatusChange) {
+                      onBulkStatusChange(table.getFilteredSelectedRowModel().rows.map(row => row.original.id), 'Draft');
+                    }
+                  }}>
+                    Set to Draft
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    if (onBulkStatusChange) {
+                      onBulkStatusChange(table.getFilteredSelectedRowModel().rows.map(row => row.original.id), 'Pending');
+                    }
+                  }}>
+                    Set to Pending
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    if (onBulkStatusChange) {
+                      onBulkStatusChange(table.getFilteredSelectedRowModel().rows.map(row => row.original.id), 'Submitted');
+                    }
+                  }}>
+                    Set to Submitted
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    if (onBulkStatusChange) {
+                      onBulkStatusChange(table.getFilteredSelectedRowModel().rows.map(row => row.original.id), 'Won');
+                    }
+                  }}>
+                    Set to Won
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    if (onBulkStatusChange) {
+                      onBulkStatusChange(table.getFilteredSelectedRowModel().rows.map(row => row.original.id), 'Rejected');
+                    }
+                  }}>
+                    Set to Rejected
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* More Actions */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-[var(--sidebar-nav-bg-hover)] px-3">
+                    More Actions
+                    <ChevronDown className="w-3 h-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => {
+                    if (onExportCSV) {
+                      onExportCSV(table.getFilteredSelectedRowModel().rows.map(row => row.original));
+                    }
+                  }}>
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    Export Selected (CSV)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    if (onExportPDF) {
+                      onExportPDF(table.getFilteredSelectedRowModel().rows.map(row => row.original));
+                    }
+                  }}>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Export Selected (PDF)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    table.getFilteredSelectedRowModel().rows.forEach(row => {
+                      if (onCreateVersion) {
+                        onCreateVersion(row.original.id);
+                      }
+                    });
+                  }}>
+                    <Copy className="w-4 h-4 mr-2" />
+                    Duplicate Selected
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (onBulkDelete && confirm(`Are you sure you want to delete ${table.getFilteredSelectedRowModel().rows.length} quote${table.getFilteredSelectedRowModel().rows.length > 1 ? 's' : ''}?`)) {
+                        onBulkDelete(table.getFilteredSelectedRowModel().rows.map(row => row.original.id));
+                      }
+                    }}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Selected
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
+
         <div className="relative">
           {/* Scrollable Table Area */}
-          <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
-            <table 
-              className="border-collapse" 
-              style={{ 
+          <div className="overflow-x-auto overflow-y-auto max-h-[600px] scroll-smooth [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+            <table
+              className="border-collapse font-table"
+              style={{
                 width: Math.max(table.getTotalSize(), 1900),
-                minWidth: '1900px'
+                minWidth: '1900px',
+                fontFamily: 'var(--font-table)'
               }}
             >
               <thead className="bg-gray-50/80 border-b border-gray-200 sticky top-0 z-10">
@@ -1049,24 +973,22 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 {table.getRowModel().rows.map(row => {
                   const rowHeight = dataDensity === 'compact' ? 'h-10' : dataDensity === 'comfortable' ? 'h-14' : 'h-18';
                   const paddingY = dataDensity === 'compact' ? 'py-1' : dataDensity === 'comfortable' ? 'py-2' : 'py-4';
-                  
+
                   return (
-                    <tr 
-                      key={row.id} 
-                      className={`group hover:bg-gray-50/50 transition-colors border-b border-gray-100 last:border-b-0 ${rowHeight} ${
-                        row.getIsSelected() ? 'bg-blue-50/30' : ''
-                      }`}
+                    <tr
+                      key={row.id}
+                      className={`group transition-colors border-b border-gray-100 dark:border-[var(--content-table-border)] last:border-b-0 ${rowHeight} hover:bg-gray-50/50 dark:hover:bg-[var(--content-table-row-hover)]`}
                     >
                       {row.getVisibleCells().map((cell) => {
                         const isActionsColumn = cell.column.id === 'actions';
                         return (
                           <td
                             key={cell.id}
-                            className={`px-4 ${paddingY} text-sm border-r border-gray-100 last:border-r-0 ${
-                              isActionsColumn 
-                                ? 'sticky right-0 bg-white group-hover:bg-gray-50 border-l border-gray-200 z-10' 
+                            className={`px-4 ${paddingY} text-sm border-r border-gray-100 dark:border-[var(--content-table-border)] last:border-r-0 ${
+                              isActionsColumn
+                                ? 'sticky right-0 bg-white dark:bg-[var(--content-table-bg)] group-hover:bg-gray-50 dark:group-hover:bg-[var(--content-table-row-hover)] border-l border-gray-200 dark:border-[var(--content-table-border)] z-10'
                                 : ''
-                            } ${row.getIsSelected() && isActionsColumn ? 'bg-blue-50' : ''}`}
+                            }`}
                             style={{ width: cell.column.getSize() }}
                           >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -1093,77 +1015,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         )}
 
         {/* Pagination */}
-        <div className="bg-white px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <p className="text-sm text-gray-700">
-              {table.getFilteredRowModel().rows.length === 0 ? (
-                'No results'
-              ) : (
-                <>
-                  Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{' '}
-                  {Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, table.getFilteredRowModel().rows.length)} of{' '}
-                  {table.getFilteredRowModel().rows.length} results
-                </>
-              )}
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Select
-              value={table.getState().pagination.pageSize.toString()}
-              onValueChange={(value) => table.setPageSize(Number(value))}
-            >
-              <SelectTrigger className="w-20 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[10, 20, 30, 40, 50].map(pageSize => (
-                  <SelectItem key={pageSize} value={pageSize.toString()}>
-                    {pageSize}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <div className="flex items-center space-x-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <ChevronsLeft className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <span className="text-sm text-gray-700 px-2">
-                Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage()}
-              >
-                <ChevronsRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
+        <PaginationControls table={table} />
       </div>
     </div>
   );

@@ -1,31 +1,48 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Building2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { authFlowHelpers } from "@/utils/authFlowHelpers";
 import { authStateHelpers } from "@/utils/authStateHelpers";
+import { onboardingStateHelpers } from "@/services/onboardingStateService";
+import { OrganizationCreationLimiter } from "@/services/rateLimitingService";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { OtpVerificationForm } from "@/components/auth/OtpVerificationForm";
-import { ProfileSetupForm } from "@/components/auth/ProfileSetupForm";
 import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
 import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
+import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
 import { organizationSettingsService } from "@/services/companySettingsService";
 import { supabase } from "@/integrations/supabase/client";
 import { LogoUploadResult } from "@/services/LogoUploadService";
+import { tempSignupService } from "@/services/tempSignupService";
+import { validateInviteToken, markTokenAsUsed } from "@/utils/inviteTokens";
 
 interface ProfileData {
   full_name: string | null;
-  organization_id: string | null;
+  email: string;
 }
 
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [fullName, setFullName] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+
+  // Helper function to redirect after auth - goes to saved URL or dashboard
+  const redirectAfterAuth = () => {
+    const savedUrl = localStorage.getItem('auth_redirect_url');
+    if (savedUrl && savedUrl !== '/sign-in' && savedUrl !== '/create-account') {
+      localStorage.removeItem('auth_redirect_url');
+      navigate(savedUrl);
+    } else {
+      navigate('/dashboard');
+    }
+  };
 
   // Determine if we're in create account mode based on the route
   const isCreateAccountRoute = location.pathname === '/create-account';
@@ -33,12 +50,16 @@ const Auth = () => {
   const [orgChoice, setOrgChoice] = useState<"join" | "create" | null>(null);
   const [orgCode, setOrgCode] = useState("");
   const [orgName, setOrgName] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [foundVia, setFoundVia] = useState("");
   const [isSignUp, setIsSignUp] = useState(isCreateAccountRoute);
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState<"auth" | "verify-otp" | "profile" | "organization" | "company-info">("auth");
+  const [step, setStep] = useState<"auth" | "verify-otp" | "organization" | "company-info">("auth");
   const [otpCode, setOtpCode] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  const [submissionInProgress, setSubmissionInProgress] = useState(false);
 
   // Use ref to track current step for auth listener (avoids stale closure issues)
   const stepRef = useRef(step);
@@ -63,6 +84,60 @@ const Auth = () => {
   useEffect(() => {
     setIsSignUp(isCreateAccountRoute);
   }, [isCreateAccountRoute]);
+
+  // Check for invite token or organization code in URL parameters (invite links)
+  useEffect(() => {
+    // Prevent multiple executions
+    if (orgCode || orgChoice) return;
+
+    const urlParams = new URLSearchParams(location.search);
+    const inviteToken = urlParams.get('invite');
+    const orgCodeFromUrl = urlParams.get('org');
+
+    if (inviteToken && inviteToken.trim()) {
+      // Handle secure invite token
+      const handleInviteToken = async () => {
+        try {
+          const tokenData = await validateInviteToken(inviteToken.trim());
+
+          if (tokenData) {
+            setOrgCode(tokenData.organization_code);
+            setOrgChoice('join');
+            console.log('Valid invite token detected:', {
+              org: tokenData.organization_code,
+              role: tokenData.role,
+              expires: tokenData.expires_at
+            });
+            toast({
+              title: "Invite link validated",
+              description: `You've been invited to join as ${tokenData.role}.`,
+            });
+          } else {
+            console.warn('Invalid or expired invite token');
+            toast({
+              title: "Invalid invite link",
+              description: "This invite link has expired or is invalid. Please request a new one.",
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          console.error('Error validating invite token:', error);
+          toast({
+            title: "Error validating invite",
+            description: "Unable to validate invite link. Please try again.",
+            variant: "destructive",
+          });
+        }
+      };
+
+      handleInviteToken();
+    } else if (orgCodeFromUrl && orgCodeFromUrl.trim()) {
+      // Fallback to legacy organization code (less secure)
+      setOrgCode(orgCodeFromUrl.trim().toUpperCase());
+      setOrgChoice('join');
+      console.log('Auto-filled organization code from URL:', orgCodeFromUrl);
+    }
+  }, [location.search, orgCode, orgChoice]); // Add orgCode and orgChoice to prevent re-execution
 
   // Auth flow state persistence helpers
   const saveAuthState = (authState: {
@@ -116,7 +191,7 @@ const Auth = () => {
     const initAuth = async () => {
       // Check current session first AND validate it
       // Use signup flow validation if we're in post-OTP steps
-      const postOtpSteps = ["verify-otp", "profile", "organization", "company-info"];
+      const postOtpSteps = ["verify-otp", "organization", "company-info"];
       const isSignupFlow = postOtpSteps.includes(step);
       const session = await authStateHelpers.checkValidAuthSession(isSignupFlow);
       
@@ -126,37 +201,42 @@ const Auth = () => {
         try {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('full_name, organization_id')
+            .select('full_name, email')
             .eq('id', session.user.id)
             .single() as { data: ProfileData | null };
-          
-          // If user has completed onboarding (has name and organization), redirect to dashboard
-          if (profile && profile.full_name && profile.organization_id) {
+
+          // Check if user has completed onboarding via memberships
+          const { data: memberships } = await supabase
+            .from('memberships')
+            .select('id, status')
+            .eq('user_id', session.user.id)
+            .eq('status', 'Active')
+            .single();
+
+          // If user has completed onboarding (has name and active membership), redirect to dashboard
+          if (profile && profile.full_name && memberships) {
             if (!redirectingRef.current) {
               console.log('User has completed onboarding, redirecting to dashboard');
               redirectingRef.current = true;
               clearAuthState();
               // Add delay to ensure session is fully established before redirect
               setTimeout(() => {
-                navigate("/dashboard");
+                redirectAfterAuth();
               }, 500);
             }
             return;
           } else {
-            // User has session but incomplete onboarding - determine where they left off
+            // User has session but incomplete onboarding - use onboarding state helper
             console.log('User has session but incomplete onboarding:', profile);
-            
-            if (!profile?.full_name) {
-              // Missing profile info
-              setStep("profile");
+
+            const nextStep = await onboardingStateHelpers.determineOnboardingStep(session.user.id);
+            if (nextStep) {
+              setStep(nextStep as any);
               setUserId(session.user.id);
               setEmail(session.user.email || '');
-            } else if (!profile?.organization_id) {
-              // Missing organization
-              setStep("organization");
-              setUserId(session.user.id);
-              setEmail(session.user.email || '');
-              setFullName(profile.full_name);
+              if (profile?.full_name) {
+                setFullName(profile.full_name);
+              }
             }
             return;
           }
@@ -179,7 +259,7 @@ const Auth = () => {
         }
 
         // Validate the saved state makes sense
-        const validSteps = ["verify-otp", "profile", "organization", "company-info"];
+        const validSteps = ["verify-otp", "organization", "company-info"];
         if (!validSteps.includes(savedState.step)) {
           console.warn('Invalid saved step for incomplete flow, clearing state');
           clearAuthState();
@@ -248,7 +328,7 @@ const Auth = () => {
         // Note: We need to be careful about React's async state updates here
         // When OTP verification succeeds, the session appears before step state updates
         
-        const postOtpSteps = ["profile", "organization", "company-info"];
+        const postOtpSteps = ["organization", "company-info"];
         
         console.log("🔍 Session check details:", {
           hasSession: !!session,
@@ -294,6 +374,27 @@ const Auth = () => {
     e.preventDefault();
     if (!email || !password) return;
 
+    // For signup, validate password confirmation
+    if (isSignUp) {
+      if (!confirmPassword) {
+        toast({
+          title: "Password confirmation required",
+          description: "Please confirm your password",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        toast({
+          title: "Passwords do not match",
+          description: "Please make sure both passwords are identical",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     console.log('=== AUTH FORM SUBMISSION ===');
     console.log('Email:', email);
     console.log('IsSignUp:', isSignUp);
@@ -304,20 +405,23 @@ const Auth = () => {
       let result;
       if (isSignUp) {
         console.log('Calling handleSignUp...');
-        result = await authFlowHelpers.handleSignUp(email, password);
+        // Combine first and last name
+        const combinedFullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+        setFullName(combinedFullName);
+
+        result = await authFlowHelpers.handleSignUp(email, password, combinedFullName);
         console.log('SignUp result:', result);
-        
-        if (result.success && result.data?.userId) {
+
+        if (result.success) {
           console.log('SignUp successful, setting step to verify-otp');
-          setUserId(result.data.userId);
           setStep("verify-otp");
-          saveAuthState({ step: "verify-otp", email, userId: result.data.userId });
+          saveAuthState({ step: "verify-otp", email, fullName: combinedFullName });
           toast({
             title: "Verification code sent!",
             description: "Please check your email and enter the 6-digit code.",
           });
         } else {
-          console.log('SignUp failed or no userId:', result);
+          console.log('SignUp failed:', result);
         }
       } else {
         console.log('Calling handleSignIn...');
@@ -337,16 +441,7 @@ const Auth = () => {
             clearAuthState();
             redirectingRef.current = true;
             navigate("/dashboard");
-          } else if (result.nextStep === 'profile') {
-            console.log('Signin successful - resuming onboarding at profile step');
-            setUserId(result.data?.userId || '');
-            setStep("profile");
-            saveAuthState({ step: "profile", email, userId: result.data?.userId });
-            toast({
-              title: "Welcome back!",
-              description: "Please complete your profile setup to continue.",
-            });
-          } else if (result.nextStep === 'organization') {
+          } else if (result.nextStep === 'profile' || result.nextStep === 'organization') {
             console.log('Signin successful - resuming onboarding at organization step');
             setUserId(result.data?.userId || '');
             setStep("organization");
@@ -387,12 +482,35 @@ const Auth = () => {
       
       if (result.success && result.data?.userId) {
         setUserId(result.data.userId);
-        setStep("profile");
-        saveAuthState({ step: "profile", email, userId: result.data.userId });
-        toast({
-          title: "Email verified!",
-          description: "Please complete your profile setup.",
-        });
+
+        // Automatically create profile with the name we collected during signup
+        if (fullName) {
+          const profileResult = await authFlowHelpers.handleProfileSetup({
+            userId: result.data.userId,
+            fullName: fullName
+          });
+
+          if (profileResult.success) {
+            setStep("organization");
+            saveAuthState({ step: "organization", email, userId: result.data.userId });
+            toast({
+              title: "Email verified!",
+              description: "Please set up your organization.",
+            });
+          } else {
+            toast({
+              title: "Setup Error",
+              description: profileResult.error,
+              variant: "destructive",
+            });
+          }
+        } else {
+          toast({
+            title: "Error",
+            description: "Missing name information. Please try signing up again.",
+            variant: "destructive",
+          });
+        }
       } else {
         toast({
           title: "Verification Error",
@@ -411,65 +529,72 @@ const Auth = () => {
     }
   };
 
-  const handleProfileSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fullName || !userId) return;
-
-    setLoading(true);
-    try {
-      const result = await authFlowHelpers.handleProfileSetup({ userId, fullName });
-      
-      if (result.success) {
-        setStep("organization");
-        saveAuthState({ step: "organization", email, userId, fullName });
-      } else {
-        toast({
-          title: "Profile Error",
-          description: result.error,
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Profile Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleOrganizationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orgChoice || !userId) return;
+    if (!orgChoice || !userId || submissionInProgress) return;
 
+    // Prevent double submission
+    setSubmissionInProgress(true);
     setLoading(true);
+
     try {
+      // Check rate limiting before creation
+      if (orgChoice === "create") {
+        const rateLimitCheck = await OrganizationCreationLimiter.canCreateOrganization(userId);
+
+        if (!rateLimitCheck.allowed) {
+          toast({
+            title: "Creation Limit Reached",
+            description: rateLimitCheck.reason,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Save current form state before submission
+      await onboardingStateHelpers.saveOnboardingProgress(userId, "organization", {
+        orgChoice,
+        orgName,
+        orgCode
+      });
+
       const choice = {
         type: orgChoice,
         orgName: orgChoice === "create" ? orgName : undefined,
         orgCode: orgChoice === "join" ? orgCode : undefined
       };
-      
+
       const result = await authFlowHelpers.handleOrganizationSetup({ userId, choice });
-      
+
       if (result.success) {
         if (orgChoice === "create" && result.data) {
           toast({
             title: "Organization created!",
             description: `${result.data.organizationName} has been created successfully. Your code: ${result.data.organizationCode}`,
           });
-          // Move to company info setup for new organizations
           setStep("company-info");
-          saveAuthState({ step: "company-info", email, userId, fullName, orgChoice, orgName, orgCode });
         } else if (orgChoice === "join" && result.data) {
+          // Check if user joined via invite token and mark it as used
+          const urlParams = new URLSearchParams(location.search);
+          const inviteToken = urlParams.get('invite');
+
+          if (inviteToken && inviteToken.trim()) {
+            try {
+              await markTokenAsUsed(inviteToken.trim());
+              console.log('Invite token marked as used');
+            } catch (error) {
+              console.error('Error marking token as used:', error);
+              // Don't fail the join process if token marking fails
+            }
+          }
+
           toast({
             title: "Join request sent!",
             description: "Your request to join the organization is pending approval.",
           });
-          // Skip company info for joining organizations
-          clearAuthState();
+          await onboardingStateHelpers.clearOnboardingProgress(userId);
           navigate("/dashboard");
         }
       } else {
@@ -488,6 +613,7 @@ const Auth = () => {
       });
     } finally {
       setLoading(false);
+      setSubmissionInProgress(false);
     }
   };
 
@@ -500,11 +626,11 @@ const Auth = () => {
       // Use the organization settings service to update company info
       
       await organizationSettingsService.updateCompanyInfo({
-        phone: companyPhone,
-        fax: companyFax, // Can be empty string, handled by the service
-        address: companyAddress,
+        phone_number: companyPhone,
+        fax_number: companyFax, // Can be empty string, handled by the service
+        company_address: companyAddress,
         website: companyWebsite,
-        quote_starting_point: quoteStartingPoint,
+        quote_start_number: quoteStartingPoint,
       });
 
       toast({
@@ -513,7 +639,7 @@ const Auth = () => {
       });
       
       clearAuthState();
-      navigate("/dashboard");
+      redirectAfterAuth();
     } catch (error: any) {
       toast({
         title: "Company Info Error",
@@ -550,17 +676,6 @@ const Auth = () => {
     });
   };
 
-  // Define onboarding steps for progress tracking
-  const onboardingSteps = [
-    { key: "auth", label: "Sign In", icon: "🔐" },
-    { key: "verify-otp", label: "Verify", icon: "📧" },
-    { key: "profile", label: "Profile", icon: "👤" },
-    { key: "organization", label: "Organization", icon: "🏢" },
-    { key: "company-info", label: "Company", icon: "📋" }
-  ];
-
-  const getCurrentStepIndex = () => onboardingSteps.findIndex(s => s.key === step);
-  const isOnboarding = step !== "auth";
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-100">
@@ -574,7 +689,7 @@ const Auth = () => {
               onClick={() => navigate('/')}
             >
               <img
-                src="/logos/Landing-page-logo.svg"
+                src="/logos/Landing_Page_Logo_Light.svg"
                 alt="Qwohter Logo"
                 className="h-8 w-auto"
               />
@@ -615,63 +730,35 @@ const Auth = () => {
         <div className="absolute bottom-20 right-20 w-40 h-40 bg-orange-100/4 rounded-full blur-3xl" />
       </div>
 
-      {/* Simple progress indicator */}
-      {isOnboarding && (
-        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-20">
-          <div className="bg-white backdrop-blur-xl rounded-full px-6 py-3 border border-gray-200 shadow-sm">
-            <span className="text-sm font-medium text-gray-700">
-              Step {getCurrentStepIndex()} of {onboardingSteps.length - 1}
-            </span>
-          </div>
-        </div>
-      )}
 
       <div className="min-h-screen flex items-center justify-center p-8">
         <div className="w-full flex items-center justify-center">
           <div className={`w-full relative z-10 ${
-            step === "company-info" ? "max-w-4xl" :
-            step === "auth" ? "max-w-md" : "max-w-2xl"
+            step === "company-info" ? "max-w-lg" :
+            "max-w-md"
           }`}>
             {/* Main form card */}
             <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
-              <CardHeader className="text-center space-y-4 pb-4 pt-8 px-8">
-                {/* Step-specific icons */}
-                {step === "verify-otp" && (
-                  <div className="mx-auto w-16 h-16 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 mb-4">
-                    <div className="text-3xl">📧</div>
-                  </div>
-                )}
-                {step === "profile" && (
-                  <div className="mx-auto w-16 h-16 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 mb-4">
-                    <div className="text-3xl">👤</div>
-                  </div>
-                )}
-                {step === "organization" && (
-                  <div className="mx-auto w-16 h-16 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 mb-4">
-                    <div className="text-3xl">🏢</div>
-                  </div>
-                )}
-                {step === "company-info" && (
-                  <div className="mx-auto w-16 h-16 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 mb-4">
-                    <div className="text-3xl">📋</div>
-                  </div>
+              <CardHeader className="text-center space-y-3 pb-2 pt-6 px-8">
+                {/* Progress Indicator - show for all onboarding steps */}
+                {step !== "auth" && (
+                  <OnboardingProgress currentStep={step} isSignUp={true} />
                 )}
 
-                <div className="space-y-2">
+
+                <div className="space-y-1">
                   <CardTitle className="text-3xl font-bold text-gray-900">
                     {step === "auth" && (isSignUp ? "Create Account" : "Welcome back")}
-                    {step === "verify-otp" && "Check Your Email"}
-                    {step === "profile" && "Profile Setup"}
-                    {step === "organization" && "Organization"}
+                    {step === "verify-otp" && ""}
+                    {step === "organization" && "Organization Setup"}
                     {step === "company-info" && "Company Details"}
                   </CardTitle>
                   <CardDescription className="text-gray-600 text-sm leading-relaxed max-w-lg mx-auto">
                     {step === "auth" && (isSignUp
-                      ? "Join thousands of professionals managing quotes with Qwohter"
+                      ? "Create your account to start managing quotes"
                       : "Sign in to your Qwohter account"
                     )}
-                    {step === "verify-otp" && "We've sent a verification code to your email address. Enter it below to continue."}
-                    {step === "profile" && "Tell us about yourself to personalize your experience."}
+                    {step === "verify-otp" && ""}
                     {step === "organization" && "Connect with your organization or create a new one."}
                     {step === "company-info" && "Add your company information for professional quotes."}
                   </CardDescription>
@@ -684,10 +771,16 @@ const Auth = () => {
                     isSignUp={isSignUp}
                     email={email}
                     password={password}
+                    confirmPassword={confirmPassword}
+                    firstName={firstName}
+                    lastName={lastName}
                     showPassword={showPassword}
                     loading={loading}
                     onEmailChange={setEmail}
                     onPasswordChange={setPassword}
+                    onConfirmPasswordChange={setConfirmPassword}
+                    onFirstNameChange={setFirstName}
+                    onLastNameChange={setLastName}
                     onTogglePasswordVisibility={() => setShowPassword(!showPassword)}
                     onSubmit={handleAuth}
                     onToggleMode={() => {
@@ -707,28 +800,49 @@ const Auth = () => {
                     loading={loading}
                     onOtpCodeChange={setOtpCode}
                     onSubmit={handleOtpVerification}
-                    onBackToSignUp={() => {
-                      setStep("auth");
-                      setOtpCode("");
+                    onResendCode={async () => {
+                      // Check if we have temporary signup data
+                      const tempData = tempSignupService.get();
+                      if (!tempData || tempData.email !== email) {
+                        toast({
+                          title: "Session Expired",
+                          description: "Please sign up again to resend verification code.",
+                          variant: "destructive"
+                        });
+                        setStep("auth");
+                        return;
+                      }
+
+                      // Resend OTP using the same approach as initial signup
+                      const { error } = await supabase.auth.signInWithOtp({
+                        email,
+                        options: {
+                          shouldCreateUser: false
+                        }
+                      });
+
+                      if (error) {
+                        toast({
+                          title: "Error",
+                          description: "Failed to resend verification code. Please try again.",
+                          variant: "destructive"
+                        });
+                        throw error;
+                      }
+
+                      // Update the OTP sent status
+                      tempSignupService.markOtpSent();
                     }}
                   />
                 )}
 
-                {step === "profile" && (
-                  <ProfileSetupForm
-                    fullName={fullName}
-                    loading={loading}
-                    onFullNameChange={setFullName}
-                    onSubmit={handleProfileSubmit}
-                  />
-                )}
 
                 {step === "organization" && (
                   <OrganizationSetupForm
                     orgChoice={orgChoice}
                     orgCode={orgCode}
                     orgName={orgName}
-                    loading={loading}
+                    loading={loading || submissionInProgress}
                     onOrgChoiceChange={setOrgChoice}
                     onOrgCodeChange={setOrgCode}
                     onOrgNameChange={setOrgName}
@@ -744,6 +858,8 @@ const Auth = () => {
                     address={companyAddress}
                     website={companyWebsite}
                     quoteStartingPoint={quoteStartingPoint}
+                    industry={industry}
+                    foundVia={foundVia}
                     loading={loading}
                     userId={userId || ""}
                     currentLogoUrl={currentLogoUrl}
@@ -752,6 +868,8 @@ const Auth = () => {
                     onAddressChange={setCompanyAddress}
                     onWebsiteChange={setCompanyWebsite}
                     onQuoteStartingPointChange={setQuoteStartingPoint}
+                    onIndustryChange={setIndustry}
+                    onFoundViaChange={setFoundVia}
                     onLogoUpload={handleLogoUpload}
                     onLogoError={handleLogoError}
                     onSubmit={handleCompanyInfoSubmit}
@@ -788,21 +906,6 @@ const Auth = () => {
                   </button>
                 </div>
               )}
-
-              {/* Terms and Privacy Policy - only show on auth step */}
-              {step === "auth" && (
-                <p className="text-gray-500 text-xs mb-4">
-                  By signing in, you agree to our{' '}
-                  <button className="text-orange-500 hover:text-orange-600 underline transition-colors">
-                    Terms of Service
-                  </button>
-                  {' '}and{' '}
-                  <button className="text-orange-500 hover:text-orange-600 underline transition-colors">
-                    Privacy Policy
-                  </button>
-                </p>
-              )}
-
               <p className="text-gray-400 text-xs">
                 © 2024 Qwohter. Secure & Professional.
               </p>

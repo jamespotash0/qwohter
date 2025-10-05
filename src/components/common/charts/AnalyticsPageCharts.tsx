@@ -17,13 +17,14 @@ import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-  BarChart3, 
+import {
+  BarChart3,
   PieChart,
   Target,
-  Maximize2
+  Maximize2,
+  TrendingUp
 } from 'lucide-react';
-import { Quote } from '@/hooks/useQuotes';
+import { Quote } from '@/stores/quotes/quotesStore';
 import { Organization } from '@/hooks/useOrganizations';
 
 ChartJS.register(
@@ -43,9 +44,10 @@ ChartJS.register(
 interface AnalyticsPageChartsProps {
   quotes: Quote[];
   organization?: Organization | null;
+  viewMode?: 'monthly' | 'annual';
 }
 
-export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes, organization }) => {
+export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes, organization, viewMode = 'monthly' }) => {
   const [expandedChart, setExpandedChart] = useState<string | null>(null);
 
   const ExpandButton = ({ chartId, className = "" }: { chartId: string; className?: string }) => (
@@ -64,24 +66,56 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
       return Number(formatted.toString().replace(/[^0-9.-]+/g, ''));
     };
 
-    // Generate a full year of months starting from organization creation
-    const orgCreationDate = organization ? new Date(organization.created_at) : new Date();
-    
-    // Start from organization creation month and show 12 months forward
-    const startDate = new Date(orgCreationDate.getFullYear(), orgCreationDate.getMonth(), 1);
-    
-    const months = Array.from({ length: 12 }, (_, i) => {
-      const date = new Date(startDate);
-      date.setMonth(startDate.getMonth() + i);
-      
-      const yearAbbrev = date.getFullYear().toString().slice(-2);
-      return {
-        month: `${date.toLocaleDateString('en-US', { month: 'short' })} '${yearAbbrev}`,
-        fullMonth: date.toLocaleDateString('en-US', { month: 'long' }),
-        monthIndex: date.getMonth(),
-        year: date.getFullYear()
-      };
-    });
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    // Generate time periods based on viewMode
+    let periods: Array<{ month: string; fullMonth?: string; monthIndex?: number; year?: number; weekStart?: number; weekEnd?: number }>;
+
+    if (viewMode === 'annual') {
+      // Generate 12 months for current year
+      periods = Array.from({ length: 12 }, (_, i) => {
+        const date = new Date(currentYear, i, 1);
+        const yearAbbrev = date.getFullYear().toString().slice(-2);
+        return {
+          month: `${date.toLocaleDateString('en-US', { month: 'short' })} '${yearAbbrev}`,
+          fullMonth: date.toLocaleDateString('en-US', { month: 'long' }),
+          monthIndex: date.getMonth(),
+          year: date.getFullYear()
+        };
+      });
+    } else {
+      // Generate weeks for current month based on calendar weeks
+      const startOfMonth = new Date(currentYear, currentMonth, 1);
+      const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
+
+      const weeks: Array<{ start: number; end: number }> = [];
+      let currentStart = 1;
+
+      while (currentStart <= endOfMonth.getDate()) {
+        const currentEnd = Math.min(currentStart + 6, endOfMonth.getDate());
+        weeks.push({ start: currentStart, end: currentEnd });
+        currentStart = currentEnd + 1;
+      }
+
+      periods = weeks.map(({ start, end }, index) => {
+        const monthName = new Date(currentYear, currentMonth).toLocaleDateString('en-US', { month: 'short' });
+
+        // Format: "Week 1 (Oct 1-7)"
+        const weekLabel = `Week ${index + 1} (${monthName} ${start}-${end})`;
+
+        return {
+          month: weekLabel,
+          weekStart: start,
+          weekEnd: end,
+          monthIndex: currentMonth,
+          year: currentYear
+        };
+      });
+    }
+
+    const months = periods;
 
     // Pre-process quotes with parsed dates for better performance
     const quotesWithDates = quotes.map(q => ({
@@ -90,10 +124,21 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
       parsedPrice: parseCurrency(q.price_details?.final_selling_price || 0)
     }));
 
-    const monthlyData = months.map(({ month, monthIndex, year }) => {
-      const monthQuotes = quotesWithDates.filter(q => 
-        q.parsedDate.getMonth() === monthIndex && q.parsedDate.getFullYear() === year
-      );
+    const monthlyData = months.map((period) => {
+      const { month, monthIndex, year, weekStart, weekEnd } = period;
+
+      const monthQuotes = quotesWithDates.filter(q => {
+        if (viewMode === 'annual') {
+          return q.parsedDate.getMonth() === monthIndex && q.parsedDate.getFullYear() === year;
+        } else {
+          // Monthly view with weeks
+          const day = q.parsedDate.getDate();
+          return q.parsedDate.getMonth() === monthIndex &&
+                 q.parsedDate.getFullYear() === year &&
+                 day >= (weekStart || 1) &&
+                 day <= (weekEnd || 31);
+        }
+      });
 
       let wonCount = 0, pendingCount = 0, rejectedCount = 0, totalValue = 0;
       
@@ -131,10 +176,21 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
     }, {} as Record<string, number>);
 
     // Monthly Revenue (Won quotes only) vs Total Quoted Amounts (Optimized)
-    const revenueVsQuotedData = months.map(({ month, monthIndex, year }) => {
-      const monthQuotes = quotesWithDates.filter(q => 
-        q.parsedDate.getMonth() === monthIndex && q.parsedDate.getFullYear() === year
-      );
+    const revenueVsQuotedData = months.map((period) => {
+      const { month, monthIndex, year, weekStart, weekEnd } = period;
+
+      const monthQuotes = quotesWithDates.filter(q => {
+        if (viewMode === 'annual') {
+          return q.parsedDate.getMonth() === monthIndex && q.parsedDate.getFullYear() === year;
+        } else {
+          // Monthly view with weeks
+          const day = q.parsedDate.getDate();
+          return q.parsedDate.getMonth() === monthIndex &&
+                 q.parsedDate.getFullYear() === year &&
+                 day >= (weekStart || 1) &&
+                 day <= (weekEnd || 31);
+        }
+      });
 
       let wonRevenue = 0, totalQuotedAmount = 0;
       
@@ -153,8 +209,115 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
       };
     });
 
-    return { monthlyData, statusCounts, revenueVsQuotedData };
-  }, [quotes, organization]);
+    // Revenue by Wall System Type
+    const revenueByWallSystem: Record<string, number> = {};
+    quotesWithDates.forEach(q => {
+      if (q.status === 'Won' && q.wall_details?.walls) {
+        // Get all wall system types from walls object
+        Object.values(q.wall_details.walls).forEach(wall => {
+          const wallType = wall.wallSystemType || 'Unknown';
+          revenueByWallSystem[wallType] = (revenueByWallSystem[wallType] || 0) + q.parsedPrice;
+        });
+      }
+    });
+
+    // Quotes by Wall System Type
+    const quotesByWallSystem: Record<string, number> = {};
+    quotesWithDates.forEach(q => {
+      if (q.wall_details?.walls) {
+        // Get all wall system types from walls object
+        Object.values(q.wall_details.walls).forEach(wall => {
+          const wallType = wall.wallSystemType || 'Unknown';
+          quotesByWallSystem[wallType] = (quotesByWallSystem[wallType] || 0) + 1;
+        });
+      }
+    });
+
+    // Lead Source Distribution
+    const leadSourceCounts: Record<string, number> = {};
+    quotesWithDates.forEach(q => {
+      const source = q.quote_source || 'Unknown';
+      leadSourceCounts[source] = (leadSourceCounts[source] || 0) + 1;
+    });
+
+    // Lead Source Revenue
+    const leadSourceRevenue: Record<string, number> = {};
+    quotesWithDates.forEach(q => {
+      if (q.status === 'Won') {
+        const source = q.quote_source || 'Unknown';
+        leadSourceRevenue[source] = (leadSourceRevenue[source] || 0) + q.parsedPrice;
+      }
+    });
+
+    // Won vs Lost over time
+    const wonLostData = months.map((period) => {
+      const { month, monthIndex, year, weekStart, weekEnd } = period;
+
+      const periodQuotes = quotesWithDates.filter(q => {
+        if (viewMode === 'annual') {
+          return q.parsedDate.getMonth() === monthIndex && q.parsedDate.getFullYear() === year;
+        } else {
+          const day = q.parsedDate.getDate();
+          return q.parsedDate.getMonth() === monthIndex &&
+                 q.parsedDate.getFullYear() === year &&
+                 day >= (weekStart || 1) &&
+                 day <= (weekEnd || 31);
+        }
+      });
+
+      const won = periodQuotes.filter(q => q.status === 'Won').length;
+      const lost = periodQuotes.filter(q => q.status === 'Rejected').length;
+      const winRate = (won + lost) > 0 ? ((won / (won + lost)) * 100) : 0;
+
+      return { month, won, lost, winRate };
+    });
+
+    // Revenue by User
+    const revenueByUser: Record<string, number> = {};
+    quotesWithDates.forEach(q => {
+      if (q.status === 'Won') {
+        const userName = q.creator_name || 'Unknown';
+        revenueByUser[userName] = (revenueByUser[userName] || 0) + q.parsedPrice;
+      }
+    });
+
+    // Average Quote Value over time
+    const avgQuoteValueData = months.map((period) => {
+      const { month, monthIndex, year, weekStart, weekEnd } = period;
+
+      const periodQuotes = quotesWithDates.filter(q => {
+        if (viewMode === 'annual') {
+          return q.parsedDate.getMonth() === monthIndex && q.parsedDate.getFullYear() === year;
+        } else {
+          const day = q.parsedDate.getDate();
+          return q.parsedDate.getMonth() === monthIndex &&
+                 q.parsedDate.getFullYear() === year &&
+                 day >= (weekStart || 1) &&
+                 day <= (weekEnd || 31);
+        }
+      });
+
+      const wonQuotes = periodQuotes.filter(q => q.status === 'Won');
+      const avgValue = wonQuotes.length > 0
+        ? wonQuotes.reduce((sum, q) => sum + q.parsedPrice, 0) / wonQuotes.length
+        : 0;
+
+      return { month, avgValue };
+    });
+
+    return {
+      monthlyData,
+      statusCounts,
+      revenueVsQuotedData,
+      revenueByWallSystem,
+      quotesByWallSystem,
+      leadSourceCounts,
+      leadSourceRevenue,
+      wonLostData,
+      revenueByUser,
+      avgQuoteValueData
+    };
+  }, [quotes, organization, viewMode]);
 
   // Professional Chart Options
   const professionalOptions = {
@@ -369,6 +532,164 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
       },
     ],
   }), [chartData.monthlyData, chartData.revenueVsQuotedData]);
+
+  // Revenue by Wall System Pie Chart
+  const revenueByWallSystemData = useMemo(() => {
+    const entries = Object.entries(chartData.revenueByWallSystem).sort((a, b) => b[1] - a[1]);
+    return {
+      labels: entries.map(([name]) => name),
+      datasets: [{
+        data: entries.map(([, value]) => value),
+        backgroundColor: [
+          'rgba(34, 197, 94, 0.85)',
+          'rgba(99, 102, 241, 0.85)',
+          'rgba(245, 158, 11, 0.85)',
+          'rgba(236, 72, 153, 0.85)',
+          'rgba(14, 165, 233, 0.85)',
+          'rgba(168, 85, 247, 0.85)',
+        ],
+        borderWidth: 0,
+        hoverOffset: 12,
+      }],
+    };
+  }, [chartData.revenueByWallSystem]);
+
+  // Quotes by Wall System Pie Chart
+  const quotesByWallSystemData = useMemo(() => {
+    const entries = Object.entries(chartData.quotesByWallSystem).sort((a, b) => b[1] - a[1]);
+    return {
+      labels: entries.map(([name]) => name),
+      datasets: [{
+        data: entries.map(([, value]) => value),
+        backgroundColor: [
+          'rgba(99, 102, 241, 0.85)',
+          'rgba(34, 197, 94, 0.85)',
+          'rgba(245, 158, 11, 0.85)',
+          'rgba(236, 72, 153, 0.85)',
+          'rgba(14, 165, 233, 0.85)',
+          'rgba(168, 85, 247, 0.85)',
+        ],
+        borderWidth: 0,
+        hoverOffset: 12,
+      }],
+    };
+  }, [chartData.quotesByWallSystem]);
+
+  // Lead Source Distribution Pie Chart
+  const leadSourceData = useMemo(() => {
+    const entries = Object.entries(chartData.leadSourceCounts).sort((a, b) => b[1] - a[1]);
+    return {
+      labels: entries.map(([name]) => name),
+      datasets: [{
+        data: entries.map(([, value]) => value),
+        backgroundColor: [
+          'rgba(245, 158, 11, 0.85)',
+          'rgba(236, 72, 153, 0.85)',
+          'rgba(14, 165, 233, 0.85)',
+          'rgba(168, 85, 247, 0.85)',
+          'rgba(34, 197, 94, 0.85)',
+          'rgba(99, 102, 241, 0.85)',
+        ],
+        borderWidth: 0,
+        hoverOffset: 12,
+      }],
+    };
+  }, [chartData.leadSourceCounts]);
+
+  // Won vs Lost Line Chart
+  const wonVsLostData = useMemo(() => ({
+    labels: chartData.wonLostData.map(d => d.month),
+    datasets: [
+      {
+        label: 'Won Quotes',
+        data: chartData.wonLostData.map(d => d.won),
+        borderColor: 'rgb(34, 197, 94)',
+        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: 'rgb(34, 197, 94)',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 8,
+      },
+      {
+        label: 'Lost Quotes',
+        data: chartData.wonLostData.map(d => d.lost),
+        borderColor: 'rgb(239, 68, 68)',
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: 'rgb(239, 68, 68)',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 8,
+      },
+    ],
+  }), [chartData.wonLostData]);
+
+  // Win Rate Trend Line Chart
+  const winRateTrendData = useMemo(() => ({
+    labels: chartData.wonLostData.map(d => d.month),
+    datasets: [{
+      label: 'Win Rate %',
+      data: chartData.wonLostData.map(d => d.winRate),
+      borderColor: 'rgb(99, 102, 241)',
+      backgroundColor: 'rgba(99, 102, 241, 0.1)',
+      borderWidth: 3,
+      fill: true,
+      tension: 0.4,
+      pointBackgroundColor: 'rgb(99, 102, 241)',
+      pointBorderColor: '#ffffff',
+      pointBorderWidth: 2,
+      pointRadius: 5,
+      pointHoverRadius: 8,
+    }],
+  }), [chartData.wonLostData]);
+
+  // Average Quote Value Trend
+  const avgQuoteValueTrendData = useMemo(() => ({
+    labels: chartData.avgQuoteValueData.map(d => d.month),
+    datasets: [{
+      label: 'Average Quote Value',
+      data: chartData.avgQuoteValueData.map(d => d.avgValue),
+      borderColor: 'rgb(168, 85, 247)',
+      backgroundColor: 'rgba(168, 85, 247, 0.1)',
+      borderWidth: 3,
+      fill: true,
+      tension: 0.4,
+      pointBackgroundColor: 'rgb(168, 85, 247)',
+      pointBorderColor: '#ffffff',
+      pointBorderWidth: 2,
+      pointRadius: 5,
+      pointHoverRadius: 8,
+    }],
+  }), [chartData.avgQuoteValueData]);
+
+  // Revenue by User Bar Chart
+  const revenueByUserData = useMemo(() => {
+    const entries = Object.entries(chartData.revenueByUser)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10); // Top 10 users
+
+    return {
+      labels: entries.map(([name]) => name),
+      datasets: [{
+        label: 'Revenue Generated',
+        data: entries.map(([, value]) => value),
+        backgroundColor: 'rgba(34, 197, 94, 0.85)',
+        borderColor: 'rgb(34, 197, 94)',
+        borderWidth: 0,
+        borderRadius: {
+          topLeft: 6,
+          topRight: 6,
+        },
+      }],
+    };
+  }, [chartData.revenueByUser]);
 
   const doughnutOptions = {
     responsive: true,
@@ -609,14 +930,253 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
         </CardContent>
       </Card>
 
+      {/* New Charts Grid - Products & Sources */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Revenue by Wall System */}
+        <Card className="relative bg-gradient-to-br from-green-50 to-white border-green-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+          <ExpandButton chartId="revenue-by-product" />
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                <PieChart className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Revenue by Product</h3>
+                <p className="text-sm text-slate-600">Wall system revenue</p>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <Doughnut data={revenueByWallSystemData} options={doughnutOptions} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quotes by Wall System */}
+        <Card className="relative bg-gradient-to-br from-blue-50 to-white border-blue-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+          <ExpandButton chartId="quotes-by-product" />
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                <PieChart className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Quotes by Product</h3>
+                <p className="text-sm text-slate-600">Popular wall systems</p>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <Doughnut data={quotesByWallSystemData} options={doughnutOptions} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Lead Source Distribution */}
+        <Card className="relative bg-gradient-to-br from-amber-50 to-white border-amber-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+          <ExpandButton chartId="lead-sources" />
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg">
+                <PieChart className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Lead Sources</h3>
+                <p className="text-sm text-slate-600">Quote origin distribution</p>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <Doughnut data={leadSourceData} options={doughnutOptions} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Trend Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Won vs Lost Trend */}
+        <Card className="relative bg-gradient-to-br from-emerald-50 to-white border-emerald-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+          <ExpandButton chartId="won-vs-lost" />
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
+                <BarChart3 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Won vs Lost Trend</h3>
+                <p className="text-sm text-slate-600">Performance over time</p>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <Line data={wonVsLostData} options={{
+                ...professionalOptions,
+                plugins: {
+                  ...professionalOptions.plugins,
+                  legend: { display: true, position: 'top' as const },
+                },
+              }} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Win Rate Trend */}
+        <Card className="relative bg-gradient-to-br from-violet-50 to-white border-violet-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+          <ExpandButton chartId="win-rate" />
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg">
+                <TrendingUp className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Win Rate Trend</h3>
+                <p className="text-sm text-slate-600">Conversion performance</p>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <Line data={winRateTrendData} options={{
+                ...professionalOptions,
+                plugins: {
+                  ...professionalOptions.plugins,
+                  legend: { display: true, position: 'top' as const },
+                },
+                scales: {
+                  ...professionalOptions.scales,
+                  y: {
+                    ...professionalOptions.scales?.y,
+                    ticks: {
+                      ...professionalOptions.scales?.y?.ticks,
+                      callback: function(value: any) {
+                        return value + '%';
+                      },
+                    },
+                  },
+                },
+              }} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Average Quote Value Trend */}
+        <Card className="relative bg-gradient-to-br from-fuchsia-50 to-white border-fuchsia-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+          <ExpandButton chartId="avg-quote-value" />
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-fuchsia-500 to-fuchsia-600 rounded-xl flex items-center justify-center shadow-lg">
+                <TrendingUp className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Avg Quote Value Trend</h3>
+                <p className="text-sm text-slate-600">Value evolution over time</p>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <Line data={avgQuoteValueTrendData} options={{
+                ...professionalOptions,
+                plugins: {
+                  ...professionalOptions.plugins,
+                  legend: { display: true, position: 'top' as const },
+                  tooltip: {
+                    ...professionalOptions.plugins?.tooltip,
+                    callbacks: {
+                      label: function(context: any) {
+                        return `$${context.parsed.y.toLocaleString()}`;
+                      },
+                    },
+                  },
+                },
+                scales: {
+                  ...professionalOptions.scales,
+                  y: {
+                    ...professionalOptions.scales?.y,
+                    ticks: {
+                      ...professionalOptions.scales?.y?.ticks,
+                      callback: function(value: any) {
+                        return '$' + value.toLocaleString();
+                      },
+                    },
+                  },
+                },
+              }} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Revenue by User */}
+        <Card className="relative bg-gradient-to-br from-cyan-50 to-white border-cyan-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+          <ExpandButton chartId="revenue-by-user" />
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg">
+                <BarChart3 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Revenue by User</h3>
+                <p className="text-sm text-slate-600">Top 10 performers</p>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <Bar data={revenueByUserData} options={{
+                ...professionalOptions,
+                indexAxis: 'y' as const,
+                plugins: {
+                  ...professionalOptions.plugins,
+                  legend: { display: false },
+                  tooltip: {
+                    ...professionalOptions.plugins?.tooltip,
+                    callbacks: {
+                      label: function(context: any) {
+                        return `$${context.parsed.x.toLocaleString()}`;
+                      },
+                    },
+                  },
+                },
+                scales: {
+                  x: {
+                    ...professionalOptions.scales?.y,
+                    ticks: {
+                      ...professionalOptions.scales?.y?.ticks,
+                      callback: function(value: any) {
+                        return '$' + value.toLocaleString();
+                      },
+                    },
+                  },
+                  y: {
+                    ...professionalOptions.scales?.x,
+                  },
+                },
+              }} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Expanded Chart Modal */}
       <Dialog open={expandedChart !== null} onOpenChange={() => setExpandedChart(null)}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-6">
+        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-6 bg-white dark:bg-gray-900">
           <DialogHeader className="pb-4">
             <DialogTitle className="text-xl font-bold">
               {expandedChart === 'volume' && 'Quote Volume Analysis'}
               {expandedChart === 'status' && 'Quote Status Distribution'}
               {expandedChart === 'revenue' && 'Revenue vs Quoted Amount Trends'}
+              {expandedChart === 'revenue-by-product' && 'Revenue by Product'}
+              {expandedChart === 'quotes-by-product' && 'Quotes by Product'}
+              {expandedChart === 'lead-sources' && 'Lead Source Distribution'}
+              {expandedChart === 'won-vs-lost' && 'Won vs Lost Trend'}
+              {expandedChart === 'win-rate' && 'Win Rate Trend'}
+              {expandedChart === 'avg-quote-value' && 'Average Quote Value Trend'}
+              {expandedChart === 'revenue-by-user' && 'Revenue by User'}
             </DialogTitle>
           </DialogHeader>
           
@@ -711,6 +1271,57 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
                       },
                     },
                   },
+                }} />
+              </div>
+            )}
+
+            {expandedChart === 'revenue-by-product' && (
+              <div className="h-[70vh] flex items-center justify-center">
+                <div className="w-[500px] h-[500px]">
+                  <Doughnut data={revenueByWallSystemData} options={doughnutOptions} />
+                </div>
+              </div>
+            )}
+
+            {expandedChart === 'quotes-by-product' && (
+              <div className="h-[70vh] flex items-center justify-center">
+                <div className="w-[500px] h-[500px]">
+                  <Doughnut data={quotesByWallSystemData} options={doughnutOptions} />
+                </div>
+              </div>
+            )}
+
+            {expandedChart === 'lead-sources' && (
+              <div className="h-[70vh] flex items-center justify-center">
+                <div className="w-[500px] h-[500px]">
+                  <Doughnut data={leadSourceData} options={doughnutOptions} />
+                </div>
+              </div>
+            )}
+
+            {expandedChart === 'won-vs-lost' && (
+              <div className="h-[70vh]">
+                <Line data={wonVsLostData} options={professionalOptions} />
+              </div>
+            )}
+
+            {expandedChart === 'win-rate' && (
+              <div className="h-[70vh]">
+                <Line data={winRateTrendData} options={professionalOptions} />
+              </div>
+            )}
+
+            {expandedChart === 'avg-quote-value' && (
+              <div className="h-[70vh]">
+                <Line data={avgQuoteValueTrendData} options={professionalOptions} />
+              </div>
+            )}
+
+            {expandedChart === 'revenue-by-user' && (
+              <div className="h-[70vh]">
+                <Bar data={revenueByUserData} options={{
+                  ...professionalOptions,
+                  indexAxis: 'y' as const,
                 }} />
               </div>
             )}

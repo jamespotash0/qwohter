@@ -1,3 +1,9 @@
+// DEPRECATED: This file has been replaced by quotesStore.ts
+// All functionality has been migrated to the Zustand store for better state management
+// See: src/stores/quotes/quotesStore.ts
+// Migration completed: September 28, 2025
+
+/*
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +28,7 @@ export interface Quote {
   quote_source?: string;
   follow_up_days?: number;
   created_by?: string;
+  creator_name?: string; // Full name from profiles table
   status_last_updated?: string;
   date_last_downloaded?: string;
   version: number;
@@ -29,7 +36,11 @@ export interface Quote {
   updated_at: string;
   customization?: QuoteCustomization;
 }
+*/
 
+
+/*
+// DEPRECATED: All functionality moved to quotesStore.ts
 
 // Helper function to prepare wall data for database save
 const prepareWallDataForSave = (wallsData: any): WallDetails => {
@@ -53,13 +64,14 @@ const prepareWallDataForSave = (wallsData: any): WallDetails => {
 };
 
 // Helper function to convert database row to Quote interface
-const convertRowToQuote = (row: QuoteRow): Quote => {
+const convertRowToQuote = (row: any): Quote => {
   return {
     ...row,
     wall_details: row.wall_details as unknown as WallDetails,
     project_name: row.project_name || undefined,
     date_last_downloaded: row.date_last_downloaded || undefined,
     status: row.status || 'Draft',
+    creator_name: row.creator_name || 'Unknown',
   };
 };
 
@@ -69,25 +81,65 @@ export const useQuotes = () => {
   const { toast } = useToast();
 
   const fetchQuotes = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('quotes')
-        .select('*')
-        .order('created_at', { ascending: false });
+  try {
+    setLoading(true);
 
-      if (error) throw error;
-      setQuotes(data ? data.map(convertRowToQuote) : []);
-    } catch (error: any) {
-      toast({
-        title: "Error fetching quotes",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+    // First, fetch quotes
+    const { data: quotesData, error: quotesError } = await supabase
+      .from('quotes')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (quotesError) throw quotesError;
+
+    if (!quotesData || quotesData.length === 0) {
+      setQuotes([]);
+      return;
     }
-  };
+
+    // Get unique creator IDs (check both created_by and user_id for compatibility)
+    const creatorIds = [...new Set(
+      quotesData
+        .map(quote => quote.created_by || quote.user_id)
+        .filter(Boolean)
+    )];
+
+    // Fetch creator names
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', creatorIds);
+
+    if (profilesError) {
+      console.warn('Failed to fetch creator profiles:', profilesError);
+      // Continue without creator names
+    }
+
+    // Create a map of creator IDs to names
+    const creatorMap = new Map();
+    if (profilesData) {
+      profilesData.forEach(profile => {
+        creatorMap.set(profile.id, profile.full_name);
+      });
+    }
+
+    // Combine quotes with creator names
+    const quotesWithCreatorNames = quotesData.map(quote => ({
+      ...quote as object,
+      creator_name: creatorMap.get(quote.created_by || quote.user_id) || 'Unknown',
+    }));
+
+    setQuotes(quotesWithCreatorNames.map(convertRowToQuote));
+  } catch (error: any) {
+    toast({
+      title: "Error fetching quotes",
+      description: error.message,
+      variant: "destructive",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const createQuote = async (quoteData: any) => {
     try {
@@ -95,18 +147,28 @@ export const useQuotes = () => {
       if (!user) throw new Error('User not authenticated');
 
       // Get user's organization from their profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('organization_id, full_name')
-        .eq('id', user.id)
+      // Get user's organization through membership and profile data
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('memberships')
+        .select(`
+          organization_id,
+          profiles (
+            full_name
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('status', 'Active')
         .single();
 
-      if (profileError) throw profileError;
-      if (!profileData?.organization_id) throw new Error('User not assigned to an organization');
-      
+      if (membershipError) throw membershipError;
+      if (!membershipData?.organization_id) throw new Error('User not assigned to an organization');
+
+      const profileData = (membershipData as any).profiles;
+      if (!profileData?.full_name) throw new Error('User profile incomplete');
+
       // Generate proposal number
       const proposalInfo = await ProposalNumberGenerator.getNextProposalNumber();
-      
+
       const { data, error } = await supabase
         .from('quotes')
         .insert({
@@ -122,12 +184,12 @@ export const useQuotes = () => {
            },
           wall_details: prepareWallDataForSave(quoteData.walls) as any,
           quote_source: quoteData.contactInfo?.quoteSource || '',
-          created_by: profileData.full_name,
-          organization_id: profileData.organization_id,
+          created_by: user.id,
+          organization_id: membershipData.organization_id,
           price_details: {
             payment_upon_drawings: quoteData.pricing.payment_upon_drawings,
             payment_upon_track_installation: quoteData.pricing.payment_upon_track_installation,
-      
+
             kwik_wall_materials_cost: quoteData.pricing.kwik_wall_materials_cost || 0,
             misc_materials_cost: quoteData.pricing.misc_materials_cost || 0,
             delivery_cost_track: quoteData.pricing.delivery_cost_track || 0,
@@ -159,16 +221,19 @@ export const useQuotes = () => {
           status: quoteData.status || 'Draft',
           status_last_updated: null,
           follow_up_days: null,
-          user_id: user.id,
-        })
+        } as any)
         .select()
         .single();
 
       if (error) throw error;
-      
-      setQuotes(prev => [convertRowToQuote(data), ...prev]);
-      
-      return data;
+
+      const newQuote = convertRowToQuote({
+        ...data as object,
+        creator_name: profileData.full_name
+      });
+      setQuotes(prev => [newQuote, ...prev]);
+
+      return newQuote;
     } catch (error: any) {
       toast({
         title: "Error creating quote",
@@ -192,11 +257,11 @@ export const useQuotes = () => {
         .single();
 
       if (error) throw error;
-      
-      setQuotes(prev => prev.map(quote => 
+
+      setQuotes(prev => prev.map(quote =>
         quote.id === id ? { ...quote, ...convertRowToQuote(data) } : quote
       ));
-      
+
       return data;
     } catch (error: any) {
       toast({
@@ -216,7 +281,7 @@ export const useQuotes = () => {
         .eq('id', id);
 
       if (error) throw error;
-      
+
       setQuotes(prev => prev.filter(quote => quote.id !== id));
       toast({
         title: "Quote deleted",
@@ -242,11 +307,11 @@ export const useQuotes = () => {
         .single();
 
       if (error) throw error;
-      
-      setQuotes(prev => prev.map(quote => 
+
+      setQuotes(prev => prev.map(quote =>
         quote.id === id ? { ...quote, ...convertRowToQuote(data) } : quote
       ));
-      
+
       return data;
     } catch (error: any) {
       toast({
@@ -263,7 +328,7 @@ export const useQuotes = () => {
       // Update the version for customization tracking
       const currentQuote = quotes.find(q => q.id === id);
       const newVersion = (currentQuote?.version || 0) + 1;
-      
+
       const updateData = {
         customization: {
           ...customization,
@@ -281,16 +346,16 @@ export const useQuotes = () => {
         .single();
 
       if (error) throw error;
-      
-      setQuotes(prev => prev.map(quote => 
+
+      setQuotes(prev => prev.map(quote =>
         quote.id === id ? { ...quote, ...convertRowToQuote(data) } : quote
       ));
-      
+
       toast({
         title: "Customization saved",
         description: "Quote customization has been saved successfully.",
       });
-      
+
       return data;
     } catch (error: any) {
       toast({
@@ -327,7 +392,7 @@ export const useQuotes = () => {
       // Update only the wall_details field
       const { data, error } = await supabase
         .from('quotes')
-        .update({ 
+        .update({
           wall_details: updatedWallDetails as any,
           updated_at: new Date().toISOString()
         })
@@ -338,7 +403,7 @@ export const useQuotes = () => {
       if (error) throw error;
 
       // Update local state
-      setQuotes(prev => prev.map(quote => 
+      setQuotes(prev => prev.map(quote =>
         quote.id === quoteId ? { ...quote, ...convertRowToQuote(data) } : quote
       ));
 
@@ -370,7 +435,7 @@ export const useQuotes = () => {
 
       if (fetchError) throw fetchError;
 
-      // Get current wall details  
+      // Get current wall details
       const currentWallDetails = currentQuote.wall_details as unknown as WallDetails;
       const currentWalls = { ...currentWallDetails.walls };
 
@@ -398,7 +463,7 @@ export const useQuotes = () => {
       // Update the database
       const { data, error } = await supabase
         .from('quotes')
-        .update({ 
+        .update({
           wall_details: updatedWallDetails as any,
           updated_at: new Date().toISOString()
         })
@@ -409,7 +474,7 @@ export const useQuotes = () => {
       if (error) throw error;
 
       // Update local state
-      setQuotes(prev => prev.map(quote => 
+      setQuotes(prev => prev.map(quote =>
         quote.id === quoteId ? { ...quote, ...convertRowToQuote(data) } : quote
       ));
 
@@ -437,17 +502,20 @@ export const useQuotes = () => {
     try {
       const { data, error } = await supabase
         .from('quotes')
-        .update({ follow_up_days: days })
+        .update({
+          follow_up_days: days,
+          status_last_updated: new Date().toISOString()
+        })
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      
-      setQuotes(prev => prev.map(quote => 
+
+      setQuotes(prev => prev.map(quote =>
         quote.id === id ? { ...quote, ...convertRowToQuote(data) } : quote
       ));
-      
+
       return data;
     } catch (error: any) {
       toast({
@@ -476,6 +544,15 @@ export const useQuotes = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      // Get user's profile to get full_name
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
       // Create new quote with incremented version
       const { data, error } = await supabase
         .from('quotes')
@@ -483,6 +560,7 @@ export const useQuotes = () => {
           ...existingQuote as any,
           id: undefined, // Let Supabase generate new ID
           proposal_number: proposalInfo.fullNumber,
+          created_by: user.id, // Use current user as creator
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           date_last_downloaded: null,
@@ -493,9 +571,13 @@ export const useQuotes = () => {
 
       if (error) throw error;
 
-      setQuotes(prev => [convertRowToQuote(data), ...prev]);
-      
-      return data;
+      const newQuote = convertRowToQuote({
+        ...data as object,
+        creator_name: profileData.full_name
+      });
+      setQuotes(prev => [newQuote, ...prev]);
+
+      return newQuote;
     } catch (error: any) {
       toast({
         title: "Error creating quote version",
@@ -521,3 +603,4 @@ export const useQuotes = () => {
     refreshQuotes: fetchQuotes
   };
 };
+*/

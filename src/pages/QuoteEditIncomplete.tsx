@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuotes } from "@/hooks/useQuotes";
+import { useQuotesStore } from "@/stores/quotes/quotesStore";
 import QuoteEditingWizard from "@/components/features/quotes/editing/QuoteEditingWizard/QuoteEditingWizard";
 
 const QuoteEditIncomplete = () => {
   const navigate = useNavigate();
   const { proposalNumber } = useParams<{ proposalNumber: string }>();
   const [user, setUser] = useState<any>(null);
-  const { quotes } = useQuotes();
+  const quotes = useQuotesStore((state) => state.quotes);
   
   // Find the quote to edit
   const existingQuote = proposalNumber ? quotes.find(q => q.proposal_number === proposalNumber) : null;
@@ -26,7 +26,7 @@ const QuoteEditIncomplete = () => {
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       if (!session) {
         navigate("/auth");
       } else {
@@ -50,7 +50,7 @@ const QuoteEditIncomplete = () => {
         if (existingQuote.status === "Draft") {
           navigate(`/quotes/new?edit=${encodeURIComponent(proposalNumber!)}`);
         } else {
-          navigate(`/quotes/edit/${proposalNumber}`);
+          navigate(`/editor/${proposalNumber}`);
         }
         return;
       }
@@ -63,7 +63,6 @@ const QuoteEditIncomplete = () => {
 
   const handleQuoteNameChange = (newName: string) => {
     // This will be handled by the editing wizard itself
-    console.log("Quote name changed to:", newName);
   };
 
   if (!user || !existingQuote) {

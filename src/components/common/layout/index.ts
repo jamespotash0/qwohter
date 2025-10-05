@@ -1,3 +1,6 @@
 export { AppSidebar } from './AppSidebar';
 export { PageContainer } from './PageContainer';
-export { HeaderNav } from './HeaderNav';
+export { MainLayout } from './MainLayout';
+export { PageContent } from './PageContent';
+export { ContentCard } from './ContentCard';
+export { PageSection } from './PageSection';

@@ -203,32 +203,19 @@ export class LogoUploadService {
    */
   static async uploadLogo(file: File, userId: string): Promise<LogoUploadResult> {
     try {
-      console.log('🚀 Starting logo upload process:', {
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-        userId: userId
-      });
 
       // Validate the file first
       const validation = await this.validateFile(file);
       if (!validation.isValid) {
-        console.log('❌ File validation failed:', validation.error);
         return {
           success: false,
           error: validation.error
         };
       }
-      console.log('✅ File validation passed');
 
       // Process the image
-      console.log('🔄 Processing image...');
       const processedFile = await this.processImage(file);
-      console.log('✅ Image processed:', {
-        originalSize: file.size,
-        processedSize: processedFile.size,
-        processedType: processedFile.type
-      });
+      
 
       // Generate unique filename
       const timestamp = Date.now();
@@ -245,9 +232,6 @@ export class LogoUploadService {
       }
       
       const filePath = `${user.id}/${fileName}`;
-      console.log('👤 Authenticated user ID:', user.id);
-      console.log('📝 Provided userId:', userId);
-      console.log('🔄 Attempting upload to bucket:', this.BUCKET_NAME, 'at path:', filePath);
       const { data, error } = await supabase.storage
         .from(this.BUCKET_NAME)
         .upload(filePath, processedFile, {
@@ -268,14 +252,12 @@ export class LogoUploadService {
         };
       }
 
-      console.log('✅ Upload successful:', data);
 
       // Get public URL (bucket will be made public)
       const { data: urlData } = supabase.storage
         .from(this.BUCKET_NAME)
         .getPublicUrl(filePath);
 
-      console.log('🔗 Generated public URL:', urlData.publicUrl);
 
       const result = {
         success: true,
@@ -284,7 +266,6 @@ export class LogoUploadService {
         fileName: fileName
       };
 
-      console.log('✅ Upload process completed successfully:', result);
       return result;
     } catch (error) {
       console.error('💥 Unexpected error during upload:', error);
@@ -345,51 +326,17 @@ export class LogoUploadService {
     } | null
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log('🔄 Updating organization logo in database:', {
-        organizationId,
-        logoData
-      });
 
-      // Get current organization info first
-      const { data: currentOrg, error: fetchError } = await supabase
-        .from('organizations')
-        .select('organization_info')
-        .eq('id', organizationId)
-        .single();
-
-      if (fetchError) {
-        console.error('❌ Error fetching organization:', fetchError);
-        return {
-          success: false,
-          error: fetchError.message
-        };
-      }
-
-      console.log('✅ Current organization data:', currentOrg);
-
-      // Merge logo data with existing organization_info
-      const currentOrgInfo = (currentOrg as any)?.organization_info || {};
-      console.log('📋 Current organization_info:', currentOrgInfo);
-
-      const updatedOrgInfo = {
-        ...currentOrgInfo,
-        ...(logoData ? {
+      // Update logo_data field directly
+      const updatePayload = {
+        logo_data: logoData ? {
           logo_url: logoData.logo_url,
           logo_file_name: logoData.logo_file_name,
           logo_public_url: logoData.logo_public_url,
           logo_updated_at: new Date().toISOString()
-        } : {
-          logo_url: null,
-          logo_file_name: null,
-          logo_public_url: null,
-          logo_updated_at: null
-        })
+        } : null
       };
 
-      console.log('📝 Updated organization_info:', updatedOrgInfo);
-
-      const updatePayload = { organization_info: updatedOrgInfo };
-      console.log('📤 Update payload:', updatePayload);
 
       const { data: updateResult, error } = await (supabase as any)
         .from('organizations')
@@ -405,7 +352,6 @@ export class LogoUploadService {
         };
       }
 
-      console.log('✅ Organization update successful:', updateResult);
       return { success: true };
     } catch (error) {
       console.error('💥 Unexpected error updating organization logo:', error);

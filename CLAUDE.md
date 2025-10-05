@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Essential guidance for Claude Code when working with Wall Quote Wizard.
+Essential guidance for Claude Code when working with QWOHTER.
 
 ## Quick Commands
 

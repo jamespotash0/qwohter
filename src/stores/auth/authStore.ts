@@ -11,6 +11,7 @@ interface AuthState {
   profile: UserProfile | null;
   isLoading: boolean;
   isInitialized: boolean;
+  isAuthChanging: boolean; // Track if auth state is currently changing
   error: string | null;
 
   // Actions
@@ -35,43 +36,77 @@ export const useAuthStore = create<AuthState>()(
     profile: null,
     isLoading: false,
     isInitialized: false,
+    isAuthChanging: false,
     error: null,
 
     // Initialize authentication state and set up listeners
     initialize: async () => {
-      const { _setAuth, _setProfile, _setLoading, _setError } = get();
-      
+      const { isInitialized, _setAuth, _setProfile, _setLoading, _setError } = get();
+
+      // Skip if already initialized
+      if (isInitialized) {
+        return;
+      }
+
       try {
+        // Mark as initialized immediately to prevent loading spinner
+        set({ isInitialized: true });
         _setLoading(true);
-        
+
         // Get initial session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) throw sessionError;
-        
+
         _setAuth(session?.user ?? null, session);
-        
+
         // Fetch profile if user exists
         if (session?.user) {
           await fetchProfile(session.user.id);
         }
-        
+
         // Set up auth state change listener
         supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('Auth state changed:', event, session?.user?.email);
-          
-          _setAuth(session?.user ?? null, session);
-          
-          if (session?.user) {
-            await fetchProfile(session.user.id);
-          } else {
+          console.log('🔄 Auth state changed EVENT:', event, 'User:', session?.user?.email);
+
+          // Handle sign out - clear cached data
+          if (event === 'SIGNED_OUT') {
+            localStorage.removeItem('sidebar_cached_profile');
+            localStorage.removeItem('sidebar_cached_role');
+            localStorage.removeItem('auth_flow_state');
+            localStorage.removeItem('temp_onboarding_progress');
+            _setAuth(null, null);
             _setProfile(null);
+            return;
+          }
+
+          // Don't process INITIAL_SESSION if we already have the session loaded
+          // This prevents duplicate processing on page load
+          const currentUser = get().user;
+          if (event === 'INITIAL_SESSION' && currentUser?.id === session?.user?.id) {
+            console.log('⏭️ Skipping INITIAL_SESSION - already have this user');
+            return;
+          }
+
+          // Only update auth state if it's actually different
+          const currentUserId = get().user?.id;
+          const newUserId = session?.user?.id;
+
+          if (currentUserId !== newUserId) {
+            _setAuth(session?.user ?? null, session);
+
+            if (session?.user) {
+              await fetchProfile(session.user.id);
+            } else {
+              _setProfile(null);
+            }
+          } else {
+            console.log('⏭️ Skipping auth update - user unchanged');
           }
         });
-        
-        set({ isInitialized: true });
       } catch (error) {
         console.error('Auth initialization error:', error);
         _setError(error instanceof Error ? error.message : 'Failed to initialize auth');
+        set({ isInitialized: false }); // Reset on error
       } finally {
         _setLoading(false);
       }
@@ -105,7 +140,7 @@ export const useAuthStore = create<AuthState>()(
         _setLoading(true);
         _setError(null);
         
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
@@ -164,7 +199,7 @@ export const useAuthStore = create<AuthState>()(
         
         if (error) throw error;
         
-        _setProfile({ ...profile, ...data });
+        _setProfile({ ...profile, ...data as object });
       } catch (error) {
         console.error('Profile update error:', error);
         _setError(error instanceof Error ? error.message : 'Failed to update profile');
@@ -178,7 +213,10 @@ export const useAuthStore = create<AuthState>()(
     clearError: () => set({ error: null }),
 
     // Internal setters
-    _setAuth: (user, session) => set({ user, session }),
+    _setAuth: (user, session) => {
+      console.log('📝 _setAuth called with user:', user?.email || 'null');
+      set({ user, session });
+    },
     _setProfile: (profile) => set({ profile }),
     _setLoading: (isLoading) => set({ isLoading }),
     _setError: (error) => set({ error }),

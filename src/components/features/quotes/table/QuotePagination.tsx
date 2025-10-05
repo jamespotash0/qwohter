@@ -1,3 +1,9 @@
+// DEPRECATED: This file has been replaced by PaginationControls.tsx
+// The new component integrates with TanStack Table and provides better functionality
+// See: src/components/features/quotes/table/components/PaginationControls.tsx
+// Migration completed: September 28, 2025
+
+/*
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -68,3 +74,4 @@ export const QuotePagination: React.FC<QuotePaginationProps> = ({
     </div>
   );
 };
+*/

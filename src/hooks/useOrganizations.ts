@@ -1,127 +1,33 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { OrganizationInfo } from "@/lib/types/settings/companySettings";
+import { useOrganizationStore } from "@/stores/organization/organizationStore";
+import type { Organization, OrganizationMember, InviteToken } from "@/stores/organization/organizationStore";
 
-export interface Organization {
-  id: string;
-  name: string;
-  organization_code: string;
-  organization_info: OrganizationInfo; // JSONB data
-  created_at: string;
-  updated_at: string;
-}
-
-export interface OrganizationMember {
-  id: string;
-  organization_id: string;
-  role: 'admin' | 'member';
-  status: 'pending' | 'active' | 'suspended';
-  invited_by?: string;
-  joined_at: string;
-  email: string;
-  full_name?: string;
-}
-
+// Re-export types from store for backward compatibility
+export type { Organization, OrganizationMember, InviteToken };
 
 export const useOrganizations = () => {
-  const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
-  const [members, setMembers] = useState<OrganizationMember[]>([]);
-  const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'member' | null>(null);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchUserOrganization = async () => {
-    try {
-      setLoading(true);
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) return;
+  // Get state and actions from Zustand store
+  const currentOrganization = useOrganizationStore(state => state.currentOrganization);
+  const members = useOrganizationStore(state => state.members);
+  const inviteTokens = useOrganizationStore(state => state.inviteTokens);
+  const currentUserRole = useOrganizationStore(state => state.currentUserRole);
+  const loading = useOrganizationStore(state => state.loading);
+  const storeFetchOrganization = useOrganizationStore(state => state.fetchOrganization);
+  const storeFetchMembers = useOrganizationStore(state => state.fetchMembers);
+  const storeFetchInviteTokens = useOrganizationStore(state => state.fetchInviteTokens);
+  const storeSetMembers = useOrganizationStore(state => state.setMembers);
+  const storeSetInviteTokens = useOrganizationStore(state => state.setInviteTokens);
+  const storeSetOrganization = useOrganizationStore(state => state.setOrganization);
+  const subscribeToMembershipChanges = useOrganizationStore(state => state.subscribeToMembershipChanges);
 
-      // Get user's profile first
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('organization_id, role')
-        .eq('id', user.user.id)
-        .single() as any;
-
-      if (profileError) {
-        console.error('Profile error:', profileError);
-        throw profileError;
-      }
-
-      if (profileData?.organization_id) {
-        // If user has an organization, try to fetch it
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .select('id, name, organization_code, created_at, updated_at, organization_info')
-          .eq('id', profileData.organization_id)
-          .single() as any;
-
-        if (orgError) {
-          console.error('Organization error:', orgError);
-          // Don't throw here, just set role without organization
-          setCurrentUserRole(profileData.role as 'admin' | 'member');
-        } else {
-          // Ensure organization_info exists (handle both cases: column exists or doesn't)
-          const orgWithInfo = {
-            ...orgData,
-            organization_info: orgData.organization_info || {}
-          } as Organization;
-          setCurrentOrganization(orgWithInfo);
-          setCurrentUserRole(profileData.role as 'admin' | 'member');
-        }
-      }
-    } catch (error: any) {
-      console.error('Fetch organization error:', error);
-      toast({
-        title: "Error fetching organization",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchMembers = async (organizationId: string) => {
-    try {
-      // Fetch members from profiles table
-      const { data: membersData, error: membersError } = await supabase
-        .from('profiles')
-        .select('id, email, full_name, role, status, invited_by, joined_at, organization_id')
-        .eq('organization_id', organizationId) as any;
-
-      if (membersError) throw membersError;
-
-      if (!membersData || membersData.length === 0) {
-        setMembers([]);
-        return;
-      }
-
-      // Transform data to match OrganizationMember interface
-      const transformedData = (membersData || [])
-        .filter((profile: any) => profile && profile.id) // Filter out null/undefined profiles
-        .map((profile: any) => ({
-          id: profile.id,
-          organization_id: profile.organization_id || '',
-          role: (profile.role as 'admin' | 'member') || 'member',
-          status: (profile.status as 'pending' | 'active' | 'suspended') || 'active',
-          invited_by: profile.invited_by || undefined,
-          joined_at: profile.joined_at || new Date().toISOString(),
-          email: profile.email || '',
-          full_name: profile.full_name || undefined
-        }));
-
-      setMembers(transformedData);
-    } catch (error: any) {
-      toast({
-        title: "Error fetching members",
-        description: error.message,
-        variant: "destructive",
-      });
-      setMembers([]);
-    }
-  };
+  // These functions are now handled by the store
+  // Keep references for backward compatibility
+  const fetchUserOrganization = storeFetchOrganization;
+  const fetchMembers = storeFetchMembers;
 
   const createOrganization = async (name: string) => {
     try {
@@ -130,86 +36,61 @@ export const useOrganizations = () => {
 
       // Create organization
       const orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-      let createdOrganization: Organization;
-      
-      try {
-        // Try to create organization with organization_info column
-        const { data: orgData, error: orgError } = await (supabase as any)
-          .from('organizations')
-          .insert({
-            name,
-            organization_code: orgCode,
-            organization_info: {} // Initialize with empty JSONB object
-          })
-          .select('id, name, organization_code, created_at, updated_at, organization_info')
-          .single();
 
-        if (orgError) throw orgError;
-        if (!orgData) throw new Error('Failed to create organization');
+      // Create organization with individual fields (no organization_info JSONB)
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          name,
+          organization_code: orgCode,
+          // Initialize with empty individual fields
+          phone_number: '',
+          fax_number: '',
+          company_address: '',
+          website: '',
+          quote_start_number: '',
+          logo_data: {}
+        } as any)
+        .select(`
+          id,
+          name,
+          organization_code,
+          phone_number,
+          fax_number,
+          company_address,
+          website,
+          quote_start_number,
+          logo_data,
+          created_at,
+          updated_at
+        `)
+        .single();
 
-        // Update user's profile to link to this organization and set as admin
-        const { error: profileError } = await (supabase as any)
-          .from('profiles')
-          .update({ 
-            organization_id: orgData.id,
-            role: 'admin'
-          })
-          .eq('id', user.id);
+      if (orgError) throw orgError;
+      if (!orgData) throw new Error('Failed to create organization');
 
-        if (profileError) throw profileError;
+      // Create membership record instead of updating profile
+      const { error: membershipError } = await supabase
+        .from('memberships')
+        .insert({
+          user_id: user.id,
+          organization_id: orgData.id,
+          role: 'Owner', // Owner role for organization creator
+          status: 'Active',
+          plan: 'Free',
+          joined_at: new Date().toISOString()
+        } as any);
 
-        // Set organization with organization_info
-        createdOrganization = {
-          ...orgData,
-          organization_info: orgData.organization_info || {}
-        };
-        setCurrentOrganization(createdOrganization);
+      if (membershipError) throw membershipError;
 
-      } catch (createError: any) {
-        // If organization_info column doesn't exist, create without it
-        if (createError.message?.includes('organization_info')) {
-          console.warn('organization_info column does not exist yet. Creating organization without JSONB data.');
-          
-          const { data: orgData, error: orgError } = await (supabase as any)
-            .from('organizations')
-            .insert({
-              name,
-              organization_code: orgCode
-            })
-            .select('id, name, organization_code, created_at, updated_at')
-            .single();
+      const createdOrganization: Organization = orgData;
+      storeSetOrganization(createdOrganization);
 
-          if (orgError) throw orgError;
-
-          if (!orgData) throw new Error('Failed to create organization');
-
-          // Update user's profile to link to this organization and set as admin
-          const { error: profileError } = await (supabase as any)
-            .from('profiles')
-            .update({ 
-              organization_id: orgData.id,
-              role: 'admin'
-            })
-            .eq('id', user.id);
-
-          if (profileError) throw profileError;
-
-          // Set organization with empty organization_info
-          createdOrganization = {
-            ...orgData,
-            organization_info: {}
-          };
-          setCurrentOrganization(createdOrganization);
-        } else {
-          throw createError;
-        }
-      }
-      
       toast({
         title: "Organization created",
         description: `${name} has been created successfully.`,
       });
-      
+
       return createdOrganization;
     } catch (error: any) {
       toast({
@@ -223,52 +104,142 @@ export const useOrganizations = () => {
 
   const inviteMember = async (organizationId: string, email: string, role: 'admin' | 'member' = 'member') => {
     try {
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Check if user exists
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('email', email)
-        .single() as any;
-
-      if (profileError || !profile) {
-        throw new Error('User not found. They need to sign up first.');
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Please enter a valid email address.');
       }
 
-      // Check if user already has an organization
-      if (profile.organization_id) {
-        throw new Error('User is already a member of another organization.');
-      }
-
-      // Update user's profile to join organization
-      const { data, error } = await (supabase as any)
-        .from('profiles')
-        .update({
-          organization_id: organizationId,
-          role,
-          invited_by: user.id,
-          joined_at: new Date().toISOString()
-        })
-        .eq('id', profile.id)
-        .select()
+      // Get organization details for the invitation
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .select('name, organization_code')
+        .eq('id', organizationId)
         .single();
 
-      if (error) throw error;
+      if (orgError || !orgData) {
+        throw new Error('Organization not found.');
+      }
 
-      // Refresh members list
-      await fetchMembers(organizationId);
-      
-      toast({
-        title: "Member invited",
-        description: `${email} has been added to the organization.`,
-      });
-      
-      return data;
+
+      // Check if this email already has a pending invitation
+      const { data: existingInvites } = await supabase
+        .from('invite_tokens')
+        .select('*')
+        .eq('email', email)
+        .eq('organization_id', organizationId)
+        .eq('is_used', false)
+        .gt('expires_at', new Date().toISOString())
+        .limit(1);
+
+      if (existingInvites && existingInvites.length > 0) {
+        throw new Error('An invitation has already been sent to this email address.');
+      }
+
+      // Check if user exists and is already a member
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', email)
+        .single();
+
+      if (profile) {
+        const { data: existingMembership } = await supabase
+          .from('memberships')
+          .select('*')
+          .eq('user_id', profile.id)
+          .single();
+
+        if (existingMembership) {
+          if (existingMembership.status === 'Active') {
+            throw new Error('User is already a member of an organization.');
+          } else if (existingMembership.organization_id === organizationId && existingMembership.status === 'Pending') {
+            throw new Error('User already has a pending invitation to this organization.');
+          }
+        }
+      }
+
+      // Create an invite token
+      const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // Expires in 7 days
+
+      const { error: tokenError } = await supabase
+        .from('invite_tokens')
+        .insert({
+          token,
+          email,
+          organization_id: organizationId,
+          organization_code: orgData.organization_code,
+          role: role === 'admin' ? 'Admin' : 'Member',
+          created_by: user.id,
+          expires_at: expiresAt.toISOString(),
+          is_used: false
+        } as any);
+
+      if (tokenError) {
+        console.error('Token creation error:', tokenError);
+        throw new Error('Failed to create invitation token.');
+      }
+
+
+      // Create the invitation link
+      const inviteLink = `${window.location.origin}/auth?invite=${token}`;
+
+      // Send email using a simple email service or function
+      // For now, we'll create a Supabase Edge Function call or use a simple email service
+      try {
+        const { error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+          body: {
+            to: email,
+            organizationName: orgData.name,
+            inviteLink: inviteLink,
+            inviterName: user.email,
+            role: role === 'admin' ? 'Admin' : 'Member',
+            expiresAt: expiresAt.toISOString()
+          }
+        });
+
+        if (emailError) {
+          console.error('Email function error:', emailError);
+          // For now, don't fail the whole process - just show the link
+          console.warn('Email service not available, invitation created but not sent');
+
+          toast({
+            title: "Invitation created",
+            description: `Invitation token created. Please manually share this link: ${inviteLink}`,
+          });
+        } else {
+
+          toast({
+            title: "Invitation sent!",
+            description: `Invitation email sent to ${email}. They will receive a link to join ${orgData.name}.`,
+          });
+        }
+      } catch (emailError) {
+        console.warn('Email function not available, showing invite link:', emailError);
+
+        // Fallback: Show the invite link to the user to share manually
+        toast({
+          title: "Invitation link created",
+          description: `Please share this link with ${email}: ${inviteLink}`,
+        });
+      }
+
+      // Refresh invite tokens list
+      await fetchInviteTokens(organizationId);
+
+
+      return { email, role, inviteLink };
     } catch (error: any) {
+      console.error('❌ Invitation error:', error);
+
       toast({
-        title: "Error inviting member",
+        title: "Failed to send invitation",
         description: error.message,
         variant: "destructive",
       });
@@ -278,21 +249,20 @@ export const useOrganizations = () => {
 
   const removeMember = async (memberId: string) => {
     try {
-      // Remove organization association from profile
-      const { error } = await (supabase as any)
-        .from('profiles')
-        .update({
-          organization_id: null,
-          role: 'member',
-          invited_by: null,
-          joined_at: null
-        })
-        .eq('id', memberId);
+      if (!currentOrganization) throw new Error('No organization found');
+
+      // Remove membership record
+      const { error } = await supabase
+        .from('memberships')
+        .delete()
+        .eq('user_id', memberId)
+        .eq('organization_id', currentOrganization.id);
 
       if (error) throw error;
 
-      setMembers(prev => prev.filter(member => member.id !== memberId));
-      
+      // Refresh members list
+      await fetchMembers(currentOrganization.id);
+
       toast({
         title: "Member removed",
         description: "Member has been removed from the organization.",
@@ -316,8 +286,10 @@ export const useOrganizations = () => {
 
       if (error) throw error;
 
-      setMembers(prev => prev.map(member => 
-        member.id === memberId ? { ...member, role } : member
+      storeSetMembers(members.map(member =>
+        member.id === memberId
+          ? { ...member, role: role === 'admin' ? 'Admin' : 'Member' }
+          : member
       ));
       
       toast({
@@ -394,19 +366,114 @@ export const useOrganizations = () => {
     }
   };
 
-  useEffect(() => {
-    fetchUserOrganization();
-  }, []);
+  // fetchInviteTokens is now handled by the store
+  const fetchInviteTokens = storeFetchInviteTokens;
+
+  const resendInvite = async (tokenId: string, email: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const token = inviteTokens.find(t => t.id === tokenId);
+      if (!token) throw new Error('Token not found');
+
+      const inviteLink = `${window.location.origin}/auth?invite=${token.token}`;
+
+      // Try to send email
+      try {
+        const { error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+          body: {
+            to: email,
+            organizationName: currentOrganization?.name,
+            inviteLink: inviteLink,
+            inviterName: user?.email || 'Someone',
+            role: token.role,
+            expiresAt: token.expires_at
+          }
+        });
+
+        if (emailError) {
+          console.warn('Email service failed, showing link to copy');
+          toast({
+            title: "Email service unavailable",
+            description: `Please share this link manually: ${inviteLink}`,
+          });
+        } else {
+          toast({
+            title: "Invitation resent!",
+            description: `Invitation email sent to ${email}.`,
+          });
+        }
+      } catch (emailError) {
+        toast({
+          title: "Invitation link ready",
+          description: `Please share this link with ${email}: ${inviteLink}`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error resending invitation",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const revokeInvite = async (tokenId: string, email: string) => {
+    try {
+      const { error } = await supabase
+        .from('invite_tokens')
+        .delete()
+        .eq('id', tokenId);
+
+      if (error) throw error;
+
+      // Remove from local state
+      storeSetInviteTokens(inviteTokens.filter(token => token.id !== tokenId));
+
+      toast({
+        title: "Invitation revoked",
+        description: `Invitation for ${email} has been revoked.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error revoking invitation",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
-    if (currentOrganization) {
-      fetchMembers(currentOrganization.id);
+    // Only fetch if organization is not already cached
+    if (!currentOrganization) {
+      storeFetchOrganization();
     }
-  }, [currentOrganization]);
+  }, []); // Empty deps - only run once on mount
+
+  useEffect(() => {
+    // Only fetch members/tokens if we have an organization and they're not already loaded
+    if (currentOrganization && members.length === 0 && inviteTokens.length === 0) {
+      storeFetchMembers(currentOrganization.id);
+      storeFetchInviteTokens(currentOrganization.id);
+    }
+  }, []); // Empty deps - only run once on mount
+
+  useEffect(() => {
+    // Subscribe to real-time membership role changes
+    let cleanup: (() => void) | undefined;
+
+    subscribeToMembershipChanges().then((cleanupFn) => {
+      cleanup = cleanupFn;
+    });
+
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, []); // Run once on mount
 
   return {
     currentOrganization,
     members,
+    inviteTokens,
     currentUserRole,
     loading,
     createOrganization,
@@ -415,6 +482,8 @@ export const useOrganizations = () => {
     updateMemberRole,
     approveMember,
     rejectMember,
+    resendInvite,
+    revokeInvite,
     refreshOrganizations: fetchUserOrganization
   };
 };

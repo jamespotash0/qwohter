@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeInput, validateSecurity, authRateLimiter } from '@/utils/security';
 import { useUser, useProfile } from '@/stores/auth/authStore';
+import { useOrganizations } from '@/hooks/useOrganizations';
 import { toast } from 'sonner';
 
 /**
@@ -10,6 +11,7 @@ import { toast } from 'sonner';
 export const useSecureActions = () => {
   const user = useUser();
   const profile = useProfile();
+  const { currentUserRole } = useOrganizations();
 
   /**
    * Secure quote creation with validation
@@ -50,7 +52,7 @@ export const useSecureActions = () => {
         .insert({
           ...sanitizedData,
           organization_id: profile.organization_id,
-          user_id: user?.id,
+          created_by: user?.id,
         })
         .select()
         .single();
@@ -135,7 +137,7 @@ export const useSecureActions = () => {
     actionData?: any
   ) => {
     // Validate admin privileges
-    if (!validateSecurity.adminRole(profile?.role ?? null)) {
+    if (!validateSecurity.adminRole(currentUserRole ?? null)) {
       throw new Error('Access denied: Admin privileges required');
     }
 
@@ -156,16 +158,12 @@ export const useSecureActions = () => {
       }
       const { data: hasAccess, error: accessError } = await supabase
         .rpc('user_has_admin_role_in_org', {
-          org_id: profile.organization_id as string
+          org_id: profile.organization_id
         });
 
       if (accessError || !hasAccess) {
         throw new Error('Access denied: Insufficient privileges');
       }
-
-      // Log admin action (for now just console log, implement audit table later)
-      console.log(`Admin action: ${action} performed by ${user?.id} on ${sanitizedTargetId}`, actionData);
-
       return true;
     } catch (error) {
       console.error('Admin action failed:', error);
@@ -182,7 +180,7 @@ export const useSecureActions = () => {
     }
 
     // Validate admin role
-    if (!validateSecurity.adminRole(profile?.role ?? null)) {
+    if (!validateSecurity.adminRole(currentUserRole ?? null)) {
       throw new Error('Access denied: Admin privileges required');
     }
 

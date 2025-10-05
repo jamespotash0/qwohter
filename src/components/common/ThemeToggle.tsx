@@ -20,13 +20,13 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
         variant="ghost"
         size="sm"
         onClick={toggleTheme}
-        className={`w-10 h-10 p-0 hover:bg-[var(--accent-hover)] ${className}`}
+        className={`w-10 h-10 p-0 hover:bg-sidebar-hover ${className}`}
         title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
       >
         {theme === 'light' ? (
-          <Moon className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+          <Moon className="h-4 w-4 text-muted" />
         ) : (
-          <Sun className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
+          <Sun className="h-4 w-4 text-yellow-500" />
         )}
       </Button>
     );
@@ -37,12 +37,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
       variant="outline"
       size="sm"
       onClick={toggleTheme}
-      className={`flex items-center gap-2 hover:bg-[var(--accent-hover)] ${className}`}
-      style={{
-        borderColor: 'var(--border-primary)',
-        backgroundColor: 'var(--bg-secondary)',
-        color: 'var(--text-secondary)'
-      }}
+      className={`flex items-center gap-2 hover:bg-sidebar-hover border-content-card-border bg-content-card-bg text-body-text-primary ${className}`}
     >
       {theme === 'light' ? (
         <>

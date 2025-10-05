@@ -60,7 +60,6 @@ export abstract class BaseQuoteTemplate {
   // CSS-based pagination generation (simple and reliable)
   public generateWithCSSPagination(data: QuoteData): string {
     const proposalIntro = this.generateProposalIntro(data);
-    console.log('📋 BaseTemplate CSS: proposal intro HTML length:', proposalIntro.length);
     
     let html = `<div class="quote-container" data-page-content="true">
       ${this.generateHeader(data)}
@@ -91,9 +90,8 @@ export abstract class BaseQuoteTemplate {
 
     // Check if proposal-intro is in the final HTML
     const hasProposalIntro = html.includes('class="proposal-intro-section"');
-    console.log('🔍 Final HTML contains proposal-intro-section class:', hasProposalIntro);
     if (!hasProposalIntro) {
-      console.log('❌ proposal-intro-section missing from final HTML');
+      // console.log('❌ proposal-intro-section missing from final HTML');
     }
 
     // Return simple HTML - CSS page breaks will handle pagination automatically

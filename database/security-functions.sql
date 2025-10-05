@@ -1,4 +1,4 @@
--- Security Functions for Wall Quote Wizard
+-- Security Functions for Qwohter
 -- These functions provide secure server-side access control
 
 -- Function to get organization code for authenticated user

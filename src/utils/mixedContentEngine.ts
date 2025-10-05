@@ -73,21 +73,17 @@ export class MixedContentEngine {
   static reverseEngineerTemplate(staticHtml: string, originalTemplate: string, formData?: any): string {
     const originalVariables = this.extractVariables(originalTemplate);
     
-    console.log(`🔄 True mixed content: reverse engineering template with ${originalVariables.length} variables`);
     
     // If the static HTML already contains variables, return it as-is
     if (this.extractVariables(staticHtml).length > 0) {
-      console.log('✅ Static HTML already contains variables, using as template');
       return staticHtml;
     }
     
     // If no original variables, just return the static HTML
     if (originalVariables.length === 0) {
-      console.log('📝 No variables in original template, using static HTML');
       return staticHtml;
     }
     
-    console.log('🎯 Implementing true mixed content: restoring ALL variables...');
     
     // Get current values for all variables from form data
     const currentValues = new Map<string, string>();
@@ -133,7 +129,6 @@ export class MixedContentEngine {
       });
       
       if (replacements > 0) {
-        console.log(`✅ Restored variable \${${variable}} (${replacements} replacements)`);
       } else {
         console.warn(`⚠️ Could not find current value "${currentValue}" for variable \${${variable}} in edited content`);
       }
@@ -143,13 +138,10 @@ export class MixedContentEngine {
     const restoredVariables = this.extractVariables(restoredTemplate);
     const restorationRate = restoredVariables.length / originalVariables.length;
     
-    console.log(`🎯 True mixed content result: restored ${restoredVariables.length}/${originalVariables.length} variables (${(restorationRate * 100).toFixed(1)}% success rate)`);
     
     if (restorationRate >= 0.8) {
-      console.log('🎉 Excellent! Most variables preserved - true mixed content editing successful');
       return restoredTemplate;
     } else if (restorationRate >= 0.5) {
-      console.log('✅ Good variable restoration rate - using restored template');
       return restoredTemplate;
     } else {
       console.warn(`⚠️ Low variable restoration rate. This may be because:`);

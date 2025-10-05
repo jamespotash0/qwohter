@@ -53,14 +53,14 @@ export default {
 					foreground: 'hsl(var(--card-foreground))'
 				},
 				sidebar: {
-					DEFAULT: 'hsl(var(--sidebar-background))',
-					foreground: 'hsl(var(--sidebar-foreground))',
-					primary: 'hsl(var(--sidebar-primary))',
-					'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-					accent: 'hsl(var(--sidebar-accent))',
-					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-					border: 'hsl(var(--sidebar-border))',
-					ring: 'hsl(var(--sidebar-ring))'
+					DEFAULT: 'var(--sidebar-bg)',
+					foreground: 'var(--sidebar-nav-text)',
+					primary: 'var(--sidebar-nav-bg-active)',
+					'primary-foreground': 'var(--sidebar-nav-text)',
+					accent: 'var(--sidebar-nav-bg-active)',
+					'accent-foreground': 'var(--sidebar-nav-text)',
+					border: 'var(--sidebar-border)',
+					ring: 'var(--sidebar-border)'
 				},
 				'quote-bg': 'hsl(var(--quote-bg))'
 			},
@@ -83,7 +83,8 @@ export default {
 				md: 'calc(var(--radius) - 2px)',
 				sm: 'calc(var(--radius) - 4px)',
 				xl: 'calc(var(--radius) + 0.25rem)',
-				'2xl': 'calc(var(--radius) + 0.5rem)'
+				'2xl': 'var(--radius-card)',
+				card: 'var(--radius-card)'
 			},
 			spacing: {
 				'18': '4.5rem',

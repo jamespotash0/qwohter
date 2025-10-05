@@ -15,7 +15,7 @@ import MapboxInput from "@/components/common/inputs/MapboxInput";
 import { LogoUpload } from "@/components/common/uploads/LogoUpload";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CompanyInfoFormData } from "@/lib/types/settings/companySettings";
-import { LogoUploadResult, LogoUploadService } from "@/services/LogoUploadService";
+import { LogoUploadResult } from "@/services/LogoUploadService";
 import { supabase } from "@/integrations/supabase/client";
 
 interface CompanyInfoDialogProps {
@@ -35,14 +35,13 @@ export function CompanyInfoDialog({
   organizationName,
   initialData,
   userId,
-  organizationId,
 }: CompanyInfoDialogProps) {
   const [formData, setFormData] = useState<CompanyInfoFormData>({
-    phone: "",
-    fax: "",
-    address: "",
+    phone_number: "",
+    fax_number: "",
+    company_address: "",
     website: "",
-    quote_starting_point: "",
+    quote_start_number: "",
   });
 
   const [includeFax, setIncludeFax] = useState(false);
@@ -95,7 +94,6 @@ export function CompanyInfoDialog({
   // Handle logo upload
   const handleLogoUpload = async (result: LogoUploadResult) => {
     if (result.success) {
-      console.log('🎯 Logo upload successful, updating form state:', result);
       
       // Update local form state with new logo data
       const updatedFormData = {
@@ -105,7 +103,6 @@ export function CompanyInfoDialog({
         logo_public_url: result.publicUrl || '',
       };
       
-      console.log('🔄 Setting new form data:', updatedFormData);
       setFormData(updatedFormData);
     }
   };
@@ -123,26 +120,22 @@ export function CompanyInfoDialog({
     
     if (initialData) {
       setFormData({
-        phone: initialData.phone || "",
-        fax: initialData.fax || "",
-        address: initialData.address || "",
+        phone_number: initialData.phone_number || "",
+        fax_number: initialData.fax_number || "",
+        company_address: initialData.company_address || "",
         website: initialData.website || "",
-        quote_starting_point: initialData.quote_starting_point || "",
-        logo_url: initialData.logo_url || "",
-        logo_file_name: initialData.logo_file_name || "",
-        logo_public_url: initialData.logo_public_url || "",
+        quote_start_number: initialData.quote_start_number || "",
+        logo_data: initialData.logo_data || undefined,
       });
-      setIncludeFax(Boolean(initialData.fax));
+      setIncludeFax(Boolean(initialData.fax_number));
     } else {
       setFormData({
-        phone: "",
-        fax: "",
-        address: "",
+        phone_number: "",
+        fax_number: "",
+        company_address: "",
         website: "",
-        quote_starting_point: "",
-        logo_url: "",
-        logo_file_name: "",
-        logo_public_url: "",
+        quote_start_number: "",
+        logo_data: undefined,
       });
       setIncludeFax(false);
     }
@@ -152,24 +145,24 @@ export function CompanyInfoDialog({
   const validateForm = (): boolean => {
     const newErrors: Partial<CompanyInfoFormData> = {};
 
-    if (!formData.phone.trim()) {
-      newErrors.phone = "Phone number is required";
+    if (!formData.phone_number.trim()) {
+      newErrors.phone_number = "Phone number is required";
     }
 
-    if (includeFax && !formData.fax.trim()) {
-      newErrors.fax = "Fax number is required";
+    if (includeFax && !formData.fax_number.trim()) {
+      newErrors.fax_number = "Fax number is required";
     }
 
-    if (!formData.address.trim()) {
-      newErrors.address = "Address is required";
+    if (!formData.company_address.trim()) {
+      newErrors.company_address = "Address is required";
     }
 
     if (!formData.website.trim()) {
       newErrors.website = "Website is required";
     }
 
-    if (!hasExistingQuotes && !formData.quote_starting_point.trim()) {
-      newErrors.quote_starting_point = "Quote starting point is required";
+    if (!hasExistingQuotes && !formData.quote_start_number.trim()) {
+      newErrors.quote_start_number = "Quote starting point is required";
     }
 
     setErrors(newErrors);
@@ -181,45 +174,12 @@ export function CompanyInfoDialog({
     
     if (validateForm()) {
       // Clear fax if not included
-      const dataToSave = { 
-        ...formData, 
-        fax: includeFax ? formData.fax : '' 
+      const dataToSave = {
+        ...formData,
+        fax_number: includeFax ? formData.fax_number : ''
       };
 
-      // If logo data exists, also save it to the database
-      if (formData.logo_url && formData.logo_file_name && formData.logo_public_url) {
-        try {
-          // Get organization ID
-          let orgId = organizationId;
-          if (!orgId) {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('organization_id')
-                .eq('id', user.id)
-                .single();
-              
-              orgId = (profile as any)?.organization_id;
-            }
-          }
-
-          if (orgId) {
-            // Save logo to database
-            await LogoUploadService.updateOrganizationLogo(
-              orgId,
-              {
-                logo_url: formData.logo_url,
-                logo_file_name: formData.logo_file_name,
-                logo_public_url: formData.logo_public_url,
-              }
-            );
-            console.log('✅ Logo saved to database during form submission');
-          }
-        } catch (error) {
-          console.error('❌ Error saving logo during form submission:', error);
-        }
-      }
+      // Logo data is now included in formData.logo_data and will be saved by the service layer
 
       onSave(dataToSave);
     }
@@ -229,12 +189,12 @@ export function CompanyInfoDialog({
     let formattedValue = value;
     
     // Apply phone number formatting for phone and fax fields
-    if (field === 'phone' || field === 'fax') {
+    if (field === 'phone_number' || field === 'fax_number') {
       formattedValue = formatPhoneNumber(value);
     }
-    
+
     // Apply quote starting point formatting
-    if (field === 'quote_starting_point') {
+    if (field === 'quote_start_number') {
       formattedValue = formatQuoteStartingPoint(value);
     }
     
@@ -267,7 +227,7 @@ export function CompanyInfoDialog({
               <LogoUpload
                 onUploadSuccess={handleLogoUpload}
                 onUploadError={handleLogoError}
-                currentLogoUrl={formData.logo_public_url}
+                currentLogoUrl={formData.logo_data?.logo_public_url}
                 userId={userId}
                 className="w-full"
               />
@@ -294,14 +254,14 @@ export function CompanyInfoDialog({
               <Input
                 id="phone"
                 type="tel"
-                value={formData.phone}
-                onChange={(e) => handleChange("phone", e.target.value)}
+                value={formData.phone_number}
+                onChange={(e) => handleChange("phone_number", e.target.value)}
                 placeholder="Enter your business phone number"
                 maxLength={14}
-                className={`h-12 placeholder:text-muted-foreground/60 ${errors.phone ? "border-destructive" : ""}`}
+                className={`h-12 placeholder:text-muted-foreground/60 ${errors.phone_number ? "border-destructive" : ""}`}
               />
-              {errors.phone && (
-                <p className="text-sm text-destructive">{errors.phone}</p>
+              {errors.phone_number && (
+                <p className="text-sm text-destructive">{errors.phone_number}</p>
               )}
             </div>
 
@@ -323,15 +283,15 @@ export function CompanyInfoDialog({
               <Input
                 id="fax"
                 type="tel"
-                value={formData.fax}
-                onChange={(e) => handleChange("fax", e.target.value)}
+                value={formData.fax_number}
+                onChange={(e) => handleChange("fax_number", e.target.value)}
                 placeholder="Enter your business fax number"
                 maxLength={14}
                 disabled={!includeFax}
-                className={`h-12 placeholder:text-muted-foreground/60 ${errors.fax ? "border-destructive" : ""} ${!includeFax ? "bg-muted cursor-not-allowed" : ""}`}
+                className={`h-12 placeholder:text-muted-foreground/60 ${errors.fax_number ? "border-destructive" : ""} ${!includeFax ? "bg-muted cursor-not-allowed" : ""}`}
               />
-              {errors.fax && (
-                <p className="text-sm text-destructive">{errors.fax}</p>
+              {errors.fax_number && (
+                <p className="text-sm text-destructive">{errors.fax_number}</p>
               )}
               <div className="flex items-center space-x-2 mt-2">
                 <Checkbox
@@ -340,7 +300,7 @@ export function CompanyInfoDialog({
                   onCheckedChange={(checked) => {
                     setIncludeFax(checked as boolean);
                     if (!checked) {
-                      handleChange("fax", ""); // Clear fax when unchecked
+                      handleChange("fax_number", ""); // Clear fax when unchecked
                     }
                   }}
                 />
@@ -378,14 +338,14 @@ export function CompanyInfoDialog({
             <Input
               id="quoteStartingPoint"
               type="text"
-              value={formData.quote_starting_point}
-              onChange={(e) => handleChange("quote_starting_point", e.target.value)}
+              value={formData.quote_start_number}
+              onChange={(e) => handleChange("quote_start_number", e.target.value)}
               placeholder="P10001, 15000, Q-10001"
               disabled={hasExistingQuotes}
-              className={`h-12 placeholder:text-muted-foreground/60 ${errors.quote_starting_point ? "border-destructive" : ""} ${hasExistingQuotes ? "bg-muted cursor-not-allowed" : ""}`}
+              className={`h-12 placeholder:text-muted-foreground/60 ${errors.quote_start_number ? "border-destructive" : ""} ${hasExistingQuotes ? "bg-muted cursor-not-allowed" : ""}`}
             />
-            {errors.quote_starting_point && (
-              <p className="text-sm text-destructive">{errors.quote_starting_point}</p>
+            {errors.quote_start_number && (
+              <p className="text-sm text-destructive">{errors.quote_start_number}</p>
             )}
           </div>
 
@@ -408,15 +368,15 @@ export function CompanyInfoDialog({
               </div>
               <MapboxInput
                 id="address"
-                value={formData.address}
-                onChange={(address) => handleChange("address", address)}
+                value={formData.company_address}
+                onChange={(address) => handleChange("company_address", address)}
                 placeholder="Start typing your business address..."
                 required={true}
                 label=""
                 className="placeholder:text-muted-foreground/60"
               />
-              {errors.address && (
-                <p className="text-sm text-destructive">{errors.address}</p>
+              {errors.company_address && (
+                <p className="text-sm text-destructive">{errors.company_address}</p>
               )}
             </div>
 

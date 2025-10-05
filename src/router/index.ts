@@ -1,5 +1,5 @@
 /**
- * Router module exports for Wall Quote Wizard
+ * Router module exports for Qwohter
  * 
  * Provides enhanced routing structure with:
  * - Type-safe navigation hooks

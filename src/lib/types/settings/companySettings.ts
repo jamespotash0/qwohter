@@ -34,37 +34,47 @@ export interface LogoInfo {
   logo_updated_at?: string;
 }
 
-export interface OrganizationInfo {
-  phone?: string;
-  fax?: string;
-  address?: string;
-  website?: string;
-  quote_starting_point?: string;
+export interface LogoData {
   logo_url?: string;
   logo_file_name?: string;
   logo_public_url?: string;
   logo_updated_at?: string;
 }
 
-// Organization with company information (matches database schema)
+// Organization info structure for templates (flattened from individual fields)
+export interface OrganizationInfo {
+  name?: string;
+  industry?: string;
+  phone?: string;
+  fax?: string;
+  address?: string;
+  website?: string;
+  logo_url?: string;
+  logo_public_url?: string;
+}
+
+// Organization with company information (matches actual database schema)
 export interface OrganizationWithCompanyInfo {
   id: string;
   name: string;
   organization_code: string;
-  organization_info: OrganizationInfo;
+  phone_number?: string;
+  fax_number?: string;
+  company_address?: string;
+  website?: string;
+  quote_start_number?: string;
+  logo_data?: LogoData;
   created_at: string;
   updated_at: string;
 }
 
 export interface CompanyInfoFormData {
-  phone: string;
-  fax: string;
-  address: string;
+  phone_number: string;
+  fax_number: string;
+  company_address: string;
   website: string;
-  quote_starting_point: string;
-  logo_url?: string;
-  logo_file_name?: string;
-  logo_public_url?: string;
+  quote_start_number: string;
+  logo_data?: LogoData;
 }
 
 export interface OrganizationSettingsStore {
@@ -80,31 +90,14 @@ export interface OrganizationSettingsStore {
 
 // CompanySettingsPageProps removed - Settings page now handles auth internally
 
-// Helper function to convert simple form data to JSONB structure
-export const convertFormDataToOrganizationInfo = (formData: CompanyInfoFormData): OrganizationInfo => {
+// Helper function to extract values for forms
+export const extractCompanyInfoForForm = (org?: OrganizationWithCompanyInfo): CompanyInfoFormData => {
   return {
-    phone: formData.phone || undefined,
-    fax: formData.fax || undefined,
-    address: formData.address || undefined,
-    website: formData.website || undefined,
-    quote_starting_point: formData.quote_starting_point || undefined,
-    logo_url: formData.logo_url || undefined,
-    logo_file_name: formData.logo_file_name || undefined,
-    logo_public_url: formData.logo_public_url || undefined,
-    logo_updated_at: formData.logo_url ? new Date().toISOString() : undefined,
-  };
-};
-
-// Helper function to extract primary values for forms
-export const extractPrimaryContactInfo = (orgInfo?: OrganizationInfo): CompanyInfoFormData => {
-  return {
-    phone: orgInfo?.phone || '',
-    fax: orgInfo?.fax || '',
-    address: orgInfo?.address || '',
-    website: orgInfo?.website || '',
-    quote_starting_point: orgInfo?.quote_starting_point || '',
-    logo_url: orgInfo?.logo_url || undefined,
-    logo_file_name: orgInfo?.logo_file_name || undefined,
-    logo_public_url: orgInfo?.logo_public_url || undefined,
+    phone_number: org?.phone_number || '',
+    fax_number: org?.fax_number || '',
+    company_address: org?.company_address || '',
+    website: org?.website || '',
+    quote_start_number: org?.quote_start_number || '',
+    logo_data: org?.logo_data || undefined,
   };
 };

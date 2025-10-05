@@ -82,14 +82,15 @@ export class ErrorBoundary extends Component<Props, State> {
               </details>
             )}
             <div className="flex gap-2">
-              <Button onClick={this.handleReset} size="sm" className="flex items-center gap-2">
+              <Button onClick={this.handleReset} size="sm" className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700">
                 <RefreshCw className="h-4 w-4" />
                 Try Again
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => window.location.reload()}
+                className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 Refresh Page
               </Button>

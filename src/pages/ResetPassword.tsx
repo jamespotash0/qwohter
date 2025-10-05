@@ -16,23 +16,114 @@ const ResetPassword = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
+
     // Check for access token in URL (from email link)
     const accessToken = searchParams.get('access_token');
     const refreshToken = searchParams.get('refresh_token');
+    const type = searchParams.get('type');
 
-    if (accessToken && refreshToken) {
-      // Set the session with the tokens from the URL
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
+    // Also check for hash-based tokens (common with Supabase)
+    const hash = window.location.hash;
+
+    const hashParams = new URLSearchParams(hash.substring(1));
+    const hashAccessToken = hashParams.get('access_token');
+    const hashRefreshToken = hashParams.get('refresh_token');
+    const hashType = hashParams.get('type');
+
+    // console.log('Reset password params:', {
+    //   searchParams: {
+    //     accessToken: !!accessToken,
+    //     refreshToken: !!refreshToken,
+    //     type,
+    //   },
+    //   hashParams: {
+    //     accessToken: !!hashAccessToken,
+    //     refreshToken: !!hashRefreshToken,
+    //     type: hashType,
+    //   },
+    //   allSearchParams: Object.fromEntries(searchParams.entries()),
+    //   allHashParams: Object.fromEntries(hashParams.entries())
+    // });
+
+    // Handle the session setting
+    const handleSessionSetup = async () => {
+      // Use hash params first (more common with Supabase), fall back to search params
+      const finalAccessToken = hashAccessToken || accessToken;
+      const finalRefreshToken = hashRefreshToken || refreshToken;
+
+      // console.log('Final tokens to use:', {
+      //   accessToken: !!finalAccessToken,
+      //   refreshToken: !!finalRefreshToken,
+      //   source: hashAccessToken ? 'hash' : 'search'
+      // });
+
+      if (finalAccessToken && finalRefreshToken) {
+        try {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: finalAccessToken,
+            refresh_token: finalRefreshToken
+          });
+
+          if (error) {
+            console.error('Error setting session:', error);
+            setSessionError('There was an issue with your reset link. Please request a new password reset.');
+            toast({
+              title: "Session Error",
+              description: "There was an issue with your reset link. Please request a new password reset.",
+              variant: "destructive",
+            });
+          } else {
+
+            // Double-check that we can actually get the session
+            const { data: sessionData, error: sessionCheckError } = await supabase.auth.getSession();
+            if (sessionCheckError) {
+              console.error('Session check error:', sessionCheckError);
+              setSessionError('Session validation failed. Please try the reset link again.');
+            } else if (!sessionData.session) {
+              console.error('No session found after setting');
+              setSessionError('Session not established. Please try the reset link again.');
+            } else {
+              setSessionReady(true);
+            }
+          }
+        } catch (err) {
+          console.error('Exception setting session:', err);
+          setSessionError('Unable to authenticate your reset link. Please request a new password reset.');
+          toast({
+            title: "Session Error",
+            description: "Unable to authenticate your reset link. Please request a new password reset.",
+            variant: "destructive",
+          });
+        }
+      } else if (searchParams.size > 0 || hashParams.size > 0) {
+        console.error('Missing required parameters for password reset.');
+        console.error('Search params:', Object.fromEntries(searchParams.entries()));
+        console.error('Hash params:', Object.fromEntries(hashParams.entries()));
+        setSessionError('The reset link is invalid or has expired.');
+        toast({
+          title: "Invalid Reset Link",
+          description: "The reset link is invalid or has expired. Please request a new password reset.",
+          variant: "destructive",
+        });
+      } else {
+        // No params at all
+        setSessionError('Please use the reset link from your email.');
+      }
+    };
+
+    if (searchParams.size > 0 || hashParams.size > 0) {
+      handleSessionSetup();
+    } else {
+      setSessionError('Please use the reset link from your email.');
     }
-  }, [searchParams]);
+  }, [searchParams, toast]);
 
   const validatePassword = (password: string) => {
     const minLength = password.length >= 8;
@@ -75,20 +166,44 @@ const ResetPassword = () => {
       return;
     }
 
+    if (!sessionReady) {
+      toast({
+        title: "Session Not Ready",
+        description: "Please wait for the session to be established or use the reset link from your email.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
+
       const { error } = await supabase.auth.updateUser({
         password: password
       });
 
       if (error) {
+        console.error('Password update error:', error);
+
+        if (error.message.includes('Auth session missing')) {
+          throw new Error('Your session has expired. Please request a new password reset link.');
+        }
+
         throw error;
+      }
+
+
+      // Sign out the user for security - they should sign in with new password
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) {
+        console.error('Error signing out after password reset:', signOutError);
+      } else {
       }
 
       setSuccess(true);
       toast({
         title: "Password updated!",
-        description: "Your password has been successfully changed.",
+        description: "Your password has been changed. Please sign in with your new password.",
       });
 
       // Redirect to sign-in page after 3 seconds
@@ -97,6 +212,7 @@ const ResetPassword = () => {
       }, 3000);
 
     } catch (error: any) {
+      console.error('Password reset error:', error);
       toast({
         title: "Error updating password",
         description: error.message || "Failed to update password. Please try again.",
@@ -121,7 +237,7 @@ const ResetPassword = () => {
               onClick={() => navigate('/')}
             >
               <img
-                src="/logos/Landing-page-logo.svg"
+                src="/logos/Landing_Page_Logo_Light.svg"
                 alt="Qwohter Logo"
                 className="h-8 w-auto"
               />
@@ -183,7 +299,7 @@ const ResetPassword = () => {
                   </CardTitle>
                   <CardDescription className="text-gray-600 text-sm leading-relaxed max-w-lg mx-auto">
                     {success
-                      ? "Your password has been successfully changed. You'll be redirected to sign in shortly."
+                      ? "Your password has been successfully changed. Please sign in with your new password."
                       : "Choose a strong password for your account."
                     }
                   </CardDescription>
@@ -191,6 +307,18 @@ const ResetPassword = () => {
               </CardHeader>
 
               <CardContent className="px-8 pb-8 space-y-4">
+                {sessionError && !sessionReady && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs">!</span>
+                      </div>
+                      <p className="text-sm font-medium text-red-800">Session Error</p>
+                    </div>
+                    <p className="text-sm text-red-700 mt-1">{sessionError}</p>
+                  </div>
+                )}
+
                 {!success ? (
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-2">
@@ -288,9 +416,9 @@ const ResetPassword = () => {
                     <Button
                       type="submit"
                       className="w-full bg-slate-600 hover:bg-slate-700 text-white font-semibold h-12 transition-colors"
-                      disabled={loading || !passwordValidation.isValid || password !== confirmPassword}
+                      disabled={loading || !passwordValidation.isValid || password !== confirmPassword || !sessionReady}
                     >
-                      {loading ? "Updating..." : "Update password"}
+                      {loading ? "Updating..." : !sessionReady ? "Preparing session..." : "Update password"}
                     </Button>
                   </form>
                 ) : (
@@ -301,7 +429,7 @@ const ResetPassword = () => {
                         <p className="text-sm font-medium text-green-800">Password updated successfully</p>
                       </div>
                       <p className="text-sm text-green-700 mt-1">
-                        You can now sign in with your new password.
+                        You have been signed out for security. Please sign in with your new password.
                       </p>
                     </div>
 

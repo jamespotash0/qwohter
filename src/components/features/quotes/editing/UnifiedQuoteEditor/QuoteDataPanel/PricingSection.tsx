@@ -37,7 +37,6 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
 
   // Handle enhanced pricing data updates - now much simpler!
   const handlePricingUpdate = (updatedData: EnhancedPricingData) => {
-    console.log('🔄 PricingSection: Updating pricing data:', updatedData);
     
     // Direct update since we're using EnhancedPricingData throughout
     if (onChange) {
@@ -108,7 +107,7 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
               <EnhancedPricingForm
                 data={enhancedData}
                 onUpdate={handlePricingUpdate}
-                quoteData={data}
+                // quoteData={data}
               />
             </DialogContent>
           </Dialog>
@@ -180,7 +179,7 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
             </div>
             
             <div className="flex justify-between items-center">
-              <span className="text-sm text-blue-600">Base Gross Profit ({enhancedData.base_selling_gross_profit_percentage.toFixed(1)}%)</span>
+              <span className="text-sm text-blue-600">Base Gross Profit ({(enhancedData.base_selling_gross_profit_percentage || 0).toFixed(1)}%)</span>
               <span className="text-sm font-medium text-blue-600">{formatCurrency(materialsMarkupAmount)}</span>
             </div>
             
@@ -190,13 +189,13 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
             </div>
             
             <div className="flex justify-between items-center">
-              <span className="text-sm text-blue-600">Shipping Gross Profit ({enhancedData.shipping_selling_gross_profit_percentage.toFixed(1)}%)</span>
+              <span className="text-sm text-blue-600">Shipping Gross Profit ({(enhancedData.shipping_selling_gross_profit_percentage || 0).toFixed(1)}%)</span>
               <span className="text-sm font-medium text-blue-600">{formatCurrency(shippingMarkupAmount)}</span>
             </div>
-            
+
             <div className="flex justify-between items-center border-t pt-2">
-              <span className="text-sm font-semibold text-green-700">Total Gross Profit ({enhancedData.final_selling_gross_profit_percentage.toFixed(1)}%)</span>
-              <span className="text-sm font-bold text-green-600">{formatCurrency(enhancedData.final_selling_price_profit_amount)}</span>
+              <span className="text-sm font-semibold text-green-700">Total Gross Profit ({(enhancedData.final_selling_gross_profit_percentage || 0).toFixed(1)}%)</span>
+              <span className="text-sm font-bold text-green-600">{formatCurrency(enhancedData.final_selling_price_profit_amount || 0)}</span>
             </div>
           </div>
         </div>

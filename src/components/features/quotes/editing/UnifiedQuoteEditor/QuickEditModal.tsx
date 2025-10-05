@@ -65,12 +65,9 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
         });
         cleanHTML = container.innerHTML.trim();
       } else {
-        // Fallback: remove only outermost div wrapper if exists
         cleanHTML = tempDiv.innerHTML.trim();
       }
       
-      // console.log('QuickEditModal: cleanHTML generated (no header):', cleanHTML);
-      // console.log('QuickEditModal: header text:', headerFromSection);
       setRichEditingContent(cleanHTML);
       
       // Set the content directly to the contentEditable element
@@ -255,14 +252,7 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
     }
     
     contentToSave += cleanBodyContent;
-    contentToSave += '</div>';
-    
-    console.log('Saving section with reconstructed content:', { 
-      sectionId: section.id, 
-      headerText, 
-      contentLength: contentToSave.length 
-    });
-    
+    contentToSave += '</div>';    
     onSave(section.id, contentToSave);
     onClose();
   }, [section.id, richEditingContent, headerText, hasEmbeddedHeader, onSave, onClose]);
@@ -307,8 +297,6 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
       return;
     }
   }, [handleCancel]);
-
-  // console.log(`QuickEditModal render: isOpen=${isOpen}, section:`, section);
   
   if (!isOpen || !section) return null;
 
