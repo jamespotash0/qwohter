@@ -126,6 +126,52 @@ const Auth = () => {
   }, []);
 
   // ============================================================================
+  // ONBOARDING COMPLETION CHECK
+  // ============================================================================
+  useEffect(() => {
+    const checkOnboardingCompletion = async () => {
+      // Only check on auth step
+      if (authFlow.step !== 'auth') return;
+      if (authFlow.redirectingRef.current) return;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      try {
+        // Check if user has completed onboarding via memberships
+        const { data: membership } = await supabase
+          .from('memberships')
+          .select('id, status')
+          .eq('user_id', session.user.id)
+          .eq('status', 'Active')
+          .maybeSingle();
+
+        // Check if profile has full_name
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        // If user has completed onboarding (has name and active membership), redirect to dashboard
+        if (profile?.full_name && membership) {
+          console.log('User has completed onboarding, redirecting to dashboard');
+          authFlow.redirectingRef.current = true;
+          clearAuthState();
+          // Add delay to ensure session is fully established before redirect
+          setTimeout(() => {
+            redirectAfterAuth(navigate);
+          }, 500);
+        }
+      } catch (error) {
+        console.error('Error checking onboarding completion:', error);
+      }
+    };
+
+    checkOnboardingCompletion();
+  }, [authFlow.step]);
+
+  // ============================================================================
   // EVENT HANDLERS (Using extracted actions)
   // ============================================================================
 

@@ -1,25 +1,53 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary, QuoteErrorBoundary } from "@/components/ErrorBoundary";
 import { MainLayout } from "@/components/common/layout/MainLayout";
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth/authStore";
+import { supabase } from "@/integrations/supabase/client";
 
 // Lazy load pages for better performance
-import { lazy } from "react";
+import React from "react";
 
-// Protected auth route wrapper - redirects to dashboard if already logged in
+// Protected auth route wrapper - redirects to dashboard if already logged in AND completed onboarding
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const user = useAuthStore((state) => state.user);
   const isInitialized = useAuthStore((state) => state.isInitialized);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = React.useState<boolean | null>(null);
 
   // Don't redirect until auth is initialized
   if (!isInitialized) {
     return <>{children}</>;
   }
 
-  // If user is logged in, redirect to dashboard
-  if (user) {
+  // Check if user has completed onboarding
+  React.useEffect(() => {
+    const checkOnboarding = async () => {
+      if (!user) {
+        setHasCompletedOnboarding(null);
+        return;
+      }
+
+      try {
+        const { data: membership } = await supabase
+          .from('memberships')
+          .select('id, status')
+          .eq('user_id', user.id)
+          .eq('status', 'Active')
+          .maybeSingle();
+
+        setHasCompletedOnboarding(!!membership);
+      } catch (error) {
+        console.error('Error checking onboarding:', error);
+        setHasCompletedOnboarding(false);
+      }
+    };
+
+    checkOnboarding();
+  }, [user]);
+
+  // If user is logged in AND has completed onboarding, redirect to dashboard
+  if (user && hasCompletedOnboarding) {
     return <Navigate to="/dashboard" replace />;
   }
 
