@@ -227,7 +227,7 @@ export const authFlowHelpers = {
   },
 
   /**
-   * Handle OTP verification - New approach that creates user after verification
+   * Handle OTP verification - Verifies email confirmation code
    */
   handleOtpVerification: async (email: string, otpCode: string): Promise<AuthResult> => {
     if (!otpCode || !email) {
@@ -238,7 +238,7 @@ export const authFlowHelpers = {
     }
 
     try {
-      // Get temporary signup data
+      // Get temporary signup data (has fullName)
       const tempData = tempSignupService.get();
       if (!tempData || tempData.email !== email) {
         return {
@@ -247,7 +247,7 @@ export const authFlowHelpers = {
         };
       }
 
-      // First verify the OTP
+      // Verify the OTP code (user was already created by signUp)
       const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
         email,
         token: otpCode,
@@ -269,50 +269,28 @@ export const authFlowHelpers = {
         };
       }
 
-      // If OTP is valid, now create the actual user account
-      const { data: signupData, error: signupError } = await supabase.auth.signUp({
-        email: tempData.email,
-        password: tempData.password
-      });
+      // User is now verified and logged in
+      if (verifyData.user) {
+        console.log('Email verified successfully for user:', verifyData.user.id);
 
-      if (signupError) {
-        console.error('Error creating user after OTP verification:', signupError);
-        tempSignupService.clear();
-        return {
-          success: false,
-          error: "Failed to create account. Please try again."
-        };
-      }
-
-      if (signupData.user) {
-        console.log('User created successfully after OTP verification:', signupData.user.id);
-
-        // Create profile with full name
+        // Update profile with full name (user was created by signUp, profile created by trigger)
         const { error: profileError } = await supabase
           .from('profiles')
-          .insert({
-            id: signupData.user.id,
-            full_name: tempData.fullName,
-            email: tempData.email
-          });
+          .update({
+            full_name: tempData.fullName
+          })
+          .eq('id', verifyData.user.id);
 
         if (profileError) {
-          console.error('Error creating profile:', profileError);
+          console.error('Error updating profile with full name:', profileError);
         }
-
-        // Save initial onboarding state
-        await onboardingStateHelpers.saveOnboardingProgress(
-          signupData.user.id,
-          'organization',
-          { fullName: tempData.fullName }
-        );
 
         // Clear temporary data
         tempSignupService.clear();
 
         return {
           success: true,
-          data: { userId: signupData.user.id },
+          data: { userId: verifyData.user.id },
           nextStep: 'organization'
         };
       }
@@ -320,7 +298,7 @@ export const authFlowHelpers = {
       tempSignupService.clear();
       return {
         success: false,
-        error: "Failed to create account. Please try again."
+        error: "Verification failed. Please try again."
       };
 
     } catch (error: any) {
