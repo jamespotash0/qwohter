@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building, Globe, Phone, Printer, MapPin, Save, Edit3, X, Upload, Briefcase } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Building, Globe, Phone, Printer, MapPin, Save, Edit3, X, Upload, Briefcase, Shield } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -190,31 +189,12 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
 
   return (
     <div className="space-y-8">
-      {/* Company Logo */}
-      <div className="pb-8 border-b border-[var(--content-card-border)]">
-        <h2 className="text-lg font-semibold text-[var(--content-header-text)] mb-6 flex items-center gap-2">
-          <Upload className="w-5 h-5" />
-          Company Logo
-        </h2>
-        <div>
-          {currentUser && (
-            <LogoUpload
-              onUploadSuccess={handleLogoUploadSuccess}
-              onUploadError={handleLogoUploadError}
-              currentLogoUrl={organization?.logo_data?.logo_public_url || organization?.logo_data?.logo_url || ''}
-              userId={currentUser.id}
-              disabled={isEditing}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Organization Information */}
+      {/* Organization Section - Logo on left, Info on right */}
       <div className="pb-8 border-b border-[var(--content-card-border)]">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-lg font-semibold text-[var(--content-header-text)] flex items-center gap-2">
             <Building className="w-5 h-5" />
-            Organization Information
+            Organization
           </h2>
           {!isEditing && (
             <Button
@@ -227,7 +207,27 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
             </Button>
           )}
         </div>
-        <div className="space-y-4">
+
+        <div className="flex gap-8">
+          {/* Company Logo - Left Side (compact) */}
+          <div className="w-64 flex-shrink-0">
+            <h3 className="text-sm font-medium text-[var(--content-header-text)] mb-3 flex items-center gap-2">
+              <Upload className="w-4 h-4" />
+              Company Logo
+            </h3>
+            {currentUser && (
+              <LogoUpload
+                onUploadSuccess={handleLogoUploadSuccess}
+                onUploadError={handleLogoUploadError}
+                currentLogoUrl={organization?.logo_data?.logo_public_url || organization?.logo_data?.logo_url || ''}
+                userId={currentUser.id}
+                disabled={isEditing}
+              />
+            )}
+          </div>
+
+          {/* Organization Information - Right Side */}
+          <div className="flex-1 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Organization Name */}
             <div className="space-y-2">
@@ -337,33 +337,34 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
             </div>
           </div>
 
-          {isEditing && (
-            <div className="flex items-center gap-3 pt-4 border-t">
-              <Button
-                onClick={handleSaveOrganization}
-                disabled={isUpdating}
-                size="sm"
-                className="bg-blue-600 hover:bg-[var(--sidebar-nav-bg-hover)] text-white"
-              >
-                {isUpdating ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                ) : (
-                  <Save className="w-4 h-4 mr-2" />
-                )}
-                {isUpdating ? 'Saving...' : 'Save Changes'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancelEdit}
-                disabled={isUpdating}
-                className="hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]"
-              >
-                <X className="w-4 h-4 mr-2" />
-                Cancel
-              </Button>
-            </div>
-          )}
+            {isEditing && (
+              <div className="flex items-center gap-3 pt-4 border-t col-span-2">
+                <Button
+                  onClick={handleSaveOrganization}
+                  disabled={isUpdating}
+                  size="sm"
+                  className="bg-blue-600 hover:bg-[var(--sidebar-nav-bg-hover)] text-white"
+                >
+                  {isUpdating ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  {isUpdating ? 'Saving...' : 'Save Changes'}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelEdit}
+                  disabled={isUpdating}
+                  className="hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]"
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Cancel
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
