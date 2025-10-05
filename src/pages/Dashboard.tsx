@@ -20,15 +20,26 @@ import {
   CheckCheck,
   Edit3,
   Trash2,
-  BellRing
+  BellRing,
+  MoreVertical
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useQuotesStore } from "@/stores/quotes/quotesStore";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { quoteActivityService, type QuoteActivity } from "@/services/quoteActivityService";
+import { AddReminderModal } from "@/components/features/reminders/AddReminderModal";
+import { reminderService, type Reminder } from "@/services/reminderService";
+import { formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
+import { toast } from "sonner";
 
 /**
  * Dashboard - Executive Overview
@@ -40,6 +51,9 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [recentActivities, setRecentActivities] = useState<QuoteActivity[]>([]);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [showAddReminderModal, setShowAddReminderModal] = useState(false);
+  const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [cachedProfile, setCachedProfile] = useState<any>(() => {
     // Read from localStorage cache (same as sidebar)
     try {
@@ -177,6 +191,210 @@ const Dashboard = () => {
     };
   }, [organizationId]);
 
+  // Fetch reminders and subscribe to real-time updates
+  useEffect(() => {
+    console.log('🎬 useEffect [FETCH & SUBSCRIBE REMINDERS] TRIGGERED', { organizationId });
+    const fetchReminders = async () => {
+      if (!organizationId) {
+        console.log('⏭️ No organizationId, skipping reminders fetch');
+        return;
+      }
+
+      const { data, error } = await reminderService.getReminders({
+        organizationId,
+        includeCompleted: true
+      });
+
+      if (error) {
+        console.error('Failed to fetch reminders:', error);
+        return;
+      }
+
+      if (data) {
+        console.log('✅ Fetched reminders:', data.length, 'reminders');
+
+        // Filter out completed reminders older than 3 days
+        const now = new Date();
+        const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
+
+        const filteredReminders = data.filter(reminder => {
+          if (reminder.status === 'Completed') {
+            // Use updated_at as the completion date
+            const completedDate = new Date(reminder.updated_at);
+            return completedDate > threeDaysAgo;
+          }
+          return true; // Keep all non-completed reminders
+        });
+
+        console.log('✅ After filtering:', filteredReminders.length, 'reminders (removed completed older than 3 days)');
+        setReminders(filteredReminders);
+      } else {
+        console.log('⚠️ No reminder data returned');
+      }
+    };
+
+    fetchReminders();
+
+    // Subscribe to real-time reminders updates
+    if (!organizationId) return;
+
+    console.log('🔄 Subscribing to realtime reminders updates for organization:', organizationId);
+
+    const channel = supabase
+      .channel('reminders-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reminders',
+          filter: `organization_id=eq.${organizationId}`
+        },
+        async (payload) => {
+          console.log('📡 Realtime reminder update received:', payload);
+
+          // Refetch all reminders to ensure we have complete data with joins
+          const { data } = await reminderService.getReminders({
+            organizationId,
+            includeCompleted: true
+          });
+          if (data) {
+            // Filter out completed reminders older than 3 days
+            const now = new Date();
+            const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
+
+            const filteredReminders = data.filter(reminder => {
+              if (reminder.status === 'Completed') {
+                const completedDate = new Date(reminder.updated_at);
+                return completedDate > threeDaysAgo;
+              }
+              return true;
+            });
+
+            setReminders(filteredReminders);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Realtime reminders subscription status:', status);
+      });
+
+    // Cleanup: unsubscribe on unmount
+    return () => {
+      console.log('🔌 Unsubscribing from realtime reminders updates');
+      supabase.removeChannel(channel);
+    };
+  }, [organizationId]);
+
+  // Reminder action handlers
+  const handleCompleteReminder = async (reminderId: string, quoteId?: string, quoteNumber?: string, projectName?: string) => {
+    if (!user?.id || !organizationId) return;
+
+    // Get the reminder details before completing
+    const reminder = reminders.find(r => r.id === reminderId);
+
+    const { error } = await reminderService.completeReminder(reminderId, {
+      status: 'Completed',
+      completed_by: user.id,
+    });
+
+    if (error) {
+      toast.error('Failed to complete reminder');
+      return;
+    }
+
+    toast.success('Reminder marked as completed');
+
+    // Log activity (always, even without quote)
+    await quoteActivityService.logActivity({
+      quoteId: quoteId || null,
+      quoteNumber: quoteNumber || 'N/A',
+      projectName: projectName || reminder?.title || 'General Reminder',
+      userId: user.id,
+      userName: effectiveProfile?.full_name || 'Unknown User',
+      activityType: 'Reminder_Set',
+      activityDetails: {
+        action: 'completed',
+        reminderTitle: reminder?.title,
+        reminderType: reminder?.reminder_type
+      },
+      organizationId: organizationId,
+    });
+
+    // Refresh reminders list
+    const { data } = await reminderService.getReminders({
+      organizationId,
+      includeCompleted: true
+    });
+    if (data) {
+      // Filter out completed reminders older than 3 days
+      const now = new Date();
+      const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
+
+      const filteredReminders = data.filter(reminder => {
+        if (reminder.status === 'Completed') {
+          const completedDate = new Date(reminder.updated_at);
+          return completedDate > threeDaysAgo;
+        }
+        return true;
+      });
+
+      setReminders(filteredReminders);
+    }
+  };
+
+  const handleDeleteReminder = async (reminderId: string, quoteId?: string, quoteNumber?: string, projectName?: string) => {
+    if (!user?.id || !organizationId) return;
+
+    // Get the reminder details before deleting
+    const reminder = reminders.find(r => r.id === reminderId);
+
+    const { success } = await reminderService.deleteReminder(reminderId);
+
+    if (!success) {
+      toast.error('Failed to delete reminder');
+      return;
+    }
+
+    toast.success('Reminder deleted');
+
+    // Log activity (always, even without quote)
+    await quoteActivityService.logActivity({
+      quoteId: quoteId || null,
+      quoteNumber: quoteNumber || 'N/A',
+      projectName: projectName || reminder?.title || 'General Reminder',
+      userId: user.id,
+      userName: effectiveProfile?.full_name || 'Unknown User',
+      activityType: 'Reminder_Set',
+      activityDetails: {
+        action: 'deleted',
+        reminderTitle: reminder?.title,
+        reminderType: reminder?.reminder_type
+      },
+      organizationId: organizationId,
+    });
+
+    // Refresh reminders list
+    const { data } = await reminderService.getReminders({
+      organizationId,
+      includeCompleted: true
+    });
+    if (data) {
+      // Filter out completed reminders older than 3 days
+      const now = new Date();
+      const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
+
+      const filteredReminders = data.filter(reminder => {
+        if (reminder.status === 'Completed') {
+          const completedDate = new Date(reminder.updated_at);
+          return completedDate > threeDaysAgo;
+        }
+        return true;
+      });
+
+      setReminders(filteredReminders);
+    }
+  };
 
   // Calculate key metrics
   const metrics = useMemo(() => {
@@ -250,12 +468,12 @@ const Dashboard = () => {
     const decidedLastMonth = wonLastMonth + rejectedLastMonth;
     const winRateLastMonth = decidedLastMonth > 0 ? ((wonLastMonth / decidedLastMonth) * 100).toFixed(1) : '0';
 
-    // Calculate overdue follow-ups
+    // Calculate overdue reminders (not completed/dismissed and past due date)
     const today = new Date();
-    const overdueFollowups = quotes.filter(q => {
-      if (!q.follow_up_date) return false;
-      const followUpDate = new Date(q.follow_up_date);
-      return followUpDate < today;
+    const overdueReminders = reminders.filter(r => {
+      if (r.status === 'Completed' || r.status === 'Dismissed') return false;
+      const dueDate = new Date(r.due_date);
+      return dueDate < today;
     }).length;
 
     return {
@@ -267,9 +485,9 @@ const Dashboard = () => {
       winRateLastMonth,
       wonQuotes,
       rejectedQuotes,
-      overdueFollowups
+      overdueReminders
     };
-  }, [quotes]);
+  }, [quotes, reminders]);
 
 
   // Format activities from database for display
@@ -489,16 +707,16 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Overdue Follow-ups */}
+            {/* Overdue Reminders */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
-                  <div className={`p-3 rounded-full bg-gradient-to-br ${metrics.overdueFollowups > 0 ? 'from-red-100 to-red-200 dark:from-red-900 dark:to-red-800' : 'from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600'}`}>
-                    <AlertCircle className={`w-6 h-6 ${metrics.overdueFollowups > 0 ? 'text-red-600 dark:text-red-300' : 'text-gray-600 dark:text-gray-300'}`} />
+                  <div className={`p-3 rounded-full bg-gradient-to-br ${metrics.overdueReminders > 0 ? 'from-red-100 to-red-200 dark:from-red-900 dark:to-red-800' : 'from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600'}`}>
+                    <AlertCircle className={`w-6 h-6 ${metrics.overdueReminders > 0 ? 'text-red-600 dark:text-red-300' : 'text-gray-600 dark:text-gray-300'}`} />
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Overdue Follow-ups</h3>
-                    <p className={`text-2xl font-bold ${metrics.overdueFollowups > 0 ? 'text-red-600 dark:text-red-400' : 'text-[var(--content-header-text)]'}`}>{metrics.overdueFollowups}</p>
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Overdue Reminders</h3>
+                    <p className={`text-2xl font-bold ${metrics.overdueReminders > 0 ? 'text-red-600 dark:text-red-400' : 'text-[var(--content-header-text)]'}`}>{metrics.overdueReminders}</p>
                   </div>
                 </div>
               </CardContent>
@@ -539,16 +757,16 @@ const Dashboard = () => {
                 </Button>
 
                 <Button
-                  onClick={() => navigate('/quotes')}
-                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-white hover:bg-blue-50 text-[var(--content-header-text)] border border-gray-200"
+                  disabled
+                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
                 >
                   <FileSpreadsheet className="w-5 h-5" />
                   <span className="font-medium">Use Template</span>
                 </Button>
 
                 <Button
-                  onClick={() => navigate('/quotes')}
-                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-white hover:bg-blue-50 text-[var(--content-header-text)] border border-gray-200"
+                  disabled
+                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
                 >
                   <Upload className="w-5 h-5" />
                   <span className="font-medium">Import from Form</span>
@@ -568,7 +786,7 @@ const Dashboard = () => {
                   </div>
                   <Button
                     size="sm"
-                    onClick={() => {/* TODO: Implement add reminder */}}
+                    onClick={() => setShowAddReminderModal(true)}
                     className="h-8 px-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700"
                   >
                     <Plus className="w-4 h-4 mr-1" />
@@ -577,17 +795,173 @@ const Dashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pb-4">
-                <div className="h-[550px] flex items-center justify-center">
-                  <div className="text-center">
-                    <Bell className="w-12 h-12 text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
-                    <p className="text-[var(--content-muted-text)]">
-                      No reminders
-                    </p>
-                    <p className="text-sm text-[var(--content-muted-text)] mt-1">
-                      Click "Add" to create a reminder
-                    </p>
+                {(() => {
+                  console.log('🔍 Dashboard rendering reminders:', reminders.length, reminders);
+                  return null;
+                })()}
+                {reminders.length === 0 ? (
+                  <div className="h-[550px] flex items-center justify-center">
+                    <div className="text-center">
+                      <Bell className="w-12 h-12 text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
+                      <p className="text-[var(--content-muted-text)]">
+                        No reminders
+                      </p>
+                      <p className="text-sm text-[var(--content-muted-text)] mt-1">
+                        Click "Add" to create a reminder
+                      </p>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-2 max-h-[550px] overflow-y-auto pr-2 -mr-2">
+                    {reminders.map((reminder) => {
+                      const dueDate = new Date(reminder.due_date);
+                      const isOverdue = isPast(dueDate) && !isToday(dueDate);
+                      const isDueToday = isToday(dueDate);
+                      const isDueTomorrow = isTomorrow(dueDate);
+
+                      const getTypeColor = (type: string) => {
+                        switch (type) {
+                          case 'Quote_Follow_Up':
+                            return 'text-blue-600 bg-blue-50';
+                          case 'Meeting':
+                            return 'text-purple-600 bg-purple-50';
+                          case 'Deadline':
+                            return 'text-red-600 bg-red-50';
+                          case 'Task':
+                            return 'text-green-600 bg-green-50';
+                          default:
+                            return 'text-gray-600 bg-gray-50';
+                        }
+                      };
+
+                      const isCompleted = reminder.status === 'Completed';
+
+                      return (
+                        <div
+                          key={reminder.id}
+                          className={`p-4 rounded-lg border transition-all group ${
+                            isCompleted
+                              ? 'border-green-200 bg-green-50 opacity-75'
+                              : 'border-gray-200 bg-white hover:bg-blue-50 cursor-pointer'
+                          }`}
+                        >
+                          {/* Header: Title, Time, and Ellipsis */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                {isCompleted && (
+                                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                                )}
+                                <h4 className={`font-semibold ${isCompleted ? 'text-gray-600 line-through' : 'text-gray-900'}`}>
+                                  {reminder.title}
+                                </h4>
+                              </div>
+
+                              {/* Quote Reference (no spacing) */}
+                              {reminder.quote_number && (
+                                <p className={`text-xs ${isCompleted ? 'text-gray-500' : 'text-gray-600'}`}>
+                                  #{reminder.quote_number}{reminder.project_name ? ` - ${reminder.project_name}` : ''}
+                                </p>
+                              )}
+
+                              {/* Description with spacing from quote */}
+                              {reminder.description && (
+                                <p className={`text-sm mt-2 line-clamp-2 ${isCompleted ? 'text-gray-500' : 'text-gray-600'}`}>
+                                  {reminder.description}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Time and Ellipsis on right side */}
+                            <div className="flex flex-col items-end flex-shrink-0">
+                              {/* Time in top right */}
+                              <span className={`text-xs font-medium whitespace-nowrap ${
+                                isOverdue
+                                  ? 'text-red-600'
+                                  : isDueToday
+                                  ? 'text-yellow-600'
+                                  : 'text-gray-500'
+                              }`}>
+                                {isOverdue && `Overdue by ${formatDistanceToNow(dueDate)}`}
+                                {isDueToday && 'Due today'}
+                                {isDueTomorrow && 'Due tomorrow'}
+                                {!isOverdue && !isDueToday && !isDueTomorrow &&
+                                  `Due ${formatDistanceToNow(dueDate, { addSuffix: true })}`}
+                              </span>
+
+                              {/* Ellipsis in middle right with custom spacing */}
+                              <div className="mt-6">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {!isCompleted && (
+                                    <>
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          setEditingReminder(reminder);
+                                          setShowAddReminderModal(true);
+                                        }}
+                                      >
+                                        <Edit3 className="w-4 h-4 mr-2" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => handleCompleteReminder(
+                                          reminder.id,
+                                          reminder.quote_id,
+                                          reminder.quote_number,
+                                          reminder.project_name || undefined
+                                        )}
+                                      >
+                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                        Complete
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteReminder(
+                                      reminder.id,
+                                      reminder.quote_id,
+                                      reminder.quote_number,
+                                      reminder.project_name || undefined
+                                    )}
+                                    className="text-red-600"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Footer: Type Badge + Creator */}
+                          <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
+                            <span className="text-xs text-gray-500">
+                              Created by {reminder.creator_name || 'Unknown'}
+                            </span>
+                            <span
+                              className={`text-xs px-2 py-1 rounded-full font-medium ${getTypeColor(
+                                reminder.reminder_type
+                              )}`}
+                            >
+                              {reminder.reminder_type.replace('_', ' ')}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -685,6 +1059,40 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Add Reminder Modal */}
+      <AddReminderModal
+        open={showAddReminderModal}
+        editingReminder={editingReminder}
+        onClose={() => {
+          setShowAddReminderModal(false);
+          setEditingReminder(null);
+        }}
+        onReminderCreated={async () => {
+          // Refresh reminders list
+          if (organizationId) {
+            const { data } = await reminderService.getReminders({
+              organizationId,
+              includeCompleted: true
+            });
+            if (data) {
+              // Filter out completed reminders older than 3 days
+              const now = new Date();
+              const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
+
+              const filteredReminders = data.filter(reminder => {
+                if (reminder.status === 'Completed') {
+                  const completedDate = new Date(reminder.updated_at);
+                  return completedDate > threeDaysAgo;
+                }
+                return true;
+              });
+
+              setReminders(filteredReminders);
+            }
+          }
+          setEditingReminder(null);
+        }}
+      />
     </PageContent>
   );
 };

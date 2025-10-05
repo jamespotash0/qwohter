@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type ReminderType = 'Quote_Follow_Up' | 'General' | 'Meeting' | 'Deadline' | 'Task';
+export type ReminderType = 'Quote_Follow_Up' | 'General' | 'Meeting' | 'Deadline' | 'Task' | 'Other';
 export type ReminderStatus = 'Pending' | 'Completed' | 'Dismissed';
 
 export interface Reminder {
@@ -63,6 +63,12 @@ export const reminderService = {
           quotes:quote_id (
             proposal_number,
             project_name
+          ),
+          created_by_profile:created_by (
+            full_name
+          ),
+          completed_by_profile:completed_by (
+            full_name
           )
         `)
         .eq('organization_id', params.organizationId)
@@ -84,9 +90,11 @@ export const reminderService = {
         ...reminder,
         quote_number: reminder.quotes?.proposal_number,
         project_name: reminder.quotes?.project_name,
-        creator_name: 'User', // We don't need to fetch creator name for now
+        creator_name: reminder.created_by_profile?.full_name || 'Unknown User',
         // Remove nested objects
         quotes: undefined,
+        created_by_profile: undefined,
+        completed_by_profile: undefined,
       }));
 
       return { data: reminders as Reminder[] };
@@ -255,6 +263,12 @@ export const reminderService = {
           quotes:quote_id (
             proposal_number,
             project_name
+          ),
+          created_by_profile:created_by (
+            full_name
+          ),
+          completed_by_profile:completed_by (
+            full_name
           )
         `)
         .eq('organization_id', params.organizationId)
@@ -272,9 +286,11 @@ export const reminderService = {
         ...reminder,
         quote_number: reminder.quotes?.proposal_number,
         project_name: reminder.quotes?.project_name,
-        creator_name: 'User', // We don't need to fetch creator name for now
+        creator_name: reminder.created_by_profile?.full_name || 'Unknown User',
         // Remove nested objects
         quotes: undefined,
+        created_by_profile: undefined,
+        completed_by_profile: undefined,
       }));
 
       return { data: reminders as Reminder[] };
