@@ -221,9 +221,6 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
             error={touched.phone ? validationErrors.phone : undefined}
             showValidation={false}
           />
-          {touched.phone && validationErrors.phone && (
-            <div className="text-sm text-red-600 mt-1">{validationErrors.phone}</div>
-          )}
         </div>
 
         {/* Fax Number */}
@@ -259,9 +256,6 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
             error={touched.fax ? validationErrors.fax : undefined}
             showValidation={false}
           />
-          {touched.fax && validationErrors.fax && includeFax && (
-            <div className="text-sm text-red-600 mt-1">{validationErrors.fax}</div>
-          )}
         </div>
 
         {/* Quote Starting Point */}
