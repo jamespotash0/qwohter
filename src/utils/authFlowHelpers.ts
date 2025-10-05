@@ -479,9 +479,8 @@ export const authFlowHelpers = {
             user_id: userId,
             organization_id: orgData.id,
             role: 'Member',
-            status: 'Pending',
-            plan: 'Free'
-          } as any);
+            status: 'Pending'
+          });
 
         if (membershipsError) throw membershipsError;
 
