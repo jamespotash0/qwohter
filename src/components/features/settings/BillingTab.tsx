@@ -3,7 +3,7 @@ import { CreditCard, Calendar, Download, CheckCircle, Loader2, ExternalLink, Use
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { hasAdminPermissions } from "@/utils/permissions";
+import { hasOwnerPermissions } from "@/utils/permissions";
 import { stripeService } from "@/services/stripeService";
 
 interface BillingTabProps {
@@ -18,7 +18,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState<any>(null);
   const [userCount, setUserCount] = useState(0);
-  const hasPermission = hasAdminPermissions(userRole);
+  const hasPermission = hasOwnerPermissions(userRole);
 
   useEffect(() => {
     if (organization?.id && hasPermission) {
@@ -54,7 +54,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     if (!hasPermission) {
       toast({
         title: "Permission Denied",
-        description: "You need Admin or Owner permissions to manage billing.",
+        description: "You need an Owner permissions to manage billing.",
         variant: "destructive",
       });
       return;
@@ -79,7 +79,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     if (!hasPermission) {
       toast({
         title: "Permission Denied",
-        description: "You need Admin or Owner permissions to change billing settings.",
+        description: "You need Owner permissions to change billing settings.",
         variant: "destructive",
       });
       return;
@@ -158,10 +158,10 @@ export const BillingTab: React.FC<BillingTabProps> = ({
           <CardContent className="pt-6">
             {subscription ? (
               <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
                     <h3 className="text-2xl font-bold text-[var(--content-header-text)]">
-                      {plan?.display_name || 'No Plan'}
+                      {plan?.display_name || 'Professional Plan'}
                     </h3>
                     <span className={`px-2 py-1 text-xs font-medium rounded-full flex items-center gap-1 ${
                       isActive
@@ -173,8 +173,20 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                     </span>
                   </div>
 
+                  {/* Pricing Info */}
+                  {plan?.name !== 'Free' && userCount > 0 && (
+                    <div className="text-sm text-gray-600">
+                      <span className="font-medium">
+                        ${userCount * 10}/month
+                      </span>
+                      <span className="text-gray-500 ml-1">
+                        ({userCount} {userCount === 1 ? 'user' : 'users'} × $10/user)
+                      </span>
+                    </div>
+                  )}
+
                   {/* User Count */}
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Users className="w-4 h-4" />
                     <span>{userCount} active {userCount === 1 ? 'user' : 'users'}</span>
                   </div>
@@ -190,6 +202,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                   size="sm"
                   className="bg-orange-600 text-white hover:bg-orange-700"
                   onClick={handleUpgrade}
+                  disabled
                 >
                   <CreditCard className="w-4 h-4 mr-2" />
                   Manage Plan
@@ -198,7 +211,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
             ) : (
               <div className="text-center py-8">
                 <p className="text-gray-600 mb-4">No active subscription</p>
-                <Button onClick={handleUpgrade} className="bg-blue-600 hover:bg-blue-700">
+                <Button onClick={handleUpgrade} className="bg-blue-600 hover:bg-blue-700" disabled>
                   Choose a Plan
                 </Button>
               </div>
@@ -222,6 +235,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
               <Button
                 onClick={handleManageSubscription}
                 variant="outline"
+                disabled
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Open Stripe Portal

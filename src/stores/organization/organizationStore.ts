@@ -78,11 +78,35 @@ export const useOrganizationStore = create<OrganizationState>()(
   devtools(
     subscribeWithSelector((set, get) => ({
       // Initial state
-      currentOrganization: null,
+      currentOrganization: (() => {
+        // Restore organization from localStorage on init
+        try {
+          const cached = localStorage.getItem('org_cached_organization');
+          return cached ? JSON.parse(cached) : null;
+        } catch {
+          return null;
+        }
+      })(),
       members: [],
       inviteTokens: [],
-      currentUserRole: null,
-      currentUserMembership: null,
+      currentUserRole: (() => {
+        // Restore role from localStorage on init
+        try {
+          const cached = localStorage.getItem('org_cached_user_role');
+          return cached ? (cached as 'Owner' | 'Admin' | 'Member') : null;
+        } catch {
+          return null;
+        }
+      })(),
+      currentUserMembership: (() => {
+        // Restore membership from localStorage on init
+        try {
+          const cached = localStorage.getItem('org_cached_membership');
+          return cached ? JSON.parse(cached) : null;
+        } catch {
+          return null;
+        }
+      })(),
       loading: false,
       error: null,
       subscriptionStatus: null,
@@ -134,12 +158,20 @@ export const useOrganizationStore = create<OrganizationState>()(
 
           if (membershipData?.organizations) {
             const org = membershipData.organizations as Organization;
+            const role = membershipData.role as 'Owner' | 'Admin' | 'Member';
+            const membership = {
+              joined_at: membershipData.joined_at,
+            };
+
+            // Cache all organization data in localStorage
+            localStorage.setItem('org_cached_organization', JSON.stringify(org));
+            localStorage.setItem('org_cached_user_role', role);
+            localStorage.setItem('org_cached_membership', JSON.stringify(membership));
+
             set({
               currentOrganization: org,
-              currentUserRole: membershipData.role as 'Owner' | 'Admin' | 'Member',
-              currentUserMembership: {
-                joined_at: membershipData.joined_at,
-              },
+              currentUserRole: role,
+              currentUserMembership: membership,
               loading: false,
             });
 
@@ -222,10 +254,20 @@ export const useOrganizationStore = create<OrganizationState>()(
       },
 
       // Setters
-      setOrganization: (organization) => set({ currentOrganization: organization }),
+      setOrganization: (organization) => {
+        if (organization) {
+          localStorage.setItem('org_cached_organization', JSON.stringify(organization));
+        }
+        set({ currentOrganization: organization });
+      },
       setMembers: (members) => set({ members }),
       setInviteTokens: (tokens) => set({ inviteTokens: tokens }),
-      setCurrentUserRole: (role) => set({ currentUserRole: role }),
+      setCurrentUserRole: (role) => {
+        if (role) {
+          localStorage.setItem('org_cached_user_role', role);
+        }
+        set({ currentUserRole: role });
+      },
 
       // Update organization
       updateOrganization: async (updates: Partial<Organization>) => {
@@ -241,6 +283,9 @@ export const useOrganizationStore = create<OrganizationState>()(
             .single();
 
           if (error) throw error;
+
+          // Update cache with new organization data
+          localStorage.setItem('org_cached_organization', JSON.stringify(data));
 
           set({ currentOrganization: data as Organization });
         } catch (error: any) {
@@ -284,6 +329,10 @@ export const useOrganizationStore = create<OrganizationState>()(
               (payload) => {
                 console.log('🔄 Membership role changed:', payload);
                 const newRole = payload.new.role as 'Owner' | 'Admin' | 'Member';
+
+                // Update localStorage cache
+                localStorage.setItem('org_cached_user_role', newRole);
+
                 set({ currentUserRole: newRole });
               }
             )
@@ -302,6 +351,11 @@ export const useOrganizationStore = create<OrganizationState>()(
 
       // Reset
       reset: () => {
+        // Clear all cached organization data
+        localStorage.removeItem('org_cached_organization');
+        localStorage.removeItem('org_cached_user_role');
+        localStorage.removeItem('org_cached_membership');
+
         set({
           currentOrganization: null,
           members: [],

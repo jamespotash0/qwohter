@@ -62,6 +62,21 @@ serve(async (req) => {
           break;
         }
 
+        // Fetch the subscription from Stripe to get current_period_end
+        let currentPeriodEnd = null;
+        let subscriptionStatus = 'Active';
+
+        if (stripeSubscriptionId) {
+          try {
+            const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+            currentPeriodEnd = new Date(stripeSubscription.current_period_end * 1000).toISOString();
+            subscriptionStatus = stripeSubscription.status.charAt(0).toUpperCase() + stripeSubscription.status.slice(1);
+            console.log('Retrieved subscription details:', { currentPeriodEnd, subscriptionStatus });
+          } catch (err) {
+            console.error('Failed to retrieve Stripe subscription:', err);
+          }
+        }
+
         // Check if subscription already exists
         const { data: existingSubscription } = await supabase
           .from('subscriptions')
@@ -76,7 +91,8 @@ serve(async (req) => {
             .update({
               stripe_customer_id: stripeCustomerId,
               stripe_subscription_id: stripeSubscriptionId,
-              stripe_subscription_status: 'Active',
+              stripe_subscription_status: subscriptionStatus,
+              current_period_end: currentPeriodEnd,
               is_active: true,
               plan_id: planId,
               updated_at: new Date().toISOString(),
@@ -93,7 +109,8 @@ serve(async (req) => {
               plan_id: planId,
               stripe_customer_id: stripeCustomerId,
               stripe_subscription_id: stripeSubscriptionId,
-              stripe_subscription_status: 'Active',
+              stripe_subscription_status: subscriptionStatus,
+              current_period_end: currentPeriodEnd,
               is_active: true,
             });
 
