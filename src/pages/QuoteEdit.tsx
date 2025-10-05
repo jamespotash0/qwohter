@@ -150,7 +150,6 @@ const QuoteEdit = () => {
   };
 
   const handleUnifiedQuoteDownload = async (html: string, isSmartPDF: boolean = false) => {
-    // console.log('🔍 Starting unified quote download with live preview HTML');
     
     if (!quote) {
       // console.error('❌ No quote available');

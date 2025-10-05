@@ -70,6 +70,7 @@ interface OrganizationState {
   setCurrentUserRole: (role: 'Owner' | 'Admin' | 'Member' | null) => void;
   updateOrganization: (updates: Partial<Organization>) => Promise<void>;
   setSubscriptionStatus: (status: { hasAccess: boolean; reason: string }) => void;
+  subscribeToMembershipChanges: () => void;
   reset: () => void;
 }
 
@@ -92,7 +93,6 @@ export const useOrganizationStore = create<OrganizationState>()(
 
         // Skip if already fetched
         if (currentOrganization) {
-          console.log('📦 Organization already cached, skipping fetch');
           return;
         }
 
@@ -143,7 +143,6 @@ export const useOrganizationStore = create<OrganizationState>()(
               loading: false,
             });
 
-            console.log('✅ Organization fetched and cached:', org.name);
           } else {
             set({ loading: false });
           }
@@ -159,7 +158,6 @@ export const useOrganizationStore = create<OrganizationState>()(
 
         // Skip if already fetched
         if (members.length > 0) {
-          console.log('📦 Members already cached, skipping fetch');
           return;
         }
 
@@ -192,7 +190,6 @@ export const useOrganizationStore = create<OrganizationState>()(
             }));
 
           set({ members: transformedData });
-          console.log('✅ Members fetched and cached:', transformedData.length);
         } catch (error: any) {
           console.error('❌ Failed to fetch members:', error);
           set({ error: error.message });
@@ -205,7 +202,6 @@ export const useOrganizationStore = create<OrganizationState>()(
 
         // Skip if already fetched
         if (inviteTokens.length > 0) {
-          console.log('📦 Invite tokens already cached, skipping fetch');
           return;
         }
 
@@ -219,7 +215,6 @@ export const useOrganizationStore = create<OrganizationState>()(
           if (error) throw error;
 
           set({ inviteTokens: data || [] });
-          console.log('✅ Invite tokens fetched and cached:', data?.length || 0);
         } catch (error: any) {
           console.error('❌ Failed to fetch invite tokens:', error);
           set({ error: error.message });
@@ -248,7 +243,6 @@ export const useOrganizationStore = create<OrganizationState>()(
           if (error) throw error;
 
           set({ currentOrganization: data as Organization });
-          console.log('✅ Organization updated');
         } catch (error: any) {
           console.error('❌ Failed to update organization:', error);
           set({ error: error.message });
@@ -265,6 +259,47 @@ export const useOrganizationStore = create<OrganizationState>()(
         });
       },
 
+      // Subscribe to real-time membership changes
+      subscribeToMembershipChanges: async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+
+          if (!user?.id) {
+            console.log('⏭️ No user yet, skipping membership subscription');
+            return () => {}; // Return empty cleanup function
+          }
+
+          console.log('🔔 Setting up real-time membership subscription for user:', user.id);
+
+          const channel = supabase
+            .channel('membership-changes')
+            .on(
+              'postgres_changes',
+              {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'memberships',
+                filter: `user_id=eq.${user.id}`,
+              },
+              (payload) => {
+                console.log('🔄 Membership role changed:', payload);
+                const newRole = payload.new.role as 'Owner' | 'Admin' | 'Member';
+                set({ currentUserRole: newRole });
+              }
+            )
+            .subscribe();
+
+          // Return cleanup function
+          return () => {
+            console.log('🧹 Cleaning up membership subscription');
+            supabase.removeChannel(channel);
+          };
+        } catch (error) {
+          console.error('❌ Error setting up membership subscription:', error);
+          return () => {}; // Return empty cleanup function on error
+        }
+      },
+
       // Reset
       reset: () => {
         set({
@@ -277,7 +312,6 @@ export const useOrganizationStore = create<OrganizationState>()(
           error: null,
           subscriptionStatus: null,
         });
-        console.log('🔄 Organization store reset');
       },
     }))
   )

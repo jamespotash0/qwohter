@@ -22,6 +22,7 @@ export const useOrganizations = () => {
   const storeSetMembers = useOrganizationStore(state => state.setMembers);
   const storeSetInviteTokens = useOrganizationStore(state => state.setInviteTokens);
   const storeSetOrganization = useOrganizationStore(state => state.setOrganization);
+  const subscribeToMembershipChanges = useOrganizationStore(state => state.subscribeToMembershipChanges);
 
   // These functions are now handled by the store
   // Keep references for backward compatibility
@@ -103,7 +104,6 @@ export const useOrganizations = () => {
 
   const inviteMember = async (organizationId: string, email: string, role: 'admin' | 'member' = 'member') => {
     try {
-      console.log('🔄 Starting invitation process for:', email);
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
@@ -125,7 +125,6 @@ export const useOrganizations = () => {
         throw new Error('Organization not found.');
       }
 
-      console.log('📧 Organization found:', orgData.name);
 
       // Check if this email already has a pending invitation
       const { data: existingInvites } = await supabase
@@ -187,7 +186,6 @@ export const useOrganizations = () => {
         throw new Error('Failed to create invitation token.');
       }
 
-      console.log('✅ Invitation token created');
 
       // Create the invitation link
       const inviteLink = `${window.location.origin}/auth?invite=${token}`;
@@ -216,7 +214,6 @@ export const useOrganizations = () => {
             description: `Invitation token created. Please manually share this link: ${inviteLink}`,
           });
         } else {
-          console.log('📧 Email sent successfully via Edge Function');
 
           toast({
             title: "Invitation sent!",
@@ -236,7 +233,6 @@ export const useOrganizations = () => {
       // Refresh invite tokens list
       await fetchInviteTokens(organizationId);
 
-      console.log('✅ Invitation process completed successfully');
 
       return { email, role, inviteLink };
     } catch (error: any) {
@@ -460,6 +456,19 @@ export const useOrganizations = () => {
       storeFetchInviteTokens(currentOrganization.id);
     }
   }, []); // Empty deps - only run once on mount
+
+  useEffect(() => {
+    // Subscribe to real-time membership role changes
+    let cleanup: (() => void) | undefined;
+
+    subscribeToMembershipChanges().then((cleanupFn) => {
+      cleanup = cleanupFn;
+    });
+
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, []); // Run once on mount
 
   return {
     currentOrganization,

@@ -222,20 +222,17 @@ export const useQuotesStore = create<QuotesState>()(
 
             // If we have quotes, fetch creator names
             if (quotesData.length > 0) {
-              console.log('Fetched quotes data:', quotesData.slice(0, 2)); // Debug
 
               // Get unique creator IDs (use created_by since that's what the database has)
               const creatorIds = [...new Set(
                 quotesData
                   .map(quote => {
                     const creatorId = quote.created_by;
-                    console.log('Quote creator ID:', creatorId, 'from quote:', quote.id);
                     return creatorId;
                   })
                   .filter(Boolean)
               )];
 
-              console.log('Creator IDs to fetch:', creatorIds);
 
               // Fetch creator names
               const { data: profilesData, error: profilesError } = await supabase
@@ -247,14 +244,12 @@ export const useQuotesStore = create<QuotesState>()(
                 console.warn('Failed to fetch creator profiles:', profilesError);
               }
 
-              console.log('Profiles data:', profilesData);
 
               // Create a map of creator IDs to names
               const creatorMap = new Map();
               if (profilesData) {
                 profilesData.forEach((profile: any) => {
                   creatorMap.set(profile.id, profile.full_name);
-                  console.log('Mapping:', profile.id, '->', profile.full_name);
                 });
               }
 
@@ -262,7 +257,6 @@ export const useQuotesStore = create<QuotesState>()(
               const quotesWithCreatorNames = quotesData.map(quote => {
                 const creatorId = quote.created_by;
                 const creatorName = creatorMap.get(creatorId) || 'Unknown';
-                console.log('Quote', quote.id, 'creator ID:', creatorId, 'name:', creatorName);
                 return {
                   ...quote,
                   creator_name: creatorName,
@@ -648,7 +642,6 @@ export const useQuotesStore = create<QuotesState>()(
               throw new Error('User not assigned to an organization');
             }
 
-            console.log('🔄 Subscribing to realtime updates for organization:', membershipData.organization_id);
 
             // Subscribe to quotes table changes for this organization
             const channel = supabase
@@ -662,7 +655,6 @@ export const useQuotesStore = create<QuotesState>()(
                   filter: `organization_id=eq.${membershipData.organization_id}`
                 },
                 (payload) => {
-                  console.log('📡 Realtime update received:', payload);
                   
                   const { eventType, new: newRecord, old: oldRecord } = payload;
 
@@ -710,7 +702,6 @@ export const useQuotesStore = create<QuotesState>()(
                 }
               )
               .subscribe((status) => {
-                console.log('📡 Realtime subscription status:', status);
                 set({ isRealtimeConnected: status === 'SUBSCRIBED' });
               });
 
@@ -727,7 +718,6 @@ export const useQuotesStore = create<QuotesState>()(
         unsubscribeFromRealtime: () => {
           const channel = (get() as any).realtimeChannel;
           if (channel) {
-            console.log('🔌 Unsubscribing from realtime updates');
             supabase.removeChannel(channel);
             set({ isRealtimeConnected: false });
             (get() as any).realtimeChannel = null;

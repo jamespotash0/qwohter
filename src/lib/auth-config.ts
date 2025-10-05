@@ -12,32 +12,11 @@ import { useAuthStore } from '@/stores/auth/authStore';
  * This will automatically handle JWT token expiry and refresh
  */
 export const initializeAuth = async () => {
-  // Initialize the auth store first
+  // Initialize the auth store - it handles all auth state changes internally
   await useAuthStore.getState().initialize();
 
-  // Listen for auth state changes and handle session expiry
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'TOKEN_REFRESHED') {
-      console.log('Auth token refreshed automatically');
-    } else if (event === 'SIGNED_OUT') {
-      console.log('User session expired or signed out');
-
-      // Clear any cached data
-      localStorage.removeItem('sidebar_cached_profile');
-      localStorage.removeItem('sidebar_cached_role');
-      localStorage.removeItem('auth_flow_state');
-      localStorage.removeItem('temp_onboarding_progress');
-
-      // Redirect to sign-in if not already there
-      if (window.location.pathname !== '/sign-in' &&
-          window.location.pathname !== '/create-account' &&
-          window.location.pathname !== '/') {
-        window.location.href = '/sign-in';
-      }
-    } else if (event === 'SIGNED_IN') {
-      console.log('User signed in successfully');
-    }
-  });
+  // Note: Auth state change listener is already set up in authStore.ts
+  // No need for duplicate listeners here
 };
 
 /**

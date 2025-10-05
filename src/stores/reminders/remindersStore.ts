@@ -235,7 +235,6 @@ export const useRemindersStore = create<RemindersState>()(
       // Subscribe to realtime updates
       subscribeToRealtime: async (organizationId: string) => {
         try {
-          console.log('🔄 Subscribing to realtime reminder updates for organization:', organizationId);
 
           // Subscribe to reminders table changes for this organization
           const channel = supabase
@@ -249,7 +248,6 @@ export const useRemindersStore = create<RemindersState>()(
                 filter: `organization_id=eq.${organizationId}`
               },
               (payload) => {
-                console.log('📡 Realtime reminder update received:', payload);
 
                 const { eventType, new: newRecord, old: oldRecord } = payload;
 
@@ -285,7 +283,6 @@ export const useRemindersStore = create<RemindersState>()(
               }
             )
             .subscribe((status) => {
-              console.log('📡 Realtime reminder subscription status:', status);
               set({ isRealtimeConnected: status === 'SUBSCRIBED' });
             });
 
@@ -302,7 +299,6 @@ export const useRemindersStore = create<RemindersState>()(
       unsubscribeFromRealtime: () => {
         const channel = (get() as any).realtimeChannel;
         if (channel) {
-          console.log('🔌 Unsubscribing from realtime reminder updates');
           supabase.removeChannel(channel);
           set({ isRealtimeConnected: false });
           (get() as any).realtimeChannel = null;

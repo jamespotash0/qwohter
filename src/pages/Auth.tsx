@@ -33,6 +33,17 @@ const Auth = () => {
   const location = useLocation();
   const { toast } = useToast();
 
+  // Helper function to redirect after auth - goes to saved URL or dashboard
+  const redirectAfterAuth = () => {
+    const savedUrl = localStorage.getItem('auth_redirect_url');
+    if (savedUrl && savedUrl !== '/sign-in' && savedUrl !== '/create-account') {
+      localStorage.removeItem('auth_redirect_url');
+      navigate(savedUrl);
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
   // Determine if we're in create account mode based on the route
   const isCreateAccountRoute = location.pathname === '/create-account';
 
@@ -210,7 +221,7 @@ const Auth = () => {
               clearAuthState();
               // Add delay to ensure session is fully established before redirect
               setTimeout(() => {
-                navigate("/dashboard");
+                redirectAfterAuth();
               }, 500);
             }
             return;
@@ -628,7 +639,7 @@ const Auth = () => {
       });
       
       clearAuthState();
-      navigate("/dashboard");
+      redirectAfterAuth();
     } catch (error: any) {
       toast({
         title: "Company Info Error",

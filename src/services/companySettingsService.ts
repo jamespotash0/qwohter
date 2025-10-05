@@ -95,11 +95,6 @@ class OrganizationSettingsService {
         updated_at: new Date().toISOString()
       };
 
-      console.log('🔄 Updating organization with individual fields:', {
-        orgId: (membershipData as any).organization_id,
-        updateData
-      });
-
       // Update organization with individual fields
       const { data, error } = await supabase
         .from('organizations')

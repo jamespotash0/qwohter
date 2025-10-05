@@ -130,14 +130,10 @@ export const useWizardValidation = (
         // Check each required field (all except options and trackSystemOption are required)
         for (const [field, value] of Object.entries(requiredFields)) {
           if (!value || value === '') {
-            console.log(`Accordion wall validation failed for wall ${wallName}:`, field, '=', value);
             return false;
           }
         }
         
-        // Options field is optional, no validation needed
-        // trackSystemOption is optional, no validation needed
-        console.log(`Accordion wall validation passed for wall ${wallName}`, requiredFields);
       }
     }
     

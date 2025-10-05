@@ -11,6 +11,7 @@ interface AuthState {
   profile: UserProfile | null;
   isLoading: boolean;
   isInitialized: boolean;
+  isAuthChanging: boolean; // Track if auth state is currently changing
   error: string | null;
 
   // Actions
@@ -35,6 +36,7 @@ export const useAuthStore = create<AuthState>()(
     profile: null,
     isLoading: false,
     isInitialized: false,
+    isAuthChanging: false,
     error: null,
 
     // Initialize authentication state and set up listeners
@@ -64,14 +66,41 @@ export const useAuthStore = create<AuthState>()(
 
         // Set up auth state change listener
         supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('Auth state changed:', event, session?.user?.email);
+          console.log('🔄 Auth state changed EVENT:', event, 'User:', session?.user?.email);
 
-          _setAuth(session?.user ?? null, session);
-
-          if (session?.user) {
-            await fetchProfile(session.user.id);
-          } else {
+          // Handle sign out - clear cached data
+          if (event === 'SIGNED_OUT') {
+            localStorage.removeItem('sidebar_cached_profile');
+            localStorage.removeItem('sidebar_cached_role');
+            localStorage.removeItem('auth_flow_state');
+            localStorage.removeItem('temp_onboarding_progress');
+            _setAuth(null, null);
             _setProfile(null);
+            return;
+          }
+
+          // Don't process INITIAL_SESSION if we already have the session loaded
+          // This prevents duplicate processing on page load
+          const currentUser = get().user;
+          if (event === 'INITIAL_SESSION' && currentUser?.id === session?.user?.id) {
+            console.log('⏭️ Skipping INITIAL_SESSION - already have this user');
+            return;
+          }
+
+          // Only update auth state if it's actually different
+          const currentUserId = get().user?.id;
+          const newUserId = session?.user?.id;
+
+          if (currentUserId !== newUserId) {
+            _setAuth(session?.user ?? null, session);
+
+            if (session?.user) {
+              await fetchProfile(session.user.id);
+            } else {
+              _setProfile(null);
+            }
+          } else {
+            console.log('⏭️ Skipping auth update - user unchanged');
           }
         });
       } catch (error) {
@@ -184,7 +213,10 @@ export const useAuthStore = create<AuthState>()(
     clearError: () => set({ error: null }),
 
     // Internal setters
-    _setAuth: (user, session) => set({ user, session }),
+    _setAuth: (user, session) => {
+      console.log('📝 _setAuth called with user:', user?.email || 'null');
+      set({ user, session });
+    },
     _setProfile: (profile) => set({ profile }),
     _setLoading: (isLoading) => set({ isLoading }),
     _setError: (error) => set({ error }),

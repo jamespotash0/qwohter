@@ -27,6 +27,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // Use auth store instead of local state for cached auth
   const user = useAuthStore((state) => state.user);
   const isInitialized = useAuthStore((state) => state.isInitialized);
+  const isAuthChanging = useAuthStore((state) => state.isAuthChanging);
+  const isLoading = useAuthStore((state) => state.isLoading);
   const signOut = useAuthStore((state) => state.signOut);
 
   // Get current organization for paywall
@@ -103,11 +105,17 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   useEffect(() => {
     if (!shouldShowSidebar) return;
 
-    // Only redirect if auth is initialized and user is not logged in
-    if (isInitialized && !user) {
+    // Only redirect if:
+    // 1. Auth is initialized
+    // 2. Auth is NOT loading (prevents redirect while fetching session)
+    // 3. Auth is NOT changing (prevents redirect during state changes)
+    // 4. User is not logged in
+    if (isInitialized && !isLoading && !isAuthChanging && !user) {
+      // Save current location before redirecting to sign-in
+      localStorage.setItem('auth_redirect_url', location.pathname + location.search);
       navigate('/sign-in');
     }
-  }, [navigate, shouldShowSidebar, isInitialized, user]);
+  }, [navigate, shouldShowSidebar, isInitialized, isLoading, isAuthChanging, user, location.pathname, location.search]);
 
   // Redirect to pending approval if membership is pending
   useEffect(() => {

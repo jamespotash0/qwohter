@@ -70,7 +70,6 @@ export const generateQuotePDF = async (
   quote: Quote, 
   markAsDownloaded: (id: string) => Promise<any>
 ) => {
-  console.log('🔍 Starting browser-native PDF generation for quote:', quote.proposal_number);
   
   if (!quote.quote_details?.quoteName && !quote.project_name) {
     console.error('❌ Quote name is missing');
@@ -79,7 +78,6 @@ export const generateQuotePDF = async (
 
   try {
     const quoteName = quote.project_name || quote.proposal_number || 'quote';
-    console.log('📝 Quote name:', quoteName);
     
     // Create a new window with just the quote content for clean PDF generation
     const printWindow = window.open('', '_blank', 'width=800,height=600');
@@ -467,7 +465,6 @@ export const generateQuotePDF = async (
     printWindow.document.write(cleanHTML);
     printWindow.document.close();
     
-    console.log('✅ PDF generation initiated successfully');
     
     // Mark as downloaded (will increment version for next download)
     await markAsDownloaded(quote.id);

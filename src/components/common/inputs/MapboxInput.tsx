@@ -57,7 +57,6 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
     }
 
     try {
-      console.log('Making Mapbox API call for:', inputValue);
       // Use NY/NJ area coordinates for proximity bias (around Franklin Lakes, NJ)
       const proximityLng = -74.2107; // Longitude for Franklin Lakes, NJ
       const proximityLat = 41.0209;  // Latitude for Franklin Lakes, NJ
@@ -78,14 +77,11 @@ const MapboxInput = ({ label, value, onChange, placeholder, id, required = false
       }
       
       const data = await response.json();
-      console.log('POI suggestions:', data);
       
       if (data.features && data.features.length > 0) {
         setSuggestions(data.features);
         setShowSuggestions(true);
-        console.log('Found', data.features.length, 'suggestions');
       } else {
-        console.log('No features found in response');
         setSuggestions([]);
         setShowSuggestions(false);
       }

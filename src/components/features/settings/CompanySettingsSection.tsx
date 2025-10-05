@@ -15,7 +15,6 @@ export function CompanySettingsSection() {
   
   // Debug wrapper for setIsDialogOpen
   const setIsDialogOpenDebug = (value: boolean) => {
-    // console.log('🚪 setIsDialogOpen called with:', value, 'Stack trace:', new Error().stack);
     setIsDialogOpen(value);
   };
   const [user, setUser] = useState<any>(null);
@@ -46,12 +45,9 @@ export function CompanySettingsSection() {
   };
 
   const handleSave = async (data: any) => {
-    console.log('🔍 handleSave called with data:', data);
     try {
       await updateCompanyInfo(data);
-      // console.log('✅ updateCompanyInfo completed successfully');
       toast.success("Company information updated successfully");
-      // console.log('🚪 Closing dialog via handleSave');
       setIsDialogOpenDebug(false);
     } catch (error) {
       // console.error('❌ Error in handleSave:', error);
@@ -67,7 +63,7 @@ export function CompanySettingsSection() {
     extractCompanyInfoForForm(organization) : null;
   
   // Check if user is admin
-  const isAdmin = currentUserRole === 'admin';
+  const isAdmin = currentUserRole === 'Admin' || currentUserRole === 'Owner';
 
   return (
     <div className="space-y-4">

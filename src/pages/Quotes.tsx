@@ -57,7 +57,6 @@ const Quotes = () => {
   // Initialize quotes store
   useEffect(() => {
     if (user && !isInitialized) {
-      console.log('🔑 User authenticated, initializing quotes store...');
       initialize();
     }
   }, [user, isInitialized, initialize]);
@@ -74,18 +73,6 @@ const Quotes = () => {
 
   const updateQuoteSource = async (id: string, newSource: string) => {
     await updateQuote(id, { quote_source: newSource });
-  };
-
-  const handleFollowUpDateChange = async (id: string, date: Date | null) => {
-    console.log('🔔 handleFollowUpDateChange called:', { id, date, isoString: date ? date.toISOString() : null });
-    try {
-      const result = await updateQuote(id, {
-        follow_up_date: date ? date.toISOString() : null
-      });
-      console.log('✅ Quote updated successfully:', result);
-    } catch (error) {
-      console.error('❌ Error updating quote:', error);
-    }
   };
 
   const handleDeleteQuote = async (id: string) => {
@@ -505,7 +492,6 @@ const Quotes = () => {
           onEditQuote={editQuote}
           onDeleteQuote={(id) => setDeleteQuoteId(id)}
           onStatusChange={updateQuoteStatus}
-          onFollowUpDateChange={handleFollowUpDateChange}
           onQuoteSourceChange={updateQuoteSource}
           onCreateVersion={handleCreateVersion}
           onCreateQuote={() => setShowNewQuoteDialog(true)}

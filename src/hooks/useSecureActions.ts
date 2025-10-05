@@ -164,10 +164,6 @@ export const useSecureActions = () => {
       if (accessError || !hasAccess) {
         throw new Error('Access denied: Insufficient privileges');
       }
-
-      // Log admin action (for now just console log, implement audit table later)
-      console.log(`Admin action: ${action} performed by ${user?.id} on ${sanitizedTargetId}`, actionData);
-
       return true;
     } catch (error) {
       console.error('Admin action failed:', error);

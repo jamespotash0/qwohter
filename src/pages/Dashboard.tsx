@@ -34,7 +34,7 @@ import {
 
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useQuotesStore } from "@/stores/quotes/quotesStore";
-import { useUserProfile } from "@/hooks/useUserProfile";
+import { useAuthStore } from "@/stores/auth/authStore";
 import { quoteActivityService, type QuoteActivity } from "@/services/quoteActivityService";
 import { AddReminderModal } from "@/components/features/reminders/AddReminderModal";
 import { reminderService, type Reminder } from "@/services/reminderService";
@@ -48,7 +48,11 @@ import { toast } from "sonner";
  */
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+
+  // Use auth store instead of local state
+  const user = useAuthStore((state) => state.user);
+  const profile = useAuthStore((state) => state.profile);
+
   const [recentActivities, setRecentActivities] = useState<QuoteActivity[]>([]);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [showAddReminderModal, setShowAddReminderModal] = useState(false);
@@ -70,19 +74,6 @@ const Dashboard = () => {
   const initialize = useQuotesStore((state) => state.initialize);
 
   useOrganizations();
-
-  // Get current user
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-      }
-    };
-    getCurrentUser();
-  }, []);
-
-  const { profile } = useUserProfile(user?.id);
 
   // Update cache when profile loads (sidebar already does this, but just in case)
   useEffect(() => {
@@ -121,22 +112,16 @@ const Dashboard = () => {
 
   // Initialize quotes store
   useEffect(() => {
-    console.log('🎬 useEffect [INITIALIZE QUOTES] TRIGGERED', { userId: user?.id, isInitialized });
     if (user?.id && !isInitialized) {
-      console.log('🔑 Dashboard: User authenticated, initializing quotes store...');
       initialize();
-    } else {
-      console.log('⏭️ Skipping quotes init:', { hasUser: !!user?.id, isInitialized });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, isInitialized]);
 
   // Fetch recent activities from database and subscribe to real-time updates
   useEffect(() => {
-    console.log('🎬 useEffect [FETCH & SUBSCRIBE ACTIVITIES] TRIGGERED', { organizationId });
     const fetchRecentActivities = async () => {
       if (!organizationId) {
-        console.log('⏭️ No organizationId, skipping activities fetch');
         return;
       }
 
@@ -155,7 +140,6 @@ const Dashboard = () => {
     // Subscribe to real-time quote_activities updates
     if (!organizationId) return;
 
-    console.log('🔄 Subscribing to realtime quote_activities updates for organization:', organizationId);
 
     const channel = supabase
       .channel('quote-activities-changes')
@@ -168,7 +152,6 @@ const Dashboard = () => {
           filter: `organization_id=eq.${organizationId}`
         },
         (payload) => {
-          console.log('📡 Realtime quote_activity update received:', payload);
 
           if (payload.new) {
             setRecentActivities((prev) => {
@@ -181,22 +164,18 @@ const Dashboard = () => {
         }
       )
       .subscribe((status) => {
-        console.log('📡 Realtime quote_activities subscription status:', status);
       });
 
     // Cleanup: unsubscribe on unmount
     return () => {
-      console.log('🔌 Unsubscribing from realtime quote_activities updates');
       supabase.removeChannel(channel);
     };
   }, [organizationId]);
 
   // Fetch reminders and subscribe to real-time updates
   useEffect(() => {
-    console.log('🎬 useEffect [FETCH & SUBSCRIBE REMINDERS] TRIGGERED', { organizationId });
     const fetchReminders = async () => {
       if (!organizationId) {
-        console.log('⏭️ No organizationId, skipping reminders fetch');
         return;
       }
 
@@ -211,7 +190,6 @@ const Dashboard = () => {
       }
 
       if (data) {
-        console.log('✅ Fetched reminders:', data.length, 'reminders');
 
         // Filter out completed reminders older than 3 days
         const now = new Date();
@@ -226,10 +204,8 @@ const Dashboard = () => {
           return true; // Keep all non-completed reminders
         });
 
-        console.log('✅ After filtering:', filteredReminders.length, 'reminders (removed completed older than 3 days)');
         setReminders(filteredReminders);
       } else {
-        console.log('⚠️ No reminder data returned');
       }
     };
 
@@ -238,7 +214,6 @@ const Dashboard = () => {
     // Subscribe to real-time reminders updates
     if (!organizationId) return;
 
-    console.log('🔄 Subscribing to realtime reminders updates for organization:', organizationId);
 
     const channel = supabase
       .channel('reminders-changes')
@@ -251,7 +226,6 @@ const Dashboard = () => {
           filter: `organization_id=eq.${organizationId}`
         },
         async (payload) => {
-          console.log('📡 Realtime reminder update received:', payload);
 
           // Refetch all reminders to ensure we have complete data with joins
           const { data } = await reminderService.getReminders({
@@ -276,12 +250,10 @@ const Dashboard = () => {
         }
       )
       .subscribe((status) => {
-        console.log('📡 Realtime reminders subscription status:', status);
       });
 
     // Cleanup: unsubscribe on unmount
     return () => {
-      console.log('🔌 Unsubscribing from realtime reminders updates');
       supabase.removeChannel(channel);
     };
   }, [organizationId]);
@@ -593,10 +565,20 @@ const Dashboard = () => {
     }).format(amount);
   };
 
+  // Real-time update ticker - updates every second to keep timestamps fresh
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000); // Update every second
+
+    return () => clearInterval(timer);
+  }, []);
+
   const getTimeAgo = (date: string) => {
     const past = new Date(date);
-    const now = new Date();
-    const diffMs = now.getTime() - past.getTime();
+    const diffMs = currentTime.getTime() - past.getTime();
     const diffSecs = Math.floor(diffMs / 1000);
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
@@ -796,7 +778,6 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent className="pb-4">
                 {(() => {
-                  console.log('🔍 Dashboard rendering reminders:', reminders.length, reminders);
                   return null;
                 })()}
                 {reminders.length === 0 ? (

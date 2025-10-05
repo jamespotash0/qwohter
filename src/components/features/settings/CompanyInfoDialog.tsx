@@ -94,7 +94,6 @@ export function CompanyInfoDialog({
   // Handle logo upload
   const handleLogoUpload = async (result: LogoUploadResult) => {
     if (result.success) {
-      console.log('🎯 Logo upload successful, updating form state:', result);
       
       // Update local form state with new logo data
       const updatedFormData = {
@@ -104,7 +103,6 @@ export function CompanyInfoDialog({
         logo_public_url: result.publicUrl || '',
       };
       
-      console.log('🔄 Setting new form data:', updatedFormData);
       setFormData(updatedFormData);
     }
   };

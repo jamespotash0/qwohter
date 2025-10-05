@@ -38,12 +38,26 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Update editedFullName when profile changes
+  // Update editedFullName when profile changes (must be before early return)
   React.useEffect(() => {
     if (profile?.full_name && editedFullName !== profile.full_name) {
       setEditedFullName(profile.full_name);
     }
   }, [profile?.full_name]);
+
+  // Debug: Log the user role
+  console.log('ProfileTab userRole:', userRole);
+
+  // Show loading state if user is not loaded yet
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   const getInitials = (fullName?: string, email?: string) => {
     if (fullName) {

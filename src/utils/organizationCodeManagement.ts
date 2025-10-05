@@ -103,7 +103,6 @@ export const regenerateOrganizationCode = async (
 
   const invalidatedCount = invalidatedTokens?.length || 0;
 
-  console.log(`Regenerated organization code: ${newCode}, invalidated ${invalidatedCount} tokens`);
 
   return {
     newCode,

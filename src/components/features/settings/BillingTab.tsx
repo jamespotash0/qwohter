@@ -75,7 +75,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     }
   };
 
-  const handleUpgrade = () => {
+  const handleUpgrade = async () => {
     if (!hasPermission) {
       toast({
         title: "Permission Denied",
@@ -85,8 +85,24 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       return;
     }
 
-    // Redirect to subscription page to choose a new plan
-    window.location.href = '/subscription';
+    try {
+      // If they have a subscription, go to Stripe Customer Portal to manage it
+      if (subscription?.stripe_customer_id) {
+        await stripeService.createPortalSession({
+          organizationId: organization.id,
+          returnUrl: window.location.href,
+        });
+      } else {
+        // If no subscription, go to subscription page to choose a plan
+        window.location.href = '/subscription';
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to open billing management",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatCurrency = (amount: number): string => {

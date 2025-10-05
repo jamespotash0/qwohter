@@ -80,7 +80,6 @@ export const validateInviteToken = async (token: string): Promise<InviteToken | 
     .single();
 
   if (error || !data) {
-    console.log('Invalid invite token:', error?.message);
     return null;
   }
 
@@ -89,7 +88,6 @@ export const validateInviteToken = async (token: string): Promise<InviteToken | 
   const expiresAt = new Date(data.expires_at);
 
   if (now > expiresAt) {
-    console.log('Invite token has expired');
     return null;
   }
 

@@ -37,7 +37,6 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
 
   // Handle enhanced pricing data updates - now much simpler!
   const handlePricingUpdate = (updatedData: EnhancedPricingData) => {
-    console.log('🔄 PricingSection: Updating pricing data:', updatedData);
     
     // Direct update since we're using EnhancedPricingData throughout
     if (onChange) {
@@ -108,7 +107,7 @@ export const PricingSection: React.FC<PricingSectionPropsWithOnChange> = ({
               <EnhancedPricingForm
                 data={enhancedData}
                 onUpdate={handlePricingUpdate}
-                quoteData={data}
+                // quoteData={data}
               />
             </DialogContent>
           </Dialog>

@@ -52,7 +52,6 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
 
   // Handle logo upload success
   const handleLogoUploadSuccess = (result: LogoUploadResult) => {
-    console.log('✅ Logo upload successful:', result);
     toast({
       title: "Logo Uploaded",
       description: "Your company logo has been uploaded successfully.",
@@ -75,14 +74,8 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
   };
 
   const handleSaveOrganization = async () => {
-    console.log('🔄 Save organization attempt:');
-    console.log('  - hasEditPermission:', hasEditPermission);
-    console.log('  - userRole:', userRole);
-    console.log('  - organization:', organization);
-    console.log('  - organization.id:', organization?.id);
 
     if (!hasEditPermission) {
-      console.log('❌ Permission denied');
       toast({
         title: "Permission Denied",
         description: "You don't have permission to edit organization details.",
@@ -92,7 +85,6 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
     }
 
     if (!organization?.id) {
-      console.log('❌ No organization ID');
       toast({
         title: "Error",
         description: "Organization ID not found. Please refresh the page.",
@@ -103,8 +95,6 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
 
     setIsUpdating(true);
     try {
-      console.log('📝 About to update with data:', editedData);
-      console.log('🎯 Updating organization ID:', organization.id);
 
       const updateData = {
         name: editedData.name,
@@ -115,7 +105,6 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
         website: editedData.website || null
       };
 
-      console.log('📋 Update payload:', updateData);
 
       const { error, data } = await supabase
         .from('organizations')
@@ -130,7 +119,6 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
         .eq('id', organization.id)
         .select();
 
-      console.log('📊 Update result:', { error, data });
 
       if (error) {
         console.error('❌ Database error:', error);
@@ -143,7 +131,6 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
       });
 
       setIsEditing(false);
-      console.log('🔄 About to call onOrganizationUpdate (save):', typeof onOrganizationUpdate);
       if (typeof onOrganizationUpdate === 'function') {
         onOrganizationUpdate();
       } else {

@@ -58,7 +58,6 @@ export class DynamicPageBreakManager {
           const actualHeight = section.getBoundingClientRect().height;
           sectionHeights.set(sectionClass, Math.ceil(actualHeight));
           
-          console.log(`📏 Measured ${sectionClass}: ${Math.ceil(actualHeight)}px`);
         }
       });
 
@@ -184,7 +183,6 @@ export class DynamicPageBreakManager {
   }
 
   public processHTMLWithDynamicBreaks(htmlContent: string, data: QuoteData): string {
-    console.log('🔄 Processing HTML with dynamic page breaks...');
     
     // Generate a hash for caching
     const contentHash = this.generateContentHash(htmlContent, data);
@@ -192,7 +190,6 @@ export class DynamicPageBreakManager {
     // Check if we have a cached result and content hasn't changed significantly
     const cachedResult = DynamicPageBreakManager.cachedResults.get(contentHash);
     if (cachedResult && DynamicPageBreakManager.lastContentHash === contentHash) {
-      console.log('✅ Using cached dynamic page break result');
       return cachedResult;
     }
     
@@ -206,11 +203,6 @@ export class DynamicPageBreakManager {
     try {
       // Get rules with calculated heights from actual content
       const rules = this.getDynamicPageBreakRules(data, htmlContent);
-      console.log('📋 Using dynamic rules:', rules.map(r => ({ 
-        section: r.sectionClass, 
-        min: r.minimumHeight, 
-        calculated: r.calculatedHeight 
-      })));
 
       sanitizeHTML.setInnerHTML(tempContainer, sanitizeHTML.cleanForPDF(htmlContent));
       document.body.appendChild(tempContainer);
@@ -229,7 +221,6 @@ export class DynamicPageBreakManager {
           const requiredHeight = rule.isDynamic && rule.calculatedHeight ? 
             rule.calculatedHeight : rule.minimumHeight;
           
-          console.log(`📏 Processing ${rule.sectionClass}: actual=${actualSectionHeight}px, calculated=${rule.calculatedHeight}px, using=${effectiveHeight}px`);
           
           // Calculate which page we're on
           const currentPage = Math.floor(sectionTop / this.pageHeight);
@@ -485,7 +476,6 @@ export class DynamicPageBreakManager {
     const threshold = Math.min(oldContent.length, newContent.length) * 0.1; // 10% change threshold
     
     if (lengthDifference > threshold) {
-      console.log(`📏 Content change detected: ${lengthDifference} chars difference, recalculating rules`);
       return true;
     }
     
@@ -494,7 +484,6 @@ export class DynamicPageBreakManager {
     const newWallCount = this.extractWallCountFromHTML(newContent);
     
     if (oldWallCount !== newWallCount) {
-      console.log(`📏 Wall count changed: ${oldWallCount} → ${newWallCount}, recalculating rules`);
       return true;
     }
     
@@ -527,7 +516,6 @@ export class DynamicPageBreakManager {
   public static clearCache(): void {
     this.cachedResults.clear();
     this.lastContentHash = null;
-    console.log('🗑️ DynamicPageBreakManager cache cleared');
   }
 
   /**
@@ -535,6 +523,5 @@ export class DynamicPageBreakManager {
    */
   public forceRecalculation(): void {
     DynamicPageBreakManager.clearCache();
-    console.log('🔄 DynamicPageBreakManager: Forced recalculation on next process');
   }
 }

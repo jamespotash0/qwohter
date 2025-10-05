@@ -34,7 +34,6 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
         Math.abs(previewHTML.length - previousHtmlRef.current.length) > 100;
       
       if (hasSignificantChange) {
-        console.log('🔄 Significant content change detected, forcing recalculation');
         ContentSplitter.forceRecalculation();
       }
       
@@ -46,7 +45,6 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
   const calculatePages = useCallback(async () => {
     if (!previewHTML) return;
 
-    console.log('🔄 Starting intelligent content-aware pagination');
     
     try {
       // Use ContentSplitter to properly split content across pages
@@ -59,8 +57,6 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
         pageNumber: page.pageNumber
       }));
       
-      console.log(`✅ ContentSplitter created ${newPages.length} pages with proper content distribution`);
-      console.log('📄 Pages:', newPages.map(p => `Page ${p.pageNumber}: ${p.content.length} chars`));
       setPages(newPages);
       
     } catch (error) {
@@ -107,7 +103,6 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
   );
 
   // Debug logging for rendering
-  console.log(`🖼️ LivePreviewPanel rendering with ${pages.length} pages`);
 
   return (
     <div data-testid="live-preview-panel" className={`flex-1 overflow-auto ${className}`}>

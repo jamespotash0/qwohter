@@ -23,9 +23,6 @@ const ResetPassword = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log('ResetPassword component mounted');
-    console.log('Current URL:', window.location.href);
-    console.log('Search params size:', searchParams.size);
 
     // Check for access token in URL (from email link)
     const accessToken = searchParams.get('access_token');
@@ -34,27 +31,26 @@ const ResetPassword = () => {
 
     // Also check for hash-based tokens (common with Supabase)
     const hash = window.location.hash;
-    console.log('URL hash:', hash);
 
     const hashParams = new URLSearchParams(hash.substring(1));
     const hashAccessToken = hashParams.get('access_token');
     const hashRefreshToken = hashParams.get('refresh_token');
     const hashType = hashParams.get('type');
 
-    console.log('Reset password params:', {
-      searchParams: {
-        accessToken: !!accessToken,
-        refreshToken: !!refreshToken,
-        type,
-      },
-      hashParams: {
-        accessToken: !!hashAccessToken,
-        refreshToken: !!hashRefreshToken,
-        type: hashType,
-      },
-      allSearchParams: Object.fromEntries(searchParams.entries()),
-      allHashParams: Object.fromEntries(hashParams.entries())
-    });
+    // console.log('Reset password params:', {
+    //   searchParams: {
+    //     accessToken: !!accessToken,
+    //     refreshToken: !!refreshToken,
+    //     type,
+    //   },
+    //   hashParams: {
+    //     accessToken: !!hashAccessToken,
+    //     refreshToken: !!hashRefreshToken,
+    //     type: hashType,
+    //   },
+    //   allSearchParams: Object.fromEntries(searchParams.entries()),
+    //   allHashParams: Object.fromEntries(hashParams.entries())
+    // });
 
     // Handle the session setting
     const handleSessionSetup = async () => {
@@ -62,15 +58,14 @@ const ResetPassword = () => {
       const finalAccessToken = hashAccessToken || accessToken;
       const finalRefreshToken = hashRefreshToken || refreshToken;
 
-      console.log('Final tokens to use:', {
-        accessToken: !!finalAccessToken,
-        refreshToken: !!finalRefreshToken,
-        source: hashAccessToken ? 'hash' : 'search'
-      });
+      // console.log('Final tokens to use:', {
+      //   accessToken: !!finalAccessToken,
+      //   refreshToken: !!finalRefreshToken,
+      //   source: hashAccessToken ? 'hash' : 'search'
+      // });
 
       if (finalAccessToken && finalRefreshToken) {
         try {
-          console.log('Setting session with tokens...');
           const { data, error } = await supabase.auth.setSession({
             access_token: finalAccessToken,
             refresh_token: finalRefreshToken
@@ -85,7 +80,6 @@ const ResetPassword = () => {
               variant: "destructive",
             });
           } else {
-            console.log('Session set successfully:', data.session?.user?.email);
 
             // Double-check that we can actually get the session
             const { data: sessionData, error: sessionCheckError } = await supabase.auth.getSession();
@@ -96,7 +90,6 @@ const ResetPassword = () => {
               console.error('No session found after setting');
               setSessionError('Session not established. Please try the reset link again.');
             } else {
-              console.log('Session verified successfully');
               setSessionReady(true);
             }
           }
@@ -184,7 +177,6 @@ const ResetPassword = () => {
 
     setLoading(true);
     try {
-      console.log('Updating password with established session...');
 
       const { error } = await supabase.auth.updateUser({
         password: password
@@ -200,14 +192,12 @@ const ResetPassword = () => {
         throw error;
       }
 
-      console.log('Password updated successfully');
 
       // Sign out the user for security - they should sign in with new password
       const { error: signOutError } = await supabase.auth.signOut();
       if (signOutError) {
         console.error('Error signing out after password reset:', signOutError);
       } else {
-        console.log('User signed out successfully after password reset');
       }
 
       setSuccess(true);

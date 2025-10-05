@@ -63,7 +63,6 @@ const QuoteEditIncomplete = () => {
 
   const handleQuoteNameChange = (newName: string) => {
     // This will be handled by the editing wizard itself
-    console.log("Quote name changed to:", newName);
   };
 
   if (!user || !existingQuote) {

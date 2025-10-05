@@ -51,7 +51,6 @@ const Analytics = () => {
   // Initialize quotes store
   useEffect(() => {
     if (user && !isInitialized) {
-      console.log('🔑 Analytics: User authenticated, initializing quotes store...');
       initialize();
     }
   }, [user, isInitialized, initialize]);

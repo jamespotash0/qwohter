@@ -102,7 +102,6 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
       try {
         // Get current authenticated user ID
         const { data: { user } } = await supabase.auth.getUser();
-        console.log('👤 Current user:', user?.id);
         let orgId = '';
         
         if (user) {
@@ -113,21 +112,10 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
             .eq('status', 'Active')
             .single();
 
-          console.log('📋 User membership:', membershipData);
           orgId = (membershipData as any)?.organization_id || '';
-          console.log('🏢 Organization ID:', orgId);
         }
 
         if (orgId) {
-          console.log('🔄 About to call updateOrganizationLogo with:', {
-            orgId,
-            logoData: {
-              logo_url: uploadResult.url || '',
-              logo_file_name: uploadResult.fileName || '',
-              logo_public_url: uploadResult.publicUrl || '',
-            }
-          });
-          
           const dbResult = await LogoUploadService.updateOrganizationLogo(
             orgId,
             {
@@ -137,7 +125,6 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
             }
           );
           
-          console.log('🔄 updateOrganizationLogo result:', dbResult);
 
           if (!dbResult.success) {
             console.error('Database save failed:', dbResult.error);
@@ -147,7 +134,6 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
           }
         } else {
           console.error('❌ No organization ID found, cannot save logo to database');
-          console.log('🔍 Debug info:', { user: user?.id, orgId });
         }
 
         clearInterval(progressInterval);
@@ -167,7 +153,6 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
           URL.revokeObjectURL(uploadState.previewUrl);
         }
         
-        console.log('✅ Logo uploaded and saved successfully');
 
         // Show success overlay for 3 seconds
         setShowSuccessOverlay(true);

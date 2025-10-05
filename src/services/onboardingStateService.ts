@@ -50,7 +50,6 @@ export const onboardingStateHelpers = {
           timestamp: Date.now()
         };
         localStorage.setItem('temp_onboarding_progress', JSON.stringify(localData));
-        console.log('Onboarding progress saved to localStorage:', { userId, step, sessionData });
         return;
       }
 
@@ -74,7 +73,6 @@ export const onboardingStateHelpers = {
         throw error;
       }
 
-      console.log('Onboarding progress saved to database:', { userId, step, sessionData });
     } catch (error) {
       console.error('Error in saveOnboardingProgress:', error);
       throw error;
@@ -103,7 +101,6 @@ export const onboardingStateHelpers = {
 
       // Check if progress has expired
       if (data && new Date(data.expires_at) < new Date()) {
-        console.log('Onboarding progress expired, cleaning up');
         await onboardingStateHelpers.clearOnboardingProgress(userId);
         return null;
       }
@@ -150,7 +147,6 @@ export const onboardingStateHelpers = {
         throw error;
       }
 
-      console.log('Step completed:', { userId, completedStep, nextStep });
     } catch (error) {
       console.error('Error in completeStep:', error);
       throw error;
@@ -198,7 +194,6 @@ export const onboardingStateHelpers = {
         throw error;
       }
 
-      console.log('Onboarding progress cleared for user:', userId);
     } catch (error) {
       console.error('Error in clearOnboardingProgress:', error);
       throw error;
@@ -301,7 +296,6 @@ export const onboardingStateHelpers = {
       }
 
       const cleanedCount = data?.length || 0;
-      console.log(`Cleaned up ${cleanedCount} expired onboarding records`);
       return cleanedCount;
     } catch (error) {
       console.error('Error in cleanupExpiredRecords:', error);

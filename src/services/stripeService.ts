@@ -9,7 +9,6 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { loadStripe, Stripe } from '@stripe/stripe-js';
 
 // Type definitions
 interface SubscriptionPlan {
@@ -44,19 +43,8 @@ interface Subscription {
   plan?: SubscriptionPlan;
 }
 
-// Initialize Stripe (client-side)
-let stripePromise: Promise<Stripe | null>;
-export const getStripe = () => {
-  if (!stripePromise) {
-    const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-    if (!publishableKey) {
-      console.error('Stripe publishable key not configured');
-      return Promise.resolve(null);
-    }
-    stripePromise = loadStripe(publishableKey);
-  }
-  return stripePromise;
-};
+// No longer need Stripe.js client-side library
+// Direct URL redirection is simpler and more reliable
 
 // ============================================================================
 // PLAN MANAGEMENT
@@ -339,7 +327,7 @@ export const createCheckoutSession = async (params: {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
     const functionsUrl = supabaseUrl?.replace('.supabase.co', '.supabase.co/functions/v1') || '';
 
-    const response = await fetch(`${functionsUrl}/create-stripe-checkout`, {
+    const response = await fetch(`${functionsUrl}/stripe-handler`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -360,27 +348,25 @@ export const createCheckoutSession = async (params: {
       return { sessionId: null, error: `HTTP ${response.status}: ${errorText}` };
     }
 
-    const { sessionId, error } = await response.json();
+    const { sessionId, url, error } = await response.json();
 
     if (error) {
       return { sessionId: null, error };
     }
 
-    // Redirect to Stripe Checkout
-    const stripe = await getStripe();
-    if (!stripe) {
-      return { sessionId: null, error: 'Stripe not initialized' };
+    // If the Edge Function returns a URL, use it directly
+    if (url) {
+      window.location.href = url;
+      return { sessionId, error: null };
     }
 
-    const { error: redirectError } = await stripe.redirectToCheckout({
-      sessionId,
-    });
-
-    if (redirectError) {
-      return { sessionId: null, error: redirectError.message };
+    // Otherwise, construct the Stripe Checkout URL manually
+    if (sessionId) {
+      window.location.href = `https://checkout.stripe.com/c/pay/${sessionId}`;
+      return { sessionId, error: null };
     }
 
-    return { sessionId, error: null };
+    return { sessionId: null, error: 'No session ID or URL returned' };
   } catch (error) {
     console.error('Error creating checkout session:', error);
     return {
@@ -400,17 +386,31 @@ export const createPortalSession = async (params: {
   returnUrl: string;
 }) => {
   try {
-    // Call your backend endpoint to create portal session
-    const response = await fetch('/api/stripe/create-portal-session', {
+    // Get current user's session token
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return { url: null, error: 'Not authenticated' };
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const functionsUrl = supabaseUrl?.replace('.supabase.co', '.supabase.co/functions/v1') || '';
+
+    const response = await fetch(`${functionsUrl}/create-portal-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({
         organizationId: params.organizationId,
         returnUrl: params.returnUrl,
       }),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { url: null, error: `HTTP ${response.status}: ${errorText}` };
+    }
 
     const { url, error } = await response.json();
 
@@ -456,7 +456,4 @@ export const stripeService = {
   // Stripe Checkout
   createCheckoutSession,
   createPortalSession,
-
-  // Stripe Client
-  getStripe,
 };
