@@ -128,7 +128,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   }
 
   const plan = subscription?.plan;
-  const isActive = subscription?.stripe_subscription_status === 'active' || subscription?.stripe_subscription_status === 'trialing';
+  const isActive = subscription?.stripe_subscription_status === 'Active' || subscription?.stripe_subscription_status === 'Trialing';
 
   return (
     <div className="space-y-8">

@@ -11,6 +11,39 @@
 import { supabase } from '@/integrations/supabase/client';
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 
+// Type definitions
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  display_name: string;
+  description: string | null;
+  stripe_product_id: string | null;
+  stripe_price_id_monthly: string | null;
+  stripe_price_id_yearly: string | null;
+  features: string[] | string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Subscription {
+  id: string;
+  organization_id: string;
+  plan_id: string;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  stripe_subscription_status: string | null;
+  current_period_end: string | null;
+  is_active: boolean;
+  access_blocked: boolean;
+  access_blocked_reason: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  plan?: SubscriptionPlan;
+}
+
 // Initialize Stripe (client-side)
 let stripePromise: Promise<Stripe | null>;
 export const getStripe = () => {
@@ -34,7 +67,7 @@ export const getStripe = () => {
  * Plans stored locally for display purposes only
  * Actual pricing comes from Stripe
  */
-export const getPlans = async () => {
+export const getPlans = async (): Promise<{ data: SubscriptionPlan[] | null; error: string | null }> => {
   const { data, error } = await supabase
     .from('subscription_plans')
     .select('*')
@@ -46,7 +79,7 @@ export const getPlans = async () => {
     return { data: null, error: error.message };
   }
 
-  return { data, error: null };
+  return { data: data as SubscriptionPlan[], error: null };
 };
 
 /**
@@ -76,7 +109,7 @@ export const getPlanByName = async (name: string) => {
  * Get organization's subscription (local reference)
  * For full billing details, use getStripeSubscription()
  */
-export const getSubscription = async (organizationId: string) => {
+export const getSubscription = async (organizationId: string): Promise<{ data: Subscription | null; error: string | null }> => {
   const { data, error } = await supabase
     .from('subscriptions')
     .select(`
@@ -91,7 +124,7 @@ export const getSubscription = async (organizationId: string) => {
     return { data: null, error: error.message };
   }
 
-  return { data, error: null };
+  return { data: data as Subscription, error: null };
 };
 
 /**
@@ -111,7 +144,7 @@ export const createSubscription = async (params: {
       stripe_customer_id: params.stripeCustomerId || null,
       is_active: true,
       access_blocked: false,
-    })
+    } as any)
     .select()
     .single();
 
@@ -182,11 +215,14 @@ export const hasValidSubscription = async (organizationId: string) => {
   }
 
   // Check subscription status (cached from Stripe)
-  const validStatuses = ['active', 'trialing'];
-  if (!validStatuses.includes(subscription.stripe_subscription_status || '')) {
+  // Note: Stripe uses lowercase, but we may have capitalized versions in DB
+  const validStatuses = ['Active', 'Trialing'];
+  if (!subscription.stripe_subscription_status || !validStatuses.includes(subscription.stripe_subscription_status)) {
     return {
       isValid: false,
-      reason: `Subscription status: ${subscription.stripe_subscription_status}`,
+      reason: subscription.stripe_subscription_status
+        ? `Subscription status: ${subscription.stripe_subscription_status}`
+        : 'No subscription status set',
     };
   }
 
@@ -292,12 +328,22 @@ export const createCheckoutSession = async (params: {
       quantity = calculatedQuantity;
     }
 
-    // Call your backend endpoint to create checkout session
+    // Get current user's session token
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return { sessionId: null, error: 'Not authenticated' };
+    }
+
+    // Call Supabase Edge Function to create checkout session
     // This endpoint should use Stripe Secret Key (server-side only)
-    const response = await fetch('/api/stripe/create-checkout-session', {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const functionsUrl = supabaseUrl?.replace('.supabase.co', '.supabase.co/functions/v1') || '';
+
+    const response = await fetch(`${functionsUrl}/create-stripe-checkout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({
         organizationId: params.organizationId,
@@ -308,6 +354,11 @@ export const createCheckoutSession = async (params: {
         cancelUrl: params.cancelUrl,
       }),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { sessionId: null, error: `HTTP ${response.status}: ${errorText}` };
+    }
 
     const { sessionId, error } = await response.json();
 

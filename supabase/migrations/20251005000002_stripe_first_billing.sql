@@ -168,7 +168,7 @@ BEGIN
     WHERE s.organization_id = org_id
     AND s.is_active = true
     AND s.access_blocked = false
-    AND s.stripe_subscription_status IN ('active', 'trialing')
+    AND s.stripe_subscription_status IN ('Active', 'Trialing')
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
