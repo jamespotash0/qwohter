@@ -2,7 +2,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useCallback } from 'react';
 
 /**
- * Enhanced navigation hook for Wall Quote Wizard
+ * Enhanced navigation hook for Qwohter
  * 
  * Provides type-safe navigation methods for all application routes
  * with additional context and error handling.

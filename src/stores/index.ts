@@ -1,4 +1,4 @@
-// Global State Management System for Wall Quote Wizard
+// Global State Management System for Qwohter
 // Built with Zustand for lightweight, performant state management
 
 // ====================================================================

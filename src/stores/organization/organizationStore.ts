@@ -48,7 +48,6 @@ interface OrganizationState {
   currentUserRole: 'Owner' | 'Admin' | 'Member' | null;
   currentUserMembership: {
     joined_at: string;
-    // plan: string;
   } | null;
   loading: boolean;
   error: string | null;
@@ -128,7 +127,6 @@ export const useOrganizationStore = create<OrganizationState>()(
               currentUserRole: membershipData.role as 'Owner' | 'Admin' | 'Member',
               currentUserMembership: {
                 joined_at: membershipData.joined_at,
-                // plan: 'Free' // Plan is now in subscriptions table, not memberships
               },
               loading: false,
             });

@@ -1,6 +1,6 @@
 # Stripe Billing Setup Guide
 
-Complete step-by-step guide to set up Stripe billing for Wall Quote Wizard.
+Complete step-by-step guide to set up Stripe billing for Qwohter.
 
 ---
 

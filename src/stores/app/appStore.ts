@@ -73,11 +73,7 @@ export const useAppStore = create<AppState>()(
         const startTime = performance.now();
         
         try {
-          // Record start of initialization
-          console.log('🚀 Initializing Wall Quote Wizard...');
-          
-          // Initialize auth store first
-          console.log('📝 Initializing authentication...');
+    
           await useAuthStore.getState().initialize();
           
           // Wait for auth to settle, then initialize other stores

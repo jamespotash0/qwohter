@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageContent } from "@/components/common/layout";
@@ -15,12 +16,21 @@ import { BillingTab } from "@/components/features/settings/BillingTab";
 import { canAccessSettingsTab } from "@/utils/permissions";
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState("profile");
+  const [searchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabFromUrl || "profile");
   const user = useAuthStore((state) => state.user);
   const { organization, fetchOrganization: refetchOrganization } = useOrganizationSettings();
   const { profile } = useUserProfile(user?.id);
   const { currentMembership, loading: membershipLoading } = useMembership();
   const userRole = currentMembership?.role;
+
+  // Update active tab when URL parameter changes
+  useEffect(() => {
+    if (tabFromUrl) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
 
   // Wait for membership to load to get correct role
   if (membershipLoading) {

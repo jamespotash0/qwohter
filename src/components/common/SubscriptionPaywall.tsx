@@ -46,46 +46,52 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
+      <>
+        {children}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+          <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
+        </div>
+      </>
     );
   }
 
   if (!hasAccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full">
-          <CardHeader className="text-center">
-            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="w-8 h-8 text-orange-600" />
-            </div>
-            <CardTitle className="text-2xl">Subscription Required</CardTitle>
-            <CardDescription>
-              {blockReason || 'A valid subscription is required to access this feature'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-gray-600 text-center">
-              Choose a plan to continue using Wall Quote Wizard
-            </p>
-            <Button
-              onClick={() => navigate('/subscription')}
-              className="w-full bg-blue-600 hover:bg-blue-700"
-            >
-              <CreditCard className="w-4 h-4 mr-2" />
-              Choose a Plan
-            </Button>
-            <Button
-              onClick={() => navigate('/settings')}
-              variant="outline"
-              className="w-full"
-            >
-              Go to Settings
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <>
+        {children}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-md">
+          <Card className="max-w-md w-full mx-4 shadow-2xl border-gray-200">
+            <CardHeader className="text-center pb-4">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8 text-orange-600" />
+              </div>
+              <CardTitle className="text-2xl text-gray-900">Subscription Required</CardTitle>
+              <CardDescription className="text-gray-600 mt-2">
+                {blockReason || 'A valid subscription is required to access this feature'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-2">
+              <p className="text-sm text-gray-600 text-center">
+                Choose a plan to continue using Qwohter
+              </p>
+              <Button
+                onClick={() => navigate('/subscription')}
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                <CreditCard className="w-4 h-4 mr-2" />
+                Choose a Plan
+              </Button>
+              <Button
+                onClick={() => navigate('/settings?tab=billing')}
+                variant="outline"
+                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Go to Billing Settings
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </>
     );
   }
 

@@ -1,6 +1,6 @@
 # Access Control & Routing Guide
 
-Complete guide to how user access, permissions, and routing work in Wall Quote Wizard.
+Complete guide to how user access, permissions, and routing work in Qwohter.
 
 ---
 

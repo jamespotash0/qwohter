@@ -63,7 +63,6 @@ export function AppSidebar({
 
   const { profile } = useUserProfile(currentUser?.id);
   const { currentUserRole } = useOrganizations();
-  const currentUserMembership = useOrganizationStore((state) => state.currentUserMembership);
 
   // Cache profile data to prevent flashing - only update if we have real data
   useEffect(() => {
@@ -245,50 +244,7 @@ export function AppSidebar({
       <SidebarFooter className="p-2 pb-4">
         {!isCollapsed ? (
           <div className="space-y-3">
-            {/* Subscription Card - Only for Owners */}
-            {effectiveRole === 'Owner' && currentUserMembership && (
-              <Card className="bg-gradient-to-br from-white via-blue-50/30 to-blue-100/40 dark:from-gray-800 dark:via-blue-950/20 dark:to-blue-900/30 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-200 !rounded-[.5rem]">
-                <CardContent className="p-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                        {currentUserMembership.plan} Plan
-                      </p>
-                    </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">
-                      {(() => {
-                        const joinedDate = new Date(currentUserMembership.joined_at);
-                        const nextRenewal = new Date(joinedDate);
-                        nextRenewal.setMonth(nextRenewal.getMonth() + 1);
-
-                        // If renewal date has passed, keep adding months until we're in the future
-                        const now = new Date();
-                        while (nextRenewal < now) {
-                          nextRenewal.setMonth(nextRenewal.getMonth() + 1);
-                        }
-
-                        return `Renews ${nextRenewal.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-                      })()}
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full h-8 text-xs bg-white hover:bg-gray-50 text-gray-700 border-gray-300"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleNavigate('/settings?tab=billing');
-                      }}
-                    >
-                      Manage
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* User Profile Section */}
+          {/* User Profile Section */}
             <div className="flex items-center justify-between p-3 rounded-xl group">
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Avatar className="h-9 w-9 ring-2 ring-[var(--sidebar-user-avatar-bg)]">

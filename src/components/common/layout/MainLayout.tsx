@@ -4,6 +4,8 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { useAuthStore } from '@/stores/auth/authStore';
 import { supabase } from '@/integrations/supabase/client';
+import { SubscriptionPaywall } from '@/components/common/SubscriptionPaywall';
+import { useCurrentOrganization } from '@/stores/organization/organizationStore';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -26,6 +28,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const user = useAuthStore((state) => state.user);
   const isInitialized = useAuthStore((state) => state.isInitialized);
   const signOut = useAuthStore((state) => state.signOut);
+
+  // Get current organization for paywall
+  const currentOrganization = useCurrentOrganization();
 
   // Membership status tracking
   const [membershipStatus, setMembershipStatus] = useState<string | null>(null);
@@ -142,6 +147,17 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   }
 
   // Main layout with persistent sidebar
+  // Wrap content with subscription paywall if organization exists
+  // Exclude settings page from paywall so users can access billing
+  const shouldApplyPaywall = currentOrganization?.id && location.pathname !== '/settings';
+  const content = shouldApplyPaywall ? (
+    <SubscriptionPaywall organizationId={currentOrganization.id}>
+      {children}
+    </SubscriptionPaywall>
+  ) : (
+    children
+  );
+
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="h-screen flex w-full bg-[var(--content-bg)] overflow-hidden">
@@ -150,13 +166,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           {isFullScreenPage ? (
             // Full-screen layout for wizards (no padding, no max-width)
             <div className="flex-1 overflow-auto">
-              {children}
+              {content}
             </div>
           ) : (
             // Standard layout with padding and max-width
             <div className="flex-1 py-8 px-8 lg:px-12 space-y-4 overflow-auto">
               <div className="max-w-[1350px] mx-auto w-full">
-                {children}
+                {content}
               </div>
             </div>
           )}

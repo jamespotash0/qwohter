@@ -40,7 +40,7 @@ const PageLoader = () => (
 );
 
 /**
- * Enhanced routing structure for Wall Quote Wizard
+ * Enhanced routing structure for Qwohter
  * 
  * Features:
  * - Lazy loading for better performance
