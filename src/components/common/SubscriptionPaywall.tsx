@@ -4,6 +4,7 @@ import { CreditCard, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { stripeService } from '@/services/stripeService';
+import { useOrganizationStore } from '@/stores/organization/organizationStore';
 
 interface SubscriptionPaywallProps {
   organizationId: string;
@@ -19,9 +20,15 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   children,
 }) => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [hasAccess, setHasAccess] = useState(false);
-  const [blockReason, setBlockReason] = useState<string>('');
+
+  // Get cached subscription status from store
+  const cachedStatus = useOrganizationStore((state) => state.subscriptionStatus);
+  const setSubscriptionStatus = useOrganizationStore((state) => state.setSubscriptionStatus);
+
+  // Initialize with cached values if available
+  const [loading, setLoading] = useState(!cachedStatus);
+  const [hasAccess, setHasAccess] = useState(cachedStatus?.hasAccess ?? false);
+  const [blockReason, setBlockReason] = useState<string>(cachedStatus?.reason ?? '');
 
   useEffect(() => {
     checkSubscription();
@@ -29,16 +36,31 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
 
   const checkSubscription = async () => {
     try {
-      setLoading(true);
+      // Only show loading if we don't have cached data
+      if (!cachedStatus) {
+        setLoading(true);
+      }
 
       const { isValid, reason } = await stripeService.hasValidSubscription(organizationId);
 
       setHasAccess(isValid);
       setBlockReason(reason || '');
+
+      // Cache the result in Zustand store
+      setSubscriptionStatus({
+        hasAccess: isValid,
+        reason: reason || '',
+      });
     } catch (error) {
       console.error('Error checking subscription:', error);
       setHasAccess(false);
       setBlockReason('Unable to verify subscription status');
+
+      // Cache the error state
+      setSubscriptionStatus({
+        hasAccess: false,
+        reason: 'Unable to verify subscription status',
+      });
     } finally {
       setLoading(false);
     }

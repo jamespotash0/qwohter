@@ -51,6 +51,12 @@ interface OrganizationState {
   } | null;
   loading: boolean;
   error: string | null;
+  // Cached subscription status
+  subscriptionStatus: {
+    hasAccess: boolean;
+    reason: string;
+    lastChecked: number;
+  } | null;
 
   // Actions
   fetchOrganization: () => Promise<void>;
@@ -61,6 +67,7 @@ interface OrganizationState {
   setInviteTokens: (tokens: InviteToken[]) => void;
   setCurrentUserRole: (role: 'Owner' | 'Admin' | 'Member' | null) => void;
   updateOrganization: (updates: Partial<Organization>) => Promise<void>;
+  setSubscriptionStatus: (status: { hasAccess: boolean; reason: string }) => void;
   reset: () => void;
 }
 
@@ -75,6 +82,7 @@ export const useOrganizationStore = create<OrganizationState>()(
       currentUserMembership: null,
       loading: false,
       error: null,
+      subscriptionStatus: null,
 
       // Fetch organization
       fetchOrganization: async () => {
@@ -243,6 +251,16 @@ export const useOrganizationStore = create<OrganizationState>()(
         }
       },
 
+      // Set subscription status
+      setSubscriptionStatus: (status: { hasAccess: boolean; reason: string }) => {
+        set({
+          subscriptionStatus: {
+            ...status,
+            lastChecked: Date.now(),
+          },
+        });
+      },
+
       // Reset
       reset: () => {
         set({
@@ -253,6 +271,7 @@ export const useOrganizationStore = create<OrganizationState>()(
           currentUserMembership: null,
           loading: false,
           error: null,
+          subscriptionStatus: null,
         });
         console.log('🔄 Organization store reset');
       },
