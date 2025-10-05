@@ -258,6 +258,7 @@ const Auth = () => {
       navigate,
       toast,
       locationSearch: location.search,
+      saveAuthState,
     });
   };
 

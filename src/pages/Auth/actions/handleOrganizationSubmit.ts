@@ -21,6 +21,7 @@ interface HandleOrganizationSubmitParams {
   navigate: NavigateFunction;
   toast: (props: { title: string; description: string; variant?: 'destructive' }) => void;
   locationSearch: string;
+  saveAuthState: (state: any) => void;
 }
 
 export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitParams) => {
@@ -36,6 +37,7 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
     navigate,
     toast,
     locationSearch,
+    saveAuthState,
   } = params;
 
   if (!orgChoice || !userId || submissionInProgress) return;
@@ -81,6 +83,12 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
           description: `${result.data.organizationName} has been created successfully. Your code: ${result.data.organizationCode}`,
         });
         setStep('company-info');
+        saveAuthState({
+          step: 'company-info',
+          userId,
+          orgName: result.data.organizationName,
+          orgCode: result.data.organizationCode
+        });
       } else if (orgChoice === 'join' && result.data) {
         // Check if user joined via invite token and mark it as used
         const urlParams = new URLSearchParams(locationSearch);
