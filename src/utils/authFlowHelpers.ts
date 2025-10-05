@@ -151,25 +151,37 @@ export const authFlowHelpers = {
         fullName
       });
 
-      // Send OTP to email without creating user
-      const { error } = await supabase.auth.signInWithOtp({
+      // Create user with email and password - this will send OTP automatically
+      const { data, error } = await supabase.auth.signUp({
         email,
+        password,
         options: {
-          shouldCreateUser: false // Don't create user yet
+          data: {
+            full_name: fullName
+          }
         }
       });
 
       if (error) {
-        console.log('OTP sending error:', error);
+        console.log('SignUp error:', error);
 
         // Clean up temp data on error
         tempSignupService.clear();
+
+        if (error.message.includes('User already registered') ||
+            error.message.includes('already exists') ||
+            error.message.includes('duplicate')) {
+          return {
+            success: false,
+            error: "An account with this email already exists. Please sign in instead."
+          };
+        }
 
         if (error.message.includes('Email rate limit exceeded') ||
             error.message.includes('rate limit')) {
           return {
             success: false,
-            error: "Too many attempts. Please wait a few minutes and try again."
+            error: "Too many signup attempts. Please wait a few minutes and try again."
           };
         }
 
@@ -180,9 +192,16 @@ export const authFlowHelpers = {
           };
         }
 
+        if (error.message.includes('Password')) {
+          return {
+            success: false,
+            error: "Password must be at least 6 characters long."
+          };
+        }
+
         return {
           success: false,
-          error: "Failed to send verification code. Please try again."
+          error: "Failed to create account. Please try again."
         };
       }
 
