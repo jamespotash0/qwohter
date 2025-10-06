@@ -460,24 +460,36 @@ export const authFlowHelpers = {
 
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
-          .select('id, name')
+          .select('id, name, organization_code')
           .eq('organization_code', cleanCode)
-          .single();
+          .maybeSingle();
 
         if (orgError) {
           console.error('❌ Organization query error:', orgError);
           return {
             success: false,
-            error: `Organization not found. Please check the code and try again. (Error: ${orgError.message})`
+            error: `Database error while searching for organization. Please try again.`
           };
         }
 
         if (!orgData) {
           console.log('⚠️ No organization found with code:', cleanCode);
-          return { success: false, error: "Organization not found. Please check the code and try again." };
+
+          // Debug: List all organization codes to help troubleshoot
+          const { data: allOrgs } = await supabase
+            .from('organizations')
+            .select('organization_code, name')
+            .limit(10);
+
+          console.log('📋 Available organization codes:', allOrgs?.map(o => o.organization_code));
+
+          return {
+            success: false,
+            error: `Organization code "${cleanCode}" not found. Please check the code and try again.`
+          };
         }
 
-        console.log('✅ Found organization:', orgData.name);
+        console.log('✅ Found organization:', orgData.name, '(code:', orgData.organization_code, ')');
 
         const { error: membershipsError } = await supabase
           .from('memberships')
