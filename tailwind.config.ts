@@ -66,7 +66,8 @@ export default {
 			},
 			fontFamily: {
 				serif: ['var(--font-serif)'],
-				sans: ['var(--font-sans)']
+				sans: ['var(--font-sans)'],
+				inter: ['Inter', 'sans-serif']
 			},
 			boxShadow: {
 				'soft': 'var(--shadow-soft)',

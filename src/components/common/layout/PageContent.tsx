@@ -31,7 +31,7 @@ export const PageContent: React.FC<PageContentProps> = ({
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
             {title && (
-              <h1 className="text-2xl font-bold text-[var(--content-header-text)] mb-1">{title}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-[var(--content-header-text)] mb-1">{title}</h1>
             )}
             {subtitle && (
               <p className="text-[var(--content-muted-text)]">{subtitle}</p>

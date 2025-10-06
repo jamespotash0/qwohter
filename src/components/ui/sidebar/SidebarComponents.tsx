@@ -1,6 +1,5 @@
 import * as React from "react";
 // import { Slot } from "@radix-ui/react-slot";
-import { PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -128,7 +127,7 @@ Sidebar.displayName = "Sidebar";
 export const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
->(({ className, onClick, ...props }, ref) => {
+>(({ className, onClick, children, ...props }, ref) => {
   const { toggleSidebar } = useSidebar();
 
   return (
@@ -144,7 +143,7 @@ export const SidebarTrigger = React.forwardRef<
       }}
       {...props}
     >
-      <PanelLeft />
+      {children}
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );

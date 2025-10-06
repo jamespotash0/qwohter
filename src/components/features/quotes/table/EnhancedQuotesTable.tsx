@@ -887,7 +887,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => {
-                      if (onBulkDelete && confirm(`Are you sure you want to delete ${table.getFilteredSelectedRowModel().rows.length} quote${table.getFilteredSelectedRowModel().rows.length > 1 ? 's' : ''}?`)) {
+                      if (onBulkDelete) {
                         onBulkDelete(table.getFilteredSelectedRowModel().rows.map(row => row.original.id));
                       }
                     }}

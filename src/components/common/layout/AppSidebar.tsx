@@ -1,5 +1,5 @@
-import { MoreVertical, LogOut, CreditCard } from "lucide-react";
-import { House, FileText, ChartBar, Users, List, Gear } from "@phosphor-icons/react";
+import { LogOut, CreditCard } from "lucide-react";
+import { House, FileText, ChartBar, Users, List, Gear, FileCode, Kanban, Sidebar as SidebarIcon, DotsThree, Lock } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -25,9 +25,21 @@ const menuItems = [
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
   {
+    title: "Board",
+    icon: Kanban,
+    path: "/board",
+    roles: ['Owner', 'Admin', 'Member'], // Available to all
+  },
+  {
     title: "Quotes",
     icon: FileText,
     path: "/quotes",
+    roles: ['Owner', 'Admin', 'Member'], // Available to all
+  },
+  {
+    title: "Forms",
+    icon: FileCode,
+    path: "/forms",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
   {
@@ -108,7 +120,7 @@ export function AppSidebar({
                 {/* Menu icon shown on hover when collapsed */}
                 <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
                   <SidebarTrigger className="h-8 w-8 rounded-lg text-[var(--sidebar-section-label)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)] transition-colors">
-                    <List size={20} weight="regular" />
+                    <SidebarIcon size={20} weight="regular" />
                   </SidebarTrigger>
                 </div>
               </div>
@@ -119,7 +131,7 @@ export function AppSidebar({
           {/* Collapsible trigger */}
           {!isCollapsed && (
             <SidebarTrigger className="h-8 w-8 rounded-lg text-[var(--sidebar-section-label)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)] transition-colors">
-              <List size={20} weight="regular" />
+              <SidebarIcon size={20} weight="regular" />
             </SidebarTrigger>
           )}
         </div>
@@ -134,7 +146,7 @@ export function AppSidebar({
             }`}
           >
             {!isCollapsed && (
-              <p className="text-xs font-medium text-[var(--sidebar-section-label)] uppercase tracking-wide">
+              <p className="text-xs font-inter font-medium text-[var(--sidebar-section-label)] uppercase tracking-wide">
                 General
               </p>
             )}
@@ -148,51 +160,71 @@ export function AppSidebar({
                 .map(item => {
                 const isActive = location.pathname === item.path;
                 const Icon = item.icon;
+                const isDisabled = item.title === 'Forms';
 
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
-                      className={`h-11 font-medium flex items-center relative group/item ${
+                      className={`h-11 flex items-center relative group/item ${
                         isCollapsed ? 'justify-center w-full px-0' : 'px-3'
                       } ${
-                        isActive
+                        isDisabled
+                          ? 'text-[var(--sidebar-nav-text)] opacity-50 cursor-not-allowed'
+                          : isActive
                           ? 'text-[var(--sidebar-nav-text-active)] shadow-sm [&:hover]:text-[var(--sidebar-nav-text-active)]'
                           : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] transition-all duration-200'
                       }`}
                       style={{
                         borderRadius: 'var(--sidebar-nav-border-radius)',
-                        ...(isActive
+                        ...(isActive && !isDisabled
                           ? {
                               backgroundColor: 'var(--sidebar-nav-bg-active)',
                               color: 'var(--sidebar-nav-text-active)',
                             }
                           : {})
                       }}
-                      onClick={(e) => handleNavigate(item.path, e)}
+                      onClick={(e) => {
+                        if (!isDisabled) {
+                          handleNavigate(item.path, e);
+                        } else {
+                          e.preventDefault();
+                        }
+                      }}
                       onMouseEnter={(e) => {
-                        if (!isActive) {
+                        if (!isActive && !isDisabled) {
                           const target = e.currentTarget;
                           target.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
                         }
                       }}
                       onMouseLeave={(e) => {
-                        if (!isActive) {
+                        if (!isActive && !isDisabled) {
                           const target = e.currentTarget;
                           target.style.backgroundColor = 'transparent';
                         }
                       }}
                     >
-                      <Icon
-                        size={18}
-                        weight="regular"
-                        className={`${
-                          isActive
-                            ? 'text-[var(--sidebar-icon-active)] [&:hover]:text-[var(--sidebar-icon-active)]'
-                            : 'text-[var(--sidebar-icon-default)] hover:text-[var(--sidebar-icon-hover)] transition-colors'
-                        }`}
-                        style={isActive ? { color: 'var(--sidebar-icon-active)' } : {}}
-                      />
-                      {!isCollapsed && <span className="ml-3">{item.title}</span>}
+                      <div className="relative">
+                        <Icon
+                          size={18}
+                          weight="regular"
+                          className={`${
+                            isDisabled
+                              ? 'opacity-50 group-hover/item:opacity-0 transition-opacity'
+                              : isActive
+                              ? 'text-[var(--sidebar-icon-active)] [&:hover]:text-[var(--sidebar-icon-active)]'
+                              : 'text-[var(--sidebar-icon-default)] hover:text-[var(--sidebar-icon-hover)] transition-colors'
+                          }`}
+                          style={isActive && !isDisabled ? { color: 'var(--sidebar-icon-active)' } : {}}
+                        />
+                        {isDisabled && (
+                          <Lock
+                            size={18}
+                            weight="regular"
+                            className="absolute inset-0 opacity-0 group-hover/item:opacity-100 transition-opacity text-[var(--sidebar-icon-default)]"
+                          />
+                        )}
+                      </div>
+                      {!isCollapsed && <span className="ml-3 font-inter font-normal tracking-tight">{item.title}</span>}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -215,10 +247,10 @@ export function AppSidebar({
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[var(--sidebar-user-text)] truncate">
+                  <p className="text-sm font-inter font-medium text-[var(--sidebar-user-text)] truncate">
                     {userDisplayName}
                   </p>
-                  <p className="text-xs text-[var(--sidebar-user-subtitle)] truncate">
+                  <p className="text-xs font-inter text-[var(--sidebar-user-subtitle)] truncate">
                     {effectiveRole}
                   </p>
                 </div>
@@ -232,7 +264,7 @@ export function AppSidebar({
                     size="sm"
                     className="h-8 w-8 p-0 text-[var(--sidebar-user-text)] hover:text-[var(--sidebar-user-text)] hover:bg-[var(--sidebar-user-hover-bg)] opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    <MoreVertical className="h-4 w-4" />
+                    <DotsThree size={20} weight="bold" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
@@ -266,10 +298,10 @@ export function AppSidebar({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <div className="px-2 py-1.5 border-b">
-                    <p className="text-sm font-semibold text-text-primary">
+                    <p className="text-sm font-inter font-medium text-text-primary">
                       {userDisplayName}
                     </p>
-                    <p className="text-xs text-text-muted">
+                    <p className="text-xs font-inter text-text-muted">
                       {effectiveRole}
                     </p>
                   </div>

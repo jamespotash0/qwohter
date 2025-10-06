@@ -159,7 +159,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => {
-                      if (onBulkDelete && confirm(`Are you sure you want to delete ${selectedCount} quote${selectedCount > 1 ? 's' : ''}?`)) {
+                      if (onBulkDelete) {
                         onBulkDelete(selectedRows.map(row => row.original.id));
                       }
                     }}

@@ -79,6 +79,13 @@ const NewQuote = lazy(() => import("@/pages/NewQuote"));
 const QuoteEdit = lazy(() => import("@/pages/QuoteEdit"));
 const QuoteEditIncomplete = lazy(() => import("@/pages/QuoteEditIncomplete"));
 
+// Form Builder pages
+const Forms = lazy(() => import("@/pages/Forms"));
+const FormBuilder = lazy(() => import("@/pages/FormBuilder"));
+
+// Board page
+const Board = lazy(() => import("@/pages/Board"));
+
 // Loading component
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -127,6 +134,9 @@ export const AppRouter = () => (
           {/* Main application routes (protected by MainLayout) */}
           <Route path="/dashboard" element={<Dashboard />} />
 
+          {/* Board workflow */}
+          <Route path="/board" element={<Board />} />
+
           {/* Analytics and reporting */}
           <Route path="/analytics" element={<Analytics />} />
 
@@ -162,6 +172,10 @@ export const AppRouter = () => (
 
           {/* Future: Quote templates management */}
           <Route path="/quotes/templates" element={<Navigate to="/settings" replace />} />
+
+          {/* Form Builder routes */}
+          <Route path="/forms" element={<Forms />} />
+          <Route path="/forms/builder/:id" element={<FormBuilder />} />
 
           {/* Legacy route redirects for backward compatibility */}
           <Route path="/newquote" element={<Navigate to="/quotes/new" replace />} />
