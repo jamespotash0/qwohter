@@ -2,20 +2,20 @@ import { useEffect, useState } from 'react';
 import { PageContent } from '@/components/common/layout';
 import { useBoardStore, Project, ProjectPriority } from '@/stores/board/boardStore';
 import {
-  Plus,
-  MoreVertical,
-  Trash2,
-  ChevronDown,
-  ChevronRight,
-  Pencil,
-  MapPin,
-  DollarSign,
-  Hash,
+  Plus as PlusIcon,
+  DotsThreeVertical as DotsThreeVerticalIcon,
+  Trash as TrashIcon,
+  CaretDown as CaretDownIcon,
+  CaretRight as CaretRightIcon,
+  PencilSimple as PencilSimpleIcon,
+  MapPin as MapPinIcon,
+  CurrencyDollar as CurrencyDollarIcon,
+  Hash as HashIcon,
   X as XIcon,
-  Check,
-  Flag,
-  Calendar
-} from 'lucide-react';
+  Check as CheckIcon,
+  Flag as FlagIcon,
+  Calendar as CalendarIcon
+} from '@phosphor-icons/react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
@@ -274,7 +274,7 @@ export default function Board() {
                           onClick={() => toggleColumnCollapse(column.id)}
                           className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
                         >
-                          <ChevronDown className="w-4 h-4 text-gray-500" />
+                          <CaretDownIcon className="w-4 h-4 text-gray-500" />
                         </button>
                       )}
 
@@ -297,7 +297,7 @@ export default function Board() {
                                     style={{ backgroundColor: color.value }}
                                     title={color.name}
                                   >
-                                    {column.color === color.value && <Check className="w-4 h-4 text-white" />}
+                                    {column.color === color.value && <CheckIcon className="w-4 h-4 text-white" />}
                                   </button>
                                 ))}
                               </div>
@@ -320,7 +320,7 @@ export default function Board() {
                                 onClick={() => handleSaveColumnName(column.id)}
                                 className="p-1 hover:bg-green-100 rounded text-green-600"
                               >
-                                <Check className="w-3 h-3" />
+                                <CheckIcon className="w-3 h-3" />
                               </button>
                               <button
                                 onClick={() => setEditingColumn(null)}
@@ -343,7 +343,7 @@ export default function Board() {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <button className="p-1 hover:bg-gray-100 rounded ml-auto">
-                                <MoreVertical className="w-4 h-4 text-gray-500" />
+                                <DotsThreeVerticalIcon className="w-4 h-4 text-gray-500" />
                               </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -351,7 +351,7 @@ export default function Board() {
                                 onClick={() => handleStartEditColumn(column.id, column.name)}
                                 className="flex items-center gap-2"
                               >
-                                <Pencil className="w-4 h-4" />
+                                <PencilSimpleIcon className="w-4 h-4" />
                                 Rename
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
@@ -359,7 +359,7 @@ export default function Board() {
                                 onClick={() => handleDeleteColumn(column.id)}
                                 className="flex items-center gap-2 text-red-600 focus:text-red-600"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <TrashIcon className="w-4 h-4" />
                                 Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -373,7 +373,7 @@ export default function Board() {
                             onClick={() => toggleColumnCollapse(column.id)}
                             className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
                           >
-                            <ChevronRight className="w-4 h-4 text-gray-500" />
+                            <CaretRightIcon className="w-4 h-4 text-gray-500" />
                           </button>
                           <div
                             className="w-2 h-2 rounded-full flex-shrink-0 mt-2"
@@ -429,7 +429,7 @@ export default function Board() {
                               onDragOver={(e) => handleCardDragOver(e, project.id)}
                               onDragLeave={handleCardDragLeave}
                               onClick={() => setSelectedProject(project)}
-                              className={`bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col h-40 relative ${
+                              className={`bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col h-36 relative ${
                                 draggedProject === project.id ? 'opacity-50' : ''
                               }`}
                             >
@@ -438,7 +438,7 @@ export default function Board() {
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <button className="p-0.5 hover:bg-gray-100 rounded">
-                                    <MoreVertical className="w-3.5 h-3.5 text-gray-400" />
+                                    <DotsThreeVerticalIcon className="w-3.5 h-3.5 text-gray-400" />
                                   </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
@@ -449,7 +449,7 @@ export default function Board() {
                                       deleteProject(project.id);
                                     }}
                                   >
-                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    <TrashIcon className="w-4 h-4 mr-2" />
                                     Delete
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -461,18 +461,18 @@ export default function Board() {
                               <h4 className="font-medium text-gray-900 text-sm line-clamp-1 mb-1">
                                 {quote?.project_name || 'Untitled Project'}
                               </h4>
-                              <p className="text-xs text-gray-500 truncate">
+                              <p className="text-xs text-gray-600 truncate">
                                 {clientName}
                               </p>
                               {clientCompany && (
-                                <p className="text-xs text-gray-400 truncate">
+                                <p className="text-xs text-gray-500 truncate">
                                   {clientCompany}
                                 </p>
                               )}
-                              {clientAddress && (
-                                <div className="flex items-center gap-1 text-xs text-gray-400">
-                                  <MapPin className="w-3 h-3 flex-shrink-0" />
-                                  <p className="truncate">{clientAddress}</p>
+                              {clientAddress && clientAddress !== '-' && clientAddress !== 'N/A' && clientAddress !== 'Unknown' && (
+                                <div className="flex items-center gap-1 text-[0.65rem]">
+                                  <MapPinIcon className="w-3 h-3 flex-shrink-0 text-gray-400" />
+                                  <p className="truncate text-gray-400">{clientAddress}</p>
                                 </div>
                               )}
                             </div>
@@ -483,7 +483,7 @@ export default function Board() {
                               <div className="flex items-center gap-2">
                                 {quote?.proposal_number && (
                                   <div className="flex items-center gap-1">
-                                    <Hash className="w-3 h-3" />
+                                    <HashIcon className="w-3 h-3" />
                                     <span>{quote.proposal_number}</span>
                                   </div>
                                 )}
@@ -507,6 +507,12 @@ export default function Board() {
                                             {priority}
                                           </button>
                                         ))}
+                                        <button
+                                          onClick={() => updateProject(project.id, { priority: undefined })}
+                                          className="w-full text-left px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
+                                        >
+                                          Clear Priority
+                                        </button>
                                       </div>
                                     </PopoverContent>
                                   </Popover>
@@ -517,7 +523,7 @@ export default function Board() {
                                   <Popover>
                                     <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
                                       <button className="flex items-center gap-1 text-purple-600 cursor-pointer hover:opacity-80">
-                                        <Calendar className="w-3 h-3" />
+                                        <CalendarIcon className="w-3 h-3" />
                                         <span>{formatDate(project.completion_date)}</span>
                                       </button>
                                     </PopoverTrigger>
@@ -542,7 +548,7 @@ export default function Board() {
 
                                 {total && (
                                   <div className="flex items-center gap-1">
-                                    <DollarSign className="w-3 h-3" />
+                                    <CurrencyDollarIcon className="w-3 h-3" />
                                     <span>{formatCurrency(total)}</span>
                                   </div>
                                 )}
@@ -554,7 +560,7 @@ export default function Board() {
                                   <Popover>
                                     <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
                                       <button className="flex items-center text-gray-400 hover:text-gray-600 transition-colors p-0.5" title="Set Priority">
-                                        <Flag className="w-3.5 h-3.5" />
+                                        <FlagIcon className="w-3.5 h-3.5" />
                                       </button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-40 p-2" align="end" onClick={(e) => e.stopPropagation()}>
@@ -568,6 +574,12 @@ export default function Board() {
                                             {priority}
                                           </button>
                                         ))}
+                                        <button
+                                          onClick={() => updateProject(project.id, { priority: undefined })}
+                                          className="w-full text-left px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
+                                        >
+                                          Clear Priority
+                                        </button>
                                       </div>
                                     </PopoverContent>
                                   </Popover>
@@ -577,7 +589,7 @@ export default function Board() {
                                   <Popover>
                                     <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
                                       <button className="flex items-center text-gray-400 hover:text-gray-600 transition-colors p-0.5" title="Set Due Date">
-                                        <Calendar className="w-3.5 h-3.5" />
+                                        <CalendarIcon className="w-3.5 h-3.5" />
                                       </button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-3" align="end" onClick={(e) => e.stopPropagation()}>
@@ -622,7 +634,7 @@ export default function Board() {
                   onClick={handleAddColumn}
                   className="p-1.5 hover:bg-green-100 rounded text-green-600 flex-shrink-0"
                 >
-                  <Check className="w-4 h-4" />
+                  <CheckIcon className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setIsAddingColumn(false)}
@@ -638,7 +650,7 @@ export default function Board() {
                 onClick={() => setIsAddingColumn(true)}
                 className="w-50 px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-2 border-2 border-dashed border-gray-300 hover:border-gray-400"
               >
-                <Plus className="w-4 h-4" />
+                <PlusIcon className="w-4 h-4" />
                 Add Column
               </button>
             </div>
@@ -670,15 +682,16 @@ export default function Board() {
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Priority</p>
                   <select
-                    value={selectedProject.priority || 'medium'}
-                    onChange={(e) => updateProject(selectedProject.id, { priority: e.target.value as ProjectPriority })}
+                    value={selectedProject.priority || ''}
+                    onChange={(e) => updateProject(selectedProject.id, { priority: e.target.value as ProjectPriority || undefined })}
                     className={`w-full text-sm px-2 py-1 rounded border ${getPriorityColor(selectedProject.priority)} font-medium capitalize`}
                   >
-                    <option value="lowest">Lowest</option>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="highest">Highest</option>
+                    <option value="">None</option>
+                    <option value="Lowest">Lowest</option>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Highest">Highest</option>
                   </select>
                 </div>
               </div>
