@@ -338,7 +338,7 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
           type="button"
           onClick={handleUpload}
           disabled={disabled || !hasFileSelected}
-          className={`w-full ${hasFileSelected ? 'bg-primary hover:bg-primary/90' : 'bg-muted text-muted-foreground cursor-not-allowed'}`}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white disabled:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
           size="lg"
         >
           Upload Logo

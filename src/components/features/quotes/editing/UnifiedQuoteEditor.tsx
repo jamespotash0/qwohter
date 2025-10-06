@@ -100,7 +100,8 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
             fax: organization.fax_number,
             address: organization.company_address,
             website: organization.website,
-            logo_url: organization.logo_data?.logo_public_url || organization.logo_data?.logo_url
+            logo_public_url: organization.logo_data?.logo_public_url,
+            logo_url: organization.logo_data?.logo_url
           } : undefined
         };
 

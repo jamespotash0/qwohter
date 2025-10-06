@@ -222,7 +222,7 @@ export class LogoUploadService {
       const fileExtension = processedFile.name.substring(processedFile.name.lastIndexOf('.'));
       const fileName = `logo_${timestamp}${fileExtension}`;
       
-      // Get the current authenticated user ID
+      // Get the current authenticated user and their organization
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         return {
@@ -230,8 +230,26 @@ export class LogoUploadService {
           error: 'User not authenticated'
         };
       }
-      
-      const filePath = `${user.id}/${fileName}`;
+
+      // Get user's organization ID
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('memberships')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .eq('status', 'Active')
+        .single();
+
+      if (membershipError || !membershipData) {
+        return {
+          success: false,
+          error: 'No active organization found'
+        };
+      }
+
+      const organizationId = membershipData.organization_id;
+
+      // Use organization_id as folder name (required by storage RLS policy)
+      const filePath = `${organizationId}/${fileName}`;
       const { data, error } = await supabase.storage
         .from(this.BUCKET_NAME)
         .upload(filePath, processedFile, {

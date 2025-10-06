@@ -22,59 +22,44 @@ export class SectionGenerators {
     // For now, try to use logo_public_url (should work with public bucket)
     // If that doesn't work, we can construct the public URL from logo_url
     let logoUrl = organizationInfo?.logo_public_url;
-    
+
     // If logo_public_url doesn't work but we have logo_url (storage path), construct public URL
     if (!logoUrl && organizationInfo?.logo_url) {
       logoUrl = `https://piuwrlaoxuefmiisuamc.supabase.co/storage/v1/object/public/organization-logos/${organizationInfo.logo_url}`;
     }
-    
-    
+
+    console.log('🖼️ Logo Debug Info:', {
+      logo_public_url: organizationInfo?.logo_public_url,
+      logo_url: organizationInfo?.logo_url,
+      finalLogoUrl: logoUrl,
+      hasLogo: logoUrl && logoUrl.trim() !== '',
+      organizationInfo: organizationInfo
+    });
+
     const hasLogo = logoUrl && logoUrl.trim() !== '';
     const hasFax = fax && fax.trim() !== '';
 
 
-    // Flexible logo sizing - detects aspect ratio and adjusts container
-    const logoHtml = hasLogo 
-      ? `<img 
-          src="${logoUrl}" 
-          alt="Company Logo" 
-          style="max-width: 100%; max-height: 100%; object-fit: contain; opacity: 0; transition: opacity 0.3s ease;" 
+    // Fixed container with object-fit: contain to handle all aspect ratios
+    const logoHtml = hasLogo
+      ? `<img
+          src="${logoUrl}"
+          alt="Company Logo"
+          style="width: 100%; height: 100%; object-fit: contain; object-position: left center;"
           onError="this.style.display='none'"
-          onLoad="
-            const img = this;
-            const container = img.parentElement;
-            const aspectRatio = img.naturalWidth / img.naturalHeight;
-            
-            // Adjust container size based on aspect ratio to better fill available space
-            if (aspectRatio > 3) {
-              // Very wide logos (like 1537x409 ≈ 3.8:1) - use more width
-              container.style.width = '500px';
-              container.style.height = '90px';
-            } else if (aspectRatio < 1.5) {
-              // Square or tall logos (like 1300x1300 = 1:1) - make them bigger
-              container.style.width = '180px';
-              container.style.height = '150px';
-            } else {
-              // Standard landscape logos (1.5:1 to 3:1) - use more space
-              container.style.width = '450px';
-              container.style.height = '120px';
-            }
-            
-            // Show the image after container is properly sized
-            img.style.opacity = '1';
-          "
         />`
       : '';
     
 
-    return `<div class="header-section">
-      <div class="company-info">
-        <div class="company-logo" style="position: absolute; top: 40px; left: 60px; width: 120px; height: 90px; display: flex; align-items: center; justify-content: flex-start; transition: all 0.3s ease;">
+    return `<div class="header-section" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0px 0px 30px 0px;">
+      <div class="company-info" style="flex: 0 0 auto; width: 250px;">
+        <div class="company-logo" style="width: 250px; height: 100px; display: flex; align-items: center; justify-content: flex-start;">
           ${logoHtml}
+          ${!hasLogo ? '<div style="font-size: 10px; color: red;">NO LOGO</div>' : ''}
         </div>
       </div>
-      
-      <div class="contact-details" style="width: 40%; margin-left: 280px;">
+
+      <div class="contact-details" style="flex: 1; min-width: 0; padding-left: 70px;">
         <div class="contact-row">
           <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Contact:</span>
           <span class="value">${contactName}</span>
