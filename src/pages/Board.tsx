@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PageContent } from '@/components/common/layout';
-import { useBoardStore } from '@/stores/board/boardStore';
+import { useBoardStore, Project, ProjectPriority } from '@/stores/board/boardStore';
 import {
   Plus,
   MoreVertical,
@@ -11,8 +11,10 @@ import {
   MapPin,
   DollarSign,
   Hash,
-  X,
-  Check
+  X as XIcon,
+  Check,
+  Flag,
+  Calendar
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -28,6 +30,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const COLUMN_COLORS = [
   { name: 'Slate', value: '#94A3B8', icon: '⚪' },
@@ -69,6 +77,7 @@ export default function Board() {
   const [isAddingColumn, setIsAddingColumn] = useState(false);
   const [newColumnName, setNewColumnName] = useState('');
   const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(new Set());
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   useEffect(() => {
     fetchProjects();
@@ -123,6 +132,33 @@ export default function Board() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const getPriorityColor = (priority?: ProjectPriority) => {
+    switch (priority) {
+      case 'Highest':
+        return 'bg-red-100 text-red-700 border-red-300';
+      case 'High':
+        return 'bg-orange-100 text-orange-700 border-orange-300';
+      case 'Medium':
+        return 'bg-yellow-100 text-yellow-700 border-yellow-300';
+      case 'Low':
+        return 'bg-blue-100 text-blue-700 border-blue-300';
+      case 'Lowest':
+        return 'bg-gray-100 text-gray-700 border-gray-300';
+      default:
+        return 'bg-gray-100 text-gray-700 border-gray-300';
+    }
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return null;
+    // Parse as local date to avoid timezone issues
+    const parts = dateString.split('-');
+    if (parts.length !== 3) return dateString;
+    const [year, month, day] = parts.map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const handleStartEditColumn = (columnId: string, currentName: string) => {
@@ -224,7 +260,7 @@ export default function Board() {
                 <div
                   key={column.id}
                   className={`flex-shrink-0 transition-all duration-200 bg-gray-50 rounded-lg flex flex-col h-full ${
-                    isCollapsed ? 'w-12' : 'w-80'
+                    isCollapsed ? 'w-12' : 'w-72'
                   } ${dragOverColumn === column.name ? 'ring-2 ring-blue-400 bg-blue-50 p-2' : 'p-0'}`}
                   onDragOver={(e) => handleDragOver(e, column.name)}
                   onDragLeave={handleDragLeave}
@@ -290,7 +326,7 @@ export default function Board() {
                                 onClick={() => setEditingColumn(null)}
                                 className="p-1 hover:bg-red-100 rounded text-red-600"
                               >
-                                <X className="w-3 h-3" />
+                                <XIcon className="w-3 h-3" />
                               </button>
                             </div>
                           ) : (
@@ -371,7 +407,9 @@ export default function Board() {
                           job_details: quote?.job_details,
                           price_details: quote?.price_details
                         });
-                        const clientName = quote?.quote_details?.client_name || 'No Client';
+                        const clientName = quote?.job_details?.client_name || 'No Client';
+                        const clientCompany = quote?.job_details?.client_company || '';
+                        const clientAddress = quote?.job_details?.client_address || '';
                         const jobLocation = quote?.job_details?.job_location || '';
                         const total = quote?.price_details?.grand_total;
                         const avatarColor = getAvatarColor(project.id);
@@ -390,59 +428,169 @@ export default function Board() {
                               onDragStart={(e) => handleDragStart(e, project.id)}
                               onDragOver={(e) => handleCardDragOver(e, project.id)}
                               onDragLeave={handleCardDragLeave}
-                              className={`bg-white rounded-lg border border-gray-200 p-3 cursor-move hover:shadow-md transition-all duration-200 flex flex-col h-28 ${
+                              onClick={() => setSelectedProject(project)}
+                              className={`bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col h-40 relative ${
                                 draggedProject === project.id ? 'opacity-50' : ''
                               }`}
                             >
-                            {/* Card Header */}
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-medium text-gray-900 text-sm mb-1 line-clamp-2">
-                                {quote?.project_name || 'Untitled Project'}
-                              </h4>
-                              <p className="text-xs text-gray-500">
-                                {clientName}
-                              </p>
+                            {/* 3 Dots Menu - Top Right */}
+                            <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button className="p-0.5 hover:bg-gray-100 rounded">
+                                    <MoreVertical className="w-3.5 h-3.5 text-gray-400" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    className="text-red-600 cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      deleteProject(project.id);
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
 
-                            {/* Card Metadata */}
-                            <div className="flex items-center gap-3 text-xs text-gray-500 mt-3">
-                              {quote?.proposal_number && (
-                                <div className="flex items-center gap-1">
-                                  <Hash className="w-3 h-3" />
-                                  <span>{quote.proposal_number}</span>
+                            {/* Card Header */}
+                            <div className="flex-1 min-w-0 pr-6">
+                              <h4 className="font-medium text-gray-900 text-sm line-clamp-1 mb-1">
+                                {quote?.project_name || 'Untitled Project'}
+                              </h4>
+                              <p className="text-xs text-gray-500 truncate">
+                                {clientName}
+                              </p>
+                              {clientCompany && (
+                                <p className="text-xs text-gray-400 truncate">
+                                  {clientCompany}
+                                </p>
+                              )}
+                              {clientAddress && (
+                                <div className="flex items-center gap-1 text-xs text-gray-400">
+                                  <MapPin className="w-3 h-3 flex-shrink-0" />
+                                  <p className="truncate">{clientAddress}</p>
                                 </div>
                               )}
+                            </div>
 
-                              {total && (
-                                <div className="flex items-center gap-1">
-                                  <DollarSign className="w-3 h-3" />
-                                  <span>{formatCurrency(total)}</span>
-                                </div>
-                              )}
+                            {/* Card Metadata - Footer */}
+                            <div className="flex items-center justify-between text-xs text-gray-500 mt-auto pt-3 border-t border-gray-100">
+                              {/* Left Side - Quote # and Values */}
+                              <div className="flex items-center gap-2">
+                                {quote?.proposal_number && (
+                                  <div className="flex items-center gap-1">
+                                    <Hash className="w-3 h-3" />
+                                    <span>{quote.proposal_number}</span>
+                                  </div>
+                                )}
 
-                              {jobLocation && (
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="w-3 h-3" />
-                                </div>
-                              )}
+                                {/* Priority Badge (only when set) */}
+                                {project.priority && (
+                                  <Popover>
+                                    <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                      <button className={`text-[10px] px-2 py-0.5 rounded-full border ${getPriorityColor(project.priority)} capitalize font-medium cursor-pointer hover:opacity-80`}>
+                                        {project.priority}
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-40 p-2" align="start" onClick={(e) => e.stopPropagation()}>
+                                      <div className="space-y-1">
+                                        {(['Highest', 'High', 'Medium', 'Low', 'Lowest'] as ProjectPriority[]).map((priority) => (
+                                          <button
+                                            key={priority}
+                                            onClick={() => updateProject(project.id, { priority })}
+                                            className={`w-full text-left px-2 py-1 text-xs rounded capitalize border ${getPriorityColor(priority)} hover:opacity-80`}
+                                          >
+                                            {priority}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                )}
 
-                              <div className="ml-auto">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button className="p-0.5 hover:bg-gray-100 rounded">
-                                      <MoreVertical className="w-3 h-3 text-gray-400" />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                      onClick={() => deleteProject(project.id)}
-                                      className="flex items-center gap-2 text-red-600 focus:text-red-600 text-sm"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                      Remove from Board
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                {/* Completion Date (only when set) */}
+                                {project.completion_date && (
+                                  <Popover>
+                                    <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                      <button className="flex items-center gap-1 text-purple-600 cursor-pointer hover:opacity-80">
+                                        <Calendar className="w-3 h-3" />
+                                        <span>{formatDate(project.completion_date)}</span>
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-3" align="start" onClick={(e) => e.stopPropagation()}>
+                                      <div className="space-y-2">
+                                        <Input
+                                          type="date"
+                                          value={project.completion_date || ''}
+                                          onChange={(e) => updateProject(project.id, { completion_date: e.target.value })}
+                                          className="text-sm"
+                                        />
+                                        <button
+                                          onClick={() => updateProject(project.id, { completion_date: undefined })}
+                                          className="w-full px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
+                                        >
+                                          Clear Date
+                                        </button>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                )}
+
+                                {total && (
+                                  <div className="flex items-center gap-1">
+                                    <DollarSign className="w-3 h-3" />
+                                    <span>{formatCurrency(total)}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Right Side - Icon Buttons (only when NOT set) */}
+                              <div className="flex items-center gap-1.5">
+                                {!project.priority && (
+                                  <Popover>
+                                    <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                      <button className="flex items-center text-gray-400 hover:text-gray-600 transition-colors p-0.5" title="Set Priority">
+                                        <Flag className="w-3.5 h-3.5" />
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-40 p-2" align="end" onClick={(e) => e.stopPropagation()}>
+                                      <div className="space-y-1">
+                                        {(['Highest', 'High', 'Medium', 'Low', 'Lowest'] as ProjectPriority[]).map((priority) => (
+                                          <button
+                                            key={priority}
+                                            onClick={() => updateProject(project.id, { priority })}
+                                            className={`w-full text-left px-2 py-1 text-xs rounded capitalize border ${getPriorityColor(priority)} hover:opacity-80`}
+                                          >
+                                            {priority}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                )}
+
+                                {!project.completion_date && (
+                                  <Popover>
+                                    <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                      <button className="flex items-center text-gray-400 hover:text-gray-600 transition-colors p-0.5" title="Set Due Date">
+                                        <Calendar className="w-3.5 h-3.5" />
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-3" align="end" onClick={(e) => e.stopPropagation()}>
+                                      <Input
+                                        type="date"
+                                        value={project.completion_date || ''}
+                                        onChange={(e) => updateProject(project.id, { completion_date: e.target.value })}
+                                        className="text-sm"
+                                        autoFocus
+                                      />
+                                    </PopoverContent>
+                                  </Popover>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -480,7 +628,7 @@ export default function Board() {
                   onClick={() => setIsAddingColumn(false)}
                   className="p-1.5 hover:bg-red-100 rounded text-red-600 flex-shrink-0"
                 >
-                  <X className="w-4 h-4" />
+                  <XIcon className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -488,7 +636,7 @@ export default function Board() {
             <div className="flex-shrink-0 w-80">
               <button
                 onClick={() => setIsAddingColumn(true)}
-                className="w-full px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-2 border-2 border-dashed border-gray-300 hover:border-gray-400"
+                className="w-50 px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-2 border-2 border-dashed border-gray-300 hover:border-gray-400"
               >
                 <Plus className="w-4 h-4" />
                 Add Column
@@ -497,6 +645,120 @@ export default function Board() {
           )}
         </div>
       )}
+
+      {/* Quote Details Dialog */}
+      <Dialog open={!!selectedProject} onOpenChange={(open) => !open && setSelectedProject(null)}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">
+              {selectedProject?.quotes?.project_name || 'Project Details'}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedProject && (
+            <div className="space-y-6">
+              {/* Header Info */}
+              <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="text-sm text-gray-600">Proposal Number</p>
+                  <p className="font-medium">{selectedProject.quotes?.proposal_number || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Status</p>
+                  <Badge variant="secondary">{selectedProject.workflow_status}</Badge>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Priority</p>
+                  <select
+                    value={selectedProject.priority || 'medium'}
+                    onChange={(e) => updateProject(selectedProject.id, { priority: e.target.value as ProjectPriority })}
+                    className={`w-full text-sm px-2 py-1 rounded border ${getPriorityColor(selectedProject.priority)} font-medium capitalize`}
+                  >
+                    <option value="lowest">Lowest</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="highest">Highest</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Completion Date */}
+              <div>
+                <label className="text-sm text-gray-600 block mb-2">Completion Date</label>
+                <Input
+                  type="date"
+                  value={selectedProject.completion_date || ''}
+                  onChange={(e) => updateProject(selectedProject.id, { completion_date: e.target.value })}
+                  className="max-w-xs"
+                />
+              </div>
+
+              {/* Client & Job Details */}
+              {selectedProject.quotes?.job_details && (
+                <div>
+                  <h3 className="font-semibold mb-3">Client & Job Details</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Client Name</p>
+                      <p className="font-medium">{selectedProject.quotes.job_details.client_name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Company</p>
+                      <p className="font-medium">{selectedProject.quotes.job_details.client_company || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Location</p>
+                      <p className="font-medium">{selectedProject.quotes.job_details.job_location || 'N/A'}</p>
+                    </div>
+                    {selectedProject.quotes.job_details.client_address && (
+                      <div>
+                        <p className="text-sm text-gray-600">Address</p>
+                        <p className="font-medium">{selectedProject.quotes.job_details.client_address}</p>
+                      </div>
+                    )}
+                    {selectedProject.quotes.job_details.date && (
+                      <div>
+                        <p className="text-sm text-gray-600">Date</p>
+                        <p className="font-medium">{selectedProject.quotes.job_details.date}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Price Details */}
+              {selectedProject.quotes?.price_details && (
+                <div>
+                  <h3 className="font-semibold mb-3">Pricing</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Subtotal</span>
+                      <span className="font-medium">{formatCurrency(selectedProject.quotes.price_details.subtotal)}</span>
+                    </div>
+                    {selectedProject.quotes.price_details.tax && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Tax</span>
+                        <span className="font-medium">{formatCurrency(selectedProject.quotes.price_details.tax)}</span>
+                      </div>
+                    )}
+                    {selectedProject.quotes.price_details.discount && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Discount</span>
+                        <span className="font-medium">-{formatCurrency(selectedProject.quotes.price_details.discount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-lg font-bold pt-2 border-t">
+                      <span>Total</span>
+                      <span>{formatCurrency(selectedProject.quotes.price_details.grand_total)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </PageContent>
   );
 }

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { supabase } from '@/integrations/supabase/client';
 
+export type ProjectPriority = 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest';
+
 export interface Project {
   id: string;
   quote_id: string;
@@ -9,6 +11,8 @@ export interface Project {
   created_at: string;
   updated_at: string;
   board_order: number;
+  priority?: ProjectPriority;
+  completion_date?: string;
   // Quote data (joined from quotes table)
   quotes?: {
     id: string;
@@ -179,7 +183,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
         .insert({
           ...column,
           organization_id: membership.organization_id
-        })
+        } as any)
         .select()
         .single();
 
