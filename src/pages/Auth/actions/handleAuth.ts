@@ -15,7 +15,7 @@ interface HandleAuthParams {
   isSignUp: boolean;
   setFullName: (name: string) => void;
   setUserId: (id: string) => void;
-  setStep: (step: 'auth' | 'verify-otp' | 'organization' | 'company-info') => void;
+  setStep: (step: 'auth' | 'verify-otp' | 'organization' | 'company-info' | 'profile') => void;
   setLoading: (loading: boolean) => void;
   redirectingRef: React.MutableRefObject<boolean>;
   navigate: NavigateFunction;
@@ -113,6 +113,16 @@ export const handleAuth = async (params: HandleAuthParams) => {
           clearAuthState();
           redirectingRef.current = true;
           navigate('/dashboard');
+        } else if (result.nextStep === 'pending-approval') {
+          console.log('Auth form: User membership is pending, redirecting to pending-approval');
+          toast({
+            title: 'Approval Pending',
+            description: 'Your organization membership is awaiting admin approval.',
+          });
+          // Clear auth state and redirect
+          clearAuthState();
+          redirectingRef.current = true;
+          navigate('/pending-approval');
         } else if (result.nextStep === 'profile' || result.nextStep === 'organization') {
           console.log('Signin successful - resuming onboarding at organization step');
           setUserId(result.data?.userId || '');

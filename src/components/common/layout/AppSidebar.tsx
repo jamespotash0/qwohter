@@ -21,27 +21,32 @@ const menuItems = [
   {
     title: "Dashboard",
     icon: House,
-    path: "/dashboard"
+    path: "/dashboard",
+    roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
   {
     title: "Quotes",
     icon: FileText,
-    path: "/quotes"
+    path: "/quotes",
+    roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
   {
     title: "Analytics",
     icon: ChartBar,
-    path: "/analytics"
+    path: "/analytics",
+    roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
   {
     title: "Team",
     icon: Users,
-    path: "/team"
+    path: "/team",
+    roles: ['Owner', 'Admin'], // Only Owner and Admin
   },
   {
     title: "Settings",
     icon: Gear,
-    path: "/settings"
+    path: "/settings",
+    roles: ['Owner', 'Admin', 'Member'], // Available to all
   }
 ];
 
@@ -138,7 +143,9 @@ export function AppSidebar({
 
           <SidebarGroupContent>
             <SidebarMenu className={`space-y-0 ${isCollapsed ? 'space-y-1' : 'space-y-0'}`}>
-              {menuItems.map(item => {
+              {menuItems
+                .filter(item => !currentUserRole || item.roles.includes(currentUserRole))
+                .map(item => {
                 const isActive = location.pathname === item.path;
                 const Icon = item.icon;
 

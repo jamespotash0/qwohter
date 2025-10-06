@@ -194,46 +194,79 @@ export const useOrganizationStore = create<OrganizationState>()(
       },
 
       // Fetch members
-      fetchMembers: async (organizationId: string) => {
+      fetchMembers: async (organizationId: string, forceRefresh = false) => {
         const { members } = get();
 
-        // Skip if already fetched
-        if (members.length > 0) {
+        // Skip if already fetched (unless force refresh)
+        if (members.length > 0 && !forceRefresh) {
           return;
         }
 
         try {
+          // Fetch memberships first (no join to avoid circular dependency)
           const { data: membersData, error: membersError } = await supabase
             .from('memberships')
-            .select(`
-              id,
-              user_id,
-              organization_id,
-              role,
-              status,
-              joined_at,
-              profile:profiles!user_id(id, email, full_name)
-            `)
+            .select('id, user_id, organization_id, role, status, joined_at')
             .eq('organization_id', organizationId);
 
           if (membersError) throw membersError;
 
-          const transformedData = (membersData || [])
-            .filter((membership: any) => membership?.user_id && membership?.profile)
-            .map((membership: any) => ({
-              id: membership.user_id,
-              organization_id: membership.organization_id || '',
-              role: (membership.role as 'Admin' | 'Member') || 'Member',
-              status: (membership.status as 'Pending' | 'Active' | 'Suspended') || 'Active',
-              joined_at: membership.joined_at || new Date().toISOString(),
-              email: membership.profile?.email || '',
-              full_name: membership.profile?.full_name || undefined,
-            }));
+          if (!membersData || membersData.length === 0) {
+            set({ members: [] });
+            return;
+          }
 
+          // Fetch profiles separately for all user_ids
+          const userIds = membersData.map((m: any) => m.user_id);
+          console.log('🔍 Fetching profiles for user IDs:', userIds);
+
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, email, full_name')
+            .in('id', userIds);
+
+          if (profilesError) {
+            console.error('❌ Profiles fetch error:', profilesError);
+          }
+
+          console.log('📊 Raw profiles data from DB:', profilesData);
+
+          // Create a map of profiles for easy lookup
+          const profilesMap = new Map(
+            (profilesData || []).map((p: any) => [p.id, p])
+          );
+
+          console.log('📋 Profiles Map:', profilesMap);
+          console.log('📋 Memberships fetched:', membersData);
+
+          // Combine memberships with profiles
+          const transformedData = membersData
+            .filter((membership: any) => membership?.user_id)
+            .map((membership: any) => {
+              const profile = profilesMap.get(membership.user_id);
+              console.log(`👤 Member ${membership.user_id}:`, { profile, membership });
+
+              // Use email as fallback if full_name doesn't exist
+              const displayName = profile?.full_name || profile?.email || 'Unknown User';
+
+              return {
+                id: membership.id,  // This is the membership ID (needed for approve/reject)
+                user_id: membership.user_id,  // Also include user_id
+                organization_id: membership.organization_id || '',
+                role: (membership.role as 'Admin' | 'Member') || 'Member',
+                status: (membership.status as 'Pending' | 'Active' | 'Suspended') || 'Active',
+                joined_at: membership.joined_at || new Date().toISOString(),
+                email: profile?.email || '',
+                full_name: displayName,
+              };
+            });
+
+          console.log('✅ Transformed members:', transformedData);
           set({ members: transformedData });
         } catch (error: any) {
-          console.error('❌ Failed to fetch members:', error);
-          set({ error: error.message });
+          const errorMessage = error?.message || JSON.stringify(error) || 'Unknown error';
+          console.error('❌ Failed to fetch members:', errorMessage, error);
+          set({ error: errorMessage });
         }
       },
 

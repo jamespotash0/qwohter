@@ -40,6 +40,7 @@ import { AddReminderModal } from "@/components/features/reminders/AddReminderMod
 import { reminderService, type Reminder } from "@/services/reminderService";
 import { formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
 import { toast } from "sonner";
+import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
 
 /**
  * Dashboard - Executive Overview
@@ -58,6 +59,7 @@ const Dashboard = () => {
   const [showAddReminderModal, setShowAddReminderModal] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
   const [cachedProfile, setCachedProfile] = useState<any>(() => {
     // Read from localStorage cache (same as sidebar)
     try {
@@ -731,7 +733,7 @@ const Dashboard = () => {
             ) : (
               <div className="space-y-3">
                 <Button
-                  onClick={() => navigate('/newquote')}
+                  onClick={() => setShowNewQuoteDialog(true)}
                   className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white"
                 >
                   <Plus className="w-5 h-5" />
@@ -1072,6 +1074,16 @@ const Dashboard = () => {
             }
           }
           setEditingReminder(null);
+        }}
+      />
+
+      {/* Create Quote Dialog */}
+      <CreateQuoteDialog
+        open={showNewQuoteDialog}
+        onOpenChange={setShowNewQuoteDialog}
+        onCreateQuote={(quoteId) => {
+          // Navigate to the new quote
+          navigate(`/quotes/${quoteId}`);
         }}
       />
     </PageContent>

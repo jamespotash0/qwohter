@@ -167,8 +167,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
   // Main layout with persistent sidebar
   // Wrap content with subscription paywall if organization exists
-  // Exclude settings page from paywall so users can access billing
-  const shouldApplyPaywall = currentOrganization?.id && location.pathname !== '/settings';
+  // Exclude settings and pending-approval pages from paywall
+  const excludedPaths = ['/settings', '/pending-approval'];
+  const shouldApplyPaywall = currentOrganization?.id && !excludedPaths.includes(location.pathname);
   const content = shouldApplyPaywall ? (
     <SubscriptionPaywall organizationId={currentOrganization.id}>
       {children}

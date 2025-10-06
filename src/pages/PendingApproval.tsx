@@ -2,6 +2,7 @@
  * Pending Approval Page
  *
  * Shows when user has joined an organization but is waiting for admin approval
+ * Also shows admin controls if user is Owner/Admin viewing pending members
  */
 
 import { useEffect, useState } from 'react';
@@ -9,19 +10,28 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, Users, RefreshCw } from 'lucide-react';
+import { Clock, Users, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/stores/auth/authStore';
+import { onboardingStateHelpers } from '@/services/onboardingStateService';
 
 interface MembershipData {
   role: string;
   status: string;
   organization_id: string;
   created_at: string;
+  user_id: string;
   organizations: {
     name: string;
     organization_code: string;
   };
+}
+
+interface PendingMember {
+  user_id: string;
+  full_name: string;
+  email: string;
+  created_at: string;
 }
 
 const PendingApproval: React.FC = () => {

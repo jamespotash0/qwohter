@@ -233,12 +233,6 @@ export const onboardingStateHelpers = {
    */
   determineOnboardingStep: async (userId: string): Promise<string | null> => {
     try {
-      // Check if user completed onboarding
-      const isComplete = await onboardingStateHelpers.isOnboardingComplete(userId);
-      if (isComplete) {
-        return null; // Onboarding complete
-      }
-
       // Check if user has saved progress
       const progress = await onboardingStateHelpers.getOnboardingProgress(userId);
       if (progress) {
@@ -260,19 +254,50 @@ export const onboardingStateHelpers = {
         return 'profile';
       }
 
-      // Profile exists, check memberships
-      const { data: memberships, error: membershipError } = await supabase
+      // Profile exists, check memberships with status and role
+      const { data: membership, error: membershipError } = await supabase
         .from('memberships')
-        .select('id')
+        .select('id, status, role, organization_id')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
-      if (membershipError || !memberships) {
+      if (membershipError) {
+        console.error('Error checking membership:', membershipError);
+        return 'organization'; // Default to organization setup
+      }
+
+      if (!membership) {
         return 'organization'; // Need to set up organization
       }
 
-      // Has membership but might need company info
-      return 'company-info';
+      // Check membership status
+      if (membership.status === 'Pending') {
+        return 'pending-approval'; // Special state for pending approval
+      }
+
+      // If Active membership and Member role, onboarding is complete
+      if (membership.status === 'Active' && membership.role === 'Member') {
+        return null; // Members don't need company-info
+      }
+
+      // If Active membership and Owner/Admin role, check if company info is needed
+      if (membership.status === 'Active' && (membership.role === 'Owner' || membership.role === 'Admin')) {
+        // Check if organization has company info
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('id, phone, address')
+          .eq('id', membership.organization_id)
+          .single();
+
+        if (org && (!org.phone || !org.address)) {
+          return 'company-info'; // Owner/Admin needs to complete company info
+        }
+
+        return null; // Company info already complete
+      }
+
+      // Default: onboarding complete
+      return null;
     } catch (error) {
       console.error('Error determining onboarding step:', error);
       return 'profile'; // Default to profile step

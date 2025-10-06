@@ -614,60 +614,30 @@ const Team = () => {
                         key={member.id}
                         className="flex items-center justify-between p-4 border border-[var(--content-card-border)] rounded-lg bg-white"
                       >
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-[var(--sidebar-icon-active)] rounded-full flex items-center justify-center">
-                            <span className="text-sm font-medium text-white">
-                              {member.full_name
-                                ? member.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-                                : member.email.slice(0, 2).toUpperCase()
-                              }
-                            </span>
-                          </div>
-                          <div>
-                            <h4 className="font-medium text-[var(--content-header-text)]">
-                              {member.full_name || member.email}
-                            </h4>
-                            <p className="text-sm text-[var(--content-muted-text)]">{member.email}</p>
-                            <p className="text-xs text-[var(--content-muted-text)]">Signed up and waiting for approval</p>
-                          </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-[var(--content-text)]">
+                            <span className="font-semibold text-[var(--content-header-text)]">{member.full_name || member.email}</span> has requested to join
+                          </p>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 font-medium">
-                            Awaiting Approval
-                          </Badge>
-                          <Badge
-                            variant="outline"
-                            className={`capitalize font-medium ${
-                              member.role === 'Admin'
-                                ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                : 'bg-gray-50 text-gray-700 border-gray-200'
-                            }`}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => approveMember(member.id)}
+                            className="bg-green-600 hover:bg-green-700 text-white"
                           >
-                            {member.role.toLowerCase()}
-                          </Badge>
-
-                          {(currentUserRole === 'Admin' || currentUserRole === 'Owner') && (
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                onClick={() => approveMember(member.id)}
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                              >
-                                <CheckCircle className="w-4 h-4 mr-1" />
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => rejectMember(member.id)}
-                                className="border-red-600 text-red-600 hover:bg-red-50"
-                              >
-                                <XCircle className="w-4 h-4 mr-1" />
-                                Decline
-                              </Button>
-                            </div>
-                          )}
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => rejectMember(member.id)}
+                            className="border-red-600 text-red-600 hover:bg-red-50"
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Decline
+                          </Button>
                         </div>
                       </div>
                     ))}

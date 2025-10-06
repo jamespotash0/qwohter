@@ -14,7 +14,7 @@ export interface AuthResult {
   success: boolean;
   data?: any;
   error?: string;
-  nextStep?: 'verify-otp' | 'profile' | 'organization' | 'company-info' | 'complete';
+  nextStep?: 'verify-otp' | 'profile' | 'organization' | 'company-info' | 'pending-approval' | 'complete';
 }
 
 export interface ProfileSetupData {

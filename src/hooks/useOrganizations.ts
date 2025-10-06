@@ -322,9 +322,9 @@ export const useOrganizations = () => {
 
       // Refresh members list
       if (currentOrganization) {
-        await fetchMembers(currentOrganization.id);
+        await fetchMembers(currentOrganization.id, true);
       }
-      
+
       toast({
         title: "Member approved",
         description: "Member has been approved and can now access the organization.",
@@ -351,9 +351,9 @@ export const useOrganizations = () => {
 
       // Refresh members list
       if (currentOrganization) {
-        await fetchMembers(currentOrganization.id);
+        await fetchMembers(currentOrganization.id, true);
       }
-      
+
       toast({
         title: "Member rejected",
         description: "Member request has been rejected.",
