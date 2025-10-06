@@ -456,15 +456,28 @@ export const authFlowHelpers = {
 
         const cleanCode = choice.orgCode.trim().toUpperCase();
 
+        console.log('🔍 Looking for organization with code:', cleanCode);
+
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
           .select('id, name')
           .eq('organization_code', cleanCode)
           .single();
 
-        if (orgError || !orgData) {
+        if (orgError) {
+          console.error('❌ Organization query error:', orgError);
+          return {
+            success: false,
+            error: `Organization not found. Please check the code and try again. (Error: ${orgError.message})`
+          };
+        }
+
+        if (!orgData) {
+          console.log('⚠️ No organization found with code:', cleanCode);
           return { success: false, error: "Organization not found. Please check the code and try again." };
         }
+
+        console.log('✅ Found organization:', orgData.name);
 
         const { error: membershipsError } = await supabase
           .from('memberships')
