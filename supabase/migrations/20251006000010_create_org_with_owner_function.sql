@@ -19,15 +19,11 @@ BEGIN
   INSERT INTO organizations (
     name,
     organization_code,
-    found_via,
-    industry,
     created_at,
     updated_at
   ) VALUES (
     org_name,
     org_code,
-    found_via,
-    industry,
     now(),
     now()
   )
@@ -51,11 +47,6 @@ BEGIN
     now(),
     now()
   );
-
-  -- Update profile with organization_id
-  UPDATE profiles
-  SET organization_id = new_org_id
-  WHERE id = owner_id;
 
   -- Return the organization ID
   RETURN QUERY SELECT new_org_id;
