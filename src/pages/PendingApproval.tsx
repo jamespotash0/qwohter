@@ -5,12 +5,13 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, Users, Mail, RefreshCw } from 'lucide-react';
+import { Clock, Users, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuthStore } from '@/stores/auth/authStore';
 
 interface MembershipData {
   role: string;
@@ -28,6 +29,8 @@ const PendingApproval: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const signOut = useAuthStore((state) => state.signOut);
 
   const checkMembershipStatus = async () => {
     try {
@@ -77,7 +80,8 @@ const PendingApproval: React.FC = () => {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await signOut();
+    navigate('/sign-in');
   };
 
   useEffect(() => {
@@ -125,37 +129,23 @@ const PendingApproval: React.FC = () => {
         <CardContent className="space-y-6">
           {/* Organization Info */}
           {membershipData && (
-            <div className="bg-slate-50 rounded-lg p-4 space-y-3">
+            <div className="bg-slate-50 rounded-lg p-4">
               <div className="flex items-center space-x-3">
                 <Users className="h-5 w-5 text-slate-600" />
                 <div>
                   <p className="font-medium text-slate-800">
                     {(membershipData as any).organizations?.name}
                   </p>
-                  <p className="text-sm text-slate-600">
-                    Code: {(membershipData as any).organizations?.organization_code}
-                  </p>
                 </div>
-              </div>
-
-              <div className="text-sm text-slate-600">
-                <p><strong>Role:</strong> {membershipData.role}</p>
-                <p><strong>Status:</strong> {membershipData.status}</p>
-                <p><strong>Requested:</strong> {new Date(membershipData.created_at).toLocaleDateString()}</p>
               </div>
             </div>
           )}
 
           {/* Instructions */}
-          <div className="space-y-3">
-            <div className="flex items-start space-x-3">
-              <Mail className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-sm text-slate-700">
-                  An administrator will review your request and approve or deny your access to the organization.
-                </p>
-              </div>
-            </div>
+          <div className="text-center">
+            <p className="text-sm text-slate-600">
+              An administrator will review your request and approve or deny your access to the organization.
+            </p>
           </div>
 
           {/* Actions */}
