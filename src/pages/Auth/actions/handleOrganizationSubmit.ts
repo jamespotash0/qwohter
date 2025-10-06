@@ -117,7 +117,7 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
           description: 'Your request to join the organization is pending approval.',
         });
         await onboardingStateHelpers.clearOnboardingProgress(userId);
-        navigate('/dashboard');
+        navigate('/pending-approval');
       }
     } else {
       toast({
