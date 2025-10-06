@@ -235,9 +235,9 @@ export class SectionGenerators {
       </div>
     </div>
 
-    <div class="signature-acceptance-section">
+    <div class="signature-acceptance-section" style="line-height: 1.15;">
       <br><strong>Signed By:</strong> ___________________________________________&nbsp;&nbsp;&nbsp;<strong>Date:</strong> _____________________
-      <br><br>
+      <br>
 
       <h2 class="section-header editable-header" contenteditable="false" style="margin-top: 25px; margin-bottom: 15px;">ACCEPTANCE OF PROPOSAL:</h2>
       <p style="font-style: italic; font-size: 9pt; line-height: 1.2;">
