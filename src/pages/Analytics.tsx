@@ -66,26 +66,20 @@ const Analytics = () => {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
-    // Filter quotes based on view mode - use status_last_updated for won quotes, created_at for others
+    // Filter quotes based on view mode - use created_at for quote creation metrics
     const filteredQuotes = viewMode === 'monthly'
       ? quotes.filter(q => {
-          // For won quotes, use status_last_updated; otherwise use created_at
-          const dateToCheck = q.status === 'Won' && q.status_last_updated
-            ? new Date(q.status_last_updated)
-            : new Date(q.created_at);
-          return dateToCheck.getFullYear() === currentYear && dateToCheck.getMonth() === currentMonth;
+          const createdDate = new Date(q.created_at);
+          return createdDate.getFullYear() === currentYear && createdDate.getMonth() === currentMonth;
         })
       : quotes.filter(q => {
-          // For won quotes, use status_last_updated; otherwise use created_at
-          const dateToCheck = q.status === 'Won' && q.status_last_updated
-            ? new Date(q.status_last_updated)
-            : new Date(q.created_at);
-          return dateToCheck.getFullYear() === currentYear;
+          const createdDate = new Date(q.created_at);
+          return createdDate.getFullYear() === currentYear;
         });
 
-    // Quotes by user
+    // Quotes by user - use ALL quotes, not just filtered by period
     const quotesByUser: Record<string, number> = {};
-    filteredQuotes.forEach(q => {
+    quotes.forEach(q => {
       const userName = q.creator_name || 'Unknown';
       quotesByUser[userName] = (quotesByUser[userName] || 0) + 1;
     });
@@ -118,22 +112,46 @@ const Analytics = () => {
       }
     }
 
-    const totalRevenue = filteredQuotes.reduce((sum, quote) => {
-      const total = quote.price_details?.final_selling_price || 0;
-      if (quote.status === 'Won') {
-        return sum + parseCurrency(total);
-      }
-      return sum;
+    // Calculate revenue using won_at timestamp for accurate period filtering
+    const wonQuotesInPeriod = viewMode === 'monthly'
+      ? quotes.filter(q => {
+          if (!q.won_at) return false;
+          const wonDate = new Date(q.won_at);
+          return wonDate.getFullYear() === currentYear && wonDate.getMonth() === currentMonth;
+        })
+      : quotes.filter(q => {
+          if (!q.won_at) return false;
+          const wonDate = new Date(q.won_at);
+          return wonDate.getFullYear() === currentYear;
+        });
+
+    const rejectedQuotesInPeriod = viewMode === 'monthly'
+      ? quotes.filter(q => {
+          if (!q.rejected_at) return false;
+          const rejectedDate = new Date(q.rejected_at);
+          return rejectedDate.getFullYear() === currentYear && rejectedDate.getMonth() === currentMonth;
+        })
+      : quotes.filter(q => {
+          if (!q.rejected_at) return false;
+          const rejectedDate = new Date(q.rejected_at);
+          return rejectedDate.getFullYear() === currentYear;
+        });
+
+    const totalRevenue = wonQuotesInPeriod.reduce((sum, quote) => {
+      // Use denormalized total_value field if available, fallback to price_details
+      const total = quote.total_value || quote.price_details?.final_selling_price || 0;
+      return sum + (typeof total === 'number' ? total : parseCurrency(total));
     }, 0);
 
-    const wonQuotes = filteredQuotes.filter(q => q.status === 'Won').length;
-    const rejectedQuotes = filteredQuotes.filter(q => q.status === 'Rejected').length;
+    const wonQuotes = wonQuotesInPeriod.length;
+    const rejectedQuotes = rejectedQuotesInPeriod.length;
 
-    // Win Rate = Won / (Won + Lost)
+    // Win Rate = Won / (Won + Lost) - Same as conversion rate for this use case
     const winRate = (wonQuotes + rejectedQuotes) > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;
 
-    // Conversion Rate = Won / Total
-    const conversionRate = filteredQuotes.length > 0 ? (wonQuotes / filteredQuotes.length) * 100 : 0;
+    // Conversion Rate = Won / (Won + Rejected) - Only quotes that reached a decision
+    // This is more accurate than Won / Total Created, since not all quotes may be decided yet
+    const conversionRate = (wonQuotes + rejectedQuotes) > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;
 
     return {
       totalQuotes: filteredQuotes.length,

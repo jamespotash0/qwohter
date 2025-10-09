@@ -377,24 +377,18 @@ const Dashboard = () => {
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-    // Track when quotes were marked as Won using status_last_updated or created_at
+    // Track when quotes were marked as Won using won_at timestamp
     const wonQuotesThisMonth = quotes.filter(q => {
-      if (q.status !== 'Won') return false;
+      if (!q.won_at) return false;
 
-      const dateToUse = q.status_last_updated || q.created_at;
-      if (!dateToUse) return false;
-
-      const wonDate = new Date(dateToUse);
+      const wonDate = new Date(q.won_at);
       return wonDate >= thisMonth;
     });
 
     const wonQuotesLastMonth = quotes.filter(q => {
-      if (q.status !== 'Won') return false;
+      if (!q.won_at) return false;
 
-      const dateToUse = q.status_last_updated || q.created_at;
-      if (!dateToUse) return false;
-
-      const wonDate = new Date(dateToUse);
+      const wonDate = new Date(q.won_at);
       return wonDate >= lastMonth && wonDate <= lastMonthEnd;
     });
 
@@ -419,11 +413,9 @@ const Dashboard = () => {
     // This month's win rate
     const wonThisMonth = wonQuotesThisMonth.length;
     const rejectedThisMonth = quotes.filter(q => {
-      if (q.status !== 'Rejected') return false;
-      const dateToUse = q.status_last_updated || q.created_at;
-      if (!dateToUse) return false;
-      const statusDate = new Date(dateToUse);
-      return statusDate >= thisMonth;
+      if (!q.rejected_at) return false;
+      const rejectedDate = new Date(q.rejected_at);
+      return rejectedDate >= thisMonth;
     }).length;
     const decidedThisMonth = wonThisMonth + rejectedThisMonth;
     const winRateThisMonth = decidedThisMonth > 0 ? ((wonThisMonth / decidedThisMonth) * 100).toFixed(1) : '0';
@@ -431,11 +423,9 @@ const Dashboard = () => {
     // Last month's win rate
     const wonLastMonth = wonQuotesLastMonth.length;
     const rejectedLastMonth = quotes.filter(q => {
-      if (q.status !== 'Rejected') return false;
-      const dateToUse = q.status_last_updated || q.created_at;
-      if (!dateToUse) return false;
-      const statusDate = new Date(dateToUse);
-      return statusDate >= lastMonth && statusDate <= lastMonthEnd;
+      if (!q.rejected_at) return false;
+      const rejectedDate = new Date(q.rejected_at);
+      return rejectedDate >= lastMonth && rejectedDate <= lastMonthEnd;
     }).length;
     const decidedLastMonth = wonLastMonth + rejectedLastMonth;
     const winRateLastMonth = decidedLastMonth > 0 ? ((wonLastMonth / decidedLastMonth) * 100).toFixed(1) : '0';

@@ -42,11 +42,18 @@ export interface Quote {
   created_at: string;
   updated_at: string;
   customization?: QuoteCustomization;
-  status_last_updated?: string;
   quote_source?: string;
-  follow_up_date?: string | null;
   creator_name?: string;
   archived?: boolean;
+
+  // Analytics fields (denormalized from migrations)
+  total_value?: number;
+  subtotal?: number;
+  submitted_at?: string;
+  won_at?: string;
+  rejected_at?: string;
+  closed_at?: string;
+  margin_percentage?: number;
 }
 
 interface QuotesState {
@@ -183,8 +190,10 @@ export const useQuotesStore = create<QuotesState>()(
                   id, created_by, organization_id, proposal_number, project_name,
                   quote_details, job_details, delivery_details, labor_details,
                   wall_details, price_details, status, date_last_downloaded,
-                  version, created_at, updated_at, customization, status_last_updated,
-                  quote_source, follow_up_date, archived
+                  version, created_at, updated_at, customization,
+                  quote_source, archived,
+                  total_value, subtotal,
+                  submitted_at, won_at, rejected_at, closed_at, margin_percentage
                 `, { count: 'exact' })
                 .eq('created_by', session.user.id)
                 .order('created_at', { ascending: false })
@@ -205,8 +214,10 @@ export const useQuotesStore = create<QuotesState>()(
                   id, created_by, organization_id, proposal_number, project_name,
                   quote_details, job_details, delivery_details, labor_details,
                   wall_details, price_details, status, date_last_downloaded,
-                  version, created_at, updated_at, customization, status_last_updated,
-                  quote_source, follow_up_date, archived
+                  version, created_at, updated_at, customization,
+                  quote_source, archived,
+                  total_value, subtotal,
+                  submitted_at, won_at, rejected_at, closed_at, margin_percentage
                 `, { count: 'exact' })
                 .order('created_at', { ascending: false })
                 .limit(50);
@@ -353,7 +364,7 @@ export const useQuotesStore = create<QuotesState>()(
             if (error) throw error;
 
             const newQuote = convertRowToQuote({
-              ...data,
+              ...data as object,
               creator_name: userName
             });
             _setQuotes([newQuote, ...quotes]);
@@ -515,17 +526,6 @@ export const useQuotesStore = create<QuotesState>()(
                   organizationId: organizationId,
                   oldStatus: oldStatus,
                   newStatus: newStatus
-                });
-              } else if (updates.follow_up_date && updates.follow_up_date !== currentQuote.follow_up_date) {
-                // Reminder set
-                await quoteActivityService.logReminderSet({
-                  quoteId: id,
-                  quoteNumber: currentQuote.proposal_number,
-                  projectName: currentQuote.project_name || 'Untitled',
-                  userId: user.id,
-                  userName: userName,
-                  organizationId: organizationId,
-                  followUpDate: updates.follow_up_date
                 });
               } else {
                 // General update

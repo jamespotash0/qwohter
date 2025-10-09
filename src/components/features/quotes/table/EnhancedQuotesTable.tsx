@@ -39,7 +39,6 @@ import {
   FileText,
   Archive,
   ArchiveRestore,
-  CheckCircle,
   Bell
 } from 'lucide-react';
 
@@ -107,7 +106,7 @@ const columnLabels: Record<string, string> = {
   quote_source: "Quote Source",
   created_by: "Creator",
   created_at: "Date Created",
-  status_last_updated: "Status Updated",
+  updated_at: "Last Updated",
   actions: "Actions"
 };
 
@@ -406,12 +405,12 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       size: 200,
       enableSorting: true,
     }),
-    columnHelper.accessor('status_last_updated', {
-      id: 'status_last_updated',
+    columnHelper.accessor('updated_at', {
+      id: 'updated_at',
       header: () => (
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4" />
-          Status Updated
+          Last Updated
         </div>
       ),
       cell: ({ getValue }) => (

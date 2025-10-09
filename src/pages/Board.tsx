@@ -378,8 +378,9 @@ export default function Board() {
       showPageHeader={true}
     >
       {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Loading projects...</div>
+        <div className="flex flex-col items-center justify-center h-64 gap-3">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+          <div className="text-gray-500 font-medium">Loading projects...</div>
         </div>
       ) : workflowColumns.length === 0 ? (
         <div className="text-center py-12">
