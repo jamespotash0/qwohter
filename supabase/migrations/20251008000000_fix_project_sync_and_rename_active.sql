@@ -35,17 +35,42 @@ ALTER COLUMN priority SET DEFAULT NULL;
 -- Only "Won" status creates projects. Changing FROM "Won" to anything else removes the project.
 CREATE OR REPLACE FUNCTION sync_project_on_quote_status_change()
 RETURNS TRIGGER AS $$
+DECLARE
+  next_board_order INTEGER;
 BEGIN
   -- If status changed TO 'Won', create project
   IF NEW.status = 'Won' AND (OLD.status IS NULL OR OLD.status != 'Won') THEN
-    INSERT INTO projects (quote_id, workflow_status, organization_id)
-    VALUES (NEW.id, 'Active', NEW.organization_id)
+    -- Get the next board_order for the Active column (1-based indexing)
+    SELECT COALESCE(MAX(board_order), 0) + 1 INTO next_board_order
+    FROM projects
+    WHERE workflow_status = 'Active' AND organization_id = NEW.organization_id;
+
+    INSERT INTO projects (quote_id, workflow_status, organization_id, board_order)
+    VALUES (NEW.id, 'Active', NEW.organization_id, next_board_order)
     ON CONFLICT (quote_id, organization_id) DO NOTHING;
 
-  -- If status changed FROM 'Won' to anything else (including Completed), delete project
+  -- If status changed FROM 'Won' to anything else, delete project and reorder remaining
   ELSIF OLD.status = 'Won' AND NEW.status != 'Won' THEN
-    DELETE FROM projects
-    WHERE quote_id = NEW.id AND organization_id = NEW.organization_id;
+    -- Store the workflow_status before deletion for reordering
+    DECLARE
+      deleted_status TEXT;
+      deleted_order INTEGER;
+    BEGIN
+      SELECT workflow_status, board_order INTO deleted_status, deleted_order
+      FROM projects
+      WHERE quote_id = NEW.id AND organization_id = NEW.organization_id;
+
+      -- Delete the project
+      DELETE FROM projects
+      WHERE quote_id = NEW.id AND organization_id = NEW.organization_id;
+
+      -- Reorder remaining projects in that column
+      UPDATE projects
+      SET board_order = board_order - 1
+      WHERE workflow_status = deleted_status
+        AND organization_id = NEW.organization_id
+        AND board_order > deleted_order;
+    END;
   END IF;
 
   RETURN NEW;
@@ -85,6 +110,21 @@ $$ LANGUAGE plpgsql;
 ALTER TABLE projects
 ALTER COLUMN workflow_status SET DEFAULT 'Active';
 
+-- Set proper board_order values for existing projects (grouped by workflow_status)
+-- Using 1-based indexing (1, 2, 3...)
+WITH numbered_projects AS (
+  SELECT
+    id,
+    workflow_status,
+    ROW_NUMBER() OVER (PARTITION BY workflow_status ORDER BY created_at ASC) AS new_order
+  FROM projects
+)
+UPDATE projects
+SET board_order = numbered_projects.new_order
+FROM numbered_projects
+WHERE projects.id = numbered_projects.id;
+
 COMMENT ON TABLE projects IS 'Kanban board for tracking won quotes through project workflow stages';
 COMMENT ON COLUMN projects.workflow_status IS 'Current workflow stage (e.g., Active, In Progress, Review, Complete)';
 COMMENT ON COLUMN projects.priority IS 'Project priority level: Highest, High, Medium, Low, Lowest (NULL for no priority - default)';
+COMMENT ON COLUMN projects.board_order IS 'Order of the card within its workflow column (1-based index: 1, 2, 3...)';

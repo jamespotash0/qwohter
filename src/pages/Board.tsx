@@ -72,6 +72,7 @@ export default function Board() {
   const [draggedProject, setDraggedProject] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [dragOverCard, setDragOverCard] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<'before' | 'after'>('before');
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [editingColumnName, setEditingColumnName] = useState('');
   const [isAddingColumn, setIsAddingColumn] = useState(false);
@@ -84,9 +85,13 @@ export default function Board() {
     fetchWorkflowColumns();
   }, [fetchProjects, fetchWorkflowColumns]);
 
-  const handleDragStart = (e: React.DragEvent, projectId: string) => {
+  const handleDragStart = async (e: React.DragEvent, projectId: string) => {
     setDraggedProject(projectId);
     e.dataTransfer.effectAllowed = 'move';
+
+    // Set board_order to null when picking up the card
+    await updateProject(projectId, { board_order: null as any });
+    console.log('Picked up card, set board_order to null:', projectId);
   };
 
   const handleDragOver = (e: React.DragEvent, columnName: string) => {
@@ -103,7 +108,14 @@ export default function Board() {
   const handleCardDragOver = (e: React.DragEvent, cardId: string) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Determine if hovering over top or bottom half of the card
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    const isTopHalf = e.clientY < midpoint;
+
     setDragOverCard(cardId);
+    setDropPosition(isTopHalf ? 'before' : 'after');
   };
 
   const handleCardDragLeave = () => {
@@ -112,16 +124,148 @@ export default function Board() {
 
   const handleDrop = async (e: React.DragEvent, targetStatus: string) => {
     e.preventDefault();
-    if (draggedProject && draggedProject !== targetStatus) {
-      await updateProject(draggedProject, { workflow_status: targetStatus });
+
+    if (!draggedProject) return;
+
+    const sourceProject = projects.find(p => p.id === draggedProject);
+    if (!sourceProject) return;
+
+    const isSameColumn = sourceProject.workflow_status === targetStatus;
+
+    // STEP 1: Get all projects in target column with non-null board_order
+    // (dragged card already has null board_order from handleDragStart)
+    let cardsInTargetColumn = getProjectsByStatus(targetStatus)
+      .filter(p => p.board_order !== null) // Only cards with valid positions
+      .sort((a, b) => (a.board_order || 0) - (b.board_order || 0));
+
+    console.log('Cards in target column (with valid board_order):', cardsInTargetColumn.map(p => ({ id: p.id, board_order: p.board_order })));
+
+    // STEP 2: Determine where to insert the dragged card (1-based position)
+    let insertPosition: number;
+
+    if (dragOverCard && dragOverCard !== draggedProject) {
+      // Find the card we're hovering over in the filtered list
+      const targetCardIndex = cardsInTargetColumn.findIndex(p => p.id === dragOverCard);
+      if (targetCardIndex >= 0) {
+        if (dropPosition === 'before') {
+          insertPosition = targetCardIndex + 1; // Insert before this card (1-based)
+        } else {
+          insertPosition = targetCardIndex + 2; // Insert after this card (1-based)
+        }
+      } else {
+        // Card not found, add to end
+        insertPosition = cardsInTargetColumn.length + 1;
+      }
+    } else {
+      // Dropped in empty space - add to end
+      insertPosition = cardsInTargetColumn.length + 1;
     }
+
+    console.log('Drop calculation:', {
+      draggedProject,
+      dragOverCard,
+      dropPosition,
+      insertPosition
+    });
+
+    // STEP 3: Build the final order array by inserting dragged card at the calculated position
+    const finalOrder: string[] = [];
+
+    console.log('Building final order:', {
+      cardsInTargetColumn: cardsInTargetColumn.map(p => p.id),
+      insertPosition,
+      draggedProject
+    });
+
+    for (let i = 0; i < cardsInTargetColumn.length; i++) {
+      const currentPosition = i + 1; // 1-based
+
+      // Insert dragged card when we reach the insert position
+      if (currentPosition === insertPosition) {
+        console.log(`At position ${currentPosition}, inserting dragged card BEFORE card at index ${i}`);
+        finalOrder.push(draggedProject);
+      }
+
+      finalOrder.push(cardsInTargetColumn[i]!.id);
+      console.log(`Added card at index ${i} (position ${currentPosition}):`, cardsInTargetColumn[i]!.id);
+    }
+
+    // If insert position is at the end, append dragged card
+    if (insertPosition > cardsInTargetColumn.length) {
+      console.log('Insert position is at the end, appending dragged card');
+      finalOrder.push(draggedProject);
+    }
+
+    console.log('Final order for target column:', finalOrder);
+
+    // STEP 4: Build updates for target column - UPDATE ALL CARDS
+    const updates: Array<{ id: string; updates: Partial<Project> }> = [];
+
+    finalOrder.forEach((projectId, index) => {
+      const newBoardOrder = index + 1; // 1-based indexing (1, 2, 3...)
+
+      if (projectId === draggedProject) {
+        // Dragged card needs workflow_status AND board_order updated
+        updates.push({
+          id: projectId,
+          updates: { workflow_status: targetStatus, board_order: newBoardOrder }
+        });
+      } else {
+        // Update ALL cards in target column to ensure consistency
+        updates.push({
+          id: projectId,
+          updates: { board_order: newBoardOrder }
+        });
+      }
+    });
+
+    // STEP 5: If moving between columns, reorder the source column
+    if (!isSameColumn) {
+      const sourceColumnCards = getProjectsByStatus(sourceProject.workflow_status)
+        .filter(p => p.board_order !== null) // Only cards with valid positions (dragged card is null)
+        .sort((a, b) => (a.board_order || 0) - (b.board_order || 0));
+
+      console.log('Reordering source column:', sourceColumnCards.map(p => ({ id: p.id, board_order: p.board_order })));
+
+      // Update ALL cards in source column to ensure consistency
+      sourceColumnCards.forEach((card, index) => {
+        const correctOrder = index + 1; // Sequential 1, 2, 3...
+        updates.push({
+          id: card.id,
+          updates: { board_order: correctOrder }
+        });
+      });
+    }
+
+    // Debug: Log all updates
+    console.log('All updates:', {
+      draggedProjectId: draggedProject,
+      sourceColumn: sourceProject.workflow_status,
+      targetColumn: targetStatus,
+      isSameColumn,
+      updates: updates.map(u => ({ id: u.id, ...u.updates }))
+    });
+
+    // STEP 6: Execute all updates
+    for (const { id, updates: projectUpdates } of updates) {
+      await updateProject(id, projectUpdates);
+    }
+
     setDraggedProject(null);
     setDragOverColumn(null);
     setDragOverCard(null);
+    setDropPosition('before');
   };
 
   const getProjectsByStatus = (status: string) => {
-    return projects.filter(p => p.workflow_status === status);
+    return projects
+      .filter(p => p.workflow_status === status)
+      .sort((a, b) => {
+        // Sort by board_order, putting null values at the end
+        if (a.board_order === null) return 1;
+        if (b.board_order === null) return -1;
+        return (a.board_order || 0) - (b.board_order || 0);
+      });
   };
 
   const formatCurrency = (amount?: number) => {
@@ -228,10 +372,10 @@ export default function Board() {
     });
   };
 
-  const getAvatarColor = (projectId: string) => {
-    const hash = projectId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return AVATAR_COLORS[hash % AVATAR_COLORS.length];
-  };
+  // const getAvatarColor = (projectId: string) => {
+  //   const hash = projectId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  //   return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+  // };
 
   return (
     <PageContent
@@ -395,23 +539,41 @@ export default function Board() {
 
                   {/* Column Cards */}
                   {!isCollapsed && (
-                    <div className="space-y-2 px-2 pb-2 flex-1 overflow-y-auto">
-                      {columnProjects.map(project => {
+                    <div
+                      className="space-y-2 px-2 pb-2 flex-1 overflow-y-auto min-h-[100px]"
+                      onDragOver={(e) => {
+                        // Only handle at container level if empty, otherwise cards handle it
+                        if (columnProjects.length === 0) {
+                          handleDragOver(e, column.name);
+                        } else {
+                          // For non-empty columns, just prevent default and track column
+                          e.preventDefault();
+                          setDragOverColumn(column.name);
+                        }
+                      }}
+                      onDragLeave={() => {
+                        if (columnProjects.length === 0) {
+                          handleDragLeave();
+                        }
+                      }}
+                      onDrop={(e) => {
+                        handleDrop(e, column.name);
+                      }}
+                    >
+                      {columnProjects.map((project) => {
                         const quote = project.quotes;
                         console.log('Project card data:', {
-                          projectId: project.id,
-                          quoteId: project.quote_id,
-                          quote: quote,
-                          quote_details: quote?.quote_details,
+                          projectName: quote?.project_name,
+                          board_order: project.board_order,
+                          workflow_status: project.workflow_status,
                           job_details: quote?.job_details,
-                          price_details: quote?.price_details
                         });
                         const clientName = quote?.job_details?.client_name || 'No Client';
                         const clientCompany = quote?.job_details?.client_company || '';
                         const clientAddress = quote?.job_details?.client_address || '';
                         const jobLocation = quote?.job_details?.job_location || '';
                         const total = quote?.price_details?.grand_total;
-                        const avatarColor = getAvatarColor(project.id);
+                        // const avatarColor = getAvatarColor(project.id);
 
                         return (
                           <div key={project.id} className="relative">
@@ -608,6 +770,21 @@ export default function Board() {
                           </div>
                         );
                       })}
+
+                      {/* Drop zone at the end of column - only show when column has cards */}
+                      {columnProjects.length > 0 && draggedProject && dragOverColumn === column.name && !dragOverCard && (
+                        <div className="h-0.5 bg-blue-500 rounded-full mt-2 shadow-sm relative">
+                          <div className="absolute -top-1 left-0 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                          <div className="absolute -top-1 right-0 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                        </div>
+                      )}
+
+                      {/* Empty state message - only show when not dragging */}
+                      {columnProjects.length === 0 && !draggedProject && (
+                        <div className="text-center py-8 text-gray-400 text-sm">
+                          Drop cards here
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
