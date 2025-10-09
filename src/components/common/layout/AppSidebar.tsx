@@ -224,7 +224,7 @@ export function AppSidebar({
                           />
                         )}
                       </div>
-                      {!isCollapsed && <span className="ml-3 font-inter font-normal tracking-tight">{item.title}</span>}
+                      {!isCollapsed && <span className="ml-1 font-inter font-normal tracking-tight">{item.title}</span>}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -234,7 +234,6 @@ export function AppSidebar({
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Footer with Theme Toggle and User Profile */}
       <SidebarFooter className="p-2 pb-4">
         {!isCollapsed ? (
           <div className="space-y-3">
