@@ -464,7 +464,7 @@ export const startFreeTrial = async (organizationId: string): Promise<{ success:
       .insert({
         organization_id: organizationId,
         plan_id: freePlan.id,
-        stripe_subscription_status: 'trialing',
+        stripe_subscription_status: 'Trialing',
         current_period_end: trialEndDate.toISOString(),
         is_active: true,
         access_blocked: false,
