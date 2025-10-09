@@ -595,7 +595,7 @@ const Dashboard = () => {
       {/* Dashboard Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-semibold text-[var(--content-header-text)] dark:text-[var(--content-header-text)]">
-          Welcome back, {effectiveProfile?.full_name || user?.email?.split('@')[0] || 'User'}
+          Hello, {effectiveProfile?.full_name || user?.email?.split('@')[0] || 'User'}!
         </h1>
         <p className="mt-2 text-base text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)]">
           Here's what's happening with your quotes today
@@ -710,9 +710,9 @@ const Dashboard = () => {
       {/* Main Content Grid */}
       <div className="space-y-8">
         {/* Main Layout: Left Column (Quick Actions + Reminders & Alerts) and Right Column (Recent Activity) */}
-        <div className="grid grid-cols-1 lg:grid-cols-[480px_600px] xl:grid-cols-[480px_1fr] gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[520px_600px] xl:grid-cols-[540px_1fr] gap-8 items-start">
           {/* Left Column */}
-          <div className="space-y-8">
+          <div className="space-y-8 flex flex-col">
             {/* Quick Actions Card */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0">
             <CardHeader className="pb-4">
@@ -759,8 +759,8 @@ const Dashboard = () => {
             </Card>
 
             {/* Reminders & Alerts Card */}
-            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0">
-              <CardHeader className="pb-4">
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 flex flex-col h-[600px]">
+              <CardHeader className="pb-4 flex-shrink-0">
                 <CardTitle className="flex items-center justify-between text-[var(--content-header-text)]">
                   <div className="flex items-center gap-2">
                     <Bell className="w-5 h-5" />
@@ -776,12 +776,12 @@ const Dashboard = () => {
                   </Button>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pb-4">
+              <CardContent className="pb-0 flex-1 flex flex-col">
                 {(() => {
                   return null;
                 })()}
                 {reminders.length === 0 ? (
-                  <div className="h-[550px] flex items-center justify-center">
+                  <div className="flex-1 flex items-center justify-center">
                     <div className="text-center">
                       <Bell className="w-12 h-12 text-[var(--content-muted-text)] mx-auto mb-4 opacity-50" />
                       <p className="text-[var(--content-muted-text)]">
@@ -793,7 +793,7 @@ const Dashboard = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-[550px] overflow-y-auto pr-2 -mr-2">
+                  <div className="space-y-2 flex-1 overflow-y-auto pr-2 -mr-2">
                     {reminders.map((reminder) => {
                       const dueDate = new Date(reminder.due_date);
                       const isOverdue = isPast(dueDate) && !isToday(dueDate);
@@ -948,16 +948,16 @@ const Dashboard = () => {
           </div>
 
           {/* Right Column - Recent Activity */}
-          <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0">
-            <CardHeader className="pb-4">
+          <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 flex flex-col self-start" style={{ height: '900px' }}>
+            <CardHeader className="pb-4 flex-shrink-0">
               <CardTitle className="flex items-center gap-2 text-[var(--content-header-text)]">
                 <Clock className="w-5 h-5" />
                 Recent Activity
               </CardTitle>
             </CardHeader>
-            <CardContent className="relative pb-4">
+            <CardContent className="relative pb-4 flex-1 flex flex-col overflow-hidden">
               {quotesLoading ? (
-                <div className="space-y-2 h-[600px]">
+                <div className="space-y-2 flex-1 overflow-y-auto">
                   {[...Array(4)].map((_, i) => (
                     <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
                       <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
@@ -969,7 +969,7 @@ const Dashboard = () => {
                   ))}
                 </div>
               ) : recentActivity.length > 0 ? (
-                <div className="space-y-2 min-h-[200px] max-h-[600px] overflow-y-auto pr-2 -mr-2">
+                <div className="space-y-2 flex-1 overflow-y-auto pr-2">
                   {recentActivity.map((activity) => {
                     const getActivityIcon = () => {
                       switch (activity.type) {
@@ -1023,7 +1023,7 @@ const Dashboard = () => {
                   })}
                 </div>
               ) : (
-                <div className="h-[600px] flex items-center justify-center">
+                <div className="flex-1 flex items-center justify-center">
                   <div className="text-center">
                     <Clock className="w-12 h-12 text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] mx-auto mb-3 opacity-50" />
                     <p className="text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)]">
