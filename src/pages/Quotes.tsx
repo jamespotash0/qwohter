@@ -64,11 +64,6 @@ const Quotes = () => {
   // Quote management functions
   const updateQuoteStatus = async (id: string, newStatus: string) => {
     await updateQuote(id, { status: newStatus as any });
-
-    // Auto-archive when status is set to "Completed"
-    if (newStatus === 'Completed') {
-      await archiveQuote(id);
-    }
   };
 
   const updateQuoteSource = async (id: string, newSource: string) => {

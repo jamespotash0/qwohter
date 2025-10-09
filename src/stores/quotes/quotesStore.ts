@@ -47,7 +47,6 @@ export interface Quote {
   follow_up_date?: string | null;
   creator_name?: string;
   archived?: boolean;
-  won_date?: string;
 }
 
 interface QuotesState {
@@ -185,7 +184,7 @@ export const useQuotesStore = create<QuotesState>()(
                   quote_details, job_details, delivery_details, labor_details,
                   wall_details, price_details, status, date_last_downloaded,
                   version, created_at, updated_at, customization, status_last_updated,
-                  quote_source, follow_up_date, won_date, archived
+                  quote_source, follow_up_date, archived
                 `, { count: 'exact' })
                 .eq('created_by', session.user.id)
                 .order('created_at', { ascending: false })
@@ -207,7 +206,7 @@ export const useQuotesStore = create<QuotesState>()(
                   quote_details, job_details, delivery_details, labor_details,
                   wall_details, price_details, status, date_last_downloaded,
                   version, created_at, updated_at, customization, status_last_updated,
-                  quote_source, follow_up_date, won_date, archived
+                  quote_source, follow_up_date, archived
                 `, { count: 'exact' })
                 .order('created_at', { ascending: false })
                 .limit(50);
@@ -461,19 +460,9 @@ export const useQuotesStore = create<QuotesState>()(
             const newStatus = updates.status;
 
             // Note: wall_details filtering removed - discriminated unions ensure type safety
-            let processedUpdates = { ...updates };
-
-            // Set won_date when quote is first marked as "Won" or "Completed"
-            // (Completed means job is done and should count as revenue)
-            if ((newStatus === 'Won' || newStatus === 'Completed') &&
-                (oldStatus !== 'Won' && oldStatus !== 'Completed') &&
-                !currentQuote.won_date) {
-              processedUpdates.won_date = new Date().toISOString();
-            }
-
             const { data, error } = await supabase
               .from('quotes')
-              .update(processedUpdates)
+              .update(updates)
               .eq('id', id)
               .select()
               .single();

@@ -235,8 +235,7 @@ export default function Board() {
 
   return (
     <PageContent
-      title="Board"
-      subtitle="Track and manage your project workflow"
+      title="Project Board"
       showPageHeader={true}
     >
       {isLoading ? (

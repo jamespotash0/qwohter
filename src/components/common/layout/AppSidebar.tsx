@@ -1,5 +1,5 @@
 import { LogOut, CreditCard } from "lucide-react";
-import { House, FileText, ChartBar, Users, List, Gear, FileCode, Kanban, Sidebar as SidebarIcon, DotsThree, Lock } from "@phosphor-icons/react";
+import { House, FileText, ChartBar, Users, List, Gear, FileCode, ChalkboardSimple, Sidebar as SidebarIcon, DotsThree, Lock } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -25,8 +25,8 @@ const menuItems = [
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
   {
-    title: "Board",
-    icon: Kanban,
+    title: "Project Board",
+    icon: ChalkboardSimple,
     path: "/board",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
@@ -147,7 +147,7 @@ export function AppSidebar({
           >
             {!isCollapsed && (
               <p className="text-xs font-inter font-medium text-[var(--sidebar-section-label)] uppercase tracking-wide">
-                General
+                Menu
               </p>
             )}
             <ThemeToggleButton />

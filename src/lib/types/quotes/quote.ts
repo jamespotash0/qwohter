@@ -1,4 +1,4 @@
-export type QuoteStatus = 'Incomplete' | 'Draft' | 'Pending' | 'Submitted' | 'Won' | 'Rejected' | 'Completed';
+export type QuoteStatus = 'Incomplete' | 'Draft' | 'Pending' | 'Submitted' | 'Won' | 'Rejected';
 
 import { EnhancedPricingData } from '@/lib/types/pricing/enhancedPricing';
 

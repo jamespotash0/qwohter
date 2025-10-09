@@ -85,7 +85,6 @@ const statusColors = {
   Submitted: "bg-blue-100 text-blue-800",
   Won: "bg-emerald-100 text-emerald-800",
   Rejected: "bg-red-100 text-red-800",
-  Completed: "bg-purple-100 text-purple-800",
 };
 
 const getQuoteSourceOptions = () => [
@@ -108,7 +107,6 @@ const columnLabels: Record<string, string> = {
   created_by: "Creator",
   created_at: "Date Created",
   status_last_updated: "Status Updated",
-  won_date: "Won Date",
   actions: "Actions"
 };
 
@@ -119,14 +117,13 @@ const getAvailableStatusOptions = (currentStatus: string) => {
     { value: "Pending", label: "Pending" },
     { value: "Submitted", label: "Submitted" },
     { value: "Won", label: "Won" },
-    { value: "Rejected", label: "Rejected" },
-    { value: "Completed", label: "Completed" }
+    { value: "Rejected", label: "Rejected" }
   ];
 
   if (currentStatus === "Incomplete") return allStatuses;
   if (currentStatus === "Draft") return allStatuses.filter(s => s.value !== "Incomplete");
 
-  const completedStatuses = ["Pending", "Submitted", "Won", "Rejected", "Completed"];
+  const completedStatuses = ["Pending", "Submitted", "Won", "Rejected"];
   if (completedStatuses.includes(currentStatus)) {
     return allStatuses.filter(s => s.value !== "Incomplete" && s.value !== "Draft");
   }
@@ -420,25 +417,6 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           })}
         </div>
       ),
-      size: 200,
-      enableSorting: true,
-    }),
-    columnHelper.accessor('won_date', {
-      id: 'won_date',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <CheckCircle className="w-4 h-4" />
-          Won Date
-        </div>
-      ),
-      cell: ({ getValue }) => {
-        const wonDate = getValue();
-        return wonDate ? (
-          <div className="text-sm text-gray-600">{formatLastUpdated(wonDate)}</div>
-        ) : (
-          <div className="text-sm text-gray-400">-</div>
-        );
-      },
       size: 200,
       enableSorting: true,
     }),

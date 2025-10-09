@@ -377,13 +377,11 @@ const Dashboard = () => {
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-    // Use won_date to track when quotes were first marked as Won
-    // Falls back to status_last_updated or created_at for quotes without won_date
+    // Track when quotes were marked as Won using status_last_updated or created_at
     const wonQuotesThisMonth = quotes.filter(q => {
-      if (q.status !== 'Won' && q.status !== 'Completed') return false;
+      if (q.status !== 'Won') return false;
 
-      // Use won_date if available, otherwise fall back to status_last_updated or created_at
-      const dateToUse = q.won_date || q.status_last_updated || q.created_at;
+      const dateToUse = q.status_last_updated || q.created_at;
       if (!dateToUse) return false;
 
       const wonDate = new Date(dateToUse);
@@ -391,9 +389,9 @@ const Dashboard = () => {
     });
 
     const wonQuotesLastMonth = quotes.filter(q => {
-      if (q.status !== 'Won' && q.status !== 'Completed') return false;
+      if (q.status !== 'Won') return false;
 
-      const dateToUse = q.won_date || q.status_last_updated || q.created_at;
+      const dateToUse = q.status_last_updated || q.created_at;
       if (!dateToUse) return false;
 
       const wonDate = new Date(dateToUse);

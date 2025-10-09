@@ -127,9 +127,14 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
 
   updateProject: async (id, updates) => {
     try {
+      // Convert undefined values to null for Supabase
+      const cleanedUpdates = Object.fromEntries(
+        Object.entries(updates).map(([key, value]) => [key, value === undefined ? null : value])
+      );
+
       const { error } = await supabase
         .from('projects')
-        .update(updates)
+        .update(cleanedUpdates)
         .eq('id', id);
 
       if (error) throw error;
