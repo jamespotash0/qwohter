@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Loader2, AlertCircle, LogOut } from 'lucide-react';
+import { CreditCard, Loader2, AlertCircle, LogOut, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { stripeService } from '@/services/stripeService';
 import { useOrganizationStore } from '@/stores/organization/organizationStore';
 import { useAuthStore } from '@/stores/auth/authStore';
+import { toast } from 'sonner';
 
 interface SubscriptionPaywallProps {
   organizationId: string;
@@ -32,6 +33,7 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   const [hasAccess, setHasAccess] = useState(cachedStatus?.hasAccess ?? false);
   const [blockReason, setBlockReason] = useState<string>(cachedStatus?.reason ?? '');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isStartingTrial, setIsStartingTrial] = useState(false);
 
   useEffect(() => {
     checkSubscription();
@@ -80,6 +82,37 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
     }
   };
 
+  const handleStartFreeTrial = async () => {
+    setIsStartingTrial(true);
+    try {
+      const { success, error } = await stripeService.startFreeTrial(organizationId);
+
+      if (success) {
+        toast.success('Free trial started!', {
+          description: 'You now have 30 days of full access to all features.',
+        });
+
+        // Clear cached status and re-check subscription
+        setSubscriptionStatus({
+          hasAccess: false,
+          reason: '',
+        });
+        await checkSubscription();
+      } else {
+        toast.error('Failed to start trial', {
+          description: error || 'Please try again or contact support.',
+        });
+      }
+    } catch (error) {
+      console.error('Error starting free trial:', error);
+      toast.error('Failed to start trial', {
+        description: 'An unexpected error occurred. Please try again.',
+      });
+    } finally {
+      setIsStartingTrial(false);
+    }
+  };
+
   if (loading) {
     return (
       <>
@@ -108,14 +141,32 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
             </CardHeader>
             <CardContent className="space-y-3 pt-2">
               <p className="text-sm text-gray-600 text-center">
-                Choose a plan to continue using Qwohter
+                Start your free trial or choose a plan to continue
               </p>
               <Button
+                onClick={handleStartFreeTrial}
+                disabled={isStartingTrial}
+                className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg"
+              >
+                {isStartingTrial ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Starting Trial...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Start 30-Day Free Trial
+                  </>
+                )}
+              </Button>
+              <Button
                 onClick={() => navigate('/subscription')}
-                className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+                variant="outline"
+                className="w-full border-orange-300 text-orange-700 hover:bg-orange-50"
               >
                 <CreditCard className="w-4 h-4 mr-2" />
-                Choose a Plan
+                View All Plans
               </Button>
               <Button
                 onClick={() => navigate('/settings?tab=billing')}
@@ -135,9 +186,6 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
                   {isLoggingOut ? 'Logging out...' : 'Sign Out'}
                 </Button>
               </div>
-              <p className="text-xs text-gray-500 text-center mt-2">
-                View billing history in the Stripe portal
-              </p>
             </CardContent>
           </Card>
         </div>

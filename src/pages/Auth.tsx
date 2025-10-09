@@ -273,6 +273,8 @@ const Auth = () => {
       companyAddress: companyInfo.companyAddress,
       companyWebsite: companyInfo.companyWebsite,
       quoteStartingPoint: companyInfo.quoteStartingPoint,
+      industry: formState.industry,
+      foundVia: formState.foundVia,
       setLoading: authFlow.setLoading,
       toast,
       clearAuthState,

@@ -131,7 +131,7 @@ export const authFlowHelpers = {
         console.log('User already exists in profiles:', existingProfile);
         return {
           success: false,
-          error: "An account with this email already exists. Please sign in instead or use a different email address."
+          error: "An account with this email already exists. Please sign in instead. If you're having trouble accessing your account, please contact support."
         };
       }
 
@@ -170,10 +170,11 @@ export const authFlowHelpers = {
 
         if (error.message.includes('User already registered') ||
             error.message.includes('already exists') ||
-            error.message.includes('duplicate')) {
+            error.message.includes('duplicate') ||
+            error.message.includes('already been registered')) {
           return {
             success: false,
-            error: "An account with this email already exists. Please sign in instead."
+            error: "An account with this email already exists. Please sign in instead. If you believe this is an error, please contact support."
           };
         }
 
@@ -202,6 +203,16 @@ export const authFlowHelpers = {
         return {
           success: false,
           error: "Failed to create account. Please try again."
+        };
+      }
+
+      // Check if user already exists (Supabase returns user with empty identities array for existing users)
+      if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+        console.log('SignUp detected existing user (empty identities)');
+        tempSignupService.clear();
+        return {
+          success: false,
+          error: "An account with this email already exists. Please sign in instead. If you're having trouble accessing your account, please contact support."
         };
       }
 

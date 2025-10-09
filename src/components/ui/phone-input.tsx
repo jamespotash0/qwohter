@@ -82,7 +82,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(
           placeholder={placeholder}
           disabled={disabled}
           className={cn(
-            "bg-slate-50 border-slate-200 h-12",
+            "bg-slate-50 border-slate-200 h-12 placeholder:text-gray-400",
             displayError && "border-red-500 focus:border-red-500",
             className
           )}

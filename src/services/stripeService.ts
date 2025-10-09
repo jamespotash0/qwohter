@@ -432,6 +432,62 @@ export const createPortalSession = async (params: {
 };
 
 // ============================================================================
+// FREE TRIAL ENROLLMENT
+// ============================================================================
+
+/**
+ * Start free trial by enrolling organization in the Free plan
+ * Creates a subscription record with 30-day trial access
+ */
+export const startFreeTrial = async (organizationId: string): Promise<{ success: boolean; error: string | null }> => {
+  try {
+    // Get the Free plan
+    const { data: freePlan, error: planError } = await getPlanByName('Free');
+
+    if (planError || !freePlan) {
+      return { success: false, error: 'Free plan not found' };
+    }
+
+    // Check if organization already has a subscription
+    const { data: existingSubscription } = await getSubscription(organizationId);
+
+    if (existingSubscription) {
+      return { success: false, error: 'Organization already has a subscription' };
+    }
+
+    // Create subscription record for free trial
+    const trialEndDate = new Date();
+    trialEndDate.setDate(trialEndDate.getDate() + 30); // 30 days from now
+
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .insert({
+        organization_id: organizationId,
+        plan_id: freePlan.id,
+        stripe_subscription_status: 'trialing',
+        current_period_end: trialEndDate.toISOString(),
+        is_active: true,
+        access_blocked: false,
+      } as any)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating free trial:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, error: null };
+  } catch (error) {
+    console.error('Error starting free trial:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to start free trial'
+    };
+  }
+};
+
+// ============================================================================
 // EXPORT SERVICE OBJECT
 // ============================================================================
 
@@ -456,4 +512,7 @@ export const stripeService = {
   // Stripe Checkout
   createCheckoutSession,
   createPortalSession,
+
+  // Free Trial
+  startFreeTrial,
 };

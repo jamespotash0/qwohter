@@ -21,6 +21,7 @@ class OrganizationSettingsService {
             name,
             organization_code,
             industry,
+            found_via,
             phone_number,
             fax_number,
             company_address,
@@ -61,6 +62,7 @@ class OrganizationSettingsService {
             name,
             organization_code,
             industry,
+            found_via,
             phone_number,
             fax_number,
             company_address,
@@ -91,9 +93,16 @@ class OrganizationSettingsService {
         company_address: companyData.company_address || orgData.company_address,
         website: companyData.website || orgData.website,
         quote_start_number: companyData.quote_start_number || orgData.quote_start_number,
+        industry: companyData.industry || orgData.industry,
+        found_via: companyData.found_via || orgData.found_via,
         logo_data: logoData,
         updated_at: new Date().toISOString()
       };
+
+      console.log('=== Updating Organization ===');
+      console.log('Update data:', updateData);
+      console.log('Industry from companyData:', companyData.industry);
+      console.log('Found via from companyData:', companyData.found_via);
 
       // Update organization with individual fields
       const { data, error } = await supabase
@@ -105,6 +114,7 @@ class OrganizationSettingsService {
           name,
           organization_code,
           industry,
+          found_via,
           phone_number,
           fax_number,
           company_address,

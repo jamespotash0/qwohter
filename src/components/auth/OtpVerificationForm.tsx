@@ -195,7 +195,10 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
               Code expires in <span className="font-semibold text-slate-700">{formatTime(timeLeft)}</span>
             </>
           ) : (
-            <span className="text-red-500 font-semibold">Code expired</span>
+            <div className="space-y-1">
+              <span className="text-red-500 font-semibold block">Code expired</span>
+              <span className="text-gray-600 text-xs block">Click "Resend code" above to get a new verification code</span>
+            </div>
           )}
         </div>
       </div>

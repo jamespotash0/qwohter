@@ -15,7 +15,7 @@ interface HandleAuthParams {
   isSignUp: boolean;
   setFullName: (name: string) => void;
   setUserId: (id: string) => void;
-  setStep: (step: 'auth' | 'verify-otp' | 'organization' | 'company-info' | 'profile') => void;
+  setStep: (step: 'auth' | 'verify-otp' | 'organization' | 'company-info') => void;
   setLoading: (loading: boolean) => void;
   redirectingRef: React.MutableRefObject<boolean>;
   navigate: NavigateFunction;

@@ -14,6 +14,8 @@ interface HandleCompanyInfoSubmitParams {
   companyAddress: string;
   companyWebsite: string;
   quoteStartingPoint: string;
+  industry: string;
+  foundVia: string;
   setLoading: (loading: boolean) => void;
   toast: (props: { title: string; description: string; variant?: 'destructive' }) => void;
   clearAuthState: () => void;
@@ -28,6 +30,8 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
     companyAddress,
     companyWebsite,
     quoteStartingPoint,
+    industry,
+    foundVia,
     setLoading,
     toast,
     clearAuthState,
@@ -35,6 +39,10 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
   } = params;
 
   if (!userId || !companyPhone || !companyAddress || !companyWebsite || !quoteStartingPoint) return;
+
+  console.log('=== Company Info Submit ===');
+  console.log('Industry:', industry);
+  console.log('Found Via:', foundVia);
 
   setLoading(true);
   try {
@@ -45,6 +53,8 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
       company_address: companyAddress,
       website: companyWebsite,
       quote_start_number: quoteStartingPoint,
+      industry: industry,
+      found_via: foundVia,
     });
 
     toast({

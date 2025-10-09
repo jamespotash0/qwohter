@@ -58,6 +58,8 @@ export interface OrganizationWithCompanyInfo {
   id: string;
   name: string;
   organization_code: string;
+  industry?: string;
+  found_via?: string;
   phone_number?: string;
   fax_number?: string;
   company_address?: string;
@@ -74,6 +76,8 @@ export interface CompanyInfoFormData {
   company_address: string;
   website: string;
   quote_start_number: string;
+  industry?: string;
+  found_via?: string;
   logo_data?: LogoData;
 }
 
