@@ -1134,9 +1134,9 @@ const Dashboard = () => {
       <CreateQuoteDialog
         open={showNewQuoteDialog}
         onOpenChange={setShowNewQuoteDialog}
-        onCreateQuote={(quoteId) => {
-          // Navigate to the new quote
-          navigate(`/quotes/${quoteId}`);
+        onCreateQuote={(quoteName) => {
+          // Navigate to the new quote wizard
+          navigate('/quotes/new');
         }}
       />
     </PageContent>
