@@ -31,7 +31,7 @@ const menuItems = [
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
   {
-    title: "Quotes",
+    title: "Proposals",
     icon: FileText,
     path: "/quotes",
     roles: ['Owner', 'Admin', 'Member'], // Available to all

@@ -21,6 +21,7 @@ import { useOrganizationSettings } from '@/hooks/useCompanySettings';
 import { QuoteDataPanelCore as QuoteDataPanel } from './UnifiedQuoteEditor/QuoteDataPanel/QuoteDataPanelCore';
 import LivePreviewPanel from './UnifiedQuoteEditor/LivePreviewPanel';
 import QuickEditModal from './UnifiedQuoteEditor/QuickEditModal';
+import { formatDateEST } from '@/utils/dateUtils';
 
 // Unified state interface
 interface UnifiedQuoteState {
@@ -739,7 +740,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
                       if (diffInHours === 1) return '1 hr ago';
                       if (diffInHours < 24) return `${diffInHours} hrs ago`;
 
-                      return `${savedTime.toLocaleDateString()}`;
+                      return formatDateEST(savedTime.toISOString());
                     })()}
                   </span>
                 ) : null}

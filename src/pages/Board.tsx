@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PageContent } from '@/components/common/layout';
 import { useBoardStore, Project, ProjectPriority } from '@/stores/board/boardStore';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Plus as PlusIcon,
   DotsThreeVertical as DotsThreeVerticalIcon,
@@ -36,6 +37,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { formatDateEST } from '@/utils/dateUtils';
 
 const COLUMN_COLORS = [
   { name: 'Slate', value: '#94A3B8', icon: '⚪' },
@@ -59,14 +61,14 @@ export default function Board() {
   const {
     projects,
     workflowColumns,
-    fetchProjects,
-    fetchWorkflowColumns,
     updateProject,
     updateWorkflowColumn,
     deleteWorkflowColumn,
     createWorkflowColumn,
     deleteProject,
-    isLoading
+    isLoading,
+    initializeBoard,
+    subscribeToChanges
   } = useBoardStore();
 
   const [draggedProject, setDraggedProject] = useState<string | null>(null);
@@ -81,9 +83,36 @@ export default function Board() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   useEffect(() => {
-    fetchProjects();
-    fetchWorkflowColumns();
-  }, [fetchProjects, fetchWorkflowColumns]);
+    // Initialize board data (only fetches once)
+    initializeBoard();
+
+    // Get organization ID for subscriptions
+    const getOrgIdAndSubscribe = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: membership } = await supabase
+        .from('memberships')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (membership) {
+        // Subscribe to real-time changes
+        const unsubscribe = subscribeToChanges(membership.organization_id);
+        return unsubscribe;
+      }
+    };
+
+    const subscriptionPromise = getOrgIdAndSubscribe();
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      subscriptionPromise.then(unsubscribe => {
+        if (unsubscribe) unsubscribe();
+      });
+    };
+  }, [initializeBoard, subscribeToChanges]);
 
   const handleDragStart = async (e: React.DragEvent, projectId: string) => {
     setDraggedProject(projectId);
@@ -91,7 +120,6 @@ export default function Board() {
 
     // Set board_order to null when picking up the card
     await updateProject(projectId, { board_order: null as any });
-    console.log('Picked up card, set board_order to null:', projectId);
   };
 
   const handleDragOver = (e: React.DragEvent, columnName: string) => {
@@ -138,7 +166,6 @@ export default function Board() {
       .filter(p => p.board_order !== null) // Only cards with valid positions
       .sort((a, b) => (a.board_order || 0) - (b.board_order || 0));
 
-    console.log('Cards in target column (with valid board_order):', cardsInTargetColumn.map(p => ({ id: p.id, board_order: p.board_order })));
 
     // STEP 2: Determine where to insert the dragged card (1-based position)
     let insertPosition: number;
@@ -161,42 +188,27 @@ export default function Board() {
       insertPosition = cardsInTargetColumn.length + 1;
     }
 
-    console.log('Drop calculation:', {
-      draggedProject,
-      dragOverCard,
-      dropPosition,
-      insertPosition
-    });
-
     // STEP 3: Build the final order array by inserting dragged card at the calculated position
     const finalOrder: string[] = [];
 
-    console.log('Building final order:', {
-      cardsInTargetColumn: cardsInTargetColumn.map(p => p.id),
-      insertPosition,
-      draggedProject
-    });
+
 
     for (let i = 0; i < cardsInTargetColumn.length; i++) {
       const currentPosition = i + 1; // 1-based
 
       // Insert dragged card when we reach the insert position
       if (currentPosition === insertPosition) {
-        console.log(`At position ${currentPosition}, inserting dragged card BEFORE card at index ${i}`);
         finalOrder.push(draggedProject);
       }
 
       finalOrder.push(cardsInTargetColumn[i]!.id);
-      console.log(`Added card at index ${i} (position ${currentPosition}):`, cardsInTargetColumn[i]!.id);
     }
 
     // If insert position is at the end, append dragged card
     if (insertPosition > cardsInTargetColumn.length) {
-      console.log('Insert position is at the end, appending dragged card');
       finalOrder.push(draggedProject);
     }
 
-    console.log('Final order for target column:', finalOrder);
 
     // STEP 4: Build updates for target column - UPDATE ALL CARDS
     const updates: Array<{ id: string; updates: Partial<Project> }> = [];
@@ -225,7 +237,6 @@ export default function Board() {
         .filter(p => p.board_order !== null) // Only cards with valid positions (dragged card is null)
         .sort((a, b) => (a.board_order || 0) - (b.board_order || 0));
 
-      console.log('Reordering source column:', sourceColumnCards.map(p => ({ id: p.id, board_order: p.board_order })));
 
       // Update ALL cards in source column to ensure consistency
       sourceColumnCards.forEach((card, index) => {
@@ -238,13 +249,6 @@ export default function Board() {
     }
 
     // Debug: Log all updates
-    console.log('All updates:', {
-      draggedProjectId: draggedProject,
-      sourceColumn: sourceProject.workflow_status,
-      targetColumn: targetStatus,
-      isSameColumn,
-      updates: updates.map(u => ({ id: u.id, ...u.updates }))
-    });
 
     // STEP 6: Execute all updates
     for (const { id, updates: projectUpdates } of updates) {
@@ -295,15 +299,6 @@ export default function Board() {
     }
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return null;
-    // Parse as local date to avoid timezone issues
-    const parts = dateString.split('-');
-    if (parts.length !== 3) return dateString;
-    const [year, month, day] = parts.map(Number);
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
 
   const handleStartEditColumn = (columnId: string, currentName: string) => {
     setEditingColumn(columnId);
@@ -562,12 +557,6 @@ export default function Board() {
                     >
                       {columnProjects.map((project) => {
                         const quote = project.quotes;
-                        console.log('Project card data:', {
-                          projectName: quote?.project_name,
-                          board_order: project.board_order,
-                          workflow_status: project.workflow_status,
-                          job_details: quote?.job_details,
-                        });
                         const clientName = quote?.job_details?.client_name || 'No Client';
                         const clientCompany = quote?.job_details?.client_company || '';
                         const clientAddress = quote?.job_details?.client_address || '';
@@ -685,7 +674,7 @@ export default function Board() {
                                     <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
                                       <button className="flex items-center gap-1 text-purple-600 cursor-pointer hover:opacity-80">
                                         <CalendarIcon className="w-3 h-3" />
-                                        <span>{formatDate(project.completion_date)}</span>
+                                        <span>{formatDateEST(project.completion_date)}</span>
                                       </button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-3" align="start" onClick={(e) => e.stopPropagation()}>

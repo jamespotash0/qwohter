@@ -10,6 +10,7 @@ import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 import { FileText, Plus, Sparkles, DollarSign, Clock, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { formatDateEST } from "@/utils/dateUtils";
 
 /**
  * Streamlined Quotes Page using AppLayout
@@ -111,11 +112,13 @@ const Quotes = () => {
     const wonQuotes = activeQuotes.filter(q => q.status === 'Won').length;
     const draftQuotes = activeQuotes.filter(q => q.status === 'Draft').length;
 
-    // Calculate total value of all active quotes
-    const totalValue = activeQuotes.reduce((sum, quote) => {
-      const finalPrice = quote.price_details?.final_selling_price || 0;
-      return sum + finalPrice;
-    }, 0);
+    // Calculate total value of active quotes (excluding Won and Rejected)
+    const totalValue = activeQuotes
+      .filter(q => q.status !== 'Won' && q.status !== 'Rejected')
+      .reduce((sum, quote) => {
+        const finalPrice = quote.price_details?.final_selling_price || 0;
+        return sum + finalPrice;
+      }, 0);
 
     // Calculate value added this month (quotes created this month)
     const valueThisMonth = createdThisMonth.reduce((sum, quote) => {
@@ -188,7 +191,7 @@ const Quotes = () => {
       const status = quote.status || 'Draft';
       const source = quote.quote_source || '';
       const creator = quote.creator_name || '';
-      const created = new Date(quote.created_at).toLocaleDateString('en-US', {
+      const created = formatDateEST(quote.created_at, {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
@@ -244,7 +247,7 @@ const Quotes = () => {
     doc.setFontSize(16);
     doc.text('Quotes Export', 14, 15);
     doc.setFontSize(10);
-    doc.text(`Exported on: ${new Date().toLocaleDateString('en-US', {
+    doc.text(`Exported on: ${formatDateEST(new Date().toISOString(), {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -266,7 +269,7 @@ const Quotes = () => {
       const status = quote.status || 'Draft';
       const source = quote.quote_source || '';
       const creator = quote.creator_name || '';
-      const created = new Date(quote.created_at).toLocaleDateString('en-US', {
+      const created = formatDateEST(quote.created_at, {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
@@ -330,8 +333,8 @@ const Quotes = () => {
   };
 
   return (
-    <PageContent title="Quotes" subtitle="Manage and track all your project quotes" showPageHeader={true}>
-      {/* Empty State - Show when no quotes exist */}
+    <PageContent title="Proposals" subtitle="Manage and track all your project proposals" showPageHeader={true}>
+      {/* Empty State - Show when no proposals exist */}
       {!quotesLoading && quotes.length === 0 ? (
         <ContentCard>
           <div className="flex flex-col items-center justify-center py-16 px-6">
@@ -465,16 +468,9 @@ const Quotes = () => {
                         maximumFractionDigits: 0
                       }).format(metrics.totalValue)}
                     </p>
-                    {metrics.valueThisMonth > 0 && (
-                      <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
-                        +{new Intl.NumberFormat('en-US', {
-                          style: 'currency',
-                          currency: 'USD',
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0
-                        }).format(metrics.valueThisMonth)} this month
-                      </p>
-                    )}
+                    <p className="text-xs text-[var(--content-muted-text)] mt-1">
+                      Active quotes only
+                    </p>
                   </div>
                 </div>
               </CardContent>

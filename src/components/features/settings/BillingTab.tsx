@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { hasOwnerPermissions } from "@/utils/permissions";
 import { stripeService } from "@/services/stripeService";
+import { formatDateEST } from "@/utils/dateUtils";
 
 interface BillingTabProps {
   organization: any;
@@ -114,7 +115,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   };
 
   const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return formatDateEST(dateString, {
       year: 'numeric',
       month: 'long',
       day: 'numeric'

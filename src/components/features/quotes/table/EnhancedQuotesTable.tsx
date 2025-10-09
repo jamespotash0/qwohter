@@ -52,6 +52,7 @@ import { Quote } from "@/stores/quotes/quotesStore";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 import useEnhancedSearch from '@/hooks/useEnhancedSearch';
 import { PaginationControls } from './components/PaginationControls';
+import { formatDateEST, formatDateTimeEST } from '@/utils/dateUtils';
 
 
 interface EnhancedQuotesTableProps {
@@ -138,18 +139,7 @@ const formatCurrency = (amount: number) => {
 };
 
 const formatLastUpdated = (time: string) => {
-  if (!time) return "-"; // fallback if null/undefined
-
-  const date = new Date(time);
-
-  return date.toLocaleString("en-US", {
-    month: "short",   // "Sep"
-    day: "numeric",   // "17"
-    year: "numeric",  // "2025"
-    hour: "numeric",  // "8"
-    minute: "2-digit", // "12"
-    hour12: true      // AM/PM
-  }).replace(",", ""); // remove extra comma
+  return formatDateTimeEST(time);
 };
 
 
@@ -410,11 +400,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       ),
       cell: ({ getValue }) => (
         <div className="text-sm text-gray-600">
-          {new Date(getValue()).toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric',
-            year: 'numeric',
-          })}
+          {formatDateEST(getValue())}
         </div>
       ),
       size: 200,

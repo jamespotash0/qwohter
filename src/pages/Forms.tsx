@@ -15,6 +15,7 @@ import {
   LayoutGrid,
   List
 } from 'lucide-react';
+import { formatDateEST } from '@/utils/dateUtils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -234,7 +235,7 @@ function FormCard({ form, onEdit, onDuplicate, onDelete }: FormCardProps) {
         {form.updatedAt && (
           <div className="flex items-center gap-2 text-xs text-gray-500 pt-2 border-t border-gray-100">
             <Calendar className="w-3 h-3" />
-            <span>Updated {new Date(form.updatedAt).toLocaleDateString()}</span>
+            <span>Updated {formatDateEST(form.updatedAt)}</span>
           </div>
         )}
       </div>
@@ -283,7 +284,7 @@ function FormRow({ form, onEdit, onDuplicate, onDelete }: FormCardProps) {
           {form.updatedAt && (
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <Calendar className="w-3 h-3" />
-              <span>{new Date(form.updatedAt).toLocaleDateString()}</span>
+              <span>{formatDateEST(form.updatedAt)}</span>
             </div>
           )}
 

@@ -17,6 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Users, UserCheck, Clock, Plus, MoreVertical, Trash2, Link2, Send, Copy, X, RotateCcw, Mail, CheckCircle, XCircle } from "lucide-react";
 import type { Role } from "@/utils/teamManagementHelpers";
+import { formatDateEST } from "@/utils/dateUtils";
 
 const Team = () => {
   const navigate = useNavigate();
@@ -503,7 +504,7 @@ const Team = () => {
                               {token.email}
                             </h4>
                             <p className="text-sm text-[var(--content-muted-text)]">
-                              Expires: {new Date(token.expires_at).toLocaleDateString()}
+                              Expires: {formatDateEST(token.expires_at)}
                             </p>
                           </div>
                         </div>

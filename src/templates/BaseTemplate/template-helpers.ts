@@ -1,19 +1,23 @@
 import { TemplateHelpers, QuoteData } from './types';
 import { WallSpecification } from '@/lib/types';
+import { formatDateEST } from '@/utils/dateUtils';
 
 export const createTemplateHelpers = (): TemplateHelpers => ({
   formatDate: (dateString?: string) => {
-    if (!dateString) return new Date().toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+    if (!dateString) {
+      return formatDateEST(new Date().toISOString(), {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+    // Handle YYYY-MM-DD format
     const parts = dateString.split('-');
     if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
-      const localDate = new Date(+parts[0], +parts[1] - 1, +parts[2]);
-      return localDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      const isoDate = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}T12:00:00Z`;
+      return formatDateEST(isoDate, { year: 'numeric', month: 'long', day: 'numeric' });
     }
-    return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    return formatDateEST(dateString, { year: 'numeric', month: 'long', day: 'numeric' });
   },
 
   toWords: (num: number | string): string => {

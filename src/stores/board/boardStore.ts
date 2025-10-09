@@ -39,6 +39,7 @@ interface BoardStore {
   projects: Project[];
   workflowColumns: WorkflowColumn[];
   isLoading: boolean;
+  isInitialized: boolean;
   error: string | null;
 
   fetchProjects: () => Promise<void>;
@@ -48,12 +49,15 @@ interface BoardStore {
   createWorkflowColumn: (column: Omit<WorkflowColumn, 'id' | 'created_at' | 'updated_at' | 'organization_id'>) => Promise<void>;
   updateWorkflowColumn: (id: string, updates: Partial<WorkflowColumn>) => Promise<void>;
   deleteWorkflowColumn: (id: string) => Promise<void>;
+  initializeBoard: () => Promise<void>;
+  subscribeToChanges: (organizationId: string) => () => void;
 }
 
 export const useBoardStore = create<BoardStore>((set, get) => ({
   projects: [],
   workflowColumns: [],
   isLoading: false,
+  isInitialized: false,
   error: null,
 
   fetchProjects: async () => {
@@ -240,5 +244,175 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       set({ error: error.message, isLoading: false });
       throw error;
     }
+  },
+
+  // Initialize board - fetch data only once
+  initializeBoard: async () => {
+    const { isInitialized, isLoading } = get();
+
+    // Don't re-fetch if already initialized or currently loading
+    if (isInitialized || isLoading) return;
+
+    set({ isLoading: true, error: null });
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data: membership } = await supabase
+        .from('memberships')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!membership) throw new Error('No active organization');
+
+      // Fetch both projects and columns in parallel
+      const [projectsResult, columnsResult] = await Promise.all([
+        supabase
+          .from('projects')
+          .select(`
+            *,
+            quotes (
+              id,
+              proposal_number,
+              project_name,
+              quote_details,
+              job_details,
+              price_details
+            )
+          `)
+          .eq('organization_id', membership.organization_id)
+          .order('board_order', { ascending: true }),
+        supabase
+          .from('project_workflow_columns')
+          .select('*')
+          .eq('organization_id', membership.organization_id)
+          .order('column_order', { ascending: true })
+      ]);
+
+      if (projectsResult.error) throw projectsResult.error;
+      if (columnsResult.error) throw columnsResult.error;
+
+      set({
+        projects: projectsResult.data || [],
+        workflowColumns: columnsResult.data || [],
+        isLoading: false,
+        isInitialized: true
+      });
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+    }
+  },
+
+  // Subscribe to real-time changes
+  subscribeToChanges: (organizationId: string) => {
+    // Subscribe to projects table changes
+    const projectsSubscription = supabase
+      .channel('projects-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'projects',
+          filter: `organization_id=eq.${organizationId}`
+        },
+        async (payload) => {
+          console.log('Project change detected:', payload);
+
+          if (payload.eventType === 'INSERT') {
+            // Fetch the new project with quote data
+            const { data } = await supabase
+              .from('projects')
+              .select(`
+                *,
+                quotes (
+                  id,
+                  proposal_number,
+                  project_name,
+                  quote_details,
+                  job_details,
+                  price_details
+                )
+              `)
+              .eq('id', payload.new.id)
+              .single();
+
+            if (data) {
+              set(state => ({
+                projects: [...state.projects, data]
+              }));
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            // Fetch updated project with quote data
+            const { data } = await supabase
+              .from('projects')
+              .select(`
+                *,
+                quotes (
+                  id,
+                  proposal_number,
+                  project_name,
+                  quote_details,
+                  job_details,
+                  price_details
+                )
+              `)
+              .eq('id', payload.new.id)
+              .single();
+
+            if (data) {
+              set(state => ({
+                projects: state.projects.map(p => p.id === data.id ? data : p)
+              }));
+            }
+          } else if (payload.eventType === 'DELETE') {
+            set(state => ({
+              projects: state.projects.filter(p => p.id !== payload.old.id)
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    // Subscribe to workflow columns changes
+    const columnsSubscription = supabase
+      .channel('columns-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'project_workflow_columns',
+          filter: `organization_id=eq.${organizationId}`
+        },
+        (payload) => {
+          console.log('Column change detected:', payload);
+
+          if (payload.eventType === 'INSERT') {
+            set(state => ({
+              workflowColumns: [...state.workflowColumns, payload.new as WorkflowColumn]
+            }));
+          } else if (payload.eventType === 'UPDATE') {
+            set(state => ({
+              workflowColumns: state.workflowColumns.map(c =>
+                c.id === payload.new.id ? payload.new as WorkflowColumn : c
+              )
+            }));
+          } else if (payload.eventType === 'DELETE') {
+            set(state => ({
+              workflowColumns: state.workflowColumns.filter(c => c.id !== payload.old.id)
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    // Return cleanup function
+    return () => {
+      projectsSubscription.unsubscribe();
+      columnsSubscription.unsubscribe();
+    };
   }
 }));
