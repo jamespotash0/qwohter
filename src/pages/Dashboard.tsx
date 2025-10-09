@@ -590,16 +590,81 @@ const Dashboard = () => {
     return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
   };
 
+  // Quote of the Day - Fetch from API or use fallback
+  const [dailyQuote, setDailyQuote] = useState<{ text: string; author: string }>({
+    text: "The key is not to prioritize what's on your schedule, but to schedule your priorities.",
+    author: "Stephen Covey"
+  });
+
+  useEffect(() => {
+    const fetchDailyQuote = async () => {
+      try {
+        // Try to fetch from ZenQuotes API (free, no key required)
+        const response = await fetch('https://zenquotes.io/api/today');
+        const data = await response.json();
+
+        if (data && data[0]) {
+          setDailyQuote({
+            text: data[0].q,
+            author: data[0].a
+          });
+        }
+      } catch (error) {
+        // Keep the default quote if API fails
+        console.log('Using fallback quote');
+      }
+    };
+
+    fetchDailyQuote();
+  }, []);
+
   return (
     <PageContent>
       {/* Dashboard Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-[var(--content-header-text)] dark:text-[var(--content-header-text)]">
-          Hello, {effectiveProfile?.full_name || user?.email?.split('@')[0] || 'User'}!
-        </h1>
-        <p className="mt-2 text-base text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)]">
-          Here's what's happening with your quotes today
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div className="flex-1 max-w-3xl">
+          <h1 className="text-3xl font-semibold text-[var(--content-header-text)] dark:text-[var(--content-header-text)]">
+            Hello, {effectiveProfile?.full_name || user?.email?.split('@')[0] || 'User'}!
+          </h1>
+          <div className="mt-3">
+            <p className="text-[15px] text-[var(--content-header-text)] italic leading-relaxed">
+              &ldquo;{dailyQuote?.text}&rdquo; <span className="text-[14px] text-[var(--content-header-text)] not-italic font-bold">— {dailyQuote?.author}</span>
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-1 ml-6">
+          <div className="flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-[var(--content-header-text)] tabular-nums">
+              {currentTime.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+              })}
+            </span>
+            <span className="text-lg font-medium text-[var(--content-muted-text)]">
+              {currentTime.toLocaleDateString('en-US', {
+                year: 'numeric'
+              })}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-[var(--content-muted-text)]">
+              {currentTime.toLocaleDateString('en-US', {
+                weekday: 'long'
+              })}
+            </span>
+            <span className="text-sm text-[var(--content-muted-text)]">•</span>
+            <span className="text-sm font-medium text-[var(--content-header-text)] tabular-nums">
+              {currentTime.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+              })}
+            </span>
+            <span className="text-xs text-[var(--content-muted-text)]">
+              {Intl.DateTimeFormat().resolvedOptions().timeZone.split('/').pop()?.replace('_', ' ')}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Key Metrics Row */}
