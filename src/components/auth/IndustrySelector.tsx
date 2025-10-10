@@ -54,7 +54,9 @@ export const IndustrySelector: React.FC<IndustrySelectorProps> = ({
       }
     } else {
       setIsCustomSelected(false);
-      onChange(selectedValue);
+      // Store the label (display text) instead of the value
+      const selectedOption = INDUSTRY_OPTIONS.find(opt => opt.value === selectedValue);
+      onChange(selectedOption?.label || selectedValue);
     }
   };
 

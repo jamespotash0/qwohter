@@ -6,7 +6,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
-export type AuthStep = 'auth' | 'verify-otp' | 'organization' | 'company-info';
+export type AuthStep = 'auth' | 'verify-otp' | 'organization' | 'company-info' | 'subscription';
 export type OrgChoice = 'join' | 'create' | null;
 
 interface AuthFlowState {

@@ -97,6 +97,7 @@ export const createInitializeAction = (get: () => FullAuthState, set: (partial: 
 
     // Helper: Clear all auth-related localStorage caches
     function clearAuthCache() {
+      localStorage.removeItem('auth_cached_profile');
       localStorage.removeItem('sidebar_cached_profile');
       localStorage.removeItem('sidebar_cached_role');
       localStorage.removeItem('auth_flow_state');

@@ -29,7 +29,15 @@ export const useAuthStore = create<FullAuthState>()(
     // ============================================================================
     user: null,
     session: null,
-    profile: null,
+    profile: (() => {
+      // Restore profile from localStorage on init
+      try {
+        const cached = localStorage.getItem('auth_cached_profile');
+        return cached ? JSON.parse(cached) : null;
+      } catch {
+        return null;
+      }
+    })(),
     isLoading: false,
     isInitialized: false,
     isAuthChanging: false,
@@ -51,7 +59,15 @@ export const useAuthStore = create<FullAuthState>()(
       console.log('📝 Setting auth:', user?.email || 'null');
       set({ user, session });
     },
-    _setProfile: (profile) => set({ profile }),
+    _setProfile: (profile) => {
+      // Cache profile in localStorage for faster initial load
+      if (profile) {
+        localStorage.setItem('auth_cached_profile', JSON.stringify(profile));
+      } else {
+        localStorage.removeItem('auth_cached_profile');
+      }
+      set({ profile });
+    },
     _setLoading: (isLoading) => set({ isLoading }),
     _setError: (error) => set({ error }),
   }))

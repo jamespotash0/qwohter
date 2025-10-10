@@ -55,7 +55,9 @@ export const FoundViaSelector: React.FC<FoundViaSelectorProps> = ({
       }
     } else {
       setIsCustomSelected(false);
-      onChange(selectedValue);
+      // Store the label (display text) instead of the value
+      const selectedOption = FOUND_VIA_OPTIONS.find(opt => opt.value === selectedValue);
+      onChange(selectedOption?.label || selectedValue);
     }
   };
 

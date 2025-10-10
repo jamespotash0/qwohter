@@ -17,11 +17,14 @@ import { AuthForm } from "@/components/auth/AuthForm";
 import { OtpVerificationForm } from "@/components/auth/OtpVerificationForm";
 import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
 import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
+import { SubscriptionSelectionForm } from "@/components/auth/SubscriptionSelectionForm";
 import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
 import { LogoUploadResult } from "@/services/LogoUploadService";
 import { validateInviteToken } from "@/utils/inviteTokens";
 import { tempSignupService } from "@/services/tempSignupService";
 import { supabase } from "@/integrations/supabase/client";
+import { stripeService } from "@/services/stripeService";
+import { useOrganizationStore } from "@/stores/organization/organizationStore";
 
 // Import extracted hooks
 import { useAuthFlow, useAuthFormState, useCompanyInfoState } from "./Auth/hooks";
@@ -279,6 +282,7 @@ const Auth = () => {
       toast,
       clearAuthState,
       redirectAfterAuth: () => redirectAfterAuth(navigate),
+      setStep: authFlow.setStep,
     });
   };
 
@@ -299,6 +303,115 @@ const Auth = () => {
 
   const onLogoError = (error: string) => {
     handleLogoError(error, toast);
+  };
+
+  const onSelectPlan = async (planName: string, billingPeriod: 'monthly' | 'yearly') => {
+    authFlow.setLoading(true);
+    try {
+      // Get current organization from store or fetch from database
+      let currentOrg = useOrganizationStore.getState().currentOrganization;
+
+      // If not in store, fetch it using the userId
+      if (!currentOrg && authFlow.userId) {
+        const { data: membershipData, error: membershipError } = await supabase
+          .from('memberships')
+          .select(`
+            organization_id,
+            organizations (
+              id,
+              name,
+              organization_code
+            )
+          `)
+          .eq('user_id', authFlow.userId)
+          .single();
+
+        if (membershipError || !membershipData) {
+          toast({
+            title: 'Error',
+            description: 'No organization found. Please complete the organization setup first.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        // Use the organization from the joined query
+        const orgData = (membershipData as any).organizations;
+        if (!orgData) {
+          toast({
+            title: 'Error',
+            description: 'Organization not found. Please try again.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        currentOrg = {
+          id: orgData.id,
+          name: orgData.name,
+          organization_code: orgData.organization_code
+        } as any;
+
+        // Update the store with the fetched organization
+        useOrganizationStore.getState().setOrganization(currentOrg);
+      }
+
+      if (!currentOrg) {
+        toast({
+          title: 'Error',
+          description: 'No organization found. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (planName === 'Starter') {
+        // Start free trial
+        const { success, error } = await stripeService.startFreeTrial(currentOrg.id);
+
+        if (success) {
+          toast({
+            title: 'Free trial started!',
+            description: 'You now have 30 days of full access to all features.',
+          });
+          clearAuthState();
+          redirectAfterAuth(navigate);
+        } else {
+          toast({
+            title: 'Failed to start trial',
+            description: error || 'Please try again or contact support.',
+            variant: 'destructive',
+          });
+        }
+      } else {
+        // Redirect to Stripe Checkout for Professional plan
+        toast({
+          title: 'Redirecting to checkout...',
+          description: 'You will be redirected to complete your payment.',
+        });
+        // TODO: Implement Stripe Checkout redirect
+        // For now, just redirect to dashboard
+        clearAuthState();
+        redirectAfterAuth(navigate);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to process subscription',
+        variant: 'destructive',
+      });
+    } finally {
+      authFlow.setLoading(false);
+    }
+  };
+
+  const onSkipSubscription = () => {
+    toast({
+      title: 'Setup completed!',
+      description: 'You can choose a plan later in Settings.',
+    });
+    clearAuthState();
+    navigate('/dashboard');
   };
 
   // ============================================================================
@@ -361,35 +474,51 @@ const Auth = () => {
       <div className="min-h-screen flex items-center justify-center p-8">
         <div className="w-full flex items-center justify-center">
           <div className={`w-full relative z-10 ${
-            authFlow.step === "company-info" ? "max-w-lg" : "max-w-md"
+            authFlow.step === "company-info" ? "max-w-lg" : authFlow.step === "subscription" ? "max-w-4xl" : "max-w-md"
           }`}>
-            {/* Main form card */}
-            <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
-              <CardHeader className="text-center space-y-3 pb-2 pt-6 px-8">
-                {/* Progress Indicator - show for all onboarding steps */}
-                {authFlow.step !== "auth" && (
-                  <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} />
-                )}
+            {/* Subscription step - no card wrapper */}
+            {authFlow.step === "subscription" ? (
+              <SubscriptionSelectionForm
+                loading={authFlow.loading}
+                onSelectPlan={onSelectPlan}
+                onSkip={onSkipSubscription}
+              />
+            ) : (
+              /* Main form card for other steps */
+              <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
+              {authFlow.step !== "subscription" && authFlow.step !== "verify-otp" && (
+                <CardHeader className="text-center space-y-3 pb-2 pt-6 px-8">
+                  {/* Progress Indicator - show for all onboarding steps */}
+                  {authFlow.step !== "auth" && (
+                    <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} />
+                  )}
 
-                <div className="space-y-1">
-                  <CardTitle className="text-2xl font-bold text-center">
-                    {authFlow.step === "auth" && (authFlow.isSignUp ? "Create Account" : "Welcome Back")}
-                    {authFlow.step === "verify-otp" && "Verify Your Email"}
-                    {authFlow.step === "organization" && "Organization Setup"}
-                    {authFlow.step === "company-info" && "Company Information"}
-                  </CardTitle>
-                  <CardDescription className="text-center">
-                    {authFlow.step === "auth" && (authFlow.isSignUp
-                      ? "Create your account to get started"
-                      : "Sign in to your account"
-                    )}
-                    {authFlow.step === "verify-otp" && "Enter the code sent to your email"}
-                    {authFlow.step === "organization" && "Join or create your organization"}
-                    {authFlow.step === "company-info" && "Add your company details"}
-                  </CardDescription>
+                  <div className="space-y-1">
+                    <CardTitle className="text-2xl font-bold text-center">
+                      {authFlow.step === "auth" && (authFlow.isSignUp ? "Create Account" : "Welcome Back")}
+                      {authFlow.step === "organization" && "Organization Setup"}
+                      {authFlow.step === "company-info" && "Company Information"}
+                    </CardTitle>
+                    <CardDescription className="text-center">
+                      {authFlow.step === "auth" && (authFlow.isSignUp
+                        ? "Create your account to get started"
+                        : "Sign in to your account"
+                      )}
+                      {authFlow.step === "organization" && "Join or create your organization"}
+                      {authFlow.step === "company-info" && "Add your company details"}
+                    </CardDescription>
+                  </div>
+                </CardHeader>
+              )}
+
+              {/* Progress Indicator for verify-otp step (standalone, no card header) */}
+              {authFlow.step === "verify-otp" && (
+                <div className="pt-6 px-8">
+                  <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} />
                 </div>
-              </CardHeader>
-              <CardContent className="px-8 pb-8 space-y-4">
+              )}
+
+              <CardContent className={authFlow.step === "subscription" ? "p-8" : authFlow.step === "verify-otp" ? "px-8 pb-8 pt-4 space-y-4" : "px-8 pb-8 space-y-4"}>
 
           {/* Auth Form (Sign-in / Sign-up) */}
           {authFlow.step === "auth" && (
@@ -474,6 +603,7 @@ const Auth = () => {
           )}
               </CardContent>
             </Card>
+            )}
           </div>
         </div>
       </div>

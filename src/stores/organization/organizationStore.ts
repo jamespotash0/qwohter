@@ -61,8 +61,8 @@ interface OrganizationState {
   } | null;
 
   // Actions
-  fetchOrganization: () => Promise<void>;
-  fetchMembers: (organizationId: string) => Promise<void>;
+  fetchOrganization: (userId?: string, forceRefresh?: boolean) => Promise<void>;
+  fetchMembers: (organizationId: string, forceRefresh?: boolean) => Promise<void>;
   fetchInviteTokens: (organizationId: string) => Promise<void>;
   setOrganization: (organization: Organization | null) => void;
   setMembers: (members: OrganizationMember[]) => void;
@@ -112,12 +112,12 @@ export const useOrganizationStore = create<OrganizationState>()(
       subscriptionStatus: null,
 
       // Fetch organization
-      fetchOrganization: async (userId?: string) => {
-        const { currentOrganization } = get();
+      fetchOrganization: async (userId?: string, forceRefresh = false) => {
+        const { currentOrganization, currentUserRole } = get();
 
-        // Skip if already fetched
-        if (currentOrganization) {
-          console.log('✅ Organization already cached, skipping fetch');
+        // Skip if already fetched (unless force refresh or no role cached)
+        if (currentOrganization && currentUserRole && !forceRefresh) {
+          console.log('✅ Organization and role already cached, skipping fetch');
           return;
         }
 

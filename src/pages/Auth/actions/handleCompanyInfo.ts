@@ -22,7 +22,9 @@ interface HandleCompanyInfoSubmitParams {
   redirectAfterAuth: () => void;
 }
 
-export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitParams) => {
+export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitParams & {
+  setStep?: (step: 'subscription') => void;
+}) => {
   const {
     userId,
     companyPhone,
@@ -36,6 +38,7 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
     toast,
     clearAuthState,
     redirectAfterAuth,
+    setStep,
   } = params;
 
   if (!userId || !companyPhone || !companyAddress || !companyWebsite || !quoteStartingPoint) return;
@@ -59,11 +62,16 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
 
     toast({
       title: 'Company information saved!',
-      description: 'Your organization is now ready for quote generation.',
+      description: 'Choose your subscription plan to continue.',
     });
 
-    clearAuthState();
-    redirectAfterAuth();
+    // Go to subscription selection step instead of redirecting
+    if (setStep) {
+      setStep('subscription');
+    } else {
+      clearAuthState();
+      redirectAfterAuth();
+    }
   } catch (error: any) {
     toast({
       title: 'Company Info Error',

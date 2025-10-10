@@ -6,7 +6,7 @@
 
 import React from "react";
 
-type StepType = "auth" | "verify-otp" | "organization" | "company-info";
+type StepType = "auth" | "verify-otp" | "organization" | "company-info" | "subscription";
 
 interface OnboardingProgressProps {
   currentStep: StepType;
@@ -24,6 +24,7 @@ const SIGNUP_STEPS: StepInfo[] = [
   { key: "verify-otp", label: "Verify Email", shortLabel: "Verify" },
   { key: "organization", label: "Organization", shortLabel: "Org" },
   { key: "company-info", label: "Company Details", shortLabel: "Details" },
+  { key: "subscription", label: "Choose Plan", shortLabel: "Plan" },
 ];
 
 const SIGNIN_STEPS: StepInfo[] = [
