@@ -54,20 +54,10 @@ export interface ProductSeries {
 
 export interface ProductModel {
   id: string;
-  series_id: string;
-  model_number: string;
-  model_name: string;
-  description?: string;
-  specifications: Record<string, any>;
-  base_price?: number;
-  currency: string;
-  price_unit: string;
-  field_definitions: FieldDefinition[];
-  image_urls?: string[];
-  documentation_url?: string;
-  tags?: string[];
-  display_order: number;
-  is_active: boolean;
+  product_category_id: string;
+  product_series_id: string;
+  name: string
+  default_configurations: Record<string, any>;
   created_at: string;
   updated_at: string;
 }
@@ -75,15 +65,29 @@ export interface ProductModel {
 export interface FieldDefinition {
   id: string;
   label: string;
-  type: 'text' | 'number' | 'select' | 'checkbox' | 'textarea' | 'date';
+  field_type:
+    | 'input'
+    | 'checkbox'
+    | 'textarea'
+    | 'date'
+    | 'dropdown'
+    | 'multi-select'
+    | 'radio'
+    | 'auto';
+  input_type?: 'string' | 'number' | 'email' | 'tel' | 'url' | 'date' | 'datetime-local' | 'time';
   required: boolean;
-  options?: string[];
+  options?: string[]; // available choices
+  depends_on?: { field_id: string; value: any }[]; // triggers dependency logic
   default?: any;
   min?: number;
   max?: number;
   pattern?: string;
   placeholder?: string;
+  multi_select?: boolean; // true if multiple selections allowed
+  manual_select?: boolean; // true if user can manually pick (vs auto-calculated)
+  value?: any; // current selected or entered value
 }
+
 
 export interface ProductSelection {
   product_model_id: string;
@@ -201,10 +205,9 @@ export const useProductStore = create<ProductState>()(
 
       try {
         const { data, error } = await supabase
-          .from('product_types_test')
+          .from('product_types')
           .select('*')
-          .eq('is_active', true)
-          .order('display_order', { ascending: true });
+          .order('name', { ascending: true });
 
         if (error) throw error;
 
@@ -234,11 +237,10 @@ export const useProductStore = create<ProductState>()(
 
       try {
         const { data, error } = await supabase
-          .from('product_manufacturers_test')
+          .from('product_manufacturers')
           .select('*')
           .eq('product_type_id', typeId)
-          .eq('is_active', true)
-          .order('display_order', { ascending: true });
+          .order('name', { ascending: true });
 
         if (error) throw error;
 
@@ -269,11 +271,10 @@ export const useProductStore = create<ProductState>()(
 
       try {
         const { data, error } = await supabase
-          .from('product_categories_test')
+          .from('product_categories')
           .select('*')
           .eq('manufacturer_id', manufacturerId)
-          .eq('is_active', true)
-          .order('display_order', { ascending: true });
+          .order('name', { ascending: true });
 
         if (error) throw error;
 
@@ -304,11 +305,10 @@ export const useProductStore = create<ProductState>()(
 
       try {
         const { data, error } = await supabase
-          .from('product_series_test')
+          .from('product_series')
           .select('*')
-          .eq('category_id', categoryId)
-          .eq('is_active', true)
-          .order('display_order', { ascending: true });
+          .eq('product_category_id', categoryId)
+          .order('name', { ascending: true });
 
         if (error) throw error;
 
@@ -339,11 +339,10 @@ export const useProductStore = create<ProductState>()(
 
       try {
         const { data, error } = await supabase
-          .from('product_models_test')
+          .from('product_models')
           .select('*')
-          .eq('series_id', seriesId)
-          .eq('is_active', true)
-          .order('display_order', { ascending: true });
+          .eq('product_series_id', seriesId)
+          .order('name', { ascending: true });
 
         if (error) throw error;
 
@@ -364,7 +363,7 @@ export const useProductStore = create<ProductState>()(
     getModelDetails: async (modelId: string) => {
       try {
         const { data, error } = await supabase
-          .from('product_models_test')
+          .from('product_models')
           .select('*')
           .eq('id', modelId)
           .single();
