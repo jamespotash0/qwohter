@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { supabase } from '@/integrations/supabase/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 // Field definition for form builder
 export interface FormField {
