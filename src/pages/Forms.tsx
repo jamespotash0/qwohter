@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageContent } from '@/components/common/layout';
-import { useFormBuilderStore } from '@/features/form-builder/store/formBuilderStore';
-import { FormDefinition } from '@/features/form-builder/types';
+import { useFormsStore, type FormDefinition } from '@/stores/forms/formsStore';
+import { useOrganizationStore } from '@/stores/organization/organizationStore';
 import {
   Plus,
   Edit,
@@ -15,7 +15,7 @@ import {
   LayoutGrid,
   List
 } from 'lucide-react';
-import { formatDateEST } from '@/utils/dateUtils';
+import { format } from 'date-fns';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,21 +31,26 @@ type ViewMode = 'grid' | 'list';
 
 export default function Forms() {
   const navigate = useNavigate();
-  const { forms, fetchForms, deleteForm, duplicateForm, isLoading } = useFormBuilderStore();
+  const { currentOrganization } = useOrganizationStore();
+  const { forms, fetchForms, deleteForm, copyForm, isLoading } = useFormsStore();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
   useEffect(() => {
-    fetchForms();
-  }, [fetchForms]);
+    if (currentOrganization?.id) {
+      fetchForms(currentOrganization.id);
+    }
+  }, [currentOrganization?.id, fetchForms]);
 
   const handleDelete = async (id: string, name: string) => {
     await deleteForm(id);
   };
 
-  const handleDuplicate = async (id: string) => {
+  const handleDuplicate = async (id: string, name: string) => {
     try {
-      const newId = await duplicateForm(id);
-      navigate(`/forms/builder/${newId}`);
+      const copied = await copyForm(id, `${name}_copy`);
+      if (copied) {
+        navigate(`/forms/builder/${copied.id}`);
+      }
     } catch (error) {
       console.error('Error duplicating form:', error);
     }
@@ -120,7 +125,7 @@ export default function Forms() {
               key={form.id}
               form={form}
               onEdit={() => navigate(`/forms/builder/${form.id}`)}
-              onDuplicate={() => handleDuplicate(form.id)}
+              onDuplicate={() => handleDuplicate(form.id, form.name)}
               onDelete={() => handleDelete(form.id, form.name)}
             />
           ))}
@@ -132,7 +137,7 @@ export default function Forms() {
               key={form.id}
               form={form}
               onEdit={() => navigate(`/forms/builder/${form.id}`)}
-              onDuplicate={() => handleDuplicate(form.id)}
+              onDuplicate={() => handleDuplicate(form.id, form.name)}
               onDelete={() => handleDelete(form.id, form.name)}
             />
           ))}
@@ -232,10 +237,10 @@ function FormCard({ form, onEdit, onDuplicate, onDelete }: FormCardProps) {
           </div>
         )}
 
-        {form.updatedAt && (
+        {form.updated_at && (
           <div className="flex items-center gap-2 text-xs text-gray-500 pt-2 border-t border-gray-100">
             <Calendar className="w-3 h-3" />
-            <span>Updated {formatDateEST(form.updatedAt)}</span>
+            <span>Updated {format(new Date(form.updated_at), 'MMM d, yyyy')}</span>
           </div>
         )}
       </div>
@@ -281,10 +286,10 @@ function FormRow({ form, onEdit, onDuplicate, onDelete }: FormCardProps) {
             </Badge>
           )}
 
-          {form.updatedAt && (
+          {form.updated_at && (
             <div className="flex items-center gap-2 text-xs text-gray-500">
               <Calendar className="w-3 h-3" />
-              <span>{formatDateEST(form.updatedAt)}</span>
+              <span>{format(new Date(form.updated_at), 'MMM d, yyyy')}</span>
             </div>
           )}
 

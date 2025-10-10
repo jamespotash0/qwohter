@@ -160,7 +160,7 @@ export function AppSidebar({
                 .map(item => {
                 const isActive = location.pathname === item.path;
                 const Icon = item.icon;
-                const isDisabled = item.title === 'Forms';
+                const isDisabled = false; // Forms now enabled
 
                 return (
                   <SidebarMenuItem key={item.title}>
