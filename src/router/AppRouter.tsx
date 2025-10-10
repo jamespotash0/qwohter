@@ -82,6 +82,7 @@ const QuoteEditIncomplete = lazy(() => import("@/pages/QuoteEditIncomplete"));
 // Form Builder pages
 const Forms = lazy(() => import("@/pages/Forms"));
 const FormBuilder = lazy(() => import("@/pages/FormBuilder"));
+const FormBuilderTest = lazy(() => import("@/pages/FormBuilderTest"));
 
 // Board page
 const Board = lazy(() => import("@/pages/Board"));
@@ -176,6 +177,7 @@ export const AppRouter = () => (
           {/* Form Builder routes */}
           <Route path="/forms" element={<Forms />} />
           <Route path="/forms/builder/:id" element={<FormBuilder />} />
+          <Route path="/forms/test" element={<FormBuilderTest />} />
 
           {/* Legacy route redirects for backward compatibility */}
           <Route path="/newquote" element={<Navigate to="/quotes/new" replace />} />
