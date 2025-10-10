@@ -62,6 +62,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { QuoteCreationWizard } from '@/components/quotes/QuoteCreationWizard';
 
 const STATUS_COLORS = {
   Draft: 'bg-gray-100 text-gray-700 border-gray-200',
@@ -81,6 +82,7 @@ export default function QuotesFormBuilder() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [createWizardOpen, setCreateWizardOpen] = useState(false);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
   const [copyProjectName, setCopyProjectName] = useState('');
 
@@ -167,7 +169,7 @@ export default function QuotesFormBuilder() {
           </div>
           <Button
             size="lg"
-            onClick={() => navigate('/quotes/create')}
+            onClick={() => setCreateWizardOpen(true)}
             className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
           >
             <Plus className="w-5 h-5 mr-2" />
@@ -320,7 +322,7 @@ export default function QuotesFormBuilder() {
             {!searchQuery && (
               <Button
                 size="lg"
-                onClick={() => navigate('/quotes/create')}
+                onClick={() => setCreateWizardOpen(true)}
                 className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
               >
                 <Plus className="w-5 h-5 mr-2" />
@@ -488,6 +490,12 @@ export default function QuotesFormBuilder() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Quote Creation Wizard */}
+      <QuoteCreationWizard
+        open={createWizardOpen}
+        onOpenChange={setCreateWizardOpen}
+      />
     </div>
   );
 }
