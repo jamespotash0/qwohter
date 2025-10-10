@@ -53,63 +53,53 @@ export function ProductSpecificationsForm({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  // Initialize form with defaults
+  // Initialize form with defaults from default_configurations JSONB
   useEffect(() => {
     const initialData: Record<string, any> = {};
-    model.field_definitions.forEach((field) => {
-      if (field.default !== undefined) {
-        initialData[field.id] = field.default;
+    Object.entries(model.default_configurations || {}).forEach(([fieldKey, fieldDef]) => {
+      if (fieldDef.default_value !== undefined && fieldDef.default_value !== null) {
+        initialData[fieldKey] = fieldDef.default_value;
       }
     });
     setFormData(initialData);
   }, [model]);
 
-  // Calculate total price
+  // Calculate total price (if quantity field exists)
   const calculatePrice = () => {
-    const quantity = parseInt(formData.quantity || '1');
-    const unitPrice = model.base_price || 0;
+    const quantity = parseInt(formData.Quantity || formData.quantity || '1');
+    // Note: base_price may not exist in all models, default to 0
+    const unitPrice = 0; // Will be calculated elsewhere or user-provided
     return quantity * unitPrice;
   };
 
   const totalPrice = calculatePrice();
 
-  // Validate a single field
-  const validateField = (field: FieldDefinition, value: any): string | null => {
-    if (field.required && (value === undefined || value === '' || value === null)) {
-      return `${field.label} is required`;
+  // Validate a single field based on JSONB field definition
+  const validateField = (fieldKey: string, fieldDef: FieldDefinition, value: any): string | null => {
+    const label = fieldKey.replace(/([A-Z])/g, ' $1').trim(); // Convert camelCase to readable
+
+    if (fieldDef.required && (value === undefined || value === '' || value === null)) {
+      return `${label} is required`;
     }
 
-    if (field.type === 'number') {
+    if (fieldDef.input_type === 'number') {
       const numValue = parseFloat(value);
       if (isNaN(numValue)) {
-        return `${field.label} must be a number`;
-      }
-      if (field.min !== undefined && numValue < field.min) {
-        return `${field.label} must be at least ${field.min}`;
-      }
-      if (field.max !== undefined && numValue > field.max) {
-        return `${field.label} must be at most ${field.max}`;
-      }
-    }
-
-    if (field.type === 'text' && field.pattern) {
-      const regex = new RegExp(field.pattern);
-      if (!regex.test(value)) {
-        return `${field.label} format is invalid`;
+        return `${label} must be a number`;
       }
     }
 
     return null;
   };
 
-  // Validate all fields
+  // Validate all fields from default_configurations
   const validateAll = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    model.field_definitions.forEach((field) => {
-      const error = validateField(field, formData[field.id]);
+    Object.entries(model.default_configurations || {}).forEach(([fieldKey, fieldDef]) => {
+      const error = validateField(fieldKey, fieldDef, formData[fieldKey]);
       if (error) {
-        newErrors[field.id] = error;
+        newErrors[fieldKey] = error;
       }
     });
 
@@ -136,8 +126,8 @@ export function ProductSpecificationsForm({
 
     // Mark all fields as touched
     const allTouched: Record<string, boolean> = {};
-    model.field_definitions.forEach((field) => {
-      allTouched[field.id] = true;
+    Object.keys(model.default_configurations || {}).forEach((fieldKey) => {
+      allTouched[fieldKey] = true;
     });
     setTouched(allTouched);
 
@@ -149,13 +139,13 @@ export function ProductSpecificationsForm({
       product_model_id: model.id,
       product_hierarchy: {
         ...productHierarchy,
-        model: model.model_name,
-        model_number: model.model_number,
+        model: model.name, // Using 'name' field from ProductModel
+        model_number: model.id, // Using ID as model number for now
       },
       specifications: formData,
       pricing: {
-        unit_price: model.base_price || 0,
-        quantity: parseInt(formData.quantity || '1'),
+        unit_price: 0, // Will be calculated elsewhere
+        quantity: parseInt(formData.Quantity || formData.quantity || '1'),
         subtotal: totalPrice,
       },
     };
@@ -163,31 +153,33 @@ export function ProductSpecificationsForm({
     onSubmit(selection);
   };
 
-  const renderField = (field: FieldDefinition) => {
-    const value = formData[field.id];
-    const error = touched[field.id] ? errors[field.id] : null;
+  const renderField = (fieldKey: string, fieldDef: FieldDefinition) => {
+    const value = formData[fieldKey];
+    const error = touched[fieldKey] ? errors[fieldKey] : null;
     const hasError = !!error;
-    const isValid = touched[field.id] && !error && value;
+    const isValid = touched[fieldKey] && !error && value;
 
-    switch (field.type) {
-      case 'text':
-      case 'number':
+    // Generate label from field key (e.g., "Quantity" -> "Quantity", "wallHeight" -> "Wall Height")
+    const label = fieldKey.replace(/([A-Z])/g, ' $1').trim();
+
+    // Handle different field types based on field_type in JSONB
+    switch (fieldDef.field_type) {
+      case 'input':
+        const inputType = fieldDef.input_type || 'string';
         return (
-          <div key={field.id} className="space-y-2">
-            <Label htmlFor={field.id} className="flex items-center gap-2">
-              {field.label}
-              {field.required && <span className="text-destructive text-xs">*</span>}
+          <div key={fieldKey} className="space-y-2">
+            <Label htmlFor={fieldKey} className="flex items-center gap-2">
+              {label}
+              {fieldDef.required && <span className="text-destructive text-xs">*</span>}
             </Label>
             <div className="relative">
               <Input
-                id={field.id}
-                type={field.type}
+                id={fieldKey}
+                type={inputType === 'number' ? 'number' : 'text'}
                 value={value || ''}
-                onChange={(e) => handleFieldChange(field.id, e.target.value)}
-                onBlur={() => setTouched((prev) => ({ ...prev, [field.id]: true }))}
-                placeholder={field.placeholder}
-                min={field.min}
-                max={field.max}
+                onChange={(e) => handleFieldChange(fieldKey, e.target.value)}
+                onBlur={() => setTouched((prev) => ({ ...prev, [fieldKey]: true }))}
+                placeholder={fieldDef.placeholder}
                 className={cn(
                   'pr-10 transition-all',
                   hasError && 'border-destructive focus-visible:ring-destructive',
@@ -234,17 +226,17 @@ export function ProductSpecificationsForm({
 
       case 'textarea':
         return (
-          <div key={field.id} className="space-y-2">
-            <Label htmlFor={field.id} className="flex items-center gap-2">
-              {field.label}
-              {field.required && <span className="text-destructive text-xs">*</span>}
+          <div key={fieldKey} className="space-y-2">
+            <Label htmlFor={fieldKey} className="flex items-center gap-2">
+              {label}
+              {fieldDef.required && <span className="text-destructive text-xs">*</span>}
             </Label>
             <Textarea
-              id={field.id}
+              id={fieldKey}
               value={value || ''}
-              onChange={(e) => handleFieldChange(field.id, e.target.value)}
-              onBlur={() => setTouched((prev) => ({ ...prev, [field.id]: true }))}
-              placeholder={field.placeholder}
+              onChange={(e) => handleFieldChange(fieldKey, e.target.value)}
+              onBlur={() => setTouched((prev) => ({ ...prev, [fieldKey]: true }))}
+              placeholder={fieldDef.placeholder}
               rows={4}
               className={cn(
                 hasError && 'border-destructive focus-visible:ring-destructive',
@@ -260,16 +252,16 @@ export function ProductSpecificationsForm({
           </div>
         );
 
-      case 'select':
+      case 'dropdown':
         return (
-          <div key={field.id} className="space-y-2">
-            <Label htmlFor={field.id} className="flex items-center gap-2">
-              {field.label}
-              {field.required && <span className="text-destructive text-xs">*</span>}
+          <div key={fieldKey} className="space-y-2">
+            <Label htmlFor={fieldKey} className="flex items-center gap-2">
+              {label}
+              {fieldDef.required && <span className="text-destructive text-xs">*</span>}
             </Label>
             <Select
-              value={value || ''}
-              onValueChange={(val) => handleFieldChange(field.id, val)}
+              value={value?.toString() || ''}
+              onValueChange={(val) => handleFieldChange(fieldKey, val)}
             >
               <SelectTrigger
                 className={cn(
@@ -277,12 +269,12 @@ export function ProductSpecificationsForm({
                   isValid && 'border-green-500'
                 )}
               >
-                <SelectValue placeholder={field.placeholder || 'Select an option'} />
+                <SelectValue placeholder={fieldDef.placeholder || 'Select an option'} />
               </SelectTrigger>
               <SelectContent>
-                {field.options?.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {option}
+                {fieldDef.options?.map((option: any) => (
+                  <SelectItem key={option.toString()} value={option.toString()}>
+                    {option.toString()}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -298,23 +290,66 @@ export function ProductSpecificationsForm({
 
       case 'checkbox':
         return (
-          <div key={field.id} className="flex items-start space-x-3 space-y-0 pt-2">
+          <div key={fieldKey} className="flex items-start space-x-3 space-y-0 pt-2">
             <Checkbox
-              id={field.id}
+              id={fieldKey}
               checked={value || false}
-              onCheckedChange={(checked) => handleFieldChange(field.id, checked)}
+              onCheckedChange={(checked) => handleFieldChange(fieldKey, checked)}
             />
             <div className="space-y-1 leading-none">
               <Label
-                htmlFor={field.id}
+                htmlFor={fieldKey}
                 className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
               >
-                {field.label}
+                {label}
               </Label>
-              {field.placeholder && (
-                <p className="text-xs text-muted-foreground">{field.placeholder}</p>
+              {fieldDef.placeholder && (
+                <p className="text-xs text-muted-foreground">{fieldDef.placeholder}</p>
               )}
             </div>
+          </div>
+        );
+
+      case 'date':
+        return (
+          <div key={fieldKey} className="space-y-2">
+            <Label htmlFor={fieldKey} className="flex items-center gap-2">
+              {label}
+              {fieldDef.required && <span className="text-destructive text-xs">*</span>}
+            </Label>
+            <Input
+              id={fieldKey}
+              type="date"
+              value={value || ''}
+              onChange={(e) => handleFieldChange(fieldKey, e.target.value)}
+              onBlur={() => setTouched((prev) => ({ ...prev, [fieldKey]: true }))}
+              className={cn(
+                hasError && 'border-destructive',
+                isValid && 'border-green-500'
+              )}
+            />
+            {error && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {error}
+              </p>
+            )}
+          </div>
+        );
+
+      case 'multi-select':
+      case 'radio':
+      case 'auto':
+        // TODO: Implement these field types
+        return (
+          <div key={fieldKey} className="space-y-2">
+            <Label className="flex items-center gap-2">
+              {label}
+              <Badge variant="outline" className="text-xs">Coming Soon</Badge>
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {fieldDef.field_type} field type not yet implemented
+            </p>
           </div>
         );
 
@@ -335,27 +370,15 @@ export function ProductSpecificationsForm({
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <Badge variant="outline" className="font-mono">
-                  {model.model_number}
+                  {model.id.substring(0, 8)}
                 </Badge>
                 <Badge className="bg-gradient-to-r from-primary to-primary/70">
                   <Sparkles className="w-3 h-3 mr-1" />
                   Selected
                 </Badge>
               </div>
-              <CardTitle className="text-xl">{model.model_name}</CardTitle>
-              {model.description && (
-                <CardDescription className="mt-2">{model.description}</CardDescription>
-              )}
+              <CardTitle className="text-xl">{model.name}</CardTitle>
             </div>
-            {model.base_price && (
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground mb-1">Base Price</p>
-                <p className="text-2xl font-bold text-primary">
-                  ${model.base_price.toLocaleString()}
-                </p>
-                <p className="text-xs text-muted-foreground">per {model.price_unit || 'unit'}</p>
-              </div>
-            )}
           </div>
         </CardHeader>
 
@@ -363,59 +386,18 @@ export function ProductSpecificationsForm({
 
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Specifications Section */}
-            {model.specifications && Object.keys(model.specifications).length > 0 && (
-              <div className="space-y-3">
-                <h4 className="font-semibold text-sm flex items-center gap-2">
-                  <Package className="w-4 h-4" />
-                  Product Specifications
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 rounded-lg bg-muted/30 border border-border/50">
-                  {Object.entries(model.specifications).map(([key, value]) => (
-                    <div key={key} className="space-y-1">
-                      <p className="text-xs text-muted-foreground capitalize">
-                        {key.replace(/_/g, ' ')}
-                      </p>
-                      <p className="text-sm font-medium">{String(value)}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <Separator />
-
-            {/* Dynamic Form Fields */}
+            {/* Dynamic Form Fields from default_configurations */}
             <div className="space-y-4">
-              <h4 className="font-semibold text-sm">Configuration</h4>
+              <h4 className="font-semibold text-sm flex items-center gap-2">
+                <Package className="w-4 h-4" />
+                Configuration
+              </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {model.field_definitions.map(renderField)}
+                {Object.entries(model.default_configurations || {}).map(([fieldKey, fieldDef]) =>
+                  renderField(fieldKey, fieldDef)
+                )}
               </div>
             </div>
-
-            {/* Price Summary */}
-            {model.base_price && formData.quantity && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="p-4 rounded-lg bg-primary/5 border border-primary/20"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="w-5 h-5 text-primary" />
-                    <span className="font-semibold">Total Price</span>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-primary">
-                      ${totalPrice.toLocaleString()}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formData.quantity} × ${model.base_price.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            )}
 
             {/* Actions */}
             <div className="flex justify-end gap-3 pt-4">

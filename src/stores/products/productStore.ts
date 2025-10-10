@@ -56,15 +56,13 @@ export interface ProductModel {
   id: string;
   product_category_id: string;
   product_series_id: string;
-  name: string
-  default_configurations: Record<string, any>;
+  name: string;
+  default_configurations: Record<string, FieldDefinition>;
   created_at: string;
   updated_at: string;
 }
 
 export interface FieldDefinition {
-  id: string;
-  label: string;
   field_type:
     | 'input'
     | 'checkbox'
@@ -76,16 +74,12 @@ export interface FieldDefinition {
     | 'auto';
   input_type?: 'string' | 'number' | 'email' | 'tel' | 'url' | 'date' | 'datetime-local' | 'time';
   required: boolean;
-  options?: string[]; // available choices
-  depends_on?: { field_id: string; value: any }[]; // triggers dependency logic
-  default?: any;
-  min?: number;
-  max?: number;
-  pattern?: string;
+  options?: any[]; // available choices (can be numbers or strings)
+  depends_on?: { field_id: string; value: any }[] | null; // triggers dependency logic
+  default_value?: any;
   placeholder?: string;
   multi_select?: boolean; // true if multiple selections allowed
   manual_select?: boolean; // true if user can manually pick (vs auto-calculated)
-  value?: any; // current selected or entered value
 }
 
 
