@@ -170,7 +170,7 @@ const Team = () => {
   };
 
   return (
-    <PageContent title="Team Management" subtitle="Manage your team members and their permissions" showPageHeader={true}>
+    <PageContent title="Team Management" showPageHeader={true}>
       <div className="max-w-7xl mx-auto space-y-8">
 
           {/* Stats Cards */}

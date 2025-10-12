@@ -168,7 +168,6 @@ const Analytics = () => {
   return (
     <PageContent
       title="Analytics"
-      subtitle="Track your business performance and quote insights"
       showPageHeader={true}
       headerActions={
         <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-[var(--sidebar-bg)] p-1">

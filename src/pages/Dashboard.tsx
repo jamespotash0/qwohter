@@ -72,8 +72,7 @@ const Dashboard = () => {
 
   const quotes = useQuotesStore((state) => state.quotes);
   const quotesLoading = useQuotesStore((state) => state.isLoading);
-  const isInitialized = useQuotesStore((state) => state.isInitialized);
-  const initialize = useQuotesStore((state) => state.initialize);
+  const fetchQuotes = useQuotesStore((state) => state.fetchQuotes);
 
   useOrganizations();
 
@@ -112,13 +111,12 @@ const Dashboard = () => {
     getOrganizationId();
   }, [user?.id]);
 
-  // Initialize quotes store
+  // Fetch quotes when we have organization ID
   useEffect(() => {
-    if (user?.id && !isInitialized) {
-      initialize();
+    if (organizationId) {
+      fetchQuotes(organizationId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, isInitialized]);
+  }, [organizationId, fetchQuotes]);
 
   // Fetch recent activities from database and subscribe to real-time updates
   useEffect(() => {

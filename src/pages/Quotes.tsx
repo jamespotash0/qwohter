@@ -5,6 +5,7 @@ import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuote
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuotesStore, type Quote } from "@/stores/quotes/quotesStore";
+import { useOrganizationStore } from "@/stores/organization/organizationStore";
 import { EnhancedQuotesTable } from "@/components/features/quotes/table/EnhancedQuotesTable";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 import { FileText, Plus, Sparkles, DollarSign, Clock, CheckCircle } from "lucide-react";
@@ -23,22 +24,19 @@ import { formatDateEST } from "@/utils/dateUtils";
 const Quotes = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const { currentOrganization } = useOrganizationStore();
   const quotes = useQuotesStore((state) => state.quotes);
   const quotesLoading = useQuotesStore((state) => state.isLoading);
-  const isInitialized = useQuotesStore((state) => state.isInitialized);
-  const initialize = useQuotesStore((state) => state.initialize);
+  const fetchQuotes = useQuotesStore((state) => state.fetchQuotes);
   const updateQuote = useQuotesStore((state) => state.updateQuote);
   const archiveQuote = useQuotesStore((state) => state.archiveQuote);
   const unarchiveQuote = useQuotesStore((state) => state.unarchiveQuote);
   const createQuoteVersion = useQuotesStore((state) => state.createQuoteVersion);
   const deleteQuoteFromDB = useQuotesStore((state) => state.deleteQuote);
 
-  // Get filtered quotes using the selector
-  const getFilteredQuotes = useQuotesStore((state) => state.getFilteredQuotes);
-  const getArchivedQuotes = useQuotesStore((state) => state.getArchivedQuotes);
-
-  const filteredQuotes = getFilteredQuotes();
-  const archivedQuotes = getArchivedQuotes();
+  // Filter quotes locally
+  const filteredQuotes = quotes.filter(q => !q.archived);
+  const archivedQuotes = quotes.filter(q => q.archived);
 
   const [deleteQuoteId, setDeleteQuoteId] = useState<string | null>(null);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
@@ -55,12 +53,12 @@ const Quotes = () => {
     getCurrentUser();
   }, []);
 
-  // Initialize quotes store
+  // Fetch quotes when organization is available
   useEffect(() => {
-    if (user && !isInitialized) {
-      initialize();
+    if (currentOrganization?.id) {
+      fetchQuotes(currentOrganization.id);
     }
-  }, [user, isInitialized, initialize]);
+  }, [currentOrganization?.id, fetchQuotes]);
 
   // Quote management functions
   const updateQuoteStatus = async (id: string, newStatus: string) => {
@@ -333,7 +331,7 @@ const Quotes = () => {
   };
 
   return (
-    <PageContent title="Proposals" subtitle="Manage and track all your project proposals" showPageHeader={true}>
+    <PageContent title="Proposals" showPageHeader={true}>
       {/* Empty State - Show when no proposals exist */}
       {!quotesLoading && quotes.length === 0 ? (
         <ContentCard>

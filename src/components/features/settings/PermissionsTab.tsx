@@ -1,166 +1,219 @@
-import React from 'react';
-import { Key, Shield, Users, Settings, Eye, Edit3, Trash2, UserPlus } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { getPermissionLevel, hasAdminPermissions, canManageTeam, canManageOrganization } from "@/utils/permissions";
+import React, { useState } from 'react';
+import { Shield, Users, Edit3, FileText } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface PermissionsTabProps {
   userRole: string;
 }
 
+type RoleType = 'Owner' | 'Admin' | 'Member';
+
+interface Permission {
+  id: string;
+  label: string;
+  owner: boolean;
+  admin: boolean;
+  member: boolean;
+}
+
+interface PermissionCategory {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  permissions: Permission[];
+}
+
 export const PermissionsTab: React.FC<PermissionsTabProps> = ({ userRole }) => {
-  const permissionSections = [
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [permissions, setPermissions] = useState<PermissionCategory[]>([
     {
-      title: "Organization Management",
+      id: 'org',
+      label: 'Organization Management',
       icon: <Shield className="w-5 h-5" />,
       permissions: [
-        {
-          name: "View Organization Details",
-          description: "Access to organization information and settings",
-          hasPermission: true,
-          icon: <Eye className="w-4 h-4" />
-        },
-        {
-          name: "Edit Organization Settings",
-          description: "Modify organization name, settings, and configuration",
-          hasPermission: canManageOrganization(userRole),
-          icon: <Edit3 className="w-4 h-4" />
-        },
-        {
-          name: "Regenerate Organization Code",
-          description: "Create new organization codes and invalidate existing ones",
-          hasPermission: canManageOrganization(userRole),
-          icon: <Key className="w-4 h-4" />
-        }
+        { id: 'org_view', label: 'View organization details and settings', owner: true, admin: true, member: true },
+        { id: 'org_edit', label: 'Edit organization name and configuration', owner: true, admin: true, member: false },
+        { id: 'org_regen', label: 'Regenerate organization code and invite links', owner: true, admin: true, member: false },
+        { id: 'org_transfer', label: 'Transfer organization ownership', owner: true, admin: false, member: false },
+        { id: 'org_delete', label: 'Delete organization', owner: true, admin: false, member: false }
       ]
     },
     {
-      title: "Team Management",
+      id: 'team',
+      label: 'Team Management',
       icon: <Users className="w-5 h-5" />,
       permissions: [
-        {
-          name: "View Team Members",
-          description: "See all organization members and their roles",
-          hasPermission: true,
-          icon: <Eye className="w-4 h-4" />
-        },
-        {
-          name: "Invite Team Members",
-          description: "Send invitations to new team members",
-          hasPermission: canManageTeam(userRole),
-          icon: <UserPlus className="w-4 h-4" />
-        },
-        {
-          name: "Manage Member Roles",
-          description: "Change member roles and permissions",
-          hasPermission: canManageTeam(userRole),
-          icon: <Settings className="w-4 h-4" />
-        },
-        {
-          name: "Remove Team Members",
-          description: "Remove members from the organization",
-          hasPermission: canManageTeam(userRole),
-          icon: <Trash2 className="w-4 h-4" />
-        }
+        { id: 'team_view', label: 'View all team members', owner: true, admin: true, member: true },
+        { id: 'team_invite', label: 'Invite new team members', owner: true, admin: true, member: false },
+        { id: 'team_roles', label: 'Change member roles', owner: true, admin: true, member: false },
+        { id: 'team_remove', label: 'Remove team members', owner: true, admin: true, member: false },
+        { id: 'team_approve', label: 'Approve or reject join requests', owner: true, admin: true, member: false }
       ]
     },
     {
-      title: "Quote Management",
-      icon: <Edit3 className="w-5 h-5" />,
+      id: 'quotes',
+      label: 'Quote Management',
+      icon: <FileText className="w-5 h-5" />,
       permissions: [
-        {
-          name: "View All Quotes",
-          description: "Access to view all organization quotes",
-          hasPermission: true,
-          icon: <Eye className="w-4 h-4" />
-        },
-        {
-          name: "Create Quotes",
-          description: "Create new quotes and proposals",
-          hasPermission: true,
-          icon: <Edit3 className="w-4 h-4" />
-        },
-        {
-          name: "Edit All Quotes",
-          description: "Modify any quote in the organization",
-          hasPermission: hasAdminPermissions(userRole),
-          icon: <Edit3 className="w-4 h-4" />
-        },
-        {
-          name: "Delete Quotes",
-          description: "Remove quotes from the system",
-          hasPermission: hasAdminPermissions(userRole),
-          icon: <Trash2 className="w-4 h-4" />
-        }
+        { id: 'quote_view', label: 'View all organization quotes', owner: true, admin: true, member: true },
+        { id: 'quote_create', label: 'Create new quotes and proposals', owner: true, admin: true, member: true },
+        { id: 'quote_edit_all', label: 'Edit any quote in the organization', owner: true, admin: true, member: false },
+        { id: 'quote_edit_own', label: 'Edit own quotes', owner: true, admin: true, member: true },
+        { id: 'quote_delete_all', label: 'Delete any quote', owner: true, admin: true, member: false },
+        { id: 'quote_delete_own', label: 'Delete own quotes', owner: true, admin: true, member: true },
+        { id: 'quote_templates', label: 'Manage quote templates', owner: true, admin: true, member: false }
       ]
     }
-  ];
+  ]);
 
-  const getStatusColor = (hasPermission: boolean) => {
-    return hasPermission
-      ? "bg-green-100 text-green-800 border-green-200"
-      : "bg-gray-100 text-gray-600 border-gray-200";
+  const togglePermission = (categoryId: string, permissionId: string, role: 'Owner' | 'Admin' | 'Member') => {
+    setPermissions(prev => prev.map(category => {
+      if (category.id === categoryId) {
+        return {
+          ...category,
+          permissions: category.permissions.map(permission => {
+            if (permission.id === permissionId) {
+              return { ...permission, [role]: !permission[role] };
+            }
+            return permission;
+          })
+        };
+      }
+      return category;
+    }));
   };
 
+  const handleSavePermissions = () => {
+    // TODO: Save permissions to backend
+    console.log('Saving permissions:', permissions);
+    setIsEditMode(false);
+  };
+
+  const handleCancelEdit = () => {
+    // TODO: Reset to original permissions from backend
+    setIsEditMode(false);
+  };
+
+  const canEditPermissions = userRole === 'Owner';
+
   return (
-    <div className="space-y-8">
-      {/* Current Role Overview */}
-      <div className="pb-8 border-b border-[var(--content-card-border)]">
-        <h2 className="text-lg font-semibold text-[var(--content-header-text)] mb-6 flex items-center gap-2">
-          <Key className="w-5 h-5" />
-          Your Access Level
-        </h2>
-        <div>
-          <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <div>
-              <h3 className="font-semibold text-blue-900">Current Role: {userRole}</h3>
-              <p className="text-sm text-blue-700">{getPermissionLevel(userRole)}</p>
+    <div className="max-w-5xl">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Roles & Permissions</h2>
+          {canEditPermissions && (
+            <div className="flex items-center gap-2">
+              {isEditMode ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancelEdit}
+                    className="text-gray-600 dark:text-gray-400"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSavePermissions}
+                    className="bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white"
+                  >
+                    Save Changes
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditMode(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  Edit Permissions
+                </Button>
+              )}
             </div>
-            <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
-              {userRole}
-            </Badge>
-          </div>
+          )}
         </div>
+        <div className="h-px bg-gray-200 dark:bg-gray-700 mb-6"></div>
       </div>
 
-      {/* Permissions Breakdown */}
-      {permissionSections.map((section, sectionIndex) => (
-        <div key={section.title} className="pb-8 border-b border-[var(--content-card-border)] last:border-0 last:pb-0">
-          <h2 className="text-lg font-semibold text-[var(--content-header-text)] mb-6 flex items-center gap-2">
-            {section.icon}
-            {section.title}
-          </h2>
-          <div>
-            <div className="space-y-4">
-              {section.permissions.map((permission, index) => (
-                <div key={permission.name}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className="mt-1 text-gray-500">
-                        {permission.icon}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{permission.name}</h4>
-                        <p className="text-sm text-gray-600">{permission.description}</p>
-                      </div>
+      {/* Permissions Table */}
+      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+            <tr>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-white">
+                Actions
+              </th>
+              <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white w-32">
+                Member
+              </th>
+              <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white w-32">
+                Admin
+              </th>
+              <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white w-32">
+                Owner
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+            {permissions.map((category) => (
+              <React.Fragment key={category.id}>
+                {/* Category Header */}
+                <tr className="bg-gray-50/50 dark:bg-gray-800/50">
+                  <td colSpan={4} className="px-6 py-3">
+                    <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                      {category.icon}
+                      <span className="font-semibold text-sm">{category.label}</span>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className={getStatusColor(permission.hasPermission)}
-                    >
-                      {permission.hasPermission ? 'Granted' : 'Denied'}
-                    </Badge>
-                  </div>
-                  {index < section.permissions.length - 1 && (
-                    <Separator className="mt-4" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      ))}
+                  </td>
+                </tr>
+                {/* Permissions */}
+                {category.permissions.map((permission) => (
+                  <tr key={permission.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                      {permission.label}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex justify-center">
+                        <Checkbox
+                          checked={permission.member}
+                          onCheckedChange={() => isEditMode && togglePermission(category.id, permission.id, 'Member')}
+                          disabled={!isEditMode}
+                          className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                        />
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex justify-center">
+                        <Checkbox
+                          checked={permission.admin}
+                          onCheckedChange={() => isEditMode && togglePermission(category.id, permission.id, 'Admin')}
+                          disabled={!isEditMode}
+                          className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                        />
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex justify-center">
+                        <Checkbox
+                          checked={permission.owner}
+                          onCheckedChange={() => isEditMode && togglePermission(category.id, permission.id, 'Owner')}
+                          disabled={!isEditMode}
+                          className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

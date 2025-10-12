@@ -53,7 +53,7 @@ interface QuotesStoreState {
 const generateProposalNumber = async (organizationId: string): Promise<string> => {
   // Get the count of existing quotes for this organization
   const { count, error } = await supabase
-    .from('quotes_formbuilder_test')
+    .from('quotes')
     .select('*', { count: 'exact', head: true })
     .eq('organization_id', organizationId);
 
@@ -81,7 +81,7 @@ export const useQuotesStore = create<QuotesStoreState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { data, error } = await supabase
-        .from('quotes_formbuilder_test')
+        .from('quotes')
         .select('*')
         .eq('organization_id', organizationId)
         .is('archived_at', null)
@@ -101,7 +101,7 @@ export const useQuotesStore = create<QuotesStoreState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { data, error } = await supabase
-        .from('quotes_formbuilder_test')
+        .from('quotes')
         .select('*')
         .eq('id', quoteId)
         .single();
@@ -122,7 +122,7 @@ export const useQuotesStore = create<QuotesStoreState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { data, error } = await supabase
-        .from('quotes_formbuilder_test')
+        .from('quotes')
         .insert([quote])
         .select()
         .single();
@@ -149,7 +149,7 @@ export const useQuotesStore = create<QuotesStoreState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { data, error } = await supabase
-        .from('quotes_formbuilder_test')
+        .from('quotes')
         .update(updates)
         .eq('id', quoteId)
         .select()
@@ -177,7 +177,7 @@ export const useQuotesStore = create<QuotesStoreState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { error } = await supabase
-        .from('quotes_formbuilder_test')
+        .from('quotes')
         .delete()
         .eq('id', quoteId);
 
@@ -204,7 +204,7 @@ export const useQuotesStore = create<QuotesStoreState>((set, get) => ({
     try {
       // Fetch original quote
       const { data: original, error: fetchError } = await supabase
-        .from('quotes_formbuilder_test')
+        .from('quotes')
         .select('*')
         .eq('id', quoteId)
         .single();
@@ -226,7 +226,7 @@ export const useQuotesStore = create<QuotesStoreState>((set, get) => ({
       };
 
       const { data: newQuote, error: createError } = await supabase
-        .from('quotes_formbuilder_test')
+        .from('quotes')
         .insert([copy])
         .select()
         .single();
@@ -252,7 +252,7 @@ export const useQuotesStore = create<QuotesStoreState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { data, error } = await supabase
-        .from('quotes_formbuilder_test')
+        .from('quotes')
         .update({ archived_at: new Date().toISOString() })
         .eq('id', quoteId)
         .select()
@@ -280,7 +280,7 @@ export const useQuotesStore = create<QuotesStoreState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { data, error } = await supabase
-        .from('quotes_formbuilder_test')
+        .from('quotes')
         .update({ archived_at: null })
         .eq('id', quoteId)
         .select()
@@ -317,3 +317,35 @@ export const useQuotesStore = create<QuotesStoreState>((set, get) => ({
     set({ error: null });
   },
 }));
+
+// Selector hooks for convenient access
+export const useQuotes = () => useQuotesStore((state) => state.quotes);
+export const useCurrentQuote = () => useQuotesStore((state) => state.currentQuote);
+export const useQuotesLoading = () => useQuotesStore((state) => state.isLoading);
+export const useQuotesError = () => useQuotesStore((state) => state.error);
+
+// Filtered quotes selectors
+export const useFilteredQuotes = () => {
+  return useQuotesStore((state) => state.quotes.filter(q => !q.archived_at));
+};
+
+// Quotes actions
+export const useQuotesActions = () => {
+  return useQuotesStore((state) => ({
+    fetchQuotes: state.fetchQuotes,
+    fetchQuoteById: state.fetchQuoteById,
+    createQuote: state.createQuote,
+    updateQuote: state.updateQuote,
+    deleteQuote: state.deleteQuote,
+    copyQuote: state.copyQuote,
+    archiveQuote: state.archiveQuote,
+    unarchiveQuote: state.unarchiveQuote,
+    generateProposalNumber: state.generateProposalNumber,
+    setCurrentQuote: state.setCurrentQuote,
+    clearError: state.clearError,
+  }));
+};
+
+// Stub exports for compatibility with stores/index.ts
+export const useQuotesFilters = () => ({ search: '', status: 'all' });
+export const useQuotesPagination = () => ({ page: 1, pageSize: 50, total: 0 });

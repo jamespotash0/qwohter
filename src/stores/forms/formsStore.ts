@@ -43,6 +43,7 @@ export interface FormDefinition {
   created_at: string;
   updated_at: string;
   is_active: boolean;
+  is_default?: boolean; // Marks this as the default form for quote creation
 }
 
 // Default tabs
@@ -347,13 +348,12 @@ export const useFormsStore = create<FormsStoreState>((set, get) => ({
 
       if (fetchError) throw fetchError;
 
-      // Create copy
+      // Create copy (exclude id, timestamps, and is_default)
+      const { id, created_at, updated_at, is_default, ...formData } = original;
       const copy = {
-        ...original,
-        id: undefined, // Will be auto-generated
+        ...formData,
         name: newName,
-        created_at: undefined,
-        updated_at: undefined,
+        is_default: false, // Don't copy default status
       };
 
       const { data: newForm, error: createError } = await supabase

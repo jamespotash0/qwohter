@@ -239,13 +239,11 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
   };
 
   return (
-    <div className="space-y-8">
+    <div className="max-w-3xl">
       {/* Profile Information */}
-      <div className="pb-8 border-b border-[var(--content-card-border)]">
-        <h2 className="text-lg font-semibold text-[var(--content-header-text)] mb-6 flex items-center gap-2">
-          <User className="w-5 h-5" />
-          Profile Information
-        </h2>
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Profile Information</h2>
+        <div className="h-px bg-gray-200 dark:bg-gray-700 mb-6"></div>
         <div className="space-y-6">
           <div className="flex items-start gap-6">
             <Avatar className="w-20 h-20">
