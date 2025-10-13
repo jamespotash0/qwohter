@@ -82,6 +82,7 @@
     "pdf-lib": "^1.17.1",
     "pdf2pic": "^3.2.0",
     "pdfjs-dist": "^5.4.54",
+    "phosphor-react": "^1.4.1",
     "pizzip": "^3.2.0",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.3.0",

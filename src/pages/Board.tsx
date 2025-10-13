@@ -52,10 +52,10 @@ const COLUMN_COLORS = [
   { name: 'Teal', value: '#14B8A6', icon: '🟦' },
 ];
 
-const AVATAR_COLORS = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-  '#DFE6E9', '#74B9FF', '#A29BFE', '#FD79A8', '#FDCB6E'
-];
+// const AVATAR_COLORS = [
+//   '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+//   '#DFE6E9', '#74B9FF', '#A29BFE', '#FD79A8', '#FDCB6E'
+// ];
 
 export default function Board() {
   const {
@@ -89,7 +89,7 @@ export default function Board() {
     // Get organization ID for subscriptions
     const getOrgIdAndSubscribe = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) return undefined;
 
       const { data: membership } = await supabase
         .from('memberships')
@@ -102,6 +102,7 @@ export default function Board() {
         const unsubscribe = subscribeToChanges(membership.organization_id);
         return unsubscribe;
       }
+      return undefined;
     };
 
     const subscriptionPromise = getOrgIdAndSubscribe();
@@ -561,7 +562,7 @@ export default function Board() {
                         const clientName = quote?.job_details?.client_name || 'No Client';
                         const clientCompany = quote?.job_details?.client_company || '';
                         const clientAddress = quote?.job_details?.client_address || '';
-                        const jobLocation = quote?.job_details?.job_location || '';
+                        // const jobLocation = quote?.job_details?.job_location || '';
                         const total = quote?.price_details?.grand_total;
                         // const avatarColor = getAvatarColor(project.id);
 

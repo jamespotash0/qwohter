@@ -34,9 +34,10 @@ interface QuotesStoreState {
   currentQuote: Quote | null;
   isLoading: boolean;
   error: string | null;
+  lastFetchedOrgId: string | null;
 
   // Actions
-  fetchQuotes: (organizationId: string) => Promise<void>;
+  fetchQuotes: (organizationId: string, force?: boolean) => Promise<void>;
   fetchQuoteById: (quoteId: string) => Promise<Quote | null>;
   createQuote: (quote: Omit<Quote, 'id' | 'created_at' | 'updated_at'>) => Promise<Quote | null>;
   updateQuote: (quoteId: string, updates: Partial<Quote>) => Promise<boolean>;
@@ -75,21 +76,32 @@ export const useQuotesStore = create<QuotesStoreState>((set, get) => ({
   currentQuote: null,
   isLoading: false,
   error: null,
+  lastFetchedOrgId: null,
 
   // Fetch all quotes for an organization
-  fetchQuotes: async (organizationId: string) => {
-    set({ isLoading: true, error: null });
+  fetchQuotes: async (organizationId: string, force: boolean = false) => {
+    const state = get();
+
+    // Skip if already loaded for this org and not forcing refresh
+    if (!force && state.lastFetchedOrgId === organizationId && state.quotes.length > 0) {
+      return;
+    }
+
+    // Only show loading state if we don't have data yet (prevents flash)
+    const shouldShowLoading = state.quotes.length === 0;
+    set({ isLoading: shouldShowLoading, error: null });
+
     try {
       const { data, error } = await supabase
         .from('quotes')
         .select('*')
         .eq('organization_id', organizationId)
-        .is('archived_at', null)
+        .eq('archived', false)
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
 
-      set({ quotes: data || [], isLoading: false });
+      set({ quotes: data || [], isLoading: false, lastFetchedOrgId: organizationId });
     } catch (error: any) {
       console.error('Error fetching quotes:', error);
       set({ error: error.message, isLoading: false });

@@ -5,7 +5,6 @@ import { useCurrentOrganization, useOrganizationStore } from "@/stores/organizat
 import { useAuthStore } from "@/stores/auth/authStore";
 import { ProfileTab } from "@/components/features/settings/ProfileTab";
 import { OrganizationTab } from "@/components/features/settings/OrganizationTab";
-import { PermissionsTab } from "@/components/features/settings/PermissionsTab";
 import { SecurityTab } from "@/components/features/settings/SecurityTab";
 import { BillingTab } from "@/components/features/settings/BillingTab";
 import { AppearanceTab } from "@/components/features/settings/AppearanceTab";
@@ -42,13 +41,13 @@ const Settings = () => {
   const availableTabs = useMemo(() => [
     {
       id: "profile",
-      label: "Profile Info",
+      label: "Account",
       icon: <UserIcon className="w-4 h-4" />,
       component: <ProfileTab user={user as any} profile={profile} userRole={userRole || 'Member'} />
     },
     {
       id: "organization",
-      label: "Organization Info",
+      label: "Organization",
       icon: <Building className="w-4 h-4" />,
       component: <OrganizationTab
         organization={organization}
@@ -76,7 +75,7 @@ const Settings = () => {
     },
     {
       id: "security",
-      label: "Security",
+      label: "Security & Permissions",
       icon: <Shield className="w-4 h-4" />,
       component: <SecurityTab
         organization={organization}
@@ -84,13 +83,6 @@ const Settings = () => {
         onOrganizationUpdate={refetchOrganization}
       />,
       requiresPermission: "security"
-    },
-    {
-      id: "permissions",
-      label: "Permissions",
-      icon: <Key className="w-4 h-4" />,
-      component: <PermissionsTab userRole={userRole || 'Member'} />,
-      requiresPermission: "permissions"
     },
     {
       id: "appearance",
@@ -108,13 +100,13 @@ const Settings = () => {
       </div>
 
       {/* Horizontal Tab Navigation with Background Slider */}
-      <div className="mb-8">
-        <div className="inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-0.5">
+      <div className="mb-8 overflow-x-auto">
+        <div className="inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-0.5 min-w-max">
           {availableTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
-              className={`relative px-4 py-2 text-sm font-medium transition-all duration-200 rounded-md ${
+              className={`relative px-4 py-2 text-sm font-medium transition-all duration-200 rounded-md whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'text-gray-900 dark:text-white bg-white dark:bg-gray-700 shadow-sm'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'

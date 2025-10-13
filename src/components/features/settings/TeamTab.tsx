@@ -234,6 +234,9 @@ export function TeamTab() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Role
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Date Joined
+                </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 </th>
               </tr>
@@ -241,7 +244,7 @@ export function TeamTab() {
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
               {members.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                     No team members yet. Invite someone to get started!
                   </td>
                 </tr>
@@ -282,45 +285,62 @@ export function TeamTab() {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      {member.status === 'Active' ? (
-                        <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800">
-                          Active
-                        </Badge>
-                      ) : member.status === 'Inactive' ? (
-                        <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400 border-gray-200 dark:border-gray-800">
-                          Inactive
-                        </Badge>
-                      ) : (
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          —
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4">
-                      {member.status === 'Active' ? (
-                        member.role === 'Owner' || currentUserRole === 'Member' ? (
-                          <span className="text-sm text-gray-700 dark:text-gray-300">
-                            {member.role}
+                      <div className="w-16">
+                        {member.status === 'Active' ? (
+                          <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                            Active
+                          </span>
+                        ) : member.status === 'Inactive' ? (
+                          <span className="text-sm font-medium text-red-600 dark:text-red-400">
+                            Inactive
+                          </span>
+                        ) : member.status === 'Pending' ? (
+                          <span className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
+                            Pending
                           </span>
                         ) : (
-                          <Select
-                            value={member.role}
-                            onValueChange={(value) => handleRoleChange(member.user_id, value as Role)}
-                          >
-                            <SelectTrigger className="w-24 h-8 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Member">Member</SelectItem>
-                              <SelectItem value="Admin">Admin</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )
-                      ) : (
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          —
-                        </span>
-                      )}
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            —
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="w-20">
+                        {member.status === 'Active' ? (
+                          member.role === 'Owner' || currentUserRole === 'Member' ? (
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                              {member.role}
+                            </span>
+                          ) : (
+                            <Select
+                              value={member.role}
+                              onValueChange={(value) => handleRoleChange(member.user_id, value as Role)}
+                            >
+                              <SelectTrigger className="w-full h-8 text-sm border-0 shadow-none hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-0 focus:ring-offset-0 px-0 gap-2 [&>svg]:bg-gray-100 [&>svg]:dark:bg-gray-800 [&>svg]:rounded [&>svg]:p-0.75">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Member">Member</SelectItem>
+                                <SelectItem value="Admin">Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )
+                        ) : (
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            —
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        {new Date(member.joined_at).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </span>
                     </td>
                     <td className="px-4 py-4 text-right">
                       {member.status === 'Pending' ? (

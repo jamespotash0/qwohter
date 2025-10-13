@@ -4,25 +4,25 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageContent } from "@/components/common/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  FileText,
-  Plus,
-  DollarSign,
-  TrendingUp,
-  AlertCircle,
-  Clock,
+  CurrencyDollar,
+  TrendUp,
+  ChartLineUp,
   CheckCircle,
   XCircle,
-  FileSpreadsheet,
-  Upload,
   Bell,
   Archive,
-  ArchiveRestore,
-  CheckCheck,
-  Edit3,
-  Trash2,
-  BellRing,
-  MoreVertical
-} from "lucide-react";
+  CheckSquare,
+  PencilSimple,
+  Trash,
+  BellRinging,
+  Plus,
+  Checks,
+  Clock,
+  UploadSimple,
+  FileText,
+  BoxArrowUp,
+  DotsThreeVertical
+} from '@phosphor-icons/react';
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -55,7 +55,15 @@ const Dashboard = () => {
   const profile = useAuthStore((state) => state.profile);
 
   const [recentActivities, setRecentActivities] = useState<QuoteActivity[]>([]);
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [organizationId, setOrganizationId] = useState<string | null>(() => {
+    // Initialize from localStorage cache to prevent refetch
+    try {
+      const cached = localStorage.getItem('cached_organization_id');
+      return cached && cached !== 'null' ? cached : null;
+    } catch {
+      return null;
+    }
+  });
   const [showAddReminderModal, setShowAddReminderModal] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -89,14 +97,18 @@ const Dashboard = () => {
 
   // Get organization ID for activity fetching
   useEffect(() => {
-    console.log('🎬 useEffect [GET ORG ID] TRIGGERED', { userId: user?.id });
     const getOrganizationId = async () => {
       if (!user?.id) {
-        console.log('⏭️ No user ID, skipping org fetch');
         return;
       }
 
-      console.log('🔍 Fetching organization for user:', user.id);
+      // Skip if we already have organizationId (from cache or previous fetch)
+      const cachedOrgId = localStorage.getItem('cached_organization_id');
+      if (cachedOrgId && cachedOrgId !== 'null') {
+        setOrganizationId(cachedOrgId);
+        return;
+      }
+
       const { data } = await supabase
         .from('memberships')
         .select('organization_id')
@@ -104,8 +116,9 @@ const Dashboard = () => {
         .single();
 
       if (data && 'organization_id' in data) {
-        console.log('🏢 Setting organizationId:', (data as any).organization_id);
-        setOrganizationId((data as any).organization_id);
+        const orgId = (data as any).organization_id;
+        setOrganizationId(orgId);
+        localStorage.setItem('cached_organization_id', orgId);
       }
     };
     getOrganizationId();
@@ -586,20 +599,62 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchDailyQuote = async () => {
+      // Fallback quotes in case API fails
+      const fallbackQuotes = [
+        { text: "The key is not to prioritize what's on your schedule, but to schedule your priorities.", author: "Stephen Covey" },
+        { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill" },
+        { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+        { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson" },
+        { text: "Opportunities don't happen. You create them.", author: "Chris Grosser" },
+        { text: "The future depends on what you do today.", author: "Mahatma Gandhi" },
+        { text: "Quality is not an act, it is a habit.", author: "Aristotle" },
+        { text: "The way to get started is to quit talking and begin doing.", author: "Walt Disney" },
+        { text: "Success usually comes to those who are too busy to be looking for it.", author: "Henry David Thoreau" },
+        { text: "Your time is limited, don't waste it living someone else's life.", author: "Steve Jobs" }
+      ];
+
       try {
-        // Try to fetch from ZenQuotes API (free, no key required)
-        const response = await fetch('https://zenquotes.io/api/today');
+        // Check localStorage cache
+        const today = new Date().toISOString().split('T')[0];
+        const cachedDate = localStorage.getItem('daily_quote_date');
+        const cachedQuote = localStorage.getItem('daily_quote');
+
+        if (cachedDate === today && cachedQuote) {
+          setDailyQuote(JSON.parse(cachedQuote));
+          return;
+        }
+
+        // Fetch from QuoteSlate API (free, no key required)
+        const response = await fetch('https://quoteslate.vercel.app/api/quotes/random?categories=motivational,business,success');
+
+        if (!response.ok) {
+          throw new Error('API request failed');
+        }
+
         const data = await response.json();
 
-        if (data && data[0]) {
-          setDailyQuote({
-            text: data[0].q,
-            author: data[0].a
-          });
+        if (data && data.quote) {
+          const newQuote = {
+            text: data.quote,
+            author: data.author || 'Unknown'
+          };
+          setDailyQuote(newQuote);
+
+          // Cache for today
+          localStorage.setItem('daily_quote', JSON.stringify(newQuote));
+          localStorage.setItem('daily_quote_date', today as string);
+        } else {
+          throw new Error('Invalid API response');
         }
       } catch (error) {
-        // Keep the default quote if API fails
-        console.log('Using fallback quote');
+        // Use rotating fallback quotes on error
+        const today = new Date();
+        const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
+        const quoteIndex = dayOfYear % fallbackQuotes.length;
+        const fallbackQuote = fallbackQuotes[quoteIndex];
+        if (fallbackQuote) {
+          setDailyQuote(fallbackQuote);
+        }
       }
     };
 
@@ -681,7 +736,7 @@ const Dashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800">
-                    <DollarSign className="w-6 h-6 text-green-600 dark:text-green-300" />
+                    <CurrencyDollar weight="duotone" className="w-6 h-6 text-green-600 dark:text-green-300" />
                   </div>
                   <div className="ml-4">
                     <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Revenue This Month</h3>
@@ -712,7 +767,7 @@ const Dashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="p-3 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800">
-                    <FileText className="w-6 h-6 text-blue-600 dark:text-blue-300" />
+                    <FileText weight="duotone" className="w-6 h-6 text-blue-600 dark:text-blue-300" />
                   </div>
                   <div className="ml-4">
                     <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Active Quotes</h3>
@@ -727,7 +782,7 @@ const Dashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
-                    <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-300" />
+                    <ChartLineUp weight="duotone" className="w-6 h-6 text-purple-600 dark:text-purple-300" />
                   </div>
                   <div className="ml-4">
                     <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Win Rate</h3>
@@ -747,7 +802,7 @@ const Dashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className={`p-3 rounded-full bg-gradient-to-br ${metrics.overdueReminders > 0 ? 'from-red-100 to-red-200 dark:from-red-900 dark:to-red-800' : 'from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600'}`}>
-                    <AlertCircle className={`w-6 h-6 ${metrics.overdueReminders > 0 ? 'text-red-600 dark:text-red-300' : 'text-gray-600 dark:text-gray-300'}`} />
+                    <BellRinging weight="duotone" className={`w-6 h-6 ${metrics.overdueReminders > 0 ? 'text-red-600 dark:text-red-300' : 'text-gray-600 dark:text-gray-300'}`} />
                   </div>
                   <div className="ml-4">
                     <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Overdue Reminders</h3>
@@ -795,7 +850,7 @@ const Dashboard = () => {
                   disabled
                   className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
                 >
-                  <FileSpreadsheet className="w-5 h-5" />
+                  <FileText className="w-5 h-5" />
                   <span className="font-medium">Use Template</span>
                 </Button>
 
@@ -803,7 +858,7 @@ const Dashboard = () => {
                   disabled
                   className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
                 >
-                  <Upload className="w-5 h-5" />
+                  <UploadSimple className="w-5 h-5" />
                   <span className="font-medium">Import from Form</span>
                 </Button>
               </div>
@@ -932,7 +987,7 @@ const Dashboard = () => {
                                       size="sm"
                                       className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                     >
-                                      <MoreVertical className="h-4 w-4" />
+                                      <DotsThreeVertical className="h-4 w-4" />
                                     </Button>
                                   </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
@@ -944,7 +999,7 @@ const Dashboard = () => {
                                           setShowAddReminderModal(true);
                                         }}
                                       >
-                                        <Edit3 className="w-4 h-4 mr-2" />
+                                        <PencilSimple className="w-4 h-4 mr-2" />
                                         Edit
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
@@ -969,7 +1024,7 @@ const Dashboard = () => {
                                     )}
                                     className="text-red-600"
                                   >
-                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    <Trash className="w-4 h-4 mr-2" />
                                     Delete
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -1033,21 +1088,21 @@ const Dashboard = () => {
                         case 'Lost':
                           return <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />;
                         case 'Submitted':
-                          return <Upload className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
+                          return <UploadSimple className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
                         case 'Pending':
                           return <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />;
                         case 'Updated':
-                          return <Edit3 className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+                          return <PencilSimple className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
                         case 'Archived':
                           return <Archive className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
                         case 'Unarchived':
-                          return <ArchiveRestore className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
+                          return <BoxArrowUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
                         case 'Deleted':
-                          return <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />;
+                          return <Trash className="w-4 h-4 text-red-600 dark:text-red-400" />;
                         case 'Reminder':
-                          return <BellRing className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
+                          return <BellRinging className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
                         case 'Completed':
-                          return <CheckCheck className="w-4 h-4 text-green-600 dark:text-green-400" />;
+                          return <Checks className="w-4 h-4 text-green-600 dark:text-green-400" />;
                         default:
                           return <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
                       }
@@ -1133,8 +1188,8 @@ const Dashboard = () => {
         open={showNewQuoteDialog}
         onOpenChange={setShowNewQuoteDialog}
         onCreateQuote={(quoteName) => {
-          // Navigate to the new quote wizard
-          navigate('/quotes/new');
+          setShowNewQuoteDialog(false);
+          navigate(`/quotes/new?name=${encodeURIComponent(quoteName)}`);
         }}
       />
     </PageContent>
