@@ -74,6 +74,7 @@ export const slideInLeft = (targets: string | HTMLElement | NodeListOf<Element>,
  */
 export const elasticBounce = (targets: string | HTMLElement | NodeListOf<Element>) => {
   return animate(targets, {
+    opacity: [0, 1],
     scale: [0, 1],
     duration: 800,
     easing: 'easeOutElastic(1, .6)',
