@@ -28,13 +28,13 @@ export class SectionGenerators {
       logoUrl = `https://piuwrlaoxuefmiisuamc.supabase.co/storage/v1/object/public/organization-logos/${organizationInfo.logo_url}`;
     }
 
-    console.log('🖼️ Logo Debug Info:', {
-      logo_public_url: organizationInfo?.logo_public_url,
-      logo_url: organizationInfo?.logo_url,
-      finalLogoUrl: logoUrl,
-      hasLogo: logoUrl && logoUrl.trim() !== '',
-      organizationInfo: organizationInfo
-    });
+    // console.log('🖼️ Logo Debug Info:', {
+    //   logo_public_url: organizationInfo?.logo_public_url,
+    //   logo_url: organizationInfo?.logo_url,
+    //   finalLogoUrl: logoUrl,
+    //   hasLogo: logoUrl && logoUrl.trim() !== '',
+    //   organizationInfo: organizationInfo
+    // });
 
     const hasLogo = logoUrl && logoUrl.trim() !== '';
     const hasFax = fax && fax.trim() !== '';
@@ -55,7 +55,6 @@ export class SectionGenerators {
       <div class="company-info" style="flex: 0 0 auto; width: 250px;">
         <div class="company-logo" style="width: 250px; height: 100px; display: flex; align-items: center; justify-content: flex-start;">
           ${logoHtml}
-          ${!hasLogo ? '<div style="font-size: 10px; color: red;">NO LOGO</div>' : ''}
         </div>
       </div>
 
@@ -217,7 +216,7 @@ export class SectionGenerators {
         <div class="term-item section-header-item" style="break-inside: avoid; margin-bottom: 8px; font-weight: bold; font-size: 12pt; margin-top: 1.5em;">GENERAL NOTES AND TERMS:</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">1. <strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">2. All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate ? wageRate + ' ' : ''}Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</div>
-        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">3. <strong>Delivery includes drop-off to the Roof</strong> of the site, if applicable.</div>
+        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">3. <span style="color: red;">Quoted delivery pricing assumes <strong>elevator or ground-level access</strong>. Deliveries involving stairs, restricted access, or requiring additional equipment (e.g., outside lift) are subject to additional charges.</span></div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">4. Pricing is <strong>exclusive of any applicable taxes</strong>, which will be added as required.</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">5. The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">6. Final pricing is <strong>subject to site inspection and verification</strong> of all dimensions and conditions by our installation team.</div>

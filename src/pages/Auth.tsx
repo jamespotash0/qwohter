@@ -125,6 +125,10 @@ const Auth = () => {
       if (savedState.step && savedState.step !== 'auth') {
         authFlow.setStep(savedState.step as any);
       }
+    } else {
+      // If no saved state (e.g., OTP step was cleared), also clear temp signup data
+      console.log('No saved state found, clearing temp signup data');
+      tempSignupService.clear();
     }
   }, []);
 
@@ -245,6 +249,25 @@ const Auth = () => {
 
     // Update the OTP sent status
     tempSignupService.markOtpSent();
+  };
+
+  const onChangeEmail = () => {
+    // Clear temp signup data
+    tempSignupService.clear();
+
+    // Clear auth state
+    clearAuthState();
+
+    // Reset to auth step
+    authFlow.setStep("auth");
+
+    // Clear OTP code
+    formState.setOtpCode("");
+
+    toast({
+      title: "Email Reset",
+      description: "You can now enter a new email address.",
+    });
   };
 
   const onOrganizationSubmit = async (e: React.FormEvent) => {
@@ -557,6 +580,7 @@ const Auth = () => {
               onOtpCodeChange={formState.setOtpCode}
               onSubmit={onOtpSubmit}
               onResendCode={onResendCode}
+              onChangeEmail={onChangeEmail}
             />
           )}
 

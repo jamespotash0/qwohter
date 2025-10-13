@@ -4,7 +4,7 @@
  */
 
 import type { User, Session } from '@supabase/supabase-js';
-import type { UserProfile } from '@/hooks/useUserProfile';
+import type { UserProfile } from '@/types/profile';
 
 export interface AuthState {
   // Core auth data

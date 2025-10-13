@@ -1,44 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Edit2, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { CompanyInfoDialog } from "./CompanyInfoDialog";
 import { useOrganizationSettings } from "@/hooks/useCompanySettings";
-import { useUserProfile } from "@/hooks/useUserProfile";
+import { useProfile } from "@/stores/auth/authStore";
 import { useOrganizations } from "@/hooks/useOrganizations";
-import { supabase } from "@/integrations/supabase/client";
 import { extractCompanyInfoForForm } from "@/lib/types/settings/companySettings";
 
 export function CompanySettingsSection() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  
+
   // Debug wrapper for setIsDialogOpen
   const setIsDialogOpenDebug = (value: boolean) => {
     setIsDialogOpen(value);
   };
-  const [user, setUser] = useState<any>(null);
-  
-  const { 
-    organization, 
-    isLoading, 
+
+  const {
+    organization,
+    isLoading,
     updateCompanyInfo,
     hasCompanyInfo
   } = useOrganizationSettings();
-  
-  const { profile } = useUserProfile(user?.id);
-  const { currentUserRole } = useOrganizations();
 
-  // Get current user
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-      }
-    };
-    getCurrentUser();
-  }, []);
+  // Get user profile from auth store
+  const profile = useProfile();
+  const { currentUserRole } = useOrganizations();
 
   const handleEdit = () => {
     setIsDialogOpenDebug(true);

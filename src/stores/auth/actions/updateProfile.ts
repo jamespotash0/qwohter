@@ -4,7 +4,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import type { UserProfile } from '@/hooks/useUserProfile';
+import type { UserProfile } from '@/types/profile';
 import type { FullAuthState } from '../types';
 
 export const createUpdateProfileAction = (get: () => FullAuthState) => {

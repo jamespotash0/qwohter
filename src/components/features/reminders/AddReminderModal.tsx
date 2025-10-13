@@ -13,8 +13,8 @@ import { useQuotesStore } from '@/stores/quotes/quotesStore';
 import { reminderService, type ReminderType } from '@/services/reminderService';
 import { quoteActivityService } from '@/services/quoteActivityService';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { useUserProfile } from '@/hooks/useUserProfile';
+import { useProfile } from '@/stores/auth/authStore';
+import { supabase } from '@/integrations/supabase/client'
 
 interface AddReminderModalProps {
   open: boolean;
@@ -42,26 +42,14 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
   const [date, setDate] = useState<Date>();
   const [time, setTime] = useState('09:00');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
 
-  // Get user profile
-  const { profile } = useUserProfile(userId as any);
+  // Get user profile from auth store
+  const profile = useProfile();
 
   // Get active (non-archived) quotes
   const activeQuotes = useMemo(() => {
     return quotes.filter(q => !q.archived);
   }, [quotes]);
-
-  // Get current user
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-      }
-    };
-    getCurrentUser();
-  }, []);
 
   // Reset form when modal opens or populate with editing data
   useEffect(() => {

@@ -15,6 +15,7 @@ interface OtpVerificationFormProps {
   onOtpCodeChange: (code: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   onResendCode: () => Promise<void>;
+  onChangeEmail?: () => void;
 }
 
 export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
@@ -23,7 +24,8 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
   loading,
   onOtpCodeChange,
   onSubmit,
-  onResendCode
+  onResendCode,
+  onChangeEmail
 }) => {
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [timeLeft, setTimeLeft] = useState(165); // 2:45 in seconds
@@ -172,19 +174,36 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
         </Button>
       </form>
 
-      {/* Resend Code Option */}
-      <div className="text-center">
-        <p className="text-gray-600 text-sm mb-4">
-          Didn't receive the code?
-        </p>
-        <button
-          type="button"
-          onClick={handleResendCode}
-          disabled={resendLoading}
-          className="text-orange-600 hover:text-orange-700 font-semibold text-sm underline-offset-4 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {resendLoading ? "Sending..." : "Resend code"}
-        </button>
+      {/* Resend Code and Change Email Options */}
+      <div className="text-center space-y-3">
+        <div>
+          <p className="text-gray-600 text-sm mb-2">
+            Didn't receive the code?
+          </p>
+          <button
+            type="button"
+            onClick={handleResendCode}
+            disabled={resendLoading}
+            className="text-orange-600 hover:text-orange-700 font-semibold text-sm underline-offset-4 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {resendLoading ? "Sending..." : "Resend code"}
+          </button>
+        </div>
+
+        {onChangeEmail && (
+          <div>
+            <p className="text-gray-600 text-sm mb-2">
+              Wrong email address?
+            </p>
+            <button
+              type="button"
+              onClick={onChangeEmail}
+              className="text-slate-600 hover:text-slate-700 font-semibold text-sm underline-offset-4 hover:underline"
+            >
+              Change email
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Countdown Timer */}

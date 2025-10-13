@@ -16,6 +16,7 @@ interface AuthFlowState {
 
 const AUTH_STATE_KEY = 'auth_flow_state';
 const STATE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+const OTP_STEP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes for OTP step
 
 /**
  * Save auth flow state to localStorage with timestamp
@@ -39,9 +40,19 @@ export const loadAuthState = (): AuthFlowState | null => {
 
     const state: AuthFlowState = JSON.parse(saved);
 
-    // Check if state is too old (expire after 24 hours)
-    if (state.timestamp && Date.now() - state.timestamp > STATE_EXPIRY_MS) {
-      console.log('Auth state expired, clearing');
+    // Check if state is too old
+    const expiryTime = state.step === 'verify-otp' ? OTP_STEP_EXPIRY_MS : STATE_EXPIRY_MS;
+
+    if (state.timestamp && Date.now() - state.timestamp > expiryTime) {
+      console.log(`Auth state expired (step: ${state.step}), clearing`);
+      clearAuthState();
+      return null;
+    }
+
+    // If on OTP step, don't restore - require user to start fresh
+    // This prevents users from being stuck on OTP screen after page reload
+    if (state.step === 'verify-otp') {
+      console.log('OTP verification step detected on reload, clearing state');
       clearAuthState();
       return null;
     }
