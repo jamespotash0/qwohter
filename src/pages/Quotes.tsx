@@ -332,8 +332,8 @@ const Quotes = () => {
 
   return (
     <PageContent title="Proposals" showPageHeader={true}>
-      {/* Empty State - Show when no proposals exist */}
-      {!quotesLoading && quotes.length === 0 ? (
+      {/* Empty State - Show when no proposals exist and we've confirmed there's no data */}
+      {!quotesLoading && quotes.length === 0 && currentOrganization?.id ? (
         <ContentCard>
           <div className="flex flex-col items-center justify-center py-16 px-6">
             <div className="relative mb-6">

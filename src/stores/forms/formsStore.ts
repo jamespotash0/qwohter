@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface FormField {
   id: string;
   label: string;
+  type?: string; // For FormBuilderV2 compatibility
   field_type: 'input' | 'textarea' | 'dropdown' | 'checkbox' | 'date' | 'product_selector' | 'calculated';
   input_type?: 'text' | 'number' | 'email' | 'tel' | 'url';
   required: boolean;
@@ -19,6 +20,12 @@ export interface FormField {
   calculation?: string; // For calculated fields (formula)
   depends_on?: { field_id: string; value: any }[] | null;
   order: number;
+  description?: string;
+  helpText?: string;
+  size?: 'normal' | 'half' | 'full';
+  minLength?: number;
+  maxLength?: number;
+  cssClass?: string;
 }
 
 // Tab definition
