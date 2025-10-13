@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeInput, validateSecurity, authRateLimiter } from '@/utils/security';
-import { useUser, useProfile } from '@/stores/auth/authStore';
+import { useUser } from '@/stores/auth/authStore';
 import { useOrganizations } from '@/hooks/useOrganizations';
 import { toast } from 'sonner';
 
@@ -10,8 +10,7 @@ import { toast } from 'sonner';
  */
 export const useSecureActions = () => {
   const user = useUser();
-  const profile = useProfile();
-  const { currentUserRole } = useOrganizations();
+  const { currentUserRole, currentOrganization } = useOrganizations();
 
   /**
    * Secure quote creation with validation
@@ -36,7 +35,7 @@ export const useSecureActions = () => {
     }
 
     // Validate organization access
-    if (!profile?.organization_id) {
+    if (!currentOrganization?.id) {
       throw new Error('User not assigned to organization');
     }
 
@@ -51,7 +50,7 @@ export const useSecureActions = () => {
         .from('quotes')
         .insert({
           ...sanitizedData,
-          organization_id: profile.organization_id,
+          organization_id: currentOrganization.id,
           created_by: user?.id,
         })
         .select()
@@ -64,7 +63,7 @@ export const useSecureActions = () => {
       console.error('Secure quote creation failed:', error);
       throw error;
     }
-  }, [user, profile]);
+  }, [user, currentOrganization]);
 
   /**
    * Secure quote update with validation
@@ -92,7 +91,7 @@ export const useSecureActions = () => {
       throw new Error('Quote not found');
     }
 
-    if (quoteData.organization_id !== profile?.organization_id) {
+    if (quoteData.organization_id !== currentOrganization?.id) {
       throw new Error('Access denied: Cannot modify this quote');
     }
 
@@ -153,12 +152,12 @@ export const useSecureActions = () => {
 
     try {
       // Validate admin has access to target organization
-      if (!profile?.organization_id) {
+      if (!currentOrganization?.id) {
         throw new Error('User not assigned to organization');
       }
       const { data: hasAccess, error: accessError } = await supabase
         .rpc('user_has_admin_role_in_org', {
-          org_id: profile.organization_id
+          org_id: currentOrganization.id
         });
 
       if (accessError || !hasAccess) {
@@ -169,7 +168,7 @@ export const useSecureActions = () => {
       console.error('Admin action failed:', error);
       throw error;
     }
-  }, [user, profile]);
+  }, [user, currentOrganization, currentUserRole]);
 
   /**
    * Secure organization code retrieval
@@ -186,13 +185,13 @@ export const useSecureActions = () => {
 
     try {
       // Get user's organization with code
-      if (!profile?.organization_id) {
+      if (!currentOrganization?.id) {
         throw new Error('User not assigned to organization');
       }
       const { data: orgData, error } = await supabase
         .from('organizations')
         .select('organization_code')
-        .eq('id', profile.organization_id)
+        .eq('id', currentOrganization.id)
         .single();
 
       if (error || !orgData) {
@@ -204,7 +203,7 @@ export const useSecureActions = () => {
       console.error('Failed to get organization code:', error);
       throw error;
     }
-  }, [user, profile]);
+  }, [user, currentOrganization, currentUserRole]);
 
   /**
    * Secure file upload validation
