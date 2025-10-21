@@ -684,13 +684,31 @@ const LandingEnhanced = () => {
             </div>
           </div>
 
-          <div className="border-t border-gray-700 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400 text-sm">
-              © 2024 Qwohter. All rights reserved.
+          <div className="border-t border-gray-700 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-gray-400 text-xs">
+              © 2025 Qwohter Inc. All rights reserved.
             </p>
-            <div className="flex space-x-6 mt-4 md:mt-0">
-              <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors duration-300">Privacy Policy</a>
-              <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors duration-300">Terms of Service</a>
+            <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-gray-400">
+              <a href="/privacy-policy" className="hover:text-white transition-colors duration-300">
+                Privacy notice
+              </a>
+              <a href="/legal" className="hover:text-white transition-colors duration-300">
+                Legal
+              </a>
+              <a href="/cookie-settings" className="hover:text-white transition-colors duration-300">
+                Cookie settings
+              </a>
+              <a href="/accessibility" className="hover:text-white transition-colors duration-300">
+                Accessibility Statement
+              </a>
+              <a href="/do-not-sell" className="hover:text-white transition-colors duration-300">
+                Do Not Sell My Personal Information
+              </a>
+              <select className="text-gray-400 bg-transparent border border-gray-600 rounded px-2 py-1 text-xs hover:border-gray-400 transition-colors cursor-pointer">
+                <option className="bg-gray-800">English</option>
+                <option className="bg-gray-800">Español</option>
+                <option className="bg-gray-800">Français</option>
+              </select>
             </div>
           </div>
         </div>

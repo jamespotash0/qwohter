@@ -1,15 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Zap, Palette, TrendingUp, Building2, Hammer } from 'lucide-react';
 import { AnimatedCounter } from '@/components/landing/AnimatedCounter';
 import { AppPreview } from '@/components/landing/AppPreview';
+import { motion } from 'framer-motion';
+import AOS from 'aos';
+import 'aos/dist/aos.css';
 
 const Landing = () => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
+    // Initialize AOS
+    AOS.init({
+      duration: 800,
+      easing: 'ease-out-cubic',
+      once: false,
+      mirror: true,
+      offset: 100,
+    });
+
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
@@ -81,31 +93,71 @@ const Landing = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="relative bg-white px-8 pt-32 pb-16 min-h-[800px] flex items-center">
+      <section className="relative bg-white px-8 pt-32 pb-16 min-h-[800px] flex items-center overflow-hidden">
         <div className="max-w-7xl mx-auto w-full">
           <div className="grid lg:grid-cols-2 gap-20 items-center">
-            <div className="animate-fade-in-up">
-              <h1 className="text-6xl font-bold text-gray-900 leading-tight mb-8">
-                The platform that <span className="text-blue-600">simplifies quoting</span>
-              </h1>
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed max-w-2xl">
-                Move away from scattered docs and spreadsheets—automatically design, generate, track, and manage quotes with ease, all from a single platform.
-              </p>
-              <div className="flex justify-center lg:justify-start">
-                <Button
-                  onClick={handleGetDemo}
-                  className="bg-orange-500 text-white px-8 py-4 rounded-full hover:bg-orange-600 transition-colors duration-200 font-semibold text-lg min-h-[56px]"
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+            >
+              <motion.h1
+                className="text-6xl font-bold text-gray-900 leading-tight mb-8"
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+              >
+                The platform that <motion.span
+                  className="text-blue-600"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.8, delay: 0.4 }}
                 >
-                  Get a Demo
-                </Button>
-              </div>
-            </div>
+                  simplifies quoting
+                </motion.span>
+              </motion.h1>
+              <motion.p
+                className="text-xl text-gray-600 mb-8 leading-relaxed max-w-2xl"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.5 }}
+              >
+                Move away from scattered docs and spreadsheets—automatically design, generate, track, and manage quotes with ease, all from a single platform.
+              </motion.p>
+              <motion.div
+                className="flex justify-center lg:justify-start"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.7 }}
+              >
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button
+                    onClick={handleGetDemo}
+                    className="bg-orange-500 text-white px-8 py-4 rounded-full hover:bg-orange-600 transition-colors duration-200 font-semibold text-lg min-h-[56px]"
+                  >
+                    Get a Demo
+                  </Button>
+                </motion.div>
+              </motion.div>
+            </motion.div>
 
-            <div className="relative animate-slide-in-right">
-              <div className="bg-gray-50 rounded-3xl p-8 shadow-2xl">
+            <motion.div
+              className="relative"
+              initial={{ opacity: 0, x: 100, rotate: 5 }}
+              animate={{ opacity: 1, x: 0, rotate: 0 }}
+              transition={{ duration: 1, delay: 0.3, type: 'spring', stiffness: 80 }}
+            >
+              <motion.div
+                className="bg-gray-50 rounded-3xl p-8 shadow-2xl"
+                whileHover={{ scale: 1.02, rotate: -1 }}
+                transition={{ type: 'spring', stiffness: 300 }}
+              >
                 <AppPreview />
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -114,24 +166,39 @@ const Landing = () => {
       <section className="py-16 bg-white overflow-hidden">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div>
+            <motion.div
+              data-aos="fade-up"
+              data-aos-delay="0"
+              whileHover={{ scale: 1.05, y: -5 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
               <p className="text-5xl font-bold text-blue-600">
                 <AnimatedCounter end={40} suffix="%" />
               </p>
               <p className="text-lg text-gray-600 mt-2">Faster Quote Turnaround</p>
-            </div>
-            <div>
+            </motion.div>
+            <motion.div
+              data-aos="fade-up"
+              data-aos-delay="100"
+              whileHover={{ scale: 1.05, y: -5 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
               <p className="text-5xl font-bold text-blue-600">
                 <AnimatedCounter end={25} suffix="%" />
               </p>
               <p className="text-lg text-gray-600 mt-2">Increase in Deal Win Rate</p>
-            </div>
-            <div>
+            </motion.div>
+            <motion.div
+              data-aos="fade-up"
+              data-aos-delay="200"
+              whileHover={{ scale: 1.05, y: -5 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
               <p className="text-5xl font-bold text-blue-600">
                 <AnimatedCounter end={100} suffix="%" />
               </p>
               <p className="text-lg text-gray-600 mt-2">Brand Consistency</p>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -142,11 +209,14 @@ const Landing = () => {
 
           {/* Generate Feature */}
           <div className="grid lg:grid-cols-2 gap-20 items-center">
-            <div>
-              <div className="inline-flex items-center px-4 py-2 bg-blue-600/10 rounded-full text-blue-600 font-medium text-sm mb-6">
+            <div data-aos="fade-right" data-aos-duration="1000">
+              <motion.div
+                className="inline-flex items-center px-4 py-2 bg-blue-600/10 rounded-full text-blue-600 font-medium text-sm mb-6"
+                whileHover={{ scale: 1.05 }}
+              >
                 <Zap className="w-4 h-4 mr-2" />
                 Quote Generation
-              </div>
+              </motion.div>
               <h3 className="text-5xl font-bold text-gray-900 mb-6">Generate quotes in seconds, not hours</h3>
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
                 Our intelligent quote engine automatically calculates pricing, applies discounts, and formats everything perfectly. Just fill in the details and go.
@@ -172,35 +242,58 @@ const Landing = () => {
                 </div>
               </div>
             </div>
-            <div className="relative">
+            <motion.div
+              className="relative"
+              data-aos="fade-left"
+              data-aos-duration="1000"
+              whileHover={{ scale: 1.03, rotate: 1 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
               <div className="bg-gray-50 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-shadow duration-300">
                 <div className="w-full h-80 bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl flex items-center justify-center">
-                  <div className="text-center">
+                  <motion.div
+                    className="text-center"
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ type: 'spring', stiffness: 400 }}
+                  >
                     <Zap className="w-16 h-16 text-blue-600 mx-auto mb-4" />
                     <p className="text-gray-600">Quote Generation Interface</p>
-                  </div>
+                  </motion.div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
 
           {/* Design Feature */}
           <div className="grid lg:grid-cols-2 gap-20 items-center">
-            <div className="relative order-2 lg:order-1">
+            <motion.div
+              className="relative order-2 lg:order-1"
+              data-aos="fade-right"
+              data-aos-duration="1000"
+              whileHover={{ scale: 1.03, rotate: -1 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
               <div className="bg-gray-50 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-shadow duration-300">
                 <div className="w-full h-80 bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl flex items-center justify-center">
-                  <div className="text-center">
+                  <motion.div
+                    className="text-center"
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ type: 'spring', stiffness: 400 }}
+                  >
                     <Palette className="w-16 h-16 text-purple-600 mx-auto mb-4" />
                     <p className="text-gray-600">Template Design Editor</p>
-                  </div>
+                  </motion.div>
                 </div>
               </div>
-            </div>
-            <div className="order-1 lg:order-2">
-              <div className="inline-flex items-center px-4 py-2 bg-purple-600/10 rounded-full text-purple-600 font-medium text-sm mb-6">
+            </motion.div>
+            <div className="order-1 lg:order-2" data-aos="fade-left" data-aos-duration="1000">
+              <motion.div
+                className="inline-flex items-center px-4 py-2 bg-purple-600/10 rounded-full text-purple-600 font-medium text-sm mb-6"
+                whileHover={{ scale: 1.05 }}
+              >
                 <Palette className="w-4 h-4 mr-2" />
                 Design & Templates
-              </div>
+              </motion.div>
               <h3 className="text-5xl font-bold text-gray-900 mb-6">Design beautiful quotes that win deals</h3>
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
                 Create stunning, branded quote templates with our intuitive drag-and-drop editor. See changes instantly with live preview and ensure every quote reflects your brand perfectly.
@@ -230,11 +323,14 @@ const Landing = () => {
 
           {/* Analytics Feature */}
           <div className="grid lg:grid-cols-2 gap-20 items-center">
-            <div>
-              <div className="inline-flex items-center px-4 py-2 bg-blue-600/10 rounded-full text-blue-600 font-medium text-sm mb-6">
+            <div data-aos="fade-right" data-aos-duration="1000">
+              <motion.div
+                className="inline-flex items-center px-4 py-2 bg-blue-600/10 rounded-full text-blue-600 font-medium text-sm mb-6"
+                whileHover={{ scale: 1.05 }}
+              >
                 <TrendingUp className="w-4 h-4 mr-2" />
                 Analytics & Tracking
-              </div>
+              </motion.div>
               <h3 className="text-5xl font-bold text-gray-900 mb-6">Track performance and optimize your sales</h3>
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
                 Get deep insights into your quoting process with comprehensive analytics. Track conversion rates, identify bottlenecks, and optimize your sales strategy with real-time data.
@@ -260,16 +356,26 @@ const Landing = () => {
                 </div>
               </div>
             </div>
-            <div className="relative">
+            <motion.div
+              className="relative"
+              data-aos="fade-left"
+              data-aos-duration="1000"
+              whileHover={{ scale: 1.03, rotate: 1 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
               <div className="bg-gray-50 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-shadow duration-300">
                 <div className="w-full h-80 bg-gradient-to-br from-green-50 to-green-100 rounded-2xl flex items-center justify-center">
-                  <div className="text-center">
+                  <motion.div
+                    className="text-center"
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ type: 'spring', stiffness: 400 }}
+                  >
                     <TrendingUp className="w-16 h-16 text-green-600 mx-auto mb-4" />
                     <p className="text-gray-600">Analytics Dashboard</p>
-                  </div>
+                  </motion.div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -277,7 +383,7 @@ const Landing = () => {
       {/* Use Cases Section */}
       <section id="usecases" className="px-8 py-24 bg-white">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20">
+          <div className="text-center mb-20" data-aos="fade-up">
             <h2 className="text-5xl font-bold text-gray-900 mb-6">Built for every type of business</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Whether you're a small agency or enterprise company, Qwohter adapts to your unique quoting needs
@@ -285,32 +391,62 @@ const Landing = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100">
-              <div className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center mb-6">
+            <motion.div
+              className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100"
+              data-aos="fade-up"
+              data-aos-delay="0"
+              whileHover={{ y: -10, scale: 1.02 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
+              <motion.div
+                className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center mb-6"
+                whileHover={{ rotate: 360, scale: 1.1 }}
+                transition={{ duration: 0.6 }}
+              >
                 <Building2 className="text-blue-600 text-2xl w-8 h-8" />
-              </div>
+              </motion.div>
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Professional Services</h3>
               <p className="text-gray-600 mb-6">Create detailed project proposals with time estimates, resource allocation, and milestone-based pricing.</p>
               <div className="text-blue-600 font-medium">Consulting • Legal • Marketing</div>
-            </div>
+            </motion.div>
 
-            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100">
-              <div className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center mb-6">
+            <motion.div
+              className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100"
+              data-aos="fade-up"
+              data-aos-delay="100"
+              whileHover={{ y: -10, scale: 1.02 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
+              <motion.div
+                className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center mb-6"
+                whileHover={{ rotate: 360, scale: 1.1 }}
+                transition={{ duration: 0.6 }}
+              >
                 <Hammer className="text-blue-600 text-2xl w-8 h-8" />
-              </div>
+              </motion.div>
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Construction & Trades</h3>
               <p className="text-gray-600 mb-6">Perfect for contractors, builders, and trades professionals managing multiple projects and material costs.</p>
               <div className="text-blue-600 font-medium">Construction • Plumbing • Electrical</div>
-            </div>
+            </motion.div>
 
-            <div className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100">
-              <div className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center mb-6">
+            <motion.div
+              className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow duration-300 border border-gray-100"
+              data-aos="fade-up"
+              data-aos-delay="200"
+              whileHover={{ y: -10, scale: 1.02 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
+              <motion.div
+                className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center mb-6"
+                whileHover={{ rotate: 360, scale: 1.1 }}
+                transition={{ duration: 0.6 }}
+              >
                 <TrendingUp className="text-blue-600 text-2xl w-8 h-8" />
-              </div>
+              </motion.div>
               <h3 className="text-2xl font-bold text-gray-900 mb-4">Sales & Manufacturing</h3>
               <p className="text-gray-600 mb-6">Streamline complex pricing for manufacturers, distributors, and enterprise sales teams with volume discounts.</p>
               <div className="text-blue-600 font-medium">Manufacturing • Distribution • Enterprise</div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -318,7 +454,7 @@ const Landing = () => {
       {/* Pricing Section */}
       <section id="pricing" className="px-8 py-24 bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20">
+          <div className="text-center mb-20" data-aos="fade-up">
             <h2 className="text-5xl font-bold text-gray-900 mb-6">Simple, transparent pricing</h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
               Choose the plan that fits your business. No hidden fees, no surprises. Cancel anytime.
@@ -327,7 +463,13 @@ const Landing = () => {
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {/* Starter Plan */}
-            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+            <motion.div
+              className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-300"
+              data-aos="fade-up"
+              data-aos-delay="0"
+              whileHover={{ y: -10, scale: 1.02 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
               <div className="text-center">
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">Starter</h3>
                 <p className="text-gray-600 mb-6">Perfect for small businesses and freelancers</p>
@@ -357,10 +499,16 @@ const Landing = () => {
                   <span className="text-gray-700">Email support</span>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Professional Plan */}
-            <div className="bg-white rounded-2xl p-8 shadow-xl border-2 border-blue-600 hover:shadow-2xl transition-shadow duration-300 relative">
+            <motion.div
+              className="bg-white rounded-2xl p-8 shadow-xl border-2 border-blue-600 hover:shadow-2xl transition-shadow duration-300 relative"
+              data-aos="fade-up"
+              data-aos-delay="100"
+              whileHover={{ y: -15, scale: 1.03 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                 <span className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm font-medium">Most Popular</span>
               </div>
@@ -397,10 +545,16 @@ const Landing = () => {
                   <span className="text-gray-700">Priority support</span>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Enterprise Plan */}
-            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-300">
+            <motion.div
+              className="bg-white rounded-2xl p-8 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow duration-300"
+              data-aos="fade-up"
+              data-aos-delay="200"
+              whileHover={{ y: -10, scale: 1.02 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+            >
               <div className="text-center">
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">Enterprise</h3>
                 <p className="text-gray-600 mb-6">For large organizations with custom needs</p>
@@ -430,7 +584,7 @@ const Landing = () => {
                   <span className="text-gray-700">SLA & phone support</span>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>

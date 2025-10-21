@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,17 +8,34 @@ import { ArrowLeft, CheckCircle, Eye, Zap, Users } from 'lucide-react';
 
 const DemoContact = () => {
   const navigate = useNavigate();
+  const [isScrolled, setIsScrolled] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
-    phone: '',
     company: '',
-    role: '',
-    employees: '1-5',
+    hearAboutUs: '',
     message: ''
   });
+  const [agreeToUpdates, setAgreeToUpdates] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    company: '',
+    hearAboutUs: '',
+    message: ''
+  });
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -26,26 +43,86 @@ const DemoContact = () => {
       ...prev,
       [name]: value
     }));
+    // Clear error when user starts typing
+    if (errors[name as keyof typeof errors]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {
+      firstName: '',
+      lastName: '',
+      email: '',
+      company: '',
+      hearAboutUs: '',
+      message: ''
+    };
+
+    let isValid = true;
+
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'Please enter your first name';
+      isValid = false;
+    }
+
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Please enter your last name';
+      isValid = false;
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = 'Please enter your email address';
+      isValid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+      isValid = false;
+    }
+
+    if (!formData.company.trim()) {
+      newErrors.company = 'Please enter your company name';
+      isValid = false;
+    }
+
+    if (!formData.hearAboutUs.trim()) {
+      newErrors.hearAboutUs = 'Please tell us how you heard about us';
+      isValid = false;
+    }
+
+    if (!formData.message.trim()) {
+      newErrors.message = 'Please enter a message';
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
+
     setIsSubmitting(true);
 
     // Create email content
-    const subject = encodeURIComponent('Demo Request - WallQu Quote Management Platform');
+    const subject = encodeURIComponent('Demo Request - Qwohter Quote Management Platform');
     const body = encodeURIComponent(`
 Hello,
 
-I would like to request a demo of the WallQu platform.
+I would like to request a demo of the Qwohter platform.
 
 Contact Details:
-- Name: ${formData.name}
+- Name: ${formData.firstName} ${formData.lastName}
 - Email: ${formData.email}
-- Phone: ${formData.phone}
 - Company: ${formData.company}
-- Role: ${formData.role}
-- Number of Employees: ${formData.employees}
+- How I heard about you: ${formData.hearAboutUs}
 
 Message:
 ${formData.message}
@@ -53,11 +130,11 @@ ${formData.message}
 Please contact me to schedule a demonstration.
 
 Best regards,
-${formData.name}
+${formData.firstName} ${formData.lastName}
     `);
 
     // Open default email client with pre-filled content
-    const mailtoLink = `mailto:demo@wallqu.com?subject=${subject}&body=${body}`;
+    const mailtoLink = `mailto:demo@qwohter.com?subject=${subject}&body=${body}`;
     window.open(mailtoLink, '_blank');
 
     // Show success state
@@ -67,7 +144,6 @@ ${formData.name}
     }, 1000);
   };
 
-  const isFormValid = formData.name && formData.email && formData.company;
 
   if (isSubmitted) {
     return (
@@ -91,12 +167,11 @@ ${formData.name}
               onClick={() => {
                 setIsSubmitted(false);
                 setFormData({
-                  name: '',
+                  firstName: '',
+                  lastName: '',
                   email: '',
-                  phone: '',
                   company: '',
-                  role: '',
-                  employees: '1-5',
+                  hearAboutUs: '',
                   message: ''
                 });
               }}
@@ -112,44 +187,245 @@ ${formData.name}
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30 grid lg:grid-cols-[1fr_1.5fr]">
-      {/* Left Side - Info Section */}
-      <div className="flex flex-col justify-between px-12 lg:px-16 py-8 lg:py-10">
-        <div>
-          {/* Logo */}
-          <div className="mb-8">
-            <Button
-              variant="ghost"
-              onClick={() => navigate('/')}
-              className="-ml-3"
+    <div className="min-h-screen bg-white">
+      {/* Navigation Bar */}
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isScrolled ? 'bg-white/95 backdrop-blur-sm border-b border-gray-100' : 'bg-transparent'
+      }`}>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <div
+              className="flex items-center cursor-pointer"
+              onClick={() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                navigate('/');
+              }}
             >
               <img
                 src="/logos/Landing_Page_Logo_Light.svg"
                 alt="Qwohter Logo"
                 className="h-8 w-auto"
               />
-            </Button>
-          </div>
+            </div>
 
-          {/* Hero Text */}
-          <div className="mb-12">
-            <h1 className="text-5xl text-gray-900 mb-4">
-              <span className="font-light">See Qwohter in </span><span className="font-bold">action</span>
-            </h1>
-            <p className="text-lg text-gray-600 leading-relaxed">
-              Fill out your company details below to book a personalized demo, kickoff a free trial, or explore a sandbox containing pre-populated data.
-            </p>
-          </div>
+            {/* Center Navigation */}
+            <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center space-x-12">
+              <a href="/#features" className="text-gray-600 hover:text-gray-900 font-medium cursor-pointer transition-colors duration-200">
+                Features
+              </a>
+              <a href="/#usecases" className="text-gray-600 hover:text-gray-900 font-medium cursor-pointer transition-colors duration-200">
+                Use Cases
+              </a>
+              <a href="/#pricing" className="text-gray-600 hover:text-gray-900 font-medium cursor-pointer transition-colors duration-200">
+                Pricing
+              </a>
+            </div>
 
-          {/* Features */}
-          <div className="space-y-6">
+            {/* Right Actions */}
+            <div className="flex items-center space-x-8">
+              <span
+                onClick={() => navigate('/sign-in')}
+                className="text-gray-600 hover:text-gray-900 font-medium cursor-pointer transition-colors duration-200"
+              >
+                Sign In
+              </span>
+              <Button
+                onClick={() => navigate('/demo-contact')}
+                className="bg-orange-500 text-white px-6 py-2.5 rounded-full hover:bg-orange-600 transition-colors duration-200 font-medium"
+              >
+                Get a Demo
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-6 py-16 pt-32">
+        {/* Heading */}
+        <div className="text-center mb-16">
+          <h1 className="text-5xl text-gray-900 leading-tight">
+            Turn quote <span className="font-bold text-orange-500">chaos</span> into <span className="font-bold text-blue-600">clarity</span><br />
+            and <span className="font-bold">close more deals</span>
+          </h1>
+        </div>
+
+        {/* Form and Features Grid */}
+        <div className="grid lg:grid-cols-2 gap-12 items-start">
+          {/* Left Side - Form (Hovering Card) */}
+          <Card className="bg-gray-50 p-8 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Note: Last two items have tighter spacing */}
+              {/* Row 1: First Name and Last Name */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                    First Name
+                  </label>
+                  <Input
+                    id="firstName"
+                    name="firstName"
+                    type="text"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    placeholder="Angel"
+                    className={`w-full placeholder:text-gray-400 ${errors.firstName ? 'border-red-500' : ''}`}
+                  />
+                  {errors.firstName && (
+                    <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                    Last Name
+                  </label>
+                  <Input
+                    id="lastName"
+                    name="lastName"
+                    type="text"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    placeholder="Phillips"
+                    className={`w-full placeholder:text-gray-400 ${errors.lastName ? 'border-red-500' : ''}`}
+                  />
+                  {errors.lastName && (
+                    <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 2: Work Email and Company */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                    Work Email
+                  </label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="name@company.com"
+                    className={`w-full placeholder:text-gray-400 ${errors.email ? 'border-red-500' : ''}`}
+                  />
+                  {errors.email && (
+                    <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
+                    Company
+                  </label>
+                  <Input
+                    id="company"
+                    name="company"
+                    type="text"
+                    value={formData.company}
+                    onChange={handleInputChange}
+                    placeholder="Acme Corp."
+                    className={`w-full placeholder:text-gray-400 ${errors.company ? 'border-red-500' : ''}`}
+                  />
+                  {errors.company && (
+                    <p className="text-red-500 text-xs mt-1">{errors.company}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* How did you hear about us */}
+              <div>
+                <label htmlFor="hearAboutUs" className="block text-sm font-medium text-gray-700 mb-2">
+                  How did you hear about us?
+                </label>
+                <Input
+                  id="hearAboutUs"
+                  name="hearAboutUs"
+                  type="text"
+                  value={formData.hearAboutUs}
+                  onChange={handleInputChange}
+                  placeholder="Enter your message"
+                  className={`w-full placeholder:text-gray-400 ${errors.hearAboutUs ? 'border-red-500' : ''}`}
+                />
+                {errors.hearAboutUs && (
+                  <p className="text-red-500 text-xs mt-1">{errors.hearAboutUs}</p>
+                )}
+              </div>
+
+              {/* Message */}
+              <div>
+                <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+                  Message
+                </label>
+                <Textarea
+                  id="message"
+                  name="message"
+                  rows={4}
+                  value={formData.message}
+                  onChange={handleInputChange}
+                  placeholder="Tell us about your quoting needs and challenges..."
+                  className={`w-full placeholder:text-gray-400 bg-white ${errors.message ? 'border-red-500' : ''}`}
+                />
+                {errors.message && (
+                  <p className="text-red-500 text-xs mt-1">{errors.message}</p>
+                )}
+              </div>
+
+              {/* Tighter spacing section */}
+              <div className="space-y-1.5">
+                {/* Checkbox Row */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="agreeToUpdates"
+                    checked={agreeToUpdates}
+                    onChange={(e) => setAgreeToUpdates(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-gray-300 text-gray-900 focus:ring-orange-500 flex-shrink-0"
+                  />
+                  <label htmlFor="agreeToUpdates" className="text-[11px] text-gray-600 cursor-pointer leading-tight">
+                    Yes, I'd like to receive news and updates by email
+                  </label>
+                </div>
+
+                {/* Privacy Policy Text and Button Row */}
+                <div className="flex items-center gap-4">
+                  <p className="text-[11px] text-gray-600 leading-tight flex-1 pr-2">
+                    By submitting this form<br />
+                    you agree with our{' '}
+                    <a href="/privacy-policy" className="text-blue-600 hover:underline">
+                      Privacy Policy
+                    </a>
+                  </p>
+
+                  <Button
+                    type="submit"
+                    className="bg-gray-900 hover:bg-gray-800 text-white py-3 text-base font-medium shadow-lg hover:shadow-xl transition-all duration-300 whitespace-nowrap rounded-full w-1/2"
+                  >
+                    {isSubmitting ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Sending...
+                      </div>
+                    ) : (
+                      'Schedule Your Demo'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </form>
+          </Card>
+
+          {/* Right Side - Features */}
+          <div className="space-y-8">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
                 <Zap className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">Generate Quotes in Seconds</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Generate Quotes in Seconds</h3>
+                <p className="text-gray-600 leading-relaxed">
                   Our intelligent quote engine automatically calculates pricing, applies discounts, and formats everything perfectly.
                 </p>
               </div>
@@ -160,8 +436,8 @@ ${formData.name}
                 <Eye className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">Design Beautiful Quotes</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Design Beautiful Quotes</h3>
+                <p className="text-gray-600 leading-relaxed">
                   Create stunning, branded quote templates with our intuitive drag-and-drop editor and live preview.
                 </p>
               </div>
@@ -172,8 +448,8 @@ ${formData.name}
                 <Users className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">Track Performance & Optimize</h3>
-                <p className="text-gray-600 text-sm leading-relaxed">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Track Performance & Optimize</h3>
+                <p className="text-gray-600 leading-relaxed">
                   Get deep insights into your quoting process with comprehensive analytics and real-time conversion tracking.
                 </p>
               </div>
@@ -182,153 +458,38 @@ ${formData.name}
         </div>
       </div>
 
-      {/* Right Side - Form Section */}
-      <div className="bg-[#F3F4F6] px-12 lg:px-16 py-8 lg:py-10 flex items-center justify-center">
-        <div className="w-full max-w-2xl">
-          <Card className="bg-slate-800 backdrop-blur-xl border-slate-700 p-10 shadow-2xl">
-            <h2 className="text-2xl font-semibold text-white mb-6">
-              Please fill out the form
-            </h2>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Row 1: Name and Email */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
-                    Full Name
-                  </label>
-                  <Input
-                    id="name"
-                    name="name"
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    placeholder="John Doe"
-                    className="w-full bg-white/95 border-gray-300 text-gray-900 placeholder:text-gray-500"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                    Company Email
-                  </label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="john@company.com"
-                    className="w-full bg-white/95 border-gray-300 text-gray-900 placeholder:text-gray-500"
-                  />
-                </div>
-              </div>
-
-              {/* Row 2: Phone and Company */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-300 mb-2">
-                    Phone Number
-                  </label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="+1 (555) 123-4567"
-                    className="w-full bg-white/95 border-gray-300 text-gray-900 placeholder:text-gray-500"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="company" className="block text-sm font-medium text-gray-300 mb-2">
-                    Company
-                  </label>
-                  <Input
-                    id="company"
-                    name="company"
-                    type="text"
-                    required
-                    value={formData.company}
-                    onChange={handleInputChange}
-                    placeholder="Your Company Inc."
-                    className="w-full bg-white/95 border-gray-300 text-gray-900 placeholder:text-gray-500"
-                  />
-                </div>
-              </div>
-
-              {/* Row 3: Role and Number of Employees */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="role" className="block text-sm font-medium text-gray-300 mb-2">
-                    Role
-                  </label>
-                  <Input
-                    id="role"
-                    name="role"
-                    type="text"
-                    value={formData.role}
-                    onChange={handleInputChange}
-                    placeholder="Sales Manager"
-                    className="w-full bg-white/95 border-gray-300 text-gray-900 placeholder:text-gray-500"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="employees" className="block text-sm font-medium text-gray-300 mb-2">
-                    Number of employees
-                  </label>
-                  <select
-                    id="employees"
-                    name="employees"
-                    value={formData.employees}
-                    onChange={handleInputChange}
-                    className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white/95 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  >
-                    <option value="1-5">1-5</option>
-                    <option value="5-10">5-10</option>
-                    <option value="10-20">10-20</option>
-                    <option value="20+">20+</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="message" className="block text-sm font-medium text-gray-300 mb-2">
-                  Message
-                </label>
-                <Textarea
-                  id="message"
-                  name="message"
-                  rows={4}
-                  value={formData.message}
-                  onChange={handleInputChange}
-                  placeholder="Tell us about your needs..."
-                  className="w-full bg-white/95 border-gray-300 text-gray-900 placeholder:text-gray-500"
-                />
-              </div>
-
-              <Button
-                type="submit"
-                disabled={!isFormValid || isSubmitting}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white disabled:opacity-50 disabled:cursor-not-allowed py-6 text-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300 mt-6"
-              >
-                {isSubmitting ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Sending...
-                  </div>
-                ) : (
-                  'Request a demo'
-                )}
-              </Button>
-            </form>
-          </Card>
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-100 py-8 mt-24">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="text-xs text-gray-600">
+              © 2025 Qwohter Inc. All rights reserved.
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-gray-600">
+              <a href="/privacy-policy" className="hover:text-gray-900 transition-colors">
+                Privacy notice
+              </a>
+              <a href="/legal" className="hover:text-gray-900 transition-colors">
+                Legal
+              </a>
+              <a href="/cookie-settings" className="hover:text-gray-900 transition-colors">
+                Cookie settings
+              </a>
+              <a href="/accessibility" className="hover:text-gray-900 transition-colors">
+                Accessibility Statement
+              </a>
+              <a href="/do-not-sell" className="hover:text-gray-900 transition-colors">
+                Do Not Sell My Personal Information
+              </a>
+              <select className="text-gray-600 bg-transparent border border-gray-300 rounded px-2 py-1 text-xs hover:border-gray-400 transition-colors cursor-pointer">
+                <option>English</option>
+                <option>Español</option>
+                <option>Français</option>
+              </select>
+            </div>
+          </div>
         </div>
-      </div>
+      </footer>
     </div>
   );
 };
