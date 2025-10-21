@@ -6,17 +6,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Zap, TrendingUp, Building2, Hammer, Sparkles } from 'lucide-react';
-import { AnimatedCounter } from '@/components/landing/AnimatedCounter';
+import { Zap } from 'lucide-react';
 import {
-  useFadeInUp,
-  useSlideInRight,
   useStaggerFadeIn,
   useMagneticHover,
-  useCardTilt,
   useRevealText,
   useFloat,
-  usePulse,
 } from '@/hooks/useAnimations';
 import { animeOnScroll, fadeInUp, elasticBounce, rippleEffect } from '@/utils/animations';
 
@@ -256,7 +251,6 @@ const LandingEnhanced = () => {
                   <div className="absolute -top-4 -right-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-full shadow-xl font-semibold animate-pulse">
                     ✓ Real-time Sync
                   </div>
-                  {/* Removed AI-Powered badge per user request */}
                 </div>
               </div>
             </div>
