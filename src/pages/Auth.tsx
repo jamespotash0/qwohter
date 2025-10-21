@@ -55,6 +55,14 @@ const Auth = () => {
   const companyInfo = useCompanyInfoState();
 
   // ============================================================================
+  // RESET FORM WHEN SWITCHING BETWEEN SIGN-IN AND CREATE-ACCOUNT
+  // ============================================================================
+  useEffect(() => {
+    // Reset form fields when route changes between sign-in and create-account
+    formState.resetFormFields();
+  }, [location.pathname]);
+
+  // ============================================================================
   // INVITE TOKEN HANDLING
   // ============================================================================
   useEffect(() => {
@@ -126,9 +134,9 @@ const Auth = () => {
         authFlow.setStep(savedState.step as any);
       }
     } else {
-      // If no saved state (e.g., OTP step was cleared), also clear temp signup data
-      console.log('No saved state found, clearing temp signup data');
-      tempSignupService.clear();
+      // No saved state found - but don't clear tempSignup data yet
+      // It has its own 2-hour expiry and is needed for resending OTP
+      console.log('No saved state found, but keeping temp signup data for OTP resend');
     }
   }, []);
 
@@ -239,12 +247,32 @@ const Auth = () => {
     });
 
     if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to resend verification code. Please try again.",
-        variant: "destructive"
-      });
-      throw error;
+      // Extract the wait time from Supabase error message
+      // Format: "For security purposes, you can only request this after 42 seconds."
+      const waitTimeMatch = error.message?.match(/after (\d+) seconds/);
+
+      if (waitTimeMatch && waitTimeMatch[1]) {
+        const seconds = parseInt(waitTimeMatch[1], 10);
+        toast({
+          title: "Please Wait",
+          description: `Please Wait - You can request another code in ${seconds} seconds.`,
+          variant: "destructive"
+        });
+      } else if (error.message?.includes('rate limit') || error.message?.includes('Email rate limit exceeded')) {
+        toast({
+          title: "Too Many Attempts",
+          description: "Please wait 60 seconds before requesting another code.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to resend verification code. Please try again.",
+          variant: "destructive"
+        });
+      }
+      // Don't throw - let the error be handled gracefully without clearing state
+      return;
     }
 
     // Update the OTP sent status
@@ -497,7 +525,9 @@ const Auth = () => {
       <div className="min-h-screen flex items-center justify-center p-8">
         <div className="w-full flex items-center justify-center">
           <div className={`w-full relative z-10 ${
-            authFlow.step === "company-info" ? "max-w-lg" : authFlow.step === "subscription" ? "max-w-4xl" : "max-w-md"
+            authFlow.step === "subscription" ? "max-w-4xl" :
+            authFlow.step === "auth" && !authFlow.isSignUp ? "max-w-md" :
+            "max-w-lg"
           }`}>
             {/* Subscription step - no card wrapper */}
             {authFlow.step === "subscription" ? (
@@ -508,125 +538,125 @@ const Auth = () => {
               />
             ) : (
               /* Main form card for other steps */
-              <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
-              {authFlow.step !== "subscription" && authFlow.step !== "verify-otp" && (
+                <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
+                {!["subscription", "verify-otp"].includes(authFlow.step) && (
                 <CardHeader className="text-center space-y-3 pb-2 pt-6 px-8">
                   {/* Progress Indicator - show for all onboarding steps */}
                   {authFlow.step !== "auth" && (
-                    <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} />
+                  <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} />
                   )}
 
                   <div className="space-y-1">
-                    <CardTitle className="text-2xl font-bold text-center">
-                      {authFlow.step === "auth" && (authFlow.isSignUp ? "Create Account" : "Welcome Back")}
-                      {authFlow.step === "organization" && "Organization Setup"}
-                      {authFlow.step === "company-info" && "Company Information"}
-                    </CardTitle>
-                    <CardDescription className="text-center">
-                      {authFlow.step === "auth" && (authFlow.isSignUp
-                        ? "Create your account to get started"
-                        : "Sign in to your account"
-                      )}
-                      {authFlow.step === "organization" && "Join or create your organization"}
-                      {authFlow.step === "company-info" && "Add your company details"}
-                    </CardDescription>
+                  <CardTitle className="text-2xl font-bold text-center">
+                    {authFlow.step === "auth" && (authFlow.isSignUp ? "Create Account" : "Welcome Back")}
+                    {authFlow.step === "organization" && "Organization Setup"}
+                    {authFlow.step === "company-info" && "Company Information"}
+                  </CardTitle>
+                  <CardDescription className="text-center">
+                    {authFlow.step === "auth" && (authFlow.isSignUp
+                    ? "Create your account to get started"
+                    : "Sign in to your account"
+                    )}
+                    {authFlow.step === "organization" && "Join or create your organization"}
+                    {authFlow.step === "company-info" && "Add your company details"}
+                  </CardDescription>
                   </div>
                 </CardHeader>
-              )}
+                )}
 
-              {/* Progress Indicator for verify-otp step (standalone, no card header) */}
-              {authFlow.step === "verify-otp" && (
+                {/* Progress Indicator for verify-otp step (standalone, no card header) */}
+                {authFlow.step === "verify-otp" && (
                 <div className="pt-6 px-8">
                   <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} />
                 </div>
-              )}
+                )}
 
-              <CardContent className={authFlow.step === "subscription" ? "p-8" : authFlow.step === "verify-otp" ? "px-8 pb-8 pt-4 space-y-4" : "px-8 pb-8 space-y-4"}>
+                <CardContent className={authFlow.step === "verify-otp" ? "px-8 pb-8 pt-4 space-y-4" : "px-8 pb-8 space-y-4"}>
 
-          {/* Auth Form (Sign-in / Sign-up) */}
-          {authFlow.step === "auth" && (
-            <AuthForm
-              isSignUp={authFlow.isSignUp}
-              email={formState.email}
-              password={formState.password}
-              confirmPassword={formState.confirmPassword}
-              firstName={formState.firstName}
-              lastName={formState.lastName}
-              showPassword={formState.showPassword}
-              loading={authFlow.loading}
-              onEmailChange={formState.setEmail}
-              onPasswordChange={formState.setPassword}
-              onConfirmPasswordChange={formState.setConfirmPassword}
-              onFirstNameChange={formState.setFirstName}
-              onLastNameChange={formState.setLastName}
-              onTogglePasswordVisibility={() => formState.setShowPassword(!formState.showPassword)}
-              onSubmit={onAuthSubmit}
-              onToggleMode={() => {
+              {/* Auth Form (Sign-in / Sign-up) */}
+              {authFlow.step === "auth" && (
+              <AuthForm
+                isSignUp={authFlow.isSignUp}
+                email={formState.email}
+                password={formState.password}
+                confirmPassword={formState.confirmPassword}
+                firstName={formState.firstName}
+                lastName={formState.lastName}
+                showPassword={formState.showPassword}
+                loading={authFlow.loading}
+                onEmailChange={formState.setEmail}
+                onPasswordChange={formState.setPassword}
+                onConfirmPasswordChange={formState.setConfirmPassword}
+                onFirstNameChange={formState.setFirstName}
+                onLastNameChange={formState.setLastName}
+                onTogglePasswordVisibility={() => formState.setShowPassword(!formState.showPassword)}
+                onSubmit={onAuthSubmit}
+                onToggleMode={() => {
                 if (authFlow.isSignUp) {
                   navigate("/sign-in");
                 } else {
                   navigate("/create-account");
                 }
-              }}
-            />
-          )}
+                }}
+              />
+              )}
 
-          {/* OTP Verification Form */}
-          {authFlow.step === "verify-otp" && (
-            <OtpVerificationForm
-              otpCode={formState.otpCode}
-              email={formState.email}
-              loading={authFlow.loading}
-              onOtpCodeChange={formState.setOtpCode}
-              onSubmit={onOtpSubmit}
-              onResendCode={onResendCode}
-              onChangeEmail={onChangeEmail}
-            />
-          )}
+              {/* OTP Verification Form */}
+              {authFlow.step === "verify-otp" && (
+              <OtpVerificationForm
+                otpCode={formState.otpCode}
+                email={formState.email}
+                loading={authFlow.loading}
+                onOtpCodeChange={formState.setOtpCode}
+                onSubmit={onOtpSubmit}
+                onResendCode={onResendCode}
+                onChangeEmail={onChangeEmail}
+              />
+              )}
 
-          {/* Organization Setup Form */}
-          {authFlow.step === "organization" && (
-            <OrganizationSetupForm
-              orgChoice={authFlow.orgChoice}
-              orgCode={formState.orgCode}
-              orgName={formState.orgName}
-              loading={authFlow.loading}
-              onOrgChoiceChange={authFlow.setOrgChoice}
-              onOrgCodeChange={formState.setOrgCode}
-              onOrgNameChange={formState.setOrgName}
-              onSubmit={onOrganizationSubmit}
-            />
-          )}
+              {/* Organization Setup Form */}
+              {authFlow.step === "organization" && (
+              <OrganizationSetupForm
+                orgChoice={authFlow.orgChoice}
+                orgCode={formState.orgCode}
+                orgName={formState.orgName}
+                loading={authFlow.loading}
+                onOrgChoiceChange={authFlow.setOrgChoice}
+                onOrgCodeChange={formState.setOrgCode}
+                onOrgNameChange={formState.setOrgName}
+                onSubmit={onOrganizationSubmit}
+              />
+              )}
 
-          {/* Company Info Form */}
-          {authFlow.step === "company-info" && (
-            <CompanyInfoSetupForm
-              organizationName={formState.orgName}
-              phone={companyInfo.companyPhone}
-              fax={companyInfo.companyFax}
-              address={companyInfo.companyAddress}
-              website={companyInfo.companyWebsite}
-              quoteStartingPoint={companyInfo.quoteStartingPoint}
-              industry={formState.industry}
-              foundVia={formState.foundVia}
-              loading={authFlow.loading}
-              userId={authFlow.userId || ""}
-              currentLogoUrl={companyInfo.currentLogoUrl}
-              onPhoneChange={companyInfo.setCompanyPhone}
-              onFaxChange={companyInfo.setCompanyFax}
-              onAddressChange={companyInfo.setCompanyAddress}
-              onWebsiteChange={companyInfo.setCompanyWebsite}
-              onQuoteStartingPointChange={companyInfo.setQuoteStartingPoint}
-              onIndustryChange={formState.setIndustry}
-              onFoundViaChange={formState.setFoundVia}
-              onLogoUpload={onLogoUpload}
-              onLogoError={onLogoError}
-              onSubmit={onCompanyInfoSubmit}
-              onSkip={onCompanyInfoSkip}
-            />
-          )}
-              </CardContent>
-            </Card>
+              {/* Company Info Form */}
+              {authFlow.step === "company-info" && (
+              <CompanyInfoSetupForm
+                organizationName={formState.orgName}
+                phone={companyInfo.companyPhone}
+                fax={companyInfo.companyFax}
+                address={companyInfo.companyAddress}
+                website={companyInfo.companyWebsite}
+                quoteStartingPoint={companyInfo.quoteStartingPoint}
+                industry={formState.industry}
+                foundVia={formState.foundVia}
+                loading={authFlow.loading}
+                userId={authFlow.userId || ""}
+                currentLogoUrl={companyInfo.currentLogoUrl}
+                onPhoneChange={companyInfo.setCompanyPhone}
+                onFaxChange={companyInfo.setCompanyFax}
+                onAddressChange={companyInfo.setCompanyAddress}
+                onWebsiteChange={companyInfo.setCompanyWebsite}
+                onQuoteStartingPointChange={companyInfo.setQuoteStartingPoint}
+                onIndustryChange={formState.setIndustry}
+                onFoundViaChange={formState.setFoundVia}
+                onLogoUpload={onLogoUpload}
+                onLogoError={onLogoError}
+                onSubmit={onCompanyInfoSubmit}
+                onSkip={onCompanyInfoSkip}
+              />
+              )}
+                </CardContent>
+              </Card>
             )}
           </div>
         </div>

@@ -39,6 +39,9 @@ interface AuthFormState {
   // UI state
   showPassword: boolean;
   setShowPassword: (show: boolean) => void;
+
+  // Reset function
+  resetFormFields: () => void;
 }
 
 export const useAuthFormState = (): AuthFormState => {
@@ -54,6 +57,23 @@ export const useAuthFormState = (): AuthFormState => {
   const [industry, setIndustry] = useState('');
   const [foundVia, setFoundVia] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  const resetFormFields = () => {
+    // Don't clear email if it's saved in "Remember Me"
+    const savedEmail = localStorage.getItem('remembered_email');
+    const savedRememberMe = localStorage.getItem('remember_me') === 'true';
+
+    if (!savedRememberMe) {
+      setEmail('');
+    }
+
+    setPassword('');
+    setConfirmPassword('');
+    setFirstName('');
+    setLastName('');
+    setFullName('');
+    setShowPassword(false);
+  };
 
   return {
     email,
@@ -80,5 +100,6 @@ export const useAuthFormState = (): AuthFormState => {
     setFoundVia,
     showPassword,
     setShowPassword,
+    resetFormFields,
   };
 };

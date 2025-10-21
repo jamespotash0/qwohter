@@ -95,7 +95,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
     <>
       <form onSubmit={onSubmit} className="space-y-4">
         {isSignUp && (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <div className="space-y-2">
               <Label htmlFor="firstName" className="text-gray-700 font-medium text-sm">
                 First Name

@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Shield } from "lucide-react";
+import { Mail } from "lucide-react";
 
 interface OtpVerificationFormProps {
   otpCode: string;
@@ -52,17 +52,27 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
 
   const handleDigitChange = (index: number, value: string) => {
     // Only allow digits
-    if (!/^\d*$/.test(value)) return;
+    const cleanValue = value.replace(/\D/g, '');
+    if (!cleanValue && value !== '') return;
 
     const newDigits = [...digits];
-    newDigits[index] = value.slice(-1); // Take only the last character
-    setDigits(newDigits);
 
-    // Update the full code
+    // If user clears the input
+    if (value === '') {
+      newDigits[index] = '';
+      setDigits(newDigits);
+      onOtpCodeChange(newDigits.join(''));
+      return;
+    }
+
+    // Take only the last digit typed (handles replacement)
+    const lastDigit = cleanValue.slice(-1);
+    newDigits[index] = lastDigit;
+    setDigits(newDigits);
     onOtpCodeChange(newDigits.join(''));
 
-    // Move to next input if digit entered
-    if (value && index < 5) {
+    // Auto-advance to next input
+    if (index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
@@ -133,10 +143,10 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center mb-6">
-        <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <Shield className="text-slate-700 h-8 w-8" />
+        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <Mail className="text-slate-700 h-6 w-6" />
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Verify your email</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Check your inbox!</h1>
         <p className="text-gray-600 text-sm mb-2">We've sent a 6-digit verification code to</p>
         <p className="text-slate-700 font-semibold mb-4">{email}</p>
       </div>
@@ -147,7 +157,25 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
             Enter verification code
           </label>
           <div className="flex justify-center gap-3">
-            {[0, 1, 2, 3, 4, 5].map((index) => (
+            {[0, 1, 2].map((index) => (
+              <input
+                key={index}
+                ref={(el) => (inputRefs.current[index] = el)}
+                type="text"
+                inputMode="numeric"
+                maxLength={1}
+                value={digits[index] || ''}
+                onChange={(e) => handleDigitChange(index, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(index, e)}
+                onPaste={handlePaste}
+                className="w-12 h-14 text-center text-xl font-bold border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-slate-700/20 focus:border-slate-700 transition-colors duration-200 bg-white shadow-sm outline-none"
+                required
+              />
+            ))}
+            <div className="flex items-center px-2">
+              <span className="text-gray-400 text-2xl font-bold">-</span>
+            </div>
+            {[3, 4, 5].map((index) => (
               <input
                 key={index}
                 ref={(el) => (inputRefs.current[index] = el)}
@@ -176,9 +204,9 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
 
       {/* Resend Code and Change Email Options */}
       <div className="text-center space-y-3">
-        <div>
-          <p className="text-gray-600 text-sm mb-2">
-            Didn't receive the code?
+        <div className="flex items-center justify-center gap-2">
+          <p className="text-gray-600 text-sm">
+            Didn't receive it?
           </p>
           <button
             type="button"
@@ -186,21 +214,18 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
             disabled={resendLoading}
             className="text-orange-600 hover:text-orange-700 font-semibold text-sm underline-offset-4 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {resendLoading ? "Sending..." : "Resend code"}
+            {resendLoading ? "Sending..." : "Resend Code"}
           </button>
         </div>
 
         {onChangeEmail && (
           <div>
-            <p className="text-gray-600 text-sm mb-2">
-              Wrong email address?
-            </p>
             <button
               type="button"
               onClick={onChangeEmail}
-              className="text-slate-600 hover:text-slate-700 font-semibold text-sm underline-offset-4 hover:underline"
+              className="text-orange-600 hover:text-orange-700 font-semibold text-sm underline-offset-4 hover:underline"
             >
-              Change email
+              Change email address
             </button>
           </div>
         )}
