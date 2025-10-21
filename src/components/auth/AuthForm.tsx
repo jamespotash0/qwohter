@@ -95,7 +95,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
     <>
       <form onSubmit={onSubmit} className="space-y-4">
         {isSignUp && (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <div className="space-y-2">
               <Label htmlFor="firstName" className="text-gray-700 font-medium text-sm">
                 First Name
@@ -277,7 +277,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               onCheckedChange={(checked) => setAcceptTerms(Boolean(checked))}
               className="size-4 !rounded-[4px] border border-gray-300 data-[state=checked]:bg-slate-600 data-[state=checked]:border-slate-600 mt-0.5"
             />
-            <Label htmlFor="acceptTerms" className="text-[11px] text-gray-600 cursor-pointer leading-tight">
+            <Label htmlFor="acceptTerms" className="text-[10px] text-gray-600 cursor-pointer leading-tight">
               By clicking here you accept our{" "}
               <a
                 href="/terms-of-service"
