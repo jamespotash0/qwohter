@@ -22,59 +22,43 @@ export class SectionGenerators {
     // For now, try to use logo_public_url (should work with public bucket)
     // If that doesn't work, we can construct the public URL from logo_url
     let logoUrl = organizationInfo?.logo_public_url;
-    
+
     // If logo_public_url doesn't work but we have logo_url (storage path), construct public URL
     if (!logoUrl && organizationInfo?.logo_url) {
       logoUrl = `https://piuwrlaoxuefmiisuamc.supabase.co/storage/v1/object/public/organization-logos/${organizationInfo.logo_url}`;
     }
-    
-    
+
+    // console.log('🖼️ Logo Debug Info:', {
+    //   logo_public_url: organizationInfo?.logo_public_url,
+    //   logo_url: organizationInfo?.logo_url,
+    //   finalLogoUrl: logoUrl,
+    //   hasLogo: logoUrl && logoUrl.trim() !== '',
+    //   organizationInfo: organizationInfo
+    // });
+
     const hasLogo = logoUrl && logoUrl.trim() !== '';
     const hasFax = fax && fax.trim() !== '';
 
 
-    // Flexible logo sizing - detects aspect ratio and adjusts container
-    const logoHtml = hasLogo 
-      ? `<img 
-          src="${logoUrl}" 
-          alt="Company Logo" 
-          style="max-width: 100%; max-height: 100%; object-fit: contain; opacity: 0; transition: opacity 0.3s ease;" 
+    // Fixed container with object-fit: contain to handle all aspect ratios
+    const logoHtml = hasLogo
+      ? `<img
+          src="${logoUrl}"
+          alt="Company Logo"
+          style="width: 100%; height: 100%; object-fit: contain; object-position: left center;"
           onError="this.style.display='none'"
-          onLoad="
-            const img = this;
-            const container = img.parentElement;
-            const aspectRatio = img.naturalWidth / img.naturalHeight;
-            
-            // Adjust container size based on aspect ratio to better fill available space
-            if (aspectRatio > 3) {
-              // Very wide logos (like 1537x409 ≈ 3.8:1) - use more width
-              container.style.width = '500px';
-              container.style.height = '90px';
-            } else if (aspectRatio < 1.5) {
-              // Square or tall logos (like 1300x1300 = 1:1) - make them bigger
-              container.style.width = '180px';
-              container.style.height = '150px';
-            } else {
-              // Standard landscape logos (1.5:1 to 3:1) - use more space
-              container.style.width = '450px';
-              container.style.height = '120px';
-            }
-            
-            // Show the image after container is properly sized
-            img.style.opacity = '1';
-          "
         />`
       : '';
     
 
-    return `<div class="header-section">
-      <div class="company-info">
-        <div class="company-logo" style="position: absolute; top: 40px; left: 60px; width: 120px; height: 90px; display: flex; align-items: center; justify-content: flex-start; transition: all 0.3s ease;">
+    return `<div class="header-section" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0px 0px 30px 0px;">
+      <div class="company-info" style="flex: 0 0 auto; width: 250px;">
+        <div class="company-logo" style="width: 250px; height: 100px; display: flex; align-items: center; justify-content: flex-start;">
           ${logoHtml}
         </div>
       </div>
-      
-      <div class="contact-details" style="width: 40%; margin-left: 280px;">
+
+      <div class="contact-details" style="flex: 1; min-width: 0; padding-left: 70px;">
         <div class="contact-row">
           <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Contact:</span>
           <span class="value">${contactName}</span>
@@ -232,7 +216,7 @@ export class SectionGenerators {
         <div class="term-item section-header-item" style="break-inside: avoid; margin-bottom: 8px; font-weight: bold; font-size: 12pt; margin-top: 1.5em;">GENERAL NOTES AND TERMS:</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">1. <strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">2. All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate ? wageRate + ' ' : ''}Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</div>
-        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">3. <strong>Delivery includes drop-off to the Roof</strong> of the site, if applicable.</div>
+        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">3. <span style="color: red;">Quoted delivery pricing assumes <strong>elevator or ground-level access</strong>. Deliveries involving stairs, restricted access, or requiring additional equipment (e.g., outside lift) are subject to additional charges.</span></div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">4. Pricing is <strong>exclusive of any applicable taxes</strong>, which will be added as required.</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">5. The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">6. Final pricing is <strong>subject to site inspection and verification</strong> of all dimensions and conditions by our installation team.</div>
@@ -250,10 +234,11 @@ export class SectionGenerators {
       </div>
     </div>
 
-    <div class="signature-acceptance-section">
+    <div class="signature-acceptance-section" style="line-height: 1.15;">
       <br><strong>Signed By:</strong> ___________________________________________&nbsp;&nbsp;&nbsp;<strong>Date:</strong> _____________________
-      
-      <h2 class="section-header editable-header" contenteditable="false" style="margin-top: 20px;">ACCEPTANCE OF PROPOSAL:</h2>
+      <br>
+
+      <h2 class="section-header editable-header" contenteditable="false" style="margin-top: 25px; margin-bottom: 15px;">ACCEPTANCE OF PROPOSAL:</h2>
       <p style="font-style: italic; font-size: 9pt; line-height: 1.2;">
         The above prices, specifications, and conditions are satisfactory and are hereby accepted. Any alteration or deviation from above specifications will be executed upon written approval and may/will be subject to additional costs over and above the estimate. All removal of packing material is the customer's responsibility. Electrical and H.V.A.C. installation(s) are not included. Visa, Mastercard and American Express (AMEX) are accepted. Payments by credit card will be charged a processing fee. Pricing subject to applicable sales tax unless otherwise noted. Late payments will be subject to a 1.5% finance charge per month. Cancellations will be subject to a restocking fee.
       </p>

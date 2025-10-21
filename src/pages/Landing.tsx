@@ -18,11 +18,11 @@ const Landing = () => {
   }, []);
 
   const handleGetDemo = () => {
-    navigate('/auth?mode=demo');
+    navigate('/demo-contact');
   };
 
   const handleSignIn = () => {
-    navigate('/auth');
+    navigate('/sign-in');
   };
 
   return (
@@ -42,7 +42,7 @@ const Landing = () => {
               }}
             >
               <img
-                src="/logos/Landing-page-logo.svg"
+                src="/logos/Landing_Page_Logo_Light.svg"
                 alt="Qwohter Logo"
                 className="h-8 w-auto"
               />
@@ -442,7 +442,7 @@ const Landing = () => {
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center mb-4">
                 <img
-                  src="/logos/Landing-page-logo.svg"
+                  src="/logos/Landing_Page_Logo_Light.svg"
                   alt="Qwohter Logo"
                   className="h-6 w-auto"
                 />

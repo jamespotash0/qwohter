@@ -1,9 +1,7 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Star } from "lucide-react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
-import { useQuotes } from "@/hooks/useQuotes";
+import { useQuotesStore } from "@/stores/quotes/quotesStore";
 import { useOrganizationSettings } from "@/hooks/useCompanySettings";
 import { QuoteCreatorWizardProps } from './types/wizardTypes';
 import { useWizardState } from './hooks/useWizardState';
@@ -20,7 +18,8 @@ const QuoteCreatorWizard = ({
   onQuoteNameChange, 
   existingQuote 
 }: QuoteCreatorWizardProps) => {
-  const { createQuote, updateQuote } = useQuotes();
+  const createQuote = useQuotesStore((state) => state.createQuote);
+  const updateQuote = useQuotesStore((state) => state.updateQuote);
   const [activeStep, setActiveStep] = useState(0);
   const [editingQuoteName, setEditingQuoteName] = useState(false);
   const [localQuoteName, setLocalQuoteName] = useState(quoteName);
@@ -46,6 +45,13 @@ const QuoteCreatorWizard = ({
     handleWallStructureSupportUpdate
   } = useWizardState(existingQuote);
 
+  // Sync localQuoteName with quoteName prop when it changes
+  useEffect(() => {
+    if (quoteName !== localQuoteName) {
+      setLocalQuoteName(quoteName);
+    }
+  }, [quoteName]);
+
   // Get organization settings for conditional fax validation
   const { organization } = useOrganizationSettings();
 
@@ -59,7 +65,7 @@ const QuoteCreatorWizard = ({
     isDeliveryLaborValid,
     isPricingValid,
     // isQuoteStatusValid
-  } = useWizardValidation(contactInfo, jobDetails, walls, deliveryLabor, pricing, quoteStatus, organization?.organization_info);
+  } = useWizardValidation(contactInfo, jobDetails, walls, deliveryLabor, pricing, quoteStatus, organization || undefined);
 
   // Create wizard steps with validation states
   const steps = createWizardSteps(
@@ -144,7 +150,7 @@ const QuoteCreatorWizard = ({
           delivery_details: deliveryLabor.delivery,
           labor_details: deliveryLabor.labor,
           proposal_number: jobDetails.proposalNumber,
-          status: quoteStatus
+          status: quoteStatus as any
         });
         toast.success("Quote updated successfully!");
       } else {
@@ -251,90 +257,73 @@ const QuoteCreatorWizard = ({
   };
 
   return (
-    <div className="h-screen w-full bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30 flex flex-col overflow-hidden">
-      <WizardHeader
-        localQuoteName={localQuoteName}
-        editingQuoteName={editingQuoteName}
-        quoteStatus={quoteStatus}
-        completedSteps={completedSteps}
-        totalSteps={steps.length}
-        onBackToDashboard={onBackToDashboard}
-        onQuoteNameChange={setLocalQuoteName}
-        onEditingQuoteNameChange={setEditingQuoteName}
-        onQuoteStatusChange={setQuoteStatus}
-        onSave={handleSave}
-        onSaveAsDraft={handleSaveAsDraft}
-        onQuoteNameSave={onQuoteNameChange}
-      />
+    <div className="h-full w-full flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
+      {/* Combined Header with Navigation */}
+      <div className="w-full bg-white border-b border-slate-200 flex-shrink-0">
+        <div className="w-full px-8">
+          {/* Top row - Back button, quote name, save buttons */}
+          <div className="flex items-center justify-between py-4 border-b border-slate-100">
+            <WizardHeader
+              localQuoteName={localQuoteName}
+              editingQuoteName={editingQuoteName}
+              quoteStatus={quoteStatus}
+              completedSteps={completedSteps}
+              totalSteps={steps.length}
+              onBackToDashboard={onBackToDashboard}
+              onQuoteNameChange={setLocalQuoteName}
+              onEditingQuoteNameChange={setEditingQuoteName}
+              onQuoteStatusChange={setQuoteStatus}
+              onSave={handleSave}
+              onSaveAsDraft={handleSaveAsDraft}
+              onQuoteNameSave={onQuoteNameChange}
+            />
+          </div>
 
-      <div className="flex-1 flex overflow-hidden h-full">
-        <div className="flex w-full max-w-full mx-auto px-4 h-full">
-          <StepNavigation
-            steps={steps}
-            activeStep={activeStep}
-            onStepChange={setActiveStep}
-          />
-
-          {/* Main Content */}
-          <div className="flex-1 p-4 pl-2 flex flex-col overflow-hidden h-full">
-            <Card className="bg-white/90 backdrop-blur-sm border border-white/50 shadow-2xl flex-1 flex flex-col overflow-hidden focus-within:ring-0 h-full">
-              <CardHeader className="pb-4 border-b border-slate-100 flex-shrink-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg">
-                      <currentStep.icon className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-xl font-bold text-slate-900">
-                        {currentStep.label}
-                      </CardTitle>
-                      <p className="text-slate-600 text-sm">{currentStep.description}</p>
-                    </div>
-                  </div>
-                  {currentStep.isValid && (
-                    <div className="flex items-center gap-2 px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full">
-                      <Star className="w-4 h-4" />
-                      <span className="text-sm font-medium">Done</span>
-                    </div>
-                  )}
-                </div>
-              </CardHeader>
-              
-              <CardContent className="flex-1 px-10 pt-4 pb-10 overflow-hidden min-h-0">
-                <div className="h-full overflow-y-auto">
-                  <div className="pr-8 pb-6 min-h-full">
-                    <StepContent
-                      stepId={currentStep.id}
-                      contactInfo={contactInfo}
-                      jobDetails={jobDetails}
-                      walls={walls}
-                      deliveryLabor={deliveryLabor}
-                      pricing={pricing}
-                      allQuoteData={allQuoteData}
-                      onContactInfoUpdate={setContactInfo}
-                      onJobDetailsUpdate={setJobDetails}
-                      onWallsUpdate={setWalls}
-                      onDeliveryLaborUpdate={setDeliveryLabor}
-                      onPricingUpdate={setPricing}
-                      onWallPocketDoorsUpdate={handleWallPocketDoorsUpdate}
-                      onWallStructureSupportUpdate={handleWallStructureSupportUpdate}
-                      onSave={handleSave}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-
-              <NavigationFooter
+          {/* Bottom row - Step navigation */}
+          <div className="py-3 -mx-8">
+            <div className="px-8 overflow-x-auto">
+              <StepNavigation
+                steps={steps}
                 activeStep={activeStep}
-                totalSteps={steps.length}
-                allStepsValid={steps.every(step => step.isValid)}
-                onPrevious={handlePrevious}
-                onNext={handleNext}
-                onSave={handleSave}
+                onStepChange={setActiveStep}
               />
-            </Card>
+            </div>
           </div>
         </div>
+      </div>
+
+      <div className="flex-1 flex flex-col overflow-hidden bg-white">
+        {/* Main Content */}
+        <div className="flex-1 overflow-hidden">
+          <div className="h-full overflow-y-auto px-16 py-8">
+            <StepContent
+              stepId={currentStep.id}
+              contactInfo={contactInfo}
+              jobDetails={jobDetails}
+              walls={walls}
+              deliveryLabor={deliveryLabor}
+              pricing={pricing}
+              allQuoteData={allQuoteData}
+              onContactInfoUpdate={setContactInfo}
+              onJobDetailsUpdate={setJobDetails}
+              onWallsUpdate={setWalls}
+              onDeliveryLaborUpdate={setDeliveryLabor}
+              onPricingUpdate={setPricing}
+              onWallPocketDoorsUpdate={handleWallPocketDoorsUpdate}
+              onWallStructureSupportUpdate={handleWallStructureSupportUpdate}
+              onSave={handleSave}
+            />
+          </div>
+        </div>
+
+        <NavigationFooter
+          activeStep={activeStep}
+          totalSteps={steps.length}
+          allStepsValid={steps.every(step => step.isValid)}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+          onSave={handleSave}
+        />
       </div>
     </div>
   );

@@ -1,18 +1,20 @@
 /**
- * Authentication Flow Helper Utilities
- * 
- * Extracted from Auth.tsx to provide reusable authentication flow logic
- * including sign up, sign in, OTP verification, profile setup, and organization management
+ * Authentication Flow Helper Utilities - Updated for New Schema
+ *
+ * Handles authentication flow with memberships table and state tracking
  */
 
 import { supabase } from "@/integrations/supabase/client";
-import { sanitizeInput, authRateLimiter } from "@/utils/security";
+import { sanitizeInput } from "@/utils/security";
+import { onboardingStateHelpers } from "@/services/onboardingStateService";
+import { OrganizationCreationLimiter } from "@/services/rateLimitingService";
+import { tempSignupService } from "@/services/tempSignupService";
 
 export interface AuthResult {
   success: boolean;
   data?: any;
   error?: string;
-  nextStep?: 'verify-otp' | 'profile' | 'organization' | 'complete';
+  nextStep?: 'verify-otp' | 'profile' | 'organization' | 'company-info' | 'pending-approval' | 'complete';
 }
 
 export interface ProfileSetupData {
@@ -24,6 +26,8 @@ export interface OrganizationChoice {
   type: 'join' | 'create';
   orgCode?: string;
   orgName?: string;
+  industry?: string;
+  foundVia?: string;
 }
 
 export interface OrganizationSetupData {
@@ -37,93 +41,41 @@ export interface OrganizationSetupData {
 export const authFlowHelpers = {
   /**
    * Handle user sign in with email and password
-   * Auth-first approach: Try auth signin first, then check profile completion
    */
   handleSignIn: async (email: string, password: string): Promise<AuthResult> => {
-    console.log('=== SIGNIN FUNCTION START (Auth-First) ===');
+    console.log('=== SIGNIN FUNCTION START ===');
     console.log('Email:', email);
-    
-    // First, let's check what's actually in the database in real-time
-    console.log('🔍 Checking real-time database state...');
-    
-    // Check profiles table
-    const { data: profileCheck, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, email, full_name, organization_id, created_at')
-      .eq('email', email)
-      .single();
-    
-    console.log('📊 Profiles table check:', {
-      found: !!profileCheck,
-      profile: profileCheck,
-      error: profileError?.message
-    });
-    
-    // Check if we can query auth.users (if we have proper permissions)
+
     try {
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-      const userInAuth = authUsers?.users?.find(u => u.email === email);
-      console.log('🔐 Auth table check:', {
-        found: !!userInAuth,
-        user: userInAuth ? { id: userInAuth.id, email: userInAuth.email, created_at: userInAuth.created_at } : null,
-        error: authError?.message
-      });
-    } catch (authCheckError) {
-      console.log('🔐 Auth table check failed (expected if no admin access):', authCheckError);
-    }
-    
-    try {
-      // Try Supabase auth signin first - it's the authoritative system
-      console.log('Attempting Supabase auth.signInWithPassword...');
+      // Try Supabase auth signin
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      
-      console.log('Supabase signIn response:', { 
-        hasUser: !!data?.user, 
-        hasSession: !!data?.session,
-        error: error?.message 
-      });
-      
+
       if (error) {
         console.log('SignIn error:', error);
-        
+
         if (error.message === 'Invalid login credentials') {
-          // Use the real-time database check we just performed
-          console.log('Using real-time database check results for error message');
-          
-          if (!profileCheck) {
-            // No profile found, and signin failed - email doesn't exist
-            console.log('No profile found and signin failed - email doesn\'t exist');
-            return {
-              success: false,
-              error: "No account found with this email. Please create an account first."
-            };
-          } else {
-            // Profile exists but signin failed - wrong password
-            console.log('Profile exists but signin failed - wrong password');
-            return {
-              success: false,
-              error: "Incorrect password. Please try again."
-            };
-          }
+          return {
+            success: false,
+            error: "Invalid email or password. Please check your credentials and try again."
+          };
         }
-        
-        // Handle other auth errors
+
         if (error.message === 'Email not confirmed') {
           return {
             success: false,
             error: "Please check your email and click the verification link before signing in."
           };
         }
-        
+
         return {
           success: false,
           error: error.message
         };
       }
-      
+
       if (!data.user) {
         return {
           success: false,
@@ -131,59 +83,26 @@ export const authFlowHelpers = {
         };
       }
 
-      console.log('SignIn successful, checking profile completion...');
-      
-      // Check if user completed onboarding
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('full_name, organization_id')
-        .eq('id', data.user.id)
-        .single();
+      console.log('SignIn successful, determining next step...');
 
-      console.log('Profile completion check:', { 
-        profileExists: !!profile, 
-        hasFullName: !!profile?.full_name, 
-        hasOrgId: !!profile?.organization_id,
-        profileError: profileError?.message
-      });
+      // Determine where user should go next
+      const nextStep = await onboardingStateHelpers.determineOnboardingStep(data.user.id);
 
-      // Profile doesn't exist yet - user needs to complete signup flow
-      if (profileError || !profile) {
-        console.log('Profile not found - resuming onboarding at profile step');
+      if (!nextStep) {
+        // User completed onboarding
         return {
           success: true,
-          nextStep: 'profile',
+          nextStep: 'complete',
           data: { userId: data.user.id }
         };
       }
 
-      // Profile exists but incomplete - determine next step
-      if (!profile.full_name) {
-        console.log('Profile missing full_name - resuming at profile step');
-        return {
-          success: true,
-          nextStep: 'profile',
-          data: { userId: data.user.id }
-        };
-      }
-      
-      if (!profile.organization_id) {
-        console.log('Profile missing organization - resuming at organization step');
-        return {
-          success: true,
-          nextStep: 'organization',
-          data: { userId: data.user.id }
-        };
-      }
-
-      // Profile is complete
-      console.log('Profile complete - signin successful');
       return {
         success: true,
-        nextStep: 'complete',
+        nextStep: nextStep as any,
         data: { userId: data.user.id }
       };
-      
+
     } catch (error: any) {
       console.log('SignIn catch error:', error);
       return {
@@ -194,145 +113,123 @@ export const authFlowHelpers = {
   },
 
   /**
-   * Handle user sign up with email and password
-   * Auth-first approach: Check auth users first, then attempt signup
+   * Handle user sign up with email and password - New approach using OTP without creating user first
    */
-  handleSignUp: async (email: string, password: string): Promise<AuthResult> => {
-    console.log('=== SIGNUP FUNCTION START (Auth-First) ===');
+  handleSignUp: async (email: string, password: string, fullName: string): Promise<AuthResult> => {
+    console.log('=== SIGNUP FUNCTION START (NEW APPROACH) ===');
     console.log('Email:', email);
-    
-    // First, check what's actually in the database in real-time
-    console.log('🔍 Checking real-time database state for signup...');
-    
-    // Check profiles table
-    const { data: profileCheck, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, email, full_name, organization_id, created_at')
-      .eq('email', email)
-      .single();
-    
-    console.log('📊 Profiles table check (signup):', {
-      found: !!profileCheck,
-      profile: profileCheck,
-      error: profileError?.message
-    });
-    
-    // If profile exists, user should sign in instead of sign up
-    if (profileCheck) {
-      console.log('Email already has profile - directing to sign in');
-      return {
-        success: false,
-        error: "An account with this email already exists. Please sign in to access your account."
-      };
-    }
-    
-    try {
 
-      // Try Supabase auth signup
-      console.log('Attempting Supabase auth.signUp...');
+    try {
+      // Check if user already exists in profiles (should work with fixed RLS policy)
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, email, full_name')
+        .eq('email', email)
+        .single();
+
+      if (existingProfile && !profileError) {
+        console.log('User already exists in profiles:', existingProfile);
+        return {
+          success: false,
+          error: "An account with this email already exists. Please sign in instead. If you're having trouble accessing your account, please contact support."
+        };
+      }
+
+      // If profile check fails for reasons other than "not found", handle it
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error('Profile check error:', profileError);
+        return {
+          success: false,
+          error: `Email verification failed: ${profileError.message}. Please try again.`
+        };
+      }
+
+      // Store signup data temporarily
+      tempSignupService.store({
+        email,
+        password,
+        fullName
+      });
+
+      // Create user with email and password - this will send OTP automatically
       const { data, error } = await supabase.auth.signUp({
         email,
-        password
+        password,
+        options: {
+          data: {
+            full_name: fullName
+          }
+        }
       });
-      
-      console.log('Supabase signUp response:', { 
-        hasUser: !!data?.user, 
-        userEmail: data?.user?.email,
-        hasSession: !!data?.session,
-        error: error?.message,
-        errorCode: error?.status 
-      });
-      
+
       if (error) {
         console.log('SignUp error:', error);
-        // Handle specific Supabase errors for better UX
-        
-        // Account already exists - direct user to sign in
-        if (error.message.includes('User already registered') || 
+
+        // Clean up temp data on error
+        tempSignupService.clear();
+
+        if (error.message.includes('User already registered') ||
             error.message.includes('already exists') ||
             error.message.includes('duplicate') ||
-            error.message.includes('A user with this email address has already been registered')) {
-          console.log('Account already exists in Supabase Auth');
+            error.message.includes('already been registered')) {
           return {
             success: false,
-            error: "An account with this email already exists. Please sign in to complete your setup or continue where you left off."
+            error: "An account with this email already exists. Please sign in instead. If you believe this is an error, please contact support."
           };
         }
-        
-        // Rate limiting
-        if (error.message.includes('Email rate limit exceeded') || 
+
+        if (error.message.includes('Email rate limit exceeded') ||
             error.message.includes('rate limit')) {
           return {
             success: false,
             error: "Too many signup attempts. Please wait a few minutes and try again."
           };
         }
-        
-        // Invalid email format
-        if (error.message.includes('Invalid email') || 
-            error.message.includes('email')) {
+
+        if (error.message.includes('Invalid email')) {
           return {
             success: false,
             error: "Please enter a valid email address."
           };
         }
-        
-        // Password requirements
-        if (error.message.includes('Password') || 
-            error.message.includes('password')) {
+
+        if (error.message.includes('Password')) {
           return {
             success: false,
             error: "Password must be at least 6 characters long."
           };
         }
-        
-        // Generic fallback
+
         return {
           success: false,
-          error: error.message || "Failed to create account. Please try again."
-        };
-      }
-      
-      if (data.user) {
-        console.log('SignUp returned user:', data.user.id);
-        
-        // Check if this is actually a new user or existing user
-        // Some Supabase configs return existing users without error
-        if (data.user.email_confirmed_at) {
-          console.log('User email already confirmed - account exists');
-          return {
-            success: false,
-            error: "An account with this email already exists and is verified. Please sign in instead."
-          };
-        }
-        
-        // Check if user was created recently (within last 10 seconds)
-        const userCreatedAt = new Date(data.user.created_at || '');
-        const tenSecondsAgo = new Date(Date.now() - 10000);
-        
-        if (userCreatedAt < tenSecondsAgo) {
-          console.log('User was created earlier - likely existing account');
-          return {
-            success: false,
-            error: "An account with this email already exists. Please sign in to complete your setup."
-          };
-        }
-        
-        console.log('SignUp successful, new user created:', data.user.id);
-        return {
-          success: true,
-          data: { userId: data.user.id },
-          nextStep: 'verify-otp'
+          error: "Failed to create account. Please try again."
         };
       }
 
-      console.log('SignUp failed - no user returned');
+      // Check if user already exists (Supabase returns user with empty identities array for existing users)
+      if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+        console.log('SignUp detected existing user (empty identities)');
+        tempSignupService.clear();
+        return {
+          success: false,
+          error: "An account with this email already exists. Please sign in instead. If you're having trouble accessing your account, please contact support."
+        };
+      }
+
+      // Mark OTP as sent
+      tempSignupService.markOtpSent();
+
+      console.log('OTP sent successfully');
+
       return {
-        success: false,
-        error: "Failed to create account. Please try again."
+        success: true,
+        data: { email },
+        nextStep: 'verify-otp'
       };
+
     } catch (error: any) {
       console.log('SignUp catch error:', error);
+      tempSignupService.clear();
       return {
         success: false,
         error: error.message || "An unexpected error occurred during signup."
@@ -341,7 +238,7 @@ export const authFlowHelpers = {
   },
 
   /**
-   * Handle OTP verification
+   * Handle OTP verification - Verifies email confirmation code
    */
   handleOtpVerification: async (email: string, otpCode: string): Promise<AuthResult> => {
     if (!otpCode || !email) {
@@ -352,36 +249,81 @@ export const authFlowHelpers = {
     }
 
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
+      // Get temporary signup data (has fullName)
+      const tempData = tempSignupService.get();
+      if (!tempData || tempData.email !== email) {
+        return {
+          success: false,
+          error: "Verification session expired. Please sign up again."
+        };
+      }
+
+      // Verify the OTP code (user was already created by signUp)
+      const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
         email,
         token: otpCode,
         type: 'email'
       });
 
-      if (error) throw error;
+      if (verifyError) {
+        if (verifyError.message.includes('expired')) {
+          tempSignupService.clear();
+          return {
+            success: false,
+            error: "Verification code has expired. Please sign up again."
+          };
+        }
 
-      if (data.user) {
         return {
-          success: true,
-          data: { userId: data.user.id },
-          nextStep: 'profile'
+          success: false,
+          error: "Invalid verification code. Please try again."
         };
       }
 
+      // User is now verified and logged in
+      if (verifyData.user) {
+        console.log('Email verified successfully for user:', verifyData.user.id);
+
+        // Update profile with full name (user was created by signUp, profile created by trigger)
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            full_name: tempData.fullName
+          })
+          .eq('id', verifyData.user.id);
+
+        if (profileError) {
+          console.error('Error updating profile with full name:', profileError);
+        }
+
+        // Clear temporary data
+        tempSignupService.clear();
+
+        return {
+          success: true,
+          data: { userId: verifyData.user.id },
+          nextStep: 'organization'
+        };
+      }
+
+      tempSignupService.clear();
       return {
         success: false,
-        error: "Failed to verify email"
+        error: "Verification failed. Please try again."
       };
+
     } catch (error: any) {
+      console.error('OTP verification error:', error);
+      tempSignupService.clear();
       return {
         success: false,
-        error: error.message
+        error: error.message || "An error occurred during verification."
       };
     }
   },
 
   /**
-   * Handle profile setup
+   * Handle profile setup - now only handles full_name
    */
   handleProfileSetup: async ({ userId, fullName }: ProfileSetupData): Promise<AuthResult> => {
     if (!fullName || !userId) {
@@ -392,20 +334,38 @@ export const authFlowHelpers = {
     }
 
     try {
-      console.log('Profile setup: updating full_name for userId:', userId, 'fullName:', fullName);
-      
-      // Use service role to bypass RLS during profile setup
-      const { data, error } = await supabase.rpc('update_user_profile', {
-        user_id: userId,
-        full_name_value: sanitizeInput.string(fullName)
-      });
+    console.log('Profile setup: updating full_name for userId:', userId);
+
+    // Fetch auth user to get their email
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError || !authUser) {
+      return { success: false, error: "Failed to fetch user email" };
+    }
+
+    // Upsert profile including email
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: userId,
+        email: authUser.email, // include email from auth
+        full_name: sanitizeInput.string(fullName),
+        updated_at: new Date().toISOString()
+      } as any, { onConflict: 'id' });
 
       if (error) {
         console.error('Profile update error:', error);
         throw error;
       }
 
-      console.log('Profile updated successfully:', data);
+      console.log('Profile updated successfully');
+
+      // Complete profile step and move to organization
+      await onboardingStateHelpers.completeStep(
+        userId,
+        'profile',
+        'organization',
+        { fullName }
+      );
 
       return {
         success: true,
@@ -419,133 +379,155 @@ export const authFlowHelpers = {
     }
   },
 
-  /**
-   * Handle organization setup (create or join)
-   */
   handleOrganizationSetup: async ({ userId, choice }: OrganizationSetupData): Promise<AuthResult> => {
     if (!choice.type || !userId) {
-      return {
-        success: false,
-        error: "Organization choice and user ID are required"
-      };
+      return { success: false, error: "Organization choice and user ID are required" };
     }
 
     try {
-      if (choice.type === "create") {
+      // Get industry and foundVia from choice, with fallbacks
+      const industry = choice.industry || null;
+      const foundVia = choice.foundVia || null;
+
+      if (choice.type === 'create') {
         if (!choice.orgName) {
-          return {
-            success: false,
-            error: "Organization name is required"
-          };
+          return { success: false, error: "Organization name is required" };
         }
-        
-        // Create organization and link user in single atomic operation
-        // Retry up to 3 times if organization code already exists
-        let organizationData = null;
+
+        // Rate limiting
+        const rateLimitCheck = await OrganizationCreationLimiter.canCreateOrganization(userId);
+        if (!rateLimitCheck.allowed) {
+          await OrganizationCreationLimiter.logCreationAttempt(userId, 'Rate_Limited');
+          return { success: false, error: rateLimitCheck.reason || "Rate limit exceeded" };
+        }
+
+        // Generate unique org code
         let orgCode = '';
         let attempts = 0;
         const maxAttempts = 3;
-        
-        while (attempts < maxAttempts && !organizationData) {
-          orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-          console.log(`Creating organization with userId: ${userId}, attempt: ${attempts + 1}`);
-          
-          const { data, error: orgError } = await supabase.rpc('create_organization_and_link_user', {
-            org_name: sanitizeInput.string(choice.orgName),
-            org_code: orgCode,
-            creator_user_id: userId
-          });
 
-          if (orgError) {
-            // If organization code already exists, try again with new code
-            if (orgError.message?.includes('Organization code already exists') && attempts < maxAttempts - 1) {
-              console.log('Organization code conflict, retrying with new code...');
-              attempts++;
-              continue;
-            }
-            
-            console.error('Organization creation error:', orgError);
-            throw orgError;
-          }
-          
-          organizationData = data;
-          break;
+        while (attempts < maxAttempts) {
+          orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+          const { data: existingOrg } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('organization_code', orgCode)
+            .single();
+          if (!existingOrg) break;
+          attempts++;
         }
 
-        console.log('Organization created successfully:', organizationData);
+        if (attempts >= maxAttempts) {
+          await OrganizationCreationLimiter.logCreationAttempt(userId, 'Failed', undefined, 'Failed to generate unique org code');
+          return { success: false, error: "Failed to generate organization code. Please try again." };
+        }
+
+        // --- Transaction-safe insert via RPC function ---
+        const { data: orgData, error: rpcError } = await supabase.rpc('create_org_with_owner', {
+          org_name: sanitizeInput.string(choice.orgName),
+          org_code: orgCode,
+          found_via: foundVia,
+          industry: industry,
+          owner_id: userId
+        } as any);
+
+        if (rpcError) {
+          await OrganizationCreationLimiter.logCreationAttempt(userId, 'Failed', undefined, rpcError.message);
+          throw rpcError;
+        }
+
+        const organizationId = orgData[0].org_id;
+
+        // Log success
+        await OrganizationCreationLimiter.logCreationAttempt(userId, 'Success');
+
+        // Complete onboarding step
+        await onboardingStateHelpers.completeStep(
+          userId,
+          'organization',
+          'company-info',
+          { ...choice, orgCode }
+        );
 
         return {
           success: true,
-          data: { 
-            organizationName: choice.orgName, 
-            organizationCode: orgCode 
+          data: {
+            organizationName: choice.orgName,
+            organizationCode: orgCode,
+            organizationId
           },
-          nextStep: 'complete'
+          nextStep: 'company-info'
         };
+
       } else {
         // Join existing organization
         if (!choice.orgCode) {
-          return {
-            success: false,
-            error: "Organization code is required"
-          };
+          return { success: false, error: "Organization code is required" };
         }
-        
-        // Find organization by code (trim whitespace and convert to uppercase)
-        const cleanCode = choice.orgCode.trim().toUpperCase();
-        console.log('Searching for organization with code:', cleanCode);
-        
-        const { data: orgData, error: orgError } = await supabase
-          .rpc('get_organization_by_code', { input_code: cleanCode });
 
-        console.log('Organization search result:', { orgData, orgError });
+        const cleanCode = choice.orgCode.trim().toUpperCase();
+
+        console.log('🔍 Looking for organization with code:', cleanCode);
+
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .select('id, name, organization_code')
+          .eq('organization_code', cleanCode)
+          .maybeSingle();
 
         if (orgError) {
-          console.error('Organization search error:', orgError);
-          // Handle specific error cases
-          if (orgError.code === 'PGRST116') {
-            throw new Error("Organization code not found. Please check the code and try again.");
-          }
-          throw new Error("Error searching for organization. Please try again.");
+          console.error('❌ Organization query error:', orgError);
+          return {
+            success: false,
+            error: `Database error while searching for organization. Please try again.`
+          };
         }
 
-        if (!orgData || !orgData.length || !orgData[0]) {
-          throw new Error("Organization not found. Please check the code and try again.");
+        if (!orgData) {
+          console.log('⚠️ No organization found with code:', cleanCode);
+
+          // Debug: List all organization codes to help troubleshoot
+          const { data: allOrgs } = await supabase
+            .from('organizations')
+            .select('organization_code, name')
+            .limit(10);
+
+          console.log('📋 Available organization codes:', allOrgs?.map(o => o.organization_code));
+
+          return {
+            success: false,
+            error: `Organization code "${cleanCode}" not found. Please check the code and try again.`
+          };
         }
 
-        // Update profile with organization as pending member
-        const organizationId = orgData[0]?.id;
-        if (!organizationId) {
-          throw new Error("Organization ID not found. Please check the code and try again.");
-        }
+        console.log('✅ Found organization:', orgData.name, '(code:', orgData.organization_code, ')');
 
-        console.log('Updating profile for org joiner with status: pending');
-        const { data: updatedProfile, error: profileError } = await supabase.rpc('update_org_creator_profile', {
-          user_id: userId,
-          org_id: organizationId,
-          role_value: 'member',
-          status_value: 'pending'
-        });
+        const { error: membershipsError } = await supabase
+          .from('memberships')
+          .insert({
+            user_id: userId,
+            organization_id: orgData.id,
+            role: 'Member',
+            status: 'Pending'
+          } as any);
 
-        console.log('Profile updated after org join:', updatedProfile);
+        if (membershipsError) throw membershipsError;
 
-        if (profileError) {
-          console.error('Profile update error:', profileError);
-          throw profileError;
-        }
+        // Clear onboarding progress
+        await onboardingStateHelpers.clearOnboardingProgress(userId);
 
         return {
           success: true,
-          data: { organizationName: 'Organization' }, // Will be updated with proper name from RPC response
+          data: {
+            organizationName: orgData.name,
+            organizationId: orgData.id
+          },
           nextStep: 'complete'
         };
       }
     } catch (error: any) {
       console.error('Organization setup error:', error);
-      return {
-        success: false,
-        error: error.message
-      };
+      return { success: false, error: error.message };
     }
   }
 };

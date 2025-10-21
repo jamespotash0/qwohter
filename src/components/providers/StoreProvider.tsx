@@ -60,7 +60,7 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <h2 className="text-xl font-semibold text-foreground">
-            {loadingMessage || 'Initializing Wall Quote Wizard...'}
+            {loadingMessage || 'Initializing Qwohter...'}
           </h2>
           <p className="text-sm text-muted-foreground">
             Setting up your workspace

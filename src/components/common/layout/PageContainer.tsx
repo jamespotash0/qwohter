@@ -51,7 +51,6 @@ export const PageContainer: React.FC<PageContainerProps> = ({
     }
     
     container.appendChild(contentContainer);
-    console.log('📄 CSS-based pagination applied - content will break naturally using CSS rules');
   };
 
   return (

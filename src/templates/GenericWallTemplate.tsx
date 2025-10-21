@@ -83,15 +83,9 @@ export class GenericWallTemplate extends BaseQuoteTemplate {
     const walls = data.wall_details?.walls || {};
     const wallCount = Object.keys(walls).length;
 
-    console.log('🏢 generateProposalIntro called:', { 
-      organizationName, 
-      wallCount,
-      hasWalls: wallCount > 0,
-      wallNames: Object.keys(walls) 
-    });
+    
 
     if (wallCount === 0) {
-      console.log('⚠️ generateProposalIntro: No walls found, returning empty string');
       return '';
     }
 
@@ -104,7 +98,6 @@ export class GenericWallTemplate extends BaseQuoteTemplate {
       </div>
     `;
     
-    console.log('✅ generateProposalIntro returning HTML:', proposalHtml.length, 'characters');
     return proposalHtml;
   }
 

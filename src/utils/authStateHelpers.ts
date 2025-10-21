@@ -106,7 +106,7 @@ export const authStateHelpers = {
    * Set up auth state change listener with callbacks
    */
   setupAuthListener: (callbacks: AuthCallbacks) => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
       if (callbacks.onAuthStateChange) {
         callbacks.onAuthStateChange(session?.user || null, session);
       }

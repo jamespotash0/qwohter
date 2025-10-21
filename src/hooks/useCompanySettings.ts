@@ -39,16 +39,15 @@ export function useOrganizationSettings() {
 
   // Check if organization has company info
   const hasCompanyInfo = (): boolean => {
-    if (!organization?.organization_info) {
+    if (!organization) {
       return false;
     }
-    
-    const info = organization.organization_info;
-    const hasPhone = !!(info.phone?.trim());
-    const hasFax = !!(info.fax?.trim());
-    const hasAddress = !!(info.address?.trim());
-    const hasWebsite = !!(info.website?.trim());
-        
+
+    const hasPhone = !!(organization.phone_number?.trim());
+    const hasFax = !!(organization.fax_number?.trim());
+    const hasAddress = !!(organization.company_address?.trim());
+    const hasWebsite = !!(organization.website?.trim());
+
     // Show company info section if ANY data exists
     const result = !!(hasPhone || hasFax || hasAddress || hasWebsite);
     return result;

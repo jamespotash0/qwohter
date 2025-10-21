@@ -16,7 +16,6 @@ export class TemplateLogoService {
         return null;
       }
       
-      console.log('🖼️ Getting signed URL for logo path:', logoPath);
       
       // Create a signed URL that expires in 1 hour (enough for template generation)
       const { data, error } = await supabase.storage
@@ -28,7 +27,6 @@ export class TemplateLogoService {
         return null;
       }
       
-      console.log('✅ Generated signed URL for template logo:', data.signedUrl);
       return data.signedUrl;
       
     } catch (error) {

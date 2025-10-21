@@ -1,0 +1,79 @@
+/**
+ * 🎨 QWOHTER DESIGN SYSTEM
+ *
+ * Centralized design tokens with semantic naming and modular organization
+ *
+ * ARCHITECTURE:
+ * ├── tokens/              (Design tokens - colors, spacing, typography)
+ * │   ├── base-tokens.css  (Foundation: colors, spacing, sizing)
+ * │   ├── typography.css   (Fonts, weights, sizes, line heights)
+ * │   ├── light-mode.css   (Light theme colors)
+ * │   └── dark-mode.css    (Dark theme colors)
+ * └── components/          (Component-specific styles)
+ *     ├── buttons.css      (Button variants and states)
+ *     ├── cards.css        (Card layouts and styles)
+ *     ├── tables.css       (Table rows, headers, data display)
+ *     └── forms.css        (Input fields, labels, validation)
+ *
+ * NAMING CONVENTION:
+ * - Component-specific: btn-primary-bg, card-header-text
+ * - Context-aware: sidebar-nav-hover, content-card-bg
+ * - State-aware: input-focus-border, btn-hover-bg
+ *
+ * USING TAILWIND COLORS:
+ * For standard semantic colors, use Tailwind's built-in classes:
+ * - Errors/Destructive: text-destructive, text-red-600, bg-red-50
+ * - Success: text-green-600, bg-green-50
+ * - Warning: text-yellow-600, bg-yellow-50
+ * - Info: text-blue-600, bg-blue-50
+ * These auto-adapt to light/dark mode and don't need custom variables.
+ */
+
+/* ========================================
+   🎨 DESIGN TOKENS - MUST BE FIRST
+   ======================================== */
+
+/* Base Foundation */
+@import './tokens/base-tokens.css';
+
+/* Typography System */
+@import './tokens/typography.css';
+
+/* Theme Colors */
+@import './tokens/light-mode.css';
+@import './tokens/dark-mode.css';
+
+/* Component Styles */
+@import './components/buttons.css';
+@import './components/cards.css';
+@import './components/tables.css';
+@import './components/forms.css';
+
+/* ========================================
+   📦 TAILWIND BASE
+   ======================================== */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   🎯 UTILITY CLASSES
+   ======================================== */
+
+@layer utilities {
+  /* Page Layout Utilities */
+  .bg-primary { background-color: var(--page-bg-primary); }
+  .bg-secondary { background-color: var(--page-bg-secondary); }
+  .bg-tertiary { background-color: var(--page-bg-tertiary); }
+
+  /* Spacing Utilities */
+  .space-page { padding: var(--space-xl); }
+  .space-section { padding: var(--space-lg); }
+  .space-card { padding: var(--space-md); }
+
+  /* Shadow Utilities */
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+  .shadow-medium { box-shadow: var(--shadow-medium); }
+  .shadow-large { box-shadow: var(--shadow-large); }
+}

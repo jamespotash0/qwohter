@@ -24,7 +24,6 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
 
   // Helper function to handle wall addition from dialog
   const handleAddWall = async (wallName: string, wallData: any) => {
-    console.log('🔄 Adding wall to wall_details JSON:', wallName, wallData);
     
     const updatedWalls = {
       id: data.wall_details?.id || crypto.randomUUID(),
@@ -34,17 +33,14 @@ export const WallSystemsSectionCore: React.FC<WallSystemsSectionProps> = ({
       }
     };
     
-    console.log('🔄 Updated wall_details structure:', updatedWalls);
     onChange('wall_details', updatedWalls);
     
     // Wait for React state to propagate before saving to database
     if (onDatabaseSave) {
       try {
-        console.log('🔄 Waiting for state to propagate, then saving to database...');
         // Use setTimeout to allow React state update to complete
         await new Promise(resolve => setTimeout(resolve, 100));
         await onDatabaseSave();
-        console.log('✅ Wall successfully saved to database');
       } catch (error) {
         console.error('❌ Error saving wall to database:', error);
         throw error; // Re-throw to be handled by AddWallDialog

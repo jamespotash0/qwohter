@@ -1,5 +1,5 @@
 import { ComponentType } from 'react';
-import { Quote } from '@/hooks/useQuotes';
+import { Quote } from '@/stores/quotes/quotesStore';
 import { WallDetails } from '@/lib/types';
 import { ContactInfo, JobDetails, DeliveryLabor, Pricing } from '@/components/features/quotes/creation/QuoteCreatorWizard/types/wizardTypes';
 

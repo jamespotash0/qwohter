@@ -1,191 +1,81 @@
+/**
+ * Auth Store (Refactored)
+ * Clean, modular authentication state management
+ *
+ * Structure:
+ * - types.ts: Type definitions
+ * - actions/: Individual action creators
+ * - authStore.ts: Main store composition
+ */
+
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { supabase } from '@/integrations/supabase/client';
-import type { User, Session } from '@supabase/supabase-js';
-import type { UserProfile } from '@/hooks/useUserProfile';
+import type { FullAuthState } from './types';
+import {
+  createInitializeAction,
+  createSignInAction,
+  createSignOutAction,
+  createUpdateProfileAction,
+} from './actions';
 
-interface AuthState {
-  // State
-  user: User | null;
-  session: Session | null;
-  profile: UserProfile | null;
-  isLoading: boolean;
-  isInitialized: boolean;
-  error: string | null;
-
-  // Actions
-  initialize: () => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
-  clearError: () => void;
-
-  // Internal actions
-  _setAuth: (user: User | null, session: Session | null) => void;
-  _setProfile: (profile: UserProfile | null) => void;
-  _setLoading: (loading: boolean) => void;
-  _setError: (error: string | null) => void;
-}
-
-export const useAuthStore = create<AuthState>()(
+/**
+ * Main Auth Store
+ * Combines state and modular actions
+ */
+export const useAuthStore = create<FullAuthState>()(
   subscribeWithSelector((set, get) => ({
-    // Initial state
+    // ============================================================================
+    // INITIAL STATE
+    // ============================================================================
     user: null,
     session: null,
-    profile: null,
+    profile: (() => {
+      // Restore profile from localStorage on init
+      try {
+        const cached = localStorage.getItem('auth_cached_profile');
+        return cached ? JSON.parse(cached) : null;
+      } catch {
+        return null;
+      }
+    })(),
     isLoading: false,
     isInitialized: false,
+    isAuthChanging: false,
     error: null,
 
-    // Initialize authentication state and set up listeners
-    initialize: async () => {
-      const { _setAuth, _setProfile, _setLoading, _setError } = get();
-      
-      try {
-        _setLoading(true);
-        
-        // Get initial session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-        
-        _setAuth(session?.user ?? null, session);
-        
-        // Fetch profile if user exists
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        }
-        
-        // Set up auth state change listener
-        supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('Auth state changed:', event, session?.user?.email);
-          
-          _setAuth(session?.user ?? null, session);
-          
-          if (session?.user) {
-            await fetchProfile(session.user.id);
-          } else {
-            _setProfile(null);
-          }
-        });
-        
-        set({ isInitialized: true });
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-        _setError(error instanceof Error ? error.message : 'Failed to initialize auth');
-      } finally {
-        _setLoading(false);
-      }
-      
-      // Helper function to fetch user profile
-      async function fetchProfile(userId: string) {
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
-          
-          if (error && error.code !== 'PGRST116') { // Ignore "not found" errors
-            throw error;
-          }
-          
-          _setProfile(data || null);
-        } catch (error) {
-          console.error('Profile fetch error:', error);
-          _setError(error instanceof Error ? error.message : 'Failed to fetch profile');
-        }
-      }
-    },
-
-    // Sign in with email and password
-    signIn: async (email: string, password: string) => {
-      const { _setLoading, _setError } = get();
-      
-      try {
-        _setLoading(true);
-        _setError(null);
-        
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        
-        if (error) throw error;
-        
-        // Auth state change will be handled by the listener
-      } catch (error) {
-        console.error('Sign in error:', error);
-        _setError(error instanceof Error ? error.message : 'Failed to sign in');
-        throw error;
-      } finally {
-        _setLoading(false);
-      }
-    },
-
-    // Sign out
-    signOut: async () => {
-      const { _setLoading, _setError } = get();
-      
-      try {
-        _setLoading(true);
-        _setError(null);
-        
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-        
-        // Auth state change will be handled by the listener
-      } catch (error) {
-        console.error('Sign out error:', error);
-        _setError(error instanceof Error ? error.message : 'Failed to sign out');
-        throw error;
-      } finally {
-        _setLoading(false);
-      }
-    },
-
-    // Update user profile
-    updateProfile: async (updates: Partial<UserProfile>) => {
-      const { user, profile, _setProfile, _setLoading, _setError } = get();
-      
-      if (!user || !profile) {
-        throw new Error('User not authenticated');
-      }
-      
-      try {
-        _setLoading(true);
-        _setError(null);
-        
-        const { data, error } = await supabase
-          .from('profiles')
-          .update(updates)
-          .eq('id', user.id)
-          .select()
-          .single();
-        
-        if (error) throw error;
-        
-        _setProfile({ ...profile, ...data });
-      } catch (error) {
-        console.error('Profile update error:', error);
-        _setError(error instanceof Error ? error.message : 'Failed to update profile');
-        throw error;
-      } finally {
-        _setLoading(false);
-      }
-    },
-
-    // Clear error state
+    // ============================================================================
+    // PUBLIC ACTIONS
+    // ============================================================================
+    initialize: createInitializeAction(get, set),
+    signIn: createSignInAction(get),
+    signOut: createSignOutAction(get),
+    updateProfile: createUpdateProfileAction(get),
     clearError: () => set({ error: null }),
 
-    // Internal setters
-    _setAuth: (user, session) => set({ user, session }),
-    _setProfile: (profile) => set({ profile }),
+    // ============================================================================
+    // INTERNAL SETTERS (prefixed with _)
+    // ============================================================================
+    _setAuth: (user, session) => {
+      console.log('📝 Setting auth:', user?.email || 'null');
+      set({ user, session });
+    },
+    _setProfile: (profile) => {
+      // Cache profile in localStorage for faster initial load
+      if (profile) {
+        localStorage.setItem('auth_cached_profile', JSON.stringify(profile));
+      } else {
+        localStorage.removeItem('auth_cached_profile');
+      }
+      set({ profile });
+    },
     _setLoading: (isLoading) => set({ isLoading }),
     _setError: (error) => set({ error }),
   }))
 );
 
-// Selectors for common auth patterns
+// ============================================================================
+// SELECTORS (Convenience hooks for common patterns)
+// ============================================================================
 export const useUser = () => useAuthStore((state) => state.user);
 export const useProfile = () => useAuthStore((state) => state.profile);
 export const useIsAuthenticated = () => useAuthStore((state) => !!state.user);

@@ -15,7 +15,22 @@ import {
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, DollarSign, Calendar, BarChart3 } from 'lucide-react';
-import { Quote } from '@/hooks/useQuotes';
+import { Quote } from '@/stores/quotes/quotesStore';
+import { useTheme } from '@/contexts/ThemeContext';
+
+// Theme-aware chart colors helper
+const getChartColors = (isDark: boolean) => ({
+  primary: isDark ? 'rgb(99, 102, 241)' : 'rgb(99, 102, 241)',
+  secondary: isDark ? 'rgb(34, 197, 94)' : 'rgb(34, 197, 94)',
+  accent: isDark ? 'rgb(251, 146, 60)' : 'rgb(251, 146, 60)',
+  warning: isDark ? 'rgb(239, 68, 68)' : 'rgb(239, 68, 68)',
+  muted: isDark ? 'rgb(156, 163, 175)' : 'rgb(156, 163, 175)',
+  purple: isDark ? 'rgb(168, 85, 247)' : 'rgb(168, 85, 247)',
+  text: isDark ? '#f8fafc' : '#1e293b',
+  textMuted: isDark ? '#94a3b8' : '#64748b',
+  gridLines: isDark ? '#374151' : '#e5e7eb',
+  background: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.05)'
+});
 
 ChartJS.register(
   CategoryScale,
@@ -35,6 +50,8 @@ interface AnalyticsChartsProps {
 }
 
 export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ quotes }) => {
+  const { theme } = useTheme();
+  const colors = getChartColors(theme === 'dark');
   const chartData = useMemo(() => {
     // Process quotes for analytics
     const last6Months = Array.from({ length: 6 }, (_, i) => {

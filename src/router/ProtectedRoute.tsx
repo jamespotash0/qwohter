@@ -1,13 +1,29 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { authStateHelpers } from '@/utils/authStateHelpers';
-import { Loader2 } from 'lucide-react';
+import { useAuthStore } from '@/stores/auth/authStore';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiresRole?: 'admin' | 'member';
+  requiresRole?: 'Owner' | 'Admin' | 'Member';
 }
+
+/**
+ * Check if user has required role based on role hierarchy
+ * Owner > Admin > Member
+ */
+const hasRequiredRole = (
+  userRole: 'Owner' | 'Admin' | 'Member' | null,
+  requiredRole: 'Owner' | 'Admin' | 'Member'
+): boolean => {
+  if (!userRole) return false;
+
+  const roleHierarchy = { Owner: 3, Admin: 2, Member: 1 };
+  const userLevel = roleHierarchy[userRole] || 0;
+  const requiredLevel = roleHierarchy[requiredRole] || 0;
+
+  return userLevel >= requiredLevel;
+};
 
 /**
  * Protected route component that handles authentication and authorization
@@ -19,96 +35,61 @@ interface ProtectedRouteProps {
  * - Preserves intended destination after login
  * - Shows loading state during auth check
  */
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
-  requiresRole 
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
+  requiresRole
 }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'member' | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const location = useLocation();
+  const [userRole, setUserRole] = useState<'Owner' | 'Admin' | 'Member' | null>(null);
+
+  // Use auth store - MainLayout already handles authentication
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Check if user is authenticated AND validate session
-        const session = await authStateHelpers.checkValidAuthSession();
-        
-        if (!session || !session.user) {
-          setIsAuthenticated(false);
-          setIsLoading(false);
-          return;
-        }
+    // Fetch user role from membership if user exists
+    const fetchUserRole = async () => {
+      if (!user) {
+        setUserRole(null);
+        return;
+      }
 
-        // Check if user has completed onboarding (has profile with full_name and organization_id)
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('full_name, organization_id, role')
-          .eq('id', session.user.id)
+      try {
+        const { data: memberships } = await supabase
+          .from('memberships')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('status', 'Active')
           .single();
 
-        if (profileError || !profile || !profile.full_name || !profile.organization_id) {
-          console.log('User has session but incomplete profile, redirecting to auth for onboarding');
-          setIsAuthenticated(false);
-          setIsLoading(false);
-          return;
-        }
-
-        setIsAuthenticated(true);
-        // Role is already set from the profile query above
+        setUserRole((memberships as any)?.role || null);
       } catch (error) {
-        console.error('Auth check error:', error);
-        setIsAuthenticated(false);
-      } finally {
-        setIsLoading(false);
+        console.error('Error fetching user role:', error);
+        setUserRole(null);
       }
     };
 
-    checkAuth();
+    fetchUserRole();
+  }, [user]);
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, authSession) => {
-        if (event === 'SIGNED_IN' && authSession?.user) {
-          // Don't immediately set authenticated - recheck profile completion
-          checkAuth();
-        } else if (event === 'SIGNED_OUT') {
-          setIsAuthenticated(false);
-          setUserRole(null);
-          setIsLoading(false);
-        }
-      }
-    );
+  // MainLayout handles auth redirect, so just check roles here
+  // Only check role-based access if we have all the required data
+  if (requiresRole && user) {
+    // Wait for role to be fetched before checking access
+    if (userRole === null) {
+      // Still fetching role, render children (will be protected by MainLayout if needed)
+      return <>{children}</>;
+    }
 
-    return () => subscription.unsubscribe();
-  }, [requiresRole]);
-
-  // Show loading spinner while checking authentication
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2 text-muted-foreground">Checking authentication...</span>
-      </div>
-    );
-  }
-
-  // Redirect to auth page if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <Navigate 
-        to="/auth" 
-        state={{ from: location }} 
-        replace 
-      />
-    );
-  }
-
-  // Check role-based access if required
-  if (requiresRole && userRole !== requiresRole) {
-    // For now, redirect to dashboard if user doesn't have required role
-    // In the future, you could show an "Access Denied" page
-    return <Navigate to="/dashboard" replace />;
+    // Check if user has required role
+    if (!hasRequiredRole(userRole, requiresRole)) {
+      // Redirect to access denied page with required role info
+      return (
+        <Navigate
+          to="/access-denied"
+          state={{ requiredRole: String(requiresRole), userRole: String(userRole) }}
+          replace
+        />
+      );
+    }
   }
 
   return <>{children}</>;

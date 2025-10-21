@@ -103,7 +103,6 @@ export class ContentSplitter {
   ];
 
   static async splitContent(htmlContent: string): Promise<Page[]> {
-    console.log('🔄 ContentSplitter: Starting content analysis...');
     
     // Temporarily disable caching in editing mode for better real-time updates
     // TODO: Re-enable with more sophisticated caching logic later
@@ -139,7 +138,6 @@ export class ContentSplitter {
       // this.cachedPages = pages;
       // this.lastAnalyzedSections = sections;
       
-      console.log(`📄 ContentSplitter: Created ${pages.length} pages`);
       return pages;
 
     } finally {
@@ -160,14 +158,12 @@ export class ContentSplitter {
     const threshold = Math.min(this.previousContent.length, newContent.length) * 0.05; // 5% change threshold
     
     if (lengthDifference > threshold) {
-      console.log(`📏 Content length changed significantly: ${lengthDifference} chars (threshold: ${Math.round(threshold)})`);
       return true;
     }
 
     // Check for structural changes in key sections
     const structuralChanges = this.hasStructuralChanges(this.previousContent, newContent);
     if (structuralChanges) {
-      console.log('📏 Structural changes detected in content');
       return true;
     }
 
@@ -191,7 +187,6 @@ export class ContentSplitter {
     const newWallMatches = newContent.match(/wall-paragraph|Wall [A-Z]:/g) || [];
     
     if (oldWallMatches.length !== newWallMatches.length) {
-      console.log(`📏 Wall count changed: ${oldWallMatches.length} → ${newWallMatches.length}`);
       return true;
     }
 
@@ -200,7 +195,6 @@ export class ContentSplitter {
     const newTermMatches = newContent.match(/term-item|<li>/g) || [];
     
     if (Math.abs(oldTermMatches.length - newTermMatches.length) > 2) { // Allow small variations
-      console.log(`📏 Terms/list items changed significantly: ${oldTermMatches.length} → ${newTermMatches.length}`);
       return true;
     }
 
@@ -214,7 +208,6 @@ export class ContentSplitter {
     this.previousContent = null;
     this.cachedPages = null;
     this.lastAnalyzedSections = null;
-    console.log('🗑️ ContentSplitter cache cleared');
   }
 
   /**
@@ -222,7 +215,6 @@ export class ContentSplitter {
    */
   static forceRecalculation(): void {
     this.clearCache();
-    console.log('🔄 ContentSplitter: Forced recalculation on next split');
   }
 
   private static analyzeSections(container: HTMLElement): SectionInfo[] {
@@ -258,7 +250,6 @@ export class ContentSplitter {
           paragraphs: paragraphs
         });
 
-        console.log(`📏 Section: ${className} = ${htmlElement.offsetHeight}px (breakable: ${canBreak}, paragraphSplittable: ${canSplitParagraphs})`);
       });
     });
 
@@ -274,12 +265,10 @@ export class ContentSplitter {
     const isGeneralSection = sectionElement.classList.contains('general-section');
     
     if (isPanelsSection) {
-      console.log('🏢 Analyzing panels section for paragraph-level splitting');
       
       // Look for paragraph elements in panels section - these are the individual wall descriptions
       const wallParagraphs = sectionElement.querySelectorAll('p.wall-paragraph, p');
       
-      console.log(`🔍 Found ${wallParagraphs.length} paragraphs in panels section`);
       
       wallParagraphs.forEach((element, index) => {
         const htmlElement = element as HTMLElement;
@@ -298,13 +287,11 @@ export class ContentSplitter {
             isTitle: isTitle
           });
           
-          console.log(`🏗️ Panel paragraph ${index + 1}: "${htmlElement.textContent?.substring(0, 60)}..." (${htmlElement.offsetHeight}px, isTitle: ${isTitle})`);
         }
       });
       
       // If we don't find proper paragraphs, fall back to any content elements
       if (paragraphs.length === 0) {
-        console.log('⚠️ No paragraphs found, falling back to broader search');
         const allElements = sectionElement.querySelectorAll('*');
         allElements.forEach(element => {
           const htmlElement = element as HTMLElement;
@@ -320,23 +307,18 @@ export class ContentSplitter {
         });
       }
     } else if (isTermsSection) {
-      console.log('📜 Analyzing terms section for individual term items');
-      console.log('🔍 Terms section HTML structure:', sectionElement.innerHTML.substring(0, 200));
       
       // Look for individual term items - the actual structure uses .term-item divs
       const termItems = sectionElement.querySelectorAll('.term-item, .terms-section ol li, .payment-terms-item, .terms-section > p, .terms-section > div[style], div[style*="margin-bottom"]');
       
-      console.log(`🔍 Found ${termItems.length} potential term items with selectors`);
       
       // If we don't find enough items, try broader search
       if (termItems.length < 5) {
         const allDivs = sectionElement.querySelectorAll('div');
-        console.log(`🔍 Fallback: Found ${allDivs.length} total divs in terms section`);
         
         allDivs.forEach((div, index) => {
           const htmlDiv = div as HTMLElement;
           if (htmlDiv.textContent?.trim() && htmlDiv.textContent.length > 10) {
-            console.log(`🔍 Div ${index}: "${htmlDiv.textContent.substring(0, 30)}..." class="${htmlDiv.className}"`);
           }
         });
       }
@@ -361,13 +343,10 @@ export class ContentSplitter {
             height: htmlElement.offsetHeight + (isTitle ? 10 : 3), // Small spacing for term items
             html: htmlElement.outerHTML,
             isTitle: isTitle
-          });
-          
-          console.log(`📋 Terms item ${index + 1}: "${htmlElement.textContent?.substring(0, 50)}..." (${htmlElement.offsetHeight}px, isTitle: ${isTitle})`);
+          });  
         }
       });
     } else if (isGeneralSection) {
-      console.log('📝 Analyzing general section for individual notes');
       
       // Look for paragraphs, list items, and note blocks
       const noteItems = sectionElement.querySelectorAll('p, li, .general-notes-section > div, div[style*="margin"]');
@@ -386,8 +365,6 @@ export class ContentSplitter {
             html: htmlElement.outerHTML,
             isTitle: isTitle
           });
-          
-          console.log(`📋 General item: "${htmlElement.textContent?.substring(0, 50)}..." (${htmlElement.offsetHeight}px, isTitle: ${isTitle})`);
         }
       });
     } else {
@@ -432,7 +409,6 @@ export class ContentSplitter {
       return aRect.top - bRect.top;
     });
     
-    console.log(`📝 Found ${paragraphs.length} paragraphs in section (isPanels: ${isPanelsSection})`);
     return paragraphs;
   }
 
@@ -441,7 +417,6 @@ export class ContentSplitter {
    * content from later pages flows back to fill the space
    */
   private static distributeWithReflow(sections: SectionInfo[]): Page[] {
-    console.log('🌊 Starting content distribution with reflow...');
     
     // Create a flat list of all content items (sections + paragraphs)
     const contentItems = this.flattenToContentItems(sections);
@@ -500,7 +475,6 @@ export class ContentSplitter {
       }
     });
     
-    console.log(`📦 Flattened ${sections.length} sections into ${items.length} content items`);
     return items;
   }
 
@@ -524,7 +498,6 @@ export class ContentSplitter {
     let currentPageHeight = 0;
     let pageNumber = 1;
 
-    console.log(`🌊 Distributing ${items.length} items across pages with reflow...`);
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i]!;
@@ -535,12 +508,10 @@ export class ContentSplitter {
         currentPageItems.push(item);
         currentPageHeight += item.height;
         
-        console.log(`✅ Added ${item.type} (${item.sectionClass}) to page ${pageNumber} - height: ${currentPageHeight}px`);
       } else {
         // Item doesn't fit, finalize current page and start new one
         if (currentPageItems.length > 0) {
-          pages.push(this.createPageFromItems(currentPageItems, pageNumber));
-          console.log(`📄 Completed page ${pageNumber} with ${currentPageItems.length} items (${currentPageHeight}px)`);
+          pages.push(this.createPageFromItems(currentPageItems, pageNumber));         
         }
         
         // Start new page
@@ -548,14 +519,12 @@ export class ContentSplitter {
         currentPageItems = [item];
         currentPageHeight = item.height;
         
-        console.log(`🆕 Started page ${pageNumber} with ${item.type} (${item.sectionClass})`);
       }
     }
     
     // Add final page if it has content
     if (currentPageItems.length > 0) {
       pages.push(this.createPageFromItems(currentPageItems, pageNumber));
-      console.log(`📄 Final page ${pageNumber} with ${currentPageItems.length} items`);
     }
 
     // Ensure at least one page
@@ -568,7 +537,6 @@ export class ContentSplitter {
       });
     }
 
-    console.log(`🌊 Content reflow complete: ${pages.length} pages created`);
     return pages;
   }
 
@@ -603,11 +571,7 @@ export class ContentSplitter {
         currentPageHeight += section.height;
         currentPageSections.push(section.className);
         
-        console.log(`✅ Added ${section.className} to page ${pageNumber} (height: ${currentPageHeight}px / ${this.PAGE_CONFIG.contentHeight}px available)`);
       } else if (section.canSplitParagraphs && section.paragraphs && section.paragraphs.length > 1) {
-        // Only attempt to split if we have multiple paragraphs (avoid splitting single paragraph sections)
-        console.log(`🔍 Attempting paragraph-level split for ${section.className}: ${section.paragraphs.length} paragraphs, canSplit: ${section.canSplitParagraphs}`);
-        // Section doesn't fit but can be split at paragraph level
         const splitResult = this.splitSectionByParagraphs(
           section, 
           currentPageHeight, 
@@ -617,9 +581,7 @@ export class ContentSplitter {
         if (splitResult.beforePageBreak) {
           // Add content that fits on current page
           currentPageContent += splitResult.beforePageBreak;
-          currentPageSections.push(section.className);
-          
-          console.log(`✂️ Split ${section.className}: added ${splitResult.beforeParagraphCount} paragraphs to page ${pageNumber}`);
+          currentPageSections.push(section.className);     
         }
 
         // Finalize current page if it has content
@@ -629,9 +591,7 @@ export class ContentSplitter {
             content: currentPageContent,
             pageNumber: pageNumber,
             sections: [...currentPageSections]
-          });
-          
-          console.log(`📄 Completed page ${pageNumber} with sections: ${currentPageSections.join(', ')} (final height: ${currentPageHeight}px)`);
+          });       
         }
 
         // Start new page with remaining content
@@ -639,9 +599,7 @@ export class ContentSplitter {
           pageNumber++;
           currentPageContent = splitResult.afterPageBreak;
           currentPageHeight = splitResult.afterPageBreakHeight;
-          currentPageSections = [section.className];
-          
-          console.log(`🆕 Started page ${pageNumber} with remaining ${splitResult.afterParagraphCount} paragraphs from ${section.className}`);
+          currentPageSections = [section.className];     
         } else {
           // Reset for next section
           pageNumber++;
@@ -659,7 +617,6 @@ export class ContentSplitter {
             sections: [...currentPageSections]
           });
           
-          console.log(`📄 Completed page ${pageNumber} with sections: ${currentPageSections.join(', ')}`);
         }
 
         // Start new page with this section
@@ -668,7 +625,6 @@ export class ContentSplitter {
         currentPageHeight = section.height;
         currentPageSections = [section.className];
         
-        console.log(`🆕 Started page ${pageNumber} with ${section.className} (unbreakable)`);
       }
     });
 
@@ -681,7 +637,6 @@ export class ContentSplitter {
         sections: currentPageSections
       });
       
-      console.log(`📄 Final page ${pageNumber} with sections: ${currentPageSections.join(', ')}`);
     }
 
     // Ensure at least one page
@@ -710,7 +665,6 @@ export class ContentSplitter {
     let heightAccumulator = 0;
     let splitIndex = -1;
 
-    console.log(`📏 Available height: ${availableHeight}px for ${paragraphs.length} paragraphs`);
 
     // Find the optimal split point - fit as many paragraphs as possible while avoiding orphans
     for (let i = 0; i < paragraphs.length; i++) {
@@ -723,12 +677,10 @@ export class ContentSplitter {
       // Apply tolerance to paragraph-level measurements as well
       const wouldExceed = heightAccumulator + paragraph.height > availableHeight + this.MEASUREMENT_TOLERANCE;
       
-      console.log(`📝 Paragraph ${i + 1}: ${paragraph.height}px, accumulated: ${heightAccumulator}px, would exceed: ${wouldExceed}, isTitle: ${paragraph.isTitle}`);
       
       // CRITICAL: Prevent orphaned section headers
       if (paragraph.isTitle && wouldExceed && heightAccumulator > 0) {
         // Don't leave a title by itself on a page - move it to next page with its content
-        console.log(`🚫 Preventing orphaned title: "${paragraph.element.textContent?.substring(0, 30)}..." - moving to next page`);
         splitIndex = i;
         break;
       }
@@ -764,15 +716,12 @@ export class ContentSplitter {
           
           // If title + first content paragraph won't fit, move title to next page (apply tolerance)
           if (!hasFollowingContent && titleWithContentHeight > availableHeight + this.MEASUREMENT_TOLERANCE && heightAccumulator > 0) {
-            console.log(`🚫 Moving title to next page to keep with content: "${paragraph.element.textContent?.substring(0, 30)}..."`);
             splitIndex = i;
             break;
           }
         } else {
           if (isEmbeddedSectionHeader) {
-            console.log(`📋 Embedded section header: allowing flexible placement`);
           } else {
-            console.log(`📋 List-based section: allowing flexible title placement`);
           }
         }
       }
@@ -787,7 +736,6 @@ export class ContentSplitter {
       heightAccumulator += paragraph.height;
       beforeParagraphs.push(paragraph);
       
-      console.log(`✅ Added paragraph ${i + 1} to current page, new total: ${heightAccumulator}px`);
     }
 
     // Handle edge cases for split point determination
@@ -802,7 +750,6 @@ export class ContentSplitter {
       afterParagraphs = [];
     }
 
-    console.log(`📊 Split result: ${beforeParagraphs.length} paragraphs before (${heightAccumulator}px), ${afterParagraphs.length} paragraphs after`);
 
     // Build HTML for before page break
     let beforePageBreak: string | null = null;
@@ -826,8 +773,6 @@ export class ContentSplitter {
       const firstAfterParagraph = afterParagraphs[0];
       const isMovingHeaderWithContent = firstAfterParagraph && firstAfterParagraph.isTitle;
       
-      console.log(`🔍 First paragraph being moved is title: ${isMovingHeaderWithContent}`);
-      console.log(`🔍 First paragraph content: "${firstAfterParagraph?.element?.textContent?.substring(0, 50)}..."`);
       
       const sectionStart = this.extractSectionStart(section.html, false); // Don't include original header
       const afterContent = afterParagraphs.map(p => p.html).join('');
@@ -837,18 +782,10 @@ export class ContentSplitter {
       afterPageBreakHeight = afterParagraphs.reduce((sum, p) => sum + p.height, 0);
       
       if (isMovingHeaderWithContent) {
-        console.log(`🔄 Moving section header with its content - no duplicate header needed`);
       } else {
-        console.log(`📋 Continuing section content without header`);
       }
-      
-      console.log(`🔍 Section start without header: "${sectionStart.substring(0, 100)}..."`);
-      console.log(`🔍 After content: "${afterContent.substring(0, 100)}..."`);
-      console.log(`🔍 Section end: "${sectionEnd}"`);
-      console.log(`🔍 Full afterPageBreak: "${afterPageBreak.substring(0, 150)}..."`);;
     }
 
-    console.log(`📊 Split section: ${beforeParagraphs.length} paragraphs before, ${afterParagraphs.length} after`);
 
     return {
       beforePageBreak,
@@ -861,7 +798,6 @@ export class ContentSplitter {
   }
 
   private static extractSectionStart(sectionHtml: string, includeHeader = true): string {
-    console.log(`🔍 extractSectionStart called with includeHeader: ${includeHeader}`);
     
     if (includeHeader) {
       // Extract opening tags and section header, including list containers
@@ -871,7 +807,6 @@ export class ContentSplitter {
         const titleElement = match[2] || '';
         const listOpening = match[3] || '';
         const result = openingTag + titleElement + listOpening;
-        console.log(`🔍 With header result: "${result.substring(0, 100)}..."`);
         return result;
       }
     } else {
@@ -902,11 +837,9 @@ export class ContentSplitter {
         }
         
         const result = cleanSectionDiv.outerHTML.replace(/<\/[^>]+>$/, ''); // Remove closing tag
-        console.log(`🔍 Without header result (DOM-based): "${result}"`);
         return result;
       }
       
-      console.log(`⚠️ No section element found for header-less extraction`);
     }
     
     // Check if this section contains a list that we need to preserve
@@ -942,12 +875,10 @@ export class ContentSplitter {
       // Add the main section closing tag
       closingTags += `</${sectionDiv.tagName.toLowerCase()}>`;
       
-      console.log(`🔍 Section end tags: "${closingTags}"`);
       return closingTags;
     }
     
     // Fallback
-    console.log(`⚠️ Using fallback section end: </div>`);
     return '</div>';
   }
 
@@ -961,19 +892,16 @@ export class ContentSplitter {
       // Look for h2 section headers
       const header = sectionDiv.querySelector('h2.section-header, h2.editable-header');
       if (header && header.textContent) {
-        console.log(`🏷️ Extracted section title: "${header.textContent.trim()}"`);
         return header.textContent.trim();
       }
       
       // Fallback: look for any h2 element
       const anyHeader = sectionDiv.querySelector('h2');
       if (anyHeader && anyHeader.textContent) {
-        console.log(`🏷️ Extracted fallback section title: "${anyHeader.textContent.trim()}"`);
         return anyHeader.textContent.trim();
       }
     }
     
-    console.log(`⚠️ No section title found in HTML`);
     return null;
   }
 
@@ -997,7 +925,6 @@ export class ContentSplitter {
       });
     });
     
-    console.log('✅ ContentSplitter: Rendering and font loading complete');
   }
 
   static getPageConfig(): PageConfig {

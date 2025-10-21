@@ -34,7 +34,6 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
         Math.abs(previewHTML.length - previousHtmlRef.current.length) > 100;
       
       if (hasSignificantChange) {
-        console.log('🔄 Significant content change detected, forcing recalculation');
         ContentSplitter.forceRecalculation();
       }
       
@@ -46,7 +45,6 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
   const calculatePages = useCallback(async () => {
     if (!previewHTML) return;
 
-    console.log('🔄 Starting intelligent content-aware pagination');
     
     try {
       // Use ContentSplitter to properly split content across pages
@@ -59,7 +57,6 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
         pageNumber: page.pageNumber
       }));
       
-      console.log(`✅ ContentSplitter created ${newPages.length} pages with proper content distribution`);
       setPages(newPages);
       
     } catch (error) {
@@ -105,12 +102,15 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
     [onSectionHover]
   );
 
+  // Debug logging for rendering
+
   return (
     <div data-testid="live-preview-panel" className={`flex-1 overflow-auto ${className}`}>
       {/* Split Page Content */}
       <div className="py-8 px-4 pb-20">
         <div className="max-w-none mx-auto">
-          {pages.map((page, index) => (
+          {pages.length > 0 ? (
+            pages.map((page, index) => (
             <div
               key={page.id}
               className="split-page-content"
@@ -142,7 +142,12 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
                 }}
               />
             </div>
-          ))}
+          ))
+          ) : (
+            <div className="p-8 text-center text-gray-500">
+              Loading preview...
+            </div>
+          )}
         </div>
       </div>
 

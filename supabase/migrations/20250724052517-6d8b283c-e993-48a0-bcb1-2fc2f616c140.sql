@@ -58,7 +58,7 @@ WHERE organization_id IS NULL;
 ALTER TABLE public.quotes 
 ALTER COLUMN organization_id SET NOT NULL;
 
--- Update profiles RLS policies to consider organization membership
+-- Update profiles RLS policies to consider organization memberships
 DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 CREATE POLICY "Users can view profiles in their organization" 
 ON public.profiles 

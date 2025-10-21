@@ -73,30 +73,23 @@ export const useAppStore = create<AppState>()(
         const startTime = performance.now();
         
         try {
-          // Record start of initialization
-          console.log('🚀 Initializing Wall Quote Wizard...');
-          
-          // Initialize auth store first
-          console.log('📝 Initializing authentication...');
+    
           await useAuthStore.getState().initialize();
           
           // Wait for auth to settle, then initialize other stores
           const authState = useAuthStore.getState();
           if (authState.user) {
-            console.log('👤 User authenticated, initializing data stores...');
             await useQuotesStore.getState().initialize();
           }
           
           // Set up online/offline listeners
           if (typeof window !== 'undefined') {
             window.addEventListener('online', () => {
-              console.log('🌐 Application back online');
               get().setOnlineStatus(true);
               get().syncData();
             });
             
             window.addEventListener('offline', () => {
-              console.log('📴 Application offline');
               get().setOnlineStatus(false);
             });
           }
@@ -112,7 +105,6 @@ export const useAppStore = create<AppState>()(
             }
           });
           
-          console.log(`✅ Application initialized in ${loadTime.toFixed(2)}ms`);
         } catch (error) {
           console.error('❌ Application initialization failed:', error);
           
@@ -133,12 +125,10 @@ export const useAppStore = create<AppState>()(
         const { isOnline } = get();
         
         if (!isOnline) {
-          console.log('📴 Skipping sync - application offline');
           return;
         }
         
         try {
-          console.log('🔄 Syncing application data...');
           useUIStore.getState().setGlobalLoading(true, 'Syncing data...');
           
           // Re-fetch quotes if user is authenticated
@@ -148,7 +138,6 @@ export const useAppStore = create<AppState>()(
           }
           
           set({ lastSync: new Date() });
-          console.log('✅ Data sync completed');
         } catch (error) {
           console.error('❌ Data sync failed:', error);
           
@@ -182,7 +171,6 @@ export const useAppStore = create<AppState>()(
           features: { ...state.features, [flag]: enabled }
         }));
         
-        console.log(`🏁 Feature flag '${flag}' ${enabled ? 'enabled' : 'disabled'}`);
       },
 
       // Record performance metrics
@@ -191,12 +179,10 @@ export const useAppStore = create<AppState>()(
           performance: { ...state.performance, [metric]: value }
         }));
         
-        console.log(`📊 Performance metric '${metric}': ${value.toFixed(2)}ms`);
       },
 
       // Reset entire application state
       reset: () => {
-        console.log('🔄 Resetting application state...');
         
         // Reset all stores
         useAuthStore.getState()._setAuth(null, null);
@@ -216,7 +202,6 @@ export const useAppStore = create<AppState>()(
           },
         });
         
-        console.log('✅ Application state reset');
       },
 
       // Get application info
@@ -236,11 +221,9 @@ useAuthStore.subscribe(
     
     if (user && !previousUser && appState.isInitialized) {
       // User just signed in, initialize data stores
-      console.log('👤 User signed in, initializing data stores...');
       useQuotesStore.getState().initialize();
     } else if (!user && previousUser) {
       // User signed out, clear data stores
-      console.log('👋 User signed out, clearing data stores...');
       useQuotesStore.getState()._setQuotes([]);
       useQuotesStore.getState().setCurrentQuote(null);
     }

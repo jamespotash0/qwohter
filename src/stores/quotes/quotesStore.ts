@@ -2,10 +2,59 @@ import { create } from 'zustand';
 import { subscribeWithSelector, devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { supabase } from '@/integrations/supabase/client';
-import type { Quote } from '@/hooks/useQuotes';
 import type { WallSpecification, WallDetails } from '@/lib/types';
+import type { QuoteStatus, QuoteCustomization } from '@/lib/types/quotes/quote';
+import type { EnhancedPricingData } from '@/lib/types/pricing/enhancedPricing';
 // Note: filterWallDetailsForSave removed - discriminated union types now prevent invalid data
 import { ProposalNumberGenerator } from '@/utils/proposalNumberGenerator';
+import { quoteActivityService } from '@/services/quoteActivityService';
+import { useAuthStore } from '@/stores/auth/authStore';
+
+// Helper to get current user from auth store (avoid redundant API calls)
+const getCurrentUser = () => {
+  const user = useAuthStore.getState().user;
+  if (!user) throw new Error('User not authenticated');
+  return user;
+};
+
+// Define Quote interface directly in store
+export interface Quote {
+  id: string;
+  created_by: string;
+  organization_id: string;
+  proposal_number: string;
+  project_name?: string;
+  quote_details?: Record<string, any>;
+  job_details?: {
+    job_location?: string;
+    client_name?: string;
+    client_company?: string;
+    client_address?: string;
+    date?: string;
+  };
+  delivery_details?: Record<string, any>;
+  labor_details?: Record<string, any>;
+  wall_details: WallDetails;
+  price_details?: EnhancedPricingData;
+  status?: QuoteStatus;
+  date_last_downloaded?: string;
+  version?: number;
+  created_at: string;
+  updated_at: string;
+  customization?: QuoteCustomization;
+  quote_source?: string;
+  creator_name?: string;
+  archived?: boolean;
+
+  // Analytics fields (denormalized from migrations)
+  total_value?: number;
+  subtotal?: number;
+  submitted_at?: string;
+  won_at?: string;
+  rejected_at?: string;
+  closed_at?: string;
+  margin_percentage?: number;
+}
 
 interface QuotesState {
   // State
@@ -49,9 +98,16 @@ interface QuotesState {
   setPagination: (pagination: Partial<QuotesState['pagination']>) => void;
   clearFilters: () => void;
   
+  // Quote utilities
+  markAsDownloaded: (id: string) => Promise<Quote>;
+  saveQuoteCustomization: (id: string, customization: any) => Promise<Quote>;
+  archiveQuote: (id: string) => Promise<Quote>;
+  unarchiveQuote: (id: string) => Promise<Quote>;
+
   // Utilities
   getQuoteById: (id: string) => Quote | undefined;
   getFilteredQuotes: () => Quote[];
+  getArchivedQuotes: () => Quote[];
   clearError: () => void;
 
   // Internal actions
@@ -85,14 +141,11 @@ export const useQuotesStore = create<QuotesState>()(
         // Initialize quotes store
         initialize: async () => {
           const { fetchQuotes, subscribeToRealtime, _setLoading } = get();
-          
+
           try {
             _setLoading(true);
             await fetchQuotes();
-            
-            // Subscribe to realtime updates after initial fetch
             await subscribeToRealtime();
-            
             set({ isInitialized: true });
           } catch (error) {
             console.error('Quotes store initialization error:', error);
@@ -103,29 +156,141 @@ export const useQuotesStore = create<QuotesState>()(
 
         // Fetch quotes with optional refresh
         fetchQuotes: async (options = {}) => {
-          const { _setQuotes, _setLoading, _setError, pagination } = get();
-          
+          const { _setQuotes, _setLoading, _setError } = get();
+
           try {
             if (!options.refresh) _setLoading(true);
             _setError(null);
-            
-            const { data, error, count } = await supabase
-              .from('quotes')
-              .select('*', { count: 'exact' })
-              .order('created_at', { ascending: false })
-              .range(
-                (pagination.page - 1) * pagination.pageSize,
-                pagination.page * pagination.pageSize - 1
-              );
-            
-            if (error) throw error;
-            
-            const processedQuotes = data?.map(convertRowToQuote) || [];
-            _setQuotes(processedQuotes);
-            
-            set((state) => {
-              state.pagination.total = count || 0;
-            });
+
+            // Check authentication first
+            const { data: { session }, error: authError } = await supabase.auth.getSession();
+            if (authError) {
+              throw new Error('Authentication failed: ' + authError.message);
+            }
+
+            if (!session?.user) {
+              throw new Error('Not authenticated');
+            }
+
+            // Check if user has any memberships first
+            const { data: userMemberships, error: membershipError } = await supabase
+              .from('memberships')
+              .select('organization_id, role, status')
+              .eq('user_id', session.user.id);
+
+            let quotesData: any[] = [];
+            let count = 0;
+            let queryError: any = null;
+
+            if (!userMemberships || userMemberships.length === 0) {
+              // User has no memberships, query personal quotes directly with explicit filter
+              const { data, error, count: totalCount } = await supabase
+                .from('quotes')
+                .select(`
+                  id, created_by, organization_id, proposal_number, project_name,
+                  quote_details, job_details, delivery_details, labor_details,
+                  wall_details, price_details, status, date_last_downloaded,
+                  version, created_at, updated_at, customization,
+                  quote_source, archived,
+                  total_value, subtotal,
+                  submitted_at, won_at, rejected_at, closed_at, margin_percentage
+                `, { count: 'exact' })
+                .eq('created_by', session.user.id)
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+              if (error) {
+                console.error('Personal quotes query error:', error);
+                queryError = error;
+              } else {
+                quotesData = data || [];
+                count = totalCount || 0;
+              }
+            } else {
+              // User has memberships, let RLS policies handle the query
+              const { data, error, count: totalCount } = await supabase
+                .from('quotes')
+                .select(`
+                  id, created_by, organization_id, proposal_number, project_name,
+                  quote_details, job_details, delivery_details, labor_details,
+                  wall_details, price_details, status, date_last_downloaded,
+                  version, created_at, updated_at, customization,
+                  quote_source, archived,
+                  total_value, subtotal,
+                  submitted_at, won_at, rejected_at, closed_at, margin_percentage
+                `, { count: 'exact' })
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+              if (error) {
+                console.error('Organization quotes query error:', error);
+                queryError = error;
+              } else {
+                quotesData = data || [];
+                count = totalCount || 0;
+              }
+            }
+
+            // If there was a query error, throw it to be handled by the catch block
+            if (queryError) {
+              throw queryError;
+            }
+
+            // If we have quotes, fetch creator names
+            if (quotesData.length > 0) {
+
+              // Get unique creator IDs (use created_by since that's what the database has)
+              const creatorIds = [...new Set(
+                quotesData
+                  .map(quote => {
+                    const creatorId = quote.created_by;
+                    return creatorId;
+                  })
+                  .filter(Boolean)
+              )];
+
+
+              // Fetch creator names
+              const { data: profilesData, error: profilesError } = await supabase
+                .from('profiles')
+                .select('id, full_name')
+                .in('id', creatorIds);
+
+              if (profilesError) {
+                console.warn('Failed to fetch creator profiles:', profilesError);
+              }
+
+
+              // Create a map of creator IDs to names
+              const creatorMap = new Map();
+              if (profilesData) {
+                profilesData.forEach((profile: any) => {
+                  creatorMap.set(profile.id, profile.full_name);
+                });
+              }
+
+              // Combine quotes with creator names
+              const quotesWithCreatorNames = quotesData.map(quote => {
+                const creatorId = quote.created_by;
+                const creatorName = creatorMap.get(creatorId) || 'Unknown';
+                return {
+                  ...quote,
+                  creator_name: creatorName,
+                };
+              });
+
+              const processedQuotes = quotesWithCreatorNames.map(convertRowToQuote);
+              _setQuotes(processedQuotes);
+              set((state) => {
+                state.pagination.total = count;
+              });
+            } else {
+              _setQuotes([]);
+              set((state) => {
+                state.pagination.total = 0;
+              });
+            }
+
           } catch (error) {
             console.error('Fetch quotes error:', error);
             _setError(error instanceof Error ? error.message : 'Failed to fetch quotes');
@@ -138,35 +303,46 @@ export const useQuotesStore = create<QuotesState>()(
         // Create new quote
         createQuote: async (quoteData: any) => {
           const { quotes, _setQuotes, _setLoading, _setError } = get();
-          
+
           try {
             _setLoading(true);
             _setError(null);
-            
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('User not authenticated');
-            
-            // Get user's organization
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
+
+            const user = getCurrentUser();
+
+            // Get user's organization from memberships table
+            const { data: membershipData, error: membershipError } = await supabase
+              .from('memberships')
               .select('organization_id')
-              .eq('id', user.id)
+              .eq('user_id', user.id)
               .single();
-            
-            if (profileError) throw profileError;
-            if (!profileData?.organization_id) {
+
+            if (membershipError) throw membershipError;
+            if (!membershipData?.organization_id) {
               throw new Error('User not assigned to an organization');
             }
-            
+
+            // Get user's name from profiles
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', user.id)
+              .single();
+
+            const userName = profileData?.full_name || 'Unknown';
+
             // Generate proposal number
             const proposalInfo = await ProposalNumberGenerator.getNextProposalNumber();
-            
+
+            const projectName = quoteData.quoteName || quoteData.project_name || 'Untitled';
+
             const { data, error } = await supabase
               .from('quotes')
               .insert({
                 proposal_number: proposalInfo.fullNumber,
-                project_name: quoteData.quoteName || quoteData.project_name,
+                project_name: projectName,
                 quote_details: quoteData.contactInfo || {},
+                quote_source: quoteData.contactInfo?.quoteSource || 'Manual',
                 job_details: {
                   job_location: quoteData.jobDetails.jobLocation || '',
                   client_name: quoteData.jobDetails.billedTo.name || '',
@@ -175,27 +351,35 @@ export const useQuotesStore = create<QuotesState>()(
                   date: quoteData.jobDetails.date
                 },
                 wall_details: quoteData.walls || {},
-                price_details: {
-                  base_price: quoteData.pricing.basePrice,
-                  freight: quoteData.pricing.freight,
-                  total: quoteData.pricing.total,
-                  payment_upon_drawings: quoteData.pricing.paymentUponDrawings,
-                  payment_upon_track_installation: quoteData.pricing.paymentUponTrackInstallation
-                },
+                price_details: quoteData.pricing || {},
                 delivery_details: quoteData.deliveryLabor.delivery || {},
                 labor_details: quoteData.deliveryLabor.labor || {},
                 status: quoteData.status || 'Draft',
-                user_id: user.id,
-                organization_id: profileData.organization_id
-              })
+                created_by: user.id,
+                organization_id: membershipData.organization_id
+              } as any)
               .select()
               .single();
-            
+
             if (error) throw error;
-            
-            const newQuote = convertRowToQuote(data);
+
+            const newQuote = convertRowToQuote({
+              ...data as object,
+              creator_name: userName
+            });
             _setQuotes([newQuote, ...quotes]);
-            
+
+            // Log quote creation activity
+            await quoteActivityService.logCreation({
+              quoteId: newQuote.id,
+              quoteNumber: proposalInfo.fullNumber,
+              projectName: projectName,
+              userId: user.id,
+              userName: userName,
+              organizationId: membershipData.organization_id,
+              status: quoteData.status || 'Draft'
+            });
+
             return newQuote;
           } catch (error) {
             console.error('Create quote error:', error);
@@ -226,21 +410,20 @@ export const useQuotesStore = create<QuotesState>()(
             // Generate new version number
             const proposalInfo = await ProposalNumberGenerator.getNextProposalNumber(existingQuote.proposal_number);
 
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('User not authenticated');
+            const user = getCurrentUser();
 
             // Create new quote with incremented version
             const { data, error } = await supabase
               .from('quotes')
               .insert({
-                ...existingQuote,
+                ...existingQuote as object,
                 id: undefined,
                 proposal_number: proposalInfo.fullNumber,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 date_last_downloaded: null,
                 version: proposalInfo.version
-              })
+              } as any)
               .select()
               .single();
 
@@ -261,37 +444,106 @@ export const useQuotesStore = create<QuotesState>()(
 
         // Update quote
         updateQuote: async (id: string, updates: Partial<Quote>) => {
-          const { _setLoading, _setError } = get();
-          
+          const { quotes, _setLoading, _setError } = get();
+
           try {
             _setLoading(true);
             _setError(null);
-            
+
+            // Get current quote to detect changes
+            const currentQuote = quotes.find(q => q.id === id);
+            if (!currentQuote) throw new Error('Quote not found');
+
+            const user = getCurrentUser();
+
+            // Get user's name and organization
+            const [profileResult, membershipResult] = await Promise.all([
+              supabase.from('profiles').select('full_name').eq('id', user.id).single(),
+              supabase.from('memberships').select('organization_id').eq('user_id', user.id).single()
+            ]);
+
+            const userName = profileResult.data?.full_name || 'Unknown';
+            const organizationId = membershipResult.data?.organization_id || currentQuote.organization_id;
+
+            // Detect if status changed
+            const statusChanged = updates.status && updates.status !== currentQuote.status;
+            const oldStatus = currentQuote.status;
+            const newStatus = updates.status;
+
             // Note: wall_details filtering removed - discriminated unions ensure type safety
-            let processedUpdates = { ...updates };
-            
             const { data, error } = await supabase
               .from('quotes')
-              .update(processedUpdates as any)
+              .update(updates)
               .eq('id', id)
               .select()
               .single();
-            
+
             if (error) throw error;
-            
+
             const updatedQuote = convertRowToQuote(data);
-            
+
             set((state) => {
               const index = state.quotes.findIndex(q => q.id === id);
               if (index !== -1) {
-                state.quotes[index] = updatedQuote;
+                // Preserve existing creator_name if the update doesn't include it
+                const existingQuote = state.quotes[index];
+                state.quotes[index] = {
+                  ...updatedQuote,
+                  creator_name: updatedQuote.creator_name === 'Unknown' && existingQuote.creator_name !== 'Unknown'
+                    ? existingQuote.creator_name
+                    : updatedQuote.creator_name
+                };
               }
-              
+
               if (state.currentQuote?.id === id) {
-                state.currentQuote = updatedQuote;
+                state.currentQuote = {
+                  ...updatedQuote,
+                  creator_name: updatedQuote.creator_name === 'Unknown' && state.currentQuote.creator_name !== 'Unknown'
+                    ? state.currentQuote.creator_name
+                    : updatedQuote.creator_name
+                };
               }
             });
-            
+
+            // Log activity only if quote is not archived
+            // (archived quotes shouldn't push updates to recent activity)
+            // Also skip logging if quote was just created (within last 30 seconds)
+            // to avoid duplicate "created" and "updated" entries
+            const createdAt = new Date(currentQuote.created_at);
+            const now = new Date();
+            const secondsSinceCreation = (now.getTime() - createdAt.getTime()) / 1000;
+            const isNewlyCreated = secondsSinceCreation < 30;
+
+            if (!currentQuote.archived && !isNewlyCreated) {
+              if (statusChanged && oldStatus && newStatus) {
+                // Status change
+                await quoteActivityService.logStatusChange({
+                  quoteId: id,
+                  quoteNumber: currentQuote.proposal_number,
+                  projectName: currentQuote.project_name || 'Untitled',
+                  userId: user.id,
+                  userName: userName,
+                  organizationId: organizationId,
+                  oldStatus: oldStatus,
+                  newStatus: newStatus
+                });
+              } else {
+                // General update
+                const changedFields = Object.keys(updates).filter(key => key !== 'updated_at');
+                if (changedFields.length > 0) {
+                  await quoteActivityService.logUpdate({
+                    quoteId: id,
+                    quoteNumber: currentQuote.proposal_number,
+                    projectName: currentQuote.project_name || 'Untitled',
+                    userId: user.id,
+                    userName: userName,
+                    organizationId: organizationId,
+                    changedFields: changedFields
+                  });
+                }
+              }
+            }
+
             return updatedQuote;
           } catch (error) {
             console.error('Update quote error:', error);
@@ -304,19 +556,45 @@ export const useQuotesStore = create<QuotesState>()(
 
         // Delete quote
         deleteQuote: async (id: string) => {
-          const { _setLoading, _setError } = get();
-          
+          const { quotes, _setLoading, _setError } = get();
+
           try {
             _setLoading(true);
             _setError(null);
-            
+
+            // Get quote details before deletion for activity logging
+            const quoteToDelete = quotes.find(q => q.id === id);
+            if (!quoteToDelete) throw new Error('Quote not found');
+
+            const user = getCurrentUser();
+
+            // Get user's name and organization
+            const [profileResult, membershipResult] = await Promise.all([
+              supabase.from('profiles').select('full_name').eq('id', user.id).single(),
+              supabase.from('memberships').select('organization_id').eq('user_id', user.id).single()
+            ]);
+
+            const userName = profileResult.data?.full_name || 'Unknown';
+            const organizationId = membershipResult.data?.organization_id || quoteToDelete.organization_id;
+
+            // Log deletion activity BEFORE deleting the quote
+            await quoteActivityService.logDeletion({
+              quoteId: id,
+              quoteNumber: quoteToDelete.proposal_number,
+              projectName: quoteToDelete.project_name || 'Untitled',
+              userId: user.id,
+              userName: userName,
+              organizationId: organizationId
+            });
+
+            // Now delete the quote
             const { error } = await supabase
               .from('quotes')
               .delete()
               .eq('id', id);
-            
+
             if (error) throw error;
-            
+
             set((state) => {
               state.quotes = state.quotes.filter(q => q.id !== id);
               if (state.currentQuote?.id === id) {
@@ -340,22 +618,20 @@ export const useQuotesStore = create<QuotesState>()(
         // Subscribe to realtime updates
         subscribeToRealtime: async () => {
           try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('User not authenticated');
+            const user = getCurrentUser();
 
-            // Get user's organization
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
+            // Get user's organization from memberships table
+            const { data: membershipData, error: membershipError } = await supabase
+              .from('memberships')
               .select('organization_id')
-              .eq('id', user.id)
+              .eq('user_id', user.id)
               .single();
 
-            if (profileError) throw profileError;
-            if (!profileData?.organization_id) {
+            if (membershipError) throw membershipError;
+            if (!membershipData?.organization_id) {
               throw new Error('User not assigned to an organization');
             }
 
-            console.log('🔄 Subscribing to realtime updates for organization:', profileData.organization_id);
 
             // Subscribe to quotes table changes for this organization
             const channel = supabase
@@ -366,10 +642,9 @@ export const useQuotesStore = create<QuotesState>()(
                   event: '*',
                   schema: 'public',
                   table: 'quotes',
-                  filter: `organization_id=eq.${profileData.organization_id}`
+                  filter: `organization_id=eq.${membershipData.organization_id}`
                 },
                 (payload) => {
-                  console.log('📡 Realtime update received:', payload);
                   
                   const { eventType, new: newRecord, old: oldRecord } = payload;
 
@@ -417,7 +692,6 @@ export const useQuotesStore = create<QuotesState>()(
                 }
               )
               .subscribe((status) => {
-                console.log('📡 Realtime subscription status:', status);
                 set({ isRealtimeConnected: status === 'SUBSCRIBED' });
               });
 
@@ -434,7 +708,6 @@ export const useQuotesStore = create<QuotesState>()(
         unsubscribeFromRealtime: () => {
           const channel = (get() as any).realtimeChannel;
           if (channel) {
-            console.log('🔌 Unsubscribing from realtime updates');
             supabase.removeChannel(channel);
             set({ isRealtimeConnected: false });
             (get() as any).realtimeChannel = null;
@@ -543,11 +816,14 @@ export const useQuotesStore = create<QuotesState>()(
           return quotes.find(q => q.id === id);
         },
 
-        // Get filtered quotes
+        // Get filtered quotes (excludes archived)
         getFilteredQuotes: () => {
           const { quotes, filters } = get();
-          
+
           return quotes.filter(quote => {
+            // Exclude archived quotes
+            if (quote.archived) return false;
+
             // Search filter
             if (filters.search) {
               const searchLower = filters.search.toLowerCase();
@@ -558,12 +834,12 @@ export const useQuotesStore = create<QuotesState>()(
               );
               if (!matchesSearch) return false;
             }
-            
+
             // Status filter
             if (filters.status && quote.status !== filters.status) {
               return false;
             }
-            
+
             // Date range filter
             const [startDate, endDate] = filters.dateRange;
             if (startDate || endDate) {
@@ -571,9 +847,268 @@ export const useQuotesStore = create<QuotesState>()(
               if (startDate && quoteDate < startDate) return false;
               if (endDate && quoteDate > endDate) return false;
             }
-            
+
             return true;
           });
+        },
+
+        // Get archived quotes (with filters applied)
+        getArchivedQuotes: () => {
+          const { quotes, filters } = get();
+
+          return quotes.filter(quote => {
+            // Only include archived quotes
+            if (!quote.archived) return false;
+
+            // Search filter
+            if (filters.search) {
+              const searchLower = filters.search.toLowerCase();
+              const matchesSearch = (
+                quote.proposal_number.toLowerCase().includes(searchLower) ||
+                quote.project_name?.toLowerCase().includes(searchLower) ||
+                quote.job_details?.client_name?.toLowerCase().includes(searchLower)
+              );
+              if (!matchesSearch) return false;
+            }
+
+            // Status filter
+            if (filters.status && quote.status !== filters.status) {
+              return false;
+            }
+
+            // Date range filter
+            const [startDate, endDate] = filters.dateRange;
+            if (startDate || endDate) {
+              const quoteDate = new Date(quote.created_at);
+              if (startDate && quoteDate < startDate) return false;
+              if (endDate && quoteDate > endDate) return false;
+            }
+
+            return true;
+          });
+        },
+
+        // Mark quote as downloaded
+        markAsDownloaded: async (id: string) => {
+          const { _setLoading, _setError } = get();
+
+          try {
+            _setLoading(true);
+            _setError(null);
+
+            const { data, error } = await supabase
+              .from('quotes')
+              .update({ date_last_downloaded: new Date().toISOString() })
+              .eq('id', id)
+              .select()
+              .single();
+
+            if (error) throw error;
+
+            const updatedQuote = convertRowToQuote(data);
+
+            set((state) => {
+              const index = state.quotes.findIndex(q => q.id === id);
+              if (index !== -1) {
+                state.quotes[index] = updatedQuote;
+              }
+
+              if (state.currentQuote?.id === id) {
+                state.currentQuote = updatedQuote;
+              }
+            });
+
+            return updatedQuote;
+          } catch (error) {
+            console.error('Mark as downloaded error:', error);
+            _setError(error instanceof Error ? error.message : 'Failed to mark as downloaded');
+            throw error;
+          } finally {
+            _setLoading(false);
+          }
+        },
+
+        // Save quote customization
+        saveQuoteCustomization: async (id: string, customization: any) => {
+          const { quotes, _setLoading, _setError } = get();
+
+          try {
+            _setLoading(true);
+            _setError(null);
+
+            // Update the version for customization tracking
+            const currentQuote = quotes.find(q => q.id === id);
+            const newVersion = (currentQuote?.version || 0) + 1;
+
+            const updateData = {
+              customization: {
+                ...customization,
+                lastModified: new Date().toISOString(),
+                version: newVersion
+              },
+              version: newVersion
+            };
+
+            const { data, error } = await supabase
+              .from('quotes')
+              .update(updateData)
+              .eq('id', id)
+              .select()
+              .single();
+
+            if (error) throw error;
+
+            const updatedQuote = convertRowToQuote(data);
+
+            set((state) => {
+              const index = state.quotes.findIndex(q => q.id === id);
+              if (index !== -1) {
+                state.quotes[index] = updatedQuote;
+              }
+
+              if (state.currentQuote?.id === id) {
+                state.currentQuote = updatedQuote;
+              }
+            });
+
+            return updatedQuote;
+          } catch (error) {
+            console.error('Save customization error:', error);
+            _setError(error instanceof Error ? error.message : 'Failed to save customization');
+            throw error;
+          } finally {
+            _setLoading(false);
+          }
+        },
+
+        // Archive quote
+        archiveQuote: async (id: string) => {
+          const { quotes, _setLoading, _setError } = get();
+
+          try {
+            _setLoading(true);
+            _setError(null);
+
+            const quoteToArchive = quotes.find(q => q.id === id);
+            if (!quoteToArchive) throw new Error('Quote not found');
+
+            const user = getCurrentUser();
+
+            // Get user's name and organization
+            const [profileResult, membershipResult] = await Promise.all([
+              supabase.from('profiles').select('full_name').eq('id', user.id).single(),
+              supabase.from('memberships').select('organization_id').eq('user_id', user.id).single()
+            ]);
+
+            const userName = profileResult.data?.full_name || 'Unknown';
+            const organizationId = membershipResult.data?.organization_id || quoteToArchive.organization_id;
+
+            const { data, error } = await supabase
+              .from('quotes')
+              .update({ archived: true })
+              .eq('id', id)
+              .select()
+              .single();
+
+            if (error) throw error;
+
+            const updatedQuote = convertRowToQuote(data);
+
+            set((state) => {
+              const index = state.quotes.findIndex(q => q.id === id);
+              if (index !== -1) {
+                state.quotes[index] = updatedQuote;
+              }
+
+              if (state.currentQuote?.id === id) {
+                state.currentQuote = updatedQuote;
+              }
+            });
+
+            // Log archive activity
+            await quoteActivityService.logActivity({
+              quoteId: id,
+              quoteNumber: quoteToArchive.proposal_number,
+              projectName: quoteToArchive.project_name || 'Untitled',
+              userId: user.id,
+              userName: userName,
+              activityType: 'Archived',
+              organizationId: organizationId
+            });
+
+            return updatedQuote;
+          } catch (error) {
+            console.error('Archive quote error:', error);
+            _setError(error instanceof Error ? error.message : 'Failed to archive quote');
+            throw error;
+          } finally {
+            _setLoading(false);
+          }
+        },
+
+        // Unarchive quote
+        unarchiveQuote: async (id: string) => {
+          const { quotes, _setLoading, _setError } = get();
+
+          try {
+            _setLoading(true);
+            _setError(null);
+
+            const quoteToUnarchive = quotes.find(q => q.id === id);
+            if (!quoteToUnarchive) throw new Error('Quote not found');
+
+            const user = getCurrentUser();
+
+            // Get user's name and organization
+            const [profileResult, membershipResult] = await Promise.all([
+              supabase.from('profiles').select('full_name').eq('id', user.id).single(),
+              supabase.from('memberships').select('organization_id').eq('user_id', user.id).single()
+            ]);
+
+            const userName = profileResult.data?.full_name || 'Unknown';
+            const organizationId = membershipResult.data?.organization_id || quoteToUnarchive.organization_id;
+
+            const { data, error } = await supabase
+              .from('quotes')
+              .update({ archived: false })
+              .eq('id', id)
+              .select()
+              .single();
+
+            if (error) throw error;
+
+            const updatedQuote = convertRowToQuote(data);
+
+            set((state) => {
+              const index = state.quotes.findIndex(q => q.id === id);
+              if (index !== -1) {
+                state.quotes[index] = updatedQuote;
+              }
+
+              if (state.currentQuote?.id === id) {
+                state.currentQuote = updatedQuote;
+              }
+            });
+
+            // Log unarchive activity
+            await quoteActivityService.logActivity({
+              quoteId: id,
+              quoteNumber: quoteToUnarchive.proposal_number,
+              projectName: quoteToUnarchive.project_name || 'Untitled',
+              userId: user.id,
+              userName: userName,
+              activityType: 'Unarchived',
+              organizationId: organizationId
+            });
+
+            return updatedQuote;
+          } catch (error) {
+            console.error('Unarchive quote error:', error);
+            _setError(error instanceof Error ? error.message : 'Failed to unarchive quote');
+            throw error;
+          } finally {
+            _setLoading(false);
+          }
         },
 
         // Clear error
@@ -626,7 +1161,8 @@ const convertRowToQuote = (row: any): Quote => {
     wall_details: migrateWallDetails(row.wall_details),
     project_name: row.project_name || undefined,
     date_last_downloaded: row.date_last_downloaded || undefined,
-    status: row.status || undefined
+    status: row.status || undefined,
+    creator_name: row.creator_name || 'Unknown'
   };
 };
 
@@ -638,12 +1174,16 @@ export const useQuotesError = () => useQuotesStore((state) => state.error);
 export const useQuotesFilters = () => useQuotesStore((state) => state.filters);
 export const useQuotesPagination = () => useQuotesStore((state) => state.pagination);
 export const useFilteredQuotes = () => useQuotesStore((state) => state.getFilteredQuotes());
+export const useArchivedQuotes = () => useQuotesStore((state) => state.getArchivedQuotes());
 export const useRealtimeConnection = () => useQuotesStore((state) => state.isRealtimeConnected);
 export const useQuotesActions = () => useQuotesStore((state) => ({
+  initialize: state.initialize,
   fetchQuotes: state.fetchQuotes,
   createQuote: state.createQuote,
   createQuoteVersion: state.createQuoteVersion,
   updateQuote: state.updateQuote,
+  archiveQuote: state.archiveQuote,
+  unarchiveQuote: state.unarchiveQuote,
   deleteQuote: state.deleteQuote,
   setCurrentQuote: state.setCurrentQuote,
   subscribeToRealtime: state.subscribeToRealtime,
@@ -651,6 +1191,8 @@ export const useQuotesActions = () => useQuotesStore((state) => ({
   updateWallSystem: state.updateWallSystem,
   removeWallSystem: state.removeWallSystem,
   addWallSystem: state.addWallSystem,
+  markAsDownloaded: state.markAsDownloaded,
+  saveQuoteCustomization: state.saveQuoteCustomization,
   setFilters: state.setFilters,
   setPagination: state.setPagination,
   clearFilters: state.clearFilters,

@@ -4,16 +4,14 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { InfoIcon } from "@/components/ui/info-icon";
 import { useEffect, useState, useCallback } from "react";
 import { EnhancedPricingData, defaultEnhancedPricing, calculateEnhancedPricing } from "@/lib/types/pricing/enhancedPricing";
-import { Calculator, Package } from "lucide-react";
+import { Calculator } from "lucide-react";
 
 interface EnhancedPricingFormProps {
   data: EnhancedPricingData;
   onUpdate: (data: EnhancedPricingData) => void;
-  onGenerate?: () => void;
-  quoteData?: any;
 }
 
-const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: EnhancedPricingFormProps) => {
+const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
   const [localData, setLocalData] = useState<EnhancedPricingData>(() => {
     // Merge provided data with defaults to ensure all fields are present
     return { ...defaultEnhancedPricing, ...data };
@@ -114,18 +112,13 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
 
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white">
-      <div className="max-w-6xl mx-auto space-y-10">
-        
-        {/* ========== SECTION 1: COST BREAKDOWN ========== */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Package className="w-5 h-5 text-blue-600" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900">Cost Breakdown</h3>
-          </div>
-          
+    <div className="p-1">
+      <div className="space-y-6">
+
+        {/* ========== MATERIALS ========== */}
+        <div>
+          <h4 className="text-lg font-semibold text-gray-900 mb-4">Materials</h4>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
             <div className="space-y-3">
@@ -496,11 +489,7 @@ const EnhancedPricingForm = ({ data, onUpdate, onGenerate, quoteData }: Enhanced
           </div>
 
           {/* Cost Totals */}
-          <div className="mt-8 p-6 bg-gradient-to-r from-emerald-50 to-blue-50 rounded-xl border border-emerald-200">
-            <div className="flex items-center gap-2 mb-4">
-              <Calculator className="w-5 h-5 text-emerald-600" />
-              <h4 className="text-lg font-semibold text-gray-900">Cost Totals</h4>
-            </div>
+          <div className="mt-8 p-6 bg-slate-50 rounded-lg border border-slate-200">
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="font-medium text-gray-700">Cost Subtotal</span>

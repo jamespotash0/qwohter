@@ -1,204 +1,289 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { PageContent } from "@/components/common/layout";
 import { Card, CardContent } from "@/components/ui/card";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar, HeaderNav } from "@/components/common/layout";
-import { 
-  DollarSign, 
-  TrendingUp, 
-  FileText, 
+import { Button } from "@/components/ui/button";
+import {
+  DollarSign,
+  TrendingUp,
+  FileText,
   Target,
-  Building2,
-  User,
+  Users,
+  Calendar,
 } from "lucide-react";
-import { useQuotes } from "@/hooks/useQuotes";
-import { useOrganizations } from "@/hooks/useOrganizations";
-import { useUserProfile } from "@/hooks/useUserProfile";
+import { useQuotesStore } from "@/stores/quotes/quotesStore";
+import { useOrganizationStore } from "@/stores/organization/organizationStore";
+import { useAuthStore } from "@/stores/auth/authStore";
 import { AnalyticsPageCharts } from "@/components/common/charts/AnalyticsPageCharts";
 
+/**
+ * Streamlined Analytics using AppLayout
+ *
+ * This demonstrates the new unified approach:
+ * - AppLayout handles authentication, layout, sidebar automatically
+ * - ContentCard provides consistent card styling
+ * - Focus only on analytics-specific content
+ */
 const Analytics = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
-  const { quotes, loading: quotesLoading } = useQuotes();
-  const { currentOrganization, loading: organizationsLoading } = useOrganizations();
-  const { profile } = useUserProfile(user?.id);
+  const [viewMode, setViewMode] = useState<'monthly' | 'annual'>('monthly');
+  const quotes = useQuotesStore((state) => state.quotes);
+  const quotesLoading = useQuotesStore((state) => state.isLoading);
+  const isInitialized = useQuotesStore((state) => state.isInitialized);
+  const initialize = useQuotesStore((state) => state.initialize);
+  // Use Zustand stores directly to avoid re-fetches
+  const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
+  const profile = useAuthStore((state) => state.profile);
 
+  // Get current user for analytics data
   useEffect(() => {
-    const checkAuth = async () => {
+    const getCurrentUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/auth");
-        return;
+      if (session?.user) {
+        setUser(session.user);
       }
-      setUser(session.user);
     };
-    checkAuth();
-  }, [navigate]);
+    getCurrentUser();
+  }, []);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
-  };
+  // Initialize quotes store
+  useEffect(() => {
+    if (user && !isInitialized) {
+      initialize();
+    }
+  }, [user, isInitialized, initialize]);
+
   const parseCurrency = (formatted: string | number): number => {
     if (typeof formatted === 'number') return formatted;
     return Number(formatted.toString().replace(/[^0-9.-]+/g, ''));
   };
 
-  // Calculate metrics
-  const totalQuotes = quotes.length;
-  const totalRevenue = quotes.reduce((sum, quote) => {
-    const total = quote.price_details?.final_selling_price || 0;
-    
-    // Only add if job is won
-    if (quote.status === 'Won') {
-      return sum + parseCurrency(total);
+  // Calculate metrics based on view mode
+  const metrics = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    // Filter quotes based on view mode - use created_at for quote creation metrics
+    const filteredQuotes = viewMode === 'monthly'
+      ? quotes.filter(q => {
+          const createdDate = new Date(q.created_at);
+          return createdDate.getFullYear() === currentYear && createdDate.getMonth() === currentMonth;
+        })
+      : quotes.filter(q => {
+          const createdDate = new Date(q.created_at);
+          return createdDate.getFullYear() === currentYear;
+        });
+
+    // Quotes by user - use ALL quotes, not just filtered by period
+    const quotesByUser: Record<string, number> = {};
+    quotes.forEach(q => {
+      const userName = q.creator_name || 'Unknown';
+      quotesByUser[userName] = (quotesByUser[userName] || 0) + 1;
+    });
+
+    // Quotes per month (for current year)
+    const quotesPerMonth: Record<string, number> = {};
+    if (viewMode === 'annual') {
+      for (let month = 0; month < 12; month++) {
+        const monthQuotes = quotes.filter(q => {
+          const createdDate = new Date(q.created_at);
+          return createdDate.getFullYear() === currentYear && createdDate.getMonth() === month;
+        });
+        const monthName = new Date(currentYear, month).toLocaleDateString('en-US', { month: 'short' });
+        quotesPerMonth[monthName] = monthQuotes.length;
+      }
+    } else {
+      // For monthly view, show weeks
+      const startOfMonth = new Date(currentYear, currentMonth, 1);
+      const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
+      const weeks = Math.ceil(endOfMonth.getDate() / 7);
+
+      for (let week = 0; week < weeks; week++) {
+        const weekStart = week * 7 + 1;
+        const weekEnd = Math.min((week + 1) * 7, endOfMonth.getDate());
+        const weekQuotes = filteredQuotes.filter(q => {
+          const day = new Date(q.created_at).getDate();
+          return day >= weekStart && day <= weekEnd;
+        });
+        quotesPerMonth[`Week ${week + 1}`] = weekQuotes.length;
+      }
     }
-    return sum;
-  }, 0);
 
-  const wonQuotes = quotes.filter(q => q.status === 'Won').length;
-  const rejectedQuotes = quotes.filter(q => q.status === 'Rejected').length;
-  // const pendingQuotes = quotes.filter(q => q.status === 'Pending').length;
-  // const draftQuotes = quotes.filter(q => q.status === 'Draft').length;
-  
-  const averageRevenuePerQuote = wonQuotes > 0 ? totalRevenue / wonQuotes : 0;
-  const conversionRate = totalQuotes > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;
+    // Calculate revenue using won_at timestamp for accurate period filtering
+    const wonQuotesInPeriod = viewMode === 'monthly'
+      ? quotes.filter(q => {
+          if (!q.won_at) return false;
+          const wonDate = new Date(q.won_at);
+          return wonDate.getFullYear() === currentYear && wonDate.getMonth() === currentMonth;
+        })
+      : quotes.filter(q => {
+          if (!q.won_at) return false;
+          const wonDate = new Date(q.won_at);
+          return wonDate.getFullYear() === currentYear;
+        });
 
-  // Single loading check pattern - prevents flash by always maintaining layout
-  if (!user || quotesLoading) {
-    return (
-      <SidebarProvider>
-        <div className="min-h-screen flex w-full bg-theme-primary overflow-hidden">
-          <AppSidebar user={user?.email || ""} onLogout={handleLogout} />
-          <main className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading analytics...</p>
-            </div>
-          </main>
-        </div>
-      </SidebarProvider>
-    );
-  }
+    const rejectedQuotesInPeriod = viewMode === 'monthly'
+      ? quotes.filter(q => {
+          if (!q.rejected_at) return false;
+          const rejectedDate = new Date(q.rejected_at);
+          return rejectedDate.getFullYear() === currentYear && rejectedDate.getMonth() === currentMonth;
+        })
+      : quotes.filter(q => {
+          if (!q.rejected_at) return false;
+          const rejectedDate = new Date(q.rejected_at);
+          return rejectedDate.getFullYear() === currentYear;
+        });
+
+    const totalRevenue = wonQuotesInPeriod.reduce((sum, quote) => {
+      // Use denormalized total_value field if available, fallback to price_details
+      const total = quote.total_value || quote.price_details?.final_selling_price || 0;
+      return sum + (typeof total === 'number' ? total : parseCurrency(total));
+    }, 0);
+
+    const wonQuotes = wonQuotesInPeriod.length;
+    const rejectedQuotes = rejectedQuotesInPeriod.length;
+
+    // Win Rate = Won / (Won + Lost) - Same as conversion rate for this use case
+    const winRate = (wonQuotes + rejectedQuotes) > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;
+
+    // Conversion Rate = Won / (Won + Rejected) - Only quotes that reached a decision
+    // This is more accurate than Won / Total Created, since not all quotes may be decided yet
+    const conversionRate = (wonQuotes + rejectedQuotes) > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;
+
+    return {
+      totalQuotes: filteredQuotes.length,
+      totalRevenue,
+      quotesByUser,
+      quotesPerMonth,
+      topUser: Object.entries(quotesByUser).sort((a, b) => b[1] - a[1])[0] || ['None', 0],
+      averageRevenuePerQuote: wonQuotes > 0 ? totalRevenue / wonQuotes : 0,
+      winRate,
+      conversionRate,
+    };
+  }, [quotes, viewMode]);
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-theme-primary">
-        <AppSidebar user={user.email || ""} onLogout={handleLogout} />
-        
-        <main className="flex-1 flex flex-col overflow-hidden">
-          {/* Header Nav Bar */}
-          <HeaderNav 
-            user={user.email || ""} 
-            userProfile={profile as any}
-            organizationName={currentOrganization?.name || 'Loading...'}
-            onLogout={handleLogout} 
-          />
-
-          {/* Analytics Content */}
-          <div className="flex-1 p-6 space-y-8 overflow-y-auto">
-            {/* Page Header */}
-            {/* <div className=" text-center">
-              <h1 className="text-5xl font-black bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent mb-4">
-                Analytics Dashboard
-              </h1>
-              <p className="text-slate-600 text-xl font-medium">Comprehensive insights into your business performance</p>
-            </div> */}
-
-            {/* Key Metrics Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 ">
-              <Card className="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 border-0 shadow-2xl hover:shadow-3xl transition-shadow duration-300 group">
-                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-                <CardContent className="relative p-6 text-white">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-blue-100 text-xs font-medium">Total Revenue</p>
-                      <p className="text-2xl font-bold truncate">${totalRevenue.toLocaleString()}</p>
-                      <div className="flex items-center gap-1 mt-2">
-                        <TrendingUp className="w-3 h-3 text-blue-200" />
-                        <span className="text-xs text-blue-200 font-medium">Won quotes only</span>
-                      </div>
-                    </div>
-                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shadow-xl group-hover:rotate-12 transition-transform duration-300 flex-shrink-0">
-                      <DollarSign className="w-6 h-6 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 border-0 shadow-2xl hover:shadow-3xl transition-shadow duration-300 group">
-                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-                <CardContent className="relative p-6 text-white">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-emerald-100 text-xs font-medium">Total Quotes</p>
-                      <p className="text-2xl font-bold truncate">{totalQuotes}</p>
-                      <div className="flex items-center gap-1 mt-2">
-                        <FileText className="w-3 h-3 text-emerald-200" />
-                        <span className="text-xs text-emerald-200 font-medium">All status</span>
-                      </div>
-                    </div>
-                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shadow-xl group-hover:rotate-12 transition-transform duration-300 flex-shrink-0">
-                      <FileText className="w-6 h-6 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="relative overflow-hidden bg-gradient-to-br from-purple-500 to-purple-600 border-0 shadow-2xl hover:shadow-3xl transition-shadow duration-300 group">
-                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-                <CardContent className="relative p-6 text-white">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-purple-100 text-xs font-medium">Avg Revenue/Quote</p>
-                      <p className="text-2xl font-bold truncate">${Math.round(averageRevenuePerQuote).toLocaleString()}</p>
-                      <div className="flex items-center gap-1 mt-2">
-                        <Target className="w-3 h-3 text-purple-200" />
-                        <span className="text-xs text-purple-200 font-medium">Won only</span>
-                      </div>
-                    </div>
-                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shadow-xl group-hover:rotate-12 transition-transform duration-300 flex-shrink-0">
-                      <Target className="w-6 h-6 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="relative overflow-hidden bg-gradient-to-br from-amber-500 to-orange-500 border-0 shadow-2xl hover:shadow-3xl transition-shadow duration-300 group">
-                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-                <CardContent className="relative p-6 text-white">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-orange-100 text-xs font-medium">Conversion Rate</p>
-                      <p className="text-2xl font-bold truncate">{conversionRate.toFixed(1)}%</p>
-                      <div className="flex items-center gap-1 mt-2">
-                        <TrendingUp className="w-3 h-3 text-orange-200" />
-                        <span className="text-xs text-orange-200 font-medium">Won/Total</span>
-                      </div>
-                    </div>
-                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shadow-xl group-hover:rotate-12 transition-transform duration-300 flex-shrink-0">
-                      <TrendingUp className="w-6 h-6 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+    <PageContent
+      title="Analytics"
+      subtitle="Track your business performance and quote insights"
+      showPageHeader={true}
+      headerActions={
+        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-[var(--sidebar-bg)] p-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setViewMode('monthly')}
+            className={`transition-all duration-200 ${
+              viewMode === 'monthly'
+                ? 'bg-[var(--sidebar-nav-bg-active)] text-[var(--sidebar-nav-text-active)] hover:bg-[var(--sidebar-nav-bg-active)] hover:text-[var(--sidebar-nav-text-active)]'
+                : 'text-[var(--sidebar-nav-text)] hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]'
+            }`}
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Monthly
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setViewMode('annual')}
+            className={`transition-all duration-200 ${
+              viewMode === 'annual'
+                ? 'bg-[var(--sidebar-nav-bg-active)] text-[var(--sidebar-nav-text-active)] hover:bg-[var(--sidebar-nav-bg-active)] hover:text-[var(--sidebar-nav-text-active)]'
+                : 'text-[var(--sidebar-nav-text)] hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]'
+            }`}
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Annual
+          </Button>
+        </div>
+      }
+    >
+      {/* Metrics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Total Revenue */}
+        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800">
+                <DollarSign className="w-6 h-6 text-green-600 dark:text-green-300" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">{viewMode === 'monthly' ? 'Revenue This Month' : 'Revenue This Year'}</h3>
+                <p className="text-2xl font-bold text-[var(--content-header-text)]">${(Math.round(metrics.totalRevenue * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-xs mt-1 text-[var(--content-muted-text)]">Won quotes only</p>
+              </div>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Chart.js Analytics */}
-            <div className="">
-              {currentOrganization ? (
-                <AnalyticsPageCharts quotes={quotes} organization={currentOrganization} />
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-slate-600">Loading analytics...</p>
-                </div>
-              )}
+        {/* Top User */}
+        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800">
+                <Users className="w-6 h-6 text-blue-600 dark:text-blue-300" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Top Contributor</h3>
+                <p className="text-2xl font-bold text-[var(--content-header-text)] truncate">{metrics.topUser[0]}</p>
+                <p className="text-xs mt-1 text-[var(--content-muted-text)]">{metrics.topUser[1]} quotes</p>
+              </div>
             </div>
-          </div>
-        </main>
+          </CardContent>
+        </Card>
+
+        {/* Average Revenue Per Quote */}
+        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
+                <DollarSign className="w-6 h-6 text-purple-600 dark:text-purple-300" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Avg Revenue/Quote</h3>
+                <p className="text-2xl font-bold text-[var(--content-header-text)]">${Math.round(metrics.averageRevenuePerQuote).toLocaleString()}</p>
+                <p className="text-xs mt-1 text-[var(--content-muted-text)]">Won quotes only</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Conversion Rate */}
+        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+          <CardContent className="p-6">
+            <div className="flex items-center">
+              <div className="p-3 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900 dark:to-orange-800">
+                <Target className="w-6 h-6 text-orange-600 dark:text-orange-300" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Conversion Rate</h3>
+                <p className="text-2xl font-bold text-[var(--content-header-text)]">{Math.round(metrics.conversionRate)}%</p>
+                <p className="text-xs mt-1 text-[var(--content-muted-text)]">Won vs Total quotes</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </SidebarProvider>
+
+      {/* Charts Section */}
+      {quotesLoading ? (
+        <div className="text-center py-12">
+          <div className="w-8 h-8 border-4 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted">Loading analytics data...</p>
+        </div>
+      ) : quotes.length > 0 ? (
+        <AnalyticsPageCharts quotes={quotes} viewMode={viewMode} />
+      ) : (
+        <div className="text-center py-12">
+          <FileText className="h-12 w-12 text-muted mx-auto mb-4 opacity-50" />
+          <p className="text-muted mb-4">No quotes data available</p>
+          <p className="text-sm text-muted">Create some quotes to see analytics</p>
+        </div>
+      )}
+    </PageContent>
   );
 };
 

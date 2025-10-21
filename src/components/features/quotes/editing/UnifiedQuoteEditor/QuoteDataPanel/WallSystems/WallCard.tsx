@@ -28,9 +28,7 @@ export const WallCard: React.FC<WallCardProps> = ({
     if (onUpdateWallSystem) {
       try {
         await onUpdateWallSystem(wallName, updatedWall);
-        console.log('✅ WallCard: Wall system updated via dedicated endpoint');
         
-        console.log('🔄 Reloading page to refresh all data...');
         window.location.reload();
       } catch (error) {
         console.error('❌ WallCard: Wall system update failed:', error);
@@ -43,7 +41,6 @@ export const WallCard: React.FC<WallCardProps> = ({
         onFieldChange(wallName, field, mergedWall[field]);
       });
       
-      console.log('✅ WallCard: Wall system data saved via fallback method');
     }
   };
 
@@ -51,7 +48,6 @@ export const WallCard: React.FC<WallCardProps> = ({
     if (onRemoveWallSystem) {
       try {
         await onRemoveWallSystem(wallName);
-        console.log('✅ WallCard: Wall removed via database removal function');
         window.location.reload();
       } catch (error) {
         console.error('❌ WallCard: Wall removal failed:', error);
