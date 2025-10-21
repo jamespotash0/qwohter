@@ -276,7 +276,7 @@ export const authFlowHelpers = {
 
         return {
           success: false,
-          error: "Invalid verification code. Please try again."
+          error: "Invalid verification code. Please check the code and try again."
         };
       }
 

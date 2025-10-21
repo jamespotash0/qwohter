@@ -134,9 +134,9 @@ const Auth = () => {
         authFlow.setStep(savedState.step as any);
       }
     } else {
-      // If no saved state (e.g., OTP step was cleared), also clear temp signup data
-      console.log('No saved state found, clearing temp signup data');
-      tempSignupService.clear();
+      // No saved state found - but don't clear tempSignup data yet
+      // It has its own 2-hour expiry and is needed for resending OTP
+      console.log('No saved state found, but keeping temp signup data for OTP resend');
     }
   }, []);
 
@@ -247,12 +247,32 @@ const Auth = () => {
     });
 
     if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to resend verification code. Please try again.",
-        variant: "destructive"
-      });
-      throw error;
+      // Extract the wait time from Supabase error message
+      // Format: "For security purposes, you can only request this after 42 seconds."
+      const waitTimeMatch = error.message?.match(/after (\d+) seconds/);
+
+      if (waitTimeMatch && waitTimeMatch[1]) {
+        const seconds = parseInt(waitTimeMatch[1], 10);
+        toast({
+          title: "Please Wait",
+          description: `Please Wait - You can request another code in ${seconds} seconds.`,
+          variant: "destructive"
+        });
+      } else if (error.message?.includes('rate limit') || error.message?.includes('Email rate limit exceeded')) {
+        toast({
+          title: "Too Many Attempts",
+          description: "Please wait 60 seconds before requesting another code.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to resend verification code. Please try again.",
+          variant: "destructive"
+        });
+      }
+      // Don't throw - let the error be handled gracefully without clearing state
+      return;
     }
 
     // Update the OTP sent status
