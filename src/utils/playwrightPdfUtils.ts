@@ -443,7 +443,7 @@ export const generateQuotePDF = async (
                     <button onclick="this.parentElement.parentElement.remove(); window.print();" 
                             style="background: #3B82F6; color: white; border: none; padding: 10px 20px; 
                                    border-radius: 5px; cursor: pointer; font-size: 14px;">
-                      Continue to Print
+                      Continue
                     </button>
                   </div>
                 </div>

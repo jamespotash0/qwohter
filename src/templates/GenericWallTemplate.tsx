@@ -140,9 +140,9 @@ export class GenericWallTemplate extends BaseQuoteTemplate {
           { text: `<strong>Model ${wall.model}</strong>`, condition: SmartQuoteHelper.hasValue(wall.model) },
           { text: `configured with <strong>${wall.panelCount && parseInt(wall.panelCount as any || '1') > 1 ? 'Multiple' : 'Single'} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
           { text: `for use on a <strong>${wall.trackType} Layout</strong>.`, condition: SmartQuoteHelper.hasValue(wall.trackType) },
-          { text: `The wall is <strong>${this.helpers.formatDimensions('0', '0', String(wall.heightFeet || ''), String(wall.heightInches || ''), false).split(' x ')[1]}</strong> in height, with panel heights varying as required.`, condition: SmartQuoteHelper.hasAllValues(String(wall.heightFeet || ''), String(wall.heightInches || '')) },
-          { text: `Each panel is <strong>${wall.panelThickness}</strong> thick`, condition: SmartQuoteHelper.hasValue(wall.panelThickness) },
-          { text: `and constructed with a <strong>${wall.panelSkin}</strong> panel skin.`, condition: SmartQuoteHelper.hasValue(wall.panelSkin) },
+          { text: `The wall is <strong>${this.helpers.formatDimensions('0', '0', String(wall.heightFeet || ''), String(wall.heightInches || ''), false).split(' x ')[1]}</strong> in height, with panel lengths varying as required.`, condition: SmartQuoteHelper.hasAllValues(String(wall.heightFeet || ''), String(wall.heightInches || '')) },
+          { text: `Each panel is nominally <strong>${wall.panelThickness}</strong> thick`, condition: SmartQuoteHelper.hasValue(wall.panelThickness) },
+          { text: `and constructed with a <strong>${wall.panelSkin}</strong>.`, condition: SmartQuoteHelper.hasValue(wall.panelSkin) },
           { text: `Panels are finished in <strong>${wall.panelFinishCategory}${wall.panelFinishSpecificItem && wall.panelFinishSpecificItem !== 'Unknown' ? ` - ${wall.panelFinishSpecificItem}` : ''}</strong> (from the manufacturer's standard offerings)`, condition: SmartQuoteHelper.hasValue(wall.panelFinishCategory) },
           { text: `and achieve a minimum STC rating of <strong>${wall.stcRating}</strong>.`, condition: SmartQuoteHelper.hasValue(wall.stcRating) },
           { text: `For acoustic performance, panels use <strong>${wall.verticalSeals}</strong> vertical seals${SmartQuoteHelper.hasValue(wall.bottomSeals) || SmartQuoteHelper.hasValue(wall.topSeals) ? ',' : '.'}`, condition: SmartQuoteHelper.hasValue(wall.verticalSeals)},
@@ -288,7 +288,7 @@ export class GenericWallTemplate extends BaseQuoteTemplate {
     return `
       <div class="general-section" style="line-height: 1.15; margin-bottom: 20px;">
         <p class="section-header-item" style="margin: 1.5em 0 0.5em 0; font-weight: bold; font-size: 12pt;">GENERAL:</p>
-        <p>Estimated delivery for shop drawings would be <strong>${shopDrawingDelivery} weeks</strong>, after which approval of them, tracks would be delivered in <strong>${trackDelivery} weeks</strong>, & panels delivered in <strong>${panelDelivery} weeks</strong>.
+        <p>Estimated delivery for shop drawings would be <strong>${shopDrawingDelivery} weeks</strong>, after which approval of them, tracks would be delivered in <strong>${trackDelivery} weeks</strong>, & panels delivered in <strong>${panelDelivery} weeks</strong> after track installation.
         Installation of tracks would take approximately <strong>${trackInstallation} working days</strong> and installation of panels would take <strong>${panelInstallation} additional days</strong>.</p>
       </div>
     `;
