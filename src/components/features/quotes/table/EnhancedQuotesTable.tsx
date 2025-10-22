@@ -277,14 +277,31 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           onChange={table.getToggleAllPageRowsSelectedHandler()}
         />
       ),
-      cell: ({ row }) => (
-        <input
-          type="checkbox"
-          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          checked={row.getIsSelected()}
-          onChange={row.getToggleSelectedHandler()}
-        />
-      ),
+      cell: ({ row }) => {
+        const quote = row.original;
+        const versionGroup = quoteToGroupMap.get(quote.id);
+
+        return (
+          <input
+            type="checkbox"
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            checked={row.getIsSelected()}
+            onChange={(e) => {
+              // Toggle the main row
+              row.toggleSelected(e.target.checked);
+
+              // Also toggle all version rows if this quote has multiple versions
+              if (versionGroup && versionGroup.hasMultipleVersions) {
+                const newVersionSelection = { ...versionSelection };
+                versionGroup.versions.forEach(version => {
+                  newVersionSelection[version.id] = e.target.checked;
+                });
+                setVersionSelection(newVersionSelection);
+              }
+            }}
+          />
+        );
+      },
       size: 50,
       enableSorting: false,
       enableResizing: false,
