@@ -290,11 +290,14 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               // Toggle the main row
               row.toggleSelected(e.target.checked);
 
-              // Also toggle all version rows if this quote has multiple versions
+              // Also toggle all OTHER version rows (excluding the main display row)
               if (versionGroup && versionGroup.hasMultipleVersions) {
                 const newVersionSelection = { ...versionSelection };
                 versionGroup.versions.forEach(version => {
-                  newVersionSelection[version.id] = e.target.checked;
+                  // Don't double-select the current row (it's already selected via row.toggleSelected)
+                  if (version.id !== quote.id) {
+                    newVersionSelection[version.id] = e.target.checked;
+                  }
                 });
                 setVersionSelection(newVersionSelection);
               }
