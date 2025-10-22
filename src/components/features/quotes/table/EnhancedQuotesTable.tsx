@@ -186,6 +186,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   const [columnVisibilityOpen, setColumnVisibilityOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [versionSelection, setVersionSelection] = useState<Record<string, boolean>>({});
 
   // Group quotes by version
   const quoteGroups = useMemo(() => groupQuotesByVersion(quotes), [quotes]);
@@ -1124,12 +1125,12 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                               <input
                                 type="checkbox"
                                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                checked={table.getRowModel().rows.find(r => r.original.id === version.id)?.getIsSelected() || false}
+                                checked={versionSelection[version.id] || false}
                                 onChange={(e) => {
-                                  const versionRow = table.getRowModel().rows.find(r => r.original.id === version.id);
-                                  if (versionRow) {
-                                    versionRow.toggleSelected(e.target.checked);
-                                  }
+                                  setVersionSelection(prev => ({
+                                    ...prev,
+                                    [version.id]: e.target.checked
+                                  }));
                                 }}
                               />
                             </td>
