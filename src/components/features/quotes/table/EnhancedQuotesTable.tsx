@@ -774,7 +774,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
             const hasSelections = selectedMainRows > 0 || selectedVersionIds.length > 0;
 
             return !hasSelections && (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 h-10">
                 {/* Archive Toggle Button */}
                 {onToggleArchive && (
               <Button
@@ -957,7 +957,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
             ];
 
             return totalSelected > 0 && (
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 h-10">
                 <div className="text-sm font-medium text-[var(--content-header-text)] dark:text-[var(--content-header-text)]">
                   {totalSelected} quote{totalSelected > 1 ? 's' : ''} selected
                   {versionOnlyIds.length > 0 && (
