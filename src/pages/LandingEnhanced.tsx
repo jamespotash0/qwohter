@@ -172,7 +172,7 @@ const LandingEnhanced = () => {
         </div>
 
         <div className="max-w-7xl mx-auto w-full relative z-10 mt-16">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-[1fr_1.5fr] gap-12 items-center">
             {/* Hero Text with Word Reveal Animation */}
             <div className="max-w-xl">
               {/* Removed AI-Powered tag per user request */}
@@ -226,32 +226,16 @@ const LandingEnhanced = () => {
             </div>
 
             {/* Hero Preview with Float Animation */}
-            <div ref={heroPreviewRef} className="relative opacity-0 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-              <div className="relative">
-                {/* Glowing background effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl blur-3xl opacity-20 scale-95" />
-
-                {/* Main preview card */}
-                <div className="relative bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-gray-100">
-                  {/* Placeholder for hero image */}
-                  <div className="w-full aspect-video bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-2xl flex items-center justify-center relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="text-center z-10">
-                      <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-xl">
-                        <Zap className="w-12 h-12 text-white" />
-                      </div>
-                      <p className="text-gray-500 font-medium">
-                        Add hero-app-preview.png here
-                      </p>
-                      <p className="text-sm text-gray-400 mt-2">See LANDING_PAGE_ASSETS_GUIDE.md</p>
-                    </div>
-                  </div>
-
-                  {/* Floating badges */}
-                  <div className="absolute -top-4 -right-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-full shadow-xl font-semibold animate-pulse">
-                    ✓ Real-time Sync
-                  </div>
-                </div>
+            <div ref={heroPreviewRef} className="relative opacity-0 animate-fade-in ml-auto perspective-1000 px-10" style={{ animationDelay: '0.3s', width: '105%' }}>
+              <div
+                className="relative rounded-3xl shadow-2xl border border-gray-200 bg-white preserve-3d transition-transform duration-700 hover:scale-105 pl-1 pr-0 py-1"
+                style={{ transform: 'rotateY(-8deg) rotateX(3deg)' }}
+              >
+                <img
+                  src="/images/landing/hero-main-dashboard.svg"
+                  alt="Main Dashboard Preview"
+                  className="w-full h-auto block rounded-3xl"
+                />
               </div>
             </div>
           </div>
