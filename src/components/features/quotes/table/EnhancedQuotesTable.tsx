@@ -269,14 +269,38 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
     // Selection column
     columnHelper.display({
       id: 'select',
-      header: ({ table }) => (
-        <input
-          type="checkbox"
-          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          checked={table.getIsAllPageRowsSelected()}
-          onChange={table.getToggleAllPageRowsSelectedHandler()}
-        />
-      ),
+      header: ({ table }) => {
+        const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+          const checked = e.target.checked;
+
+          // Select all main rows
+          table.toggleAllPageRowsSelected(checked);
+
+          // Also select all version rows
+          if (checked) {
+            const newVersionSelection: Record<string, boolean> = {};
+            quoteGroups.forEach(group => {
+              if (group.hasMultipleVersions) {
+                group.versions.forEach(version => {
+                  newVersionSelection[version.id] = true;
+                });
+              }
+            });
+            setVersionSelection(newVersionSelection);
+          } else {
+            setVersionSelection({});
+          }
+        };
+
+        return (
+          <input
+            type="checkbox"
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            checked={table.getIsAllPageRowsSelected()}
+            onChange={handleSelectAll}
+          />
+        );
+      },
       cell: ({ row }) => {
         const quote = row.original;
         const versionGroup = quoteToGroupMap.get(quote.id);
@@ -432,21 +456,11 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         const versionGroup = quoteToGroupMap.get(quote.id);
 
         if (versionGroup && versionGroup.hasMultipleVersions) {
-          const totals = versionGroup.versions.map(v => v.price_details?.final_selling_price || 0);
-          const minTotal = Math.min(...totals);
-          const maxTotal = Math.max(...totals);
-
-          if (minTotal === maxTotal) {
-            return <div className="font-semibold text-sm">{formatCurrency(minTotal)}</div>;
-          } else {
-            return (
-              <div className="text-sm">
-                <span className="text-gray-600">{formatCurrency(minTotal)}</span>
-                <span className="text-gray-400 mx-1">-</span>
-                <span className="text-gray-600">{formatCurrency(maxTotal)}</span>
-              </div>
-            );
-          }
+          return (
+            <div className="text-sm italic text-gray-500">
+              Range
+            </div>
+          );
         }
 
         const total = quote.price_details?.final_selling_price || 0;
@@ -463,49 +477,21 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         const versionGroup = quoteToGroupMap.get(quote.id);
 
         if (versionGroup && versionGroup.hasMultipleVersions) {
-          const statusSummary = versionGroup.statusSummary;
-
-          return (
-            <div className="flex flex-wrap gap-1">
-              {statusSummary.won > 0 && (
-                <Badge className="bg-emerald-100 text-emerald-800 text-xs">
-                  {statusSummary.won} Won
-                </Badge>
-              )}
-              {statusSummary.rejected > 0 && (
-                <Badge className="bg-red-100 text-red-800 text-xs">
-                  {statusSummary.rejected} Rejected
-                </Badge>
-              )}
-              {statusSummary.submitted > 0 && (
-                <Badge className="bg-blue-100 text-blue-800 text-xs">
-                  {statusSummary.submitted} Submitted
-                </Badge>
-              )}
-              {statusSummary.pending > 0 && (
-                <Badge className="bg-yellow-100 text-yellow-800 text-xs">
-                  {statusSummary.pending} Pending
-                </Badge>
-              )}
-              {statusSummary.draft > 0 && (
-                <Badge className="bg-gray-100 text-gray-800 text-xs">
-                  {statusSummary.draft} Draft
-                </Badge>
-              )}
-            </div>
-          );
+          return <div className="text-sm italic text-gray-500">Various</div>;
         }
+
+        const currentStatus = getValue();
 
         return (
           <Select
-            value={getValue() || "Incomplete"}
+            value={currentStatus || "Incomplete"}
             onValueChange={(value) => onStatusChange(row.original.id, value)}
           >
-            <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[getValue() as keyof typeof statusColors]}`}>
+            <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[currentStatus as keyof typeof statusColors]}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {getAvailableStatusOptions(getValue() || "Incomplete").map((status) => (
+              {getAvailableStatusOptions(currentStatus || "Incomplete").map((status) => (
                 <SelectItem key={status.value} value={status.value}>
                   {status.label}
                 </SelectItem>
@@ -526,15 +512,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         const versionGroup = quoteToGroupMap.get(quote.id);
 
         if (versionGroup && versionGroup.hasMultipleVersions) {
-          const sources = versionGroup.versions.map(v => v.quote_source || "");
-          const uniqueSources = [...new Set(sources.filter(s => s))];
-
-          if (uniqueSources.length === 1) {
-            const source = getQuoteSourceOptions().find(s => s.value === uniqueSources[0]);
-            return <div className="text-xs text-gray-600">{source?.label || uniqueSources[0]}</div>;
-          } else {
-            return <div className="text-sm text-gray-500 italic">Multiple</div>;
-          }
+          return <div className="text-sm italic text-gray-500">Various</div>;
         }
 
         return (
@@ -562,9 +540,16 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
     columnHelper.accessor('creator_name', {
       id: 'created_by',
       header: 'Created By',
-      cell: ({ getValue }) => (
-        <div className="text-sm text-gray-600">{getValue() || 'Unknown'}</div>
-      ),
+      cell: ({ row }) => {
+        const quote = row.original;
+        const versionGroup = quoteToGroupMap.get(quote.id);
+
+        if (versionGroup && versionGroup.hasMultipleVersions) {
+          return <div className="text-sm italic text-gray-500">Various</div>;
+        }
+
+        return <div className="text-sm text-gray-600">{quote.creator_name || 'Unknown'}</div>;
+      },
       size: 200,
       enableSorting: false,
     }),
@@ -576,11 +561,20 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           Created At
         </div>
       ),
-      cell: ({ getValue }) => (
-        <div className="text-sm text-gray-600">
-          {formatDateEST(getValue())}
-        </div>
-      ),
+      cell: ({ row, getValue }) => {
+        const quote = row.original;
+        const versionGroup = quoteToGroupMap.get(quote.id);
+
+        if (versionGroup && versionGroup.hasMultipleVersions) {
+          return <div className="text-sm italic text-gray-500">Various</div>;
+        }
+
+        return (
+          <div className="text-sm text-gray-600">
+            {formatDateEST(getValue())}
+          </div>
+        );
+      },
       size: 200,
       enableSorting: true,
     }),
@@ -592,9 +586,16 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           Last Updated
         </div>
       ),
-      cell: ({ getValue }) => (
-        <div className="font-smn= text-gray-600">{formatLastUpdated(getValue())}</div>
-      ),
+      cell: ({ row, getValue }) => {
+        const quote = row.original;
+        const versionGroup = quoteToGroupMap.get(quote.id);
+
+        if (versionGroup && versionGroup.hasMultipleVersions) {
+          return <div className="text-sm italic text-gray-500">Various</div>;
+        }
+
+        return <div className="text-sm text-gray-600">{formatLastUpdated(getValue())}</div>;
+      },
       size: 200,
       enableSorting: true,
     }),
