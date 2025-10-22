@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   createColumnHelper,
   flexRender,
@@ -281,33 +281,36 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         const quote = row.original;
         const versionGroup = quoteToGroupMap.get(quote.id);
 
-        // Check if main row should be checked (either directly selected or all versions selected)
-        const isChecked = row.getIsSelected() || (
-          versionGroup?.hasMultipleVersions &&
-          versionGroup.versions.every(v => v.id === quote.id || versionSelection[v.id])
-        );
+        // Memoize the checked state to prevent unnecessary re-renders
+        const isChecked = useMemo(() => {
+          return row.getIsSelected() || (
+            versionGroup?.hasMultipleVersions &&
+            versionGroup.versions.every(v => v.id === quote.id || versionSelection[v.id])
+          );
+        }, [row, quote.id, versionGroup, versionSelection]);
+
+        const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+          // Toggle the main row (this counts as 1 main selection)
+          row.toggleSelected(e.target.checked);
+
+          // Also toggle ALL version rows in versionSelection
+          // These will be counted separately as "versions" in the display
+          if (versionGroup && versionGroup.hasMultipleVersions) {
+            const newVersionSelection = { ...versionSelection };
+            versionGroup.versions.forEach(version => {
+              // Select all versions for visual consistency
+              newVersionSelection[version.id] = e.target.checked;
+            });
+            setVersionSelection(newVersionSelection);
+          }
+        }, [row, quote.id, versionGroup, versionSelection]);
 
         return (
           <input
             type="checkbox"
             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             checked={isChecked || false}
-            onChange={(e) => {
-              // Toggle the main row
-              row.toggleSelected(e.target.checked);
-
-              // Also toggle all OTHER version rows (excluding the main display row)
-              if (versionGroup && versionGroup.hasMultipleVersions) {
-                const newVersionSelection = { ...versionSelection };
-                versionGroup.versions.forEach(version => {
-                  // Don't double-select the current row (it's already selected via row.toggleSelected)
-                  if (version.id !== quote.id) {
-                    newVersionSelection[version.id] = e.target.checked;
-                  }
-                });
-                setVersionSelection(newVersionSelection);
-              }
-            }}
+            onChange={handleChange}
           />
         );
       },
@@ -683,7 +686,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       {/* Table with integrated header */}
       <div style={{ borderRadius: 'var(--radius-quotes-table)' }} className="border border-gray-200 bg-white dark:bg-[var(--content-card-bg)] dark:border-[var(--content-card-border)] shadow-sm overflow-hidden">
         {/* Combined Search and Toolbar */}
-        <div className="flex items-center py-4 px-4 bg-white border-b border-gray-200">
+        <div className="flex items-center py-4 px-4 bg-white border-b border-gray-200 min-h-[72px]">
           {/* Search Input - Very wide, takes most space */}
           <div className="relative flex-1 mr-4">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -941,10 +944,15 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           {/* Bulk Actions - Show when rows are selected */}
           {(() => {
             const selectedMainRows = table.getFilteredSelectedRowModel().rows.length;
+            const selectedMainIds = table.getFilteredSelectedRowModel().rows.map(row => row.original.id);
             const selectedVersionIds = Object.keys(versionSelection).filter(id => versionSelection[id]);
-            const totalSelected = selectedMainRows + selectedVersionIds.length;
+
+            // Remove main row IDs from version IDs to avoid double counting
+            const versionOnlyIds = selectedVersionIds.filter(id => !selectedMainIds.includes(id));
+
+            const totalSelected = selectedMainRows + versionOnlyIds.length;
             const allSelectedIds = [
-              ...table.getFilteredSelectedRowModel().rows.map(row => row.original.id),
+              ...selectedMainIds,
               ...selectedVersionIds
             ];
 
@@ -952,9 +960,9 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               <div className="flex items-center space-x-4">
                 <div className="text-sm font-medium text-[var(--content-header-text)] dark:text-[var(--content-header-text)]">
                   {totalSelected} quote{totalSelected > 1 ? 's' : ''} selected
-                  {selectedVersionIds.length > 0 && selectedMainRows > 0 && (
+                  {versionOnlyIds.length > 0 && (
                     <span className="text-xs text-gray-500 ml-2">
-                      ({selectedMainRows} main + {selectedVersionIds.length} version{selectedVersionIds.length > 1 ? 's' : ''})
+                      ({selectedMainRows} main + {versionOnlyIds.length} version{versionOnlyIds.length > 1 ? 's' : ''})
                     </span>
                   )}
                 </div>
