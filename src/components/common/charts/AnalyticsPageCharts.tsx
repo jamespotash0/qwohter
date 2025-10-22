@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { Quote } from '@/stores/quotes/quotesStore';
 import { Organization } from '@/hooks/useOrganizations';
+import { groupQuotesByVersion } from '@/utils/quoteVersionGrouping';
 
 ChartJS.register(
   CategoryScale,
@@ -117,12 +118,24 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
 
     const months = periods;
 
-    // Pre-process quotes with parsed dates for better performance
-    const quotesWithDates = quotes.map(q => ({
-      ...q,
-      parsedDate: new Date(q.created_at),
-      parsedPrice: parseCurrency(q.price_details?.final_selling_price || 0)
-    }));
+    // Group quotes by version to avoid double-counting
+    const quoteGroups = groupQuotesByVersion(quotes);
+
+    // Pre-process quote groups - use latest version for display/metrics
+    // For charts, we want to count each group once using its representative version
+    const quotesWithDates = quoteGroups.map(group => {
+      // Use won version if exists, otherwise use base version
+      const wonVersion = group.versions.find(v => v.status === 'Won');
+      const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
+      const representativeQuote = wonVersion || group.latestVersion;
+
+      return {
+        ...representativeQuote,
+        parsedDate: new Date(baseVersion?.created_at || representativeQuote.created_at),
+        parsedPrice: parseCurrency(representativeQuote.price_details?.final_selling_price || 0),
+        _group: group // Keep reference to group for advanced metrics
+      };
+    });
 
     const monthlyData = months.map((period) => {
       const { month, monthIndex, year, weekStart, weekEnd } = period;

@@ -414,6 +414,7 @@ export const useQuotesStore = create<QuotesState>()(
             const user = getCurrentUser();
 
             // Create new quote with incremented version
+            // Use current user as creator for RLS policy compliance
             const { data, error } = await supabase
               .from('quotes')
               .insert({
@@ -423,7 +424,8 @@ export const useQuotesStore = create<QuotesState>()(
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 date_last_downloaded: null,
-                version: proposalInfo.version
+                version: proposalInfo.version,
+                created_by: user.id
               } as any)
               .select()
               .single();
