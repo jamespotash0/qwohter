@@ -111,6 +111,11 @@ export const createInitializeAction = (get: () => FullAuthState, set: (partial: 
       import('@/stores/organization/organizationStore').then(({ useOrganizationStore }) => {
         useOrganizationStore.getState().reset();
       });
+
+      // Clear quotes store to prevent previous user's data from persisting
+      import('@/stores/quotes/quotesStore').then(({ useQuotesStore }) => {
+        useQuotesStore.getState().reset();
+      });
     }
   };
 };
