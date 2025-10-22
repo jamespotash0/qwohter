@@ -738,10 +738,16 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
             </div>
           </div>
 
-          {/* Toolbar Controls - Always show alongside selection */}
-          <div className="flex items-center space-x-2">
-            {/* Archive Toggle Button */}
-            {onToggleArchive && (
+          {/* Toolbar Controls - Hide buttons when rows are selected */}
+          {(() => {
+            const selectedMainRows = table.getFilteredSelectedRowModel().rows.length;
+            const selectedVersionIds = Object.keys(versionSelection).filter(id => versionSelection[id]);
+            const hasSelections = selectedMainRows > 0 || selectedVersionIds.length > 0;
+
+            return !hasSelections && (
+              <div className="flex items-center space-x-2">
+                {/* Archive Toggle Button */}
+                {onToggleArchive && (
               <Button
                 variant="outline"
                 size="sm"
@@ -902,7 +908,9 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 <Plus className="w-5 h-5 text-white" />
               </Button>
             )}
-          </div>
+              </div>
+            );
+          })()}
 
           {/* Bulk Actions - Show when rows are selected */}
           {(() => {
