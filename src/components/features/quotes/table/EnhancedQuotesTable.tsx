@@ -1098,7 +1098,8 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               style={{
                 width: Math.max(table.getTotalSize(), 1900),
                 minWidth: '1900px',
-                fontFamily: 'var(--font-table)'
+                fontFamily: 'var(--font-table)',
+                tableLayout: 'fixed'
               }}
             >
               <thead className="bg-gray-50/80 border-b border-gray-200 sticky top-0 z-10">
