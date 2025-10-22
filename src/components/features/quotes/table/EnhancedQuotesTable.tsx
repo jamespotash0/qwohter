@@ -281,11 +281,17 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         const quote = row.original;
         const versionGroup = quoteToGroupMap.get(quote.id);
 
+        // Check if main row should be checked (either directly selected or all versions selected)
+        const isChecked = row.getIsSelected() || (
+          versionGroup?.hasMultipleVersions &&
+          versionGroup.versions.every(v => v.id === quote.id || versionSelection[v.id])
+        );
+
         return (
           <input
             type="checkbox"
             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            checked={row.getIsSelected()}
+            checked={isChecked || false}
             onChange={(e) => {
               // Toggle the main row
               row.toggleSelected(e.target.checked);
