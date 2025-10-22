@@ -259,7 +259,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                       id="lengthFeet"
                       // type="number"
                       min="1"
-                      max="40"
+                      max="99"
                       value={newWall.lengthFeet || ''}
                       onChange={(e) => handleWallChange('', 'lengthFeet', e.target.value)}
                       placeholder="Enter a number"
@@ -282,7 +282,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                       id="heightFeet"
                       // type="number"
                       min="1"
-                      max="40"
+                      max="99"
                       value={newWall.heightFeet || ''}
                       onChange={(e) => handleWallChange('', 'heightFeet', e.target.value)}
                       placeholder="Enter a number"
@@ -305,7 +305,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                       id="panelCount"
                       // type="number"
                       min="1"
-                      max="50"
+                      max="200"
                       value={newWall.panelCount || ''}
                       onChange={(e) => handleWallChange('', 'panelCount', e.target.value)}
                       placeholder="Enter a number"
