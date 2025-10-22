@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuotesStore, type Quote } from "@/stores/quotes/quotesStore";
 import { EnhancedQuotesTable } from "@/components/features/quotes/table/EnhancedQuotesTable";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
+import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
 import { FileText, Plus, Sparkles, DollarSign, Clock, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -81,48 +82,67 @@ const Quotes = () => {
   const metrics = useMemo(() => {
     const activeQuotes = quotes.filter(q => !q.archived);
 
+    // Group quotes by version to avoid counting same quote multiple times
+    const quoteGroups = groupQuotesByVersion(activeQuotes);
+
     // Get current month start date
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Filter quotes created this month
-    const createdThisMonth = activeQuotes.filter(q => {
-      const createdDate = new Date(q.created_at);
+    // Filter quote groups created this month (based on base version creation date)
+    const createdThisMonth = quoteGroups.filter(group => {
+      const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
+      if (!baseVersion) return false;
+      const createdDate = new Date(baseVersion.created_at);
       return createdDate >= monthStart;
     });
 
-    // Filter quotes that changed to Won status this month
-    const wonThisMonth = activeQuotes.filter(q => {
-      if (q.status !== 'Won' || !q.status_last_updated) return false;
-      const statusDate = new Date(q.status_last_updated);
+    // Filter quote groups that changed to Won status this month
+    const wonThisMonth = quoteGroups.filter(group => {
+      const wonVersion = group.versions.find(v => v.status === 'Won');
+      if (!wonVersion || !wonVersion.status_last_updated) return false;
+      const statusDate = new Date(wonVersion.status_last_updated);
       return statusDate >= monthStart;
     });
 
-    // Filter quotes that changed to Pending/Submitted status this month
-    const pendingThisMonth = activeQuotes.filter(q => {
-      if (q.status !== 'Pending' && q.status !== 'Submitted') return false;
-      if (!q.status_last_updated) return false;
-      const statusDate = new Date(q.status_last_updated);
+    // Filter quote groups that changed to Pending/Submitted status this month
+    const pendingThisMonth = quoteGroups.filter(group => {
+      // Check if any version is currently Pending/Submitted and changed this month
+      const pendingVersion = group.versions.find(v =>
+        (v.status === 'Pending' || v.status === 'Submitted') && v.status_last_updated
+      );
+      if (!pendingVersion) return false;
+      const statusDate = new Date(pendingVersion.status_last_updated);
       return statusDate >= monthStart;
     });
 
-    // Overall metrics
-    const totalQuotes = activeQuotes.length;
-    const pendingQuotes = activeQuotes.filter(q => q.status === 'Pending' || q.status === 'Submitted').length;
-    const wonQuotes = activeQuotes.filter(q => q.status === 'Won').length;
-    const draftQuotes = activeQuotes.filter(q => q.status === 'Draft').length;
+    // Overall metrics - count quote groups, not individual versions
+    const totalQuotes = quoteGroups.length;
+    const pendingQuotes = quoteGroups.filter(g =>
+      g.versions.some(v => v.status === 'Pending' || v.status === 'Submitted')
+    ).length;
+    const wonQuotes = quoteGroups.filter(g =>
+      g.versions.some(v => v.status === 'Won')
+    ).length;
+    const draftQuotes = quoteGroups.filter(g =>
+      g.versions.every(v => v.status === 'Draft')
+    ).length;
 
-    // Calculate total value of active quotes (excluding Won and Rejected)
-    const totalValue = activeQuotes
-      .filter(q => q.status !== 'Won' && q.status !== 'Rejected')
-      .reduce((sum, quote) => {
-        const finalPrice = quote.price_details?.final_selling_price || 0;
+    // Calculate total value of active quote groups (excluding Won and Rejected)
+    // Use the latest version's price for each group
+    const totalValue = quoteGroups
+      .filter(g => {
+        const latestStatus = g.latestVersion.status;
+        return latestStatus !== 'Won' && latestStatus !== 'Rejected';
+      })
+      .reduce((sum, group) => {
+        const finalPrice = group.latestVersion.price_details?.final_selling_price || 0;
         return sum + finalPrice;
       }, 0);
 
-    // Calculate value added this month (quotes created this month)
-    const valueThisMonth = createdThisMonth.reduce((sum, quote) => {
-      const finalPrice = quote.price_details?.final_selling_price || 0;
+    // Calculate value added this month (quote groups created this month)
+    const valueThisMonth = createdThisMonth.reduce((sum, group) => {
+      const finalPrice = group.latestVersion.price_details?.final_selling_price || 0;
       return sum + finalPrice;
     }, 0);
 

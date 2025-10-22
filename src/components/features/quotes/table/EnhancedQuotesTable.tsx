@@ -14,7 +14,7 @@ import {
   PaginationState,
   ColumnResizeMode,
   ExpandedState,
-  getExpandedRowModel,
+  // getExpandedRowModel,
 } from '@tanstack/react-table';
 import {
   ChevronDown,
@@ -52,7 +52,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Quote } from "@/stores/quotes/quotesStore";
-import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
+// import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 import useEnhancedSearch from '@/hooks/useEnhancedSearch';
 import { PaginationControls } from './components/PaginationControls';
 import { formatDateEST, formatDateTimeEST } from '@/utils/dateUtils';
@@ -1114,7 +1114,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
 
                       {/* Expanded Version Rows */}
                       {isExpanded && versionGroup && versionGroup.hasMultipleVersions && (
-                        versionGroup.versions.map((version, versionIndex) => (
+                        versionGroup.versions.map((version, _) => (
                           <tr
                             key={`${row.id}-version-${version.id}`}
                             className="bg-gray-50/50 border-l-4 border-l-blue-200 hover:bg-gray-100/50"
