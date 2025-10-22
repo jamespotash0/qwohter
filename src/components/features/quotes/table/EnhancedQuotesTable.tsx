@@ -13,6 +13,8 @@ import {
   VisibilityState,
   PaginationState,
   ColumnResizeMode,
+  ExpandedState,
+  getExpandedRowModel,
 } from '@tanstack/react-table';
 import {
   ChevronDown,
@@ -39,7 +41,9 @@ import {
   FileText,
   Archive,
   ArchiveRestore,
-  Bell
+  Bell,
+  ChevronRight,
+  Layers
 } from 'lucide-react';
 
 import { Button } from "@/components/ui/button";
@@ -52,6 +56,8 @@ import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 import useEnhancedSearch from '@/hooks/useEnhancedSearch';
 import { PaginationControls } from './components/PaginationControls';
 import { formatDateEST, formatDateTimeEST } from '@/utils/dateUtils';
+import { groupQuotesByVersion, getBaseProposalNumber } from '@/utils/quoteVersionGrouping';
+import type { QuoteVersionGroup } from '@/utils/quoteVersionGrouping';
 
 
 interface EnhancedQuotesTableProps {
@@ -179,6 +185,26 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   const [dataDensity, setDataDensity] = useState<'compact' | 'comfortable' | 'spacious'>('comfortable');
   const [columnVisibilityOpen, setColumnVisibilityOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [expanded, setExpanded] = useState<ExpandedState>({});
+
+  // Group quotes by version
+  const quoteGroups = useMemo(() => groupQuotesByVersion(quotes), [quotes]);
+
+  // Create display data: show only the "latest" version from each group as the main row
+  const displayQuotes = useMemo(() => {
+    return quoteGroups.map(group => group.latestVersion);
+  }, [quoteGroups]);
+
+  // Map to find version group for each quote
+  const quoteToGroupMap = useMemo(() => {
+    const map = new Map<string, QuoteVersionGroup>();
+    quoteGroups.forEach(group => {
+      group.versions.forEach(version => {
+        map.set(version.id, group);
+      });
+    });
+    return map;
+  }, [quoteGroups]);
 
   // Enhanced search functionality
   const { search, getSearchExamples } = useEnhancedSearch(quotes);
@@ -270,15 +296,40 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           Proposal #
         </div>
       ),
-      cell: ({ getValue }) => {
-        const proposalInfo = ProposalNumberGenerator.parseProposalNumber(getValue());
+      cell: ({ getValue, row }) => {
+        const quote = row.original;
+        const versionGroup = quoteToGroupMap.get(quote.id);
+        const baseNumber = getBaseProposalNumber(getValue());
+        const isExpanded = expanded[baseNumber];
+        const hasMultipleVersions = versionGroup && versionGroup.hasMultipleVersions;
+
         return (
-          <div className="font-mono text-sm font-medium">
-            {proposalInfo.displayNumber}
+          <div className="flex items-center gap-2">
+            <div className="font-mono text-sm font-medium">
+              {baseNumber}
+            </div>
+            {hasMultipleVersions && (
+              <button
+                onClick={() => setExpanded(prev => ({
+                  ...prev as object,
+                  [baseNumber]: !prev[baseNumber]
+                }))}
+                className="hover:bg-gray-100 rounded p-1 transition-colors"
+              >
+                <Badge variant="secondary" className="flex items-center gap-1 text-xs cursor-pointer">
+                  {isExpanded ? (
+                    <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                  <Layers className="h-3 w-3" />
+                </Badge>
+              </button>
+            )}
           </div>
         );
       },
-      size: 175,
+      size: 200,
       enableSorting: true,
     }),
     columnHelper.accessor((row) => `${row.project_name || row.quote_details?.project_name || "Untitled Project"}`, {
@@ -312,9 +363,27 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           Client Name
         </div>
       ),
-      cell: ({ getValue }) => (
-        <div className="font-medium text-sm">{getValue()}</div>
-      ),
+      cell: ({ row }) => {
+        const quote = row.original;
+        const versionGroup = quoteToGroupMap.get(quote.id);
+
+        if (versionGroup && versionGroup.hasMultipleVersions) {
+          // Check if all versions have the same client
+          const clients = versionGroup.versions.map(v =>
+            v.job_details?.client_company || v.job_details?.client_name || ""
+          );
+          const uniqueClients = [...new Set(clients.filter(c => c))];
+
+          if (uniqueClients.length === 1) {
+            return <div className="font-medium text-sm">{uniqueClients[0]}</div>;
+          } else {
+            return <div className="text-sm text-gray-500 italic">Multiple</div>;
+          }
+        }
+
+        const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client";
+        return <div className="font-medium text-sm">{clientName}</div>;
+      },
       size: 200,
       enableSorting: false,
     }),
@@ -326,32 +395,93 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           Total
         </div>
       ),
-      cell: ({ getValue }) => (
-        <div className="font-semibold text-sm">{formatCurrency(getValue())}</div>
-      ),
+      cell: ({ row }) => {
+        const quote = row.original;
+        const versionGroup = quoteToGroupMap.get(quote.id);
+
+        if (versionGroup && versionGroup.hasMultipleVersions) {
+          const totals = versionGroup.versions.map(v => v.price_details?.final_selling_price || 0);
+          const minTotal = Math.min(...totals);
+          const maxTotal = Math.max(...totals);
+
+          if (minTotal === maxTotal) {
+            return <div className="font-semibold text-sm">{formatCurrency(minTotal)}</div>;
+          } else {
+            return (
+              <div className="text-sm">
+                <span className="text-gray-600">{formatCurrency(minTotal)}</span>
+                <span className="text-gray-400 mx-1">-</span>
+                <span className="text-gray-600">{formatCurrency(maxTotal)}</span>
+              </div>
+            );
+          }
+        }
+
+        const total = quote.price_details?.final_selling_price || 0;
+        return <div className="font-semibold text-sm">{formatCurrency(total)}</div>;
+      },
       size: 150,
       enableSorting: true,
     }),
     columnHelper.accessor('status', {
       id: 'status',
       header: 'Status',
-      cell: ({ row, getValue }) => (
-        <Select 
-          value={getValue() || "Incomplete"} 
-          onValueChange={(value) => onStatusChange(row.original.id, value)}
-        >
-          <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[getValue() as keyof typeof statusColors]}`}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {getAvailableStatusOptions(getValue() || "Incomplete").map((status) => (
-              <SelectItem key={status.value} value={status.value}>
-                {status.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ),
+      cell: ({ row, getValue }) => {
+        const quote = row.original;
+        const versionGroup = quoteToGroupMap.get(quote.id);
+
+        if (versionGroup && versionGroup.hasMultipleVersions) {
+          const statusSummary = versionGroup.statusSummary;
+
+          return (
+            <div className="flex flex-wrap gap-1">
+              {statusSummary.won > 0 && (
+                <Badge className="bg-emerald-100 text-emerald-800 text-xs">
+                  {statusSummary.won} Won
+                </Badge>
+              )}
+              {statusSummary.rejected > 0 && (
+                <Badge className="bg-red-100 text-red-800 text-xs">
+                  {statusSummary.rejected} Rejected
+                </Badge>
+              )}
+              {statusSummary.submitted > 0 && (
+                <Badge className="bg-blue-100 text-blue-800 text-xs">
+                  {statusSummary.submitted} Submitted
+                </Badge>
+              )}
+              {statusSummary.pending > 0 && (
+                <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+                  {statusSummary.pending} Pending
+                </Badge>
+              )}
+              {statusSummary.draft > 0 && (
+                <Badge className="bg-gray-100 text-gray-800 text-xs">
+                  {statusSummary.draft} Draft
+                </Badge>
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <Select
+            value={getValue() || "Incomplete"}
+            onValueChange={(value) => onStatusChange(row.original.id, value)}
+          >
+            <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[getValue() as keyof typeof statusColors]}`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {getAvailableStatusOptions(getValue() || "Incomplete").map((status) => (
+                <SelectItem key={status.value} value={status.value}>
+                  {status.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      },
       size: 150,
       filterFn: 'equals',
       enableSorting: false,
@@ -359,23 +489,40 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
     columnHelper.accessor('quote_source', {
       id: 'quote_source',
       header: 'Quote Source',
-      cell: ({ row, getValue }) => (
-        <Select 
-          value={getValue() || ""} 
-          onValueChange={(value) => onQuoteSourceChange(row.original.id, value)}
-        >
-          <SelectTrigger className="w-full h-8 border-0 text-xs px-3 bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-            <SelectValue placeholder="Select source" />
-          </SelectTrigger>
-          <SelectContent>
-            {getQuoteSourceOptions().map((source) => (
-              <SelectItem key={source.value} value={source.value}>
-                {source.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      ),
+      cell: ({ row, getValue }) => {
+        const quote = row.original;
+        const versionGroup = quoteToGroupMap.get(quote.id);
+
+        if (versionGroup && versionGroup.hasMultipleVersions) {
+          const sources = versionGroup.versions.map(v => v.quote_source || "");
+          const uniqueSources = [...new Set(sources.filter(s => s))];
+
+          if (uniqueSources.length === 1) {
+            const source = getQuoteSourceOptions().find(s => s.value === uniqueSources[0]);
+            return <div className="text-xs text-gray-600">{source?.label || uniqueSources[0]}</div>;
+          } else {
+            return <div className="text-sm text-gray-500 italic">Multiple</div>;
+          }
+        }
+
+        return (
+          <Select
+            value={getValue() || ""}
+            onValueChange={(value) => onQuoteSourceChange(row.original.id, value)}
+          >
+            <SelectTrigger className="w-full h-8 border-0 text-xs px-3 bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+              <SelectValue placeholder="Select source" />
+            </SelectTrigger>
+            <SelectContent>
+              {getQuoteSourceOptions().map((source) => (
+                <SelectItem key={source.value} value={source.value}>
+                  {source.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      },
       size: 180,
       filterFn: 'equals',
       enableSorting: false,
@@ -475,7 +622,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   ], [onEditQuote, onDeleteQuote, onStatusChange, onFollowUpDateChange, onQuoteSourceChange, onCreateVersion, onSetReminder, onArchiveQuote, onUnarchiveQuote, isArchiveView, forceUpdate]);
 
   const table = useReactTable({
-    data: quotes,
+    data: displayQuotes,
     columns,
     filterFns: {
       enhanced: enhancedFilter,
@@ -936,29 +1083,151 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 {table.getRowModel().rows.map(row => {
                   const rowHeight = dataDensity === 'compact' ? 'h-10' : dataDensity === 'comfortable' ? 'h-14' : 'h-18';
                   const paddingY = dataDensity === 'compact' ? 'py-1' : dataDensity === 'comfortable' ? 'py-2' : 'py-4';
+                  const quote = row.original;
+                  const versionGroup = quoteToGroupMap.get(quote.id);
+                  const baseNumber = getBaseProposalNumber(quote.proposal_number);
+                  const isExpanded = expanded[baseNumber];
 
                   return (
-                    <tr
-                      key={row.id}
-                      className={`group transition-colors border-b border-gray-100 dark:border-[var(--content-table-border)] last:border-b-0 ${rowHeight} hover:bg-gray-50/50 dark:hover:bg-[var(--content-table-row-hover)]`}
-                    >
-                      {row.getVisibleCells().map((cell) => {
-                        const isActionsColumn = cell.column.id === 'actions';
-                        return (
-                          <td
-                            key={cell.id}
-                            className={`px-4 ${paddingY} text-sm border-r border-gray-100 dark:border-[var(--content-table-border)] last:border-r-0 ${
-                              isActionsColumn
-                                ? 'sticky right-0 bg-white dark:bg-[var(--content-table-bg)] group-hover:bg-gray-50 dark:group-hover:bg-[var(--content-table-row-hover)] border-l border-gray-200 dark:border-[var(--content-table-border)] z-10'
-                                : ''
-                            }`}
-                            style={{ width: cell.column.getSize() }}
+                    <React.Fragment key={row.id}>
+                      {/* Main Row */}
+                      <tr
+                        className={`group transition-colors border-b border-gray-100 dark:border-[var(--content-table-border)] last:border-b-0 ${rowHeight} hover:bg-gray-50/50 dark:hover:bg-[var(--content-table-row-hover)]`}
+                      >
+                        {row.getVisibleCells().map((cell) => {
+                          const isActionsColumn = cell.column.id === 'actions';
+                          return (
+                            <td
+                              key={cell.id}
+                              className={`px-4 ${paddingY} text-sm border-r border-gray-100 dark:border-[var(--content-table-border)] last:border-r-0 ${
+                                isActionsColumn
+                                  ? 'sticky right-0 bg-white dark:bg-[var(--content-table-bg)] group-hover:bg-gray-50 dark:group-hover:bg-[var(--content-table-row-hover)] border-l border-gray-200 dark:border-[var(--content-table-border)] z-10'
+                                  : ''
+                              }`}
+                              style={{ width: cell.column.getSize() }}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </td>
+                          );
+                        })}
+                      </tr>
+
+                      {/* Expanded Version Rows */}
+                      {isExpanded && versionGroup && versionGroup.hasMultipleVersions && (
+                        versionGroup.versions.map((version, versionIndex) => (
+                          <tr
+                            key={`${row.id}-version-${version.id}`}
+                            className="bg-gray-50/50 border-l-4 border-l-blue-200 hover:bg-gray-100/50"
                           >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </td>
-                        );
-                      })}
-                    </tr>
+                            {/* Selection */}
+                            <td className="px-4 py-2"></td>
+
+                            {/* Proposal Number */}
+                            <td className="px-4 py-2 text-sm">
+                              <div className="flex items-center gap-2 pl-8">
+                                <span className="font-mono text-xs text-gray-600">
+                                  {version.proposal_number}
+                                </span>
+                                {version.id === quote.id && (
+                                  <Badge variant="outline" className="text-xs">
+                                    Current
+                                  </Badge>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Project Name */}
+                            <td className="px-4 py-2 text-sm text-gray-600">
+                              {version.project_name || "Untitled"}
+                            </td>
+
+                            {/* Client */}
+                            <td className="px-4 py-2 text-sm text-gray-600">
+                              {version.job_details?.client_company || version.job_details?.client_name || "—"}
+                            </td>
+
+                            {/* Total */}
+                            <td className="px-4 py-2 text-sm text-gray-600">
+                              {formatCurrency(version.price_details?.final_selling_price || 0)}
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-4 py-2">
+                              <Select
+                                value={version.status || "Incomplete"}
+                                onValueChange={(value) => onStatusChange(version.id, value)}
+                              >
+                                <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[version.status as keyof typeof statusColors]}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getAvailableStatusOptions(version.status || "Incomplete").map((status) => (
+                                    <SelectItem key={status.value} value={status.value}>
+                                      {status.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+
+                            {/* Quote Source */}
+                            <td className="px-4 py-2">
+                              <Select
+                                value={version.quote_source || ""}
+                                onValueChange={(value) => onQuoteSourceChange(version.id, value)}
+                              >
+                                <SelectTrigger className="w-full h-8 border-0 text-xs px-3 bg-gray-100 text-gray-800">
+                                  <SelectValue placeholder="Select source" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getQuoteSourceOptions().map((source) => (
+                                    <SelectItem key={source.value} value={source.value}>
+                                      {source.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+
+                            {/* Created By */}
+                            <td className="px-4 py-2 text-xs text-gray-500">
+                              {version.creator_name || "Unknown"}
+                            </td>
+
+                            {/* Created At */}
+                            <td className="px-4 py-2 text-xs text-gray-500">
+                              {formatDateEST(version.created_at)}
+                            </td>
+
+                            {/* Updated At */}
+                            <td className="px-4 py-2 text-xs text-gray-500">
+                              {formatLastUpdated(version.updated_at)}
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-4 py-2 sticky right-0 bg-gray-50/50 border-l border-gray-200">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
+                                  <DropdownMenuItem onClick={() => onEditQuote(version)}>
+                                    <Edit3 className="mr-2 h-4 w-4" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => onDeleteQuote(version.id)}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
