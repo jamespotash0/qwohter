@@ -281,17 +281,16 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         const quote = row.original;
         const versionGroup = quoteToGroupMap.get(quote.id);
 
-        // Memoize the checked state to prevent unnecessary re-renders
-        const isChecked = useMemo(() => {
-          return row.getIsSelected() || (
-            versionGroup?.hasMultipleVersions &&
-            versionGroup.versions.every(v => v.id === quote.id || versionSelection[v.id])
-          );
-        }, [row, quote.id, versionGroup, versionSelection]);
+        // Checkbox is checked if the main row is selected
+        const isChecked = row.getIsSelected();
 
         const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+          e.stopPropagation();
+
+          const checked = e.target.checked;
+
           // Toggle the main row (this counts as 1 main selection)
-          row.toggleSelected(e.target.checked);
+          row.toggleSelected(checked);
 
           // Also toggle ALL version rows in versionSelection
           // These will be counted separately as "versions" in the display
@@ -299,19 +298,22 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
             const newVersionSelection = { ...versionSelection };
             versionGroup.versions.forEach(version => {
               // Select all versions for visual consistency
-              newVersionSelection[version.id] = e.target.checked;
+              newVersionSelection[version.id] = checked;
             });
             setVersionSelection(newVersionSelection);
           }
-        }, [row, quote.id, versionGroup, versionSelection]);
+        }, [row, versionGroup, versionSelection]);
 
         return (
-          <input
-            type="checkbox"
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            checked={isChecked || false}
-            onChange={handleChange}
-          />
+          <div className="flex items-center justify-center">
+            <input
+              type="checkbox"
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              checked={isChecked}
+              onChange={handleChange}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
         );
       },
       size: 50,
@@ -1215,7 +1217,8 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
 
                             {/* Proposal Number */}
                             <td className="px-4 py-2 text-sm">
-                              <div className="flex items-center gap-2 pl-8">
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-400">└─</span>
                                 <span className="font-mono text-xs text-gray-600">
                                   {version.proposal_number}
                                 </span>
