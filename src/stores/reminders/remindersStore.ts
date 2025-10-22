@@ -25,6 +25,7 @@ interface RemindersState {
   completeReminder: (id: string, params: CompleteReminderParams) => Promise<Reminder | null>;
   deleteReminder: (id: string) => Promise<boolean>;
   clearError: () => void;
+  reset: () => void;
 
   // Realtime actions
   subscribeToRealtime: (organizationId: string) => Promise<void>;
@@ -231,6 +232,24 @@ export const useRemindersStore = create<RemindersState>()(
 
       // Clear error
       clearError: () => set({ error: null }),
+
+      // Reset store to initial state (for sign out)
+      reset: () => {
+        // Unsubscribe from realtime first
+        const channel = (get() as any).realtimeChannel;
+        if (channel) {
+          supabase.removeChannel(channel);
+          (get() as any).realtimeChannel = null;
+        }
+
+        // Reset state
+        set({
+          reminders: [],
+          isLoading: false,
+          error: null,
+          isRealtimeConnected: false
+        });
+      },
 
       // Subscribe to realtime updates
       subscribeToRealtime: async (organizationId: string) => {
