@@ -318,9 +318,9 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               >
                 <Badge variant="secondary" className="flex items-center gap-1 text-xs cursor-pointer">
                   {isExpanded ? (
-                    <ChevronDown className="h-3 w-3" />
-                  ) : (
                     <ChevronRight className="h-3 w-3" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3" />
                   )}
                   <Layers className="h-3 w-3" />
                 </Badge>
@@ -1117,10 +1117,22 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                         versionGroup.versions.map((version, _) => (
                           <tr
                             key={`${row.id}-version-${version.id}`}
-                            className="bg-gray-50/50 border-l-4 border-l-blue-200 hover:bg-gray-100/50"
+                            className="bg-white border-l-4 border-l-blue-200 hover:bg-gray-50"
                           >
                             {/* Selection */}
-                            <td className="px-4 py-2"></td>
+                            <td className="px-4 py-2">
+                              <input
+                                type="checkbox"
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                checked={table.getRowModel().rows.find(r => r.original.id === version.id)?.getIsSelected() || false}
+                                onChange={(e) => {
+                                  const versionRow = table.getRowModel().rows.find(r => r.original.id === version.id);
+                                  if (versionRow) {
+                                    versionRow.toggleSelected(e.target.checked);
+                                  }
+                                }}
+                              />
+                            </td>
 
                             {/* Proposal Number */}
                             <td className="px-4 py-2 text-sm">
@@ -1136,9 +1148,14 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                               </div>
                             </td>
 
-                            {/* Project Name */}
-                            <td className="px-4 py-2 text-sm text-gray-600">
-                              {version.project_name || "Untitled"}
+                            {/* Project Name + Address */}
+                            <td className="px-4 py-2">
+                              <div className="space-y-1">
+                                <div className="font-medium text-sm">{version.project_name || "Untitled"}</div>
+                                {version.job_details?.job_location && (
+                                  <div className="text-xs text-gray-500">{version.job_details.job_location}</div>
+                                )}
+                              </div>
                             </td>
 
                             {/* Client */}
@@ -1205,7 +1222,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                             </td>
 
                             {/* Actions */}
-                            <td className="px-4 py-2 sticky right-0 bg-gray-50/50 border-l border-gray-200">
+                            <td className="px-4 py-2 sticky right-0 bg-white border-l border-gray-200">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" className="h-8 w-8 p-0">
