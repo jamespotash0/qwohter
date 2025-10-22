@@ -109,6 +109,7 @@ interface QuotesState {
   getFilteredQuotes: () => Quote[];
   getArchivedQuotes: () => Quote[];
   clearError: () => void;
+  reset: () => void;
 
   // Internal actions
   _setQuotes: (quotes: Quote[]) => void;
@@ -1115,6 +1116,28 @@ export const useQuotesStore = create<QuotesState>()(
 
         // Clear error
         clearError: () => set({ error: null }),
+
+        // Reset store to initial state (for sign out)
+        reset: () => set({
+          quotes: [],
+          currentQuote: null,
+          isLoading: false,
+          isInitialized: false,
+          error: null,
+          isRealtimeConnected: false,
+          filters: {
+            search: '',
+            status: '',
+            quoteSource: '',
+            createdBy: '',
+            dateRange: [null, null]
+          },
+          pagination: {
+            page: 1,
+            pageSize: 50,
+            total: 0
+          }
+        }),
 
         // Internal setters
         _setQuotes: (quotes: Quote[]) => set({ quotes }),
