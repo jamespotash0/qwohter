@@ -44,8 +44,8 @@ export const validateWallDimensions = (wall: any) => {
   
   // Length validation
   const lengthFeet = parseInt(wall.lengthFeet || '0');
-  if (isNaN(lengthFeet) || lengthFeet < 1 || lengthFeet > 99) {
-    errors.push('Length feet must be between 1 and 99');
+  if (isNaN(lengthFeet) || lengthFeet < 1 || lengthFeet > 200) {
+    errors.push('Length feet must be between 1 and 200');
   }
   
   const lengthInches = wall.lengthInches || '0';

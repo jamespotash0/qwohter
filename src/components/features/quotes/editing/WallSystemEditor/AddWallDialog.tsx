@@ -259,7 +259,7 @@ export const AddWallDialog: React.FC<AddWallDialogProps> = ({
                       id="lengthFeet"
                       // type="number"
                       min="1"
-                      max="99"
+                      max="200"
                       value={newWall.lengthFeet || ''}
                       onChange={(e) => handleWallChange('', 'lengthFeet', e.target.value)}
                       placeholder="Enter a number"
