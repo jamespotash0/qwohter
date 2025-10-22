@@ -9,6 +9,7 @@ interface CurrencyInputProps {
   disabled?: boolean;
   name?: string;
   id?: string;
+  showZeroAsEmpty?: boolean; // New prop to control whether 0 shows as empty
 }
 
 export const CurrencyInput: React.FC<CurrencyInputProps> = ({
@@ -19,6 +20,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
   disabled = false,
   name,
   id,
+  showZeroAsEmpty = false,
 }) => {
   const [displayValue, setDisplayValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -50,20 +52,20 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
   // Initialize display value
   useEffect(() => {
     if (!isFocused) {
-      setDisplayValue(value === 0 ? '' : formatCurrency(value));
+      // Show empty string if value is 0 and showZeroAsEmpty is true
+      if (value === 0 && showZeroAsEmpty) {
+        setDisplayValue('');
+      } else {
+        setDisplayValue(formatCurrency(value));
+      }
     }
-  }, [value, isFocused]);
+  }, [value, isFocused, showZeroAsEmpty]);
 
   const handleFocus = () => {
     setIsFocused(true);
     // Convert to raw number string for editing
-    if (value === 0) {
-      setDisplayValue('');
-    } else {
-      // Remove currency formatting but keep the number
-      const rawValue = value.toString();
-      setDisplayValue(rawValue);
-    }
+    const rawValue = value.toString();
+    setDisplayValue(rawValue);
   };
 
   const handleBlur = () => {
