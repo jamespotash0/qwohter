@@ -907,110 +907,147 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           )}
 
           {/* Bulk Actions - Show when rows are selected */}
-          {table.getFilteredSelectedRowModel().rows.length > 0 && (
-            <div className="flex items-center space-x-4">
-              <div className="text-sm font-medium text-[var(--content-header-text)] dark:text-[var(--content-header-text)]">
-                {table.getFilteredSelectedRowModel().rows.length} of {table.getFilteredRowModel().rows.length} row{table.getFilteredSelectedRowModel().rows.length > 1 ? 's' : ''} selected
+          {(() => {
+            const selectedMainRows = table.getFilteredSelectedRowModel().rows.length;
+            const selectedVersionIds = Object.keys(versionSelection).filter(id => versionSelection[id]);
+            const totalSelected = selectedMainRows + selectedVersionIds.length;
+            const allSelectedIds = [
+              ...table.getFilteredSelectedRowModel().rows.map(row => row.original.id),
+              ...selectedVersionIds
+            ];
+
+            return totalSelected > 0 && (
+              <div className="flex items-center space-x-4">
+                <div className="text-sm font-medium text-[var(--content-header-text)] dark:text-[var(--content-header-text)]">
+                  {totalSelected} quote{totalSelected > 1 ? 's' : ''} selected
+                  {selectedVersionIds.length > 0 && selectedMainRows > 0 && (
+                    <span className="text-xs text-gray-500 ml-2">
+                      ({selectedMainRows} main + {selectedVersionIds.length} version{selectedVersionIds.length > 1 ? 's' : ''})
+                    </span>
+                  )}
+                </div>
+
+                {/* Change Status */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-[var(--sidebar-nav-bg-hover)] px-3">
+                      Change Status
+                      <ChevronDown className="w-3 h-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => {
+                      if (onBulkStatusChange) {
+                        onBulkStatusChange(allSelectedIds, 'Draft');
+                        setVersionSelection({});
+                        table.resetRowSelection();
+                      }
+                    }}>
+                      Set to Draft
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      if (onBulkStatusChange) {
+                        onBulkStatusChange(allSelectedIds, 'Pending');
+                        setVersionSelection({});
+                        table.resetRowSelection();
+                      }
+                    }}>
+                      Set to Pending
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      if (onBulkStatusChange) {
+                        onBulkStatusChange(allSelectedIds, 'Submitted');
+                        setVersionSelection({});
+                        table.resetRowSelection();
+                      }
+                    }}>
+                      Set to Submitted
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      if (onBulkStatusChange) {
+                        onBulkStatusChange(allSelectedIds, 'Won');
+                        setVersionSelection({});
+                        table.resetRowSelection();
+                      }
+                    }}>
+                      Set to Won
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      if (onBulkStatusChange) {
+                        onBulkStatusChange(allSelectedIds, 'Rejected');
+                        setVersionSelection({});
+                        table.resetRowSelection();
+                      }
+                    }}>
+                      Set to Rejected
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* More Actions */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-[var(--sidebar-nav-bg-hover)] px-3">
+                      More Actions
+                      <ChevronDown className="w-3 h-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => {
+                      if (onExportCSV) {
+                        const allSelected = [
+                          ...table.getFilteredSelectedRowModel().rows.map(row => row.original),
+                          ...quotes.filter(q => selectedVersionIds.includes(q.id))
+                        ];
+                        onExportCSV(allSelected);
+                      }
+                    }}>
+                      <FileSpreadsheet className="w-4 h-4 mr-2" />
+                      Export Selected (CSV)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      if (onExportPDF) {
+                        const allSelected = [
+                          ...table.getFilteredSelectedRowModel().rows.map(row => row.original),
+                          ...quotes.filter(q => selectedVersionIds.includes(q.id))
+                        ];
+                        onExportPDF(allSelected);
+                      }
+                    }}>
+                      <FileText className="w-4 h-4 mr-2" />
+                      Export Selected (PDF)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      allSelectedIds.forEach(id => {
+                        if (onCreateVersion) {
+                          onCreateVersion(id);
+                        }
+                      });
+                      setVersionSelection({});
+                      table.resetRowSelection();
+                    }}>
+                      <Copy className="w-4 h-4 mr-2" />
+                      Duplicate Selected
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (onBulkDelete) {
+                          onBulkDelete(allSelectedIds);
+                          setVersionSelection({});
+                          table.resetRowSelection();
+                        }
+                      }}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Selected
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-
-              {/* Change Status */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-[var(--sidebar-nav-bg-hover)] px-3">
-                    Change Status
-                    <ChevronDown className="w-3 h-3 ml-1" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => {
-                    if (onBulkStatusChange) {
-                      onBulkStatusChange(table.getFilteredSelectedRowModel().rows.map(row => row.original.id), 'Draft');
-                    }
-                  }}>
-                    Set to Draft
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    if (onBulkStatusChange) {
-                      onBulkStatusChange(table.getFilteredSelectedRowModel().rows.map(row => row.original.id), 'Pending');
-                    }
-                  }}>
-                    Set to Pending
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    if (onBulkStatusChange) {
-                      onBulkStatusChange(table.getFilteredSelectedRowModel().rows.map(row => row.original.id), 'Submitted');
-                    }
-                  }}>
-                    Set to Submitted
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    if (onBulkStatusChange) {
-                      onBulkStatusChange(table.getFilteredSelectedRowModel().rows.map(row => row.original.id), 'Won');
-                    }
-                  }}>
-                    Set to Won
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    if (onBulkStatusChange) {
-                      onBulkStatusChange(table.getFilteredSelectedRowModel().rows.map(row => row.original.id), 'Rejected');
-                    }
-                  }}>
-                    Set to Rejected
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* More Actions */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-[var(--sidebar-nav-bg-hover)] px-3">
-                    More Actions
-                    <ChevronDown className="w-3 h-3 ml-1" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={() => {
-                    if (onExportCSV) {
-                      onExportCSV(table.getFilteredSelectedRowModel().rows.map(row => row.original));
-                    }
-                  }}>
-                    <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    Export Selected (CSV)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    if (onExportPDF) {
-                      onExportPDF(table.getFilteredSelectedRowModel().rows.map(row => row.original));
-                    }
-                  }}>
-                    <FileText className="w-4 h-4 mr-2" />
-                    Export Selected (PDF)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    table.getFilteredSelectedRowModel().rows.forEach(row => {
-                      if (onCreateVersion) {
-                        onCreateVersion(row.original.id);
-                      }
-                    });
-                  }}>
-                    <Copy className="w-4 h-4 mr-2" />
-                    Duplicate Selected
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (onBulkDelete) {
-                        onBulkDelete(table.getFilteredSelectedRowModel().rows.map(row => row.original.id));
-                      }
-                    }}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Selected
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         <div className="relative">
