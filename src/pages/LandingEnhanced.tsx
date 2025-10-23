@@ -428,12 +428,38 @@ const LandingEnhanced = () => {
                 </div>
               </div>
             </div>
-            <div className="overflow-hidden rounded-3xl">
-              <img
-                src="/images/landing/feature-analytics.svg"
-                alt="Analytics Dashboard"
-                className="w-full h-full object-cover"
-              />
+            <div className="relative group overflow-visible">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-emerald-600 rounded-3xl blur-2xl opacity-20 group-hover:opacity-30 transition-opacity duration-500" />
+
+              {/* Layered analytics images - added padding to prevent cutoff */}
+              <div className="relative px-12 py-8">
+                {/* Base SVG - project tracking image */}
+                <div className="relative w-full">
+                  <img
+                    src="/images/landing/project_tracking_image.svg"
+                    alt="Project Tracking Dashboard"
+                    className="w-full h-auto rounded-3xl"
+                  />
+                </div>
+
+                {/* analytics_image1 - positioned top right, overlaying */}
+                <div className="absolute top-[-1rem] right-[-2rem] w-[45%] bg-white/90 backdrop-blur-xl rounded-2xl p-2 shadow-2xl border border-gray-100 hover:scale-105 transition-transform duration-300">
+                  <img
+                    src="/images/landing/analytics_image1.png"
+                    alt="Revenue Analytics"
+                    className="w-full h-auto rounded-xl"
+                  />
+                </div>
+
+                {/* analytics_image2 - positioned bottom right, overlaying */}
+                <div className="absolute bottom-[-0.5rem] right-[1rem] w-[38%] bg-white/90 backdrop-blur-xl rounded-2xl p-2 shadow-2xl border border-gray-100 hover:scale-105 transition-transform duration-300">
+                  <img
+                    src="/images/landing/analytics_image2.png"
+                    alt="Key Metrics"
+                    className="w-full h-auto rounded-xl"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -859,6 +885,33 @@ const LandingEnhanced = () => {
 
         .animate-layer-swap-2 {
           animation: layer-swap-2 6s ease-in-out infinite;
+        }
+
+        @keyframes analytics-float-1 {
+          0%, 100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-15px) rotate(1deg);
+          }
+        }
+
+        @keyframes analytics-float-2 {
+          0%, 100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-12px) rotate(-1deg);
+          }
+        }
+
+        .animate-analytics-float-1 {
+          animation: analytics-float-1 4s ease-in-out infinite;
+        }
+
+        .animate-analytics-float-2 {
+          animation: analytics-float-2 5s ease-in-out infinite;
+          animation-delay: 0.5s;
         }
       `}</style>
     </div>

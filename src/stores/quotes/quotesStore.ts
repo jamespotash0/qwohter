@@ -647,21 +647,38 @@ export const useQuotesStore = create<QuotesState>()(
                   table: 'quotes',
                   filter: `organization_id=eq.${membershipData.organization_id}`
                 },
-                (payload) => {
-                  
+                async (payload) => {
+
                   const { eventType, new: newRecord, old: oldRecord } = payload;
+
+                  // Handle INSERT separately to fetch creator name
+                  if (eventType === 'INSERT' && newRecord) {
+                    // Fetch creator name for the new quote
+                    const { data: profileData } = await supabase
+                      .from('profiles')
+                      .select('full_name')
+                      .eq('id', newRecord.created_by)
+                      .single();
+
+                    const newQuote = convertRowToQuote({
+                      ...newRecord,
+                      creator_name: profileData?.full_name || 'Unknown'
+                    });
+
+                    set((state) => {
+                      // Add to beginning of array if not already exists
+                      const exists = state.quotes.some(q => q.id === newQuote.id);
+                      if (!exists) {
+                        state.quotes.unshift(newQuote);
+                      }
+                    });
+                    return;
+                  }
 
                   set((state) => {
                     switch (eventType) {
                       case 'INSERT': {
-                        if (newRecord) {
-                          const newQuote = convertRowToQuote(newRecord);
-                          // Add to beginning of array if not already exists
-                          const exists = state.quotes.some(q => q.id === newQuote.id);
-                          if (!exists) {
-                            state.quotes.unshift(newQuote);
-                          }
-                        }
+                        // Already handled above
                         break;
                       }
                       case 'UPDATE': {
@@ -669,12 +686,25 @@ export const useQuotesStore = create<QuotesState>()(
                           const updatedQuote = convertRowToQuote(newRecord);
                           const index = state.quotes.findIndex(q => q.id === updatedQuote.id);
                           if (index !== -1) {
-                            state.quotes[index] = updatedQuote;
+                            // Preserve existing creator_name if the update doesn't include it
+                            const existingQuote = state.quotes[index];
+                            state.quotes[index] = {
+                              ...updatedQuote,
+                              creator_name: updatedQuote.creator_name === 'Unknown' && existingQuote.creator_name !== 'Unknown'
+                                ? existingQuote.creator_name
+                                : updatedQuote.creator_name
+                            };
                           }
-                          
+
                           // Update current quote if it's the one being edited
                           if (state.currentQuote?.id === updatedQuote.id) {
-                            state.currentQuote = updatedQuote;
+                            const existingCurrentQuote = state.currentQuote;
+                            state.currentQuote = {
+                              ...updatedQuote,
+                              creator_name: updatedQuote.creator_name === 'Unknown' && existingCurrentQuote.creator_name !== 'Unknown'
+                                ? existingCurrentQuote.creator_name
+                                : updatedQuote.creator_name
+                            };
                           }
                         }
                         break;
