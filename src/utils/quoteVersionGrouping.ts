@@ -96,12 +96,29 @@ export function groupQuotesByVersion(quotes: Quote[]): QuoteVersionGroup[] {
     const sorted = sortQuotesByVersion(versions);
 
     // Determine which version to show as the "main" one
-    // Priority: Won version > Latest version (highest version number)
-    // 1. If one was accepted (Won), show that version
-    // 2. Otherwise, show the latest version (highest version number)
+    // Priority: is_main_version flag > Won version > Base quote > Latest version
+    // 1. If a quote is marked with is_main_version = true, show that
+    // 2. Otherwise, if one was accepted (Won), show that version
+    // 3. Otherwise, show the base quote (P1001) if it exists
+    // 4. Otherwise, show the latest version (highest version number)
+    const markedMainVersion = versions.find(v => v.is_main_version === true);
     const wonVersion = versions.find(v => v.status === 'Won');
+    const baseVersion = versions.find(v => v.proposal_number === baseNumber); // Base quote (no suffix)
     const latestVersion = sorted[sorted.length - 1]; // Truly latest version
-    const mainVersion = wonVersion || latestVersion;
+    const mainVersion = markedMainVersion || wonVersion || baseVersion || latestVersion;
+
+    console.log(`Version group ${baseNumber}:`, {
+      versions: versions.map(v => ({
+        proposal_number: v.proposal_number,
+        is_main_version: v.is_main_version,
+        status: v.status
+      })),
+      markedMainVersion: markedMainVersion?.proposal_number,
+      wonVersion: wonVersion?.proposal_number,
+      baseVersion: baseVersion?.proposal_number,
+      latestVersion: latestVersion?.proposal_number,
+      selectedMainVersion: mainVersion.proposal_number
+    });
 
     // Calculate status summary
     const statusSummary = {
@@ -109,7 +126,6 @@ export function groupQuotesByVersion(quotes: Quote[]): QuoteVersionGroup[] {
       rejected: versions.filter(v => v.status === 'Rejected').length,
       submitted: versions.filter(v => v.status === 'Submitted').length,
       draft: versions.filter(v => v.status === 'Draft').length,
-      pending: versions.filter(v => v.status === 'Pending').length,
       incomplete: versions.filter(v => v.status === 'Incomplete').length,
     };
 
@@ -131,7 +147,7 @@ export function groupQuotesByVersion(quotes: Quote[]): QuoteVersionGroup[] {
 export function getVersionDisplayInfo(group: QuoteVersionGroup) {
   const { statusSummary } = group;
 
-  // Priority: Won > Submitted > Pending > Rejected > Draft > Incomplete
+  // Priority: Won > Submitted > Rejected > Draft > Incomplete
   if (statusSummary.won > 0) {
     return {
       status: 'Won' as QuoteStatus,
@@ -147,15 +163,6 @@ export function getVersionDisplayInfo(group: QuoteVersionGroup) {
       label: statusSummary.submitted === 1 ? 'Submitted' : `${statusSummary.submitted} Submitted`,
       color: 'default' as const,
       icon: '→'
-    };
-  }
-
-  if (statusSummary.pending > 0) {
-    return {
-      status: 'Pending' as QuoteStatus,
-      label: statusSummary.pending === 1 ? 'Pending' : `${statusSummary.pending} Pending`,
-      color: 'secondary' as const,
-      icon: '○'
     };
   }
 
@@ -224,14 +231,6 @@ export function getVersionStatusBadges(group: QuoteVersionGroup) {
     });
   }
 
-  if (group.statusSummary.pending > 0) {
-    badges.push({
-      status: 'Pending',
-      count: group.statusSummary.pending,
-      label: `${group.statusSummary.pending} Pending`,
-      color: 'secondary'
-    });
-  }
 
   if (group.statusSummary.draft > 0) {
     badges.push({

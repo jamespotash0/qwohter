@@ -54,6 +54,9 @@ export interface Quote {
   rejected_at?: string;
   closed_at?: string;
   margin_percentage?: number;
+
+  // Main version tracking
+  is_main_version?: boolean;
 }
 
 interface QuotesState {
@@ -102,6 +105,7 @@ interface QuotesState {
   markAsDownloaded: (id: string) => Promise<Quote>;
   saveQuoteCustomization: (id: string, customization: any) => Promise<Quote>;
   archiveQuote: (id: string) => Promise<Quote>;
+  setMainVersion: (quoteId: string, baseProposalNumber: string) => Promise<void>;
   unarchiveQuote: (id: string) => Promise<Quote>;
 
   // Utilities
@@ -192,7 +196,7 @@ export const useQuotesStore = create<QuotesState>()(
                   quote_details, job_details, delivery_details, labor_details,
                   wall_details, price_details, status, date_last_downloaded,
                   version, created_at, updated_at, customization,
-                  quote_source, archived,
+                  quote_source, archived, is_main_version,
                   total_value, subtotal,
                   submitted_at, won_at, rejected_at, closed_at, margin_percentage
                 `, { count: 'exact' })
@@ -216,7 +220,7 @@ export const useQuotesStore = create<QuotesState>()(
                   quote_details, job_details, delivery_details, labor_details,
                   wall_details, price_details, status, date_last_downloaded,
                   version, created_at, updated_at, customization,
-                  quote_source, archived,
+                  quote_source, archived, is_main_version,
                   total_value, subtotal,
                   submitted_at, won_at, rejected_at, closed_at, margin_percentage
                 `, { count: 'exact' })
@@ -281,6 +285,14 @@ export const useQuotesStore = create<QuotesState>()(
               });
 
               const processedQuotes = quotesWithCreatorNames.map(convertRowToQuote);
+
+              // Log is_main_version values from database on page load
+              console.log('Quotes loaded from database:', processedQuotes.map(q => ({
+                proposal_number: q.proposal_number,
+                is_main_version: q.is_main_version,
+                status: q.status
+              })));
+
               _setQuotes(processedQuotes);
               set((state) => {
                 state.pagination.total = count;
@@ -357,7 +369,9 @@ export const useQuotesStore = create<QuotesState>()(
                 labor_details: quoteData.deliveryLabor.labor || {},
                 status: quoteData.status || 'Draft',
                 created_by: user.id,
-                organization_id: membershipData.organization_id
+                organization_id: membershipData.organization_id,
+                // @ts-ignore - is_main_version column exists but types not regenerated
+                is_main_version: true  // Default: new base quotes are always main
               } as any)
               .select()
               .single();
@@ -425,7 +439,9 @@ export const useQuotesStore = create<QuotesState>()(
                 updated_at: new Date().toISOString(),
                 date_last_downloaded: null,
                 version: proposalInfo.version,
-                created_by: user.id
+                created_by: user.id,
+                // @ts-ignore - is_main_version column exists but types not regenerated
+                is_main_version: false  // New versions are NOT main by default
               } as any)
               .select()
               .single();
@@ -1186,6 +1202,220 @@ export const useQuotesStore = create<QuotesState>()(
             throw error;
           } finally {
             _setLoading(false);
+          }
+        },
+
+        setMainVersion: async (quoteId: string, baseProposalNumber: string) => {
+          const { quotes } = get();
+
+          try {
+            const quote = quotes.find(q => q.id === quoteId);
+            if (!quote) throw new Error('Quote not found');
+
+            const user = getCurrentUser();
+
+            // Get organization
+            const { data: membership } = await supabase
+              .from('memberships')
+              .select('organization_id')
+              .eq('user_id', user.id)
+              .single();
+
+            const organizationId = membership?.organization_id || quote.organization_id;
+
+            // Get all quotes that match this base number or are versions of it
+            const { data: allQuotes } = await supabase
+              .from('quotes')
+              .select('id, proposal_number, is_main_version, status')
+              .eq('organization_id', organizationId) as { data: Array<{ id: string; proposal_number: string; is_main_version: boolean; status: string }> | null };
+
+            console.log('All quotes in org before update:', allQuotes?.map(q => ({
+              id: q.id.slice(0, 8),
+              proposal_number: q.proposal_number,
+              is_main_version: q.is_main_version,
+              status: q.status
+            })));
+
+            // Filter to find all quotes in this version group
+            const quoteIdsInGroup = allQuotes
+              ?.filter(q => {
+                const qBase = q.proposal_number.includes('.')
+                  ? q.proposal_number.split('.')[0]
+                  : q.proposal_number;
+                return qBase === baseProposalNumber;
+              })
+              .map(q => q.id) || [];
+
+            console.log('Quote IDs in version group:', quoteIdsInGroup.map(id => id.slice(0, 8)));
+            console.log('Selected quote ID:', quoteId.slice(0, 8));
+
+            // Update all quotes in the group except the selected one to is_main_version = false
+            if (quoteIdsInGroup.length > 1) {
+              const otherQuoteIds = quoteIdsInGroup.filter(id => id !== quoteId);
+              if (otherQuoteIds.length > 0) {
+                console.log('Setting is_main_version = false for:', otherQuoteIds.map(id => id.slice(0, 8)));
+                // @ts-ignore
+                await supabase
+                  .from('quotes')
+                  .update({ is_main_version: false })
+                  .in('id', otherQuoteIds);
+              }
+            }
+
+            // Set the selected quote as main
+            console.log('Setting is_main_version = true for:', quoteId.slice(0, 8));
+            // @ts-ignore
+            await supabase
+              .from('quotes')
+              .update({ is_main_version: true })
+              .eq('id', quoteId);
+
+            // Verify the update
+            const { data: updatedQuotes } = await supabase
+              .from('quotes')
+              .select('id, proposal_number, is_main_version, status')
+              .in('id', quoteIdsInGroup) as { data: Array<{ id: string; proposal_number: string; is_main_version: boolean; status: string }> | null };
+
+            console.log('Quotes after update:', updatedQuotes?.map(q => ({
+              id: q.id.slice(0, 8),
+              proposal_number: q.proposal_number,
+              is_main_version: q.is_main_version,
+              status: q.status
+            })));
+
+            // Update local state for all quotes in this group
+            set((state) => {
+              console.log('Updating local state. Quotes before:', state.quotes
+                .filter(q => {
+                  const qBase = q.proposal_number.includes('.')
+                    ? q.proposal_number.split('.')[0]
+                    : q.proposal_number;
+                  return qBase === baseProposalNumber;
+                })
+                .map(q => ({
+                  id: q.id.slice(0, 8),
+                  proposal_number: q.proposal_number,
+                  is_main_version: q.is_main_version
+                })));
+
+              state.quotes = state.quotes.map(q => {
+                // Check if quote belongs to same group
+                const qBaseNumber = q.proposal_number.includes('.')
+                  ? q.proposal_number.split('.')[0]
+                  : q.proposal_number;
+
+                if (qBaseNumber === baseProposalNumber && q.organization_id === organizationId) {
+                  console.log(`Updating quote ${q.proposal_number}: is_main_version = ${q.id === quoteId}`);
+                  return {
+                    ...q,
+                    is_main_version: q.id === quoteId
+                  };
+                }
+                return q;
+              });
+
+              console.log('Quotes after local update:', state.quotes
+                .filter(q => {
+                  const qBase = q.proposal_number.includes('.')
+                    ? q.proposal_number.split('.')[0]
+                    : q.proposal_number;
+                  return qBase === baseProposalNumber;
+                })
+                .map(q => ({
+                  id: q.id.slice(0, 8),
+                  proposal_number: q.proposal_number,
+                  is_main_version: q.is_main_version
+                })));
+            });
+
+            // Handle project board updates
+            // Check if there's a project for the old main version
+            const { data: existingProject } = await supabase
+              .from('projects')
+              .select('id, quote_id')
+              .eq('organization_id', organizationId)
+              .in('quote_id', quotes
+                .filter(q => {
+                  const qBaseNumber = q.proposal_number.includes('.')
+                    ? q.proposal_number.split('.')[0]
+                    : q.proposal_number;
+                  return qBaseNumber === baseProposalNumber;
+                })
+                .map(q => q.id)
+              )
+              .maybeSingle();
+
+            console.log('Project board logic:', {
+              existingProject,
+              quoteId,
+              quoteStatus: quote.status,
+              proposalNumber: quote.proposal_number,
+              isMainVersion: quote.is_main_version
+            });
+
+            if (existingProject) {
+              // If new main version is Won, update the project
+              // Otherwise, delete the project (only Won quotes should be on board)
+              if (quote.status === 'Won') {
+                console.log('Updating existing project to point to new main version:', quoteId);
+                const { error: updateError } = await supabase
+                  .from('projects')
+                  .update({ quote_id: quoteId })
+                  .eq('id', existingProject.id);
+
+                if (updateError) {
+                  console.error('Error updating project:', updateError);
+                } else {
+                  console.log('Successfully updated project');
+                }
+              } else {
+                console.log('Deleting project because new main is not Won');
+                await supabase
+                  .from('projects')
+                  .delete()
+                  .eq('id', existingProject.id);
+              }
+            } else if (quote.status === 'Won') {
+              // No existing project but new main is Won - create one
+              console.log('Creating new project for Won quote:', quoteId);
+
+              const { data: defaultColumn } = await supabase
+                .from('project_workflow_columns')
+                .select('id')
+                .eq('organization_id', organizationId)
+                .eq('is_default', true)
+                .single();
+
+              const { data: projects } = await supabase
+                .from('projects')
+                .select('board_order')
+                .eq('organization_id', organizationId)
+                .order('board_order', { ascending: false })
+                .limit(1);
+
+              const nextBoardOrder = projects && projects.length > 0 ? (projects[0].board_order || 0) + 1 : 0;
+
+              const { error: insertError } = await supabase
+                .from('projects')
+                .insert({
+                  quote_id: quoteId,
+                  organization_id: organizationId,
+                  workflow_status: defaultColumn?.id || null,
+                  board_order: nextBoardOrder
+                } as any);
+
+              if (insertError) {
+                console.error('Error creating project:', insertError);
+              } else {
+                console.log('Successfully created project');
+              }
+            } else {
+              console.log('No project action needed - quote is not Won');
+            }
+
+          } catch (error) {
+            console.error('Set main version error:', error);
+            throw error;
           }
         },
 

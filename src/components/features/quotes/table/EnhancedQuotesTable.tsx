@@ -82,6 +82,7 @@ interface EnhancedQuotesTableProps {
   onExportCSV?: (filteredData: Quote[]) => void;
   onExportPDF?: (filteredData: Quote[]) => void;
   onMainVersionsChange?: (mainVersions: Quote[]) => void;
+  onSetMainVersion?: (quoteId: string, baseProposalNumber: string) => void;
 }
 
 const statusColors = {
@@ -169,7 +170,8 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   // onBulkUnarchive,
   onExportCSV,
   onExportPDF,
-  onMainVersionsChange
+  onMainVersionsChange,
+  onSetMainVersion
 }) => {
   const [globalFilter, setGlobalFilter] = useState('');
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -193,15 +195,19 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   // Group quotes by version
   const quoteGroups = useMemo(() => groupQuotesByVersion(quotes), [quotes]);
 
-  // Create display data: show the user-selected "main" version or default to latestVersion
+  // Create display data: show the main version based on is_main_version flag
   const displayQuotes = useMemo(() => {
     return quoteGroups.map(group => {
+      // Priority: is_main_version from database > user selection > group.mainVersion
+      const dbMainVersion = group.versions.find(v => v.is_main_version === true);
+      if (dbMainVersion) return dbMainVersion;
+
       const userSelectedMainId = mainVersions[group.baseNumber];
       if (userSelectedMainId) {
         const userSelectedVersion = group.versions.find(v => v.id === userSelectedMainId);
         if (userSelectedVersion) return userSelectedVersion;
       }
-      return group.latestVersion;
+      return group.mainVersion;
     });
   }, [quoteGroups, mainVersions]);
 
@@ -1244,7 +1250,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                                 <span className="font-mono text-xs text-gray-600">
                                   {version.proposal_number}
                                 </span>
-                                {version.id === quote.id ? (
+                                {version.is_main_version === true ? (
                                   <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
                                     Main
                                   </Badge>
@@ -1255,6 +1261,11 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                                     className="h-5 px-2 text-xs text-gray-500 hover:text-blue-700 hover:bg-blue-50"
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      // Update database
+                                      if (onSetMainVersion) {
+                                        onSetMainVersion(version.id, versionGroup.baseNumber);
+                                      }
+                                      // Update local state for immediate UI feedback
                                       setMainVersions(prev => ({
                                         ...prev,
                                         [versionGroup.baseNumber]: version.id

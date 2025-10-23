@@ -33,6 +33,7 @@ const Quotes = () => {
   const unarchiveQuote = useQuotesStore((state) => state.unarchiveQuote);
   const createQuoteVersion = useQuotesStore((state) => state.createQuoteVersion);
   const deleteQuoteFromDB = useQuotesStore((state) => state.deleteQuote);
+  const setMainVersion = useQuotesStore((state) => state.setMainVersion);
 
   // Get filtered quotes using the selector
   const getFilteredQuotes = useQuotesStore((state) => state.getFilteredQuotes);
@@ -491,6 +492,7 @@ const Quotes = () => {
           onExportCSV={handleExportCSV}
           onExportPDF={handleExportPDF}
           onMainVersionsChange={setCurrentMainVersions}
+          onSetMainVersion={setMainVersion}
         />
         </>
       )}

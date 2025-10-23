@@ -21,6 +21,8 @@ export interface Project {
     quote_details?: any;
     job_details?: any;
     price_details?: any;
+    status?: string;
+    is_main_version?: boolean;
   };
 }
 
@@ -76,20 +78,25 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       if (!membership) throw new Error('No active organization');
 
       // Fetch projects with joined quote data
+      // Only show projects where the quote is the main version AND has Won status
       const { data, error } = await supabase
         .from('projects')
         .select(`
           *,
-          quotes (
+          quotes!inner (
             id,
             proposal_number,
             project_name,
             quote_details,
             job_details,
-            price_details
+            price_details,
+            status,
+            is_main_version
           )
         `)
         .eq('organization_id', membership.organization_id)
+        .eq('quotes.is_main_version', true)
+        .eq('quotes.status', 'Won')
         .order('board_order', { ascending: true });
 
       if (error) throw error;
@@ -323,21 +330,26 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
 
           if (payload.eventType === 'INSERT') {
             // Fetch the new project with quote data
+            // Only add if quote is main version and Won status
             const { data } = await supabase
               .from('projects')
               .select(`
                 *,
-                quotes (
+                quotes!inner (
                   id,
                   proposal_number,
                   project_name,
                   quote_details,
                   job_details,
-                  price_details
+                  price_details,
+                  status,
+                  is_main_version
                 )
               `)
               .eq('id', payload.new.id)
-              .single();
+              .eq('quotes.is_main_version', true)
+              .eq('quotes.status', 'Won')
+              .maybeSingle();
 
             if (data) {
               set(state => ({
@@ -346,26 +358,41 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
             }
           } else if (payload.eventType === 'UPDATE') {
             // Fetch updated project with quote data
-            const { data } = await supabase
+            // Only show if quote is main version and Won status, otherwise remove
+            const { data, error } = await supabase
               .from('projects')
               .select(`
                 *,
-                quotes (
+                quotes!inner (
                   id,
                   proposal_number,
                   project_name,
                   quote_details,
                   job_details,
-                  price_details
+                  price_details,
+                  status,
+                  is_main_version
                 )
               `)
               .eq('id', payload.new.id)
-              .single();
+              .eq('quotes.is_main_version', true)
+              .eq('quotes.status', 'Won')
+              .maybeSingle();
 
-            if (data) {
+            if (!error && data) {
+              // Quote meets criteria, update or add it
               set(state => ({
-                projects: state.projects.map(p => p.id === data.id ? data : p)
+                projects: state.projects.some(p => p.id === data.id)
+                  ? state.projects.map(p => p.id === data.id ? data : p)
+                  : [...state.projects, data]
               }));
+            } else if (!error && !data) {
+              // Quote doesn't meet criteria anymore, remove it
+              set(state => ({
+                projects: state.projects.filter(p => p.id !== payload.new.id)
+              }));
+            } else if (error) {
+              console.error('Error fetching updated project:', error);
             }
           } else if (payload.eventType === 'DELETE') {
             set(state => ({
@@ -410,9 +437,110 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       .subscribe();
 
     // Return cleanup function
+    // Subscribe to quotes table changes
+    // When a quote's status or is_main_version changes, update the board
+    const quotesSubscription = supabase
+      .channel('quotes-board-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'quotes',
+          filter: `organization_id=eq.${organizationId}`
+        },
+        async (payload) => {
+          console.log('Quote change detected for board:', payload);
+
+          // If is_main_version changed, refetch entire project list to ensure consistency
+          if (payload.old?.is_main_version !== payload.new?.is_main_version) {
+            console.log('is_main_version changed - refetching all projects');
+            const { data } = await supabase
+              .from('projects')
+              .select(`
+                *,
+                quotes!inner (
+                  id,
+                  proposal_number,
+                  project_name,
+                  quote_details,
+                  job_details,
+                  price_details,
+                  status,
+                  is_main_version
+                )
+              `)
+              .eq('organization_id', organizationId)
+              .eq('quotes.is_main_version', true)
+              .eq('quotes.status', 'Won')
+              .order('board_order', { ascending: true });
+
+            if (data) {
+              set({ projects: data });
+            }
+            return;
+          }
+
+          // Check if there's a project for this quote
+          const { data: projectData } = await supabase
+            .from('projects')
+            .select('id, quote_id')
+            .eq('quote_id', payload.new.id)
+            .eq('organization_id', organizationId)
+            .maybeSingle();
+
+          // Determine if quote now meets criteria (is_main_version AND Won)
+          const meetsCriteria = payload.new.is_main_version === true && payload.new.status === 'Won';
+
+          if (meetsCriteria && projectData) {
+            // Quote meets criteria and project exists - refetch to update display data
+            const { data } = await supabase
+              .from('projects')
+              .select(`
+                *,
+                quotes!inner (
+                  id,
+                  proposal_number,
+                  project_name,
+                  quote_details,
+                  job_details,
+                  price_details,
+                  status,
+                  is_main_version
+                )
+              `)
+              .eq('id', projectData.id)
+              .eq('quotes.is_main_version', true)
+              .eq('quotes.status', 'Won')
+              .maybeSingle();
+
+            if (data) {
+              set(state => ({
+                projects: state.projects.some(p => p.id === data.id)
+                  ? state.projects.map(p => p.id === data.id ? data : p)
+                  : [...state.projects, data]
+              }));
+            }
+          } else if (!meetsCriteria && projectData) {
+            // Quote no longer meets criteria - remove from board
+            set(state => ({
+              projects: state.projects.filter(p => p.id !== projectData.id)
+            }));
+          } else if (meetsCriteria && !projectData) {
+            // Quote meets criteria but no project exists - this shouldn't normally happen
+            // but could occur if quote status/main changed before project was created
+            // The setMainVersion function in quotesStore handles project creation
+            console.log('Quote meets criteria but no project exists - waiting for project creation');
+          }
+          // else: Quote doesn't meet criteria and no project exists - nothing to do
+        }
+      )
+      .subscribe();
+
     return () => {
       projectsSubscription.unsubscribe();
       columnsSubscription.unsubscribe();
+      quotesSubscription.unsubscribe();
     };
   }
 }));
