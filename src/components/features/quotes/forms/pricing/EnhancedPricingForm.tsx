@@ -16,20 +16,58 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
     // Merge provided data with defaults to ensure all fields are present
     return { ...defaultEnhancedPricing, ...data };
   });
-  
+
+  // Track which fields have been touched by the user
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(() => {
+    const touched = new Set<string>();
+
+    // Check if this is an existing quote (has any non-default data)
+    // If so, mark ALL fields as touched since they've been saved before
+    const hasAnyData =
+      data.kwik_wall_materials_cost !== undefined ||
+      data.misc_materials_cost !== undefined ||
+      data.final_selling_price !== undefined ||
+      Object.keys(data).some(key =>
+        data[key as keyof EnhancedPricingData] !== defaultEnhancedPricing[key as keyof EnhancedPricingData]
+      );
+
+    if (hasAnyData) {
+      // This is an existing quote - mark all input fields as touched
+      touched.add('kwik_wall_materials_cost');
+      touched.add('misc_materials_cost');
+      touched.add('delivery_cost_track');
+      touched.add('delivery_cost_panel');
+      touched.add('track_labor_cost');
+      touched.add('panel_labor_cost');
+      touched.add('track_equipment_costs');
+      touched.add('panel_equipment_costs');
+      touched.add('track_freight_factory');
+      touched.add('panel_freight_factory');
+      touched.add('local_handling_costs');
+      touched.add('materials_markup_percentage');
+      touched.add('shipping_markup_percentage');
+      touched.add('payment_upon_drawings');
+      touched.add('payment_upon_track_installation');
+    }
+
+    return touched;
+  });
+
   // Separate state for percentage inputs to prevent focus loss during typing
   const [percentageInputs, setPercentageInputs] = useState({
     materials_markup_percentage: data.materials_markup_percentage && data.materials_markup_percentage > 0 ? data.materials_markup_percentage.toString() : '',
     shipping_markup_percentage: data.shipping_markup_percentage && data.shipping_markup_percentage > 0 ? data.shipping_markup_percentage.toString() : '',
   });
 
-  // Handle currency input changes - only update local state
+  // Handle currency input changes - mark as touched and update local state
   const handleCurrencyChange = useCallback((field: keyof EnhancedPricingData, value: number) => {
+    setTouchedFields(prev => new Set(prev).add(field));
     setLocalData(prev => ({ ...prev, [field]: value }));
   }, []);
 
-  // Handle text input changes - only update local state
+  // Handle text input changes - mark as touched and update local state
   const handleInputChange = useCallback((field: keyof EnhancedPricingData, value: string) => {
+    setTouchedFields(prev => new Set(prev).add(field));
     setLocalData(prev => ({ ...prev, [field]: value }));
   }, []);
 
@@ -37,9 +75,14 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
   const handlePercentageChange = useCallback((field: 'materials_markup_percentage' | 'shipping_markup_percentage', value: string) => {
     // Allow empty string and valid numbers while typing
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      // Mark as touched when user types
+      if (value !== '') {
+        setTouchedFields(prev => new Set(prev).add(field));
+      }
+
       // Update display value immediately
       setPercentageInputs(prev => ({ ...prev, [field]: value }));
-      
+
       // Update data with numeric value
       const numericValue = value === '' ? 0 : parseFloat(value) || 0;
       setLocalData(prev => ({ ...prev, [field]: numericValue }));
@@ -133,11 +176,12 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                 />
               </div>
               <CurrencyInput
+                showZeroAsEmpty={!touchedFields.has('kwik_wall_materials_cost')}
                 id="kwik_wall_materials_cost"
                 value={localData.kwik_wall_materials_cost}
                 onChange={(value) => handleCurrencyChange("kwik_wall_materials_cost", value)}
                 placeholder="$0.00"
-                className={`w-full h-11 border ${localData.kwik_wall_materials_cost ? "border-green-500" : "border-red-500"} 
+                className={`w-full h-11 border ${touchedFields.has('kwik_wall_materials_cost') ? "border-green-500" : "border-red-500"}
                     focus:ring-blue-500 focus:border-blue-500`}
               />
             </div>
@@ -154,11 +198,12 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                 />
               </div>
               <CurrencyInput
+                showZeroAsEmpty={!touchedFields.has('misc_materials_cost')}
                 id="misc_materials_cost"
                 value={localData.misc_materials_cost}
                 onChange={(value) => handleCurrencyChange("misc_materials_cost", value)}
                 placeholder="$0.00"
-                className= {`w-full h-11 border ${localData.misc_materials_cost ? "border-green-500" : "border-red-500"} 
+                className= {`w-full h-11 border ${touchedFields.has('misc_materials_cost') ? "border-green-500" : "border-red-500"} 
                   focus:ring-blue-500 focus:border-blue-500`}
                 />
             </div>
@@ -177,11 +222,12 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
+                showZeroAsEmpty={!touchedFields.has('delivery_cost_track')}
                   id="delivery_cost_track"
                   value={localData.delivery_cost_track}
                   onChange={(value) => handleCurrencyChange("delivery_cost_track", value)}
                   placeholder="$0.00"
-                  className={`w-full h-11 border ${localData.delivery_cost_track ? "border-green-500" : "border-red-500"} 
+                  className={`w-full h-11 border ${touchedFields.has('delivery_cost_track') ? "border-green-500" : "border-red-500"} 
                     focus:ring-blue-500 focus:border-blue-500`}
                 />
               </div>
@@ -198,11 +244,12 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
+                showZeroAsEmpty={!touchedFields.has('delivery_cost_panel')}
                   id="delivery_cost_panel"
                   value={localData.delivery_cost_panel}
                   onChange={(value) => handleCurrencyChange("delivery_cost_panel", value)}
                   placeholder="$0.00"
-                  className={`w-full h-11 border ${localData.delivery_cost_panel ? "border-green-500" : "border-red-500"}
+                  className={`w-full h-11 border ${touchedFields.has('delivery_cost_panel') ? "border-green-500" : "border-red-500"}
                     focus:ring-blue-500 focus:border-blue-500`}
                 />
               </div>
@@ -222,11 +269,12 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
+                showZeroAsEmpty={!touchedFields.has('track_labor_cost')}
                   id="track_labor_cost"
                   value={localData.track_labor_cost}
                   onChange={(value) => handleCurrencyChange("track_labor_cost", value)}
                   placeholder="$0.00"
-                  className={`w-full h-11 border ${localData.track_labor_cost ? "border-green-500" : "border-red-500"} 
+                  className={`w-full h-11 border ${touchedFields.has('track_labor_cost') ? "border-green-500" : "border-red-500"} 
                     focus:ring-blue-500 focus:border-blue-500`}                
                 />
               </div>
@@ -243,11 +291,12 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
+                showZeroAsEmpty={!touchedFields.has('panel_labor_cost')}
                   id="panel_labor_cost"
                   value={localData.panel_labor_cost}
                   onChange={(value) => handleCurrencyChange("panel_labor_cost", value)}
                   placeholder="$0.00"
-                  className={`w-full h-11 border ${localData.panel_labor_cost ? "border-green-500" : "border-red-500"} 
+                  className={`w-full h-11 border ${touchedFields.has('panel_labor_cost') ? "border-green-500" : "border-red-500"} 
                     focus:ring-blue-500 focus:border-blue-500`}  
                 />
               </div>
@@ -267,11 +316,12 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
+                showZeroAsEmpty={!touchedFields.has('track_equipment_costs')}
                   id="track_equipment_costs"
                   value={localData.track_equipment_costs}
                   onChange={(value) => handleCurrencyChange("track_equipment_costs", value)}
                   placeholder="$0.00"
-                  className={`w-full h-11 border ${localData.track_equipment_costs ? "border-green-500" : "border-red-500"} 
+                  className={`w-full h-11 border ${touchedFields.has('track_equipment_costs') ? "border-green-500" : "border-red-500"} 
                     focus:ring-blue-500 focus:border-blue-500`}
                 />
               </div>
@@ -288,11 +338,12 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
+                showZeroAsEmpty={!touchedFields.has('panel_equipment_costs')}
                   id="panel_equipment_costs"
                   value={localData.panel_equipment_costs}
                   onChange={(value) => handleCurrencyChange("panel_equipment_costs", value)}
                   placeholder="$0.00"
-                  className={`w-full h-11 border ${localData.panel_equipment_costs ? "border-green-500" : "border-red-500"} 
+                  className={`w-full h-11 border ${touchedFields.has('panel_equipment_costs') ? "border-green-500" : "border-red-500"} 
                     focus:ring-blue-500 focus:border-blue-500`}
                 />
               </div>
@@ -328,6 +379,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
               <div className="flex items-center gap-2">
                 <div className="flex-1">
                   <CurrencyInput
+                showZeroAsEmpty={!touchedFields.has('unseen_costs')}
                     id="unseen_costs"
                     value={localData.unseen_costs}
                     onChange={(value) => handleCurrencyChange("unseen_costs", value)}
@@ -363,11 +415,12 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
+                showZeroAsEmpty={!touchedFields.has('track_freight_factory')}
                   id="track_freight_factory"
                   value={localData.track_freight_factory}
                   onChange={(value) => handleCurrencyChange("track_freight_factory", value)}
                   placeholder="$0.00"
-                  className={`w-full h-11 border ${localData.track_freight_factory ? "border-green-500" : "border-red-500"} 
+                  className={`w-full h-11 border ${touchedFields.has('track_freight_factory') ? "border-green-500" : "border-red-500"} 
                     focus:ring-blue-500 focus:border-blue-500`}
                 />
               </div>
@@ -384,11 +437,12 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
+                showZeroAsEmpty={!touchedFields.has('panel_freight_factory')}
                   id="panel_freight_factory"
                   value={localData.panel_freight_factory}
                   onChange={(value) => handleCurrencyChange("panel_freight_factory", value)}
                   placeholder="$0.00"
-                  className={`w-full h-11 border ${localData.panel_freight_factory ? "border-green-500" : "border-red-500"} 
+                  className={`w-full h-11 border ${touchedFields.has('panel_freight_factory') ? "border-green-500" : "border-red-500"} 
                     focus:ring-blue-500 focus:border-blue-500`}
                 />
               </div>
@@ -405,11 +459,12 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
+                showZeroAsEmpty={!touchedFields.has('local_handling_costs')}
                   id="local_handling_costs"
                   value={localData.local_handling_costs}
                   onChange={(value) => handleCurrencyChange("local_handling_costs", value)}
                   placeholder="$0.00"
-                  className={`w-full h-11 border ${localData.local_handling_costs ? "border-green-500" : "border-red-500"} 
+                  className={`w-full h-11 border ${touchedFields.has('local_handling_costs') ? "border-green-500" : "border-red-500"} 
                     focus:ring-blue-500 focus:border-blue-500`}
                 />
               </div>
@@ -439,7 +494,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                       value={percentageInputs.materials_markup_percentage}
                       onChange={(e) => handlePercentageChange("materials_markup_percentage", e.target.value)}
                       placeholder="Enter a number"
-                      className={`w-full h-11 border ${localData.materials_markup_percentage ? "border-green-500" : "border-red-500"} 
+                      className={`w-full h-11 border ${touchedFields.has('materials_markup_percentage') ? "border-green-500" : "border-red-500"} 
                         focus:ring-blue-500 focus:border-blue-500`}   
                     />
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
@@ -472,7 +527,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                       value={percentageInputs.shipping_markup_percentage}
                       onChange={(e) => handlePercentageChange("shipping_markup_percentage", e.target.value)}
                       placeholder="Enter a number"
-                      className={`w-full h-11 border ${localData.shipping_markup_percentage ? "border-green-500" : "border-red-500"} 
+                      className={`w-full h-11 border ${touchedFields.has('shipping_markup_percentage') ? "border-green-500" : "border-red-500"} 
                         focus:ring-blue-500 focus:border-blue-500`}   
                     />
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
@@ -570,7 +625,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                     }}
                     placeholder="Enter a number"
                     required
-                    className={`w-full h-11 border ${localData.payment_upon_drawings ? "border-green-500" : "border-red-500"} 
+                    className={`w-full h-11 border ${touchedFields.has('payment_upon_drawings') ? "border-green-500" : "border-red-500"} 
                         focus:ring-blue-500 focus:border-blue-500`}   
                   />
                   <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
@@ -601,7 +656,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                     }}
                     placeholder="Enter a number"
                     required
-                    className={`w-full h-11 border ${localData.payment_upon_track_installation ? "border-green-500" : "border-red-500"} 
+                    className={`w-full h-11 border ${touchedFields.has('payment_upon_track_installation') ? "border-green-500" : "border-red-500"} 
                         focus:ring-blue-500 focus:border-blue-500`}   
                   />
                   <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>

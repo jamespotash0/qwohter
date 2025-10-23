@@ -8,6 +8,7 @@ import { useQuotesStore, type Quote } from "@/stores/quotes/quotesStore";
 import { useOrganizationStore } from "@/stores/organization/organizationStore";
 import { EnhancedQuotesTable } from "@/components/features/quotes/table/EnhancedQuotesTable";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
+import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
 import { FileText, Plus, Sparkles, DollarSign, Clock, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,6 +34,7 @@ const Quotes = () => {
   const unarchiveQuote = useQuotesStore((state) => state.unarchiveQuote);
   const createQuoteVersion = useQuotesStore((state) => state.createQuoteVersion);
   const deleteQuoteFromDB = useQuotesStore((state) => state.deleteQuote);
+  const setMainVersion = useQuotesStore((state) => state.setMainVersion);
 
   // Filter quotes locally
   const filteredQuotes = quotes.filter(q => !q.archived);
@@ -41,6 +43,9 @@ const Quotes = () => {
   const [deleteQuoteId, setDeleteQuoteId] = useState<string | null>(null);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+
+  // Track the currently displayed "main" versions from the table
+  const [currentMainVersions, setCurrentMainVersions] = useState<Quote[]>([]);
 
   // Get current user for quotes initialization
   useEffect(() => {
@@ -77,48 +82,61 @@ const Quotes = () => {
 
   // Calculate quote statistics
   const metrics = useMemo(() => {
-    const activeQuotes = quotes.filter(q => !q.archived);
+    // Use the main versions from the table (user-selected or default)
+    // Fall back to automatic grouping if table hasn't sent data yet
+    let mainVersions = currentMainVersions;
+
+    if (mainVersions.length === 0) {
+      const activeQuotes = quotes.filter(q => !q.archived);
+      const quoteGroups = groupQuotesByVersion(activeQuotes);
+      mainVersions = quoteGroups.map(group => group.mainVersion);
+    }
 
     // Get current month start date
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Filter quotes created this month
-    const createdThisMonth = activeQuotes.filter(q => {
-      const createdDate = new Date(q.created_at);
+    // Filter main versions created this month
+    const createdThisMonth = mainVersions.filter(quote => {
+      const createdDate = new Date(quote.created_at);
       return createdDate >= monthStart;
     });
 
-    // Filter quotes that changed to Won status this month
-    const wonThisMonth = activeQuotes.filter(q => {
-      if (q.status !== 'Won' || !q.status_last_updated) return false;
-      const statusDate = new Date(q.status_last_updated);
-      return statusDate >= monthStart;
+    // Filter main versions that changed to Won status this month
+    const wonThisMonth = mainVersions.filter(quote => {
+      if (quote.status !== 'Won') return false;
+      const updatedDate = new Date(quote.updated_at);
+      return updatedDate >= monthStart;
     });
 
-    // Filter quotes that changed to Pending/Submitted status this month
-    const pendingThisMonth = activeQuotes.filter(q => {
-      if (q.status !== 'Pending' && q.status !== 'Submitted') return false;
-      if (!q.status_last_updated) return false;
-      const statusDate = new Date(q.status_last_updated);
-      return statusDate >= monthStart;
+    // Filter main versions that are Pending/Submitted and changed this month
+    const pendingThisMonth = mainVersions.filter(quote => {
+      if (quote.status !== 'Pending' && quote.status !== 'Submitted') return false;
+      const updatedDate = new Date(quote.updated_at);
+      return updatedDate >= monthStart;
     });
 
-    // Overall metrics
-    const totalQuotes = activeQuotes.length;
-    const pendingQuotes = activeQuotes.filter(q => q.status === 'Pending' || q.status === 'Submitted').length;
-    const wonQuotes = activeQuotes.filter(q => q.status === 'Won').length;
-    const draftQuotes = activeQuotes.filter(q => q.status === 'Draft').length;
+    // Overall metrics - count based on main version status
+    const totalQuotes = mainVersions.length;
+    const pendingQuotes = mainVersions.filter(q =>
+      q.status === 'Pending' || q.status === 'Submitted'
+    ).length;
+    const wonQuotes = mainVersions.filter(q =>
+      q.status === 'Won'
+    ).length;
+    const draftQuotes = mainVersions.filter(q =>
+      q.status === 'Draft'
+    ).length;
 
-    // Calculate total value of active quotes (excluding Won and Rejected)
-    const totalValue = activeQuotes
-      .filter(q => q.status !== 'Won' && q.status !== 'Rejected')
+    // Calculate total value of main versions (only Draft, Incomplete, and Submitted)
+    const totalValue = mainVersions
+      .filter(q => q.status === 'Draft' || q.status === 'Incomplete' || q.status === 'Submitted')
       .reduce((sum, quote) => {
         const finalPrice = quote.price_details?.final_selling_price || 0;
         return sum + finalPrice;
       }, 0);
 
-    // Calculate value added this month (quotes created this month)
+    // Calculate value added this month (main versions created this month)
     const valueThisMonth = createdThisMonth.reduce((sum, quote) => {
       const finalPrice = quote.price_details?.final_selling_price || 0;
       return sum + finalPrice;
@@ -135,7 +153,7 @@ const Quotes = () => {
       totalValue,
       valueThisMonth
     };
-  }, [quotes]);
+  }, [currentMainVersions, quotes]);
 
   const editQuote = (quote: Quote) => {
     const proposalNumber = quote.proposal_number;
@@ -179,7 +197,7 @@ const Quotes = () => {
       }).format(amount);
     };
 
-    const headers = ['Proposal #', 'Project Name', 'Client Name', 'Total', 'Status', 'Quote Source', 'Creator', 'Created', 'Follow Up'];
+    const headers = ['Proposal #', 'Project Name', 'Client Name', 'Total', 'Status', 'Quote Source', 'Creator', 'Created'];
 
     const rows = filteredData.map(quote => {
       const proposalInfo = ProposalNumberGenerator.parseProposalNumber(quote.proposal_number);
@@ -195,22 +213,6 @@ const Quotes = () => {
         day: 'numeric'
       });
 
-      let followUp = 'Not set';
-      if (quote.follow_up_date) {
-        const followUpDate = new Date(quote.follow_up_date);
-        const today = new Date();
-        const timeDiff = followUpDate.getTime() - today.getTime();
-        const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
-
-        if (daysRemaining < 0) {
-          followUp = `${Math.abs(daysRemaining)}d overdue`;
-        } else if (daysRemaining === 0) {
-          followUp = 'Due today';
-        } else {
-          followUp = `${daysRemaining}d remaining`;
-        }
-      }
-
       return [
         proposalInfo.displayNumber,
         projectName,
@@ -219,8 +221,7 @@ const Quotes = () => {
         status,
         source,
         creator,
-        created,
-        followUp
+        created
       ].map(escapeCsvField).join(',');
     });
 
@@ -273,22 +274,6 @@ const Quotes = () => {
         day: 'numeric'
       });
 
-      let followUp = 'Not set';
-      if (quote.follow_up_date) {
-        const followUpDate = new Date(quote.follow_up_date);
-        const today = new Date();
-        const timeDiff = followUpDate.getTime() - today.getTime();
-        const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
-
-        if (daysRemaining < 0) {
-          followUp = `${Math.abs(daysRemaining)}d overdue`;
-        } else if (daysRemaining === 0) {
-          followUp = 'Due today';
-        } else {
-          followUp = `${daysRemaining}d remaining`;
-        }
-      }
-
       return [
         proposalInfo.displayNumber,
         projectName,
@@ -297,13 +282,12 @@ const Quotes = () => {
         status,
         source,
         creator,
-        created,
-        followUp
+        created
       ];
     });
 
     autoTable(doc, {
-      head: [['Proposal #', 'Project Name', 'Client Name', 'Total', 'Status', 'Quote Source', 'Creator', 'Created', 'Follow Up']],
+      head: [['Proposal #', 'Project Name', 'Client Name', 'Total', 'Status', 'Quote Source', 'Creator', 'Created']],
       body: tableData,
       startY: 35,
       styles: { fontSize: 8, cellPadding: 2 },
@@ -414,7 +398,7 @@ const Quotes = () => {
               </CardContent>
             </Card>
 
-            {/* Pending Quotes */}
+            {/* Submitted Quotes */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
@@ -422,7 +406,7 @@ const Quotes = () => {
                     <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-300" />
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Pending Quotes</h3>
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Submitted Quotes</h3>
                     <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.pendingQuotes}</p>
                   </div>
                 </div>
@@ -449,7 +433,7 @@ const Quotes = () => {
               </CardContent>
             </Card>
 
-            {/* Total Value */}
+            {/* Total Active Value */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
@@ -457,7 +441,7 @@ const Quotes = () => {
                     <DollarSign className="w-6 h-6 text-purple-600 dark:text-purple-300" />
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Total Value</h3>
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Total Active Value</h3>
                     <p className="text-2xl font-bold text-[var(--content-header-text)]">
                       {new Intl.NumberFormat('en-US', {
                         style: 'currency',
@@ -467,7 +451,7 @@ const Quotes = () => {
                       }).format(metrics.totalValue)}
                     </p>
                     <p className="text-xs text-[var(--content-muted-text)] mt-1">
-                      Active quotes only
+                      Outstanding Quotes Only
                     </p>
                   </div>
                 </div>
@@ -505,6 +489,8 @@ const Quotes = () => {
           } : undefined}
           onExportCSV={handleExportCSV}
           onExportPDF={handleExportPDF}
+          onMainVersionsChange={setCurrentMainVersions}
+          onSetMainVersion={setMainVersion}
         />
         </>
       )}

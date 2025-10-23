@@ -41,6 +41,7 @@ import { reminderService, type Reminder } from "@/services/reminderService";
 import { formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
 import { toast } from "sonner";
 import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
+import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
 
 /**
  * Dashboard - Executive Overview
@@ -388,55 +389,65 @@ const Dashboard = () => {
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-    // Track when quotes were marked as Won using won_at timestamp
-    const wonQuotesThisMonth = quotes.filter(q => {
-      if (!q.won_at) return false;
+    // Group quotes by version to avoid counting duplicates
+    const quoteGroups = groupQuotesByVersion(quotes);
 
-      const wonDate = new Date(q.won_at);
+    // Track when quote groups were marked as Won using won_at timestamp
+    // Use the won version if exists, otherwise use latest version
+    const wonQuoteGroupsThisMonth = quoteGroups.filter(group => {
+      const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
+      if (!wonVersion) return false;
+      const wonDate = new Date(wonVersion.won_at);
       return wonDate >= thisMonth;
     });
 
-    const wonQuotesLastMonth = quotes.filter(q => {
-      if (!q.won_at) return false;
-
-      const wonDate = new Date(q.won_at);
+    const wonQuoteGroupsLastMonth = quoteGroups.filter(group => {
+      const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
+      if (!wonVersion) return false;
+      const wonDate = new Date(wonVersion.won_at);
       return wonDate >= lastMonth && wonDate <= lastMonthEnd;
     });
 
-    const totalRevenue = wonQuotesThisMonth.reduce((sum, q) =>
-      sum + (q.price_details?.final_selling_price || 0), 0
-    );
+    const totalRevenue = wonQuoteGroupsThisMonth.reduce((sum, group) => {
+      const wonVersion = group.versions.find(v => v.status === 'Won');
+      return sum + (wonVersion?.price_details?.final_selling_price || 0);
+    }, 0);
 
-    const lastMonthRevenue = wonQuotesLastMonth.reduce((sum, q) =>
-      sum + (q.price_details?.final_selling_price || 0), 0
-    );
+    const lastMonthRevenue = wonQuoteGroupsLastMonth.reduce((sum, group) => {
+      const wonVersion = group.versions.find(v => v.status === 'Won');
+      return sum + (wonVersion?.price_details?.final_selling_price || 0);
+    }, 0);
 
-    const activeQuotes = quotes.filter(q =>
-      ['Pending', 'Submitted'].includes(q.status || '')
+    const activeQuotes = quoteGroups.filter(group =>
+      group.versions.some(v => ['Pending', 'Submitted'].includes(v.status || ''))
     ).length;
 
-    // Current overall win rate (all time)
-    const wonQuotes = quotes.filter(q => q.status === 'Won').length;
-    const rejectedQuotes = quotes.filter(q => q.status === 'Rejected').length;
+    // Current overall win rate (all time) - count groups not individual quotes
+    const wonQuotes = quoteGroups.filter(g => g.versions.some(v => v.status === 'Won')).length;
+    const rejectedQuotes = quoteGroups.filter(g =>
+      g.versions.some(v => v.status === 'Rejected') && !g.versions.some(v => v.status === 'Won')
+    ).length;
     const totalDecidedQuotes = wonQuotes + rejectedQuotes;
     const winRate = totalDecidedQuotes > 0 ? ((wonQuotes / totalDecidedQuotes) * 100).toFixed(1) : '0';
 
     // This month's win rate
-    const wonThisMonth = wonQuotesThisMonth.length;
-    const rejectedThisMonth = quotes.filter(q => {
-      if (!q.rejected_at) return false;
-      const rejectedDate = new Date(q.rejected_at);
-      return rejectedDate >= thisMonth;
+    const wonThisMonth = wonQuoteGroupsThisMonth.length;
+    const rejectedThisMonth = quoteGroups.filter(group => {
+      const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
+      if (!rejectedVersion) return false;
+      const rejectedDate = new Date(rejectedVersion.rejected_at);
+      return rejectedDate >= thisMonth && !group.versions.some(v => v.status === 'Won');
     }).length;
     const decidedThisMonth = wonThisMonth + rejectedThisMonth;
     const winRateThisMonth = decidedThisMonth > 0 ? ((wonThisMonth / decidedThisMonth) * 100).toFixed(1) : '0';
 
     // Last month's win rate
-    const wonLastMonth = wonQuotesLastMonth.length;
-    const rejectedLastMonth = quotes.filter(q => {
-      if (!q.rejected_at) return false;
-      const rejectedDate = new Date(q.rejected_at);
-      return rejectedDate >= lastMonth && rejectedDate <= lastMonthEnd;
+    const wonLastMonth = wonQuoteGroupsLastMonth.length;
+    const rejectedLastMonth = quoteGroups.filter(group => {
+      const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
+      if (!rejectedVersion) return false;
+      const rejectedDate = new Date(rejectedVersion.rejected_at);
+      return rejectedDate >= lastMonth && rejectedDate <= lastMonthEnd && !group.versions.some(v => v.status === 'Won');
     }).length;
     const decidedLastMonth = wonLastMonth + rejectedLastMonth;
     const winRateLastMonth = decidedLastMonth > 0 ? ((wonLastMonth / decidedLastMonth) * 100).toFixed(1) : '0';

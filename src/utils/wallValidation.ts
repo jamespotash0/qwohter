@@ -44,40 +44,32 @@ export const validateWallDimensions = (wall: any) => {
   
   // Length validation
   const lengthFeet = parseInt(wall.lengthFeet || '0');
-  if (isNaN(lengthFeet) || lengthFeet < 1 || lengthFeet > 40) {
-    errors.push('Length feet must be between 1 and 40');
+  if (isNaN(lengthFeet) || lengthFeet < 1 || lengthFeet > 200) {
+    errors.push('Length feet must be between 1 and 200');
   }
   
-  const lengthInches = wall.lengthInches || '';
-  if (lengthInches === '') {
-    errors.push('Length inches is required');
-  } else {
-    const inchesNum = parseFractionalInches(lengthInches);
-    if (isNaN(inchesNum) || inchesNum < 0 || inchesNum >= 12) {
-      errors.push('Length inches must be between 0 and 11 (e.g., "0", "3/4", "3 3/4", or "3-3/4")');
-    }
+  const lengthInches = wall.lengthInches || '0';
+  const lengthInchesNum = parseFractionalInches(lengthInches);
+  if (isNaN(lengthInchesNum) || lengthInchesNum < 0 || lengthInchesNum >= 12) {
+    errors.push('Length inches must be between 0 and 11 (e.g., "0", "3/4", "3 3/4", or "3-3/4")');
   }
   
   // Height validation
   const heightFeet = parseInt(wall.heightFeet || '0');
-  if (isNaN(heightFeet) || heightFeet < 1 || heightFeet > 40) {
-    errors.push('Height feet must be between 1 and 40');
+  if (isNaN(heightFeet) || heightFeet < 1 || heightFeet > 99) {
+    errors.push('Height feet must be between 1 and 99');
   }
   
-  const heightInches = wall.heightInches || '';
-  if (heightInches === '') {
-    errors.push('Height inches is required');
-  } else {
-    const inchesNum = parseFractionalInches(heightInches);
-    if (isNaN(inchesNum) || inchesNum < 0 || inchesNum >= 12) {
-      errors.push('Height inches must be between 0 and 11 (e.g., "0", "3/4", "3 3/4", or "3-3/4")');
-    }
+  const heightInches = wall.heightInches || '0';
+  const heightInchesNum = parseFractionalInches(heightInches);
+  if (isNaN(heightInchesNum) || heightInchesNum < 0 || heightInchesNum >= 12) {
+    errors.push('Height inches must be between 0 and 11 (e.g., "0", "3/4", "3 3/4", or "3-3/4")');
   }
   
   // Panel count validation
   const panelCount = parseInt(wall.panelCount || '0');
-  if (isNaN(panelCount) || panelCount < 1 || panelCount > 50) {
-    errors.push('Panel count must be between 1 and 50');
+  if (isNaN(panelCount) || panelCount < 1 || panelCount > 200) {
+    errors.push('Panel count must be between 1 and 200');
   }
   
   // Wall System Type
@@ -131,16 +123,39 @@ export const validateGlassWallRequiredFields = (wall: any) => {
     partitionSupport: wall.partitionSupport,
     trackType: wall.trackType
   };
-  
+
   const errors: string[] = [];
-  
+
   // Check each required field
   for (const [field, value] of Object.entries(requiredFields)) {
     if (!value || value === '') {
       errors.push(`${field} is required`);
     }
   }
-  
+
+  return { isValid: errors.length === 0, errors };
+};
+
+export const validateAccordionPartitionRequiredFields = (wall: any) => {
+  const requiredFields = {
+    series: wall.series,
+    model: wall.model,
+    stcRating: wall.stcRating,
+    operation: wall.operation,
+    panelFace: wall.panelFace,
+    trackSystem: wall.trackSystem,
+    trackMounting: wall.trackMounting
+  };
+
+  const errors: string[] = [];
+
+  // Check each required field
+  for (const [field, value] of Object.entries(requiredFields)) {
+    if (!value || value === '') {
+      errors.push(`${field} is required`);
+    }
+  }
+
   return { isValid: errors.length === 0, errors };
 };
 
@@ -150,15 +165,19 @@ export const validateWallSpecification = (wall: any) => {
   if (!dimensionValidation.isValid) {
     return dimensionValidation;
   }
-  
+
   // Then validate wall-type specific required fields
   if (isOperableWall(wall)) {
     return validateOperableWallRequiredFields(wall);
   }
-  
+
   if (isGlassWall(wall)) {
     return validateGlassWallRequiredFields(wall);
   }
-  
+
+  if (wall?.wallSystemType === 'Accordion Partition') {
+    return validateAccordionPartitionRequiredFields(wall);
+  }
+
   return { isValid: true, errors: [] };
 };

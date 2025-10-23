@@ -83,8 +83,53 @@ export default function Board() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   useEffect(() => {
-    // Initialize board data (only fetches once)
+    // Fetch fresh board data every time the page is visited
+    const fetchBoardData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: membership } = await supabase
+        .from('memberships')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!membership) return;
+
+      // Fetch fresh projects data (with latest quote_ids)
+      // Only show projects where the quote is the main version AND has Won status
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          quotes!inner (
+            id,
+            proposal_number,
+            project_name,
+            quote_details,
+            job_details,
+            price_details,
+            status,
+            is_main_version
+          )
+        `)
+        .eq('organization_id', membership.organization_id)
+        .eq('quotes.is_main_version', true)
+        .eq('quotes.status', 'Won')
+        .order('board_order', { ascending: true });
+
+      if (!projectsError && projectsData) {
+        // Update the board store with fresh data
+        const boardState = useBoardStore.getState();
+        boardState.projects = projectsData;
+      }
+    };
+
+    // Initialize board data (fetches columns once)
     initializeBoard();
+
+    // Fetch fresh projects data
+    fetchBoardData();
 
     // Get organization ID for subscriptions
     const getOrgIdAndSubscribe = async () => {

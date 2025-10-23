@@ -13,6 +13,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { useQuotesStore } from "@/stores/quotes/quotesStore";
+import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
 import { useOrganizationStore } from "@/stores/organization/organizationStore";
 import { useAuthStore } from "@/stores/auth/authStore";
 import { AnalyticsPageCharts } from "@/components/common/charts/AnalyticsPageCharts";
@@ -66,34 +67,45 @@ const Analytics = () => {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
-    // Filter quotes based on view mode - use created_at for quote creation metrics
-    const filteredQuotes = viewMode === 'monthly'
-      ? quotes.filter(q => {
-          const createdDate = new Date(q.created_at);
+    // Group quotes by version to avoid counting duplicates
+    const quoteGroups = groupQuotesByVersion(quotes);
+
+    // Filter quote groups based on view mode - use created_at for quote creation metrics
+    // Use base version creation date for filtering
+    const filteredQuoteGroups = viewMode === 'monthly'
+      ? quoteGroups.filter(group => {
+          const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
+          if (!baseVersion) return false;
+          const createdDate = new Date(baseVersion.created_at);
           return createdDate.getFullYear() === currentYear && createdDate.getMonth() === currentMonth;
         })
-      : quotes.filter(q => {
-          const createdDate = new Date(q.created_at);
+      : quoteGroups.filter(group => {
+          const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
+          if (!baseVersion) return false;
+          const createdDate = new Date(baseVersion.created_at);
           return createdDate.getFullYear() === currentYear;
         });
 
-    // Quotes by user - use ALL quotes, not just filtered by period
+    // Quote groups by user - count groups, not individual versions
     const quotesByUser: Record<string, number> = {};
-    quotes.forEach(q => {
-      const userName = q.creator_name || 'Unknown';
+    quoteGroups.forEach(group => {
+      const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
+      const userName = baseVersion?.creator_name || 'Unknown';
       quotesByUser[userName] = (quotesByUser[userName] || 0) + 1;
     });
 
-    // Quotes per month (for current year)
+    // Quote groups per month (for current year)
     const quotesPerMonth: Record<string, number> = {};
     if (viewMode === 'annual') {
       for (let month = 0; month < 12; month++) {
-        const monthQuotes = quotes.filter(q => {
-          const createdDate = new Date(q.created_at);
+        const monthQuoteGroups = quoteGroups.filter(group => {
+          const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
+          if (!baseVersion) return false;
+          const createdDate = new Date(baseVersion.created_at);
           return createdDate.getFullYear() === currentYear && createdDate.getMonth() === month;
         });
         const monthName = new Date(currentYear, month).toLocaleDateString('en-US', { month: 'short' });
-        quotesPerMonth[monthName] = monthQuotes.length;
+        quotesPerMonth[monthName] = monthQuoteGroups.length;
       }
     } else {
       // For monthly view, show weeks
@@ -104,47 +116,55 @@ const Analytics = () => {
       for (let week = 0; week < weeks; week++) {
         const weekStart = week * 7 + 1;
         const weekEnd = Math.min((week + 1) * 7, endOfMonth.getDate());
-        const weekQuotes = filteredQuotes.filter(q => {
-          const day = new Date(q.created_at).getDate();
+        const weekQuoteGroups = filteredQuoteGroups.filter(group => {
+          const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
+          if (!baseVersion) return false;
+          const day = new Date(baseVersion.created_at).getDate();
           return day >= weekStart && day <= weekEnd;
         });
-        quotesPerMonth[`Week ${week + 1}`] = weekQuotes.length;
+        quotesPerMonth[`Week ${week + 1}`] = weekQuoteGroups.length;
       }
     }
 
     // Calculate revenue using won_at timestamp for accurate period filtering
-    const wonQuotesInPeriod = viewMode === 'monthly'
-      ? quotes.filter(q => {
-          if (!q.won_at) return false;
-          const wonDate = new Date(q.won_at);
+    const wonQuoteGroupsInPeriod = viewMode === 'monthly'
+      ? quoteGroups.filter(group => {
+          const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
+          if (!wonVersion) return false;
+          const wonDate = new Date(wonVersion.won_at);
           return wonDate.getFullYear() === currentYear && wonDate.getMonth() === currentMonth;
         })
-      : quotes.filter(q => {
-          if (!q.won_at) return false;
-          const wonDate = new Date(q.won_at);
+      : quoteGroups.filter(group => {
+          const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
+          if (!wonVersion) return false;
+          const wonDate = new Date(wonVersion.won_at);
           return wonDate.getFullYear() === currentYear;
         });
 
-    const rejectedQuotesInPeriod = viewMode === 'monthly'
-      ? quotes.filter(q => {
-          if (!q.rejected_at) return false;
-          const rejectedDate = new Date(q.rejected_at);
-          return rejectedDate.getFullYear() === currentYear && rejectedDate.getMonth() === currentMonth;
+    const rejectedQuoteGroupsInPeriod = viewMode === 'monthly'
+      ? quoteGroups.filter(group => {
+          const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
+          if (!rejectedVersion) return false;
+          const rejectedDate = new Date(rejectedVersion.rejected_at);
+          return rejectedDate.getFullYear() === currentYear && rejectedDate.getMonth() === currentMonth && !group.versions.some(v => v.status === 'Won');
         })
-      : quotes.filter(q => {
-          if (!q.rejected_at) return false;
-          const rejectedDate = new Date(q.rejected_at);
-          return rejectedDate.getFullYear() === currentYear;
+      : quoteGroups.filter(group => {
+          const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
+          if (!rejectedVersion) return false;
+          const rejectedDate = new Date(rejectedVersion.rejected_at);
+          return rejectedDate.getFullYear() === currentYear && !group.versions.some(v => v.status === 'Won');
         });
 
-    const totalRevenue = wonQuotesInPeriod.reduce((sum, quote) => {
+    const totalRevenue = wonQuoteGroupsInPeriod.reduce((sum, group) => {
+      const wonVersion = group.versions.find(v => v.status === 'Won');
+      if (!wonVersion) return sum;
       // Use denormalized total_value field if available, fallback to price_details
-      const total = quote.total_value || quote.price_details?.final_selling_price || 0;
+      const total = wonVersion.total_value || wonVersion.price_details?.final_selling_price || 0;
       return sum + (typeof total === 'number' ? total : parseCurrency(total));
     }, 0);
 
-    const wonQuotes = wonQuotesInPeriod.length;
-    const rejectedQuotes = rejectedQuotesInPeriod.length;
+    const wonQuotes = wonQuoteGroupsInPeriod.length;
+    const rejectedQuotes = rejectedQuoteGroupsInPeriod.length;
 
     // Win Rate = Won / (Won + Lost) - Same as conversion rate for this use case
     const winRate = (wonQuotes + rejectedQuotes) > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;
@@ -154,7 +174,7 @@ const Analytics = () => {
     const conversionRate = (wonQuotes + rejectedQuotes) > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;
 
     return {
-      totalQuotes: filteredQuotes.length,
+      totalQuotes: filteredQuoteGroups.length,
       totalRevenue,
       quotesByUser,
       quotesPerMonth,

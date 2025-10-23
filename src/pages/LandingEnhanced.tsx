@@ -172,7 +172,7 @@ const LandingEnhanced = () => {
         </div>
 
         <div className="max-w-7xl mx-auto w-full relative z-10 mt-16">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-[1fr_1.5fr] gap-12 items-center">
             {/* Hero Text with Word Reveal Animation */}
             <div className="max-w-xl">
               {/* Removed AI-Powered tag per user request */}
@@ -226,32 +226,16 @@ const LandingEnhanced = () => {
             </div>
 
             {/* Hero Preview with Float Animation */}
-            <div ref={heroPreviewRef} className="relative opacity-0 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-              <div className="relative">
-                {/* Glowing background effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl blur-3xl opacity-20 scale-95" />
-
-                {/* Main preview card */}
-                <div className="relative bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-gray-100">
-                  {/* Placeholder for hero image */}
-                  <div className="w-full aspect-video bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-2xl flex items-center justify-center relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                    <div className="text-center z-10">
-                      <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-xl">
-                        <Zap className="w-12 h-12 text-white" />
-                      </div>
-                      <p className="text-gray-500 font-medium">
-                        Add hero-app-preview.png here
-                      </p>
-                      <p className="text-sm text-gray-400 mt-2">See LANDING_PAGE_ASSETS_GUIDE.md</p>
-                    </div>
-                  </div>
-
-                  {/* Floating badges */}
-                  <div className="absolute -top-4 -right-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-full shadow-xl font-semibold animate-pulse">
-                    ✓ Real-time Sync
-                  </div>
-                </div>
+            <div ref={heroPreviewRef} className="relative opacity-0 animate-fade-in ml-auto perspective-1000 px-10" style={{ animationDelay: '0.3s', width: '105%' }}>
+              <div
+                className="relative rounded-3xl shadow-2xl border border-gray-200 bg-white preserve-3d transition-transform duration-700 hover:scale-105 pl-1 pr-0 py-1"
+                style={{ transform: 'rotateY(-8deg) rotateX(3deg)' }}
+              >
+                <img
+                  src="/images/landing/hero-main-dashboard.svg"
+                  alt="Main Dashboard Preview"
+                  className="w-full h-auto block rounded-3xl"
+                />
               </div>
             </div>
           </div>
@@ -319,9 +303,72 @@ const LandingEnhanced = () => {
       {/* Features Section */}
       <section id="features" ref={featuresRef} className="px-8 py-16 bg-[var(--landing-bg-light)]">
         <div className="max-w-7xl mx-auto space-y-20">
-          {/* Generate Feature */}
+          {/* Design Feature */}
           <div className="feature-card grid lg:grid-cols-2 gap-20 items-center opacity-0">
             <div>
+              <h3 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
+                Design beautiful quotes that <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">win deals</span>
+              </h3>
+              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+                Build smart forms to capture the right information, then turn that data into stunning, branded quote templates. Drag, drop, and customize both the form and the final quote layout with instant live preview.
+              </p>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 group">
+                  <div className="w-6 h-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                    <span className="text-white text-xs">✓</span>
+                  </div>
+                  <span className="text-gray-700 group-hover:text-purple-600 transition-colors duration-300">Form builder to define fields and structure</span>
+                </div>
+                <div className="flex items-center space-x-3 group">
+                  <div className="w-6 h-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                    <span className="text-white text-xs">✓</span>
+                  </div>
+                  <span className="text-gray-700 group-hover:text-purple-600 transition-colors duration-300">Drag-and-drop quote template designer</span>
+                </div>
+                <div className="flex items-center space-x-3 group">
+                  <div className="w-6 h-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                    <span className="text-white text-xs">✓</span>
+                  </div>
+                  <span className="text-gray-700 group-hover:text-purple-600 transition-colors duration-300">Instant live preview and branding</span>
+                </div>
+              </div>
+            </div>
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl blur-2xl opacity-20 group-hover:opacity-30 transition-opacity duration-500" />
+
+              {/* Stacked images showing both design views */}
+              <div className="relative">
+                {/* First image - alternates between back and front */}
+                <div className="absolute left-0 top-0 w-[85%] bg-white/80 backdrop-blur-xl rounded-3xl p-1 shadow-2xl border border-gray-100 animate-layer-swap-1">
+                  <img
+                    src="/images/landing/design_image1.png"
+                    alt="Template Design Editor - View 1"
+                    className="w-full h-auto rounded-2xl"
+                  />
+                </div>
+
+                {/* Second image - alternates between front and back */}
+                <div className="relative bg-white/80 backdrop-blur-xl rounded-3xl p-1 shadow-2xl border border-gray-100 hover:shadow-3xl w-[85%] animate-layer-swap-2">
+                  <img
+                    src="/images/landing/design_image.png"
+                    alt="Template Design Editor - View 2"
+                    className="w-full h-auto rounded-2xl"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Generate Feature */}
+          <div className="feature-card grid lg:grid-cols-2 gap-20 items-center opacity-0">
+            <div className="order-2 lg:order-1 overflow-hidden rounded-3xl">
+              <img
+                src="/images/landing/feature-quote-generation.svg"
+                alt="Quote Generation Interface"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="order-1 lg:order-2">
               <h3 className="text-5xl font-bold text-[var(--landing-text-on-light)] mb-6 leading-tight">
                 Generate quotes in <span className="text-[var(--landing-primary)]">seconds, not hours</span>
               </h3>
@@ -346,55 +393,6 @@ const LandingEnhanced = () => {
                     <span className="text-white text-xs">✓</span>
                   </div>
                   <span className="text-[var(--landing-text-on-light)] group-hover:text-[var(--landing-primary)] transition-colors duration-300">Professional PDF output</span>
-                </div>
-              </div>
-            </div>
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl blur-2xl opacity-20 group-hover:opacity-30 transition-opacity duration-500" />
-              <div className="relative bg-white/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-gray-100 hover:shadow-3xl transition-all duration-500">
-                <img
-                  src="/images/landing/feature-quote-generation.svg"
-                  alt="Quote Generation Interface"
-                  className="w-full h-auto rounded-2xl"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Design Feature */}
-          <div className="feature-card grid lg:grid-cols-2 gap-20 items-center opacity-0">
-            <div className="order-2 lg:order-1 overflow-hidden rounded-3xl">
-              <img
-                src="/images/landing/feature-template-editor.svg"
-                alt="Template Design Editor"
-                className="w-full h-full object-cover"
-              />
-            </div>
-            <div className="order-1 lg:order-2">
-              <h3 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
-                Design beautiful quotes that <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">win deals</span>
-              </h3>
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Create stunning, branded quote templates with our intuitive drag-and-drop editor. See changes instantly with live preview and ensure every quote reflects your brand perfectly.
-              </p>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3 group">
-                  <div className="w-6 h-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                  <span className="text-gray-700 group-hover:text-purple-600 transition-colors duration-300">Drag-and-drop template builder</span>
-                </div>
-                <div className="flex items-center space-x-3 group">
-                  <div className="w-6 h-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                  <span className="text-gray-700 group-hover:text-purple-600 transition-colors duration-300">Live preview and editing</span>
-                </div>
-                <div className="flex items-center space-x-3 group">
-                  <div className="w-6 h-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                  <span className="text-gray-700 group-hover:text-purple-600 transition-colors duration-300">Brand customization</span>
                 </div>
               </div>
             </div>
@@ -430,12 +428,38 @@ const LandingEnhanced = () => {
                 </div>
               </div>
             </div>
-            <div className="overflow-hidden rounded-3xl">
-              <img
-                src="/images/landing/feature-analytics.svg"
-                alt="Analytics Dashboard"
-                className="w-full h-full object-cover"
-              />
+            <div className="relative group overflow-visible">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-emerald-600 rounded-3xl blur-2xl opacity-20 group-hover:opacity-30 transition-opacity duration-500" />
+
+              {/* Layered analytics images - added padding to prevent cutoff */}
+              <div className="relative px-12 py-8">
+                {/* Base SVG - project tracking image */}
+                <div className="relative w-full">
+                  <img
+                    src="/images/landing/project_tracking_image.svg"
+                    alt="Project Tracking Dashboard"
+                    className="w-full h-auto rounded-3xl"
+                  />
+                </div>
+
+                {/* analytics_image1 - positioned top right, overlaying */}
+                <div className="absolute top-[-1rem] right-[-2rem] w-[45%] bg-white/90 backdrop-blur-xl rounded-2xl p-2 shadow-2xl border border-gray-100 hover:scale-105 transition-transform duration-300">
+                  <img
+                    src="/images/landing/analytics_image1.png"
+                    alt="Revenue Analytics"
+                    className="w-full h-auto rounded-xl"
+                  />
+                </div>
+
+                {/* analytics_image2 - positioned bottom right, overlaying */}
+                <div className="absolute bottom-[-0.5rem] right-[1rem] w-[38%] bg-white/90 backdrop-blur-xl rounded-2xl p-2 shadow-2xl border border-gray-100 hover:scale-105 transition-transform duration-300">
+                  <img
+                    src="/images/landing/analytics_image2.png"
+                    alt="Key Metrics"
+                    className="w-full h-auto rounded-xl"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -797,6 +821,97 @@ const LandingEnhanced = () => {
 
         .animate-fade-in {
           animation: fade-in 0.8s ease-out forwards;
+        }
+
+        @keyframes layer-swap-1 {
+          0% {
+            z-index: 10;
+            opacity: 0.8;
+            transform: translate(-1rem, -1rem) rotate(-2deg) scale(0.95);
+          }
+          45% {
+            z-index: 10;
+            opacity: 0.8;
+            transform: translate(-1rem, -1rem) rotate(-2deg) scale(0.95);
+          }
+          50% {
+            z-index: 30;
+            opacity: 1;
+            transform: translate(3rem, 2rem) rotate(1deg) scale(1.02);
+          }
+          95% {
+            z-index: 30;
+            opacity: 1;
+            transform: translate(3rem, 2rem) rotate(1deg) scale(1.02);
+          }
+          100% {
+            z-index: 10;
+            opacity: 0.8;
+            transform: translate(-1rem, -1rem) rotate(-2deg) scale(0.95);
+          }
+        }
+
+        @keyframes layer-swap-2 {
+          0% {
+            z-index: 30;
+            opacity: 1;
+            transform: translate(3rem, 2rem) rotate(1deg) scale(1.02);
+          }
+          45% {
+            z-index: 30;
+            opacity: 1;
+            transform: translate(3rem, 2rem) rotate(1deg) scale(1.02);
+          }
+          50% {
+            z-index: 10;
+            opacity: 0.8;
+            transform: translate(-1rem, -1rem) rotate(-2deg) scale(0.95);
+          }
+          95% {
+            z-index: 10;
+            opacity: 0.8;
+            transform: translate(-1rem, -1rem) rotate(-2deg) scale(0.95);
+          }
+          100% {
+            z-index: 30;
+            opacity: 1;
+            transform: translate(3rem, 2rem) rotate(1deg) scale(1.02);
+          }
+        }
+
+        .animate-layer-swap-1 {
+          animation: layer-swap-1 6s ease-in-out infinite;
+        }
+
+        .animate-layer-swap-2 {
+          animation: layer-swap-2 6s ease-in-out infinite;
+        }
+
+        @keyframes analytics-float-1 {
+          0%, 100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-15px) rotate(1deg);
+          }
+        }
+
+        @keyframes analytics-float-2 {
+          0%, 100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-12px) rotate(-1deg);
+          }
+        }
+
+        .animate-analytics-float-1 {
+          animation: analytics-float-1 4s ease-in-out infinite;
+        }
+
+        .animate-analytics-float-2 {
+          animation: analytics-float-2 5s ease-in-out infinite;
+          animation-delay: 0.5s;
         }
       `}</style>
     </div>
