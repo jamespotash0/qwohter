@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   createColumnHelper,
   flexRender,
@@ -65,7 +65,6 @@ interface EnhancedQuotesTableProps {
   onEditQuote: (quote: Quote) => void;
   onDeleteQuote: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
-  onFollowUpDateChange?: (id: string, date: Date | null) => void;
   onSetReminder?: (id: string) => void;
   onQuoteSourceChange: (id: string, source: string) => void;
   onCreateVersion?: (id: string) => void;
@@ -82,13 +81,14 @@ interface EnhancedQuotesTableProps {
   onBulkUnarchive?: (ids: string[]) => void;
   onExportCSV?: (filteredData: Quote[]) => void;
   onExportPDF?: (filteredData: Quote[]) => void;
+  onMainVersionsChange?: (mainVersions: Quote[]) => void;
 }
 
 const statusColors = {
-  Incomplete: "bg-gray-100 text-gray-800",
-  Draft: "bg-blue-100 text-blue-800",
+  Incomplete: "bg-amber-100 text-amber-800",
+  Draft: "bg-gray-100 text-gray-800",
   Pending: "bg-yellow-100 text-yellow-800",
-  Submitted: "bg-blue-100 text-blue-800",
+  Submitted: "bg-yellow-100 text-yellow-800",
   Won: "bg-emerald-100 text-emerald-800",
   Rejected: "bg-red-100 text-red-800",
 };
@@ -120,7 +120,6 @@ const getAvailableStatusOptions = (currentStatus: string) => {
   const allStatuses = [
     { value: "Incomplete", label: "Incomplete" },
     { value: "Draft", label: "Draft" },
-    { value: "Pending", label: "Pending" },
     { value: "Submitted", label: "Submitted" },
     { value: "Won", label: "Won" },
     { value: "Rejected", label: "Rejected" }
@@ -129,7 +128,7 @@ const getAvailableStatusOptions = (currentStatus: string) => {
   if (currentStatus === "Incomplete") return allStatuses;
   if (currentStatus === "Draft") return allStatuses.filter(s => s.value !== "Incomplete");
 
-  const completedStatuses = ["Pending", "Submitted", "Won", "Rejected"];
+  const completedStatuses = ["Submitted", "Won", "Rejected"];
   if (completedStatuses.includes(currentStatus)) {
     return allStatuses.filter(s => s.value !== "Incomplete" && s.value !== "Draft");
   }
@@ -154,7 +153,6 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   onEditQuote,
   onDeleteQuote,
   onStatusChange,
-  onFollowUpDateChange,
   onQuoteSourceChange,
   onCreateVersion,
   onSetReminder,
@@ -170,7 +168,8 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   // onBulkArchive,
   // onBulkUnarchive,
   onExportCSV,
-  onExportPDF
+  onExportPDF,
+  onMainVersionsChange
 }) => {
   const [globalFilter, setGlobalFilter] = useState('');
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -188,13 +187,35 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   const [expanded, setExpanded] = useState<ExpandedState>({});
   const [versionSelection, setVersionSelection] = useState<Record<string, boolean>>({});
 
+  // Track which version is "main" for each base number (stored in local state only)
+  const [mainVersions, setMainVersions] = useState<Record<string, string>>({});
+
   // Group quotes by version
   const quoteGroups = useMemo(() => groupQuotesByVersion(quotes), [quotes]);
 
-  // Create display data: show only the "latest" version from each group as the main row
+  // Create display data: show the user-selected "main" version or default to latestVersion
   const displayQuotes = useMemo(() => {
-    return quoteGroups.map(group => group.latestVersion);
-  }, [quoteGroups]);
+    return quoteGroups.map(group => {
+      const userSelectedMainId = mainVersions[group.baseNumber];
+      if (userSelectedMainId) {
+        const userSelectedVersion = group.versions.find(v => v.id === userSelectedMainId);
+        if (userSelectedVersion) return userSelectedVersion;
+      }
+      return group.latestVersion;
+    });
+  }, [quoteGroups, mainVersions]);
+
+  // Track previous displayQuotes to avoid infinite loops
+  const prevDisplayQuotesIds = useRef<string>('');
+
+  // Notify parent component when displayQuotes actually changes (for metrics calculation)
+  useEffect(() => {
+    const currentIds = displayQuotes.map(q => q.id).join(',');
+    if (onMainVersionsChange && currentIds !== prevDisplayQuotesIds.current) {
+      prevDisplayQuotesIds.current = currentIds;
+      onMainVersionsChange(displayQuotes);
+    }
+  }, [displayQuotes, onMainVersionsChange]);
 
   // Map to find version group for each quote
   const quoteToGroupMap = useMemo(() => {
@@ -652,7 +673,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       size: 80,
       enableSorting: false,
     }),
-  ], [onEditQuote, onDeleteQuote, onStatusChange, onFollowUpDateChange, onQuoteSourceChange, onCreateVersion, onSetReminder, onArchiveQuote, onUnarchiveQuote, isArchiveView, forceUpdate]);
+  ], [onEditQuote, onDeleteQuote, onStatusChange, onQuoteSourceChange, onCreateVersion, onSetReminder, onArchiveQuote, onUnarchiveQuote, isArchiveView, forceUpdate]);
 
   const table = useReactTable({
     data: displayQuotes,
@@ -1223,10 +1244,25 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                                 <span className="font-mono text-xs text-gray-600">
                                   {version.proposal_number}
                                 </span>
-                                {version.id === quote.id && (
-                                  <Badge variant="outline" className="text-xs">
-                                    Current
+                                {version.id === quote.id ? (
+                                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                                    Main
                                   </Badge>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 px-2 text-xs text-gray-500 hover:text-blue-700 hover:bg-blue-50"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMainVersions(prev => ({
+                                        ...prev,
+                                        [versionGroup.baseNumber]: version.id
+                                      }));
+                                    }}
+                                  >
+                                    Set as Main
+                                  </Button>
                                 )}
                               </div>
                             </td>

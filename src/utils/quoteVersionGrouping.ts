@@ -12,6 +12,7 @@ export interface QuoteVersionGroup {
   baseNumber: string;
   versions: Quote[];
   latestVersion: Quote;
+  mainVersion: Quote; // The version displayed as the main row (won > latest)
   hasMultipleVersions: boolean;
   statusSummary: {
     won: number;
@@ -95,12 +96,12 @@ export function groupQuotesByVersion(quotes: Quote[]): QuoteVersionGroup[] {
     const sorted = sortQuotesByVersion(versions);
 
     // Determine which version to show as the "main" one
-    // Priority: Won version > Base version
+    // Priority: Won version > Latest version (highest version number)
     // 1. If one was accepted (Won), show that version
-    // 2. Otherwise, show the base version (no suffix - always exists)
+    // 2. Otherwise, show the latest version (highest version number)
     const wonVersion = versions.find(v => v.status === 'Won');
-    const baseVersion = versions.find(v => !getVersionSuffix(v.proposal_number));
-    const latestVersion = wonVersion || baseVersion!;
+    const latestVersion = sorted[sorted.length - 1]; // Truly latest version
+    const mainVersion = wonVersion || latestVersion;
 
     // Calculate status summary
     const statusSummary = {
@@ -116,6 +117,7 @@ export function groupQuotesByVersion(quotes: Quote[]): QuoteVersionGroup[] {
       baseNumber,
       versions: sorted,
       latestVersion,
+      mainVersion,
       hasMultipleVersions: versions.length > 1,
       statusSummary
     };

@@ -508,6 +508,51 @@ export const useQuotesStore = create<QuotesState>()(
               }
             });
 
+            // If status changed to Won, create a project
+            if (statusChanged && newStatus === 'Won' && oldStatus !== 'Won') {
+              try {
+                // Check if project already exists for this quote
+                const { data: existingProject } = await supabase
+                  .from('projects')
+                  .select('id')
+                  .eq('quote_id', id)
+                  .single();
+
+                if (!existingProject) {
+                  // Get the default workflow column
+                  const { data: defaultColumn } = await supabase
+                    .from('project_workflow_columns')
+                    .select('id')
+                    .eq('organization_id', organizationId)
+                    .eq('is_default', true)
+                    .single();
+
+                  // Get the highest board_order to add at the end
+                  const { data: projects } = await supabase
+                    .from('projects')
+                    .select('board_order')
+                    .eq('organization_id', organizationId)
+                    .order('board_order', { ascending: false })
+                    .limit(1);
+
+                  const nextBoardOrder = projects && projects.length > 0 ? (projects[0].board_order || 0) + 1 : 0;
+
+                  // Create the project
+                  await supabase
+                    .from('projects')
+                    .insert({
+                      quote_id: id,
+                      organization_id: organizationId,
+                      workflow_status: defaultColumn?.id || null,
+                      board_order: nextBoardOrder
+                    });
+                }
+              } catch (error) {
+                console.error('Error creating project for won quote:', error);
+                // Don't throw - we still want the status update to succeed
+              }
+            }
+
             // Log activity only if quote is not archived
             // (archived quotes shouldn't push updates to recent activity)
             // Also skip logging if quote was just created (within last 30 seconds)
