@@ -5,7 +5,11 @@ import { AppSidebar } from './AppSidebar';
 import { useAuthStore } from '@/stores/auth/authStore';
 import { supabase } from '@/integrations/supabase/client';
 import { SubscriptionPaywall } from '@/components/common/SubscriptionPaywall';
-import { useCurrentOrganization } from '@/stores/organization/organizationStore';
+import { useCurrentOrganization, useOrganizationStore } from '@/stores/organization/organizationStore';
+import { useQuotesStore } from '@/stores/quotes/quotesStore';
+import { useBoardStore } from '@/stores/board/boardStore';
+import { useRemindersStore } from '@/stores/reminders/remindersStore';
+import { useAppStore } from '@/stores/app/appStore';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -128,6 +132,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   }, [membershipStatus, checkingMembership, shouldShowSidebar, location.pathname, navigate]);
 
   const handleLogout = async () => {
+    // Reset all stores before signing out to clear all data
+    useQuotesStore.getState().reset();
+    useBoardStore.getState().reset();
+    useOrganizationStore.getState().reset();
+    useRemindersStore.getState().reset();
+    useAppStore.getState().reset();
+
     await signOut();
     navigate('/sign-in');
   };

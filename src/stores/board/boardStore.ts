@@ -48,6 +48,7 @@ interface BoardStore {
   fetchWorkflowColumns: () => Promise<void>;
   updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
+  reset: () => void;
   createWorkflowColumn: (column: Omit<WorkflowColumn, 'id' | 'created_at' | 'updated_at' | 'organization_id'>) => Promise<void>;
   updateWorkflowColumn: (id: string, updates: Partial<WorkflowColumn>) => Promise<void>;
   deleteWorkflowColumn: (id: string) => Promise<void>;
@@ -542,5 +543,13 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       columnsSubscription.unsubscribe();
       quotesSubscription.unsubscribe();
     };
-  }
+  },
+
+  reset: () => set({
+    projects: [],
+    workflowColumns: [],
+    isLoading: false,
+    isInitialized: false,
+    error: null
+  })
 }));
