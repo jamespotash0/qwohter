@@ -361,9 +361,9 @@ const LandingEnhanced = () => {
 
           {/* Generate Feature */}
           <div className="feature-card grid lg:grid-cols-2 gap-20 items-center opacity-0">
-            <div className="order-2 lg:order-1 overflow-hidden rounded-3xl">
+            <div className="order-2 lg:order-1 overflow-hidden rounded-3xl shadow-2xl border border-gray-100">
               <img
-                src="/images/landing/feature-quote-generation.svg"
+                src="/images/landing/generate_quotes_image.png"
                 alt="Quote Generation Interface"
                 className="w-full h-full object-cover"
               />
