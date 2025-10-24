@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useOrganizationStore } from "@/stores/organization/organizationStore";
 import { useAuthStore } from "@/stores/auth/authStore";
+import { useQuotesStore } from "@/stores/quotes/quotesStore";
 import type { Organization, OrganizationMember, InviteToken } from "@/stores/organization/organizationStore";
 
 // Re-export types from store for backward compatibility
@@ -13,6 +14,9 @@ export const useOrganizations = () => {
 
   // Get user from auth store (avoid redundant auth calls)
   const user = useAuthStore(state => state.user);
+
+  // Get quotes store actions
+  const refetchQuotes = useQuotesStore(state => state.refetchQuotes);
 
   // Get state and actions from Zustand store
   const currentOrganization = useOrganizationStore(state => state.currentOrganization);
@@ -272,6 +276,9 @@ export const useOrganizations = () => {
       // Refresh members list
       await fetchMembers(currentOrganization.id, true);
 
+      // Refresh quotes to update creator names
+      await refetchQuotes();
+
       toast({
         title: "Member removed",
         description: "Member has been deactivated and removed from the organization.",
@@ -304,6 +311,9 @@ export const useOrganizations = () => {
 
       // Refresh members list
       await fetchMembers(currentOrganization.id, true);
+
+      // Refresh quotes to update creator names
+      await refetchQuotes();
 
       toast({
         title: "Member reactivated",

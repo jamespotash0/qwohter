@@ -82,12 +82,13 @@ interface QuotesState {
   // Actions
   initialize: () => Promise<void>;
   fetchQuotes: (options?: { refresh?: boolean }) => Promise<void>;
+  refetchQuotes: () => Promise<void>; // Force refresh quotes from database
   createQuote: (quoteData: any) => Promise<Quote>;
   createQuoteVersion: (existingQuoteId: string) => Promise<Quote>;
   updateQuote: (id: string, updates: Partial<Quote>) => Promise<Quote>;
   deleteQuote: (id: string) => Promise<void>;
   setCurrentQuote: (quote: Quote | null) => void;
-  
+
   // Realtime actions
   subscribeToRealtime: () => Promise<void>;
   unsubscribeFromRealtime: () => void;
@@ -158,6 +159,13 @@ export const useQuotesStore = create<QuotesState>()(
           } finally {
             _setLoading(false);
           }
+        },
+
+        // Force refetch quotes (for external triggers like member status changes)
+        refetchQuotes: async () => {
+          const { fetchQuotes } = get();
+          console.log('🔄 Refetching quotes due to external trigger');
+          await fetchQuotes({ refresh: true });
         },
 
         // Fetch quotes with optional refresh
