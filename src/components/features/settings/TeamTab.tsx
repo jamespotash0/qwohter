@@ -208,19 +208,19 @@ export function TeamTab() {
         <div className="h-px bg-gray-200 dark:bg-gray-700 mb-6"></div>
 
         <div className="mb-6">
-          <div className="flex gap-2 mb-1.5">
+          <div className="flex gap-2 mb-1">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email Address
               </label>
             </div>
             <div className="w-44">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">
                 Department
               </label>
             </div>
             <div className="w-44">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">
                 Role
               </label>
             </div>
@@ -235,11 +235,10 @@ export function TeamTab() {
               className="flex-1 placeholder:text-gray-400"
             />
             <Select value={inviteDepartment || 'placeholder'} onValueChange={setInviteDepartment}>
-              <SelectTrigger className="w-44 [&>span]:text-gray-400">
+              <SelectTrigger className="w-44">
                 <SelectValue placeholder="Select department" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="placeholder" disabled>Select department</SelectItem>
                 <SelectItem value="Sales">Sales</SelectItem>
                 <SelectItem value="Marketing">Marketing</SelectItem>
                 <SelectItem value="Operations">Operations</SelectItem>
@@ -254,11 +253,10 @@ export function TeamTab() {
               </SelectContent>
             </Select>
             <Select value={inviteRole || 'placeholder'} onValueChange={(value) => setInviteRole(value as Role)}>
-              <SelectTrigger className="w-44 [&>span]:text-gray-400">
+              <SelectTrigger className="w-44">
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="placeholder" disabled>Select role</SelectItem>
                 <SelectItem value="Member">Member</SelectItem>
                 <SelectItem value="Admin">Admin</SelectItem>
               </SelectContent>
