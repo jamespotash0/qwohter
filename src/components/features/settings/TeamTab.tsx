@@ -519,8 +519,15 @@ export function TeamTab() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Remove Team Member</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to remove {removeDialog.memberName} from the organization?
+            <DialogDescription className="space-y-2">
+              <p>Are you sure you want to remove <span className="font-semibold">{removeDialog.memberName}</span> from the organization?</p>
+              <p className="text-sm">This action will:</p>
+              <ul className="text-sm list-disc list-inside space-y-1 ml-2">
+                <li>Deactivate their account and revoke access</li>
+                <li>Preserve their quotes and data</li>
+                <li>Display their name as "Deactivated User" on quotes</li>
+                <li>Allow reactivation later if needed</li>
+              </ul>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -534,7 +541,7 @@ export function TeamTab() {
               variant="destructive"
               onClick={handleRemoveMember}
             >
-              Remove
+              Remove Member
             </Button>
           </DialogFooter>
         </DialogContent>
