@@ -263,6 +263,8 @@ export const useOrganizationStore = create<OrganizationState>()(
                 joined_at: membership.joined_at || new Date().toISOString(),
                 email: profile?.email || undefined,
                 full_name: profile?.full_name || undefined,
+                join_type: membership.join_type as 'Invited' | 'Requested' | 'Direct' | undefined,
+                department: membership.department || null,
               };
             });
 
