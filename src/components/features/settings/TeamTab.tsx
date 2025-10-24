@@ -235,7 +235,7 @@ export function TeamTab() {
               className="flex-1 placeholder:text-gray-400"
             />
             <Select value={inviteDepartment || undefined} onValueChange={setInviteDepartment}>
-              <SelectTrigger className="w-44">
+              <SelectTrigger className="w-44 [&>span[data-placeholder]]:text-gray-400">
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent className="w-56 max-h-80">
@@ -253,7 +253,7 @@ export function TeamTab() {
               </SelectContent>
             </Select>
             <Select value={inviteRole || undefined} onValueChange={(value) => setInviteRole(value as Role)}>
-              <SelectTrigger className="w-44">
+              <SelectTrigger className="w-44 [&>span[data-placeholder]]:text-gray-400">
                 <SelectValue placeholder="Role" />
               </SelectTrigger>
               <SelectContent>
