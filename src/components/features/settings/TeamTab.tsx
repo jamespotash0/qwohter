@@ -66,13 +66,23 @@ export function TeamTab() {
   const handleRemoveMember = async () => {
     if (!currentOrganization) return;
 
+    // Close dialog immediately for responsive feel
+    setRemoveDialog({ open: false, memberId: "", memberName: "" });
+
     try {
+      // Show immediate feedback
+      toast({
+        title: "Removing member...",
+        description: `Deactivating ${removeDialog.memberName}`,
+      });
+
       await removeMember(removeDialog.memberId);
+
+      // Success confirmation
       toast({
         title: "Member removed",
         description: `${removeDialog.memberName} has been removed from the organization.`,
       });
-      setRemoveDialog({ open: false, memberId: "", memberName: "" });
     } catch (error: any) {
       toast({
         title: "Failed to remove member",
