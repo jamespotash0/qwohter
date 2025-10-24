@@ -28,6 +28,7 @@ export interface OrganizationMember {
   email: string;
   full_name?: string;
   join_type?: 'Invited' | 'Requested' | 'Direct';
+  department?: string | null;
   user_id: string;
   avatar_url?: string;
 }
@@ -146,6 +147,8 @@ export const useOrganizationStore = create<OrganizationState>()(
               organization_id,
               role,
               joined_at,
+              join_type,
+              department,
               organizations (
                 id,
                 name,
@@ -210,7 +213,7 @@ export const useOrganizationStore = create<OrganizationState>()(
           // Include all members regardless of status (including Inactive)
           const { data: membersData, error: membersError } = await supabase
             .from('memberships')
-            .select('id, user_id, organization_id, role, status, joined_at')
+            .select('id, user_id, organization_id, role, status, joined_at, join_type, department')
             .eq('organization_id', organizationId);
 
           if (membersError) throw membersError;
