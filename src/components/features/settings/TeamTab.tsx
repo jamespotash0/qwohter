@@ -214,12 +214,12 @@ export function TeamTab() {
                 Email Address
               </label>
             </div>
-            <div className="w-40">
+            <div className="w-44">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Department
               </label>
             </div>
-            <div className="w-28">
+            <div className="w-44">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Role
               </label>
@@ -235,7 +235,7 @@ export function TeamTab() {
               className="flex-1 placeholder:text-gray-400"
             />
             <Select value={inviteDepartment || 'placeholder'} onValueChange={setInviteDepartment}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-44">
                 <SelectValue placeholder="Select department" />
               </SelectTrigger>
               <SelectContent>
@@ -254,7 +254,7 @@ export function TeamTab() {
               </SelectContent>
             </Select>
             <Select value={inviteRole || 'placeholder'} onValueChange={(value) => setInviteRole(value as Role)}>
-              <SelectTrigger className="w-28">
+              <SelectTrigger className="w-44">
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent>
