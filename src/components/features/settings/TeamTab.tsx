@@ -209,10 +209,25 @@ export function TeamTab() {
         <div className="h-px bg-gray-200 dark:bg-gray-700 mb-6"></div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Email Address
-          </label>
-          <div className="flex gap-2 mb-4">
+          <div className="flex gap-2 mb-2">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Email Address
+              </label>
+            </div>
+            <div className="w-40">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Department
+              </label>
+            </div>
+            <div className="w-28">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Role
+              </label>
+            </div>
+            <div className="w-[88px]"></div>
+          </div>
+          <div className="flex gap-2">
             <Input
               type="email"
               placeholder="john@emailaddress.com"
@@ -220,30 +235,9 @@ export function TeamTab() {
               onChange={(e) => setInviteEmail(e.target.value)}
               className="flex-1 placeholder:text-gray-400"
             />
-            <Select value={inviteRole} onValueChange={(value) => setInviteRole(value as Role)}>
-              <SelectTrigger className="w-28">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Member">Member</SelectItem>
-                <SelectItem value="Admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={handleInvite}
-              disabled={!inviteEmail}
-              className="bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white px-6"
-            >
-              Invite
-            </Button>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Department (Optional)
-            </label>
             <Select value={inviteDepartment || 'none'} onValueChange={setInviteDepartment}>
-              <SelectTrigger className="w-64">
-                <SelectValue placeholder="Select department" />
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Select" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">—</SelectItem>
@@ -260,6 +254,22 @@ export function TeamTab() {
                 <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={inviteRole} onValueChange={(value) => setInviteRole(value as Role)}>
+              <SelectTrigger className="w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Member">Member</SelectItem>
+                <SelectItem value="Admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={handleInvite}
+              disabled={!inviteEmail}
+              className="bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white px-6"
+            >
+              Invite
+            </Button>
           </div>
         </div>
       </div>
