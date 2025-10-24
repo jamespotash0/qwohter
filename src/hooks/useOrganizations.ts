@@ -348,6 +348,42 @@ export const useOrganizations = () => {
     }
   };
 
+  const updateMemberDepartment = async (memberId: string, department: string | null) => {
+    try {
+      if (!currentOrganization) throw new Error('No organization found');
+
+      const { error } = await supabase
+        .from('memberships')
+        .update({
+          department: department || null,
+          updated_at: new Date().toISOString()
+        } as any)
+        .eq('user_id', memberId)
+        .eq('organization_id', currentOrganization.id);
+
+      if (error) throw error;
+
+      // Update local state
+      storeSetMembers(members.map(member =>
+        member.user_id === memberId
+          ? { ...member, department: department || null }
+          : member
+      ));
+
+      toast({
+        title: "Department updated",
+        description: `Member department has been updated successfully.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error updating department",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   const approveMember = async (memberId: string) => {
     try {
       const { data, error } = await (supabase as any).rpc('approve_member', {
@@ -560,6 +596,7 @@ export const useOrganizations = () => {
     removeMember,
     reactivateMember,
     updateMemberRole,
+    updateMemberDepartment,
     approveMember,
     rejectMember,
     transferOwnership,

@@ -35,6 +35,7 @@ export function TeamTab() {
     removeMember,
     reactivateMember,
     updateMemberRole,
+    updateMemberDepartment,
     approveMember,
     rejectMember,
     transferOwnership
@@ -109,6 +110,20 @@ export function TeamTab() {
     } catch (error: any) {
       toast({
         title: "Failed to update role",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDepartmentChange = async (memberId: string, newDepartment: string) => {
+    if (!currentOrganization) return;
+
+    try {
+      await updateMemberDepartment(memberId, newDepartment || null);
+    } catch (error: any) {
+      toast({
+        title: "Failed to update department",
         description: error.message,
         variant: "destructive",
       });
@@ -337,9 +352,42 @@ export function TeamTab() {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {member.department || <span className="text-gray-400">—</span>}
-                      </span>
+                      <div className="w-32">
+                        {member.status === 'Active' ? (
+                          currentUserRole === 'Member' ? (
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                              {member.department || <span className="text-gray-400">—</span>}
+                            </span>
+                          ) : (
+                            <Select
+                              value={member.department || ''}
+                              onValueChange={(value) => handleDepartmentChange(member.user_id, value)}
+                            >
+                              <SelectTrigger className="w-full h-8 text-sm border-0 shadow-none hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-0 focus:ring-offset-0 px-0 gap-2 [&>svg]:bg-gray-100 [&>svg]:dark:bg-gray-800 [&>svg]:rounded [&>svg]:p-0.75">
+                                <SelectValue placeholder="None" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="">None</SelectItem>
+                                <SelectItem value="Sales">Sales</SelectItem>
+                                <SelectItem value="Marketing">Marketing</SelectItem>
+                                <SelectItem value="Operations">Operations</SelectItem>
+                                <SelectItem value="IT">IT</SelectItem>
+                                <SelectItem value="Finance">Finance</SelectItem>
+                                <SelectItem value="HR">HR</SelectItem>
+                                <SelectItem value="Customer Success">Customer Success</SelectItem>
+                                <SelectItem value="Product">Product</SelectItem>
+                                <SelectItem value="Engineering">Engineering</SelectItem>
+                                <SelectItem value="Executive">Executive</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )
+                        ) : (
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            —
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <span className="text-sm text-gray-700 dark:text-gray-300">
