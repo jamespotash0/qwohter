@@ -238,16 +238,16 @@ export function TeamTab() {
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent className="w-48 max-h-80">
-                <SelectItem value="Sales">Sales</SelectItem>
-                <SelectItem value="Marketing">Marketing</SelectItem>
-                <SelectItem value="Operations">Operations</SelectItem>
-                <SelectItem value="IT">IT</SelectItem>
-                <SelectItem value="Finance">Finance</SelectItem>
-                <SelectItem value="HR">HR</SelectItem>
                 <SelectItem value="Customer Success">Customer Success</SelectItem>
-                <SelectItem value="Product">Product</SelectItem>
                 <SelectItem value="Engineering">Engineering</SelectItem>
                 <SelectItem value="Executive">Executive</SelectItem>
+                <SelectItem value="Finance">Finance</SelectItem>
+                <SelectItem value="HR">HR</SelectItem>
+                <SelectItem value="IT">IT</SelectItem>
+                <SelectItem value="Marketing">Marketing</SelectItem>
+                <SelectItem value="Operations">Operations</SelectItem>
+                <SelectItem value="Product">Product</SelectItem>
+                <SelectItem value="Sales">Sales</SelectItem>
                 <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>
@@ -356,16 +356,16 @@ export function TeamTab() {
                               </SelectTrigger>
                               <SelectContent className="w-48 max-h-80">
                                 <SelectItem value="none">—</SelectItem>
-                                <SelectItem value="Sales">Sales</SelectItem>
-                                <SelectItem value="Marketing">Marketing</SelectItem>
-                                <SelectItem value="Operations">Operations</SelectItem>
-                                <SelectItem value="IT">IT</SelectItem>
-                                <SelectItem value="Finance">Finance</SelectItem>
-                                <SelectItem value="HR">HR</SelectItem>
                                 <SelectItem value="Customer Success">Customer Success</SelectItem>
-                                <SelectItem value="Product">Product</SelectItem>
                                 <SelectItem value="Engineering">Engineering</SelectItem>
                                 <SelectItem value="Executive">Executive</SelectItem>
+                                <SelectItem value="Finance">Finance</SelectItem>
+                                <SelectItem value="HR">HR</SelectItem>
+                                <SelectItem value="IT">IT</SelectItem>
+                                <SelectItem value="Marketing">Marketing</SelectItem>
+                                <SelectItem value="Operations">Operations</SelectItem>
+                                <SelectItem value="Product">Product</SelectItem>
+                                <SelectItem value="Sales">Sales</SelectItem>
                                 <SelectItem value="Other">Other</SelectItem>
                               </SelectContent>
                             </Select>
