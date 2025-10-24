@@ -269,7 +269,9 @@ export const useOrganizationStore = create<OrganizationState>()(
             });
 
           console.log('✅ Transformed members:', transformedData);
-          set({ members: transformedData });
+
+          // Force new array reference to trigger React re-render
+          set({ members: [...transformedData] });
         } catch (error: any) {
           const errorMessage = error?.message || JSON.stringify(error) || 'Unknown error';
           console.error('❌ Failed to fetch members:', errorMessage, error);
