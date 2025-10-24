@@ -75,6 +75,7 @@ export function AppSidebar({
   const user = useAuthStore((state) => state.user);
   const userProfile = useAuthStore((state) => state.profile);
   const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
+  const members = useOrganizationStore((state) => state.members);
 
   // Generate user initials
   const getUserInitials = (name?: string, email?: string) => {
@@ -90,6 +91,13 @@ export function AppSidebar({
   const userDisplayName = userProfile?.full_name || user?.email || 'User';
   const userInitials = getUserInitials(userProfile?.full_name ?? undefined, user?.email);
   const effectiveRole = currentUserRole || 'Member';
+
+  // Get current user's department from members
+  const currentMember = members.find(m => m.user_id === user?.id);
+  const userDepartment = currentMember?.department;
+
+  // Display department if available, otherwise show role
+  const displayText = userDepartment || effectiveRole;
 
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -303,7 +311,7 @@ export function AppSidebar({
                     {userDisplayName}
                   </p>
                   <p className="text-xs font-inter text-[var(--sidebar-user-subtitle)] truncate transition-all duration-200">
-                    {effectiveRole}
+                    {displayText}
                   </p>
                 </div>
               </div>

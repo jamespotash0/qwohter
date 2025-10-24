@@ -13,16 +13,18 @@ ALTER TABLE public.memberships
 ADD CONSTRAINT valid_department CHECK (
   department IS NULL OR
   department IN (
+    'Executive',
+    'Finance',
     'Sales',
     'Marketing',
-    'Operations',
     'IT',
-    'Finance',
     'HR',
     'Customer Success',
     'Product',
+    'Design',
     'Engineering',
-    'Executive',
+    'Operations',
+    'Legal',
     'Other'
   )
 );
