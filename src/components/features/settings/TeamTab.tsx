@@ -235,6 +235,9 @@ export function TeamTab() {
                   Role
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Department
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Date Joined
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -244,7 +247,7 @@ export function TeamTab() {
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
               {members.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                     No team members yet. Invite someone to get started!
                   </td>
                 </tr>
@@ -332,6 +335,11 @@ export function TeamTab() {
                           </span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        {member.department || <span className="text-gray-400">—</span>}
+                      </span>
                     </td>
                     <td className="px-4 py-4">
                       <span className="text-sm text-gray-700 dark:text-gray-300">
