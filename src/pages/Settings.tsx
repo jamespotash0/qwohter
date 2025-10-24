@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { User as UserIcon, Building, Key, Shield, CreditCard, Palette, Users } from "lucide-react";
+import { User as UserIcon, Building, Shield, CreditCard, Palette, Users } from "lucide-react";
 import { useCurrentOrganization, useOrganizationStore } from "@/stores/organization/organizationStore";
 import { useAuthStore } from "@/stores/auth/authStore";
 import { ProfileTab } from "@/components/features/settings/ProfileTab";
@@ -126,7 +126,7 @@ const Settings = () => {
               key={tab.id}
               ref={(el) => (tabRefs.current[tab.id] = el)}
               onClick={() => handleTabChange(tab.id)}
-              className={`relative z-10 px-4 py-2 text-sm font-medium transition-all duration-200 rounded-md whitespace-nowrap ${
+              className={`relative z-10 px-6 py-2 text-sm font-medium transition-all duration-200 rounded-md whitespace-nowrap min-w-[140px] text-center ${
                 activeTab === tab.id
                   ? 'text-gray-900 dark:text-white'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
