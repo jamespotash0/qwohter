@@ -705,25 +705,14 @@ export const useQuotesStore = create<QuotesState>()(
                           const updatedQuote = convertRowToQuote(newRecord);
                           const index = state.quotes.findIndex(q => q.id === updatedQuote.id);
                           if (index !== -1) {
-                            // Preserve existing creator_name if the update doesn't include it
-                            const existingQuote = state.quotes[index];
-                            state.quotes[index] = {
-                              ...updatedQuote,
-                              creator_name: updatedQuote.creator_name === 'Unknown' && existingQuote.creator_name !== 'Unknown'
-                                ? existingQuote.creator_name
-                                : updatedQuote.creator_name
-                            };
+                            // Update quote with latest data from database
+                            // creator_name is now properly handled by convertRowToQuote
+                            state.quotes[index] = updatedQuote;
                           }
 
                           // Update current quote if it's the one being edited
                           if (state.currentQuote?.id === updatedQuote.id) {
-                            const existingCurrentQuote = state.currentQuote;
-                            state.currentQuote = {
-                              ...updatedQuote,
-                              creator_name: updatedQuote.creator_name === 'Unknown' && existingCurrentQuote.creator_name !== 'Unknown'
-                                ? existingCurrentQuote.creator_name
-                                : updatedQuote.creator_name
-                            };
+                            state.currentQuote = updatedQuote;
                           }
                         }
                         break;
@@ -1450,7 +1439,8 @@ const convertRowToQuote = (row: any): Quote => {
     project_name: row.project_name || undefined,
     date_last_downloaded: row.date_last_downloaded || undefined,
     status: row.status || undefined,
-    creator_name: row.creator_name || 'Unknown'
+    // Map created_by_name from database to creator_name for display
+    creator_name: row.creator_name || row.created_by_name || 'Unknown'
   };
 };
 
