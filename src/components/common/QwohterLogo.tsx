@@ -7,13 +7,13 @@ interface QwohterLogoProps {
   className?: string;
 }
 
-export const QwohterLogo: React.FC<QwohterLogoProps> = ({ 
-  size = 'md', 
-  showText = true, 
-  className = '' 
+export const QwohterLogo: React.FC<QwohterLogoProps> = ({
+  size = 'md',
+  showText = true,
+  className = ''
 }) => {
-  const { theme } = useTheme();
-  
+  const { effectiveTheme } = useTheme();
+
   // Logo dimensions - smaller sizes
   const sizeClasses = {
     xs: 'h-6 w-auto max-w-24',   // Extra Small: 24px height, auto width, max 96px wide
@@ -23,9 +23,9 @@ export const QwohterLogo: React.FC<QwohterLogoProps> = ({
     lg: 'h-12 w-auto max-w-48'   // Large: 48px height, auto width, max 192px wide
   };
 
-  // Determine which logo to use based on theme
+  // Determine which logo to use based on effective theme (actual theme being displayed)
   const getLogoSrc = () => {
-    switch (theme) {
+    switch (effectiveTheme) {
       case 'dark':
         return '/logos/Dashboard-Page-Background-Dark-Logo.svg';
       case 'light':

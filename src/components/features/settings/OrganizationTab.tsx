@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Building, Globe, Phone, Printer, MapPin, Save, Edit3, X, Upload, Briefcase, Shield } from 'lucide-react';
+import { Shield, Edit2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { hasAdminPermissions } from "@/utils/permissions";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +13,7 @@ import { useAuthStore } from "@/stores/auth/authStore";
 interface OrganizationTabProps {
   organization: any;
   userRole: string;
-  onOrganizationUpdate: () => void;
+  onOrganizationUpdate: (userId?: string, forceRefresh?: boolean) => Promise<void>;
 }
 
 export const OrganizationTab: React.FC<OrganizationTabProps> = ({
@@ -22,31 +21,43 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
   userRole,
   onOrganizationUpdate
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
   const currentUser = useAuthStore((state) => state.user);
-  const [editedData, setEditedData] = useState({
-    name: organization?.name || '',
-    industry: organization?.industry || '',
-    phone_number: organization?.phone_number || '',
-    fax_number: organization?.fax_number || '',
-    company_address: organization?.company_address || '',
-    website: organization?.website || ''
-  });
+
+  // Individual field editing states
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingIndustry, setIsEditingIndustry] = useState(false);
+  const [isEditingWebsite, setIsEditingWebsite] = useState(false);
+  const [isEditingPhone, setIsEditingPhone] = useState(false);
+  const [isEditingFax, setIsEditingFax] = useState(false);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+
+  // Individual field values
+  const [editedName, setEditedName] = useState(organization?.name || '');
+  const [editedIndustry, setEditedIndustry] = useState(organization?.industry || '');
+  const [editedWebsite, setEditedWebsite] = useState(organization?.website || '');
+  const [editedPhone, setEditedPhone] = useState(organization?.phone_number || '');
+  const [editedFax, setEditedFax] = useState(organization?.fax_number || '');
+  const [editedAddress, setEditedAddress] = useState(organization?.company_address || '');
+
+  // Individual loading states
+  const [isUpdatingName, setIsUpdatingName] = useState(false);
+  const [isUpdatingIndustry, setIsUpdatingIndustry] = useState(false);
+  const [isUpdatingWebsite, setIsUpdatingWebsite] = useState(false);
+  const [isUpdatingPhone, setIsUpdatingPhone] = useState(false);
+  const [isUpdatingFax, setIsUpdatingFax] = useState(false);
+  const [isUpdatingAddress, setIsUpdatingAddress] = useState(false);
 
   const hasEditPermission = hasAdminPermissions(userRole);
 
-  // Update editedData when organization changes
+  // Update field values when organization changes
   useEffect(() => {
     if (organization) {
-      setEditedData({
-        name: organization.name || '',
-        industry: organization.industry || '',
-        phone_number: organization.phone_number || '',
-        fax_number: organization.fax_number || '',
-        company_address: organization.company_address || '',
-        website: organization.website || ''
-      });
+      setEditedName(organization.name || '');
+      setEditedIndustry(organization.industry || '');
+      setEditedWebsite(organization.website || '');
+      setEditedPhone(organization.phone_number || '');
+      setEditedFax(organization.fax_number || '');
+      setEditedAddress(organization.company_address || '');
     }
   }, [organization]);
 
@@ -73,8 +84,13 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
     });
   };
 
-  const handleSaveOrganization = async () => {
-
+  // Generic update function
+  const handleUpdateField = async (
+    field: string,
+    value: string | null,
+    setIsUpdating: (val: boolean) => void,
+    setIsEditing: (val: boolean) => void
+  ) => {
     if (!hasEditPermission) {
       toast({
         title: "Permission Denied",
@@ -95,46 +111,25 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
 
     setIsUpdating(true);
     try {
-
-      const updateData = {
-        name: editedData.name,
-        industry: editedData.industry,
-        phone_number: editedData.phone_number,
-        fax_number: editedData.fax_number || null,
-        company_address: editedData.company_address,
-        website: editedData.website || null
-      };
-
-
-      const { error, data } = await supabase
+      const updateData: Record<string, string | null> = { [field]: value };
+      // @ts-ignore - Dynamic field update
+      const { error } = await supabase
         .from('organizations')
-        .update(updateData as {
-          name: string;
-          industry: string;
-          phone_number: string | null;
-          fax_number: string | null;
-          company_address: string | null;
-          website: string | null;
-        })
-        .eq('id', organization.id)
-        .select();
+        .update(updateData)
+        .eq('id', organization.id);
 
-
-      if (error) {
-        console.error('❌ Database error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       toast({
-        title: "Organization Updated",
+        title: "Updated",
         description: "Organization details have been updated successfully.",
       });
 
       setIsEditing(false);
+
+      // Force refetch with the updated data
       if (typeof onOrganizationUpdate === 'function') {
-        onOrganizationUpdate();
-      } else {
-        console.error('❌ onOrganizationUpdate is not a function:', onOrganizationUpdate);
+        await onOrganizationUpdate(undefined, true);
       }
     } catch (error) {
       console.error('Error updating organization:', error);
@@ -146,18 +141,6 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
     } finally {
       setIsUpdating(false);
     }
-  };
-
-  const handleCancelEdit = () => {
-    setEditedData({
-      name: organization?.name || '',
-      industry: organization?.industry || '',
-      phone_number: organization?.phone_number || '',
-      fax_number: organization?.fax_number || '',
-      company_address: organization?.company_address || '',
-      website: organization?.website || ''
-    });
-    setIsEditing(false);
   };
 
   if (!hasEditPermission) {
@@ -175,186 +158,384 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
   }
 
   return (
-    <div className="space-y-8">
-      {/* Organization Section - Logo on left, Info on right */}
-      <div className="pb-8 border-b border-[var(--content-card-border)]">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-[var(--content-header-text)] flex items-center gap-2">
-            <Building className="w-5 h-5" />
-            Organization
-          </h2>
-          {!isEditing && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditing(true)}
-            >
-              <Edit3 className="w-4 h-4 mr-2" />
-              Edit
-            </Button>
-          )}
-        </div>
+    <div className="max-w-5xl">
+      <div className="space-y-8">
+        {/* Company Profile Section */}
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Company Profile</h2>
+          <div className="h-px bg-gray-200 dark:bg-gray-700 mb-4"></div>
 
-        <div className="flex gap-8">
-          {/* Company Logo - Left Side (compact) */}
-          <div className="w-64 flex-shrink-0">
-            <h3 className="text-sm font-medium text-[var(--content-header-text)] mb-3 flex items-center gap-2">
-              <Upload className="w-4 h-4" />
-              Company Logo
-            </h3>
-            {currentUser && (
-              <LogoUpload
-                onUploadSuccess={handleLogoUploadSuccess}
-                onUploadError={handleLogoUploadError}
-                currentLogoUrl={organization?.logo_data?.logo_public_url || organization?.logo_data?.logo_url || ''}
-                userId={currentUser.id}
-                disabled={isEditing}
-              />
-            )}
-          </div>
+          <div className="space-y-1">
+            {/* Company Logo */}
+            <div className="flex items-start justify-between py-6 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+              <div className="flex-1 pr-8">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Company Logo</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Upload your organization's logo
+                </p>
+              </div>
+              <div className="flex items-center gap-3 min-w-[480px] justify-end">
+                {currentUser && (
+                  <LogoUpload
+                    onUploadSuccess={handleLogoUploadSuccess}
+                    onUploadError={handleLogoUploadError}
+                    currentLogoUrl={organization?.logo_data?.logo_public_url || organization?.logo_data?.logo_url || ''}
+                    userId={currentUser.id}
+                    disabled={false}
+                  />
+                )}
+              </div>
+            </div>
 
-          {/* Organization Information - Right Side */}
-          <div className="flex-1 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Organization Name */}
-            <div className="space-y-2">
-              <Label htmlFor="org-name">Organization Name</Label>
-              <div className="flex items-center gap-2">
-                <Building className="w-4 h-4 text-gray-500" />
-                <Input
-                  id="org-name"
-                  value={isEditing ? editedData.name : organization?.name || ''}
-                  onChange={(e) => isEditing && setEditedData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Your organization name"
-                  disabled={!isEditing}
-                  className={!isEditing ? "bg-gray-50" : ""}
-                />
+            <div className="flex items-start justify-between py-6 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+              <div className="flex-1 pr-8">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Organization Name</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  The name of your organization
+                </p>
+              </div>
+              <div className="flex items-center gap-3 min-w-[480px] justify-end">
+                {isEditingName ? (
+                  <>
+                    <Input
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      placeholder="Enter your organization name"
+                      className="flex-1 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdateField('name', editedName, setIsUpdatingName, setIsEditingName)}
+                      disabled={isUpdatingName}
+                      className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                    >
+                      {isUpdatingName ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditedName(organization?.name || '');
+                        setIsEditingName(false);
+                      }}
+                      className="h-9 px-4"
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 text-right pr-3">
+                      {organization?.name || <span className="text-gray-400 dark:text-gray-500">Not set</span>}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditingName(true)}
+                      className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
 
             {/* Industry */}
-            <div className="space-y-2">
-              <Label htmlFor="industry">Industry</Label>
-              <div className="flex items-center gap-2">
-                <Briefcase className="w-4 h-4 text-gray-500" />
-                <Input
-                  id="industry"
-                  value={isEditing ? editedData.industry : organization?.industry || ''}
-                  onChange={(e) => isEditing && setEditedData(prev => ({ ...prev, industry: e.target.value }))}
-                  placeholder="Enter an industry"
-                  disabled={!isEditing}
-                  className={!isEditing ? "bg-gray-50" : ""}
-                />
+            <div className="flex items-start justify-between py-6 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+              <div className="flex-1 pr-8">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Industry</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Your organization's industry sector
+                </p>
+              </div>
+              <div className="flex items-center gap-3 min-w-[480px] justify-end">
+                {isEditingIndustry ? (
+                  <>
+                    <Input
+                      value={editedIndustry}
+                      onChange={(e) => setEditedIndustry(e.target.value)}
+                      placeholder="Enter your industry (e.g., Technology, Finance)"
+                      className="flex-1 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdateField('industry', editedIndustry, setIsUpdatingIndustry, setIsEditingIndustry)}
+                      disabled={isUpdatingIndustry}
+                      className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                    >
+                      {isUpdatingIndustry ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditedIndustry(organization?.industry || '');
+                        setIsEditingIndustry(false);
+                      }}
+                      className="h-9 px-4"
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 text-right pr-3">
+                      {organization?.industry || <span className="text-gray-400 dark:text-gray-500">Not set</span>}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditingIndustry(true)}
+                      className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
 
+            {/* Website */}
+            <div className="flex items-start justify-between py-6 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+              <div className="flex-1 pr-8">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Website</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Your organization's website URL
+                </p>
+              </div>
+              <div className="flex items-center gap-3 min-w-[480px] justify-end">
+                {isEditingWebsite ? (
+                  <>
+                    <Input
+                      value={editedWebsite}
+                      onChange={(e) => setEditedWebsite(e.target.value)}
+                      placeholder="Enter your website URL (e.g., https://example.com)"
+                      className="flex-1 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdateField('website', editedWebsite || null, setIsUpdatingWebsite, setIsEditingWebsite)}
+                      disabled={isUpdatingWebsite}
+                      className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                    >
+                      {isUpdatingWebsite ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditedWebsite(organization?.website || '');
+                        setIsEditingWebsite(false);
+                      }}
+                      className="h-9 px-4"
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 text-right pr-3">
+                      {organization?.website || <span className="text-gray-400 dark:text-gray-500">Not set</span>}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditingWebsite(true)}
+                      className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Contact Information Section */}
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Contact Information</h2>
+          <div className="h-px bg-gray-200 dark:bg-gray-700 mb-4"></div>
+
+          <div className="space-y-1">
             {/* Phone Number */}
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-gray-500" />
-                <Input
-                  id="phone"
-                  value={isEditing ? editedData.phone_number : organization?.phone_number || ''}
-                  onChange={(e) => isEditing && setEditedData(prev => ({ ...prev, phone_number: e.target.value }))}
-                  placeholder="Enter a phone number"
-                  disabled={!isEditing}
-                  className={!isEditing ? "bg-gray-50" : ""}
-                />
+            <div className="flex items-start justify-between py-6 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+              <div className="flex-1 pr-8">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Phone Number</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Primary contact phone number
+                </p>
+              </div>
+              <div className="flex items-center gap-3 min-w-[480px] justify-end">
+                {isEditingPhone ? (
+                  <>
+                    <Input
+                      value={editedPhone}
+                      onChange={(e) => setEditedPhone(e.target.value)}
+                      placeholder="Enter your phone number (e.g., +1 555-123-4567)"
+                      className="flex-1 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdateField('phone_number', editedPhone, setIsUpdatingPhone, setIsEditingPhone)}
+                      disabled={isUpdatingPhone}
+                      className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                    >
+                      {isUpdatingPhone ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditedPhone(organization?.phone_number || '');
+                        setIsEditingPhone(false);
+                      }}
+                      className="h-9 px-4"
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 text-right pr-3">
+                      {organization?.phone_number || <span className="text-gray-400 dark:text-gray-500">Not set</span>}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditingPhone(true)}
+                      className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
 
             {/* Fax Number */}
-            <div className="space-y-2">
-              <Label htmlFor="fax">Fax Number</Label>
-              <div className="flex items-center gap-2">
-                <Printer className="w-4 h-4 text-gray-500" />
-                <Input
-                  id="fax"
-                  value={isEditing ? editedData.fax_number : organization?.fax_number || ''}
-                  onChange={(e) => isEditing && setEditedData(prev => ({ ...prev, fax_number: e.target.value }))}
-                  placeholder={organization?.fax_number || "Enter a fax number"}
-                  disabled={!isEditing}
-                  className={!isEditing ? "bg-gray-50" : ""}
-                />
+            <div className="flex items-start justify-between py-6 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+              <div className="flex-1 pr-8">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Fax Number</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Optional fax number
+                </p>
+              </div>
+              <div className="flex items-center gap-3 min-w-[480px] justify-end">
+                {isEditingFax ? (
+                  <>
+                    <Input
+                      value={editedFax}
+                      onChange={(e) => setEditedFax(e.target.value)}
+                      placeholder="Enter fax number if applicable"
+                      className="flex-1 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdateField('fax_number', editedFax || null, setIsUpdatingFax, setIsEditingFax)}
+                      disabled={isUpdatingFax}
+                      className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                    >
+                      {isUpdatingFax ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditedFax(organization?.fax_number || '');
+                        setIsEditingFax(false);
+                      }}
+                      className="h-9 px-4"
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 text-right pr-3">
+                      {organization?.fax_number || <span className="text-gray-400 dark:text-gray-500">Not set</span>}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditingFax(true)}
+                      className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
 
             {/* Company Address */}
-            <div className="space-y-2">
-              {isEditing ? (
-                <MapboxInput
-                  id="address"
-                  label="Company Address"
-                  value={editedData.company_address}
-                  onChange={(value) => setEditedData(prev => ({ ...prev, company_address: value }))}
-                  placeholder="123 Main St, Suite 100, City, State 12345"
-                />
-              ) : (
-                <>
-                  <Label htmlFor="address">Company Address</Label>
-                  <div className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 text-gray-500 mt-3" />
-                    <Input
-                      id="address"
-                      value={organization?.company_address || ''}
-                      placeholder="Enter an address"
-                      disabled={true}
-                      className="bg-gray-50"
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Website */}
-            <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
-              <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4 text-gray-500" />
-                <Input
-                  id="website"
-                  value={isEditing ? editedData.website : organization?.website || ''}
-                  onChange={(e) => isEditing && setEditedData(prev => ({ ...prev, website: e.target.value }))}
-                  placeholder="https://www.example.com"
-                  disabled={!isEditing}
-                  className={!isEditing ? "bg-gray-50" : ""}
-                />
+            <div className="flex items-start justify-between py-6 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+              <div className="flex-1 pr-8">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Company Address</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Your organization's physical address
+                </p>
+              </div>
+              <div className="flex items-center gap-3 min-w-[480px] justify-end">
+                {isEditingAddress ? (
+                  <>
+                    <div className="flex-1">
+                      <MapboxInput
+                        id="address"
+                        label=""
+                        value={editedAddress}
+                        onChange={(value) => setEditedAddress(value)}
+                        placeholder="Start typing your address to search..."
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdateField('company_address', editedAddress, setIsUpdatingAddress, setIsEditingAddress)}
+                      disabled={isUpdatingAddress}
+                      className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                    >
+                      {isUpdatingAddress ? 'Saving...' : 'Save'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setEditedAddress(organization?.company_address || '');
+                        setIsEditingAddress(false);
+                      }}
+                      className="h-9 px-4"
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 text-right pr-3">
+                      {organization?.company_address || <span className="text-gray-400 dark:text-gray-500">Not set</span>}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditingAddress(true)}
+                      className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
-          </div>
-
-            {isEditing && (
-              <div className="flex items-center gap-3 pt-4 border-t col-span-2">
-                <Button
-                  onClick={handleSaveOrganization}
-                  disabled={isUpdating}
-                  size="sm"
-                  className="bg-blue-600 hover:bg-[var(--sidebar-nav-bg-hover)] text-white"
-                >
-                  {isUpdating ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-2" />
-                  )}
-                  {isUpdating ? 'Saving...' : 'Save Changes'}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancelEdit}
-                  disabled={isUpdating}
-                  className="hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]"
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Cancel
-                </Button>
-              </div>
-            )}
           </div>
         </div>
       </div>
-
     </div>
   );
 };

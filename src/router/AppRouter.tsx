@@ -64,6 +64,7 @@ const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const PendingApproval = lazy(() => import("@/pages/PendingApproval"));
 const AccessDenied = lazy(() => import("@/pages/AccessDenied"));
+const AccountInactive = lazy(() => import("@/pages/AccountInactive"));
 
 // Main application pages - import eagerly to prevent navigation flicker
 import Dashboard from "@/pages/Dashboard";
@@ -79,9 +80,9 @@ const NewQuote = lazy(() => import("@/pages/NewQuote"));
 const QuoteEdit = lazy(() => import("@/pages/QuoteEdit"));
 const QuoteEditIncomplete = lazy(() => import("@/pages/QuoteEditIncomplete"));
 
-// Form Builder pages
-const Forms = lazy(() => import("@/pages/Forms"));
-const FormBuilder = lazy(() => import("@/pages/FormBuilder"));
+// Form Builder pages - DISABLED until form builder is complete
+// const Forms = lazy(() => import("@/pages/Forms"));
+// const FormBuilderV2 = lazy(() => import("@/pages/FormBuilderV2"));
 
 // Board page
 const Board = lazy(() => import("@/pages/Board"));
@@ -122,6 +123,7 @@ export const AppRouter = () => (
           <Route path="/reset-password" element={<AuthRoute><ResetPassword /></AuthRoute>} />
           <Route path="/pending-approval" element={<PendingApproval />} />
           <Route path="/access-denied" element={<AccessDenied />} />
+          <Route path="/account-inactive" element={<AccountInactive />} />
 
           {/* Legacy redirects */}
           <Route path="/auth" element={<Navigate to="/sign-in" replace />} />
@@ -140,11 +142,11 @@ export const AppRouter = () => (
           {/* Analytics and reporting */}
           <Route path="/analytics" element={<Analytics />} />
 
-          {/* Team and organization management (requires Admin or Owner role) */}
-          <Route path="/team" element={<Team />} />
-
           {/* Application settings */}
           <Route path="/settings" element={<Settings />} />
+
+          {/* Team redirect - now part of settings */}
+          <Route path="/team" element={<Navigate to="/settings?tab=team" replace />} />
 
           {/* Quote management routes (nested structure) */}
           <Route path="/quotes" element={<QuotesList />} />
@@ -173,9 +175,15 @@ export const AppRouter = () => (
           {/* Future: Quote templates management */}
           <Route path="/quotes/templates" element={<Navigate to="/settings" replace />} />
 
-          {/* Form Builder routes */}
-          <Route path="/forms" element={<Forms />} />
-          <Route path="/forms/builder/:id" element={<FormBuilder />} />
+          {/* Form Builder routes - DISABLED until form builder is complete */}
+          {/* <Route path="/forms" element={<Forms />} /> */}
+          {/* <Route path="/forms/builder/:id" element={<FormBuilderV2 />} /> */}
+          <Route path="/forms" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/forms/*" element={<Navigate to="/dashboard" replace />} />
+
+          {/* Templates routes - DISABLED until template system is complete */}
+          <Route path="/templates" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/templates/*" element={<Navigate to="/dashboard" replace />} />
 
           {/* Legacy route redirects for backward compatibility */}
           <Route path="/newquote" element={<Navigate to="/quotes/new" replace />} />

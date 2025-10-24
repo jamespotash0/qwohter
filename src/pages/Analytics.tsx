@@ -32,8 +32,9 @@ const Analytics = () => {
   const [viewMode, setViewMode] = useState<'monthly' | 'annual'>('monthly');
   const quotes = useQuotesStore((state) => state.quotes);
   const quotesLoading = useQuotesStore((state) => state.isLoading);
-  const isInitialized = useQuotesStore((state) => state.isInitialized);
-  const initialize = useQuotesStore((state) => state.initialize);
+  const fetchQuotes = useQuotesStore((state) => state.fetchQuotes);
+  const subscribeToRealtime = useQuotesStore((state) => state.subscribeToRealtime);
+  const unsubscribeFromRealtime = useQuotesStore((state) => state.unsubscribeFromRealtime);
   // Use Zustand stores directly to avoid re-fetches
   const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
   const profile = useAuthStore((state) => state.profile);
@@ -49,12 +50,24 @@ const Analytics = () => {
     getCurrentUser();
   }, []);
 
-  // Initialize quotes store
+  // Fetch quotes and setup realtime subscription when page mounts
   useEffect(() => {
-    if (user && !isInitialized) {
-      initialize();
-    }
-  }, [user, isInitialized, initialize]);
+    if (!user) return;
+
+    console.log('📊 Analytics page mounted - fetching quotes and setting up subscription');
+
+    // Fetch quotes
+    fetchQuotes({ refresh: true });
+
+    // Setup realtime subscription
+    subscribeToRealtime();
+
+    // Cleanup: unsubscribe when page unmounts
+    return () => {
+      console.log('🧹 Analytics page unmounting - cleaning up subscription');
+      unsubscribeFromRealtime();
+    };
+  }, [user]); // Only re-run if user changes
 
   const parseCurrency = (formatted: string | number): number => {
     if (typeof formatted === 'number') return formatted;
@@ -188,7 +201,6 @@ const Analytics = () => {
   return (
     <PageContent
       title="Analytics"
-      subtitle="Track your business performance and quote insights"
       showPageHeader={true}
       headerActions={
         <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-[var(--sidebar-bg)] p-1">

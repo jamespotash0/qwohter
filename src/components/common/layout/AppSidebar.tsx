@@ -1,13 +1,13 @@
 import { LogOut, CreditCard } from "lucide-react";
-import { House, FileText, ChartBar, Users, List, Gear, FileCode, ChalkboardSimple, Sidebar as SidebarIcon, DotsThree, Lock } from "@phosphor-icons/react";
+import { House, FileText, ChartBar, Users, List, Gear, Kanban, Sidebar as SidebarIcon, DotsThree, Lock, SquaresFour, Article } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 // import { Card, CardContent } from "@/components/ui/card";
-import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import { QwohterLogo } from "@/components/common/QwohterLogo";
+import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import { useOrganizationStore } from "@/stores/organization/organizationStore";
 import { useAuthStore } from "@/stores/auth/authStore";
 import { useState, useEffect, useRef } from "react";
@@ -26,7 +26,7 @@ const menuItems = [
   },
   {
     title: "Project Board",
-    icon: ChalkboardSimple,
+    icon: Kanban,
     path: "/board",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
@@ -38,21 +38,23 @@ const menuItems = [
   },
   {
     title: "Forms",
-    icon: FileCode,
+    icon: SquaresFour,
     path: "/forms",
-    roles: ['Owner', 'Admin', 'Member'], // Available to all
+    roles: ['Owner', 'Admin', 'Member'],
+    disabled: true, // DISABLED: Enable when form builder is complete
+  },
+  {
+    title: "Templates",
+    icon: Article,
+    path: "/templates",
+    roles: ['Owner', 'Admin', 'Member'],
+    disabled: true, // DISABLED: Enable when template system is complete
   },
   {
     title: "Analytics",
     icon: ChartBar,
     path: "/analytics",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
-  },
-  {
-    title: "Team",
-    icon: Users,
-    path: "/team",
-    roles: ['Owner', 'Admin'], // Only Owner and Admin
   },
   {
     title: "Settings",
@@ -73,6 +75,7 @@ export function AppSidebar({
   const user = useAuthStore((state) => state.user);
   const userProfile = useAuthStore((state) => state.profile);
   const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
+  const members = useOrganizationStore((state) => state.members);
 
   // Generate user initials
   const getUserInitials = (name?: string, email?: string) => {
@@ -88,6 +91,13 @@ export function AppSidebar({
   const userDisplayName = userProfile?.full_name || user?.email || 'User';
   const userInitials = getUserInitials(userProfile?.full_name ?? undefined, user?.email);
   const effectiveRole = currentUserRole || 'Member';
+
+  // Get current user's department from members
+  const currentMember = members.find(m => m.user_id === user?.id);
+  const userDepartment = currentMember?.department;
+
+  // Display department if available, otherwise show role
+  const displayText = userDepartment || effectiveRole;
 
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -178,7 +188,7 @@ export function AppSidebar({
                 .map((item, index) => {
                 const isActive = location.pathname === item.path;
                 const Icon = item.icon;
-                const isDisabled = item.title === 'Forms';
+                const isDisabled = item.disabled || false;
 
                 const isClicked = clickedItem === item.title;
 
@@ -202,9 +212,9 @@ export function AppSidebar({
                         isDisabled
                           ? 'text-[var(--sidebar-nav-text)] opacity-50 cursor-not-allowed'
                           : isActive
-                          ? 'text-[var(--sidebar-nav-text-active)] shadow-sm [&:hover]:text-[var(--sidebar-nav-text-active)]'
-                          : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.98]'
-                      }`}
+                          ? 'text-[var(--sidebar-nav-text-active)] shadow-sm [&:hover]:text-[var(--sidebar-nav-text-active)] scale-[1.01]'
+                          : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:scale-[1.02] active:scale-[0.98]'
+                      } transition-all duration-300 ease-out`}
                       style={{
                         borderRadius: 'var(--sidebar-nav-border-radius)',
                         ...(isActive && !isDisabled
@@ -301,7 +311,7 @@ export function AppSidebar({
                     {userDisplayName}
                   </p>
                   <p className="text-xs font-inter text-[var(--sidebar-user-subtitle)] truncate transition-all duration-200">
-                    {effectiveRole}
+                    {displayText}
                   </p>
                 </div>
               </div>

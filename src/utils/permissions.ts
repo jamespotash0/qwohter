@@ -106,10 +106,14 @@ export const canAccessSettingsTab = (tabName: string, userRole: string): boolean
       return canManageOrganization(userRole);
     case 'billing':
       return hasAdminPermissions(userRole); // Admin and Owner can access billing
+    case 'team':
+      return canManageTeam(userRole); // Admin and Owner can access team management
     case 'security':
       return hasAdminPermissions(userRole); // Admin and Owner can access security
     case 'permissions':
       return canManagePermissions(userRole);
+    case 'appearance':
+      return true; // All users can access appearance settings
     default:
       return false;
   }

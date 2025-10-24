@@ -26,8 +26,9 @@ const Quotes = () => {
   const [user, setUser] = useState<any>(null);
   const quotes = useQuotesStore((state) => state.quotes);
   const quotesLoading = useQuotesStore((state) => state.isLoading);
-  const isInitialized = useQuotesStore((state) => state.isInitialized);
-  const initialize = useQuotesStore((state) => state.initialize);
+  const fetchQuotes = useQuotesStore((state) => state.fetchQuotes);
+  const subscribeToRealtime = useQuotesStore((state) => state.subscribeToRealtime);
+  const unsubscribeFromRealtime = useQuotesStore((state) => state.unsubscribeFromRealtime);
   const updateQuote = useQuotesStore((state) => state.updateQuote);
   const archiveQuote = useQuotesStore((state) => state.archiveQuote);
   const unarchiveQuote = useQuotesStore((state) => state.unarchiveQuote);
@@ -60,12 +61,24 @@ const Quotes = () => {
     getCurrentUser();
   }, []);
 
-  // Initialize quotes store
+  // Fetch quotes and setup realtime subscription when page mounts
   useEffect(() => {
-    if (user && !isInitialized) {
-      initialize();
-    }
-  }, [user, isInitialized, initialize]);
+    if (!user) return;
+
+    console.log('📊 Quotes page mounted - fetching quotes and setting up subscription');
+
+    // Fetch quotes
+    fetchQuotes({ refresh: true });
+
+    // Setup realtime subscription
+    subscribeToRealtime();
+
+    // Cleanup: unsubscribe when page unmounts
+    return () => {
+      console.log('🧹 Quotes page unmounting - cleaning up subscription');
+      unsubscribeFromRealtime();
+    };
+  }, [user]); // Only re-run if user changes
 
   // Quote management functions
   const updateQuoteStatus = async (id: string, newStatus: string) => {

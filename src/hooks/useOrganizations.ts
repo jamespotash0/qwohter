@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useOrganizationStore } from "@/stores/organization/organizationStore";
 import { useAuthStore } from "@/stores/auth/authStore";
+import { useQuotesStore } from "@/stores/quotes/quotesStore";
 import type { Organization, OrganizationMember, InviteToken } from "@/stores/organization/organizationStore";
 
 // Re-export types from store for backward compatibility
@@ -13,6 +14,9 @@ export const useOrganizations = () => {
 
   // Get user from auth store (avoid redundant auth calls)
   const user = useAuthStore(state => state.user);
+
+  // Get quotes store actions
+  const refetchQuotes = useQuotesStore(state => state.refetchQuotes);
 
   // Get state and actions from Zustand store
   const currentOrganization = useOrganizationStore(state => state.currentOrganization);
@@ -82,7 +86,8 @@ export const useOrganizations = () => {
           role: 'Owner', // Owner role for organization creator
           status: 'Active',
           plan: 'Free',
-          joined_at: new Date().toISOString()
+          joined_at: new Date().toISOString(),
+          join_type: 'Direct' // Organization creator joined directly
         } as any);
 
       if (membershipError) throw membershipError;
@@ -106,7 +111,7 @@ export const useOrganizations = () => {
     }
   };
 
-  const inviteMember = async (organizationId: string, email: string, role: 'admin' | 'member' = 'member') => {
+  const inviteMember = async (organizationId: string, email: string, role: 'Admin' | 'Member' | 'Owner' = 'Member', department?: string | null) => {
     try {
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -179,7 +184,8 @@ export const useOrganizations = () => {
           email,
           organization_id: organizationId,
           organization_code: orgData.organization_code,
-          role: role === 'admin' ? 'Admin' : 'Member',
+          role: role,
+          department: department || null,
           created_by: user.id,
           expires_at: expiresAt.toISOString(),
           is_used: false
@@ -203,7 +209,7 @@ export const useOrganizations = () => {
             organizationName: orgData.name,
             inviteLink: inviteLink,
             inviterName: user.email,
-            role: role === 'admin' ? 'Admin' : 'Member',
+            role: role,
             expiresAt: expiresAt.toISOString()
           }
         });
@@ -255,21 +261,27 @@ export const useOrganizations = () => {
     try {
       if (!currentOrganization) throw new Error('No organization found');
 
-      // Remove membership record
+      // Soft delete: Update status to 'Inactive' instead of deleting
       const { error } = await supabase
         .from('memberships')
-        .delete()
+        .update({
+          status: 'Inactive',
+          updated_at: new Date().toISOString()
+        } as any)
         .eq('user_id', memberId)
         .eq('organization_id', currentOrganization.id);
 
       if (error) throw error;
 
       // Refresh members list
-      await fetchMembers(currentOrganization.id);
+      await fetchMembers(currentOrganization.id, true);
+
+      // Refresh quotes to update creator names
+      await refetchQuotes();
 
       toast({
         title: "Member removed",
-        description: "Member has been removed from the organization.",
+        description: "Member has been deactivated and removed from the organization.",
       });
     } catch (error: any) {
       toast({
@@ -281,7 +293,43 @@ export const useOrganizations = () => {
     }
   };
 
-  const updateMemberRole = async (memberId: string, role: 'admin' | 'member') => {
+  const reactivateMember = async (memberId: string) => {
+    try {
+      if (!currentOrganization) throw new Error('No organization found');
+
+      // Reactivate: Update status back to 'Active'
+      const { error } = await supabase
+        .from('memberships')
+        .update({
+          status: 'Active',
+          updated_at: new Date().toISOString()
+        } as any)
+        .eq('user_id', memberId)
+        .eq('organization_id', currentOrganization.id);
+
+      if (error) throw error;
+
+      // Refresh members list
+      await fetchMembers(currentOrganization.id, true);
+
+      // Refresh quotes to update creator names
+      await refetchQuotes();
+
+      toast({
+        title: "Member reactivated",
+        description: "Member has been reactivated and can now access the organization.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error reactivating member",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const updateMemberRole = async (memberId: string, role: 'Admin' | 'Member' | 'Owner') => {
     try {
       const { data, error } = await (supabase as any).rpc('update_member_role', {
         member_id: memberId,
@@ -291,20 +339,56 @@ export const useOrganizations = () => {
       if (error) throw error;
 
       storeSetMembers(members.map(member =>
-        member.id === memberId
-          ? { ...member, role: role === 'admin' ? 'Admin' : 'Member' }
+        member.user_id === memberId
+          ? { ...member, role: role }
           : member
       ));
-      
+
       toast({
         title: "Role updated",
-        description: `Member has been ${role === 'admin' ? 'promoted to admin' : 'changed to member'} successfully.`,
+        description: `Member has been ${role === 'Admin' ? 'promoted to admin' : 'changed to member'} successfully.`,
       });
-      
+
       return data;
     } catch (error: any) {
       toast({
         title: "Error updating role",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const updateMemberDepartment = async (memberId: string, department: string | null) => {
+    try {
+      if (!currentOrganization) throw new Error('No organization found');
+
+      const { error } = await supabase
+        .from('memberships')
+        .update({
+          department: department || null,
+          updated_at: new Date().toISOString()
+        } as any)
+        .eq('user_id', memberId)
+        .eq('organization_id', currentOrganization.id);
+
+      if (error) throw error;
+
+      // Update local state
+      storeSetMembers(members.map(member =>
+        member.user_id === memberId
+          ? { ...member, department: department || null }
+          : member
+      ));
+
+      toast({
+        title: "Department updated",
+        description: `Member department has been updated successfully.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error updating department",
         description: error.message,
         variant: "destructive",
       });
@@ -358,11 +442,47 @@ export const useOrganizations = () => {
         title: "Member rejected",
         description: "Member request has been rejected.",
       });
-      
+
       return data;
     } catch (error: any) {
       toast({
         title: "Error rejecting member",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const transferOwnership = async (newOwnerId: string) => {
+    try {
+      if (!currentOrganization) throw new Error('No organization found');
+
+      const { data, error } = await (supabase as any).rpc('transfer_ownership', {
+        p_new_owner_id: newOwnerId,
+        p_organization_id: currentOrganization.id
+      });
+
+      if (error) throw error;
+
+      // Refresh members list to show updated roles
+      await fetchMembers(currentOrganization.id, true);
+
+      // Refresh organization to update current user's role
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await storeFetchOrganization(user.id);
+      }
+
+      toast({
+        title: "Ownership transferred",
+        description: "Organization ownership has been successfully transferred. You are now an Admin.",
+      });
+
+      return data;
+    } catch (error: any) {
+      toast({
+        title: "Error transferring ownership",
         description: error.message,
         variant: "destructive",
       });
@@ -486,9 +606,12 @@ export const useOrganizations = () => {
     createOrganization,
     inviteMember,
     removeMember,
+    reactivateMember,
     updateMemberRole,
+    updateMemberDepartment,
     approveMember,
     rejectMember,
+    transferOwnership,
     resendInvite,
     revokeInvite,
     refreshOrganizations: fetchUserOrganization

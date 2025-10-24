@@ -52,6 +52,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     '/reset-password',
     '/pending-approval',
     '/access-denied',
+    '/account-inactive',
     '/demo-contact',
     '/subscription'
   ].includes(location.pathname) && !location.pathname.startsWith('/editor/');
@@ -82,10 +83,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           console.error('Error checking membership:', error);
           setMembershipStatus(null);
         } else if (membership) {
-          // Only check pending status for non-Owners
-          // Owners (who created the org) should always have Active status
-          // But just in case, don't redirect Owners to pending approval
-          if (membership.status === 'Pending' && membership.role !== 'Owner') {
+          // Check for various membership statuses
+          if (membership.status === 'Inactive') {
+            setMembershipStatus('Inactive');
+          } else if (membership.status === 'Pending' && membership.role !== 'Owner') {
+            // Only check pending status for non-Owners
+            // Owners (who created the org) should always have Active status
             setMembershipStatus('Pending');
           } else {
             setMembershipStatus(membership.status);
@@ -121,12 +124,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     }
   }, [navigate, shouldShowSidebar, isInitialized, isLoading, isAuthChanging, user, location.pathname, location.search]);
 
-  // Redirect to pending approval if membership is pending
+  // Redirect based on membership status
   useEffect(() => {
     if (!shouldShowSidebar) return;
-    if (location.pathname === '/pending-approval') return; // Prevent redirect loop
+    if (location.pathname === '/pending-approval' || location.pathname === '/account-inactive') return; // Prevent redirect loop
 
-    if (membershipStatus === 'Pending' && !checkingMembership) {
+    if (membershipStatus === 'Inactive' && !checkingMembership) {
+      navigate('/account-inactive');
+    } else if (membershipStatus === 'Pending' && !checkingMembership) {
       navigate('/pending-approval');
     }
   }, [membershipStatus, checkingMembership, shouldShowSidebar, location.pathname, navigate]);
@@ -193,21 +198,42 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     <SidebarProvider defaultOpen={false}>
       <div className="h-screen flex w-full bg-[var(--content-bg)] overflow-hidden">
         <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
-        <main className="flex-1 flex flex-col overflow-hidden">
-          {isFullScreenPage ? (
-            // Full-screen layout for wizards (no padding, no max-width)
-            <div className="flex-1 overflow-auto">
-              {content}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Top Header Bar - Commented out for now */}
+          {/* <header className="h-16 bg-white dark:bg-[#1A1C23] border-b-2 border-gray-100 dark:border-[var(--sidebar-border)] flex items-center px-8 shrink-0 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-1 bg-[var(--sidebar-icon-active)] rounded-full"></div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                {location.pathname === '/dashboard' && 'Dashboard'}
+                {location.pathname === '/quotes' && 'Quotes'}
+                {location.pathname === '/forms' && 'Forms'}
+                {location.pathname === '/board' && 'Board'}
+                {location.pathname === '/analytics' && 'Analytics'}
+                {location.pathname === '/team' && 'Team'}
+                {location.pathname === '/settings' && 'Settings'}
+                {location.pathname.startsWith('/forms/builder/') && 'Form Builder'}
+                {location.pathname.startsWith('/quotes/new') && 'New Quote'}
+              </h2>
             </div>
-          ) : (
-            // Standard layout with padding and max-width
-            <div className="flex-1 py-8 px-8 lg:px-12 space-y-4 overflow-auto">
-              <div className="max-w-[1350px] mx-auto w-full">
+          </header> */}
+
+          {/* Main Content */}
+          <main className="flex-1 overflow-hidden">
+            {isFullScreenPage ? (
+              // Full-screen layout for wizards (no padding, no max-width)
+              <div className="h-full overflow-auto">
                 {content}
               </div>
-            </div>
-          )}
-        </main>
+            ) : (
+              // Standard layout with padding and max-width
+              <div className="h-full py-8 px-8 lg:px-12 space-y-4 overflow-auto">
+                <div className="max-w-[1350px] mx-auto w-full">
+                  {content}
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
       </div>
     </SidebarProvider>
   );
