@@ -65,7 +65,6 @@ interface QuotesState {
   quotes: Quote[];
   currentQuote: Quote | null;
   isLoading: boolean;
-  isInitialized: boolean;
   error: string | null;
   isRealtimeConnected: boolean;
   filters: {
@@ -80,7 +79,6 @@ interface QuotesState {
   };
 
   // Actions
-  initialize: () => Promise<void>;
   fetchQuotes: (options?: { refresh?: boolean }) => Promise<void>;
   refetchQuotes: () => Promise<void>; // Force refresh quotes from database
   createQuote: (quoteData: any) => Promise<Quote>;
@@ -131,7 +129,6 @@ export const useQuotesStore = create<QuotesState>()(
         quotes: [],
         currentQuote: null,
         isLoading: false,
-        isInitialized: false,
         error: null,
         isRealtimeConnected: false,
         filters: {
@@ -143,22 +140,6 @@ export const useQuotesStore = create<QuotesState>()(
           page: 1,
           pageSize: 10,
           total: 0,
-        },
-
-        // Initialize quotes store
-        initialize: async () => {
-          const { fetchQuotes, subscribeToRealtime, _setLoading } = get();
-
-          try {
-            _setLoading(true);
-            await fetchQuotes();
-            await subscribeToRealtime();
-            set({ isInitialized: true });
-          } catch (error) {
-            console.error('Quotes store initialization error:', error);
-          } finally {
-            _setLoading(false);
-          }
         },
 
         // Force refetch quotes (for external triggers like member status changes)
