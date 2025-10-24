@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { User as UserIcon, Building, Key, Shield, CreditCard, Palette, Users } from "lucide-react";
 import { useCurrentOrganization, useOrganizationStore } from "@/stores/organization/organizationStore";
@@ -15,6 +15,8 @@ const Settings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabFromUrl = searchParams.get('tab') || 'profile';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
+  const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+  const tabRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({});
 
   const user = useAuthStore((state) => state.user);
   const profile = useAuthStore((state) => state.profile);
@@ -28,11 +30,6 @@ const Settings = () => {
       setActiveTab(tabFromUrl);
     }
   }, [tabFromUrl]);
-
-  const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId);
-    setSearchParams({ tab: tabId });
-  };
 
   // Don't show loading spinner - organization and role should be cached
   // If they're not available, show settings anyway with default values
@@ -92,6 +89,20 @@ const Settings = () => {
     }
   ].filter(tab => !tab.requiresPermission || canAccessSettingsTab(tab.requiresPermission, userRole || 'Member')), [user, organization, userRole, profile, refetchOrganization]);
 
+  // Update indicator position when active tab changes
+  useEffect(() => {
+    const activeTabElement = tabRefs.current[activeTab];
+    if (activeTabElement) {
+      const { offsetLeft, offsetWidth } = activeTabElement;
+      setIndicatorStyle({ left: offsetLeft, width: offsetWidth });
+    }
+  }, [activeTab, availableTabs]);
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    setSearchParams({ tab: tabId });
+  };
+
   return (
     <div className="max-w-7xl mx-auto">
       {/* Page Title */}
@@ -101,14 +112,23 @@ const Settings = () => {
 
       {/* Horizontal Tab Navigation with Background Slider */}
       <div className="mb-8 overflow-x-auto">
-        <div className="inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-0.5 min-w-max">
+        <div className="relative inline-flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1 gap-0.5 min-w-max">
+          {/* Sliding indicator */}
+          <div
+            className="absolute top-1 bottom-1 bg-white dark:bg-gray-700 shadow-sm rounded-md transition-all duration-300 ease-out"
+            style={{
+              left: `${indicatorStyle.left}px`,
+              width: `${indicatorStyle.width}px`,
+            }}
+          />
           {availableTabs.map((tab) => (
             <button
               key={tab.id}
+              ref={(el) => (tabRefs.current[tab.id] = el)}
               onClick={() => handleTabChange(tab.id)}
-              className={`relative px-4 py-2 text-sm font-medium transition-all duration-200 rounded-md whitespace-nowrap ${
+              className={`relative z-10 px-4 py-2 text-sm font-medium transition-all duration-200 rounded-md whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'text-gray-900 dark:text-white bg-white dark:bg-gray-700 shadow-sm'
+                  ? 'text-gray-900 dark:text-white'
                   : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
               }`}
             >

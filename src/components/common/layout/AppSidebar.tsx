@@ -212,9 +212,9 @@ export function AppSidebar({
                         isDisabled
                           ? 'text-[var(--sidebar-nav-text)] opacity-50 cursor-not-allowed'
                           : isActive
-                          ? 'text-[var(--sidebar-nav-text-active)] shadow-sm [&:hover]:text-[var(--sidebar-nav-text-active)]'
-                          : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.98]'
-                      }`}
+                          ? 'text-[var(--sidebar-nav-text-active)] shadow-sm [&:hover]:text-[var(--sidebar-nav-text-active)] scale-[1.01]'
+                          : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:scale-[1.02] active:scale-[0.98]'
+                      } transition-all duration-300 ease-out`}
                       style={{
                         borderRadius: 'var(--sidebar-nav-border-radius)',
                         ...(isActive && !isDisabled
