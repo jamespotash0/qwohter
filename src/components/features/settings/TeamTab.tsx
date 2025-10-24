@@ -181,7 +181,7 @@ export function TeamTab() {
   };
 
   return (
-    <div className="max-w-3xl">
+    <div className="w-full max-w-5xl min-w-[640px]">
       {/* Team Members Header & Invite Section */}
       <div className="mb-8">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Team Members</h2>
