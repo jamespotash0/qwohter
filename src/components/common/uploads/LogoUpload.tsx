@@ -258,7 +258,7 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
           ) : hasCurrentLogo && !uploadState.uploadedFile ? (
             // Uploaded Logo State - Circular Profile
             <div className="space-y-4 group">
-              <div className="w-32 h-32 mx-auto border-2 border-gray-200 rounded-full overflow-hidden bg-white relative cursor-pointer"
+              <div className="w-14 h-14 mx-auto border-2 border-gray-200 dark:border-gray-700 rounded-full overflow-hidden bg-white dark:bg-gray-800 relative cursor-pointer"
                    onClick={handleBrowseClick}>
                 <img
                   src={currentLogoUrl}
@@ -270,10 +270,10 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
                   }}
                 />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                  <Upload className="w-6 h-6 text-white" />
+                  <Upload className="w-3.5 h-3.5 text-white" />
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 pt-2">
                 <p className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                   Click to change logo
                 </p>
@@ -311,15 +311,15 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
               </div>
             </div>
           ) : (
-            // Default State - Simple circular placeholder
-            <div className="space-y-4 group">
+            // Default State - Simple rectangular placeholder
+            <div className="space-y-6 group">
               <div
-                className="w-32 h-32 mx-auto border-2 border-dashed border-gray-300 rounded-full overflow-hidden bg-gray-50 relative cursor-pointer group-hover:border-gray-400 transition-colors duration-200"
+                className="w-32 h-16 mx-auto border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-800 relative cursor-pointer group-hover:border-gray-400 dark:group-hover:border-gray-500 transition-colors duration-200"
                 onClick={handleBrowseClick}
               >
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <Upload className="w-8 h-8 text-gray-400 group-hover:text-gray-600 transition-colors duration-200" />
-                  <p className="text-xs text-gray-500 mt-2 group-hover:text-gray-700 transition-colors duration-200">Upload Logo</p>
+                  <Upload className="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:text-gray-500 dark:group-hover:text-gray-400 transition-colors duration-200" />
+                  <p className="text-[10px] text-gray-500 mt-1 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300 transition-colors duration-200">Upload Logo</p>
                 </div>
               </div>
               <div className="space-y-1 text-center">
@@ -338,7 +338,7 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
           type="button"
           onClick={handleUpload}
           disabled={disabled || !hasFileSelected}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white disabled:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white disabled:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
           size="lg"
         >
           Upload Logo

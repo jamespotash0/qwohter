@@ -22,11 +22,14 @@ export interface Organization {
 export interface OrganizationMember {
   id: string;
   organization_id: string;
-  role: 'Admin' | 'Member';
-  status: 'Pending' | 'Active' | 'Suspended';
+  role: 'Admin' | 'Member' | 'Owner';
+  status: 'Pending' | 'Active' | 'Suspended' | 'Inactive';
   joined_at: string;
   email: string;
   full_name?: string;
+  join_type?: 'Invited' | 'Requested' | 'Direct';
+  user_id: string;
+  avatar_url?: string;
 }
 
 export interface InviteToken {
@@ -203,7 +206,8 @@ export const useOrganizationStore = create<OrganizationState>()(
         }
 
         try {
-          // Fetch memberships first (no join to avoid circular dependency)
+          // Fetch memberships first (separate query to avoid join issues)
+          // Include all members regardless of status (including Inactive)
           const { data: membersData, error: membersError } = await supabase
             .from('memberships')
             .select('id, user_id, organization_id, role, status, joined_at')
@@ -246,18 +250,15 @@ export const useOrganizationStore = create<OrganizationState>()(
               const profile = profilesMap.get(membership.user_id);
               console.log(`👤 Member ${membership.user_id}:`, { profile, membership });
 
-              // Use email as fallback if full_name doesn't exist
-              const displayName = profile?.full_name || profile?.email || 'Unknown User';
-
               return {
                 id: membership.id,  // This is the membership ID (needed for approve/reject)
                 user_id: membership.user_id,  // Also include user_id
                 organization_id: membership.organization_id || '',
-                role: (membership.role as 'Admin' | 'Member') || 'Member',
-                status: (membership.status as 'Pending' | 'Active' | 'Suspended') || 'Active',
+                role: (membership.role as 'Admin' | 'Member' | 'Owner') || 'Member',
+                status: (membership.status as 'Pending' | 'Active' | 'Suspended' | 'Inactive') || 'Active',
                 joined_at: membership.joined_at || new Date().toISOString(),
-                email: profile?.email || '',
-                full_name: displayName,
+                email: profile?.email || undefined,
+                full_name: profile?.full_name || undefined,
               };
             });
 

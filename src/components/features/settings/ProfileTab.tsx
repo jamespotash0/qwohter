@@ -1,10 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { User, Mail, AlertTriangle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState } from 'react';
+import { Mail, AlertTriangle, Edit2, RefreshCw } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,10 +15,9 @@ interface ProfileTabProps {
 }
 
 export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole }) => {
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  // Initialize with profile value immediately to prevent flash of empty field
   const [editedFullName, setEditedFullName] = useState(profile?.full_name || '');
-  const [isUpdating, setIsUpdating] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isUpdatingName, setIsUpdatingName] = useState(false);
 
   // Email change dialog states
   const [showEmailDialog, setShowEmailDialog] = useState(false);
@@ -38,17 +35,13 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Update editedFullName when profile changes (must be before early return)
+  // Update editedFullName when profile changes
   React.useEffect(() => {
     if (profile?.full_name && editedFullName !== profile.full_name) {
       setEditedFullName(profile.full_name);
     }
   }, [profile?.full_name]);
 
-  // Debug: Log the user role
-  console.log('ProfileTab userRole:', userRole);
-
-  // Show loading state if user is not loaded yet
   if (!user) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -59,71 +52,39 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
     );
   }
 
-  const getInitials = (fullName?: string, email?: string) => {
-    if (fullName) {
-      const nameParts = fullName.trim().split(' ');
-      if (nameParts.length >= 2) {
-        // First initial + Last initial
-        return (nameParts[0]![0] + nameParts[nameParts.length - 1]![0]).toUpperCase();
-      } else if (nameParts.length === 1) {
-        // If only one name, use first two characters
-        return nameParts[0]!.slice(0, 2).toUpperCase();
-      }
-    }
-    // Fallback to email if no full name
-    return email ? email.split('@')[0]!.slice(0, 2).toUpperCase() : '??';
-  };
-
-
-  const handleSaveProfile = async () => {
-    setIsUpdating(true);
+  const handleSaveName = async () => {
+    setIsUpdatingName(true);
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({
-          full_name: editedFullName
-        })
+        .update({ full_name: editedFullName })
         .eq('id', user.id);
 
       if (error) throw error;
 
       toast({
-        title: "Profile Updated",
-        description: "Your profile has been updated successfully.",
+        title: "Name Updated",
+        description: "Your name has been updated successfully.",
       });
 
-      setIsEditingProfile(false);
+      setIsEditingName(false);
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error('Error updating name:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update profile",
+        description: error instanceof Error ? error.message : "Failed to update name",
         variant: "destructive",
       });
     } finally {
-      setIsUpdating(false);
+      setIsUpdatingName(false);
     }
-  };
-
-  const handleCancelEdit = () => {
-    setEditedFullName(profile?.full_name || '');
-    setIsEditingProfile(false);
   };
 
   const handleEmailChange = async () => {
-    if (!newEmail) {
+    if (!newEmail || !currentPassword) {
       toast({
         title: "Error",
-        description: "Please enter a new email address.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!currentPassword) {
-      toast({
-        title: "Error",
-        description: "Please enter your current password to verify your identity.",
+        description: "Please fill in all fields.",
         variant: "destructive",
       });
       return;
@@ -131,19 +92,16 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
 
     setIsUpdatingEmail(true);
     try {
-      // First verify the current password by attempting to sign in
+      // Verify password
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: user.email!,
         password: currentPassword,
       });
 
-      if (signInError) {
-        throw new Error("Current password is incorrect. Please try again.");
-      }
+      if (signInError) throw new Error("Current password is incorrect.");
 
-      // If password is correct, proceed with email update
+      // Update email
       const { error } = await supabase.auth.updateUser({ email: newEmail });
-
       if (error) throw error;
 
       toast({
@@ -155,7 +113,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
       setNewEmail('');
       setCurrentPassword('');
     } catch (error) {
-      console.error('Error updating email:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to update email",
@@ -167,14 +124,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
   };
 
   const handlePasswordReset = async () => {
-    if (!user.email) {
-      toast({
-        title: "Error",
-        description: "No email address found for password reset.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!user.email) return;
 
     setIsResettingPassword(true);
     try {
@@ -190,7 +140,6 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
         description: "Check your email for password reset instructions.",
       });
     } catch (error) {
-      console.error('Error sending password reset:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to send reset email",
@@ -205,7 +154,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
     if (deleteConfirmText !== 'DELETE') {
       toast({
         title: "Error",
-        description: "Please type 'DELETE' to confirm account deletion.",
+        description: "Please type 'DELETE' to confirm.",
         variant: "destructive",
       });
       return;
@@ -213,9 +162,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
 
     setIsDeleting(true);
     try {
-      // Delete user account
       const { error } = await supabase.auth.admin.deleteUser(user.id);
-
       if (error) throw error;
 
       toast({
@@ -223,11 +170,9 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
         description: "Your account has been permanently deleted.",
       });
 
-      // Sign out and redirect
       await supabase.auth.signOut();
       window.location.href = '/';
     } catch (error) {
-      console.error('Error deleting account:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to delete account",
@@ -239,328 +184,321 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
   };
 
   return (
-    <div className="space-y-8">
-      {/* Profile Information */}
-      <div className="pb-8 border-b border-[var(--content-card-border)]">
-        <h2 className="text-lg font-semibold text-[var(--content-header-text)] mb-6 flex items-center gap-2">
-          <User className="w-5 h-5" />
-          Profile Information
-        </h2>
-        <div className="space-y-6">
-          <div className="flex items-start gap-6">
-            <Avatar className="w-20 h-20">
-              <AvatarImage src={profile?.avatar_url} />
-              <AvatarFallback className="text-lg">
-                {getInitials(profile?.full_name, user.email)}
-              </AvatarFallback>
-            </Avatar>
+    <div className="max-w-5xl">
+      <div className="space-y-8">
+        {/* Profile Section */}
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Profile</h2>
+          <div className="h-px bg-gray-200 dark:bg-gray-700 mb-2"></div>
 
-            <div className="flex-1 space-y-4">
-              <div className="space-y-4">
-                {/* Full Name */}
-                <div className="space-y-2">
-                  <Label htmlFor="full-name">Full Name</Label>
-                  <div className="flex items-center gap-2">
-                    {isEditingProfile ? (
-                      <>
-                        <Input
-                          id="full-name"
-                          value={editedFullName}
-                          onChange={(e) => setEditedFullName(e.target.value)}
-                          placeholder="Enter your full name"
-                          className="w-96"
-                        />
-                        <Button
-                          size="sm"
-                          onClick={handleSaveProfile}
-                          disabled={isUpdating}
-                          className="h-8 px-3 bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                          {isUpdating ? 'Saving...' : 'Save'}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleCancelEdit}
-                          className="h-8 px-3 hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]"
-                        >
-                          Cancel
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <Input
-                          id="full-name"
-                          value={profile?.full_name || ''}
-                          placeholder="No name set"
-                          disabled
-                          className="w-96 bg-gray-50"
-                        />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setIsEditingProfile(true)}
-                          className="h-8 px-3 hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]"
-                        >
-                          Edit
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Email Address */}
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="email"
-                      value={user.email || ''}
-                      disabled
-                      className="w-96 bg-gray-50"
-                    />
-                    <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
-                      <DialogTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 px-3 hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]"
-                        >
-                          Change
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Change Email Address</DialogTitle>
-                          <DialogDescription>
-                            Enter your current password and new email address. You'll receive a confirmation link at the new address.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="current-email">Current Email</Label>
-                            <Input
-                              id="current-email"
-                              value={user.email || ''}
-                              disabled
-                              className="bg-gray-50"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="current-password-email">Current Password</Label>
-                            <Input
-                              id="current-password-email"
-                              type="password"
-                              value={currentPassword}
-                              onChange={(e) => setCurrentPassword(e.target.value)}
-                              placeholder="Enter your current password"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="new-email">New Email Address</Label>
-                            <Input
-                              id="new-email"
-                              type="email"
-                              value={newEmail}
-                              onChange={(e) => setNewEmail(e.target.value)}
-                              placeholder="Enter new email address"
-                            />
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setShowEmailDialog(false);
-                              setNewEmail('');
-                              setCurrentPassword('');
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            onClick={handleEmailChange}
-                            disabled={isUpdatingEmail || !newEmail || !currentPassword}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                          >
-                            {isUpdatingEmail ? 'Updating...' : 'Update Email'}
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="password"
-                      type="password"
-                      value="••••••••"
-                      disabled
-                      className="w-96 bg-gray-50"
-                    />
-                    <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
-                      <DialogTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 px-3 hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]"
-                        >
-                          Reset
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Reset Password</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          {!passwordResetSent ? (
-                            <>
-                              <p className="text-sm text-gray-600">
-                                You'll receive an email with instructions and a secure link to reset your password.
-                              </p>
-                              <div>
-                                <Label htmlFor="reset-email">Email Address</Label>
-                                <Input
-                                  id="reset-email"
-                                  value={user.email || ''}
-                                  disabled
-                                  className="bg-gray-50"
-                                />
-                              </div>
-                            </>
-                          ) : (
-                            <div className="space-y-4">
-                              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                <div className="flex items-center space-x-2">
-                                  <Mail className="w-5 h-5 text-green-600" />
-                                  <p className="text-sm font-medium text-green-800">Email sent successfully</p>
-                                </div>
-                                <p className="text-sm text-green-700 mt-1">
-                                  Please check your inbox and follow the instructions to reset your password.
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <DialogFooter>
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setShowPasswordDialog(false);
-                              setPasswordResetSent(false);
-                            }}
-                          >
-                            {passwordResetSent ? 'Close' : 'Cancel'}
-                          </Button>
-                          {!passwordResetSent && (
-                            <Button
-                              onClick={handlePasswordReset}
-                              disabled={isResettingPassword}
-                              className="bg-blue-600 hover:bg-blue-700 text-white"
-                            >
-                              {isResettingPassword ? 'Sending...' : 'Send Reset Link'}
-                            </Button>
-                          )}
-                          {passwordResetSent && (
-                            <Button
-                              onClick={() => {
-                                setPasswordResetSent(false);
-                                handlePasswordReset();
-                              }}
-                              variant="outline"
-                            >
-                              Send Another Email
-                            </Button>
-                          )}
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="space-y-1">
+            {/* Full Name Section */}
+            <div className="flex items-start justify-between py-4 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+          <div className="flex-1 pr-8">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Full name</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+              Your name as it appears on your profile
+            </p>
+          </div>
+          <div className="flex items-center gap-3 min-w-[500px] justify-end">
+            {isEditingName ? (
+              <>
+                <Input
+                  value={editedFullName}
+                  onChange={(e) => setEditedFullName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="flex-1 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleSaveName}
+                  disabled={isUpdatingName}
+                  className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                >
+                  {isUpdatingName ? 'Saving...' : 'Save'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setEditedFullName(profile?.full_name || '');
+                    setIsEditingName(false);
+                  }}
+                  className="h-9 px-4"
+                >
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <>
+                <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 text-right pr-3">
+                  {profile?.full_name || <span className="text-gray-400 dark:text-gray-500">Not set</span>}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsEditingName(true)}
+                  className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                >
+                  <Edit2 className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+              </>
+            )}
           </div>
         </div>
-      </div>
+          </div>
+        </div>
 
-      {/* Danger Zone - Hidden for Owners */}
-      {userRole !== 'Owner' && (
-        <div className="pb-8">
-          <h2 className="text-lg font-semibold text-red-600 mb-6 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5" />
-            Danger Zone
-          </h2>
-          <div>
-            <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-200">
-              <div>
-                <h4 className="font-medium text-red-900">Delete Account</h4>
-                <p className="text-sm text-red-700 mt-1">
-                  Permanently delete your account and all associated data. This action cannot be undone.
-                </p>
+        {/* Email Section */}
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Email</h2>
+          <div className="h-px bg-gray-200 dark:bg-gray-700 mb-2"></div>
+
+          <div className="space-y-1">
+            {/* Email Address Section */}
+            <div className="flex items-start justify-between py-4 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+          <div className="flex-1 pr-8">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Email address</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+              The email address associated with your account
+            </p>
+          </div>
+          <div className="flex items-center gap-3 min-w-[480px] justify-end">
+            <div className="text-right flex-1 pr-3">
+              <span className="text-sm text-gray-700 dark:text-gray-300 font-medium block">
+                {user.email}
+              </span>
+              {!user.email_confirmed_at && (
+                <span className="text-xs font-medium text-red-600 dark:text-red-400 mt-0.5 inline-block">Unverified</span>
+              )}
+            </div>
+            <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+              <DialogTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Update
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Change Email Address</DialogTitle>
+                  <DialogDescription className="pt-2 pb-2 leading-relaxed">
+                    Enter your current password and new email address. You'll receive a confirmation link at the new address.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="current-password">Current Password</Label>
+                    <Input
+                      id="current-password"
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Enter your current password"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="new-email">New Email Address</Label>
+                    <Input
+                      id="new-email"
+                      type="email"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      placeholder="Enter new email address"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowEmailDialog(false);
+                      setNewEmail('');
+                      setCurrentPassword('');
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleEmailChange}
+                    disabled={isUpdatingEmail || !newEmail || !currentPassword}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {isUpdatingEmail ? 'Updating...' : 'Update Email'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+          </div>
+        </div>
+
+        {/* Password Section */}
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Password</h2>
+          <div className="h-px bg-gray-200 dark:bg-gray-700 mb-2"></div>
+
+          <div className="space-y-1">
+            {/* Password Section */}
+            <div className="flex items-start justify-between py-4 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+          <div className="flex-1 pr-8">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Password</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+              Set a unique password to protect your account
+            </p>
+          </div>
+          <div className="flex items-center gap-3 min-w-[480px] justify-end">
+            <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+              <DialogTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-9 px-4 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                >
+                  Change Password
+                </Button>
+              </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Reset Password</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                {!passwordResetSent ? (
+                  <>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      You'll receive an email with instructions to reset your password.
+                    </p>
+                    <div>
+                      <Label>Email Address</Label>
+                      <Input
+                        value={user.email || ''}
+                        disabled
+                        className="bg-gray-50 dark:bg-gray-800"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-5 h-5 text-green-600 dark:text-green-400" />
+                      <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                        Email sent successfully
+                      </p>
+                    </div>
+                    <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                      Please check your inbox for password reset instructions.
+                    </p>
+                  </div>
+                )}
               </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowPasswordDialog(false);
+                    setPasswordResetSent(false);
+                  }}
+                >
+                  {passwordResetSent ? 'Close' : 'Cancel'}
+                </Button>
+                {!passwordResetSent && (
+                  <Button
+                    onClick={handlePasswordReset}
+                    disabled={isResettingPassword}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {isResettingPassword ? 'Sending...' : 'Send Reset Link'}
+                  </Button>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          </div>
+        </div>
+
+            {/* Delete Account Section - Only show for non-Owners */}
+            {userRole !== 'Owner' && (
+              <div className="flex items-start justify-between py-4 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+            <div className="flex-1 pr-8">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Delete Account</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                Permanently delete your account and all associated data from Prodeel
+              </p>
+            </div>
+            <div className="flex items-center gap-3 min-w-[480px] justify-end">
               <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <DialogTrigger asChild>
-                  <Button variant="destructive" size="sm">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-9 px-4 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
                     Delete Account
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle className="text-red-600">Delete Account</DialogTitle>
-                    <DialogDescription>
-                      This action will permanently delete your account and all associated data.
-                      This action cannot be undone.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                      <h4 className="font-medium text-red-900 mb-2">What will be deleted:</h4>
-                      <ul className="text-sm text-red-700 space-y-1">
-                        <li>• Your profile and account information</li>
-                        <li>• All quotes and projects you've created</li>
-                        <li>• Your membership in organizations</li>
-                        <li>• All associated files and uploads</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <Label htmlFor="delete-confirm">Type 'DELETE' to confirm</Label>
-                      <Input
-                        id="delete-confirm"
-                        value={deleteConfirmText}
-                        onChange={(e) => setDeleteConfirmText(e.target.value)}
-                        placeholder="Type DELETE here"
-                        className="mt-1"
-                      />
-                    </div>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+                    <AlertTriangle className="w-5 h-5" />
+                    Delete Account
+                  </DialogTitle>
+                  <DialogDescription>
+                    This action will permanently delete your account and all associated data. This cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <h4 className="font-medium text-red-900 dark:text-red-200 mb-2">What will be deleted:</h4>
+                    <ul className="text-sm text-red-700 dark:text-red-300 space-y-1">
+                      <li>• Your profile and account information</li>
+                      <li>• All quotes and projects you've created</li>
+                      <li>• Your membership in organizations</li>
+                      <li>• All associated files and uploads</li>
+                    </ul>
                   </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowDeleteDialog(false);
-                        setDeleteConfirmText('');
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={handleDeleteAccount}
-                      disabled={isDeleting || deleteConfirmText !== 'DELETE'}
-                    >
-                      {isDeleting ? 'Deleting...' : 'Delete Account'}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  <div>
+                    <Label htmlFor="delete-confirm">Type 'DELETE' to confirm</Label>
+                    <Input
+                      id="delete-confirm"
+                      value={deleteConfirmText}
+                      onChange={(e) => setDeleteConfirmText(e.target.value)}
+                      placeholder="Type DELETE here"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowDeleteDialog(false);
+                      setDeleteConfirmText('');
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteAccount}
+                    disabled={isDeleting || deleteConfirmText !== 'DELETE'}
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete Account'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             </div>
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

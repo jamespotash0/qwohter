@@ -1,13 +1,13 @@
 import { LogOut, CreditCard } from "lucide-react";
-import { House, FileText, ChartBar, Users, List, Gear, FileCode, ChalkboardSimple, Sidebar as SidebarIcon, DotsThree, Lock } from "@phosphor-icons/react";
+import { House, FileText, ChartBar, Users, List, Gear, Kanban, Sidebar as SidebarIcon, DotsThree, Lock, SquaresFour } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 // import { Card, CardContent } from "@/components/ui/card";
-import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import { QwohterLogo } from "@/components/common/QwohterLogo";
+import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import { useOrganizationStore } from "@/stores/organization/organizationStore";
 import { useAuthStore } from "@/stores/auth/authStore";
 import { useState, useEffect, useRef } from "react";
@@ -26,7 +26,7 @@ const menuItems = [
   },
   {
     title: "Project Board",
-    icon: ChalkboardSimple,
+    icon: Kanban,
     path: "/board",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
@@ -38,7 +38,7 @@ const menuItems = [
   },
   {
     title: "Forms",
-    icon: FileCode,
+    icon: SquaresFour,
     path: "/forms",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
@@ -47,12 +47,6 @@ const menuItems = [
     icon: ChartBar,
     path: "/analytics",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
-  },
-  {
-    title: "Team",
-    icon: Users,
-    path: "/team",
-    roles: ['Owner', 'Admin'], // Only Owner and Admin
   },
   {
     title: "Settings",
@@ -178,7 +172,7 @@ export function AppSidebar({
                 .map((item, index) => {
                 const isActive = location.pathname === item.path;
                 const Icon = item.icon;
-                const isDisabled = item.title === 'Forms';
+                const isDisabled = false; // Forms now enabled
 
                 const isClicked = clickedItem === item.title;
 

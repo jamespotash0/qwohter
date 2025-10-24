@@ -28,13 +28,13 @@ export const PageContent: React.FC<PageContentProps> = ({
   return (
     <div className={`space-y-6 ${className}`}>
       {showPageHeader && (title || subtitle) && (
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div>
+        <div className="mb-8 flex items-center justify-between gap-6">
+          <div className="flex-1">
             {title && (
-              <h1 className="text-2xl font-semibold tracking-tight text-[var(--content-header-text)] mb-1">{title}</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-[var(--content-header-text)]">{title}</h1>
             )}
             {subtitle && (
-              <p className="text-[var(--content-muted-text)]">{subtitle}</p>
+              <p className="text-sm text-[var(--content-muted-text)] mt-1">{subtitle}</p>
             )}
           </div>
           {headerActions && (
