@@ -234,7 +234,7 @@ export function TeamTab() {
               onChange={(e) => setInviteEmail(e.target.value)}
               className="flex-1 placeholder:text-gray-400"
             />
-            <Select value={inviteDepartment || 'placeholder'} onValueChange={setInviteDepartment}>
+            <Select value={inviteDepartment || undefined} onValueChange={setInviteDepartment}>
               <SelectTrigger className="w-44">
                 <SelectValue placeholder="Select department" />
               </SelectTrigger>
@@ -252,7 +252,7 @@ export function TeamTab() {
                 <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={inviteRole || 'placeholder'} onValueChange={(value) => setInviteRole(value as Role)}>
+            <Select value={inviteRole || undefined} onValueChange={(value) => setInviteRole(value as Role)}>
               <SelectTrigger className="w-44">
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
@@ -263,7 +263,7 @@ export function TeamTab() {
             </Select>
             <Button
               onClick={handleInvite}
-              disabled={!inviteEmail || !inviteDepartment || inviteDepartment === 'placeholder' || !inviteRole || inviteRole === 'placeholder'}
+              disabled={!inviteEmail || !inviteDepartment || !inviteRole}
               className="bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white px-6"
             >
               Invite
