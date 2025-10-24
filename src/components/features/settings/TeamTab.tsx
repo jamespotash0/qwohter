@@ -46,7 +46,9 @@ export function TeamTab() {
     if (!currentOrganization || !inviteEmail) return;
 
     try {
-      await inviteMember(currentOrganization.id, inviteEmail, inviteRole, inviteDepartment || null);
+      // Convert "none" string to null for database
+      const departmentValue = inviteDepartment === 'none' ? null : inviteDepartment || null;
+      await inviteMember(currentOrganization.id, inviteEmail, inviteRole, departmentValue);
       toast({
         title: "Invitation sent",
         description: `Invite sent to ${inviteEmail}`,
@@ -122,7 +124,9 @@ export function TeamTab() {
     if (!currentOrganization) return;
 
     try {
-      await updateMemberDepartment(memberId, newDepartment || null);
+      // Convert "none" string to null for database
+      const departmentValue = newDepartment === 'none' ? null : newDepartment;
+      await updateMemberDepartment(memberId, departmentValue);
     } catch (error: any) {
       toast({
         title: "Failed to update department",
@@ -237,12 +241,12 @@ export function TeamTab() {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Department (Optional)
             </label>
-            <Select value={inviteDepartment} onValueChange={setInviteDepartment}>
+            <Select value={inviteDepartment || 'none'} onValueChange={setInviteDepartment}>
               <SelectTrigger className="w-64">
                 <SelectValue placeholder="Select department" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 <SelectItem value="Sales">Sales</SelectItem>
                 <SelectItem value="Marketing">Marketing</SelectItem>
                 <SelectItem value="Operations">Operations</SelectItem>
@@ -386,14 +390,14 @@ export function TeamTab() {
                             </span>
                           ) : (
                             <Select
-                              value={member.department || ''}
+                              value={member.department || 'none'}
                               onValueChange={(value) => handleDepartmentChange(member.user_id, value)}
                             >
                               <SelectTrigger className="w-full h-8 text-sm border-0 shadow-none hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-0 focus:ring-offset-0 px-0 gap-2 [&>svg]:bg-gray-100 [&>svg]:dark:bg-gray-800 [&>svg]:rounded [&>svg]:p-0.75">
                                 <SelectValue placeholder="None" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="">None</SelectItem>
+                                <SelectItem value="none">None</SelectItem>
                                 <SelectItem value="Sales">Sales</SelectItem>
                                 <SelectItem value="Marketing">Marketing</SelectItem>
                                 <SelectItem value="Operations">Operations</SelectItem>
