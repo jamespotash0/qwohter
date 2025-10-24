@@ -62,7 +62,7 @@ export function AppearanceTab() {
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Appearance</h2>
         <div className="h-px bg-gray-200 dark:bg-gray-700 mb-6"></div>
 
-        <div className="max-w-3xl">
+        <div className="max-w-4xl">
           <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Theme</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Select your default theme</p>
 
@@ -98,7 +98,7 @@ export function AppearanceTab() {
       </div>
 
       {/* Accent Color Section - Future feature */}
-      <div className="mb-8 max-w-3xl">
+      <div className="mb-8 max-w-4xl">
         <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Accent Color</h3>
         <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Choose your accent color</p>
         <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
