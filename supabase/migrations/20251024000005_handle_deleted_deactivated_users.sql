@@ -29,12 +29,6 @@ WHERE q.created_by = p.id
   AND q.created_by_name IS NULL
   AND p.full_name IS NOT NULL;
 
--- For quotes where user has no full_name, use email
-UPDATE public.quotes q
-SET created_by_name = p.email
-FROM public.profiles p
-WHERE q.created_by = p.id
-  AND q.created_by_name IS NULL;
 
 -- Add index for performance
 CREATE INDEX IF NOT EXISTS idx_quotes_created_by_name ON public.quotes(created_by_name);

@@ -20,7 +20,8 @@ const getCurrentUser = () => {
 // Define Quote interface directly in store
 export interface Quote {
   id: string;
-  created_by: string;
+  created_by: string | null; // Nullable after user deletion
+  created_by_name?: string; // Display name from database (handles deleted/deactivated users)
   organization_id: string;
   proposal_number: string;
   project_name?: string;
@@ -43,7 +44,7 @@ export interface Quote {
   updated_at: string;
   customization?: QuoteCustomization;
   quote_source?: string;
-  creator_name?: string;
+  creator_name?: string; // Legacy field, prefer created_by_name
   archived?: boolean;
 
   // Analytics fields (denormalized from migrations)
@@ -192,7 +193,7 @@ export const useQuotesStore = create<QuotesState>()(
               const { data, error, count: totalCount } = await supabase
                 .from('quotes')
                 .select(`
-                  id, created_by, organization_id, proposal_number, project_name,
+                  id, created_by, created_by_name, organization_id, proposal_number, project_name,
                   quote_details, job_details, delivery_details, labor_details,
                   wall_details, price_details, status, date_last_downloaded,
                   version, created_at, updated_at, customization,
@@ -216,7 +217,7 @@ export const useQuotesStore = create<QuotesState>()(
               const { data, error, count: totalCount } = await supabase
                 .from('quotes')
                 .select(`
-                  id, created_by, organization_id, proposal_number, project_name,
+                  id, created_by, created_by_name, organization_id, proposal_number, project_name,
                   quote_details, job_details, delivery_details, labor_details,
                   wall_details, price_details, status, date_last_downloaded,
                   version, created_at, updated_at, customization,
@@ -241,50 +242,13 @@ export const useQuotesStore = create<QuotesState>()(
               throw queryError;
             }
 
-            // If we have quotes, fetch creator names
+            // Process quotes - created_by_name is now fetched directly from database
             if (quotesData.length > 0) {
-
-              // Get unique creator IDs (use created_by since that's what the database has)
-              const creatorIds = [...new Set(
-                quotesData
-                  .map(quote => {
-                    const creatorId = quote.created_by;
-                    return creatorId;
-                  })
-                  .filter(Boolean)
-              )];
-
-
-              // Fetch creator names
-              const { data: profilesData, error: profilesError } = await supabase
-                .from('profiles')
-                .select('id, full_name')
-                .in('id', creatorIds);
-
-              if (profilesError) {
-                console.warn('Failed to fetch creator profiles:', profilesError);
-              }
-
-
-              // Create a map of creator IDs to names
-              const creatorMap = new Map();
-              if (profilesData) {
-                profilesData.forEach((profile: any) => {
-                  creatorMap.set(profile.id, profile.full_name);
-                });
-              }
-
-              // Combine quotes with creator names
-              const quotesWithCreatorNames = quotesData.map(quote => {
-                const creatorId = quote.created_by;
-                const creatorName = creatorMap.get(creatorId) || 'Unknown';
-                return {
-                  ...quote,
-                  creator_name: creatorName,
-                };
-              });
-
-              const processedQuotes = quotesWithCreatorNames.map(convertRowToQuote);
+              const processedQuotes = quotesData.map(quote => convertRowToQuote({
+                ...quote,
+                // Map created_by_name to creator_name for backwards compatibility
+                creator_name: quote.created_by_name || 'Unknown'
+              }));
 
               // Log is_main_version values from database on page load
               console.log('Quotes loaded from database:', processedQuotes.map(q => ({
@@ -714,16 +678,10 @@ export const useQuotesStore = create<QuotesState>()(
 
                   // Handle INSERT separately to fetch creator name
                   if (eventType === 'INSERT' && newRecord) {
-                    // Fetch creator name for the new quote
-                    const { data: profileData } = await supabase
-                      .from('profiles')
-                      .select('full_name')
-                      .eq('id', newRecord.created_by)
-                      .single();
-
+                    // Use created_by_name from database (handles deleted/deactivated users automatically)
                     const newQuote = convertRowToQuote({
                       ...newRecord,
-                      creator_name: profileData?.full_name || 'Unknown'
+                      creator_name: newRecord.created_by_name || 'Unknown'
                     });
 
                     set((state) => {
