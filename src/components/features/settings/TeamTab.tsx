@@ -341,7 +341,7 @@ export function TeamTab() {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="w-32">
+                      <div className="w-44">
                         {member.status === 'Active' ? (
                           currentUserRole === 'Member' ? (
                             <span className="text-sm text-gray-700 dark:text-gray-300">
