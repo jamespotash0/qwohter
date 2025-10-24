@@ -106,7 +106,7 @@ export const useOrganizations = () => {
     }
   };
 
-  const inviteMember = async (organizationId: string, email: string, role: 'Admin' | 'Member' | 'Owner' = 'Member') => {
+  const inviteMember = async (organizationId: string, email: string, role: 'Admin' | 'Member' | 'Owner' = 'Member', department?: string | null) => {
     try {
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -180,6 +180,7 @@ export const useOrganizations = () => {
           organization_id: organizationId,
           organization_code: orgData.organization_code,
           role: role,
+          department: department || null,
           created_by: user.id,
           expires_at: expiresAt.toISOString(),
           is_used: false

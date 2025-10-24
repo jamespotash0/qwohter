@@ -40,6 +40,7 @@ export interface InviteToken {
   organization_id: string;
   organization_code: string;
   role: 'Admin' | 'Member';
+  department?: string | null;
   created_by: string;
   expires_at: string;
   created_at: string;

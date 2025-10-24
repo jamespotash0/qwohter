@@ -15,6 +15,7 @@ import type { Role } from "@/utils/teamManagementHelpers";
 export function TeamTab() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<Role>("Member");
+  const [inviteDepartment, setInviteDepartment] = useState<string>("");
   const [removeDialog, setRemoveDialog] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: "", memberName: "" });
   const [transferDialog, setTransferDialog] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: "", memberName: "" });
   const { toast } = useToast();
@@ -45,13 +46,14 @@ export function TeamTab() {
     if (!currentOrganization || !inviteEmail) return;
 
     try {
-      await inviteMember(currentOrganization.id, inviteEmail, inviteRole);
+      await inviteMember(currentOrganization.id, inviteEmail, inviteRole, inviteDepartment || null);
       toast({
         title: "Invitation sent",
         description: `Invite sent to ${inviteEmail}`,
       });
       setInviteEmail("");
       setInviteRole("Member");
+      setInviteDepartment("");
     } catch (error: any) {
       toast({
         title: "Failed to send invite",
@@ -206,7 +208,7 @@ export function TeamTab() {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Email Address
           </label>
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-4">
             <Input
               type="email"
               placeholder="john@emailaddress.com"
@@ -230,6 +232,30 @@ export function TeamTab() {
             >
               Invite
             </Button>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Department (Optional)
+            </label>
+            <Select value={inviteDepartment} onValueChange={setInviteDepartment}>
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Select department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                <SelectItem value="Sales">Sales</SelectItem>
+                <SelectItem value="Marketing">Marketing</SelectItem>
+                <SelectItem value="Operations">Operations</SelectItem>
+                <SelectItem value="IT">IT</SelectItem>
+                <SelectItem value="Finance">Finance</SelectItem>
+                <SelectItem value="HR">HR</SelectItem>
+                <SelectItem value="Customer Success">Customer Success</SelectItem>
+                <SelectItem value="Product">Product</SelectItem>
+                <SelectItem value="Engineering">Engineering</SelectItem>
+                <SelectItem value="Executive">Executive</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
