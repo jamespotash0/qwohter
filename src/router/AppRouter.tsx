@@ -80,9 +80,9 @@ const NewQuote = lazy(() => import("@/pages/NewQuote"));
 const QuoteEdit = lazy(() => import("@/pages/QuoteEdit"));
 const QuoteEditIncomplete = lazy(() => import("@/pages/QuoteEditIncomplete"));
 
-// Form Builder pages
-const Forms = lazy(() => import("@/pages/Forms"));
-const FormBuilderV2 = lazy(() => import("@/pages/FormBuilderV2"));
+// Form Builder pages - DISABLED until form builder is complete
+// const Forms = lazy(() => import("@/pages/Forms"));
+// const FormBuilderV2 = lazy(() => import("@/pages/FormBuilderV2"));
 
 // Board page
 const Board = lazy(() => import("@/pages/Board"));
@@ -175,9 +175,11 @@ export const AppRouter = () => (
           {/* Future: Quote templates management */}
           <Route path="/quotes/templates" element={<Navigate to="/settings" replace />} />
 
-          {/* Form Builder routes */}
-          <Route path="/forms" element={<Forms />} />
-          <Route path="/forms/builder/:id" element={<FormBuilderV2 />} />
+          {/* Form Builder routes - DISABLED until form builder is complete */}
+          {/* <Route path="/forms" element={<Forms />} /> */}
+          {/* <Route path="/forms/builder/:id" element={<FormBuilderV2 />} /> */}
+          <Route path="/forms" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/forms/*" element={<Navigate to="/dashboard" replace />} />
 
           {/* Legacy route redirects for backward compatibility */}
           <Route path="/newquote" element={<Navigate to="/quotes/new" replace />} />

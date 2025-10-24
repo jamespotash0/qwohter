@@ -36,12 +36,13 @@ const menuItems = [
     path: "/quotes",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
-  {
-    title: "Forms",
-    icon: SquaresFour,
-    path: "/forms",
-    roles: ['Owner', 'Admin', 'Member'], // Available to all
-  },
+  // DISABLED: Forms - uncomment when form builder is complete
+  // {
+  //   title: "Forms",
+  //   icon: SquaresFour,
+  //   path: "/forms",
+  //   roles: ['Owner', 'Admin', 'Member'], // Available to all
+  // },
   {
     title: "Analytics",
     icon: ChartBar,
