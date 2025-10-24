@@ -237,7 +237,7 @@ export function TeamTab() {
               <SelectTrigger className="w-44 [&>span[data-placeholder]]:text-gray-400">
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
-              <SelectContent className="w-48 max-h-80">
+              <SelectContent className="w-48 max-h-80 [&>*]:scroll-smooth">
                 <SelectItem value="Customer Success">Customer Success</SelectItem>
                 <SelectItem value="Engineering">Engineering</SelectItem>
                 <SelectItem value="Executive">Executive</SelectItem>
@@ -354,7 +354,7 @@ export function TeamTab() {
                               <SelectTrigger className="w-auto min-w-[100px] h-8 text-sm border-0 shadow-none hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-0 focus:ring-offset-0 px-0 pr-1 gap-1 [&>svg]:bg-gray-100 [&>svg]:dark:bg-gray-800 [&>svg]:rounded [&>svg]:p-0.75">
                                 <SelectValue placeholder="Select department" />
                               </SelectTrigger>
-                              <SelectContent className="w-48 max-h-80">
+                              <SelectContent className="w-48 max-h-80 [&>*]:scroll-smooth">
                                 <SelectItem value="none">—</SelectItem>
                                 <SelectItem value="Customer Success">Customer Success</SelectItem>
                                 <SelectItem value="Engineering">Engineering</SelectItem>
