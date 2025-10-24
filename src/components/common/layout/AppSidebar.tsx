@@ -1,5 +1,5 @@
 import { LogOut, CreditCard } from "lucide-react";
-import { House, FileText, ChartBar, Users, List, Gear, Kanban, Sidebar as SidebarIcon, DotsThree, Lock, SquaresFour } from "@phosphor-icons/react";
+import { House, FileText, ChartBar, Users, List, Gear, Kanban, Sidebar as SidebarIcon, DotsThree, Lock, SquaresFour, Article } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -36,13 +36,20 @@ const menuItems = [
     path: "/quotes",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
-  // DISABLED: Forms - uncomment when form builder is complete
-  // {
-  //   title: "Forms",
-  //   icon: SquaresFour,
-  //   path: "/forms",
-  //   roles: ['Owner', 'Admin', 'Member'], // Available to all
-  // },
+  {
+    title: "Forms",
+    icon: SquaresFour,
+    path: "/forms",
+    roles: ['Owner', 'Admin', 'Member'],
+    disabled: true, // DISABLED: Enable when form builder is complete
+  },
+  {
+    title: "Templates",
+    icon: Article,
+    path: "/templates",
+    roles: ['Owner', 'Admin', 'Member'],
+    disabled: true, // DISABLED: Enable when template system is complete
+  },
   {
     title: "Analytics",
     icon: ChartBar,
@@ -173,7 +180,7 @@ export function AppSidebar({
                 .map((item, index) => {
                 const isActive = location.pathname === item.path;
                 const Icon = item.icon;
-                const isDisabled = false; // Forms now enabled
+                const isDisabled = item.disabled || false;
 
                 const isClicked = clickedItem === item.title;
 

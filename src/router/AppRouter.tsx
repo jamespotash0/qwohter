@@ -181,6 +181,10 @@ export const AppRouter = () => (
           <Route path="/forms" element={<Navigate to="/dashboard" replace />} />
           <Route path="/forms/*" element={<Navigate to="/dashboard" replace />} />
 
+          {/* Templates routes - DISABLED until template system is complete */}
+          <Route path="/templates" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/templates/*" element={<Navigate to="/dashboard" replace />} />
+
           {/* Legacy route redirects for backward compatibility */}
           <Route path="/newquote" element={<Navigate to="/quotes/new" replace />} />
           <Route path="/quoteedit/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
