@@ -236,7 +236,7 @@ export function TeamTab() {
             />
             <Select value={inviteDepartment || undefined} onValueChange={setInviteDepartment}>
               <SelectTrigger className="w-44">
-                <SelectValue placeholder="Select department" />
+                <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent className="w-56 max-h-80">
                 <SelectItem value="Sales">Sales</SelectItem>
@@ -254,7 +254,7 @@ export function TeamTab() {
             </Select>
             <Select value={inviteRole || undefined} onValueChange={(value) => setInviteRole(value as Role)}>
               <SelectTrigger className="w-44">
-                <SelectValue placeholder="Select role" />
+                <SelectValue placeholder="Role" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Member">Member</SelectItem>
