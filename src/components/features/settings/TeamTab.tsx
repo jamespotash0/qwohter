@@ -246,7 +246,7 @@ export function TeamTab() {
                 <SelectValue placeholder="Select department" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="none">—</SelectItem>
                 <SelectItem value="Sales">Sales</SelectItem>
                 <SelectItem value="Marketing">Marketing</SelectItem>
                 <SelectItem value="Operations">Operations</SelectItem>
@@ -397,7 +397,7 @@ export function TeamTab() {
                                 <SelectValue placeholder="None" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="none">None</SelectItem>
+                                <SelectItem value="none">—</SelectItem>
                                 <SelectItem value="Sales">Sales</SelectItem>
                                 <SelectItem value="Marketing">Marketing</SelectItem>
                                 <SelectItem value="Operations">Operations</SelectItem>
