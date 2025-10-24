@@ -208,7 +208,7 @@ export function TeamTab() {
         <div className="h-px bg-gray-200 dark:bg-gray-700 mb-6"></div>
 
         <div className="mb-6">
-          <div className="flex gap-2 mb-1">
+          <div className="flex gap-2 mb-2">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email Address
@@ -282,13 +282,13 @@ export function TeamTab() {
                   Member
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Department
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Role
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Department
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Date Joined
@@ -341,6 +341,44 @@ export function TeamTab() {
                       </div>
                     </td>
                     <td className="px-4 py-4">
+                      <div className="w-32">
+                        {member.status === 'Active' ? (
+                          currentUserRole === 'Member' ? (
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                              {member.department || <span className="text-gray-400">—</span>}
+                            </span>
+                          ) : (
+                            <Select
+                              value={member.department || 'none'}
+                              onValueChange={(value) => handleDepartmentChange(member.user_id, value)}
+                            >
+                              <SelectTrigger className="w-full h-8 text-sm border-0 shadow-none hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-0 focus:ring-offset-0 px-0 gap-2 [&>svg]:bg-gray-100 [&>svg]:dark:bg-gray-800 [&>svg]:rounded [&>svg]:p-0.75">
+                                <SelectValue placeholder="Select department" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">—</SelectItem>
+                                <SelectItem value="Sales">Sales</SelectItem>
+                                <SelectItem value="Marketing">Marketing</SelectItem>
+                                <SelectItem value="Operations">Operations</SelectItem>
+                                <SelectItem value="IT">IT</SelectItem>
+                                <SelectItem value="Finance">Finance</SelectItem>
+                                <SelectItem value="HR">HR</SelectItem>
+                                <SelectItem value="Customer Success">Customer Success</SelectItem>
+                                <SelectItem value="Product">Product</SelectItem>
+                                <SelectItem value="Engineering">Engineering</SelectItem>
+                                <SelectItem value="Executive">Executive</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )
+                        ) : (
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            —
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
                       <div className="w-16">
                         {member.status === 'Active' ? (
                           <span className="text-sm font-medium text-green-600 dark:text-green-400">
@@ -379,44 +417,6 @@ export function TeamTab() {
                               <SelectContent>
                                 <SelectItem value="Member">Member</SelectItem>
                                 <SelectItem value="Admin">Admin</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          )
-                        ) : (
-                          <span className="text-sm text-gray-500 dark:text-gray-400">
-                            —
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="w-32">
-                        {member.status === 'Active' ? (
-                          currentUserRole === 'Member' ? (
-                            <span className="text-sm text-gray-700 dark:text-gray-300">
-                              {member.department || <span className="text-gray-400">—</span>}
-                            </span>
-                          ) : (
-                            <Select
-                              value={member.department || 'none'}
-                              onValueChange={(value) => handleDepartmentChange(member.user_id, value)}
-                            >
-                              <SelectTrigger className="w-full h-8 text-sm border-0 shadow-none hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-0 focus:ring-offset-0 px-0 gap-2 [&>svg]:bg-gray-100 [&>svg]:dark:bg-gray-800 [&>svg]:rounded [&>svg]:p-0.75">
-                                <SelectValue placeholder="Select department" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">—</SelectItem>
-                                <SelectItem value="Sales">Sales</SelectItem>
-                                <SelectItem value="Marketing">Marketing</SelectItem>
-                                <SelectItem value="Operations">Operations</SelectItem>
-                                <SelectItem value="IT">IT</SelectItem>
-                                <SelectItem value="Finance">Finance</SelectItem>
-                                <SelectItem value="HR">HR</SelectItem>
-                                <SelectItem value="Customer Success">Customer Success</SelectItem>
-                                <SelectItem value="Product">Product</SelectItem>
-                                <SelectItem value="Engineering">Engineering</SelectItem>
-                                <SelectItem value="Executive">Executive</SelectItem>
-                                <SelectItem value="Other">Other</SelectItem>
                               </SelectContent>
                             </Select>
                           )
