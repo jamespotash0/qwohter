@@ -56,7 +56,7 @@ export function AppearanceTab() {
   ];
 
   return (
-    <div className="max-w-3xl">
+    <div className="w-full max-w-5xl min-w-[640px]">
       {/* Theme Section */}
       <div className="mb-8">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Appearance</h2>

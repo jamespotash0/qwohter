@@ -83,7 +83,7 @@ const Settings = () => {
     },
     {
       id: "appearance",
-      label: "Appearance & Themes",
+      label: "Appearance",
       icon: <Palette className="w-4 h-4" />,
       component: <AppearanceTab />
     }
