@@ -82,7 +82,8 @@ export const useOrganizations = () => {
           role: 'Owner', // Owner role for organization creator
           status: 'Active',
           plan: 'Free',
-          joined_at: new Date().toISOString()
+          joined_at: new Date().toISOString(),
+          join_type: 'Direct' // Organization creator joined directly
         } as any);
 
       if (membershipError) throw membershipError;
