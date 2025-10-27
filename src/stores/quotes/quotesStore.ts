@@ -125,8 +125,15 @@ export const useQuotesStore = create<QuotesState>()(
   devtools(
     subscribeWithSelector(
       immer((set, get) => ({
-        // Initial state
-        quotes: [],
+        // Initial state - load from cache
+        quotes: (() => {
+          try {
+            const cached = localStorage.getItem('quotes_cache');
+            return cached ? JSON.parse(cached) : [];
+          } catch {
+            return [];
+          }
+        })(),
         currentQuote: null,
         isLoading: false,
         error: null,
@@ -154,7 +161,8 @@ export const useQuotesStore = create<QuotesState>()(
           const { _setQuotes, _setLoading, _setError } = get();
 
           try {
-            if (!options.refresh) _setLoading(true);
+            // Never show loading spinner - cache is already displayed
+            _setLoading(false);
             _setError(null);
 
             // Check authentication first
@@ -246,11 +254,19 @@ export const useQuotesStore = create<QuotesState>()(
                 status: q.status
               })));
 
+              // Cache the quotes for instant display on next visit
+              try {
+                localStorage.setItem('quotes_cache', JSON.stringify(processedQuotes));
+              } catch (e) {
+                console.error('Failed to cache quotes:', e);
+              }
+
               _setQuotes(processedQuotes);
               set((state) => {
                 state.pagination.total = count;
               });
             } else {
+              localStorage.removeItem('quotes_cache');
               _setQuotes([]);
               set((state) => {
                 state.pagination.total = 0;
@@ -678,6 +694,12 @@ export const useQuotesStore = create<QuotesState>()(
                       const exists = state.quotes.some(q => q.id === newQuote.id);
                       if (!exists) {
                         state.quotes.unshift(newQuote);
+                        // Update cache
+                        try {
+                          localStorage.setItem('quotes_cache', JSON.stringify(state.quotes));
+                        } catch (e) {
+                          console.error('Failed to update quotes cache:', e);
+                        }
                       }
                     });
                     return;
@@ -697,6 +719,12 @@ export const useQuotesStore = create<QuotesState>()(
                             // Update quote with latest data from database
                             // creator_name is now properly handled by convertRowToQuote
                             state.quotes[index] = updatedQuote;
+                            // Update cache
+                            try {
+                              localStorage.setItem('quotes_cache', JSON.stringify(state.quotes));
+                            } catch (e) {
+                              console.error('Failed to update quotes cache:', e);
+                            }
                           }
 
                           // Update current quote if it's the one being edited
@@ -709,7 +737,13 @@ export const useQuotesStore = create<QuotesState>()(
                       case 'DELETE': {
                         if (oldRecord) {
                           state.quotes = state.quotes.filter(q => q.id !== oldRecord.id);
-                          
+                          // Update cache
+                          try {
+                            localStorage.setItem('quotes_cache', JSON.stringify(state.quotes));
+                          } catch (e) {
+                            console.error('Failed to update quotes cache:', e);
+                          }
+
                           // Clear current quote if it was deleted
                           if (state.currentQuote?.id === oldRecord.id) {
                             state.currentQuote = null;

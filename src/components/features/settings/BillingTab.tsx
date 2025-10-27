@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Loader2, Download, Search, Filter, Check } from 'lucide-react';
+import { CreditCard, Loader2, Download, Search, Filter, Check, ArrowLeftRight, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { hasOwnerPermissions } from "@/utils/permissions";
 import { stripeService } from "@/services/stripeService";
@@ -35,10 +41,12 @@ interface SubscriptionPlan {
   description: string;
   stripe_product_id: string;
   stripe_price_id_monthly: string;
-  stripe_price_id_annual: string;
-  price_monthly: number;
-  price_annual: number;
+  stripe_price_id_yearly: string;
+  price_per_month: number;
+  price_per_yearly: number;
   features: any;
+  max_users: number | null;
+  min_users: number | null;
   is_active: boolean;
   sort_order: number;
 }
@@ -58,6 +66,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
+  const [showCompareModal, setShowCompareModal] = useState(false);
   const hasPermission = hasOwnerPermissions(userRole);
 
   useEffect(() => {
@@ -67,6 +76,73 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       setLoading(false);
     }
   }, [organization?.id, hasPermission]);
+
+  // Realtime subscription for subscription_plans
+  useEffect(() => {
+    const channel = supabase
+      .channel('subscription_plans_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'subscription_plans'
+        },
+        (payload) => {
+          console.log('Subscription plans changed:', payload);
+          // Reload plans data
+          supabase
+            .from('subscription_plans')
+            .select('*')
+            .eq('is_active', true)
+            .order('sort_order', { ascending: true })
+            .then(({ data, error }) => {
+              if (!error && data) {
+                setPlans(data);
+              }
+            });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Realtime subscription for subscriptions table
+  useEffect(() => {
+    if (!organization?.id) return;
+
+    const channel = supabase
+      .channel('subscriptions_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'subscriptions',
+          filter: `organization_id=eq.${organization.id}`
+        },
+        async (payload) => {
+          console.log('Subscription changed:', payload);
+          // Reload subscription data
+          const { data: subData, error: subError } = await stripeService.getSubscription(organization.id);
+          if (!subError && subData) {
+            setSubscription(subData);
+          }
+
+          // Recalculate user count
+          const { quantity } = await stripeService.calculateSubscriptionQuantity(organization.id);
+          setUserCount(quantity);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [organization?.id]);
 
   const loadBillingData = async () => {
     try {
@@ -86,9 +162,14 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       setUserCount(quantity);
 
       // Load invoices from Stripe
-      const { data: invoiceData, error: invoiceError } = await stripeService.getInvoices(organization.id);
-      if (!invoiceError && invoiceData) {
-        setInvoices(invoiceData);
+      try {
+        const { data: invoiceData, error: invoiceError } = await stripeService.getInvoices(organization.id);
+        if (!invoiceError && invoiceData) {
+          setInvoices(invoiceData);
+        }
+      } catch (err) {
+        console.log('Invoice fetching not yet configured (Edge Function needed)');
+        // Silently fail - Edge Function hasn't been deployed yet
       }
 
       // Load available plans from database
@@ -127,7 +208,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       // Determine the appropriate price ID based on billing interval
       const priceId = billingInterval === 'monthly'
         ? plan.stripe_price_id_monthly
-        : plan.stripe_price_id_annual;
+        : plan.stripe_price_id_yearly;
 
       if (!priceId || priceId.includes('placeholder')) {
         toast({
@@ -211,10 +292,11 @@ export const BillingTab: React.FC<BillingTabProps> = ({
 
   const getDisplayPrice = (plan: SubscriptionPlan) => {
     if (billingInterval === 'monthly') {
-      return plan.price_monthly;
+      return plan.price_per_month;
     }
     // For annual, show the monthly equivalent
-    return (plan.price_annual / 12).toFixed(2);
+    const monthlyEquivalent = plan.price_per_yearly / 12;
+    return Number.isInteger(monthlyEquivalent) ? monthlyEquivalent : monthlyEquivalent.toFixed(2);
   };
 
   const isCurrentPlan = (plan: SubscriptionPlan) => {
@@ -244,47 +326,57 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   }
 
   return (
-    <div className="max-w-7xl space-y-8">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Billing & Subscription
-        </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Keep track of your subscription details, update your billing information, and control your account's payment
-        </p>
-      </div>
-
-      {/* Billing Interval Toggle */}
-      <div className="flex justify-end">
-        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-1 bg-gray-50 dark:bg-gray-800">
-          <button
-            onClick={() => setBillingInterval('monthly')}
-            className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-              billingInterval === 'monthly'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setBillingInterval('annual')}
-            className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-              billingInterval === 'annual'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-            }`}
-          >
-            Yearly
-          </button>
+    <div className="max-w-5xl">
+      <div className="space-y-8">
+        {/* Header with Toggle */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Plan & Billing</h2>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9"
+                onClick={() => setShowCompareModal(true)}
+              >
+                <ArrowLeftRight className="w-4 h-4 mr-2" />
+                Compare plans
+              </Button>
+              {/* Billing Interval Toggle */}
+              <div className="inline-flex h-9 rounded-md border border-gray-300 dark:border-gray-600 p-1 bg-white dark:bg-gray-900">
+                <button
+                  onClick={() => setBillingInterval('monthly')}
+                  className={`px-3 rounded-sm text-sm font-medium transition-all ${
+                    billingInterval === 'monthly'
+                      ? 'bg-[#EE6C4D] text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  Monthly
+                </button>
+                <button
+                  onClick={() => setBillingInterval('annual')}
+                  className={`px-3 rounded-sm text-sm font-medium transition-all ${
+                    billingInterval === 'annual'
+                      ? 'bg-[#EE6C4D] text-white shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  Yearly
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="h-px bg-gray-200 dark:bg-gray-700 mb-4"></div>
         </div>
-      </div>
 
       {/* Plan Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {plans.map((plan) => {
-          const features = plan.features?.features || [];
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
+        {plans.sort((a, b) => a.sort_order - b.sort_order).map((plan) => {
+          // Extract features array from JSONB structure
+          const featuresArray = Array.isArray(plan.features?.features)
+            ? plan.features.features
+            : [];
           const isCurrent = isCurrentPlan(plan);
           const isProcessing = processingPlan === plan.id;
           const isSoloPlan = plan.name === 'Solo';
@@ -293,71 +385,33 @@ export const BillingTab: React.FC<BillingTabProps> = ({
           return (
             <Card
               key={plan.id}
-              className={`relative ${isCurrent ? 'ring-2 ring-blue-500 dark:ring-blue-400' : ''} ${
-                isSoloPlan ? 'border-orange-200 dark:border-orange-800' : ''
-              }`}
+              className="relative card-elevated bg-gray-100 dark:bg-gray-800 border-0 hover:shadow-none hover:transform-none"
             >
-              {plan.name === 'Solo' && (
-                <div className="absolute -top-3 right-4">
-                  <Badge className="bg-orange-500 text-white border-0">
-                    FREE
-                  </Badge>
-                </div>
-              )}
-
-              {plan.name === 'Team' && (
-                <div className="absolute -top-3 right-4">
-                  <Badge className="bg-orange-600 text-white border-0">
-                    <span className="flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-                      PRO
-                    </span>
-                  </Badge>
-                </div>
-              )}
-
-              {isCurrent && (
-                <div className="absolute -top-3 left-4">
-                  <Badge className="bg-green-500 text-white border-0">
-                    <span className="flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-                      CURRENT PLAN
-                    </span>
-                  </Badge>
-                </div>
-              )}
-
-              <CardContent className="pt-8 pb-6">
-                <div className="space-y-6">
+              <CardContent className="pt-6 pb-5">
+                <div className="space-y-4">
                   {/* Plan Name */}
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
                       {plan.display_name}
                     </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {isSoloPlan && `1 user included`}
-                      {!isSoloPlan && `${userCount} active users`}
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {plan.description}
                     </p>
                   </div>
 
                   {/* Price */}
                   <div>
-                    <div className="flex items-baseline">
-                      <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold text-gray-900 dark:text-white">
                         ${displayPrice}
                       </span>
-                      <span className="ml-2 text-gray-500 dark:text-gray-400 text-sm">
-                        /month
+                      <span className="text-gray-500 dark:text-gray-400 text-xs">
+                        / user / month
                       </span>
                     </div>
                     {billingInterval === 'annual' && (
-                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                        Billed annually (${plan.price_annual.toFixed(2)}/year)
-                      </p>
-                    )}
-                    {!isSoloPlan && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Per user pricing
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                        Billed annually (${Number.isInteger(plan.price_per_yearly) ? plan.price_per_yearly : plan.price_per_yearly.toFixed(2)}{!isSoloPlan ? ' per user' : ''}/year)
                       </p>
                     )}
                   </div>
@@ -365,40 +419,44 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                   {/* CTA Button */}
                   {isCurrent ? (
                     <Button
-                      variant="outline"
-                      className="w-full"
-                      disabled
+                      className="w-full bg-white dark:bg-gray-900 text-black dark:text-white cursor-default border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-900"
+                      onClick={(e) => e.preventDefault()}
                     >
-                      Current Plan
+                      Current plan
                     </Button>
                   ) : (
                     <Button
-                      className="w-full bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900"
+                      className="w-full bg-[#EE6C4D] hover:bg-[#d85a3d] text-white flex items-center justify-center gap-2"
                       onClick={() => handleUpgradePlan(plan)}
                       disabled={isProcessing}
                     >
                       {isProcessing ? (
                         <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Processing...
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Processing...</span>
                         </>
                       ) : (
-                        'Upgrade Plan'
+                        <>
+                          <ArrowLeftRight className="w-4 h-4" />
+                          <span>Switch plan</span>
+                        </>
                       )}
                     </Button>
                   )}
 
                   {/* Features List */}
-                  <div className="space-y-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    {features.map((feature: string, idx: number) => (
-                      <div key={idx} className="flex items-start gap-2">
-                        <Check className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          {feature}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  {featuresArray.length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      {featuresArray.map((feature: string, idx: number) => (
+                        <div key={idx} className="flex items-start gap-2">
+                          <Check className="w-3.5 h-3.5 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
+                            {feature}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -549,6 +607,66 @@ export const BillingTab: React.FC<BillingTabProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Compare Plans Modal */}
+      <Dialog open={showCompareModal} onOpenChange={setShowCompareModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Compare Plans</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            {/* Plans comparison table */}
+            <div className="grid grid-cols-3 gap-4">
+              {/* Header Row */}
+              <div className="font-semibold text-gray-900 dark:text-white">Features</div>
+              {plans.sort((a, b) => a.sort_order - b.sort_order).map((plan) => (
+                <div key={plan.id} className="text-center">
+                  <h3 className="font-bold text-lg text-gray-900 dark:text-white">{plan.display_name}</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    ${billingInterval === 'monthly' ? plan.price_per_month : (() => {
+                      const monthlyEquivalent = plan.price_per_yearly / 12;
+                      return Number.isInteger(monthlyEquivalent) ? monthlyEquivalent : monthlyEquivalent.toFixed(2);
+                    })()} / user / month
+                  </p>
+                </div>
+              ))}
+
+              {/* Divider */}
+              <div className="col-span-3 border-b border-gray-200 dark:border-gray-700 my-2"></div>
+
+              {/* Feature Rows */}
+              {(() => {
+                // Collect all unique features from all plans
+                const allFeatures = new Set<string>();
+                plans.forEach(plan => {
+                  const featuresArray = Array.isArray(plan.features?.features) ? plan.features.features : [];
+                  featuresArray.forEach((feature: string) => allFeatures.add(feature));
+                });
+
+                return Array.from(allFeatures).map((feature, idx) => (
+                  <React.Fragment key={idx}>
+                    <div className="text-sm text-gray-700 dark:text-gray-300 py-2">{feature}</div>
+                    {plans.sort((a, b) => a.sort_order - b.sort_order).map((plan) => {
+                      const planFeatures = Array.isArray(plan.features?.features) ? plan.features.features : [];
+                      const hasFeature = planFeatures.includes(feature);
+                      return (
+                        <div key={plan.id} className="flex justify-center items-center py-2">
+                          {hasFeature ? (
+                            <Check className="w-5 h-5 text-green-500" />
+                          ) : (
+                            <X className="w-5 h-5 text-gray-300 dark:text-gray-600" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </React.Fragment>
+                ));
+              })()}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
     </div>
   );
 };

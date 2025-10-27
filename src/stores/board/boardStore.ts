@@ -57,8 +57,24 @@ interface BoardStore {
 }
 
 export const useBoardStore = create<BoardStore>((set, get) => ({
-  projects: [],
-  workflowColumns: [],
+  projects: (() => {
+    // Load from cache on initialization
+    try {
+      const cached = localStorage.getItem('board_projects_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  })(),
+  workflowColumns: (() => {
+    // Load from cache on initialization
+    try {
+      const cached = localStorage.getItem('board_columns_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  })(),
   isLoading: false,
   isInitialized: false,
   error: null,
@@ -254,14 +270,15 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     }
   },
 
-  // Initialize board - fetch data only once
+  // Initialize board - fetch data in background, no loading spinner
   initializeBoard: async () => {
-    const { isInitialized, isLoading } = get();
+    const { isLoading } = get();
 
-    // Don't re-fetch if already initialized or currently loading
-    if (isInitialized || isLoading) return;
+    // Don't re-fetch if currently loading
+    if (isLoading) return;
 
-    set({ isLoading: true, error: null });
+    // Fetch in background without showing spinner (cache already displayed)
+    set({ isLoading: false, error: null });
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -285,7 +302,6 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
               id,
               proposal_number,
               project_name,
-              quote_details,
               job_details,
               price_details
             )
@@ -302,9 +318,20 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       if (projectsResult.error) throw projectsResult.error;
       if (columnsResult.error) throw columnsResult.error;
 
+      const newProjects = projectsResult.data || [];
+      const newColumns = columnsResult.data || [];
+
+      // Cache the data for instant display on next visit
+      try {
+        localStorage.setItem('board_projects_cache', JSON.stringify(newProjects));
+        localStorage.setItem('board_columns_cache', JSON.stringify(newColumns));
+      } catch (e) {
+        console.error('Failed to cache board data:', e);
+      }
+
       set({
-        projects: projectsResult.data || [],
-        workflowColumns: columnsResult.data || [],
+        projects: newProjects,
+        workflowColumns: newColumns,
         isLoading: false,
         isInitialized: true
       });
@@ -353,9 +380,16 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
               .maybeSingle();
 
             if (data) {
-              set(state => ({
-                projects: [...state.projects, data]
-              }));
+              set(state => {
+                const newProjects = [...state.projects, data];
+                // Update cache
+                try {
+                  localStorage.setItem('board_projects_cache', JSON.stringify(newProjects));
+                } catch (e) {
+                  console.error('Failed to update projects cache:', e);
+                }
+                return { projects: newProjects };
+              });
             }
           } else if (payload.eventType === 'UPDATE') {
             // Fetch updated project with quote data
@@ -382,23 +416,44 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
 
             if (!error && data) {
               // Quote meets criteria, update or add it
-              set(state => ({
-                projects: state.projects.some(p => p.id === data.id)
+              set(state => {
+                const newProjects = state.projects.some(p => p.id === data.id)
                   ? state.projects.map(p => p.id === data.id ? data : p)
-                  : [...state.projects, data]
-              }));
+                  : [...state.projects, data];
+                // Update cache
+                try {
+                  localStorage.setItem('board_projects_cache', JSON.stringify(newProjects));
+                } catch (e) {
+                  console.error('Failed to update projects cache:', e);
+                }
+                return { projects: newProjects };
+              });
             } else if (!error && !data) {
               // Quote doesn't meet criteria anymore, remove it
-              set(state => ({
-                projects: state.projects.filter(p => p.id !== payload.new.id)
-              }));
+              set(state => {
+                const newProjects = state.projects.filter(p => p.id !== payload.new.id);
+                // Update cache
+                try {
+                  localStorage.setItem('board_projects_cache', JSON.stringify(newProjects));
+                } catch (e) {
+                  console.error('Failed to update projects cache:', e);
+                }
+                return { projects: newProjects };
+              });
             } else if (error) {
               console.error('Error fetching updated project:', error);
             }
           } else if (payload.eventType === 'DELETE') {
-            set(state => ({
-              projects: state.projects.filter(p => p.id !== payload.old.id)
-            }));
+            set(state => {
+              const newProjects = state.projects.filter(p => p.id !== payload.old.id);
+              // Update cache
+              try {
+                localStorage.setItem('board_projects_cache', JSON.stringify(newProjects));
+              } catch (e) {
+                console.error('Failed to update projects cache:', e);
+              }
+              return { projects: newProjects };
+            });
           }
         }
       )
@@ -419,19 +474,40 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
           console.log('Column change detected:', payload);
 
           if (payload.eventType === 'INSERT') {
-            set(state => ({
-              workflowColumns: [...state.workflowColumns, payload.new as WorkflowColumn]
-            }));
+            set(state => {
+              const newColumns = [...state.workflowColumns, payload.new as WorkflowColumn];
+              // Update cache
+              try {
+                localStorage.setItem('board_columns_cache', JSON.stringify(newColumns));
+              } catch (e) {
+                console.error('Failed to update columns cache:', e);
+              }
+              return { workflowColumns: newColumns };
+            });
           } else if (payload.eventType === 'UPDATE') {
-            set(state => ({
-              workflowColumns: state.workflowColumns.map(c =>
+            set(state => {
+              const newColumns = state.workflowColumns.map(c =>
                 c.id === payload.new.id ? payload.new as WorkflowColumn : c
-              )
-            }));
+              );
+              // Update cache
+              try {
+                localStorage.setItem('board_columns_cache', JSON.stringify(newColumns));
+              } catch (e) {
+                console.error('Failed to update columns cache:', e);
+              }
+              return { workflowColumns: newColumns };
+            });
           } else if (payload.eventType === 'DELETE') {
-            set(state => ({
-              workflowColumns: state.workflowColumns.filter(c => c.id !== payload.old.id)
-            }));
+            set(state => {
+              const newColumns = state.workflowColumns.filter(c => c.id !== payload.old.id);
+              // Update cache
+              try {
+                localStorage.setItem('board_columns_cache', JSON.stringify(newColumns));
+              } catch (e) {
+                console.error('Failed to update columns cache:', e);
+              }
+              return { workflowColumns: newColumns };
+            });
           }
         }
       )

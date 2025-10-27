@@ -66,7 +66,6 @@ export default function Board() {
     deleteWorkflowColumn,
     createWorkflowColumn,
     deleteProject,
-    isLoading,
     initializeBoard,
     subscribeToChanges
   } = useBoardStore();
@@ -83,56 +82,13 @@ export default function Board() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   useEffect(() => {
-    // Fetch fresh board data every time the page is visited
-    const fetchBoardData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    console.log('📋 Board page mounted - initializing board and setting up subscriptions');
 
-      const { data: membership } = await supabase
-        .from('memberships')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!membership) return;
-
-      // Fetch fresh projects data (with latest quote_ids)
-      // Only show projects where the quote is the main version AND has Won status
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          quotes!inner (
-            id,
-            proposal_number,
-            project_name,
-            quote_details,
-            job_details,
-            price_details,
-            status,
-            is_main_version
-          )
-        `)
-        .eq('organization_id', membership.organization_id)
-        .eq('quotes.is_main_version', true)
-        .eq('quotes.status', 'Won')
-        .order('board_order', { ascending: true });
-
-      if (!projectsError && projectsData) {
-        // Update the board store with fresh data
-        const boardState = useBoardStore.getState();
-        boardState.projects = projectsData;
-      }
-    };
-
-    // Initialize board data (fetches columns once)
+    // Initialize board data (fetches projects and columns)
     initializeBoard();
 
-    // Fetch fresh projects data
-    fetchBoardData();
-
-    // Get organization ID for subscriptions
-    const getOrgIdAndSubscribe = async () => {
+    // Get organization ID and setup realtime subscriptions
+    const setupRealtimeSubscriptions = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return undefined;
 
@@ -142,7 +98,7 @@ export default function Board() {
         .eq('user_id', user.id)
         .single();
 
-      if (membership) {
+      if (membership?.organization_id) {
         // Subscribe to real-time changes
         const unsubscribe = subscribeToChanges(membership.organization_id);
         return unsubscribe;
@@ -150,15 +106,16 @@ export default function Board() {
       return undefined;
     };
 
-    const subscriptionPromise = getOrgIdAndSubscribe();
+    const subscriptionPromise = setupRealtimeSubscriptions();
 
     // Cleanup subscriptions on unmount
     return () => {
+      console.log('🧹 Board page unmounting - cleaning up subscriptions');
       subscriptionPromise.then(unsubscribe => {
         if (unsubscribe) unsubscribe();
       });
     };
-  }, [initializeBoard, subscribeToChanges]);
+  }, []); // Empty dependency array - only run on mount/unmount
 
   const handleDragStart = async (e: React.DragEvent, projectId: string) => {
     setDraggedProject(projectId);
@@ -423,12 +380,7 @@ export default function Board() {
       title="Project Board"
       showPageHeader={true}
     >
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center h-64 gap-3">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-          <div className="text-gray-500 font-medium">Loading projects...</div>
-        </div>
-      ) : workflowColumns.length === 0 ? (
+      {workflowColumns.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-600 mb-4">No workflow columns found. Run the migration to create default columns.</p>
         </div>

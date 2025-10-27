@@ -55,7 +55,7 @@ const Settings = () => {
     },
     {
       id: "billing",
-      label: "Plans & Billing",
+      label: "Plan & Billing",
       icon: <CreditCard className="w-4 h-4" />,
       component: <BillingTab
         organization={organization}

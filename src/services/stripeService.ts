@@ -19,7 +19,11 @@ interface SubscriptionPlan {
   stripe_product_id: string | null;
   stripe_price_id_monthly: string | null;
   stripe_price_id_yearly: string | null;
-  features: string[] | string;
+  price_per_month: number;
+  price_per_yearly: number;
+  max_users: number | null;
+  min_users: number | null;
+  features: any;
   is_active: boolean;
   sort_order: number;
   created_at: string;
@@ -30,6 +34,7 @@ interface Subscription {
   id: string;
   organization_id: string;
   plan_id: string;
+  number_of_active_users: number | null;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   stripe_subscription_status: string | null;

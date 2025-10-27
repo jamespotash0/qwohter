@@ -6,23 +6,22 @@ TRUNCATE TABLE public.subscription_plans CASCADE;
 
 -- Insert Solo plan (1 user)
 INSERT INTO public.subscription_plans (
-  id,
   name,
   display_name,
   description,
   stripe_product_id,
   stripe_price_id_monthly,
-  stripe_price_id_annual,
-  price_monthly,
-  price_annual,
-  billing_interval,
+  stripe_price_id_yearly,
+  price_per_month,
+  price_per_yearly,
+  min_users,
+  max_users,
   is_active,
   sort_order,
   features,
   created_at,
   updated_at
 ) VALUES (
-  gen_random_uuid(),
   'Solo',
   'Solo Plan',
   'Perfect for individual professionals getting started',
@@ -31,11 +30,10 @@ INSERT INTO public.subscription_plans (
   'price_solo_annual_placeholder', -- Replace with actual Stripe annual price ID
   24.99,
   239.88, -- $19.99/month * 12 months
-  'monthly',
+  1,
   true,
   1,
   jsonb_build_object(
-    'max_users', 1,
     'trial_days', 14,
     'features', jsonb_build_array(
       'All core features included',
@@ -51,23 +49,22 @@ INSERT INTO public.subscription_plans (
 
 -- Insert Team plan (2+ users, metered billing)
 INSERT INTO public.subscription_plans (
-  id,
   name,
   display_name,
   description,
   stripe_product_id,
   stripe_price_id_monthly,
-  stripe_price_id_annual,
-  price_monthly,
-  price_annual,
-  billing_interval,
+  stripe_price_id_yearly,
+  price_per_month,
+  price_per_yearly,
+  min_users,
+  max_users,
   is_active,
   sort_order,
   features,
   created_at,
   updated_at
 ) VALUES (
-  gen_random_uuid(),
   'Team',
   'Team Plan',
   'For growing teams that need collaboration',
@@ -76,12 +73,11 @@ INSERT INTO public.subscription_plans (
   'price_team_annual_placeholder', -- Replace with actual Stripe annual price ID (metered)
   19.99, -- Per user per month
   203.88, -- $16.99/month * 12 months per user
-  'monthly',
+  2,
+  null,
   true,
   2,
   jsonb_build_object(
-    'min_users', 2,
-    'max_users', null,
     'per_user_pricing', true,
     'trial_days', 14,
     'features', jsonb_build_array(
