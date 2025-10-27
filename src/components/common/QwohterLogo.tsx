@@ -29,7 +29,7 @@ export const QwohterLogo: React.FC<QwohterLogoProps> = ({
       case 'dark':
         return '/logos/Dashboard-Page-Background-Dark-Logo.svg';
       case 'light':
-        return '/logos/Dashboard-Page-Background-White-Logo.svg';
+        return '/logos/Main_Sidebar_Logo_Light.svg';
       default:
         return '/logos/Dashboard-Page-Background-Dark-Logo.svg';
     }

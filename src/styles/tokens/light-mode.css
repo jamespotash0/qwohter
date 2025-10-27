@@ -18,8 +18,8 @@
     --sidebar-nav-text: #9C9898;                  /* Inactive nav text/icons */
     --sidebar-nav-text-hover: #000000;            /* Hover nav text - black */
     --sidebar-nav-text-active: #000000;           /* Active nav text - black */
-    --sidebar-nav-bg-hover: #E8E9EA;              /* Hover background - light gray */
-    --sidebar-nav-bg-active: rgba(247, 159, 65, 0.45); /* Active bg - orange 45% */
+    --sidebar-nav-bg-hover: #E8E9EA; /* Hover background - amber 25% */
+    --sidebar-nav-bg-active: rgba(238, 108, 77, 0.25); /* Active bg - amber 25% */
 
     /* Section Labels */
     --sidebar-section-label: #777572;             /* Section label - "General" */

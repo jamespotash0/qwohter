@@ -76,6 +76,7 @@ interface OrganizationState {
   updateOrganization: (updates: Partial<Organization>) => Promise<void>;
   setSubscriptionStatus: (status: { hasAccess: boolean; reason: string }) => void;
   subscribeToMembershipChanges: () => void;
+  subscribeToOrganizationMembersChanges: (organizationId: string) => () => void;
   reset: () => void;
 }
 
@@ -92,7 +93,15 @@ export const useOrganizationStore = create<OrganizationState>()(
           return null;
         }
       })(),
-      members: [],
+      members: (() => {
+        // Restore members from localStorage on init
+        try {
+          const cached = localStorage.getItem('org_cached_members');
+          return cached ? JSON.parse(cached) : [];
+        } catch {
+          return [];
+        }
+      })(),
       inviteTokens: [],
       currentUserRole: (() => {
         // Restore role from localStorage on init
@@ -270,6 +279,13 @@ export const useOrganizationStore = create<OrganizationState>()(
 
           console.log('✅ Transformed members:', transformedData);
 
+          // Cache members data
+          try {
+            localStorage.setItem('org_cached_members', JSON.stringify(transformedData));
+          } catch (e) {
+            console.error('Failed to cache members:', e);
+          }
+
           // Force new array reference to trigger React re-render
           set({ members: [...transformedData] });
         } catch (error: any) {
@@ -311,7 +327,15 @@ export const useOrganizationStore = create<OrganizationState>()(
         }
         set({ currentOrganization: organization });
       },
-      setMembers: (members) => set({ members }),
+      setMembers: (members) => {
+        // Cache members data
+        try {
+          localStorage.setItem('org_cached_members', JSON.stringify(members));
+        } catch (e) {
+          console.error('Failed to cache members:', e);
+        }
+        set({ members });
+      },
       setInviteTokens: (tokens) => set({ inviteTokens: tokens }),
       setCurrentUserRole: (role) => {
         if (role) {
@@ -400,12 +424,111 @@ export const useOrganizationStore = create<OrganizationState>()(
         }
       },
 
+      // Subscribe to organization members changes (for team management)
+      subscribeToOrganizationMembersChanges: (organizationId: string) => {
+        console.log('🔔 Setting up real-time organization members subscription for org:', organizationId);
+
+        const channel = supabase
+          .channel(`org-members-changes-${organizationId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+              schema: 'public',
+              table: 'memberships',
+              filter: `organization_id=eq.${organizationId}`,
+            },
+            async (payload) => {
+              console.log('🔄 Organization members changed:', payload);
+
+              // Refetch all members to ensure consistency
+              try {
+                const { data: membersData, error: membersError } = await supabase
+                  .from('memberships')
+                  .select('id, user_id, organization_id, role, status, joined_at, join_type, department')
+                  .eq('organization_id', organizationId);
+
+                if (membersError) throw membersError;
+
+                if (!membersData || membersData.length === 0) {
+                  set({ members: [] });
+                  // Update cache
+                  try {
+                    localStorage.setItem('org_cached_members', JSON.stringify([]));
+                  } catch (e) {
+                    console.error('Failed to cache members:', e);
+                  }
+                  return;
+                }
+
+                // Fetch profiles separately for all user_ids
+                const userIds = membersData.map((m: any) => m.user_id);
+                const { data: profilesData, error: profilesError } = await supabase
+                  .from('profiles')
+                  .select('id, email, full_name')
+                  .in('id', userIds);
+
+                if (profilesError) {
+                  console.error('❌ Profiles fetch error:', profilesError);
+                }
+
+                // Create a map of profiles for easy lookup
+                const profilesMap = new Map(
+                  (profilesData || []).map((p: any) => [p.id, p])
+                );
+
+                // Combine memberships with profiles
+                const transformedData = membersData
+                  .filter((membership: any) => membership?.user_id)
+                  .map((membership: any) => {
+                    const profile = profilesMap.get(membership.user_id);
+
+                    return {
+                      id: membership.id,
+                      user_id: membership.user_id,
+                      organization_id: membership.organization_id || '',
+                      role: (membership.role as 'Admin' | 'Member' | 'Owner') || 'Member',
+                      status: (membership.status as 'Pending' | 'Active' | 'Suspended' | 'Inactive') || 'Active',
+                      joined_at: membership.joined_at || new Date().toISOString(),
+                      email: profile?.email || undefined,
+                      full_name: profile?.full_name || undefined,
+                      join_type: membership.join_type as 'Invited' | 'Requested' | 'Direct' | undefined,
+                      department: membership.department || null,
+                    };
+                  });
+
+                console.log('✅ Realtime updated members:', transformedData);
+
+                // Update cache
+                try {
+                  localStorage.setItem('org_cached_members', JSON.stringify(transformedData));
+                } catch (e) {
+                  console.error('Failed to cache members:', e);
+                }
+
+                // Update state
+                set({ members: [...transformedData] });
+              } catch (error: any) {
+                console.error('❌ Failed to refetch members on realtime update:', error);
+              }
+            }
+          )
+          .subscribe();
+
+        // Return cleanup function
+        return () => {
+          console.log('🧹 Cleaning up organization members subscription');
+          supabase.removeChannel(channel);
+        };
+      },
+
       // Reset
       reset: () => {
         // Clear all cached organization data
         localStorage.removeItem('org_cached_organization');
         localStorage.removeItem('org_cached_user_role');
         localStorage.removeItem('org_cached_membership');
+        localStorage.removeItem('org_cached_members');
 
         set({
           currentOrganization: null,

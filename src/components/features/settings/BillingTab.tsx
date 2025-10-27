@@ -58,12 +58,40 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   organization,
   userRole
 }) => {
-  const [loading, setLoading] = useState(true);
-  const [subscription, setSubscription] = useState<any>(null);
-  const [userCount, setUserCount] = useState(0);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(false); // Never show loading spinner - use cached data
+  const [subscription, setSubscription] = useState<any>(() => {
+    try {
+      const cached = localStorage.getItem('billing_subscription_cache');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [userCount, setUserCount] = useState(() => {
+    try {
+      const cached = localStorage.getItem('billing_user_count_cache');
+      return cached ? JSON.parse(cached) : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [invoices, setInvoices] = useState<Invoice[]>(() => {
+    try {
+      const cached = localStorage.getItem('billing_invoices_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>(() => {
+    try {
+      const cached = localStorage.getItem('billing_plans_cache');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [showCompareModal, setShowCompareModal] = useState(false);
@@ -99,6 +127,12 @@ export const BillingTab: React.FC<BillingTabProps> = ({
             .then(({ data, error }) => {
               if (!error && data) {
                 setPlans(data);
+                // Update cache
+                try {
+                  localStorage.setItem('billing_plans_cache', JSON.stringify(data));
+                } catch (e) {
+                  console.error('Failed to update plans cache:', e);
+                }
               }
             });
         }
@@ -130,11 +164,23 @@ export const BillingTab: React.FC<BillingTabProps> = ({
           const { data: subData, error: subError } = await stripeService.getSubscription(organization.id);
           if (!subError && subData) {
             setSubscription(subData);
+            // Update cache
+            try {
+              localStorage.setItem('billing_subscription_cache', JSON.stringify(subData));
+            } catch (e) {
+              console.error('Failed to update subscription cache:', e);
+            }
           }
 
           // Recalculate user count
           const { quantity } = await stripeService.calculateSubscriptionQuantity(organization.id);
           setUserCount(quantity);
+          // Update cache
+          try {
+            localStorage.setItem('billing_user_count_cache', JSON.stringify(quantity));
+          } catch (e) {
+            console.error('Failed to update user count cache:', e);
+          }
         }
       )
       .subscribe();
@@ -146,7 +192,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
 
   const loadBillingData = async () => {
     try {
-      setLoading(true);
+      // Never show loading spinner - data is already displayed from cache
+      setLoading(false);
 
       // Load subscription
       const { data: subData, error: subError} = await stripeService.getSubscription(organization.id);
@@ -155,17 +202,35 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       } else {
         console.log('Loaded subscription:', subData);
         setSubscription(subData);
+        // Cache subscription data
+        try {
+          localStorage.setItem('billing_subscription_cache', JSON.stringify(subData));
+        } catch (e) {
+          console.error('Failed to cache subscription:', e);
+        }
       }
 
       // Calculate user count
       const { quantity } = await stripeService.calculateSubscriptionQuantity(organization.id);
       setUserCount(quantity);
+      // Cache user count
+      try {
+        localStorage.setItem('billing_user_count_cache', JSON.stringify(quantity));
+      } catch (e) {
+        console.error('Failed to cache user count:', e);
+      }
 
       // Load invoices from Stripe
       try {
         const { data: invoiceData, error: invoiceError } = await stripeService.getInvoices(organization.id);
         if (!invoiceError && invoiceData) {
           setInvoices(invoiceData);
+          // Cache invoices
+          try {
+            localStorage.setItem('billing_invoices_cache', JSON.stringify(invoiceData));
+          } catch (e) {
+            console.error('Failed to cache invoices:', e);
+          }
         }
       } catch (err) {
         console.log('Invoice fetching not yet configured (Edge Function needed)');
@@ -184,11 +249,15 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       } else {
         console.log('Loaded plans:', plansData);
         setPlans(plansData || []);
+        // Cache plans
+        try {
+          localStorage.setItem('billing_plans_cache', JSON.stringify(plansData || []));
+        } catch (e) {
+          console.error('Failed to cache plans:', e);
+        }
       }
     } catch (error) {
       console.error('Error loading billing data:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

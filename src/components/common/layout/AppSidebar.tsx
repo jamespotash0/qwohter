@@ -299,9 +299,9 @@ export function AppSidebar({
         {!isCollapsed ? (
           <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
           {/* User Profile Section */}
-            <div className="flex items-center justify-between p-3 rounded-xl group hover:bg-[var(--sidebar-user-hover-bg)] transition-all duration-200 cursor-pointer">
+            <div className="flex items-center justify-between p-3 rounded-xl group transition-all duration-200">
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <Avatar className="h-9 w-9 ring-2 ring-[var(--sidebar-user-avatar-bg)] transition-all duration-300 group-hover:ring-4 group-hover:scale-105">
+                <Avatar className="h-9 w-9 ring-2 ring-[var(--sidebar-user-avatar-bg)] transition-all duration-300">
                   <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-sm font-semibold">
                     {userInitials}
                   </AvatarFallback>
@@ -322,7 +322,7 @@ export function AppSidebar({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 w-8 p-0 text-[var(--sidebar-user-text)] hover:text-[var(--sidebar-user-text)] hover:bg-[var(--sidebar-user-hover-bg)] opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95"
+                    className="h-8 w-8 p-0 rounded-lg text-[var(--sidebar-user-text)] hover:text-[var(--sidebar-user-text)] hover:bg-[var(--sidebar-user-hover-bg)] opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95"
                   >
                     <DotsThree size={20} weight="bold" />
                   </Button>

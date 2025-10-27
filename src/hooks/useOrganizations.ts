@@ -597,6 +597,20 @@ export const useOrganizations = () => {
     };
   }, []); // Run once on mount
 
+  useEffect(() => {
+    // Subscribe to real-time organization members changes
+    let cleanup: (() => void) | undefined;
+
+    if (currentOrganization?.id) {
+      const subscribeToOrgMembers = useOrganizationStore.getState().subscribeToOrganizationMembersChanges;
+      cleanup = subscribeToOrgMembers(currentOrganization.id);
+    }
+
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, [currentOrganization?.id]); // Re-subscribe if organization changes
+
   return {
     currentOrganization,
     members,
