@@ -1,432 +1,201 @@
-# Stripe Billing Setup Guide
+# Stripe Setup Guide: Seat-Based Pricing
 
-Complete step-by-step guide to set up Stripe billing for Qwohter.
+## Your Pricing Structure
+
+### Solo Plan (1 user)
+- **Monthly:** $24.99/month
+- **Annual:** $239.88/year ($19.99/month) - Save 20%
+
+### Team Plan (2+ users)
+- **Monthly:** $19.99/user/month
+- **Annual:** $203.88/user/year ($16.99/user/month) - Save 15%
+
+### Trial Period
+- 14-day free trial for all plans
+- No credit card required
+- Auto-converts to paid after 14 days
 
 ---
 
-## 📋 What's Been Implemented
+## Part 1: Create Products in Stripe
 
-✅ Database schema (Stripe-first approach)
-✅ Frontend Stripe integration (`stripeService.ts`)
-✅ Subscription page for onboarding (`/subscription`)
-✅ Billing settings tab (Settings → Billing)
-✅ Paywall component (optional)
-✅ Price calculation based on active users
-✅ Backend API examples for checkout and webhooks
+### Step 1: Login to Stripe Dashboard
+1. Go to https://dashboard.stripe.com/
+2. Toggle to **Test Mode** (switch in top-right corner)
+
+### Step 2: Create Solo Product
+
+**A. Navigate to Products**
+- Click **Products** in left sidebar
+- Click **+ Add product**
+
+**B. Enter Product Details:**
+```
+Name: WallQu Solo
+Description: Perfect for individual contractors
+```
+
+**C. Add Monthly Price:**
+- Price: $24.99
+- Billing period: Monthly
+- Currency: USD
+- Click **Add price**
+
+**D. Add Annual Price:**
+- Click **+ Add another price**
+- Price: $239.88
+- Billing period: Yearly
+- Currency: USD
+- Click **Add price**
+
+**E. Save Product**
+- Click **Save product**
+- ✅ **COPY** Product ID (starts with `prod_`)
+- ✅ **COPY** both Price IDs (starts with `price_`)
+
+### Step 3: Create Team Product
+
+**A. Add New Product:**
+- Click **+ Add product**
+
+**B. Enter Product Details:**
+```
+Name: WallQu Team
+Description: Collaborate with unlimited team members
+```
+
+**C. Add Monthly Price (METERED):**
+- Price: $19.99
+- Billing period: Monthly
+- ✅ **CHECK:** "Usage is metered"
+- Charge type: Per unit
+- Unit name: `user`
+- Currency: USD
+- Click **Add price**
+
+**D. Add Annual Price (METERED):**
+- Click **+ Add another price**
+- Price: $203.88
+- Billing period: Yearly
+- ✅ **CHECK:** "Usage is metered"
+- Charge type: Per unit
+- Unit name: `user`
+- Currency: USD
+- Click **Add price**
+
+**E. Save Product**
+- Click **Save product**
+- ✅ **COPY** Product ID
+- ✅ **COPY** both Price IDs
 
 ---
 
-## 🚀 Setup Checklist
+## Part 2: Configure Trial Settings
 
-### Step 1: Sign Up for Stripe
+### Go to Billing Settings
+1. Click **Settings** (gear icon)
+2. Click **Billing** → **Trial periods**
+3. Set: **Default trial: 14 days**
+4. Enable: **Allow trials without payment method**
+5. Click **Save**
 
-1. Go to https://dashboard.stripe.com/register
-2. Create a Stripe account
-3. Complete business information
+---
 
-### Step 2: Get API Keys
+## Part 3: Record Your IDs
 
-1. In Stripe Dashboard → **Developers → API keys**
-2. Copy your keys:
-   - **Publishable key**: `pk_test_...` (safe for client-side)
-   - **Secret key**: `sk_test_...` (server-side only, NEVER expose!)
+**Copy and save these IDs - you'll need them:**
 
-### Step 3: Add Keys to Environment Variables
-
-Add these to your `.env` file:
-
-```.env
-# Stripe Keys
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your_key_here
-
-# Backend only (for API routes/webhooks)
-STRIPE_SECRET_KEY=sk_test_your_secret_key_here
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key_here
-```
-
-**Important**: The `VITE_` prefix makes it available to the frontend
-
-### Step 4: Create Products and Prices in Stripe
-
-#### Option A: Using Stripe Dashboard (Recommended for first time)
-
-1. Go to Stripe Dashboard → **Products → Add Product**
-
-2. **Create Professional Plan**:
-   - **Name**: Professional Plan
-   - **Description**: Per-user pricing for professional quote management
-   - **Pricing Model**: Standard pricing
-   - **Price**: $12.99
-   - **Billing period**: Monthly
-   - **Usage is metered**: No
-   - Click "Save product"
-
-3. **Add Yearly Price** to same product:
-   - Click on the product you just created
-   - Click "Add another price"
-   - **Price**: $119.88 (or $9.99 × 12)
-   - **Billing period**: Yearly
-   - Click "Save"
-
-4. **Copy the Price IDs**:
-   - You'll see IDs like:
-     - `price_1ABC123monthly` (monthly price ID)
-     - `price_1DEF456yearly` (yearly price ID)
-   - Keep these handy for the next step
-
-#### Option B: Using Stripe CLI (Advanced)
-
-```bash
-# Create product
-stripe products create \
-  --name="Professional Plan" \
-  --description="Per-user pricing"
-
-# Create monthly price
-stripe prices create \
-  --product=prod_XXX \
-  --unit-amount=1299 \
-  --currency=usd \
-  --recurring[interval]=month
-
-# Create yearly price
-stripe prices create \
-  --product=prod_XXX \
-  --unit-amount=11988 \
-  --currency=usd \
-  --recurring[interval]=year
-```
-
-### Step 5: Update Database with Stripe IDs
-
-Run this SQL in Supabase SQL Editor:
-
-```sql
--- Update Professional plan with Stripe IDs
-UPDATE subscription_plans
-SET
-  stripe_product_id = 'prod_YOUR_PRODUCT_ID',
-  stripe_price_id_monthly = 'price_YOUR_MONTHLY_PRICE_ID',
-  stripe_price_id_yearly = 'price_YOUR_YEARLY_PRICE_ID'
-WHERE name = 'Professional';
-
--- Verify
-SELECT name, stripe_product_id, stripe_price_id_monthly, stripe_price_id_yearly
-FROM subscription_plans;
-```
-
-### Step 6: Run Database Migration
-
-```bash
-cd wall-quote-wizard
-supabase db push
-
-# Or apply manually
-psql -f supabase/migrations/20251005000002_stripe_first_billing.sql
-```
-
-### Step 7: Set Up Backend API
-
-Your backend needs these endpoints:
-
-#### Create API Directory Structure
-
-```
-api/
-├── stripe/
-│   ├── create-checkout-session.ts
-│   ├── create-portal-session.ts
-│   ├── update-subscription-quantity.ts
-│   └── webhook.ts
-```
-
-I've already created example files in `api/stripe/` - copy them to your backend.
-
-#### Deploy Backend (Choose your platform)
-
-**Vercel:**
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel
-```
-
-**Netlify:**
-```bash
-# Install Netlify CLI
-npm i -g netlify-cli
-
-# Deploy functions
-netlify deploy --prod
-```
-
-**Custom Node.js Server:**
 ```javascript
-// server.js
-const express = require('express');
-const app = express();
+// TEST MODE IDs
+SOLO_PRODUCT_ID:     prod_________________
+SOLO_PRICE_MONTHLY:  price________________
+SOLO_PRICE_ANNUAL:   price________________
 
-app.post('/api/stripe/create-checkout-session', require('./api/stripe/create-checkout-session'));
-app.post('/api/stripe/create-portal-session', require('./api/stripe/create-portal-session'));
-app.post('/api/stripe/webhook', require('./api/stripe/webhook'));
-
-app.listen(3001, () => console.log('Backend running on :3001'));
-```
-
-### Step 8: Configure Stripe Webhooks
-
-1. **Stripe Dashboard → Developers → Webhooks → Add endpoint**
-
-2. **Endpoint URL**: `https://your-backend.com/api/stripe/webhook`
-
-3. **Select events to listen for**:
-   - `checkout.session.completed`
-   - `customer.subscription.updated`
-   - `customer.subscription.deleted`
-   - `invoice.payment_succeeded`
-   - `invoice.payment_failed`
-
-4. **Copy Webhook Signing Secret**:
-   - After creating the endpoint, copy the signing secret (starts with `whsec_...`)
-   - Add to your `.env`:
-     ```
-     STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
-     ```
-
-5. **Test webhook locally** (optional):
-   ```bash
-   # Install Stripe CLI
-   brew install stripe/stripe-cli/stripe
-
-   # Forward webhooks to local server
-   stripe listen --forward-to localhost:3001/api/stripe/webhook
-
-   # Test events
-   stripe trigger checkout.session.completed
-   ```
-
----
-
-## 🧪 Testing the Complete Flow
-
-### Test Mode (Recommended First)
-
-Use Stripe test mode with test credit cards:
-
-**Test Card Numbers:**
-- Success: `4242 4242 4242 4242`
-- Decline: `4000 0000 0000 0002`
-- Requires authentication: `4000 0025 0000 3155`
-
-**Test Details:**
-- Any future expiration date (e.g., 12/34)
-- Any 3-digit CVC (e.g., 123)
-- Any ZIP code (e.g., 12345)
-
-### Testing Checklist
-
-1. ✅ **User Flow**:
-   - Create account
-   - Create organization
-   - Get redirected to `/subscription` page
-   - See pricing for your user count
-   - Click "Select Plan"
-   - Redirected to Stripe Checkout
-   - Enter test card
-   - Complete checkout
-   - Redirected back to dashboard
-
-2. ✅ **Settings → Billing Tab**:
-   - See current subscription
-   - See user count
-   - Click "Manage Billing" → Opens Stripe Customer Portal
-   - View invoices
-   - Update payment method
-   - Cancel subscription
-
-3. ✅ **Adding/Removing Users**:
-   - Add a user to your organization
-   - Call `/api/stripe/update-subscription-quantity`
-   - Check Stripe Dashboard → Customers → Your customer
-   - Verify quantity updated
-   - Next invoice should reflect new user count
-
-4. ✅ **Webhook Processing**:
-   - Make a test payment
-   - Check Supabase `subscriptions` table
-   - Verify `stripe_subscription_status` updated to "active"
-   - Verify `stripe_subscription_id` populated
-
----
-
-## 🎯 Integration Points
-
-### After User Creates Organization
-
-In your organization creation flow, redirect to subscription page:
-
-```typescript
-// After organization is created
-navigate('/subscription');
-```
-
-### In Dashboard (Optional Paywall)
-
-Wrap protected content with the paywall:
-
-```typescript
-import { SubscriptionPaywall } from '@/components/common/SubscriptionPaywall';
-
-function Dashboard() {
-  const { organization } = useOrganizations();
-
-  return (
-    <SubscriptionPaywall organizationId={organization?.id}>
-      {/* Your dashboard content */}
-    </SubscriptionPaywall>
-  );
-}
-```
-
-### When Adding/Removing Users
-
-Call the update endpoint:
-
-```typescript
-// After user joins organization
-await fetch('/api/stripe/update-subscription-quantity', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ organizationId: 'org-123' }),
-});
+TEAM_PRODUCT_ID:     prod_________________
+TEAM_PRICE_MONTHLY:  price________________
+TEAM_PRICE_ANNUAL:   price________________
 ```
 
 ---
 
-## 📊 Pricing Model
+## Part 4: Test Your Setup
 
-### How It Works
+### Test 1: Solo Monthly Subscription
+1. Products → "WallQu Solo"
+2. Click **Create subscription**
+3. Create test customer (email: solo@test.com)
+4. Use test card: `4242 4242 4242 4242`
+5. Select Monthly price
+6. Verify: Shows "14-day trial"
+7. Create subscription
 
-- **Per-User Pricing**: Each active user in an organization is a "seat"
-- **Automatic Calculation**: System counts active memberships automatically
-- **Proration**: Stripe automatically prorates when users are added/removed mid-billing
+**Expected:** Status = Trialing, $24.99 after trial
 
-### Example Pricing
+### Test 2: Team Subscription (3 users)
+1. Products → "WallQu Team"
+2. Click **Create subscription**
+3. Create test customer (email: team@test.com)
+4. Use test card: `4242 4242 4242 4242`
+5. Select Monthly price
+6. Set quantity: 3
+7. Verify: Shows "14-day trial"
+8. Create subscription
 
-**Monthly Plan: $12.99/user/month**
-- 1 user = $12.99/month
-- 5 users = $64.95/month
-- 10 users = $129.90/month
+**Expected:** Status = Trialing, $59.97 (3 × $19.99) after trial
 
-**Yearly Plan: $9.99/user/month ($119.88/year) - Save 23%**
-- 1 user = $119.88/year
-- 5 users = $599.40/year
-- 10 users = $1,198.80/year
+### Test 3: Update Quantity
+1. Open Team subscription
+2. Click **Update subscription**
+3. Change quantity: 3 → 5
+4. Save
 
-### When Adding a User Mid-Cycle
-
-Example: Monthly plan with 5 users ($64.95/month), 15 days into billing period
-
-1. Add 6th user
-2. Stripe calculates prorated charge:
-   - 6th user for remaining 15 days = ~$6.50
-3. Next full invoice: $77.94 (6 users × $12.99)
-
----
-
-## 🔒 Security Best Practices
-
-### ✅ DO
-
-- Store only Stripe IDs locally (customer_id, subscription_id)
-- Use Stripe Customer Portal for payment management
-- Validate webhook signatures
-- Use service_role key for webhook handlers (bypasses RLS)
-- Keep secret keys in environment variables
-- Use HTTPS for webhook endpoints
-
-### ❌ DON'T
-
-- Store credit card numbers
-- Store payment history locally (query Stripe API instead)
-- Skip webhook signature verification
-- Expose secret keys to frontend
-- Trust client-side data for billing decisions
+**Expected:** Prorated charge, new total $99.95
 
 ---
 
-## 🐛 Troubleshooting
+## Pricing Table Reference
 
-### Issue: Checkout session not creating
-
-**Check:**
-1. `VITE_STRIPE_PUBLISHABLE_KEY` in `.env`
-2. Backend API endpoint is accessible
-3. `stripe_price_id_monthly` populated in database
-4. Browser console for errors
-
-### Issue: Webhook not working
-
-**Check:**
-1. Webhook endpoint URL is correct and accessible
-2. Webhook signing secret in `.env`
-3. Selected correct events in Stripe Dashboard
-4. Verify signature in webhook handler
-5. Check Stripe Dashboard → Developers → Webhooks → Events log
-
-### Issue: Subscription not showing in settings
-
-**Check:**
-1. Webhook `checkout.session.completed` fired
-2. `subscriptions` table has row for organization
-3. `stripe_subscription_id` populated
-4. RLS policies allow reading subscriptions
-
-### Issue: User count incorrect
-
-**Check:**
-1. Count active memberships:
-   ```sql
-   SELECT COUNT(*) FROM memberships
-   WHERE organization_id = 'org-id' AND status = 'Active';
-   ```
-2. Call `calculateSubscriptionQuantity()` to verify
-3. Update subscription quantity via API endpoint
+| Plan | Users | Monthly | Annual (total) | Savings |
+|------|-------|---------|----------------|---------|
+| Solo | 1 | $24.99 | $239.88/yr | $59.88/yr |
+| Team | 2 | $39.98 | $407.76/yr | $71.88/yr |
+| Team | 5 | $99.95 | $1,019.40/yr | $179.70/yr |
+| Team | 10 | $199.90 | $2,038.80/yr | $359.40/yr |
 
 ---
 
-## 📚 Resources
+## Test Cards
 
-- [Stripe Documentation](https://stripe.com/docs)
-- [Stripe Testing Guide](https://stripe.com/docs/testing)
-- [Stripe Customer Portal](https://stripe.com/docs/billing/subscriptions/customer-portal)
-- [Webhooks Best Practices](https://stripe.com/docs/webhooks/best-practices)
-- [Proration Behavior](https://stripe.com/docs/billing/subscriptions/prorations)
+| Card | Result |
+|------|--------|
+| `4242 4242 4242 4242` | Success |
+| `4000 0000 0000 9995` | Fails (insufficient funds) |
+| `4000 0000 0000 0002` | Declined |
 
----
-
-## 🎉 You're Done!
-
-Your Stripe billing system is now ready. Users can:
-- ✅ Select plans based on their organization size
-- ✅ Pay securely via Stripe Checkout
-- ✅ Manage billing via Stripe Customer Portal
-- ✅ Get automatically charged based on active users
-- ✅ Receive prorated charges when adding/removing users
-
-**Next Steps:**
-1. Test in Stripe test mode
-2. Switch to live mode when ready
-3. Monitor Stripe Dashboard for subscriptions
-4. Set up email notifications for payment failures
-5. Configure trial periods if needed
+Use any future date for expiry, any 3 digits for CVC.
 
 ---
 
-**Questions?** Check the [Stripe Dashboard](https://dashboard.stripe.com) or review the code in:
-- `src/services/stripeService.ts`
-- `src/pages/Subscription.tsx`
-- `src/components/features/settings/BillingTab.tsx`
-- `api/stripe/*`
+## Next Steps
+
+After completing setup:
+
+1. ✅ Share your Product and Price IDs with me
+2. I'll implement the billing logic in the app
+3. I'll create the pricing page
+4. We'll test end-to-end
+
+---
+
+## Questions?
+
+**Q: Can't find "Usage is metered"?**
+A: Select "Standard pricing" model first, then option appears.
+
+**Q: Solo vs Team difference?**
+A: Solo = fixed 1 user, Team = dynamic quantity (metered).
+
+**Q: When to switch to Live Mode?**
+A: After fully testing in Test Mode. You'll create products again in Live Mode.
+
+Ready when you have your IDs! 🎯
