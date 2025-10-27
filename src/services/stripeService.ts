@@ -432,6 +432,57 @@ export const createPortalSession = async (params: {
 };
 
 // ============================================================================
+// INVOICES & BILLING HISTORY
+// ============================================================================
+
+/**
+ * Get invoices from Stripe
+ * Fetches actual billing history from Stripe API
+ */
+export const getInvoices = async (organizationId: string) => {
+  try {
+    // Get current user's session token
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return { data: null, error: 'Not authenticated' };
+    }
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const functionsUrl = supabaseUrl?.replace('.supabase.co', '.supabase.co/functions/v1') || '';
+
+    const response = await fetch(`${functionsUrl}/get-invoices`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        organizationId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { data: null, error: `HTTP ${response.status}: ${errorText}` };
+    }
+
+    const { invoices, error } = await response.json();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data: invoices, error: null };
+  } catch (error) {
+    console.error('Error fetching invoices:', error);
+    return {
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+};
+
+// ============================================================================
 // FREE TRIAL ENROLLMENT
 // ============================================================================
 
@@ -512,6 +563,9 @@ export const stripeService = {
   // Stripe Checkout
   createCheckoutSession,
   createPortalSession,
+
+  // Invoices & Billing History
+  getInvoices,
 
   // Free Trial
   startFreeTrial,
