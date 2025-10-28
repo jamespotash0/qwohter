@@ -71,7 +71,6 @@ import Dashboard from "@/pages/Dashboard";
 import Analytics from "@/pages/Analytics";
 import Team from "@/pages/Team";
 import Settings from "@/pages/Settings";
-const Subscription = lazy(() => import("@/pages/Subscription"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 // Quote-related pages (grouped under quotes namespace)
@@ -129,9 +128,6 @@ export const AppRouter = () => (
           <Route path="/auth" element={<Navigate to="/sign-in" replace />} />
           <Route path="/login" element={<Navigate to="/sign-in" replace />} />
           <Route path="/signup" element={<Navigate to="/create-account" replace />} />
-          
-          {/* Subscription/billing page */}
-          <Route path="/subscription" element={<Subscription />} />
 
           {/* Main application routes (protected by MainLayout) */}
           <Route path="/dashboard" element={<Dashboard />} />

@@ -26,7 +26,7 @@ export const SubscriptionSelectionForm: React.FC<SubscriptionSelectionFormProps>
     {
       name: 'Starter',
       displayName: 'Free',
-      description: '30 days of full access',
+      description: '14 days of full access',
       price: { monthly: 0, yearly: 0 },
       perUser: false,
       icon: Sparkles,

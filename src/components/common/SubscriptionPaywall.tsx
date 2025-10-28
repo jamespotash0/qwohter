@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { stripeService } from '@/services/stripeService';
 import { useOrganizationStore } from '@/stores/organization/organizationStore';
 import { useAuthStore } from '@/stores/auth/authStore';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface SubscriptionPaywallProps {
@@ -34,9 +35,33 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   const [blockReason, setBlockReason] = useState<string>(cachedStatus?.reason ?? '');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isStartingTrial, setIsStartingTrial] = useState(false);
+  const [isTrialEligible, setIsTrialEligible] = useState(false);
 
   useEffect(() => {
     checkSubscription();
+
+    // Set up realtime subscription to detect subscription changes
+    const channel = supabase
+      .channel(`subscription-changes-${organizationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'subscriptions',
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        (payload) => {
+          console.log('Subscription changed, rechecking access:', payload);
+          // Re-check subscription when it changes
+          checkSubscription();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [organizationId]);
 
   const checkSubscription = async () => {
@@ -56,6 +81,10 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
         hasAccess: isValid,
         reason: reason || '',
       });
+
+      // Check trial eligibility
+      const eligible = await stripeService.isTrialEligible(organizationId);
+      setIsTrialEligible(eligible);
     } catch (error) {
       console.error('Error checking subscription:', error);
       setHasAccess(false);
@@ -89,7 +118,7 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
 
       if (success) {
         toast.success('Free trial started!', {
-          description: 'You now have 30 days of full access to all features.',
+          description: 'You now have 14 days of full access to all features.',
         });
 
         // Clear cached status and re-check subscription
@@ -141,38 +170,33 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
             </CardHeader>
             <CardContent className="space-y-3 pt-2">
               <p className="text-sm text-gray-600 text-center">
-                Start your free trial or choose a plan to continue
+                {isTrialEligible ? 'Start your free trial or choose a plan to continue' : 'Choose a plan to continue'}
               </p>
-              <Button
-                onClick={handleStartFreeTrial}
-                disabled={isStartingTrial}
-                className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg"
-              >
-                {isStartingTrial ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Starting Trial...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Start 30-Day Free Trial
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={() => navigate('/subscription')}
-                variant="outline"
-                className="w-full border-orange-300 text-orange-700 hover:bg-orange-50"
-              >
-                <CreditCard className="w-4 h-4 mr-2" />
-                View All Plans
-              </Button>
+              {isTrialEligible && (
+                <Button
+                  onClick={handleStartFreeTrial}
+                  disabled={isStartingTrial}
+                  className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg"
+                >
+                  {isStartingTrial ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Starting Trial...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Start 14-Day Free Trial
+                    </>
+                  )}
+                </Button>
+              )}
               <Button
                 onClick={() => navigate('/settings?tab=billing')}
                 variant="outline"
                 className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
               >
+                <CreditCard className="w-4 h-4 mr-2" />
                 Go to Billing Settings
               </Button>
               <div className="pt-2 border-t border-gray-200">

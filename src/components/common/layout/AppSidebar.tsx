@@ -1,4 +1,4 @@
-import { LogOut, CreditCard } from "lucide-react";
+import { LogOut, CreditCard, Clock } from "lucide-react";
 import { House, FileText, ChartBar, Users, List, Gear, Kanban, Sidebar as SidebarIcon, DotsThree, Lock, SquaresFour, Article } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
@@ -10,6 +10,7 @@ import { QwohterLogo } from "@/components/common/QwohterLogo";
 import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import { useOrganizationStore } from "@/stores/organization/organizationStore";
 import { useAuthStore } from "@/stores/auth/authStore";
+import { stripeService } from "@/services/stripeService";
 import { useState, useEffect, useRef } from "react";
 
 interface AppSidebarProps {
@@ -70,11 +71,13 @@ export function AppSidebar({
   const [isHovered, setIsHovered] = useState(false);
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const previousPathRef = useRef<string>('');
+  const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
 
   // Use Zustand stores directly - they're already cached and won't cause re-fetches
   const user = useAuthStore((state) => state.user);
   const userProfile = useAuthStore((state) => state.profile);
   const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
+  const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
   const members = useOrganizationStore((state) => state.members);
 
   // Generate user initials
@@ -113,6 +116,25 @@ export function AppSidebar({
       return () => clearTimeout(timer);
     }
   }, [location.pathname]);
+
+  // Check for trial status
+  useEffect(() => {
+    const checkTrialStatus = async () => {
+      if (!currentOrganization?.id) return;
+
+      const { data: subscription } = await stripeService.getSubscription(currentOrganization.id);
+
+      const status = subscription?.stripe_subscription_status?.toLowerCase();
+      if (status === 'trialing' && subscription?.current_period_end) {
+        const daysLeft = stripeService.getDaysRemaining(subscription.current_period_end);
+        setTrialDaysRemaining(daysLeft);
+      } else {
+        setTrialDaysRemaining(null);
+      }
+    };
+
+    checkTrialStatus();
+  }, [currentOrganization?.id]);
 
   const handleNavigate = (path: string, title: string, event?: React.MouseEvent) => {
     event?.preventDefault();
@@ -162,6 +184,29 @@ export function AppSidebar({
           )}
         </div>
       </SidebarHeader>
+
+      {/* Trial Banner */}
+      {trialDaysRemaining !== null && !isCollapsed && (
+        <div className="px-4 pt-3 pb-2 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-gradient-to-r from-emerald-600 to-green-600 rounded-lg p-3 text-white shadow-md">
+            <div className="flex items-center gap-2 mb-1">
+              <Clock className="w-4 h-4" />
+              <span className="text-sm font-semibold">Free Trial</span>
+            </div>
+            <p className="text-xs opacity-90">
+              {trialDaysRemaining} {trialDaysRemaining === 1 ? 'day' : 'days'} remaining
+            </p>
+            <Button
+              onClick={() => navigate('/settings?tab=billing')}
+              variant="ghost"
+              size="sm"
+              className="w-full mt-2 h-7 text-xs bg-white/20 hover:bg-white/30 text-white border-0"
+            >
+              Upgrade Plan
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Main Navigation */}
       <SidebarContent className={`px-2 ${isCollapsed ? 'pt-2' : 'pt-4'} pb-6 flex-1 transition-all duration-300`}>

@@ -53,8 +53,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     '/pending-approval',
     '/access-denied',
     '/account-inactive',
-    '/demo-contact',
-    '/subscription'
+    '/demo-contact'
   ].includes(location.pathname) && !location.pathname.startsWith('/editor/');
 
   // Check if we're on a full-screen wizard page (no padding/max-width)

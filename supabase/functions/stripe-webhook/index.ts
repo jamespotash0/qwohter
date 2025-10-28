@@ -62,16 +62,20 @@ serve(async (req) => {
           break;
         }
 
-        // Fetch the subscription from Stripe to get current_period_end
+        // Fetch the subscription from Stripe to get billing period
+        let currentPeriodStart = null;
         let currentPeriodEnd = null;
+        let cancelAtPeriodEnd = false;
         let subscriptionStatus = 'Active';
 
         if (stripeSubscriptionId) {
           try {
             const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+            currentPeriodStart = new Date(stripeSubscription.current_period_start * 1000).toISOString();
             currentPeriodEnd = new Date(stripeSubscription.current_period_end * 1000).toISOString();
+            cancelAtPeriodEnd = stripeSubscription.cancel_at_period_end || false;
             subscriptionStatus = stripeSubscription.status.charAt(0).toUpperCase() + stripeSubscription.status.slice(1);
-            console.log('Retrieved subscription details:', { currentPeriodEnd, subscriptionStatus });
+            console.log('Retrieved subscription details:', { currentPeriodStart, currentPeriodEnd, subscriptionStatus });
           } catch (err) {
             console.error('Failed to retrieve Stripe subscription:', err);
           }
@@ -92,7 +96,9 @@ serve(async (req) => {
               stripe_customer_id: stripeCustomerId,
               stripe_subscription_id: stripeSubscriptionId,
               stripe_subscription_status: subscriptionStatus,
+              current_period_start: currentPeriodStart,
               current_period_end: currentPeriodEnd,
+              cancel_at_period_end: cancelAtPeriodEnd,
               is_active: true,
               plan_id: planId,
               updated_at: new Date().toISOString(),
@@ -110,7 +116,9 @@ serve(async (req) => {
               stripe_customer_id: stripeCustomerId,
               stripe_subscription_id: stripeSubscriptionId,
               stripe_subscription_status: subscriptionStatus,
+              current_period_start: currentPeriodStart,
               current_period_end: currentPeriodEnd,
+              cancel_at_period_end: cancelAtPeriodEnd,
               is_active: true,
             });
 
@@ -125,12 +133,14 @@ serve(async (req) => {
         const stripeSubscriptionId = subscription.id;
         const status = subscription.status;
 
-        // Update subscription status
+        // Update subscription status and billing period
         await supabase
           .from('subscriptions')
           .update({
             stripe_subscription_status: status.charAt(0).toUpperCase() + status.slice(1),
+            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            cancel_at_period_end: subscription.cancel_at_period_end || false,
             is_active: ['active', 'trialing'].includes(status),
             updated_at: new Date().toISOString(),
           })

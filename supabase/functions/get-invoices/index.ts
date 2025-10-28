@@ -9,6 +9,7 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -44,15 +45,17 @@ serve(async (req) => {
       );
     }
 
-    const { organizationId, returnUrl } = await req.json();
+    // Parse request body
+    const { organizationId } = await req.json();
 
-    if (!organizationId || !returnUrl) {
+    if (!organizationId) {
       return new Response(
-        JSON.stringify({ error: 'Missing organizationId or returnUrl' }),
+        JSON.stringify({ error: 'Missing organizationId' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Use service role client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verify user has access to this organization
@@ -71,14 +74,6 @@ serve(async (req) => {
       );
     }
 
-    // Check if user has owner permissions
-    if (membership.role !== 'Owner') {
-      return new Response(
-        JSON.stringify({ error: 'Forbidden - only owners can access billing portal' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // Get organization's Stripe customer ID
     const { data: subscription } = await supabase
       .from('subscriptions')
@@ -88,29 +83,58 @@ serve(async (req) => {
 
     if (!subscription?.stripe_customer_id) {
       return new Response(
-        JSON.stringify({ error: 'No active subscription found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ invoices: [], error: null }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       );
     }
 
-    // Create Stripe Customer Portal session
-    const session = await stripe.billingPortal.sessions.create({
+    // Fetch invoices from Stripe
+    const invoices = await stripe.invoices.list({
       customer: subscription.stripe_customer_id,
-      return_url: returnUrl,
+      limit: 100,
+    });
+
+    // Get subscription plan name for each invoice
+    const { data: plans } = await supabase
+      .from('subscription_plans')
+      .select('id, display_name, stripe_product_id');
+
+    const planMap = new Map(
+      (plans || []).map(p => [p.stripe_product_id, p.display_name])
+    );
+
+    // Transform invoices to match expected format
+    const transformedInvoices = invoices.data.map((invoice) => {
+      // Get plan name from line items
+      const lineItem = invoice.lines.data[0];
+      const productId = lineItem?.price?.product as string;
+      const planName = planMap.get(productId) || 'Unknown Plan';
+
+      return {
+        id: invoice.id,
+        invoice_pdf: invoice.invoice_pdf || '',
+        billing_date: new Date(invoice.created * 1000).toISOString(),
+        plan_name: planName,
+        amount: (invoice.amount_paid || 0) / 100, // Convert cents to dollars
+        status: invoice.status || 'unknown',
+        period_start: new Date((invoice.period_start || invoice.created) * 1000).toISOString(),
+        period_end: new Date((invoice.period_end || invoice.created) * 1000).toISOString(),
+      };
     });
 
     return new Response(
-      JSON.stringify({ url: session.url }),
+      JSON.stringify({ invoices: transformedInvoices, error: null }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       }
     );
   } catch (error) {
-    console.error('Error creating portal session:', error);
+    console.error('Error fetching invoices:', error);
     return new Response(
       JSON.stringify({
-        error: error.message || 'Failed to create portal session'
+        invoices: null,
+        error: error.message || 'Failed to fetch invoices'
       }),
       {
         status: 500,

@@ -378,6 +378,7 @@ export default function Board() {
   return (
     <PageContent
       title="Project Board"
+      subtitle="Visualize and manage your project workflow stages"
       showPageHeader={true}
     >
       {workflowColumns.length === 0 ? (

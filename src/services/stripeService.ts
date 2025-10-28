@@ -40,6 +40,7 @@ interface Subscription {
   stripe_subscription_status: string | null;
   current_period_end: string | null;
   is_active: boolean;
+  has_used_trial: boolean;
   access_blocked: boolean;
   access_blocked_reason: string | null;
   metadata: Record<string, unknown>;
@@ -208,9 +209,12 @@ export const hasValidSubscription = async (organizationId: string) => {
   }
 
   // Check subscription status (cached from Stripe)
-  // Note: Stripe uses lowercase, but we may have capitalized versions in DB
-  const validStatuses = ['Active', 'Trialing'];
-  if (!subscription.stripe_subscription_status || !validStatuses.includes(subscription.stripe_subscription_status)) {
+  // Stripe uses lowercase (active, trialing, canceled, etc.)
+  // Support both lowercase and capitalized for backwards compatibility
+  const validStatuses = ['active', 'trialing', 'Active', 'Trialing'];
+  const status = subscription.stripe_subscription_status?.toLowerCase();
+
+  if (!status || !validStatuses.map(s => s.toLowerCase()).includes(status)) {
     return {
       isValid: false,
       reason: subscription.stripe_subscription_status
@@ -492,11 +496,57 @@ export const getInvoices = async (organizationId: string) => {
 // ============================================================================
 
 /**
+ * Get days remaining for current subscription/trial period
+ * Returns null if no subscription or no end date
+ */
+export const getDaysRemaining = (currentPeriodEnd: string | null): number | null => {
+  if (!currentPeriodEnd) return null;
+
+  const now = new Date();
+  const endDate = new Date(currentPeriodEnd);
+  const diffTime = endDate.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  return diffDays > 0 ? diffDays : 0;
+};
+
+/**
+ * Check if organization is eligible for a free trial
+ */
+export const isTrialEligible = async (organizationId: string): Promise<boolean> => {
+  try {
+    const { data: subscription } = await getSubscription(organizationId);
+
+    // Eligible if: no subscription exists OR subscription exists but trial hasn't been used
+    if (!subscription) {
+      return true;
+    }
+
+    return !subscription.has_used_trial;
+  } catch (error) {
+    console.error('Error checking trial eligibility:', error);
+    return false;
+  }
+};
+
+/**
  * Start free trial by enrolling organization in the Free plan
- * Creates a subscription record with 30-day trial access
+ * Creates a subscription record with 14-day trial access
  */
 export const startFreeTrial = async (organizationId: string): Promise<{ success: boolean; error: string | null }> => {
   try {
+    // Check if organization already has a subscription or has used trial
+    const { data: existingSubscription } = await getSubscription(organizationId);
+
+    if (existingSubscription) {
+      // Check if they've already used their trial
+      if (existingSubscription.has_used_trial) {
+        return { success: false, error: 'Free trial already used for this organization' };
+      }
+
+      return { success: false, error: 'Organization already has a subscription' };
+    }
+
     // Get the Free plan
     const { data: freePlan, error: planError } = await getPlanByName('Free');
 
@@ -504,16 +554,9 @@ export const startFreeTrial = async (organizationId: string): Promise<{ success:
       return { success: false, error: 'Free plan not found' };
     }
 
-    // Check if organization already has a subscription
-    const { data: existingSubscription } = await getSubscription(organizationId);
-
-    if (existingSubscription) {
-      return { success: false, error: 'Organization already has a subscription' };
-    }
-
     // Create subscription record for free trial
     const trialEndDate = new Date();
-    trialEndDate.setDate(trialEndDate.getDate() + 30); // 30 days from now
+    trialEndDate.setDate(trialEndDate.getDate() + 14); // 30 days from now
 
     const { data, error } = await supabase
       .from('subscriptions')
@@ -524,6 +567,7 @@ export const startFreeTrial = async (organizationId: string): Promise<{ success:
         current_period_end: trialEndDate.toISOString(),
         is_active: true,
         access_blocked: false,
+        has_used_trial: true, // Mark trial as used
       } as any)
       .select()
       .single();
@@ -573,5 +617,7 @@ export const stripeService = {
   getInvoices,
 
   // Free Trial
+  getDaysRemaining,
+  isTrialEligible,
   startFreeTrial,
 };

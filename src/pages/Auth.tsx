@@ -423,7 +423,7 @@ const Auth = () => {
         if (success) {
           toast({
             title: 'Free trial started!',
-            description: 'You now have 30 days of full access to all features.',
+            description: 'You now have 14 days of full access to all features.',
           });
           clearAuthState();
           redirectAfterAuth(navigate);

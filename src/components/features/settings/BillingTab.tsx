@@ -95,6 +95,9 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [showCompareModal, setShowCompareModal] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
   const hasPermission = hasOwnerPermissions(userRole);
 
   useEffect(() => {
@@ -261,6 +264,64 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     }
   };
 
+  const handleOpenPortal = async () => {
+    if (!hasPermission) {
+      toast({
+        title: "Permission Denied",
+        description: "You need Owner permissions to manage your plan.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!subscription?.stripe_customer_id) {
+      toast({
+        title: "No Subscription",
+        description: "You need an active subscription to access the billing portal.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setProcessingPlan('portal');
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-portal-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          organizationId: organization.id,
+          returnUrl: `${window.location.origin}/dashboard/settings?tab=billing`,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Portal session error:', data);
+        throw new Error(data.error || 'Failed to create portal session');
+      }
+
+      if (!data.url) {
+        throw new Error('No portal URL returned');
+      }
+
+      // Redirect to Stripe Customer Portal
+      window.location.href = data.url;
+    } catch (error: any) {
+      console.error('Error opening portal:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to open billing portal. Please try again.",
+        variant: "destructive",
+      });
+      setProcessingPlan(null);
+    }
+  };
+
   const handleUpgradePlan = async (plan: SubscriptionPlan) => {
     if (!hasPermission) {
       toast({
@@ -273,6 +334,12 @@ export const BillingTab: React.FC<BillingTabProps> = ({
 
     try {
       setProcessingPlan(plan.id);
+
+      // If user already has a subscription, use portal instead
+      if (subscription?.stripe_customer_id) {
+        await handleOpenPortal();
+        return;
+      }
 
       // Determine the appropriate price ID based on billing interval
       const priceId = billingInterval === 'monthly'
@@ -289,9 +356,9 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         return;
       }
 
-      // For Solo plan, quantity is always 1
+      // For Individual plan, quantity is always 1
       // For Team plan, use the actual user count
-      const quantity = plan.name === 'Solo' ? 1 : userCount;
+      const quantity = plan.name === 'Individual' ? 1 : userCount;
 
       // Create checkout session and redirect to Stripe
       const { error } = await stripeService.createCheckoutSession({
@@ -319,6 +386,88 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       });
     } finally {
       setProcessingPlan(null);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!subscription?.stripe_subscription_id) return;
+
+    try {
+      setIsCancelling(true);
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/cancel-subscription`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          subscriptionId: subscription.stripe_subscription_id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to cancel subscription');
+      }
+
+      toast({
+        title: "Subscription Canceled",
+        description: "Your subscription will remain active until the end of the current billing period.",
+      });
+
+      setShowCancelDialog(false);
+      await loadBillingData();
+    } catch (error) {
+      console.error('Error canceling subscription:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel subscription. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const handleReactivateSubscription = async () => {
+    if (!subscription?.stripe_subscription_id) return;
+
+    try {
+      setIsReactivating(true);
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reactivate-subscription`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          subscriptionId: subscription.stripe_subscription_id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Reactivate response error:', data);
+        throw new Error(data.error || 'Failed to reactivate subscription');
+      }
+
+      toast({
+        title: "Subscription Reactivated",
+        description: "Your subscription has been reactivated successfully.",
+      });
+
+      await loadBillingData();
+    } catch (error: any) {
+      console.error('Error reactivating subscription:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reactivate subscription. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsReactivating(false);
     }
   };
 
@@ -369,7 +518,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   };
 
   const isCurrentPlan = (plan: SubscriptionPlan) => {
-    return subscription?.plan_id === plan.id;
+    // Only consider it current if subscription is active
+    return subscription?.plan_id === plan.id && subscription?.is_active;
   };
 
   if (!hasPermission) {
@@ -396,7 +546,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
 
   return (
     <div className="max-w-5xl">
-      <div className="space-y-8">
+      <div className="space-y-4">
         {/* Header with Toggle */}
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -436,11 +586,70 @@ export const BillingTab: React.FC<BillingTabProps> = ({
               </div>
             </div>
           </div>
-          <div className="h-px bg-gray-200 dark:bg-gray-700 mb-4"></div>
+          <div className="h-px bg-gray-200 dark:bg-gray-700"></div>
         </div>
 
+      {/* Cancellation Notice & Billing Period Progress Bar wrapper */}
+      <div className="mb-6">
+        {/* Cancellation Notice - Show when subscription is cancelled but still active */}
+        {subscription?.cancel_at_period_end && subscription?.is_active && subscription?.current_period_end && (
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            <strong>Your subscription will end in {Math.max(0, Math.ceil((new Date(subscription.current_period_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} days</strong> on {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}.
+          </p>
+        )}
+
+        {/* Billing Period Progress Bar - Only show for active subscriptions */}
+        {subscription?.current_period_start && subscription?.current_period_end && subscription?.is_active && (
+          <div className="flex items-center gap-4">
+          {(() => {
+            const periodStart = new Date(subscription.current_period_start);
+            const periodEnd = new Date(subscription.current_period_end);
+            const now = new Date();
+            const totalDuration = periodEnd.getTime() - periodStart.getTime();
+            const elapsed = now.getTime() - periodStart.getTime();
+            const progress = Math.min(Math.max((elapsed / totalDuration) * 100, 0), 100);
+            const daysRemaining = Math.ceil((periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+            return (
+              <>
+                <div className="flex-1">
+                  <div className="flex justify-end items-center mb-1">
+                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
+                    </p>
+                  </div>
+                  <div className="relative w-full h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className="absolute top-0 left-0 h-full transition-all duration-300 bg-[#EE6C4D]"
+                      style={{ width: `${progress}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {periodEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => setShowCancelDialog(true)}
+                  variant="outline"
+                  className="shrink-0 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  disabled={!hasPermission}
+                >
+                  Manage Plan
+                </Button>
+              </>
+            );
+          })()}
+          </div>
+        )}
+      </div>
+
       {/* Plan Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl">
+      <div className="flex gap-6 flex-wrap">
         {plans.sort((a, b) => a.sort_order - b.sort_order).map((plan) => {
           // Extract features array from JSONB structure
           const featuresArray = Array.isArray(plan.features?.features)
@@ -448,13 +657,15 @@ export const BillingTab: React.FC<BillingTabProps> = ({
             : [];
           const isCurrent = isCurrentPlan(plan);
           const isProcessing = processingPlan === plan.id;
-          const isSoloPlan = plan.name === 'Solo';
+          const isIndividualPlan = plan.name === 'Individual';
           const displayPrice = getDisplayPrice(plan);
+          // Disable Individual plan if organization has more than 1 user
+          const isIndividualDisabled = isIndividualPlan && userCount > 1;
 
           return (
             <Card
               key={plan.id}
-              className="relative card-elevated bg-gray-100 dark:bg-gray-800 border-0 hover:shadow-none hover:transform-none"
+              className="relative card-elevated bg-gray-100 dark:bg-gray-800 border-0 hover:shadow-none hover:transform-none w-[calc(50%-12px)] max-w-[280px]"
             >
               <CardContent className="pt-6 pb-5">
                 <div className="space-y-4">
@@ -480,20 +691,34 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                     </div>
                     {billingInterval === 'annual' && (
                       <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
-                        Billed annually (${Number.isInteger(plan.price_per_yearly) ? plan.price_per_yearly : plan.price_per_yearly.toFixed(2)}{!isSoloPlan ? ' per user' : ''}/year)
+                        Billed annually (${Number.isInteger(plan.price_per_yearly) ? plan.price_per_yearly : plan.price_per_yearly.toFixed(2)}{!isIndividualPlan ? ' per user' : ''}/year)
                       </p>
                     )}
                   </div>
 
                   {/* CTA Button */}
                   {isCurrent ? (
+                    // Current plan - show subtle button
                     <Button
-                      className="w-full bg-white dark:bg-gray-900 text-black dark:text-white cursor-default border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-900"
-                      onClick={(e) => e.preventDefault()}
+                      className="w-full bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 cursor-default pointer-events-none"
                     >
-                      Current plan
+                      Current Plan
                     </Button>
+                  ) : isIndividualDisabled ? (
+                    // Individual plan disabled due to multiple users
+                    <div>
+                      <Button
+                        className="w-full bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed"
+                        disabled
+                      >
+                        Not Available
+                      </Button>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                        Individual plan requires 1 user
+                      </p>
+                    </div>
                   ) : (
+                    // Other plans - show Switch Plan or Choose Plan
                     <Button
                       className="w-full bg-[#EE6C4D] hover:bg-[#d85a3d] text-white flex items-center justify-center gap-2"
                       onClick={() => handleUpgradePlan(plan)}
@@ -504,11 +729,20 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                           <Loader2 className="w-4 h-4 animate-spin" />
                           <span>Processing...</span>
                         </>
-                      ) : (
+                      ) : subscription?.cancel_at_period_end ? (
+                        // If current subscription is canceled, show "Switch Plan"
+                        <>
+                          <ArrowLeftRight className="w-4 h-4" />
+                          <span>Switch Plan</span>
+                        </>
+                      ) : subscription ? (
+                        // If subscription is active, show "Switch plan"
                         <>
                           <ArrowLeftRight className="w-4 h-4" />
                           <span>Switch plan</span>
                         </>
+                      ) : (
+                        <span>Choose plan</span>
                       )}
                     </Button>
                   )}
@@ -607,7 +841,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                         />
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-900 dark:text-white font-medium">
-                        {invoice.plan_name || 'Solo Plan'}
+                        {invoice.plan_name || 'Individual Plan'}
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-900 dark:text-white">
                         $ {invoice.amount.toFixed(2)}
@@ -676,6 +910,116 @@ export const BillingTab: React.FC<BillingTabProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Manage Plan Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Manage Plan</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {/* Current Plan Info */}
+            <div className="flex justify-between items-center py-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Plan</span>
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                {plans.find(p => p.id === subscription?.plan_id)?.display_name || 'Unknown'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Users</span>
+              <span className="text-sm text-gray-900 dark:text-white">{userCount}</span>
+            </div>
+            <div className="flex justify-between items-center py-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Status</span>
+              <Badge className={`${
+                subscription?.cancel_at_period_end
+                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+                  : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+              } border-0`}>
+                {subscription?.cancel_at_period_end ? 'Canceling' : 'Active'}
+              </Badge>
+            </div>
+            {subscription?.current_period_end && (
+              <div className="flex justify-between items-center py-2">
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  {subscription?.cancel_at_period_end ? 'Ends' : 'Renews'}
+                </span>
+                <span className="text-sm font-bold text-gray-900 dark:text-white">
+                  {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
+            )}
+
+            {subscription?.cancel_at_period_end ? (
+              // Reactivate view
+              <>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Your subscription is scheduled to end on {new Date(subscription.current_period_end).toLocaleDateString()}. Reactivate to continue your service.
+                </p>
+                <div className="flex justify-end gap-2 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowCancelDialog(false)}
+                    disabled={isReactivating}
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    onClick={handleReactivateSubscription}
+                    disabled={isReactivating}
+                    className="bg-[#EE6C4D] hover:bg-[#d85a3d] text-white"
+                  >
+                    {isReactivating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        <span>Reactivating...</span>
+                      </>
+                    ) : (
+                      <span>Reactivate</span>
+                    )}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              // Cancel view
+              <>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Cancel your subscription? You'll retain access until the end of your current billing period.
+                </p>
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-4">
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <strong>Note:</strong> You can reactivate anytime before your billing period ends.
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowCancelDialog(false)}
+                    disabled={isCancelling}
+                  >
+                    Keep Subscription
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleCancelSubscription}
+                    disabled={isCancelling}
+                  >
+                    {isCancelling ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        <span>Canceling...</span>
+                      </>
+                    ) : (
+                      <span>Cancel Plan</span>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Compare Plans Modal */}
       <Dialog open={showCompareModal} onOpenChange={setShowCompareModal}>
