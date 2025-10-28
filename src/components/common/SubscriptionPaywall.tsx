@@ -6,6 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { stripeService } from '@/services/stripeService';
 import { useOrganizationStore } from '@/stores/organization/organizationStore';
 import { useAuthStore } from '@/stores/auth/authStore';
+import { useQuotesStore } from '@/stores/quotes/quotesStore';
+import { useBoardStore } from '@/stores/board/boardStore';
+import { useRemindersStore } from '@/stores/reminders/remindersStore';
+import { useAppStore } from '@/stores/app/appStore';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -24,6 +28,7 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
 }) => {
   const navigate = useNavigate();
   const signOut = useAuthStore((state) => state.signOut);
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
 
   // Get cached subscription status from store
   const cachedStatus = useOrganizationStore((state) => state.subscriptionStatus);
@@ -55,7 +60,6 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   const [loading, setLoading] = useState(!initialStatus);
   const [hasAccess, setHasAccess] = useState(initialStatus?.hasAccess ?? false);
   const [blockReason, setBlockReason] = useState<string>(initialStatus?.reason ?? '');
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     // Only check if we don't have ANY cached data (neither Zustand nor localStorage)
@@ -145,17 +149,38 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   };
 
   const handleLogout = async () => {
-    setIsLoggingOut(true);
-    try {
-      await signOut();
-      navigate('/sign-in');
-    } catch (error) {
-      console.error('Error signing out:', error);
-      setIsLoggingOut(false);
+    const startTime = Date.now();
+    const MIN_LOGOUT_TIME = 800; // 800ms minimum for smooth UX
+
+    // Set logging out state IMMEDIATELY to show loading overlay
+    useAuthStore.getState()._setLoggingOut(true);
+
+    // Wait a frame to ensure UI updates (loading overlay shows)
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    // Reset all stores to clear UI
+    useQuotesStore.getState().reset();
+    useBoardStore.getState().reset();
+    useOrganizationStore.getState().reset();
+    useRemindersStore.getState().reset();
+    useAppStore.getState().reset();
+
+    // Sign out (this will clear auth state)
+    await signOut();
+
+    // Ensure minimum display time for loading spinner (smooth UX)
+    const elapsedTime = Date.now() - startTime;
+    const remainingTime = Math.max(0, MIN_LOGOUT_TIME - elapsedTime);
+    if (remainingTime > 0) {
+      await new Promise(resolve => setTimeout(resolve, remainingTime));
     }
+
+    // Navigate to sign-in (stores handle cleanup, no reload needed)
+    navigate('/sign-in', { replace: true });
   };
 
   // Show full-screen loading spinner while checking subscription
+  // Note: isLoggingOut is handled by MainLayout's overlay, so we don't need to check it here
   if (loading) {
     return (
       <div className="h-screen w-full bg-[var(--content-bg)] flex items-center justify-center">
@@ -181,9 +206,6 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 pt-2">
-              <p className="text-sm text-gray-600 text-center">
-                Choose a plan to continue. All plans include a 14-day free trial.
-              </p>
               <Button
                 onClick={() => navigate('/settings?tab=billing')}
                 variant="outline"

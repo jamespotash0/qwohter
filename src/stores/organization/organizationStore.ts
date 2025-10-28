@@ -533,11 +533,18 @@ export const useOrganizationStore = create<OrganizationState>()(
 
       // Reset
       reset: () => {
+        const currentOrg = get().currentOrganization;
+
         // Clear all cached organization data
         localStorage.removeItem('org_cached_organization');
         localStorage.removeItem('org_cached_user_role');
         localStorage.removeItem('org_cached_membership');
         localStorage.removeItem('org_cached_members');
+
+        // Clear subscription cache (used by SubscriptionPaywall)
+        if (currentOrg?.id) {
+          localStorage.removeItem(`subscription_${currentOrg.id}`);
+        }
 
         set({
           currentOrganization: null,

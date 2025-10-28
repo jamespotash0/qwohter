@@ -137,6 +137,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   }, [membershipStatus, checkingMembership, shouldShowSidebar, location.pathname, navigate]);
 
   const handleLogout = async () => {
+    const startTime = Date.now();
+    const MIN_LOGOUT_TIME = 800; // 800ms minimum for smooth UX
+
     // Set logging out state IMMEDIATELY to hide user info and show loading overlay
     useAuthStore.getState()._setLoggingOut(true);
 
@@ -152,6 +155,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
     // Sign out (this will clear auth state)
     await signOut();
+
+    // Ensure minimum display time for loading spinner (smooth UX)
+    const elapsedTime = Date.now() - startTime;
+    const remainingTime = Math.max(0, MIN_LOGOUT_TIME - elapsedTime);
+    if (remainingTime > 0) {
+      await new Promise(resolve => setTimeout(resolve, remainingTime));
+    }
 
     // Navigate to sign-in (stores handle cleanup, no reload needed)
     navigate('/sign-in', { replace: true });

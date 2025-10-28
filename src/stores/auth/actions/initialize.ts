@@ -59,6 +59,8 @@ export const createInitializeAction = (get: () => FullAuthState, set: (partial: 
           _setAuth(session?.user ?? null, session);
 
           if (session?.user) {
+            // Reset logging out state when user signs in
+            set({ isLoggingOut: false });
             await fetchProfile(session.user.id);
           } else {
             _setProfile(null);
