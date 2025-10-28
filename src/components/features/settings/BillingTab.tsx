@@ -17,6 +17,7 @@ import { stripeService } from "@/services/stripeService";
 import { formatDateEST } from "@/utils/dateUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { loadStripe } from '@stripe/stripe-js';
+import { useOrganizationStore } from "@/stores/organization/organizationStore";
 
 interface BillingTabProps {
   organization: any;
@@ -165,13 +166,27 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         },
         async (payload) => {
           console.log('Subscription changed:', payload);
+
+          // Clear paywall cache to force re-check on next navigation
+          const setSubscriptionStatus = useOrganizationStore.getState().setSubscriptionStatus;
+          setSubscriptionStatus({
+            hasAccess: false,
+            reason: '',
+          });
+
           // Reload subscription data
           const { data: subData, error: subError } = await stripeService.getSubscription(organization.id);
-          if (!subError && subData) {
+          if (!subError) {
+            // Update state even if subData is null (subscription was deleted)
             setSubscription(subData);
             // Update cache
             try {
-              localStorage.setItem('billing_subscription_cache', JSON.stringify(subData));
+              if (subData) {
+                localStorage.setItem('billing_subscription_cache', JSON.stringify(subData));
+              } else {
+                // Clear cache if subscription was deleted
+                localStorage.removeItem('billing_subscription_cache');
+              }
             } catch (e) {
               console.error('Failed to update subscription cache:', e);
             }
@@ -209,7 +224,12 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         setSubscription(subData);
         // Cache subscription data
         try {
-          localStorage.setItem('billing_subscription_cache', JSON.stringify(subData));
+          if (subData) {
+            localStorage.setItem('billing_subscription_cache', JSON.stringify(subData));
+          } else {
+            // Clear cache if no subscription exists
+            localStorage.removeItem('billing_subscription_cache');
+          }
         } catch (e) {
           console.error('Failed to cache subscription:', e);
         }
@@ -606,8 +626,13 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   };
 
   const isCurrentPlan = (plan: SubscriptionPlan) => {
-    // Only consider it current if subscription is active
-    return subscription?.plan_id === plan.id && subscription?.is_active;
+    // Only consider it current if subscription exists, is active, AND not cancelled/paused
+    if (!subscription) return false;
+
+    return subscription.plan_id === plan.id &&
+           subscription.is_active &&
+           !subscription.cancel_at_period_end &&
+           !subscription.pause_at_period_end;
   };
 
   if (!hasPermission) {
@@ -661,8 +686,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
           </p>
         )}
 
-        {/* Billing Period Progress Bar - Only show for active subscriptions */}
-        {subscription?.current_period_start && subscription?.current_period_end && subscription?.is_active && (
+        {/* Billing Period Progress Bar - Only show when subscription exists and is active */}
+        {subscription && subscription.current_period_start && subscription.current_period_end && subscription.is_active && (
           <div className="flex items-center gap-4">
           {(() => {
             const periodStart = new Date(subscription.current_period_start);
@@ -1066,44 +1091,48 @@ export const BillingTab: React.FC<BillingTabProps> = ({
           </DialogHeader>
 
           <div className="space-y-3">
-            {/* Current Plan Info */}
-            <div className="flex justify-between items-center py-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Plan</span>
-              <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                {plans.find(p => p.id === subscription?.plan_id)?.display_name || 'Unknown'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Users</span>
-              <span className="text-sm text-gray-900 dark:text-white">{userCount}</span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Status</span>
-              <Badge className={`${
-                subscription?.stripe_subscription_status?.toLowerCase() === 'paused'
-                  ? 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900/30'
-                  : subscription?.pause_at_period_end
-                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30'
-                  : subscription?.cancel_at_period_end
-                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'
-                  : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-              } border-0`}>
-                {subscription?.stripe_subscription_status?.toLowerCase() === 'paused'
-                  ? 'Paused'
-                  : subscription?.pause_at_period_end
-                  ? 'Pausing'
-                  : subscription?.cancel_at_period_end ? 'Canceling' : 'Active'}
-              </Badge>
-            </div>
-            {subscription?.current_period_end && (
-              <div className="flex justify-between items-center py-2">
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {subscription?.cancel_at_period_end ? 'Ends' : 'Renews'}
-                </span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">
-                  {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
-              </div>
+            {/* Current Plan Info - Only show if subscription exists */}
+            {subscription && (
+              <>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Plan</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {plans.find(p => p.id === subscription.plan_id)?.display_name || 'Unknown'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Users</span>
+                  <span className="text-sm text-gray-900 dark:text-white">{userCount}</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Status</span>
+                  <Badge className={`${
+                    subscription.stripe_subscription_status?.toLowerCase() === 'paused'
+                      ? 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900/30'
+                      : subscription.pause_at_period_end
+                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+                      : subscription.cancel_at_period_end
+                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+                      : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                  } border-0`}>
+                    {subscription.stripe_subscription_status?.toLowerCase() === 'paused'
+                      ? 'Paused'
+                      : subscription.pause_at_period_end
+                      ? 'Pausing'
+                      : subscription.cancel_at_period_end ? 'Canceling' : 'Active'}
+                  </Badge>
+                </div>
+                {subscription.current_period_end && (
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {subscription.cancel_at_period_end ? 'Ends' : 'Renews'}
+                    </span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                      {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                )}
+              </>
             )}
 
             {subscription?.stripe_subscription_status?.toLowerCase() === 'paused' ? (

@@ -146,8 +146,7 @@ export const useMembership = () => {
           organization_id: organizationId,
           role,
           status: 'Pending',
-          invited_by: user.id,
-          plan: 'Free'
+          invited_by: user.id
         } as any)
         .select()
         .single();

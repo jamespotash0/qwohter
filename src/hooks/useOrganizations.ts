@@ -85,7 +85,6 @@ export const useOrganizations = () => {
           organization_id: orgData.id,
           role: 'Owner', // Owner role for organization creator
           status: 'Active',
-          plan: 'Free',
           joined_at: new Date().toISOString(),
           join_type: 'Direct' // Organization creator joined directly
         } as any);

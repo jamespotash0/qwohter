@@ -416,35 +416,15 @@ const Auth = () => {
         return;
       }
 
-      if (planName === 'Starter') {
-        // Start free trial
-        const { success, error } = await stripeService.startFreeTrial(currentOrg.id);
-
-        if (success) {
-          toast({
-            title: 'Free trial started!',
-            description: 'You now have 14 days of full access to all features.',
-          });
-          clearAuthState();
-          redirectAfterAuth(navigate);
-        } else {
-          toast({
-            title: 'Failed to start trial',
-            description: error || 'Please try again or contact support.',
-            variant: 'destructive',
-          });
-        }
-      } else {
-        // Redirect to Stripe Checkout for Professional plan
-        toast({
-          title: 'Redirecting to checkout...',
-          description: 'You will be redirected to complete your payment.',
-        });
-        // TODO: Implement Stripe Checkout redirect
-        // For now, just redirect to dashboard
-        clearAuthState();
-        redirectAfterAuth(navigate);
-      }
+      // All plans include a 14-day free trial configured in Stripe
+      // Redirect user to complete their setup and choose a plan
+      toast({
+        title: 'Welcome!',
+        description: 'Complete your setup by choosing a plan. All plans include a 14-day free trial.',
+      });
+      clearAuthState();
+      // Redirect to billing settings to choose a plan
+      navigate('/dashboard/settings?tab=billing');
     } catch (error: any) {
       toast({
         title: 'Error',

@@ -104,6 +104,8 @@ export const getPlanByName = async (name: string) => {
  * For full billing details, use getStripeSubscription()
  */
 export const getSubscription = async (organizationId: string): Promise<{ data: Subscription | null; error: string | null }> => {
+  console.log('getSubscription: Fetching for org', organizationId);
+
   const { data, error } = await supabase
     .from('subscriptions')
     .select(`
@@ -111,14 +113,15 @@ export const getSubscription = async (organizationId: string): Promise<{ data: S
       plan:subscription_plans(*)
     `)
     .eq('organization_id', organizationId)
-    .single();
+    .maybeSingle(); // Use maybeSingle instead of single to handle no rows gracefully
 
   if (error) {
     console.error('Error fetching subscription:', error);
     return { data: null, error: error.message };
   }
 
-  return { data: data as Subscription, error: null };
+  console.log('getSubscription: Result', data);
+  return { data: data as Subscription | null, error: null };
 };
 
 /**
@@ -489,12 +492,14 @@ export const getInvoices = async (organizationId: string) => {
 };
 
 // ============================================================================
-// FREE TRIAL ENROLLMENT
+// TRIAL PERIOD HELPERS
 // ============================================================================
 
 /**
  * Get days remaining for current subscription/trial period
  * Returns null if no subscription or no end date
+ * Note: 14-day free trial is managed by Stripe and automatically applied
+ * when users subscribe through Stripe Checkout
  */
 export const getDaysRemaining = (currentPeriodEnd: string | null): number | null => {
   if (!currentPeriodEnd) return null;
@@ -505,83 +510,6 @@ export const getDaysRemaining = (currentPeriodEnd: string | null): number | null
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
   return diffDays > 0 ? diffDays : 0;
-};
-
-/**
- * Check if organization is eligible for a free trial
- */
-export const isTrialEligible = async (organizationId: string): Promise<boolean> => {
-  try {
-    const { data: subscription } = await getSubscription(organizationId);
-
-    // Eligible if: no subscription exists OR subscription exists but trial hasn't been used
-    if (!subscription) {
-      return true;
-    }
-
-    return !subscription.has_used_trial;
-  } catch (error) {
-    console.error('Error checking trial eligibility:', error);
-    return false;
-  }
-};
-
-/**
- * Start free trial by enrolling organization in the Free plan
- * Creates a subscription record with 14-day trial access
- */
-export const startFreeTrial = async (organizationId: string): Promise<{ success: boolean; error: string | null }> => {
-  try {
-    // Check if organization already has a subscription or has used trial
-    const { data: existingSubscription } = await getSubscription(organizationId);
-
-    if (existingSubscription) {
-      // Check if they've already used their trial
-      if (existingSubscription.has_used_trial) {
-        return { success: false, error: 'Free trial already used for this organization' };
-      }
-
-      return { success: false, error: 'Organization already has a subscription' };
-    }
-
-    // Get the Free plan
-    const { data: freePlan, error: planError } = await getPlanByName('Free');
-
-    if (planError || !freePlan) {
-      return { success: false, error: 'Free plan not found' };
-    }
-
-    // Create subscription record for free trial
-    const trialEndDate = new Date();
-    trialEndDate.setDate(trialEndDate.getDate() + 14); // 30 days from now
-
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .insert({
-        organization_id: organizationId,
-        plan_id: freePlan.id,
-        stripe_subscription_status: 'Trialing',
-        current_period_end: trialEndDate.toISOString(),
-        is_active: true,
-        access_blocked: false,
-        has_used_trial: true, // Mark trial as used
-      } as any)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating free trial:', error);
-      return { success: false, error: error.message };
-    }
-
-    return { success: true, error: null };
-  } catch (error) {
-    console.error('Error starting free trial:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to start free trial'
-    };
-  }
 };
 
 // ============================================================================
@@ -613,8 +541,8 @@ export const stripeService = {
   // Invoices & Billing History
   getInvoices,
 
-  // Free Trial
+  // Trial Period Helpers
+  // Note: 14-day free trial is configured in Stripe product settings
+  // and automatically applied during checkout
   getDaysRemaining,
-  isTrialEligible,
-  startFreeTrial,
 };
