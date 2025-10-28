@@ -133,20 +133,24 @@ serve(async (req) => {
         const stripeSubscriptionId = subscription.id;
         const status = subscription.status;
 
+        // Check if subscription is paused
+        const isPaused = subscription.pause_collection !== null && subscription.pause_collection !== undefined;
+        const displayStatus = isPaused ? 'Paused' : status.charAt(0).toUpperCase() + status.slice(1);
+
         // Update subscription status and billing period
         await supabase
           .from('subscriptions')
           .update({
-            stripe_subscription_status: status.charAt(0).toUpperCase() + status.slice(1),
+            stripe_subscription_status: displayStatus,
             current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             cancel_at_period_end: subscription.cancel_at_period_end || false,
-            is_active: ['active', 'trialing'].includes(status),
+            is_active: ['active', 'trialing'].includes(status) && !isPaused,
             updated_at: new Date().toISOString(),
           })
           .eq('stripe_subscription_id', stripeSubscriptionId);
 
-        console.log('Updated subscription status:', stripeSubscriptionId, status);
+        console.log('Updated subscription status:', stripeSubscriptionId, displayStatus, 'isPaused:', isPaused);
         break;
       }
 
@@ -171,7 +175,39 @@ serve(async (req) => {
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
         console.log('Payment succeeded for invoice:', invoice.id);
-        // Optionally update payment records or send confirmation email
+
+        // Check if subscription should be paused after this payment
+        if (invoice.subscription) {
+          const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
+
+          // If pause_at_period_end metadata is set, pause the subscription now
+          if (subscription.metadata?.pause_at_period_end === 'true') {
+            console.log('Pausing subscription after payment:', subscription.id);
+
+            await stripe.subscriptions.update(subscription.id, {
+              pause_collection: {
+                behavior: 'void',
+              },
+              metadata: {
+                pause_at_period_end: null as any, // Clear the flag
+              },
+            });
+
+            // Update database
+            await supabase
+              .from('subscriptions')
+              .update({
+                stripe_subscription_status: 'Paused',
+                pause_at_period_end: false,
+                is_active: false,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('stripe_subscription_id', subscription.id);
+
+            console.log('Subscription paused:', subscription.id);
+          }
+        }
+
         break;
       }
 

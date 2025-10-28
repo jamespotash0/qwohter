@@ -471,6 +471,92 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     }
   };
 
+  const handlePauseSubscription = async () => {
+    if (!subscription?.stripe_subscription_id) return;
+
+    try {
+      setIsCancelling(true); // Reuse cancelling state for loading
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pause-subscription`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          subscriptionId: subscription.stripe_subscription_id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Pause response error:', data);
+        throw new Error(data.error || 'Failed to pause subscription');
+      }
+
+      toast({
+        title: "Subscription Paused",
+        description: "Your subscription has been paused. You can resume it anytime.",
+      });
+
+      setShowCancelDialog(false);
+      await loadBillingData();
+    } catch (error: any) {
+      console.error('Error pausing subscription:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to pause subscription. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const handleResumeSubscription = async () => {
+    if (!subscription?.stripe_subscription_id) return;
+
+    try {
+      setIsReactivating(true);
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resume-subscription`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          subscriptionId: subscription.stripe_subscription_id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Resume response error:', data);
+        throw new Error(data.error || 'Failed to resume subscription');
+      }
+
+      toast({
+        title: "Subscription Resumed",
+        description: "Your subscription has been resumed successfully.",
+      });
+
+      setShowCancelDialog(false);
+      await loadBillingData();
+    } catch (error: any) {
+      console.error('Error resuming subscription:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to resume subscription. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsReactivating(false);
+    }
+  };
+
   const handleDownloadInvoice = (invoiceUrl: string) => {
     window.open(invoiceUrl, '_blank');
   };
@@ -933,11 +1019,19 @@ export const BillingTab: React.FC<BillingTabProps> = ({
             <div className="flex justify-between items-center py-2">
               <span className="text-sm text-gray-600 dark:text-gray-400">Status</span>
               <Badge className={`${
-                subscription?.cancel_at_period_end
+                subscription?.stripe_subscription_status?.toLowerCase() === 'paused'
+                  ? 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900/30'
+                  : subscription?.pause_at_period_end
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+                  : subscription?.cancel_at_period_end
                   ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'
                   : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
               } border-0`}>
-                {subscription?.cancel_at_period_end ? 'Canceling' : 'Active'}
+                {subscription?.stripe_subscription_status?.toLowerCase() === 'paused'
+                  ? 'Paused'
+                  : subscription?.pause_at_period_end
+                  ? 'Pausing'
+                  : subscription?.cancel_at_period_end ? 'Canceling' : 'Active'}
               </Badge>
             </div>
             {subscription?.current_period_end && (
@@ -951,7 +1045,67 @@ export const BillingTab: React.FC<BillingTabProps> = ({
               </div>
             )}
 
-            {subscription?.cancel_at_period_end ? (
+            {subscription?.stripe_subscription_status?.toLowerCase() === 'paused' ? (
+              // Resume paused subscription
+              <>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Your subscription is currently paused. Resume to regain access to your account.
+                </p>
+                <div className="flex justify-end gap-2 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowCancelDialog(false)}
+                    disabled={isReactivating}
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    onClick={handleResumeSubscription}
+                    disabled={isReactivating}
+                    className="bg-[#EE6C4D] hover:bg-[#d85a3d] text-white"
+                  >
+                    {isReactivating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        <span>Resuming...</span>
+                      </>
+                    ) : (
+                      <span>Resume</span>
+                    )}
+                  </Button>
+                </div>
+              </>
+            ) : subscription?.pause_at_period_end ? (
+              // Un-pause scheduled pause
+              <>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Your subscription will pause on {new Date(subscription.current_period_end).toLocaleDateString()}. Resume to cancel the scheduled pause.
+                </p>
+                <div className="flex justify-end gap-2 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowCancelDialog(false)}
+                    disabled={isReactivating}
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    onClick={handleResumeSubscription}
+                    disabled={isReactivating}
+                    className="bg-[#EE6C4D] hover:bg-[#d85a3d] text-white"
+                  >
+                    {isReactivating ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        <span>Canceling Pause...</span>
+                      </>
+                    ) : (
+                      <span>Unpause</span>
+                    )}
+                  </Button>
+                </div>
+              </>
+            ) : subscription?.cancel_at_period_end ? (
               // Reactivate view
               <>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -982,23 +1136,25 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                 </div>
               </>
             ) : (
-              // Cancel view
+              // Active subscription - show pause and cancel options
               <>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Cancel your subscription? You'll retain access until the end of your current billing period.
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Manage your subscription below. You can pause billing temporarily or cancel to end at the current period.
                 </p>
-                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-4">
-                  <p className="text-sm text-amber-800 dark:text-amber-200">
-                    <strong>Note:</strong> You can reactivate anytime before your billing period ends.
-                  </p>
-                </div>
                 <div className="flex justify-end gap-2 mt-6">
                   <Button
-                    variant="outline"
-                    onClick={() => setShowCancelDialog(false)}
+                    onClick={handlePauseSubscription}
                     disabled={isCancelling}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    Keep Subscription
+                    {isCancelling ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        <span>Pausing...</span>
+                      </>
+                    ) : (
+                      <span>Pause Subscription</span>
+                    )}
                   </Button>
                   <Button
                     variant="destructive"
@@ -1011,7 +1167,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                         <span>Canceling...</span>
                       </>
                     ) : (
-                      <span>Cancel Plan</span>
+                      <span>Cancel Subscription</span>
                     )}
                   </Button>
                 </div>
@@ -1023,13 +1179,13 @@ export const BillingTab: React.FC<BillingTabProps> = ({
 
       {/* Compare Plans Modal */}
       <Dialog open={showCompareModal} onOpenChange={setShowCompareModal}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Compare Plans</DialogTitle>
           </DialogHeader>
           <div className="mt-4">
             {/* Plans comparison table */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className={`grid gap-4`} style={{ gridTemplateColumns: `minmax(150px, 1fr) repeat(${plans.length}, 1fr)` }}>
               {/* Header Row */}
               <div className="font-semibold text-gray-900 dark:text-white">Features</div>
               {plans.sort((a, b) => a.sort_order - b.sort_order).map((plan) => (
@@ -1045,7 +1201,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
               ))}
 
               {/* Divider */}
-              <div className="col-span-3 border-b border-gray-200 dark:border-gray-700 my-2"></div>
+              <div className="border-b border-gray-200 dark:border-gray-700 my-2" style={{ gridColumn: `1 / -1` }}></div>
 
               {/* Feature Rows */}
               {(() => {
@@ -1053,8 +1209,19 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                 const allFeatures = new Set<string>();
                 plans.forEach(plan => {
                   const featuresArray = Array.isArray(plan.features?.features) ? plan.features.features : [];
+                  console.log('Plan:', plan.display_name, 'Features:', featuresArray);
                   featuresArray.forEach((feature: string) => allFeatures.add(feature));
                 });
+
+                console.log('All unique features:', Array.from(allFeatures));
+
+                if (allFeatures.size === 0) {
+                  return (
+                    <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-4" style={{ gridColumn: '1 / -1' }}>
+                      No features found for comparison
+                    </div>
+                  );
+                }
 
                 return Array.from(allFeatures).map((feature, idx) => (
                   <React.Fragment key={idx}>
