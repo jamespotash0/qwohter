@@ -1,15 +1,17 @@
-import { Clock } from "lucide-react";
-import { House, FileText, ChartBar, Users, List, Gear, Kanban, Sidebar as SidebarIcon, Lock, SquaresFour, Article } from "@phosphor-icons/react";
+import { Clock, Check, ChevronDown } from "lucide-react";
+import { House, FileText, ChartBar, Users, List, Gear, Kanban, Sidebar as SidebarIcon, Lock, SquaresFour, Article, Buildings } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 // import { Card, CardContent } from "@/components/ui/card";
 import { QwohterLogo } from "@/components/common/QwohterLogo";
 import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import { useOrganizationStore } from "@/stores/organization/organizationStore";
 import { useAuthStore } from "@/stores/auth/authStore";
 import { stripeService } from "@/services/stripeService";
+import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef } from "react";
 
 interface AppSidebarProps {
@@ -64,6 +66,12 @@ const menuItems = [
   }
 ];
 
+interface UserOrganization {
+  id: string;
+  name: string;
+  role: 'Owner' | 'Admin' | 'Member';
+}
+
 export function AppSidebar({
   onLogout
 }: AppSidebarProps) {
@@ -71,6 +79,8 @@ export function AppSidebar({
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const previousPathRef = useRef<string>('');
   const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
+  const [userOrganizations, setUserOrganizations] = useState<UserOrganization[]>([]);
+  const [isLoadingOrgs, setIsLoadingOrgs] = useState(false);
 
   // Use Zustand stores directly - they're already cached and won't cause re-fetches
   const user = useAuthStore((state) => state.user);
@@ -78,6 +88,8 @@ export function AppSidebar({
   const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
   const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
   const members = useOrganizationStore((state) => state.members);
+  const setOrganization = useOrganizationStore((state) => state.setOrganization);
+  const setCurrentUserRole = useOrganizationStore((state) => state.setCurrentUserRole);
 
   // Generate user initials
   const getUserInitials = (name?: string, email?: string) => {
@@ -116,6 +128,46 @@ export function AppSidebar({
     }
   }, [location.pathname]);
 
+  // Fetch all user organizations on mount
+  useEffect(() => {
+    const fetchUserOrganizations = async () => {
+      if (!user?.id) return;
+
+      setIsLoadingOrgs(true);
+      try {
+        const { data, error } = await supabase
+          .from('memberships')
+          .select(`
+            role,
+            organizations (
+              id,
+              name
+            )
+          `)
+          .eq('user_id', user.id)
+          .eq('status', 'Active');
+
+        if (error) throw error;
+
+        const orgs = data
+          ?.filter((m: any) => m.organizations)
+          .map((m: any) => ({
+            id: m.organizations.id,
+            name: m.organizations.name,
+            role: m.role as 'Owner' | 'Admin' | 'Member',
+          })) || [];
+
+        setUserOrganizations(orgs);
+      } catch (error) {
+        console.error('Failed to fetch user organizations:', error);
+      } finally {
+        setIsLoadingOrgs(false);
+      }
+    };
+
+    fetchUserOrganizations();
+  }, [user?.id]);
+
   // Check for trial status
   useEffect(() => {
     const checkTrialStatus = async () => {
@@ -140,6 +192,55 @@ export function AppSidebar({
     event?.stopPropagation();
     setClickedItem(title);
     navigate(path);
+  };
+
+  const handleSwitchOrganization = async (orgId: string) => {
+    if (orgId === currentOrganization?.id) return;
+
+    try {
+      // Fetch the full organization data with the selected org
+      const { data: membershipData, error } = await supabase
+        .from('memberships')
+        .select(`
+          role,
+          joined_at,
+          organizations (
+            id,
+            name,
+            organization_code,
+            created_at,
+            updated_at,
+            phone_number,
+            fax_number,
+            company_address,
+            website,
+            industry,
+            found_via,
+            quote_start_number,
+            logo_data
+          )
+        `)
+        .eq('user_id', user?.id)
+        .eq('organization_id', orgId)
+        .eq('status', 'Active')
+        .single();
+
+      if (error) throw error;
+
+      if (membershipData?.organizations) {
+        const org = membershipData.organizations as any;
+        const role = membershipData.role as 'Owner' | 'Admin' | 'Member';
+
+        // Update organization store
+        setOrganization(org);
+        setCurrentUserRole(role);
+
+        // Refresh the page to reload all organization-specific data
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error('Failed to switch organization:', error);
+    }
   };
 
   return (
@@ -210,8 +311,123 @@ export function AppSidebar({
       {/* Main Navigation */}
       <SidebarContent className={`px-2 ${isCollapsed ? 'pt-2' : 'pt-4'} pb-6 flex-1 transition-all duration-300`}>
         <SidebarGroup>
+          {/* Organization Switcher */}
+          {!isCollapsed ? (
+            <div className="mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="w-full h-11 px-3 flex items-center justify-between gap-3 shadow-sm transition-colors group focus:outline-none focus-visible:outline-none bg-gray-50 dark:bg-gray-800"
+                    style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      const isDark = document.documentElement.classList.contains('dark');
+                      e.currentTarget.style.backgroundColor = isDark ? 'rgb(31, 41, 55)' : 'rgb(249, 250, 251)';
+                    }}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--sidebar-nav-bg-hover)' }}>
+                        <Buildings size={16} weight="fill" className="text-orange-800 dark:text-orange-700" />
+                      </div>
+                      <p
+                        className={`font-medium text-gray-900 dark:text-gray-100 flex-1 text-left leading-tight whitespace-nowrap overflow-hidden text-ellipsis ${
+                          (currentOrganization?.name || '').length > 25 ? 'text-[10px]' :
+                          (currentOrganization?.name || '').length > 20 ? 'text-[11px]' :
+                          (currentOrganization?.name || '').length > 15 ? 'text-xs' : 'text-sm'
+                        }`}
+                      >
+                        {currentOrganization?.name || 'Select Organization'}
+                      </p>
+                    </div>
+                    <ChevronDown className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors flex-shrink-0" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[240px]">
+                  <div className="px-2 py-1.5">
+                    <p className="text-xs font-medium text-[var(--sidebar-section-label)] uppercase tracking-wide">
+                      Organizations
+                    </p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  {isLoadingOrgs ? (
+                    <div className="px-2 py-2 text-sm text-[var(--sidebar-section-label)]">
+                      Loading...
+                    </div>
+                  ) : (
+                    <>
+                      {userOrganizations.map((org) => (
+                        <DropdownMenuItem
+                          key={org.id}
+                          onClick={() => handleSwitchOrganization(org.id)}
+                          className="flex items-center justify-between cursor-pointer py-2"
+                        >
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--sidebar-nav-bg-hover)' }}>
+                              <Buildings size={14} weight="fill" className="text-orange-800 dark:text-orange-700" />
+                            </div>
+                            <p className="text-sm font-medium truncate">{org.name}</p>
+                          </div>
+                          {org.id === currentOrganization?.id && (
+                            <Check className="h-4 w-4 text-[var(--sidebar-icon-active)] flex-shrink-0" />
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : (
+            <div className="px-2 mb-4 flex justify-center animate-in fade-in zoom-in-50 duration-300">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-0 rounded-lg transition-all duration-200 focus:outline-none focus-visible:outline-none" style={{ backgroundColor: 'transparent' }}>
+                    <div className="h-8 w-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'var(--sidebar-nav-bg-hover)' }}>
+                      <Buildings size={18} weight="fill" className="text-orange-800 dark:text-orange-700" />
+                    </div>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[240px]">
+                  <div className="px-2 py-1.5">
+                    <p className="text-xs font-medium text-[var(--sidebar-section-label)] uppercase tracking-wide">
+                      Organizations
+                    </p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  {isLoadingOrgs ? (
+                    <div className="px-2 py-2 text-sm text-[var(--sidebar-section-label)]">
+                      Loading...
+                    </div>
+                  ) : (
+                    <>
+                      {userOrganizations.map((org) => (
+                        <DropdownMenuItem
+                          key={org.id}
+                          onClick={() => handleSwitchOrganization(org.id)}
+                          className="flex items-center justify-between cursor-pointer py-2"
+                        >
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div className="h-6 w-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--sidebar-nav-bg-hover)' }}>
+                              <Buildings size={14} weight="fill" className="text-orange-800 dark:text-orange-700" />
+                            </div>
+                            <p className="text-sm font-medium truncate">{org.name}</p>
+                          </div>
+                          {org.id === currentOrganization?.id && (
+                            <Check className="h-4 w-4 text-[var(--sidebar-icon-active)] flex-shrink-0" />
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+
           <div
-            className={`px-0 pl-0 mb-1 flex items-center transition-all duration-300 ${
+            className={`px-0 pl-0 mb-2 flex items-center transition-all duration-300 ${
               isCollapsed ? 'justify-center' : 'justify-between'
             }`}
           >
