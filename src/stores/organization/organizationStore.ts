@@ -127,7 +127,7 @@ export const useOrganizationStore = create<OrganizationState>()(
 
       // Fetch organization
       fetchOrganization: async (userId?: string, forceRefresh = false) => {
-        const { currentOrganization, currentUserRole } = get();
+        const { currentOrganization, currentUserRole, members } = get();
 
         // Skip if already fetched (unless force refresh or no role cached)
         if (currentOrganization && currentUserRole && !forceRefresh) {
@@ -199,6 +199,15 @@ export const useOrganizationStore = create<OrganizationState>()(
               currentUserMembership: membership,
               loading: false,
             });
+
+            // Fetch members concurrently if not already loaded
+            if (members.length === 0) {
+              console.log('🔄 Fetching members concurrently');
+              // Don't await - let it run in parallel
+              get().fetchMembers(org.id, forceRefresh).catch(err => {
+                console.error('Failed to fetch members:', err);
+              });
+            }
 
           } else {
             set({ loading: false });

@@ -91,7 +91,6 @@ export function AppSidebar({
   const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
   const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
   const members = useOrganizationStore((state) => state.members);
-  const fetchMembers = useOrganizationStore((state) => state.fetchMembers);
   const setOrganization = useOrganizationStore((state) => state.setOrganization);
   const setCurrentUserRole = useOrganizationStore((state) => state.setCurrentUserRole); 
 
@@ -106,52 +105,37 @@ export function AppSidebar({
     return 'U';
   };
 
-  // Track if we're loading members for the first time
-  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
-  const [hasMembersLoaded, setHasMembersLoaded] = useState(members.length > 0);
-
   const userDisplayName = userProfile?.full_name || user?.email || 'User';
   const userInitials = getUserInitials(userProfile?.full_name ?? undefined, user?.email);
   const effectiveRole = currentUserRole || 'Member';
 
-  // Get current user's department from members
+  // Get current user's department from members (will be available after members load)
   const currentMember = members.find(m => m.user_id === user?.id);
   const userDepartment = currentMember?.department;
 
   // Display department if available, otherwise show role
   const displayText = userDepartment || effectiveRole;
 
-  // Debug: Log when members or loading state changes
-  // Only show skeleton if auth not initialized OR if we're loading members for the first time (never loaded before)
-  const shouldShowSkeleton = !isAuthInitialized || (isLoadingMembers && !hasMembersLoaded);
+  // Wait for members to load before showing profile (prevents role→department flip)
+  const hasMembersData = members.length > 0;
+  const shouldShowProfile = isAuthInitialized && hasMembersData;
+
+  // Debug: Log render state
   console.log('[AppSidebar Footer] Render state:', {
     isAuthInitialized,
-    isLoadingMembers,
-    hasMembersLoaded,
+    hasMembersData,
+    shouldShowProfile,
+    user: !!user,
+    userProfile: !!userProfile,
+    currentOrganization: !!currentOrganization,
     membersCount: members.length,
-    hasCurrentMember: !!currentMember,
     displayText,
-    shouldShowSkeleton,
   });
 
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
-
-  // Fetch members when organization is loaded
-  useEffect(() => {
-    if (currentOrganization?.id && members.length === 0 && !isLoadingMembers) {
-      setIsLoadingMembers(true);
-      fetchMembers(currentOrganization.id).finally(() => {
-        setIsLoadingMembers(false);
-        setHasMembersLoaded(true);
-      });
-    } else if (members.length > 0 && !hasMembersLoaded) {
-      // If members are already populated (from cache), mark as loaded
-      setHasMembersLoaded(true);
-    }
-  }, [currentOrganization?.id, members.length, fetchMembers, isLoadingMembers, hasMembersLoaded]);
 
   // Track path changes for animations
   useEffect(() => {
@@ -593,8 +577,8 @@ export function AppSidebar({
       <SidebarFooter className="p-2 pb-4 transition-all duration-300">
         {!isLoggingOut && (
           <>
-            {(!isAuthInitialized || (isLoadingMembers && !hasMembersLoaded)) ? (
-              // Loading skeleton only while auth initializes or loading members for the very first time
+            {!shouldShowProfile ? (
+              // Loading skeleton while waiting for auth and members to load
               !isCollapsed ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 p-3">
