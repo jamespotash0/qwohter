@@ -33,6 +33,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const isInitialized = useAuthStore((state) => state.isInitialized);
   const isAuthChanging = useAuthStore((state) => state.isAuthChanging);
   const isLoading = useAuthStore((state) => state.isLoading);
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   const signOut = useAuthStore((state) => state.signOut);
 
   // Get current organization for paywall
@@ -136,10 +137,13 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   }, [membershipStatus, checkingMembership, shouldShowSidebar, location.pathname, navigate]);
 
   const handleLogout = async () => {
-    // Set logging out state IMMEDIATELY to hide user info
+    // Set logging out state IMMEDIATELY to hide user info and show loading overlay
     useAuthStore.getState()._setLoggingOut(true);
 
-    // Reset all stores to clear UI immediately
+    // Wait a frame to ensure UI updates (loading overlay shows)
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    // Reset all stores to clear UI
     useQuotesStore.getState().reset();
     useBoardStore.getState().reset();
     useOrganizationStore.getState().reset();
@@ -149,8 +153,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     // Sign out (this will clear auth state)
     await signOut();
 
-    // Force page reload to ensure clean state after logout
-    window.location.href = '/sign-in';
+    // Navigate to sign-in (stores handle cleanup, no reload needed)
+    navigate('/sign-in', { replace: true });
   };
 
   // For public routes, render children directly without layout
@@ -198,6 +202,16 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="h-screen flex w-full bg-[var(--content-bg)] overflow-hidden">
+        {/* Logout overlay to prevent flash */}
+        {isLoggingOut && (
+          <div className="absolute inset-0 bg-background z-50 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-muted-foreground">Signing out...</p>
+            </div>
+          </div>
+        )}
+
         <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Main Content */}
