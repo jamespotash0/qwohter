@@ -16,6 +16,7 @@ export interface AuthState {
   isLoading: boolean;
   isInitialized: boolean;
   isAuthChanging: boolean;
+  isLoggingOut: boolean;
 
   // Error state
   error: string | null;
@@ -34,6 +35,7 @@ export interface AuthActions {
   _setProfile: (profile: UserProfile | null) => void;
   _setLoading: (loading: boolean) => void;
   _setError: (error: string | null) => void;
+  _setLoggingOut: (isLoggingOut: boolean) => void;
 }
 
 export type FullAuthState = AuthState & AuthActions;

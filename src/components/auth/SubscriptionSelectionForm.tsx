@@ -24,42 +24,45 @@ export const SubscriptionSelectionForm: React.FC<SubscriptionSelectionFormProps>
 
   const plans = [
     {
-      name: 'Starter',
-      displayName: 'Free',
-      description: '14 days of full access',
-      price: { monthly: 0, yearly: 0 },
+      name: 'Individual',
+      displayName: 'Individual',
+      description: 'Perfect for solo professionals',
+      price: { monthly: 24.99, yearly: 19.99 },
       perUser: false,
       icon: Sparkles,
       iconColor: 'text-emerald-600',
       bgColor: 'bg-emerald-50',
       borderColor: 'border-emerald-200',
       features: [
-        'Unlimited users',
+        'All core features',
         'Unlimited quotes',
-        'All templates',
+        'PDF export',
+        'Basic analytics',
         'Email support'
       ],
       popular: false,
-      cta: 'Register for Free'
+      cta: 'Start 14-Day Free Trial'
     },
     {
-      name: 'Professional',
-      displayName: 'Professional',
-      description: 'Per-user pricing for teams',
-      price: { monthly: 12.99, yearly: 9.99 },
+      name: 'Team',
+      displayName: 'Team',
+      description: 'For growing teams that need collaboration',
+      price: { monthly: 19.99, yearly: 16.99 },
       perUser: true,
       icon: Zap,
       iconColor: 'text-orange-600',
       bgColor: 'bg-orange-50',
       borderColor: 'border-orange-300',
       features: [
-        'Everything in Free',
-        'Priority support',
+        'All Individual features',
+        'Team collaboration',
         'Advanced analytics',
-        'Dedicated account manager'
+        'Department management',
+        'Priority support',
+        'Custom branding'
       ],
       popular: true,
-      cta: 'Get Started'
+      cta: 'Start 14-Day Free Trial'
     }
   ];
 
@@ -69,7 +72,7 @@ export const SubscriptionSelectionForm: React.FC<SubscriptionSelectionFormProps>
       <div className="text-center">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Choose Your Plan</h2>
         <p className="text-gray-600 text-base">
-          Start with a free trial or go straight to Professional
+          All plans include a 14-day free trial. No credit card required.
         </p>
       </div>
 

@@ -136,15 +136,21 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   }, [membershipStatus, checkingMembership, shouldShowSidebar, location.pathname, navigate]);
 
   const handleLogout = async () => {
-    // Reset all stores before signing out to clear all data
+    // Set logging out state IMMEDIATELY to hide user info
+    useAuthStore.getState()._setLoggingOut(true);
+
+    // Reset all stores to clear UI immediately
     useQuotesStore.getState().reset();
     useBoardStore.getState().reset();
     useOrganizationStore.getState().reset();
     useRemindersStore.getState().reset();
     useAppStore.getState().reset();
 
+    // Sign out (this will clear auth state)
     await signOut();
-    navigate('/sign-in');
+
+    // Navigate to sign-in page (using React Router for smooth navigation)
+    navigate('/sign-in', { replace: true });
   };
 
   // For public routes, render children directly without layout

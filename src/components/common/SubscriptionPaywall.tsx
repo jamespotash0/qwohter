@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Loader2, AlertCircle, LogOut, Sparkles } from 'lucide-react';
+import { CreditCard, Loader2, AlertCircle, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { stripeService } from '@/services/stripeService';
@@ -34,8 +34,6 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   const [hasAccess, setHasAccess] = useState(cachedStatus?.hasAccess ?? false);
   const [blockReason, setBlockReason] = useState<string>(cachedStatus?.reason ?? '');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [isStartingTrial, setIsStartingTrial] = useState(false);
-  const [isTrialEligible, setIsTrialEligible] = useState(false);
 
   useEffect(() => {
     checkSubscription();
@@ -81,10 +79,6 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
         hasAccess: isValid,
         reason: reason || '',
       });
-
-      // Check trial eligibility
-      const eligible = await stripeService.isTrialEligible(organizationId);
-      setIsTrialEligible(eligible);
     } catch (error) {
       console.error('Error checking subscription:', error);
       setHasAccess(false);
@@ -111,37 +105,6 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
     }
   };
 
-  const handleStartFreeTrial = async () => {
-    setIsStartingTrial(true);
-    try {
-      const { success, error } = await stripeService.startFreeTrial(organizationId);
-
-      if (success) {
-        toast.success('Free trial started!', {
-          description: 'You now have 14 days of full access to all features.',
-        });
-
-        // Clear cached status and re-check subscription
-        setSubscriptionStatus({
-          hasAccess: false,
-          reason: '',
-        });
-        await checkSubscription();
-      } else {
-        toast.error('Failed to start trial', {
-          description: error || 'Please try again or contact support.',
-        });
-      }
-    } catch (error) {
-      console.error('Error starting free trial:', error);
-      toast.error('Failed to start trial', {
-        description: 'An unexpected error occurred. Please try again.',
-      });
-    } finally {
-      setIsStartingTrial(false);
-    }
-  };
-
   if (loading) {
     return (
       <>
@@ -157,7 +120,7 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
     return (
       <>
         {children}
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xl bg-white/30 dark:bg-gray-900/30">
           <Card className="max-w-md w-full mx-4 shadow-2xl border-gray-200">
             <CardHeader className="text-center pb-4">
               <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -170,27 +133,8 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
             </CardHeader>
             <CardContent className="space-y-3 pt-2">
               <p className="text-sm text-gray-600 text-center">
-                {isTrialEligible ? 'Start your free trial or choose a plan to continue' : 'Choose a plan to continue'}
+                Choose a plan to continue. All plans include a 14-day free trial.
               </p>
-              {isTrialEligible && (
-                <Button
-                  onClick={handleStartFreeTrial}
-                  disabled={isStartingTrial}
-                  className="w-full bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white shadow-lg"
-                >
-                  {isStartingTrial ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Starting Trial...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Start 14-Day Free Trial
-                    </>
-                  )}
-                </Button>
-              )}
               <Button
                 onClick={() => navigate('/settings?tab=billing')}
                 variant="outline"
@@ -204,7 +148,7 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
                   onClick={handleLogout}
                   disabled={isLoggingOut}
                   variant="ghost"
-                  className="w-full text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/30"
                 >
                   <LogOut className="w-4 h-4 mr-2" />
                   {isLoggingOut ? 'Logging out...' : 'Sign Out'}

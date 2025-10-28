@@ -41,6 +41,7 @@ export const useAuthStore = create<FullAuthState>()(
     isLoading: false,
     isInitialized: false,
     isAuthChanging: false,
+    isLoggingOut: false,
     error: null,
 
     // ============================================================================
@@ -70,6 +71,7 @@ export const useAuthStore = create<FullAuthState>()(
     },
     _setLoading: (isLoading) => set({ isLoading }),
     _setError: (error) => set({ error }),
+    _setLoggingOut: (isLoggingOut) => set({ isLoggingOut }),
   }))
 );
 

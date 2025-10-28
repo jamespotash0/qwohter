@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Mail, AlertTriangle, Edit2, RefreshCw, LogOut } from 'lucide-react';
+import { Mail, AlertTriangle, Edit2, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,7 @@ interface ProfileTabProps {
 }
 
 export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole }) => {
+  const navigate = useNavigate();
   const [editedFullName, setEditedFullName] = useState(profile?.full_name || '');
   const [isEditingName, setIsEditingName] = useState(false);
   const [isUpdatingName, setIsUpdatingName] = useState(false);
@@ -162,37 +164,30 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
 
     setIsDeleting(true);
     try {
-      const { error } = await supabase.auth.admin.deleteUser(user.id);
-      if (error) throw error;
+      // Soft delete: Inactivate all memberships instead of deleting the user
+      const { error: membershipError } = await supabase
+        .from('memberships')
+        .update({ status: 'Inactive' })
+        .eq('user_id', user.id);
+
+      if (membershipError) throw membershipError;
 
       toast({
-        title: "Account Deleted",
-        description: "Your account has been permanently deleted.",
+        title: "Account Deactivated",
+        description: "Your account has been deactivated. Contact support to reactivate.",
       });
 
+      // Sign out the user
       await supabase.auth.signOut();
-      window.location.href = '/';
+      navigate('/sign-in', { replace: true });
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete account",
+        description: error instanceof Error ? error.message : "Failed to deactivate account",
         variant: "destructive",
       });
     } finally {
       setIsDeleting(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      window.location.href = '/';
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to logout. Please try again.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -448,9 +443,9 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
             {userRole !== 'Owner' && (
               <div className="flex items-start justify-between py-4 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
             <div className="flex-1 pr-8">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Delete Account</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Deactivate Account</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                Permanently delete your account and all associated data from Prodeel
+                Deactivate your account and revoke access to all organizations
               </p>
             </div>
             <div className="flex items-center gap-3 min-w-[480px] justify-end">
@@ -461,28 +456,39 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
                     variant="ghost"
                     className="h-9 px-4 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                   >
-                    Delete Account
+                    Deactivate Account
                   </Button>
                 </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
                     <AlertTriangle className="w-5 h-5" />
-                    Delete Account
+                    Deactivate Account
                   </DialogTitle>
                   <DialogDescription>
-                    This action will permanently delete your account and all associated data. This cannot be undone.
+                    This will deactivate your account and revoke access to all organizations. Contact support to reactivate.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                    <h4 className="font-medium text-red-900 dark:text-red-200 mb-2">What will be deleted:</h4>
+                    <h4 className="font-medium text-red-900 dark:text-red-200 mb-2">What will happen:</h4>
                     <ul className="text-sm text-red-700 dark:text-red-300 space-y-1">
-                      <li>• Your profile and account information</li>
-                      <li>• All quotes and projects you've created</li>
-                      <li>• Your membership in organizations</li>
-                      <li>• All associated files and uploads</li>
+                      <li>• Your account will be marked as inactive</li>
+                      <li>• You'll lose access to all organizations</li>
+                      <li>• Your quotes and data will show as "Deactivated User"</li>
+                      <li>• You can contact support to reactivate your account</li>
                     </ul>
+                  </div>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      <strong>Need permanent deletion?</strong> To permanently delete your account and all data, please contact{' '}
+                      <a
+                        href="mailto:support@qwohter.com?subject=Account Deletion Request"
+                        className="underline hover:text-blue-600 dark:hover:text-blue-300"
+                      >
+                        support@qwohter.com
+                      </a>
+                    </p>
                   </div>
                   <div>
                     <Label htmlFor="delete-confirm">Type 'DELETE' to confirm</Label>
@@ -510,7 +516,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
                     onClick={handleDeleteAccount}
                     disabled={isDeleting || deleteConfirmText !== 'DELETE'}
                   >
-                    {isDeleting ? 'Deleting...' : 'Delete Account'}
+                    {isDeleting ? 'Deactivating...' : 'Deactivate Account'}
                   </Button>
                 </DialogFooter>
               </DialogContent>

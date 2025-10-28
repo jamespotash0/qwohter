@@ -85,6 +85,7 @@ export function AppSidebar({
   // Use Zustand stores directly - they're already cached and won't cause re-fetches
   const user = useAuthStore((state) => state.user);
   const userProfile = useAuthStore((state) => state.profile);
+  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
   const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
   const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
   const members = useOrganizationStore((state) => state.members);
@@ -556,73 +557,77 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter className="p-2 pb-4 transition-all duration-300">
-        {!isCollapsed ? (
-          <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          {/* User Profile Section */}
-            <div className="flex items-center justify-between p-3 rounded-xl group transition-all duration-200">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <Avatar className="h-9 w-9 ring-2 ring-[var(--sidebar-user-avatar-bg)] transition-all duration-300">
-                  <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-sm font-semibold">
-                    {userInitials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-inter font-medium text-[var(--sidebar-user-text)] truncate transition-all duration-200">
-                    {userDisplayName}
-                  </p>
-                  <p className="text-xs font-inter text-[var(--sidebar-user-subtitle)] truncate transition-all duration-200">
-                    {displayText}
-                  </p>
+        {!isLoggingOut && (
+          <>
+            {!isCollapsed ? (
+              <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {/* User Profile Section */}
+                <div className="flex items-center justify-between p-3 rounded-xl group transition-all duration-200">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Avatar className="h-9 w-9 ring-2 ring-[var(--sidebar-user-avatar-bg)] transition-all duration-300">
+                      <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-sm font-semibold">
+                        {userInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-inter font-medium text-[var(--sidebar-user-text)] truncate transition-all duration-200">
+                        {userDisplayName}
+                      </p>
+                      <p className="text-xs font-inter text-[var(--sidebar-user-subtitle)] truncate transition-all duration-200">
+                        {displayText}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onLogout}
+                    className="h-8 w-8 p-0 rounded-lg transition-all duration-200 group/logout"
+                    style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                    title="Logout"
+                  >
+                    <LogOut className="h-4 w-4 text-red-600 dark:text-red-400 group-hover/logout:scale-110 transition-all duration-200" />
+                  </Button>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onLogout}
-                className="h-8 w-8 p-0 rounded-lg transition-all duration-200 group/logout"
-                style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-                title="Logout"
-              >
-                <LogOut className="h-4 w-4 text-red-600 dark:text-red-400 group-hover/logout:scale-110 transition-all duration-200" />
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2 animate-in fade-in zoom-in-50 duration-300">
-            {/* User Avatar Collapsed */}
-            <div className="flex justify-center p-2">
-              <Avatar className="h-8 w-8 ring-2 ring-[var(--sidebar-user-avatar-bg)] transition-all duration-300">
-                <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-xs font-semibold">
-                  {userInitials}
-                </AvatarFallback>
-              </Avatar>
-            </div>
-            {/* Logout Button Collapsed */}
-            <div className="flex justify-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onLogout}
-                className="h-8 w-8 p-0 rounded-lg transition-all duration-200 group/logout"
-                style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-                title="Logout"
-              >
-                <LogOut className="h-4 w-4 text-red-600 dark:text-red-400 group-hover/logout:scale-110 transition-all duration-200" />
-              </Button>
-            </div>
-          </div>
+            ) : (
+              <div className="space-y-2 animate-in fade-in zoom-in-50 duration-300">
+                {/* User Avatar Collapsed */}
+                <div className="flex justify-center p-2">
+                  <Avatar className="h-8 w-8 ring-2 ring-[var(--sidebar-user-avatar-bg)] transition-all duration-300">
+                    <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-xs font-semibold">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                {/* Logout Button Collapsed */}
+                <div className="flex justify-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onLogout}
+                    className="h-8 w-8 p-0 rounded-lg transition-all duration-200 group/logout"
+                    style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                    title="Logout"
+                  >
+                    <LogOut className="h-4 w-4 text-red-600 dark:text-red-400 group-hover/logout:scale-110 transition-all duration-200" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </SidebarFooter>
     </Sidebar>

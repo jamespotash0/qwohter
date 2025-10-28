@@ -18,6 +18,7 @@ import { OtpVerificationForm } from "@/components/auth/OtpVerificationForm";
 import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
 import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
 import { SubscriptionSelectionForm } from "@/components/auth/SubscriptionSelectionForm";
+import { TrialActivationForm } from "@/components/auth/TrialActivationForm";
 import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
 import { LogoUploadResult } from "@/services/LogoUploadService";
 import { validateInviteToken } from "@/utils/inviteTokens";
@@ -334,6 +335,7 @@ const Auth = () => {
       clearAuthState,
       redirectAfterAuth: () => redirectAfterAuth(navigate),
       setStep: authFlow.setStep,
+      navigate,
     });
   };
 
@@ -424,7 +426,7 @@ const Auth = () => {
       });
       clearAuthState();
       // Redirect to billing settings to choose a plan
-      navigate('/dashboard/settings?tab=billing');
+      navigate('/settings?tab=billing');
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -443,6 +445,56 @@ const Auth = () => {
     });
     clearAuthState();
     navigate('/dashboard');
+  };
+
+  const onActivateTrial = async () => {
+    authFlow.setLoading(true);
+    try {
+      // Get current organization
+      const currentOrg = useOrganizationStore.getState().currentOrganization;
+
+      if (!currentOrg) {
+        toast({
+          title: 'Error',
+          description: 'No organization found. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Enroll organization in 14-day trial
+      const trialResult = await stripeService.enrollInFreeTrial(currentOrg.id);
+
+      if (trialResult.error) {
+        toast({
+          title: 'Error',
+          description: trialResult.error || 'Failed to activate trial',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      toast({
+        title: 'Trial activated!',
+        description: 'Your 14-day free trial starts today. Enjoy full access to all features!',
+      });
+
+      clearAuthState();
+      navigate('/dashboard');
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to activate trial',
+        variant: 'destructive',
+      });
+    } finally {
+      authFlow.setLoading(false);
+    }
+  };
+
+  const onChoosePlan = () => {
+    clearAuthState();
+    navigate('/settings?tab=billing');
   };
 
   // ============================================================================
@@ -505,12 +557,19 @@ const Auth = () => {
       <div className="min-h-screen flex items-center justify-center p-8">
         <div className="w-full flex items-center justify-center">
           <div className={`w-full relative z-10 ${
-            authFlow.step === "subscription" ? "max-w-4xl" :
+            authFlow.step === "subscription" || authFlow.step === "trial-activation" ? "max-w-4xl" :
             authFlow.step === "auth" && !authFlow.isSignUp ? "max-w-md" :
             "max-w-lg"
           }`}>
-            {/* Subscription step - no card wrapper */}
-            {authFlow.step === "subscription" ? (
+            {/* Trial Activation step - no card wrapper */}
+            {authFlow.step === "trial-activation" ? (
+              <TrialActivationForm
+                loading={authFlow.loading}
+                onActivateTrial={onActivateTrial}
+                onChoosePlan={onChoosePlan}
+              />
+            ) : authFlow.step === "subscription" ? (
+              /* Subscription step - no card wrapper */
               <SubscriptionSelectionForm
                 loading={authFlow.loading}
                 onSelectPlan={onSelectPlan}
@@ -519,7 +578,7 @@ const Auth = () => {
             ) : (
               /* Main form card for other steps */
                 <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
-                {!["subscription", "verify-otp"].includes(authFlow.step) && (
+                {!["subscription", "trial-activation", "verify-otp"].includes(authFlow.step) && (
                 <CardHeader className="text-center space-y-3 pb-2 pt-6 px-8">
                   {/* Progress Indicator - show for all onboarding steps */}
                   {authFlow.step !== "auth" && (

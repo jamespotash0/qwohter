@@ -212,12 +212,12 @@ export const hasValidSubscription = async (organizationId: string) => {
   }
 
   // Check subscription status (cached from Stripe)
-  // Stripe uses lowercase (active, trialing, canceled, etc.)
-  // Support both lowercase and capitalized for backwards compatibility
-  const validStatuses = ['active', 'trialing', 'Active', 'Trialing'];
+  // We store capitalized statuses in DB (Active, Trialing, Canceled, etc.)
+  // Compare case-insensitively
+  const validStatuses = ['active', 'trialing'];
   const status = subscription.stripe_subscription_status?.toLowerCase();
 
-  if (!status || !validStatuses.map(s => s.toLowerCase()).includes(status)) {
+  if (!status || !validStatuses.includes(status)) {
     return {
       isValid: false,
       reason: subscription.stripe_subscription_status
@@ -512,6 +512,66 @@ export const getDaysRemaining = (currentPeriodEnd: string | null): number | null
   return diffDays > 0 ? diffDays : 0;
 };
 
+/**
+ * Auto-enroll organization in 14-day free trial
+ * Called during signup to give immediate access
+ * This creates a local subscription record with 'trialing' status
+ * User must choose a paid plan before trial ends
+ */
+export const enrollInFreeTrial = async (organizationId: string): Promise<{ success: boolean; error: string | null }> => {
+  try {
+    // Check if organization already has a subscription
+    const { data: existingSubscription } = await getSubscription(organizationId);
+
+    if (existingSubscription) {
+      console.log('Organization already has subscription, skipping trial enrollment');
+      return { success: true, error: null };
+    }
+
+    // Get the Individual plan as default trial plan
+    const planResult = await getPlanByName('Individual');
+
+    if (planResult.error || !planResult.data) {
+      console.error('Failed to get Individual plan for trial:', planResult.error);
+      return { success: false, error: 'Individual plan not found' };
+    }
+
+    const individualPlan = planResult.data as SubscriptionPlan;
+
+    // Calculate trial end date (14 days from now)
+    const trialEndDate = new Date();
+    trialEndDate.setDate(trialEndDate.getDate() + 14);
+
+    // Create subscription record with trialing status
+    const { error } = await supabase
+      .from('subscriptions')
+      .insert({
+        organization_id: organizationId,
+        plan_id: individualPlan.id,
+        stripe_subscription_status: 'trialing',
+        current_period_end: trialEndDate.toISOString(),
+        is_active: true,
+        access_blocked: false,
+        has_used_trial: true, // Mark that trial has been used
+        number_of_active_users: 1,
+      } as any);
+
+    if (error) {
+      console.error('Error enrolling in free trial:', error);
+      return { success: false, error: error.message };
+    }
+
+    console.log('Successfully enrolled organization in 14-day free trial');
+    return { success: true, error: null };
+  } catch (error) {
+    console.error('Error enrolling in free trial:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to enroll in free trial'
+    };
+  }
+};
+
 // ============================================================================
 // EXPORT SERVICE OBJECT
 // ============================================================================
@@ -542,7 +602,7 @@ export const stripeService = {
   getInvoices,
 
   // Trial Period Helpers
-  // Note: 14-day free trial is configured in Stripe product settings
-  // and automatically applied during checkout
+  // Note: 14-day free trial auto-enrollment on signup
   getDaysRemaining,
+  enrollInFreeTrial,
 };

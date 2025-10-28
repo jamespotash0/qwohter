@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CreditCard, Loader2, Download, Search, Filter, Check, ArrowLeftRight, X } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -60,6 +61,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   organization,
   userRole
 }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(false); // Never show loading spinner - use cached data
   const [subscription, setSubscription] = useState<any>(() => {
     try {
@@ -110,6 +112,27 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       setLoading(false);
     }
   }, [organization?.id, hasPermission]);
+
+  // Handle success parameter from Stripe Checkout redirect
+  useEffect(() => {
+    const success = searchParams.get('success');
+    if (success === 'true') {
+      toast({
+        title: "Subscription activated!",
+        description: "Your subscription has been successfully activated. Refreshing your billing information...",
+      });
+
+      // Remove success param from URL
+      setSearchParams({});
+
+      // Force refresh billing data to get updated subscription
+      setTimeout(() => {
+        if (organization?.id) {
+          loadBillingData();
+        }
+      }, 2000); // Wait 2 seconds for webhook to process
+    }
+  }, [searchParams]);
 
   // Realtime subscription for subscription_plans
   useEffect(() => {
@@ -316,7 +339,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         },
         body: JSON.stringify({
           organizationId: organization.id,
-          returnUrl: `${window.location.origin}/dashboard/settings?tab=billing`,
+          returnUrl: `${window.location.origin}/settings?tab=billing`,
         }),
       });
 
@@ -387,8 +410,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         organizationId: organization.id,
         planId: plan.id,
         priceId: priceId,
-        successUrl: `${window.location.origin}/dashboard/settings?tab=billing&success=true`,
-        cancelUrl: `${window.location.origin}/dashboard/settings?tab=billing&canceled=true`,
+        successUrl: `${window.location.origin}/settings?tab=billing&success=true`,
+        cancelUrl: `${window.location.origin}/settings?tab=billing&canceled=true`,
         quantity,
       });
 
@@ -766,7 +789,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                       <button
                         onClick={() => {
                           const currentInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
-                            ? (subscription.billing_interval === 'yearly' ? 'Yearly' : 'Monthly')
+                            ? (subscription.billing_interval?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly')
                             : (planIntervals[plan.id] || 'Monthly');
                           setPlanIntervals({
                             ...planIntervals,
@@ -777,7 +800,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                         style={{
                           backgroundColor: (() => {
                             const selectedInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
-                              ? (subscription.billing_interval === 'yearly' ? 'Yearly' : 'Monthly')
+                              ? (subscription.billing_interval?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly')
                               : (planIntervals[plan.id] || 'Monthly');
                             return selectedInterval === 'Yearly' ? '#EE6C4D' : undefined;
                           })()
@@ -788,7 +811,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                           style={{
                             transform: (() => {
                               const selectedInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
-                                ? (subscription.billing_interval === 'yearly' ? 'Yearly' : 'Monthly')
+                                ? (subscription.billing_interval?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly')
                                 : (planIntervals[plan.id] || 'Monthly');
                               return selectedInterval === 'Yearly' ? 'translateX(18px)' : 'translateX(2px)';
                             })()
@@ -805,7 +828,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                   <div>
                     {(() => {
                       const selectedInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
-                        ? (subscription.billing_interval === 'yearly' ? 'Yearly' : 'Monthly')
+                        ? (subscription.billing_interval?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly')
                         : (planIntervals[plan.id] || 'Monthly');
 
                       return selectedInterval === 'Monthly' ? (
@@ -846,9 +869,9 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                   {/* CTA Button */}
                   {(() => {
                     const selectedInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
-                      ? (subscription.billing_interval === 'yearly' ? 'Yearly' : 'Monthly')
+                      ? (subscription.billing_interval?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly')
                       : (planIntervals[plan.id] || 'Monthly');
-                    const currentInterval = subscription?.billing_interval === 'yearly' ? 'Yearly' : 'Monthly';
+                    const currentInterval = subscription?.billing_interval?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly';
                     const isIntervalChanged = isCurrent && planIntervals[plan.id] && selectedInterval !== currentInterval;
 
                     if (isCurrent && !isIntervalChanged) {

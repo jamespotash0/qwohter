@@ -8,10 +8,11 @@ import type { FullAuthState } from '../types';
 
 export const createSignOutAction = (get: () => FullAuthState) => {
   return async () => {
-    const { _setLoading, _setError } = get();
+    const { _setLoading, _setError, _setLoggingOut } = get();
 
     try {
       _setLoading(true);
+      _setLoggingOut(true);
       _setError(null);
 
       const { error } = await supabase.auth.signOut();
@@ -22,6 +23,7 @@ export const createSignOutAction = (get: () => FullAuthState) => {
     } catch (error) {
       console.error('❌ Sign out error:', error);
       _setError(error instanceof Error ? error.message : 'Failed to sign out');
+      _setLoggingOut(false);
       throw error;
     } finally {
       _setLoading(false);
