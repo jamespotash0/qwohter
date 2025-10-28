@@ -1,6 +1,8 @@
-
+//@ts-ignore
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
+//@ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
+//@ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -101,11 +103,11 @@ serve(async (req) => {
     );
 
     // Transform invoices to match expected format
-    const transformedInvoices = invoices.data.map((invoice: { lines: { data: any[]; }; id: any; invoice_pdf: any; created: number; amount_paid: any; status: any; period_start: any; period_end: any; }) => {
+    const transformedInvoices = invoices.data.map((invoice: { lines: { data: any[]; }; id: any; invoice_pdf: any; created: number; amount_paid: any; status: any; period_start: any; period_end: any; amount_refunded?: any; }) => {
       // Get plan name from line items
       const lineItem = invoice.lines.data[0];
       const productId = lineItem?.price?.product as string;
-      const planName = planMap.get(productId) || 'Unknown Plan';
+      const planName = planMap.get(productId) || 'Legacy Plan';
 
       return {
         id: invoice.id,
@@ -116,6 +118,7 @@ serve(async (req) => {
         status: invoice.status || 'unknown',
         period_start: new Date((invoice.period_start || invoice.created) * 1000).toISOString(),
         period_end: new Date((invoice.period_end || invoice.created) * 1000).toISOString(),
+        amount_refunded: invoice.amount_refunded ? (invoice.amount_refunded / 100) : 0, // Convert cents to dollars
       };
     });
 

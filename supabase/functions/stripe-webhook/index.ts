@@ -65,11 +65,12 @@ serve(async (req) => {
           break;
         }
 
-        // Fetch the subscription from Stripe to get billing period
+        // Fetch the subscription from Stripe to get billing period and interval
         let currentPeriodStart = null;
         let currentPeriodEnd = null;
         let cancelAtPeriodEnd = false;
         let subscriptionStatus = 'Active';
+        let billingInterval = 'monthly';
 
         if (stripeSubscriptionId) {
           try {
@@ -78,7 +79,12 @@ serve(async (req) => {
             currentPeriodEnd = new Date(stripeSubscription.current_period_end * 1000).toISOString();
             cancelAtPeriodEnd = stripeSubscription.cancel_at_period_end || false;
             subscriptionStatus = stripeSubscription.status.charAt(0).toUpperCase() + stripeSubscription.status.slice(1);
-            console.log('Retrieved subscription details:', { currentPeriodStart, currentPeriodEnd, subscriptionStatus });
+
+            // Get billing interval from the subscription items
+            const interval = stripeSubscription.items.data[0]?.price?.recurring?.interval;
+            billingInterval = interval === 'year' ? 'yearly' : 'monthly';
+
+            console.log('Retrieved subscription details:', { currentPeriodStart, currentPeriodEnd, subscriptionStatus, billingInterval });
           } catch (err) {
             console.error('Failed to retrieve Stripe subscription:', err);
           }
@@ -102,6 +108,7 @@ serve(async (req) => {
               current_period_start: currentPeriodStart,
               current_period_end: currentPeriodEnd,
               cancel_at_period_end: cancelAtPeriodEnd,
+              billing_interval: billingInterval,
               is_active: true,
               plan_id: planId,
               updated_at: new Date().toISOString(),
@@ -119,6 +126,7 @@ serve(async (req) => {
               stripe_customer_id: stripeCustomerId,
               stripe_subscription_id: stripeSubscriptionId,
               stripe_subscription_status: subscriptionStatus,
+              billing_interval: billingInterval,
               current_period_start: currentPeriodStart,
               current_period_end: currentPeriodEnd,
               cancel_at_period_end: cancelAtPeriodEnd,

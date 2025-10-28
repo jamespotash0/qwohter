@@ -32,6 +32,7 @@ interface Invoice {
   status: string;
   period_start: string;
   period_end: string;
+  amount_refunded?: number;
 }
 
 interface SubscriptionPlan {
@@ -92,7 +93,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       return [];
     }
   });
-  const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
+  const [billingInterval, setBillingInterval] = useState<'Monthly' | 'Yearly'>('Monthly');
+  const [planIntervals, setPlanIntervals] = useState<Record<string, 'Monthly' | 'Yearly'>>({});
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -342,7 +344,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       }
 
       // Determine the appropriate price ID based on billing interval
-      const priceId = billingInterval === 'monthly'
+      const priceId = billingInterval === 'Monthly'
         ? plan.stripe_price_id_monthly
         : plan.stripe_price_id_yearly;
 
@@ -595,7 +597,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   };
 
   const getDisplayPrice = (plan: SubscriptionPlan) => {
-    if (billingInterval === 'monthly') {
+    if (billingInterval === 'Monthly') {
       return plan.price_per_month;
     }
     // For annual, show the monthly equivalent
@@ -633,46 +635,21 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   return (
     <div className="max-w-5xl">
       <div className="space-y-4">
-        {/* Header with Toggle */}
+        {/* Header */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Plan & Billing</h2>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9"
-                onClick={() => setShowCompareModal(true)}
-              >
-                <ArrowLeftRight className="w-4 h-4 mr-2" />
-                Compare plans
-              </Button>
-              {/* Billing Interval Toggle */}
-              <div className="inline-flex h-9 rounded-md border border-gray-300 dark:border-gray-600 p-1 bg-white dark:bg-gray-900">
-                <button
-                  onClick={() => setBillingInterval('monthly')}
-                  className={`px-3 rounded-sm text-sm font-medium transition-all ${
-                    billingInterval === 'monthly'
-                      ? 'bg-[#EE6C4D] text-white shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                  }`}
-                >
-                  Monthly
-                </button>
-                <button
-                  onClick={() => setBillingInterval('annual')}
-                  className={`px-3 rounded-sm text-sm font-medium transition-all ${
-                    billingInterval === 'annual'
-                      ? 'bg-[#EE6C4D] text-white shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                  }`}
-                >
-                  Yearly
-                </button>
-              </div>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9"
+              onClick={() => setShowCompareModal(true)}
+            >
+              <ArrowLeftRight className="w-4 h-4 mr-2" />
+              Compare plans
+            </Button>
           </div>
-          <div className="h-px bg-gray-200 dark:bg-gray-700"></div>
+          <div className="h-px bg-gray-200 dark:bg-gray-700 mb-4"></div>
         </div>
 
       {/* Cancellation Notice & Billing Period Progress Bar wrapper */}
@@ -751,15 +728,49 @@ export const BillingTab: React.FC<BillingTabProps> = ({
           return (
             <Card
               key={plan.id}
-              className="relative card-elevated bg-gray-100 dark:bg-gray-800 border-0 hover:shadow-none hover:transform-none w-[calc(50%-12px)] max-w-[280px]"
+              className="relative card-elevated bg-gray-100 dark:bg-gray-800 border-0 hover:shadow-none hover:transform-none w-[calc(50%-12px)] max-w-[320px]"
             >
               <CardContent className="pt-6 pb-5">
                 <div className="space-y-4">
                   {/* Plan Name */}
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
-                      {plan.display_name}
-                    </h3>
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                        {plan.display_name}
+                      </h3>
+                      <button
+                        onClick={() => {
+                          const currentInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
+                            ? (subscription.billing_interval === 'yearly' ? 'Yearly' : 'Monthly')
+                            : (planIntervals[plan.id] || 'Monthly');
+                          setPlanIntervals({
+                            ...planIntervals,
+                            [plan.id]: currentInterval === 'Monthly' ? 'Yearly' : 'Monthly'
+                          });
+                        }}
+                        className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none bg-gray-200 dark:bg-gray-700"
+                        style={{
+                          backgroundColor: (() => {
+                            const selectedInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
+                              ? (subscription.billing_interval === 'yearly' ? 'Yearly' : 'Monthly')
+                              : (planIntervals[plan.id] || 'Monthly');
+                            return selectedInterval === 'Yearly' ? '#EE6C4D' : undefined;
+                          })()
+                        }}
+                      >
+                        <span
+                          className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                          style={{
+                            transform: (() => {
+                              const selectedInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
+                                ? (subscription.billing_interval === 'yearly' ? 'Yearly' : 'Monthly')
+                                : (planIntervals[plan.id] || 'Monthly');
+                              return selectedInterval === 'Yearly' ? 'translateX(18px)' : 'translateX(2px)';
+                            })()
+                          }}
+                        />
+                      </button>
+                    </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {plan.description}
                     </p>
@@ -767,71 +778,116 @@ export const BillingTab: React.FC<BillingTabProps> = ({
 
                   {/* Price */}
                   <div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                        ${displayPrice}
-                      </span>
-                      <span className="text-gray-500 dark:text-gray-400 text-xs">
-                        / user / month
-                      </span>
-                    </div>
-                    {billingInterval === 'annual' && (
-                      <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
-                        Billed annually (${Number.isInteger(plan.price_per_yearly) ? plan.price_per_yearly : plan.price_per_yearly.toFixed(2)}{!isIndividualPlan ? ' per user' : ''}/year)
-                      </p>
-                    )}
+                    {(() => {
+                      const selectedInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
+                        ? (subscription.billing_interval === 'yearly' ? 'Yearly' : 'Monthly')
+                        : (planIntervals[plan.id] || 'Monthly');
+
+                      return selectedInterval === 'Monthly' ? (
+                        <>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                              ${plan.price_per_month}
+                            </span>
+                            <span className="text-gray-500 dark:text-gray-400 text-xs">
+                              {isIndividualPlan ? '/ month' : '/ user / month'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Billed monthly
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                              ${(() => {
+                                const monthlyEquivalent = plan.price_per_yearly / 12;
+                                return Number.isInteger(monthlyEquivalent) ? monthlyEquivalent : monthlyEquivalent.toFixed(2);
+                              })()}
+                            </span>
+                            <span className="text-gray-500 dark:text-gray-400 text-xs">
+                              {isIndividualPlan ? '/ month' : '/ user / month'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Billed annually (${Number.isInteger(plan.price_per_yearly) ? plan.price_per_yearly : plan.price_per_yearly.toFixed(2)}{isIndividualPlan ? '' : '/user'}/year) <span className="text-green-600 dark:text-green-400">(save {Math.round((1 - (plan.price_per_yearly / 12) / plan.price_per_month) * 100)}%)</span>
+                          </p>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* CTA Button */}
-                  {isCurrent ? (
-                    // Current plan - show subtle button
-                    <Button
-                      className="w-full bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 cursor-default pointer-events-none"
-                    >
-                      Current Plan
-                    </Button>
-                  ) : isIndividualDisabled ? (
-                    // Individual plan disabled due to multiple users
-                    <div>
-                      <Button
-                        className="w-full bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed"
-                        disabled
-                      >
-                        Not Available
-                      </Button>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-                        Individual plan requires 1 user
-                      </p>
-                    </div>
-                  ) : (
-                    // Other plans - show Switch Plan or Choose Plan
-                    <Button
-                      className="w-full bg-[#EE6C4D] hover:bg-[#d85a3d] text-white flex items-center justify-center gap-2"
-                      onClick={() => handleUpgradePlan(plan)}
-                      disabled={isProcessing}
-                    >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Processing...</span>
-                        </>
-                      ) : subscription?.cancel_at_period_end ? (
-                        // If current subscription is canceled, show "Switch Plan"
-                        <>
-                          <ArrowLeftRight className="w-4 h-4" />
-                          <span>Switch Plan</span>
-                        </>
-                      ) : subscription ? (
-                        // If subscription is active, show "Switch plan"
-                        <>
-                          <ArrowLeftRight className="w-4 h-4" />
-                          <span>Switch plan</span>
-                        </>
-                      ) : (
-                        <span>Choose plan</span>
-                      )}
-                    </Button>
-                  )}
+                  {(() => {
+                    const selectedInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
+                      ? (subscription.billing_interval === 'yearly' ? 'Yearly' : 'Monthly')
+                      : (planIntervals[plan.id] || 'Monthly');
+                    const currentInterval = subscription?.billing_interval === 'yearly' ? 'Yearly' : 'Monthly';
+                    const isIntervalChanged = isCurrent && planIntervals[plan.id] && selectedInterval !== currentInterval;
+
+                    if (isCurrent && !isIntervalChanged) {
+                      // Current plan with same interval - show "Current Plan"
+                      return (
+                        <Button
+                          className="w-full bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 cursor-default pointer-events-none"
+                        >
+                          Current Plan
+                        </Button>
+                      );
+                    } else if (isIndividualDisabled) {
+                      // Individual plan disabled due to multiple users
+                      return (
+                        <div>
+                          <Button
+                            className="w-full bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed"
+                            disabled
+                          >
+                            Not Available
+                          </Button>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+                            Individual plan requires 1 user
+                          </p>
+                        </div>
+                      );
+                    } else {
+                      // Other plans or current plan with interval changed - show Switch Plan or Choose Plan
+                      return (
+                        <Button
+                          className="w-full bg-[#EE6C4D] hover:bg-[#d85a3d] text-white flex items-center justify-center gap-2"
+                          onClick={() => handleUpgradePlan(plan)}
+                          disabled={isProcessing}
+                        >
+                          {isProcessing ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Processing...</span>
+                            </>
+                          ) : isIntervalChanged ? (
+                            // If current plan but interval changed, show "Switch Plan"
+                            <>
+                              <ArrowLeftRight className="w-4 h-4" />
+                              <span>Switch Plan</span>
+                            </>
+                          ) : subscription?.cancel_at_period_end ? (
+                            // If current subscription is canceled, show "Switch Plan"
+                            <>
+                              <ArrowLeftRight className="w-4 h-4" />
+                              <span>Switch Plan</span>
+                            </>
+                          ) : subscription ? (
+                            // If subscription is active, show "Switch plan"
+                            <>
+                              <ArrowLeftRight className="w-4 h-4" />
+                              <span>Switch plan</span>
+                            </>
+                          ) : (
+                            <span>Choose plan</span>
+                          )}
+                        </Button>
+                      );
+                    }
+                  })()}
 
                   {/* Features List */}
                   {featuresArray.length > 0 && (
@@ -894,19 +950,17 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                     <Checkbox
                       checked={selectedInvoices.length === invoices.length && invoices.length > 0}
                       onCheckedChange={toggleSelectAll}
+                      className="data-[state=checked]:bg-[#EE6C4D] data-[state=checked]:border-[#EE6C4D]"
                     />
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Plan Name
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Amounts
+                    Amount
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Purchase Date
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    End Date
+                    Date
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Status
@@ -924,10 +978,11 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                         <Checkbox
                           checked={selectedInvoices.includes(invoice.id)}
                           onCheckedChange={() => toggleInvoiceSelection(invoice.id)}
+                          className="data-[state=checked]:bg-[#EE6C4D] data-[state=checked]:border-[#EE6C4D]"
                         />
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-900 dark:text-white font-medium">
-                        {invoice.plan_name || 'Individual Plan'}
+                        {invoice.plan_name}
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-900 dark:text-white">
                         $ {invoice.amount.toFixed(2)}
@@ -935,29 +990,35 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                       <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
                         {formatDate(invoice.billing_date)}
                       </td>
-                      <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
-                        {formatDate(invoice.period_end)}
-                      </td>
                       <td className="px-4 py-4">
-                        {invoice.status === 'paid' || invoice.status === 'Success' ? (
-                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-0">
-                            <span className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                              Success
-                            </span>
-                          </Badge>
-                        ) : invoice.status === 'Processing' ? (
-                          <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400 border-0">
-                            <span className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
-                              Processing
-                            </span>
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">
-                            {invoice.status}
-                          </Badge>
-                        )}
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">
+                          {(() => {
+                            // Check for refunds first
+                            if (invoice.amount_refunded && invoice.amount_refunded > 0) {
+                              if (invoice.amount_refunded >= invoice.amount) {
+                                return 'Refunded';
+                              } else {
+                                return 'Partially Refunded';
+                              }
+                            }
+                            // Handle standard statuses
+                            switch (invoice.status.toLowerCase()) {
+                              case 'paid':
+                              case 'success':
+                                return 'Paid';
+                              case 'open':
+                                return 'Open';
+                              case 'draft':
+                                return 'Draft';
+                              case 'void':
+                                return 'Voided';
+                              case 'uncollectible':
+                                return 'Uncollectible';
+                              default:
+                                return invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1);
+                            }
+                          })()}
+                        </span>
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-2">
@@ -986,7 +1047,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                       No invoices found
                     </td>
                   </tr>
@@ -1192,7 +1253,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                 <div key={plan.id} className="text-center">
                   <h3 className="font-bold text-lg text-gray-900 dark:text-white">{plan.display_name}</h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    ${billingInterval === 'monthly' ? plan.price_per_month : (() => {
+                    ${billingInterval === 'Monthly' ? plan.price_per_month : (() => {
                       const monthlyEquivalent = plan.price_per_yearly / 12;
                       return Number.isInteger(monthlyEquivalent) ? monthlyEquivalent : monthlyEquivalent.toFixed(2);
                     })()} / user / month
