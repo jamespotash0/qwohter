@@ -149,8 +149,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     // Sign out (this will clear auth state)
     await signOut();
 
-    // Navigate to sign-in page (using React Router for smooth navigation)
-    navigate('/sign-in', { replace: true });
+    // Force page reload to ensure clean state after logout
+    window.location.href = '/sign-in';
   };
 
   // For public routes, render children directly without layout
@@ -169,28 +169,24 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     return <>{children}</>;
   }
 
-  // Only show loading on first initialization, not on subsequent navigations
+  // Show loading only for auth initialization
   if (!isInitialized) {
     return (
-      <SidebarProvider defaultOpen={false}>
-        <div className="h-screen flex w-full bg-[var(--content-bg)] overflow-hidden">
-          <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
-          <main className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-12 h-12 border-4 border-[var(--content-button-primary-bg)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-[var(--content-muted-text)]">Loading...</p>
-            </div>
-          </main>
+      <div className="h-screen w-full bg-[var(--content-bg)] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[var(--content-button-primary-bg)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[var(--content-muted-text)]">Loading...</p>
         </div>
-      </SidebarProvider>
+      </div>
     );
   }
 
-  // Main layout with persistent sidebar
-  // Wrap content with subscription paywall if organization exists
-  // Exclude settings and pending-approval pages from paywall
+  // Check if we need to wait for subscription check on protected routes
   const excludedPaths = ['/settings', '/pending-approval'];
   const shouldApplyPaywall = currentOrganization?.id && !excludedPaths.includes(location.pathname);
+
+  // Main layout with persistent sidebar
+  // Wrap content with subscription paywall if organization exists
   const content = shouldApplyPaywall ? (
     <SubscriptionPaywall organizationId={currentOrganization.id}>
       {children}
@@ -204,24 +200,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       <div className="h-screen flex w-full bg-[var(--content-bg)] overflow-hidden">
         <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Top Header Bar - Commented out for now */}
-          {/* <header className="h-16 bg-white dark:bg-[#1A1C23] border-b-2 border-gray-100 dark:border-[var(--sidebar-border)] flex items-center px-8 shrink-0 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-1 bg-[var(--sidebar-icon-active)] rounded-full"></div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-                {location.pathname === '/dashboard' && 'Dashboard'}
-                {location.pathname === '/quotes' && 'Quotes'}
-                {location.pathname === '/forms' && 'Forms'}
-                {location.pathname === '/board' && 'Board'}
-                {location.pathname === '/analytics' && 'Analytics'}
-                {location.pathname === '/team' && 'Team'}
-                {location.pathname === '/settings' && 'Settings'}
-                {location.pathname.startsWith('/forms/builder/') && 'Form Builder'}
-                {location.pathname.startsWith('/quotes/new') && 'New Quote'}
-              </h2>
-            </div>
-          </header> */}
-
           {/* Main Content */}
           <main className="flex-1 overflow-hidden">
             {isFullScreenPage ? (

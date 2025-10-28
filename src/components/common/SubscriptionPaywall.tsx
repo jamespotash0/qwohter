@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CreditCard, Loader2, AlertCircle, LogOut } from 'lucide-react';
+import { CreditCard, AlertCircle, LogOut, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { stripeService } from '@/services/stripeService';
@@ -29,14 +29,39 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   const cachedStatus = useOrganizationStore((state) => state.subscriptionStatus);
   const setSubscriptionStatus = useOrganizationStore((state) => state.setSubscriptionStatus);
 
+  // Try to get from localStorage if Zustand store is empty (e.g., after page reload)
+  const getInitialStatus = () => {
+    if (cachedStatus) return cachedStatus;
+
+    try {
+      const stored = localStorage.getItem(`subscription_${organizationId}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Check if cache is less than 5 minutes old
+        const cacheAge = Date.now() - (parsed.timestamp || 0);
+        if (cacheAge < 5 * 60 * 1000) { // 5 minutes
+          return { hasAccess: parsed.hasAccess, reason: parsed.reason };
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse cached subscription:', e);
+    }
+    return null;
+  };
+
+  const initialStatus = getInitialStatus();
+
   // Initialize with cached values if available
-  const [loading, setLoading] = useState(!cachedStatus);
-  const [hasAccess, setHasAccess] = useState(cachedStatus?.hasAccess ?? false);
-  const [blockReason, setBlockReason] = useState<string>(cachedStatus?.reason ?? '');
+  const [loading, setLoading] = useState(!initialStatus);
+  const [hasAccess, setHasAccess] = useState(initialStatus?.hasAccess ?? false);
+  const [blockReason, setBlockReason] = useState<string>(initialStatus?.reason ?? '');
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
-    checkSubscription();
+    // Only check if we don't have ANY cached data (neither Zustand nor localStorage)
+    if (!initialStatus) {
+      checkSubscription();
+    }
 
     // Set up realtime subscription to detect subscription changes
     const channel = supabase
@@ -51,7 +76,7 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
         },
         (payload) => {
           console.log('Subscription changed, rechecking access:', payload);
-          // Re-check subscription when it changes
+          // Re-check subscription when it changes (no loading delay for realtime updates)
           checkSubscription();
         }
       )
@@ -63,13 +88,31 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   }, [organizationId]);
 
   const checkSubscription = async () => {
+    const showLoading = !cachedStatus && !initialStatus;
+
     try {
+      // Start timing for minimum delay
+      const startTime = Date.now();
+      const MIN_LOADING_TIME = 2000; // 2 seconds minimum
+
       // Only show loading if we don't have cached data
-      if (!cachedStatus) {
+      if (showLoading) {
         setLoading(true);
       }
 
       const { isValid, reason } = await stripeService.hasValidSubscription(organizationId);
+
+      // Only apply minimum delay if we showed loading spinner
+      if (showLoading) {
+        // Calculate remaining time to meet minimum delay
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime);
+
+        // Wait for remaining time if needed (so spinner shows for full 2 seconds)
+        if (remainingTime > 0) {
+          await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
+      }
 
       setHasAccess(isValid);
       setBlockReason(reason || '');
@@ -79,6 +122,13 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
         hasAccess: isValid,
         reason: reason || '',
       });
+
+      // Also persist to localStorage with timestamp
+      localStorage.setItem(`subscription_${organizationId}`, JSON.stringify({
+        hasAccess: isValid,
+        reason: reason || '',
+        timestamp: Date.now(),
+      }));
     } catch (error) {
       console.error('Error checking subscription:', error);
       setHasAccess(false);
@@ -105,22 +155,21 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
     }
   };
 
+  // Show full-screen loading spinner while checking subscription
   if (loading) {
     return (
-      <>
-        {children}
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm">
-          <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
+      <div className="h-screen w-full bg-[var(--content-bg)] flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-orange-600 mx-auto mb-4" />
+          <p className="text-[var(--content-muted-text)]">Checking subscription...</p>
         </div>
-      </>
+      </div>
     );
   }
 
   if (!hasAccess) {
     return (
-      <>
-        {children}
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xl bg-white/30 dark:bg-gray-900/30">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--content-bg)]">
           <Card className="max-w-md w-full mx-4 shadow-2xl border-gray-200">
             <CardHeader className="text-center pb-4">
               <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -156,8 +205,7 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
               </div>
             </CardContent>
           </Card>
-        </div>
-      </>
+      </div>
     );
   }
 

@@ -5,6 +5,7 @@ import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 // import { Card, CardContent } from "@/components/ui/card";
 import { QwohterLogo } from "@/components/common/QwohterLogo";
 import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
@@ -86,11 +87,13 @@ export function AppSidebar({
   const user = useAuthStore((state) => state.user);
   const userProfile = useAuthStore((state) => state.profile);
   const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
+  const isAuthInitialized = useAuthStore((state) => state.isInitialized);
   const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
   const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
   const members = useOrganizationStore((state) => state.members);
+  const fetchMembers = useOrganizationStore((state) => state.fetchMembers);
   const setOrganization = useOrganizationStore((state) => state.setOrganization);
-  const setCurrentUserRole = useOrganizationStore((state) => state.setCurrentUserRole);
+  const setCurrentUserRole = useOrganizationStore((state) => state.setCurrentUserRole); 
 
   // Generate user initials
   const getUserInitials = (name?: string, email?: string) => {
@@ -103,6 +106,10 @@ export function AppSidebar({
     return 'U';
   };
 
+  // Track if we're loading members for the first time
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [hasMembersLoaded, setHasMembersLoaded] = useState(members.length > 0);
+
   const userDisplayName = userProfile?.full_name || user?.email || 'User';
   const userInitials = getUserInitials(userProfile?.full_name ?? undefined, user?.email);
   const effectiveRole = currentUserRole || 'Member';
@@ -114,10 +121,37 @@ export function AppSidebar({
   // Display department if available, otherwise show role
   const displayText = userDepartment || effectiveRole;
 
+  // Debug: Log when members or loading state changes
+  // Only show skeleton if auth not initialized OR if we're loading members for the first time (never loaded before)
+  const shouldShowSkeleton = !isAuthInitialized || (isLoadingMembers && !hasMembersLoaded);
+  console.log('[AppSidebar Footer] Render state:', {
+    isAuthInitialized,
+    isLoadingMembers,
+    hasMembersLoaded,
+    membersCount: members.length,
+    hasCurrentMember: !!currentMember,
+    displayText,
+    shouldShowSkeleton,
+  });
+
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Fetch members when organization is loaded
+  useEffect(() => {
+    if (currentOrganization?.id && members.length === 0 && !isLoadingMembers) {
+      setIsLoadingMembers(true);
+      fetchMembers(currentOrganization.id).finally(() => {
+        setIsLoadingMembers(false);
+        setHasMembersLoaded(true);
+      });
+    } else if (members.length > 0 && !hasMembersLoaded) {
+      // If members are already populated (from cache), mark as loaded
+      setHasMembersLoaded(true);
+    }
+  }, [currentOrganization?.id, members.length, fetchMembers, isLoadingMembers, hasMembersLoaded]);
 
   // Track path changes for animations
   useEffect(() => {
@@ -559,7 +593,26 @@ export function AppSidebar({
       <SidebarFooter className="p-2 pb-4 transition-all duration-300">
         {!isLoggingOut && (
           <>
-            {!isCollapsed ? (
+            {(!isAuthInitialized || (isLoadingMembers && !hasMembersLoaded)) ? (
+              // Loading skeleton only while auth initializes or loading members for the very first time
+              !isCollapsed ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3">
+                    <Skeleton className="h-9 w-9 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex justify-center p-2">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                  </div>
+                </div>
+              )
+            ) : !isCollapsed ? (
               <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
               {/* User Profile Section */}
                 <div className="flex items-center justify-between p-3 rounded-xl group transition-all duration-200">

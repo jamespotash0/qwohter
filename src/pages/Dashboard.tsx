@@ -34,6 +34,7 @@ import {
 
 import { useOrganizations } from "@/hooks/useOrganizations";
 import { useQuotesStore } from "@/stores/quotes/quotesStore";
+import { useOrganizationStore } from "@/stores/organization/organizationStore";
 import { useAuthStore } from "@/stores/auth/authStore";
 import { quoteActivityService, type QuoteActivity } from "@/services/quoteActivityService";
 import { AddReminderModal } from "@/components/features/reminders/AddReminderModal";
@@ -56,15 +57,13 @@ const Dashboard = () => {
   const profile = useAuthStore((state) => state.profile);
 
   const [recentActivities, setRecentActivities] = useState<QuoteActivity[]>([]);
-  const [organizationId, setOrganizationId] = useState<string | null>(() => {
-    // Initialize from localStorage cache to prevent refetch
-    try {
-      const cached = localStorage.getItem('cached_organization_id');
-      return cached && cached !== 'null' ? cached : null;
-    } catch {
-      return null;
-    }
-  });
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
+
+  // Get organization ID from the store instead of separate localStorage cache
+  const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
+  const organizationId = currentOrganization?.id || null;
+
+  console.log('[Dashboard] Using organization:', { id: organizationId, name: currentOrganization?.name });
   const [showAddReminderModal, setShowAddReminderModal] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -96,63 +95,44 @@ const Dashboard = () => {
   // Always prefer cached data to prevent flashing
   const effectiveProfile = cachedProfile || (profile?.id ? profile : null);
 
-  // Get organization ID for activity fetching
-  useEffect(() => {
-    const getOrganizationId = async () => {
-      if (!user?.id) {
-        return;
-      }
-
-      // Skip if we already have organizationId (from cache or previous fetch)
-      const cachedOrgId = localStorage.getItem('cached_organization_id');
-      if (cachedOrgId && cachedOrgId !== 'null') {
-        setOrganizationId(cachedOrgId);
-        return;
-      }
-
-      const { data } = await supabase
-        .from('memberships')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (data && 'organization_id' in data) {
-        const orgId = (data as any).organization_id;
-        setOrganizationId(orgId);
-        localStorage.setItem('cached_organization_id', orgId);
-      }
-    };
-    getOrganizationId();
-  }, [user?.id]);
+  // Organization ID is now pulled directly from the store above, no need for separate fetch
 
   // Fetch quotes when we have organization ID
   useEffect(() => {
-    if (organizationId) {
+    // Only fetch if user is authenticated and we have an organization ID
+    if (user && organizationId) {
       fetchQuotes(organizationId);
     }
-  }, [organizationId, fetchQuotes]);
+  }, [user, organizationId, fetchQuotes]);
 
   // Fetch recent activities from database and subscribe to real-time updates
   useEffect(() => {
     const fetchRecentActivities = async () => {
-      if (!organizationId) {
+      if (!user || !organizationId) {
+        console.log('[Dashboard] Skipping activities fetch - no user or org');
+        setActivitiesLoading(false);
         return;
       }
 
-      const { data } = await quoteActivityService.getRecentActivities({
+      console.log('[Dashboard] Fetching activities for org:', organizationId);
+      setActivitiesLoading(true);
+      const { data, error } = await quoteActivityService.getRecentActivities({
         organizationId,
         limit: 100
       });
 
+      console.log('[Dashboard] Activities fetch result:', { data, error, count: data?.length });
+
       if (data) {
         setRecentActivities(data);
       }
+      setActivitiesLoading(false);
     };
 
     fetchRecentActivities();
 
     // Subscribe to real-time quote_activities updates
-    if (!organizationId) return;
+    if (!user || !organizationId) return;
 
 
     const channel = supabase
@@ -184,12 +164,12 @@ const Dashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [organizationId]);
+  }, [user, organizationId]);
 
   // Fetch reminders and subscribe to real-time updates
   useEffect(() => {
     const fetchReminders = async () => {
-      if (!organizationId) {
+      if (!user || !organizationId) {
         return;
       }
 
@@ -226,7 +206,7 @@ const Dashboard = () => {
     fetchReminders();
 
     // Subscribe to real-time reminders updates
-    if (!organizationId) return;
+    if (!user || !organizationId) return;
 
 
     const channel = supabase
@@ -270,7 +250,7 @@ const Dashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [organizationId]);
+  }, [user, organizationId]);
 
   // Reminder action handlers
   const handleCompleteReminder = async (reminderId: string, quoteId?: string, quoteNumber?: string, projectName?: string) => {
@@ -1075,7 +1055,7 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="relative pb-4 flex-1 flex flex-col overflow-hidden">
-              {quotesLoading ? (
+              {activitiesLoading ? (
                 <div className="space-y-2 flex-1 overflow-y-auto">
                   {[...Array(4)].map((_, i) => (
                     <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800">

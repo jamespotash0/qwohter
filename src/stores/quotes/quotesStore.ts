@@ -1216,9 +1216,6 @@ export const useQuotesStore = create<QuotesState>()(
               })
               .map(q => q.id) || [];
 
-            console.log('Quote IDs in version group:', quoteIdsInGroup.map(id => id.slice(0, 8)));
-            console.log('Selected quote ID:', quoteId.slice(0, 8));
-
             // Update all quotes in the group except the selected one to is_main_version = false
             if (quoteIdsInGroup.length > 1) {
               const otherQuoteIds = quoteIdsInGroup.filter(id => id !== quoteId);
@@ -1246,12 +1243,12 @@ export const useQuotesStore = create<QuotesState>()(
               .select('id, proposal_number, is_main_version, status')
               .in('id', quoteIdsInGroup) as { data: Array<{ id: string; proposal_number: string; is_main_version: boolean; status: string }> | null };
 
-            console.log('Quotes after update:', updatedQuotes?.map(q => ({
-              id: q.id.slice(0, 8),
-              proposal_number: q.proposal_number,
-              is_main_version: q.is_main_version,
-              status: q.status
-            })));
+            // console.log('Quotes after update:', updatedQuotes?.map(q => ({
+            //   id: q.id.slice(0, 8),
+            //   proposal_number: q.proposal_number,
+            //   is_main_version: q.is_main_version,
+            //   status: q.status
+            // })));
 
             // Update local state for all quotes in this group
             set((state) => {
@@ -1284,18 +1281,18 @@ export const useQuotesStore = create<QuotesState>()(
                 return q;
               });
 
-              console.log('Quotes after local update:', state.quotes
-                .filter(q => {
-                  const qBase = q.proposal_number.includes('.')
-                    ? q.proposal_number.split('.')[0]
-                    : q.proposal_number;
-                  return qBase === baseProposalNumber;
-                })
-                .map(q => ({
-                  id: q.id.slice(0, 8),
-                  proposal_number: q.proposal_number,
-                  is_main_version: q.is_main_version
-                })));
+              // console.log ('Quotes after local update:', state.quotes
+              //   .filter(q => {
+              //     const qBase = q.proposal_number.includes('.')
+              //       ? q.proposal_number.split('.')[0]
+              //       : q.proposal_number;
+              //     return qBase === baseProposalNumber;
+              //   })
+              //   .map(q => ({
+              //     id: q.id.slice(0, 8),
+              //     proposal_number: q.proposal_number,
+              //     is_main_version: q.is_main_version
+              //   })));
             });
 
             // Handle project board updates
@@ -1315,13 +1312,13 @@ export const useQuotesStore = create<QuotesState>()(
               )
               .maybeSingle();
 
-            console.log('Project board logic:', {
-              existingProject,
-              quoteId,
-              quoteStatus: quote.status,
-              proposalNumber: quote.proposal_number,
-              isMainVersion: quote.is_main_version
-            });
+            // console.log('Project board logic:', {
+            //   existingProject,
+            //   quoteId,
+            //   quoteStatus: quote.status,
+            //   proposalNumber: quote.proposal_number,
+            //   isMainVersion: quote.is_main_version
+            // });
 
             if (existingProject) {
               // If new main version is Won, update the project
@@ -1393,26 +1390,32 @@ export const useQuotesStore = create<QuotesState>()(
         clearError: () => set({ error: null }),
 
         // Reset store to initial state (for sign out)
-        reset: () => set({
-          quotes: [],
-          currentQuote: null,
-          isLoading: false,
-          isInitialized: false,
-          error: null,
-          isRealtimeConnected: false,
-          filters: {
-            search: '',
-            status: '',
-            quoteSource: '',
-            createdBy: '',
-            dateRange: [null, null]
-          },
-          pagination: {
-            page: 1,
-            pageSize: 50,
-            total: 0
-          }
-        }),
+        reset: () => {
+          // Unsubscribe from realtime before resetting
+          const { unsubscribeFromRealtime } = get();
+          unsubscribeFromRealtime();
+
+          set({
+            quotes: [],
+            currentQuote: null,
+            isLoading: false,
+            isInitialized: false,
+            error: null,
+            isRealtimeConnected: false,
+            filters: {
+              search: '',
+              status: '',
+              quoteSource: '',
+              createdBy: '',
+              dateRange: [null, null]
+            },
+            pagination: {
+              page: 1,
+              pageSize: 50,
+              total: 0
+            }
+          });
+        },
 
         // Internal setters
         _setQuotes: (quotes: Quote[]) => set({ quotes }),

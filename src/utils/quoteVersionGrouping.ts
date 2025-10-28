@@ -107,19 +107,6 @@ export function groupQuotesByVersion(quotes: Quote[]): QuoteVersionGroup[] {
     const latestVersion = sorted[sorted.length - 1]; // Truly latest version
     const mainVersion = markedMainVersion || wonVersion || baseVersion || latestVersion;
 
-    console.log(`Version group ${baseNumber}:`, {
-      versions: versions.map(v => ({
-        proposal_number: v.proposal_number,
-        is_main_version: v.is_main_version,
-        status: v.status
-      })),
-      markedMainVersion: markedMainVersion?.proposal_number,
-      wonVersion: wonVersion?.proposal_number,
-      baseVersion: baseVersion?.proposal_number,
-      latestVersion: latestVersion?.proposal_number,
-      selectedMainVersion: mainVersion.proposal_number
-    });
-
     // Calculate status summary
     const statusSummary = {
       won: versions.filter(v => v.status === 'Won').length,

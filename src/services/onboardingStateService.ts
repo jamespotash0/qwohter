@@ -88,19 +88,20 @@ export const onboardingStateHelpers = {
         .from('user_onboarding_progress')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          // No record found - user hasn't started onboarding or completed it
-          return null;
-        }
         console.error('Error fetching onboarding progress:', error);
         throw error;
       }
 
+      // No record found - user hasn't started onboarding or completed it
+      if (!data) {
+        return null;
+      }
+
       // Check if progress has expired
-      if (data && new Date(data.expires_at) < new Date()) {
+      if (new Date(data.expires_at) < new Date()) {
         await onboardingStateHelpers.clearOnboardingProgress(userId);
         return null;
       }
@@ -285,11 +286,11 @@ export const onboardingStateHelpers = {
         // Check if organization has company info
         const { data: org } = await supabase
           .from('organizations')
-          .select('id, phone, address')
+          .select('id, phone_number, company_address')
           .eq('id', membership.organization_id)
           .single();
 
-        if (org && (!org.phone || !org.address)) {
+        if (org && (!org.phone_number || !org.company_address)) {
           return 'company-info'; // Owner/Admin needs to complete company info
         }
 
