@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, AlertTriangle, Edit2, RefreshCw } from 'lucide-react';
+import { Mail, AlertTriangle, Edit2, RefreshCw, LogOut } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -180,6 +180,19 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      window.location.href = '/';
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to logout. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -422,7 +435,43 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
           </div>
         </div>
 
-            {/* Delete Account Section - Only show for non-Owners */}
+          </div>
+        </div>
+
+        {/* Logout Section */}
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Logout</h2>
+          <div className="h-px bg-gray-200 dark:bg-gray-700 mb-2"></div>
+
+          <div className="space-y-1">
+            <div className="flex items-start justify-between py-4 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+              <div className="flex-1 pr-8">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Sign out</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                  Sign out of your account on this device
+                </p>
+              </div>
+              <div className="flex items-center gap-3 min-w-[480px] justify-end">
+                <Button
+                  size="sm"
+                  onClick={handleLogout}
+                  className="h-9 px-6 bg-red-600 hover:bg-red-700 text-white border border-red-700 shadow-sm"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Delete Account Section - Only show for non-Owners */}
+        {userRole !== 'Owner' && (
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Danger Zone</h2>
+            <div className="h-px bg-gray-200 dark:bg-gray-700 mb-2"></div>
+
+            <div className="space-y-1">
             {userRole !== 'Owner' && (
               <div className="flex items-start justify-between py-4 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
             <div className="flex-1 pr-8">
@@ -496,8 +545,9 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
             </div>
               </div>
             )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

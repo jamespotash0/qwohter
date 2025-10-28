@@ -70,7 +70,7 @@ serve(async (req) => {
         let currentPeriodEnd = null;
         let cancelAtPeriodEnd = false;
         let subscriptionStatus = 'Active';
-        let billingInterval = 'monthly';
+        let billingInterval = 'Monthly';
 
         if (stripeSubscriptionId) {
           try {
@@ -78,11 +78,14 @@ serve(async (req) => {
             currentPeriodStart = new Date(stripeSubscription.current_period_start * 1000).toISOString();
             currentPeriodEnd = new Date(stripeSubscription.current_period_end * 1000).toISOString();
             cancelAtPeriodEnd = stripeSubscription.cancel_at_period_end || false;
+
+            // Stripe statuses are: trialing, active, incomplete, incomplete_expired, past_due, canceled, or unpaid
+            // Capitalize first letter for database storage
             subscriptionStatus = stripeSubscription.status.charAt(0).toUpperCase() + stripeSubscription.status.slice(1);
 
             // Get billing interval from the subscription items
             const interval = stripeSubscription.items.data[0]?.price?.recurring?.interval;
-            billingInterval = interval === 'year' ? 'yearly' : 'monthly';
+            billingInterval = interval === 'year' ? 'Yearly' : 'Monthly';
 
             console.log('Retrieved subscription details:', { currentPeriodStart, currentPeriodEnd, subscriptionStatus, billingInterval });
           } catch (err) {

@@ -1,9 +1,8 @@
-import { LogOut, CreditCard, Clock } from "lucide-react";
-import { House, FileText, ChartBar, Users, List, Gear, Kanban, Sidebar as SidebarIcon, DotsThree, Lock, SquaresFour, Article } from "@phosphor-icons/react";
+import { Clock } from "lucide-react";
+import { House, FileText, ChartBar, Users, List, Gear, Kanban, Sidebar as SidebarIcon, Lock, SquaresFour, Article } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 // import { Card, CardContent } from "@/components/ui/card";
 import { QwohterLogo } from "@/components/common/QwohterLogo";
@@ -360,65 +359,17 @@ export function AppSidebar({
                   </p>
                 </div>
               </div>
-
-              {/* Dropdown Menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 rounded-lg text-[var(--sidebar-user-text)] hover:text-[var(--sidebar-user-text)] hover:bg-[var(--sidebar-user-hover-bg)] opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 active:scale-95"
-                  >
-                    <DotsThree size={20} weight="bold" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem
-                    onClick={onLogout}
-                    className="flex items-center gap-2 text-destructive hover:bg-[var(--sidebar-nav-bg-hover)] cursor-pointer transition-all duration-200"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
         ) : (
           <div className="space-y-3 animate-in fade-in zoom-in-50 duration-300">
             {/* User Avatar Collapsed */}
-            <div className="flex justify-center">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="h-10 w-10 p-0 rounded-xl hover:bg-[var(--sidebar-user-hover-bg)] transition-all duration-200 hover:scale-110 active:scale-95"
-                  >
-                    <Avatar className="h-8 w-8 ring-2 ring-[var(--sidebar-user-avatar-bg)] transition-all duration-300 hover:ring-4">
-                      <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-xs font-semibold">
-                        {userInitials}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <div className="px-2 py-1.5 border-b">
-                    <p className="text-sm font-inter font-medium text-text-primary">
-                      {userDisplayName}
-                    </p>
-                    <p className="text-xs font-inter text-text-muted">
-                      {effectiveRole}
-                    </p>
-                  </div>
-                  <DropdownMenuItem
-                    onClick={onLogout}
-                    className="flex items-center gap-2 text-destructive hover:bg-[var(--sidebar-nav-bg-hover)] cursor-pointer mt-1 transition-all duration-200"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <div className="flex justify-center p-3">
+              <Avatar className="h-8 w-8 ring-2 ring-[var(--sidebar-user-avatar-bg)] transition-all duration-300">
+                <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-xs font-semibold">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
             </div>
           </div>
         )}
