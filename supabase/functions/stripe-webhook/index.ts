@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
 };
-
+//@ts-ignore
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -15,15 +15,18 @@ serve(async (req) => {
   }
 
   try {
+    //@ts-ignore
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
       apiVersion: '2023-10-16',
     });
-
+    //@ts-ignore
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    //@ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const signature = req.headers.get('stripe-signature');
+    //@ts-ignore
     const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';
 
     // Get raw body for signature verification

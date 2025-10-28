@@ -1,29 +1,29 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
+//@ts-ignore
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
-
   try {
+    //@ts-ignore
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
       apiVersion: '2023-10-16',
     });
-
+    //@ts-ignore
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    //@ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
 
-    // Verify authentication
+    // Verify authentication using service role to validate JWT
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -32,15 +32,15 @@ serve(async (req) => {
       );
     }
 
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // Use service role client to validate the JWT token and perform database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
 
     if (authError || !user) {
+      console.error('Auth error:', authError);
       return new Response(
-        JSON.stringify({ error: 'Unauthorized - invalid token' }),
+        JSON.stringify({ error: 'Unauthorized - invalid token', details: authError?.message }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -54,9 +54,6 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Use service role client for database operations
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verify user has access to this organization
     const { data: membership } = await supabase
@@ -100,11 +97,11 @@ serve(async (req) => {
       .select('id, display_name, stripe_product_id');
 
     const planMap = new Map(
-      (plans || []).map(p => [p.stripe_product_id, p.display_name])
+      (plans || []).map((p: { stripe_product_id: any; display_name: any; }) => [p.stripe_product_id, p.display_name])
     );
 
     // Transform invoices to match expected format
-    const transformedInvoices = invoices.data.map((invoice) => {
+    const transformedInvoices = invoices.data.map((invoice: { lines: { data: any[]; }; id: any; invoice_pdf: any; created: number; amount_paid: any; status: any; period_start: any; period_end: any; }) => {
       // Get plan name from line items
       const lineItem = invoice.lines.data[0];
       const productId = lineItem?.price?.product as string;
@@ -134,7 +131,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         invoices: null,
-        error: error.message || 'Failed to fetch invoices'
+        error: error instanceof Error ? error.message : 'Failed to fetch invoices'
       }),
       {
         status: 500,

@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
+//@ts-ignore
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -15,12 +15,15 @@ serve(async (req) => {
   }
 
   try {
+    //@ts-ignore
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
       apiVersion: '2023-10-16',
     });
-
+    //@ts-ignore
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    //@ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    //@ts-ignore
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
 
     // Verify authentication

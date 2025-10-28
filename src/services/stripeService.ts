@@ -456,10 +456,7 @@ export const getInvoices = async (organizationId: string) => {
       return { data: null, error: 'Not authenticated' };
     }
 
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-    const functionsUrl = supabaseUrl?.replace('.supabase.co', '.supabase.co/functions/v1') || '';
-
-    const response = await fetch(`${functionsUrl}/get-invoices`, {
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-invoices`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
