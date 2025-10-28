@@ -54,8 +54,18 @@ interface SubscriptionPlan {
   sort_order: number;
 }
 
-// Initialize Stripe.js
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string);
+// Initialize Stripe.js (currently unused - checkout handled server-side via stripeService)
+// Priority: VITE_STRIPE_PUBLISHABLE_KEY_TEST (development) > VITE_STRIPE_PUBLISHABLE_KEY (fallback)
+const stripePublishableKey =
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY_TEST ||
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
+
+// Warn if Stripe key is missing
+if (!stripePublishableKey) {
+  console.warn('No Stripe publishable key found. Stripe functionality may be limited.');
+}
 
 export const BillingTab: React.FC<BillingTabProps> = ({
   organization,
