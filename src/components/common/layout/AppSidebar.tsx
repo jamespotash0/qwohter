@@ -1,4 +1,4 @@
-import { Clock, Check, ChevronDown } from "lucide-react";
+import { Clock, Check, ChevronDown, LogOut } from "lucide-react";
 import { House, FileText, ChartBar, Users, List, Gear, Kanban, Sidebar as SidebarIcon, Lock, SquaresFour, Article, Buildings } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
@@ -575,17 +575,52 @@ export function AppSidebar({
                   </p>
                 </div>
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onLogout}
+                className="h-8 w-8 p-0 rounded-lg transition-all duration-200 group/logout"
+                style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+                title="Logout"
+              >
+                <LogOut className="h-4 w-4 text-red-600 dark:text-red-400 group-hover/logout:scale-110 transition-all duration-200" />
+              </Button>
             </div>
           </div>
         ) : (
-          <div className="space-y-3 animate-in fade-in zoom-in-50 duration-300">
+          <div className="space-y-2 animate-in fade-in zoom-in-50 duration-300">
             {/* User Avatar Collapsed */}
-            <div className="flex justify-center p-3">
+            <div className="flex justify-center p-2">
               <Avatar className="h-8 w-8 ring-2 ring-[var(--sidebar-user-avatar-bg)] transition-all duration-300">
                 <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-xs font-semibold">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>
+            </div>
+            {/* Logout Button Collapsed */}
+            <div className="flex justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onLogout}
+                className="h-8 w-8 p-0 rounded-lg transition-all duration-200 group/logout"
+                style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+                title="Logout"
+              >
+                <LogOut className="h-4 w-4 text-red-600 dark:text-red-400 group-hover/logout:scale-110 transition-all duration-200" />
+              </Button>
             </div>
           </div>
         )}
