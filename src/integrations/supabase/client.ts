@@ -23,13 +23,21 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    // Set JWT expiry to 8 hours (28800 seconds)
-    // This will automatically log users out after 8 hours of inactivity
     storageKey: 'sb-auth-token',
+    // Enable PKCE flow for better security
+    flowType: 'pkce',
   },
   global: {
     headers: {
       'x-client-info': 'wall-quote-wizard@1.0.0',
+    },
+  },
+  realtime: {
+    // Enable realtime for instant session expiration detection
+    // This makes session expiration happen automatically in the background
+    // instead of waiting for the user to interact with the app
+    params: {
+      eventsPerSecond: 10,
     },
   },
 });

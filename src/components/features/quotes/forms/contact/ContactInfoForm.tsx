@@ -41,9 +41,17 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
   // Automatically set organization name when organization loads
   useEffect(() => {
     if (currentOrganization && !data.organizationName) {
+      console.log('[ContactInfoForm] Setting organizationName:', currentOrganization.name);
       handleChange('organizationName', currentOrganization.name);
     }
   }, [currentOrganization, data.organizationName]);
+
+  // Debug: Log when organization is not available
+  useEffect(() => {
+    if (!currentOrganization) {
+      console.warn('[ContactInfoForm] currentOrganization is not available');
+    }
+  }, [currentOrganization]);
 
   // Get active members from the organization
   const activeMembers = members.filter(member => member.status === 'Active');

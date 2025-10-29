@@ -75,6 +75,7 @@ interface OrganizationState {
   setCurrentUserRole: (role: 'Owner' | 'Admin' | 'Member' | null) => void;
   updateOrganization: (updates: Partial<Organization>) => Promise<void>;
   setSubscriptionStatus: (status: { hasAccess: boolean; reason: string }) => void;
+  checkSubscriptionStatus: (organizationId: string) => Promise<void>;
   subscribeToMembershipChanges: () => void;
   subscribeToOrganizationMembersChanges: (organizationId: string) => () => void;
   reset: () => void;
@@ -208,6 +209,12 @@ export const useOrganizationStore = create<OrganizationState>()(
                 console.error('Failed to fetch members:', err);
               });
             }
+
+            // Check subscription status concurrently
+            console.log('🔄 Checking subscription status');
+            get().checkSubscriptionStatus(org.id).catch(err => {
+              console.error('Failed to check subscription:', err);
+            });
 
           } else {
             set({ loading: false });
@@ -386,6 +393,58 @@ export const useOrganizationStore = create<OrganizationState>()(
             lastChecked: Date.now(),
           },
         });
+      },
+
+      // Check subscription status from Supabase
+      checkSubscriptionStatus: async (organizationId: string) => {
+        try {
+          // Import stripeService dynamically to avoid circular deps
+          const { stripeService } = await import('@/services/stripeService');
+
+          const { data: subscription, error } = await stripeService.getSubscription(organizationId);
+
+          if (error) {
+            console.error('Failed to check subscription:', error);
+            return;
+          }
+
+          let hasAccess = false;
+          let reason = '';
+
+          if (!subscription) {
+            hasAccess = false;
+            reason = 'no_subscription';
+          } else if (subscription.stripe_subscription_status === 'active') {
+            hasAccess = true;
+            reason = 'active';
+          } else if (subscription.stripe_subscription_status === 'trialing') {
+            hasAccess = true;
+            reason = 'trialing';
+          } else {
+            hasAccess = false;
+            reason = subscription.stripe_subscription_status || 'inactive';
+          }
+
+          console.log('✅ Subscription status:', { hasAccess, reason });
+
+          // Update store and cache
+          set({
+            subscriptionStatus: {
+              hasAccess,
+              reason,
+              lastChecked: Date.now(),
+            },
+          });
+
+          // Cache in localStorage
+          localStorage.setItem(`subscription_${organizationId}`, JSON.stringify({
+            hasAccess,
+            reason,
+            timestamp: Date.now(),
+          }));
+        } catch (error) {
+          console.error('Failed to check subscription status:', error);
+        }
       },
 
       // Subscribe to real-time membership changes

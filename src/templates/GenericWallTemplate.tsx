@@ -76,21 +76,38 @@ export class GenericWallTemplate extends BaseQuoteTemplate {
   }
 
   generateProposalIntro(data: QuoteData): string {
-    const organizationName = data.quote_details?.organizationName?.trim() || 
-                             data.quote_details?.organization_name?.trim() || 
-                             data.quote_details?.company_name?.trim() ||
-                             '';
+    let organizationName = data.quote_details?.organizationName?.trim() ||
+                           data.quote_details?.organization_name?.trim() ||
+                           data.quote_details?.company_name?.trim() ||
+                           '';
+
+    // Fallback: Try to get from organization store if not in quote data
+    if (!organizationName) {
+      try {
+        const { useOrganizationStore } = require('@/stores/organization/organizationStore');
+        const currentOrg = useOrganizationStore.getState().currentOrganization;
+        organizationName = currentOrg?.name || '';
+        console.log('[GenericWallTemplate] Fallback to organization store:', organizationName);
+      } catch (err) {
+        console.warn('[GenericWallTemplate] Could not access organization store:', err);
+      }
+    }
+
     const walls = data.wall_details?.walls || {};
     const wallCount = Object.keys(walls).length;
-
-    
 
     if (wallCount === 0) {
       return '';
     }
 
     const systemText = wallCount > 1 ? "wall systems" : "wall system";
-    
+
+    // Only show intro if we have an organization name
+    if (!organizationName) {
+      console.warn('[GenericWallTemplate] No organization name available');
+      return '<div class="proposal-intro-section" style="line-height: 1.2; margin-top: 12px;"><strong>Specifications as follows:</strong></div>';
+    }
+
     const proposalHtml = `
       <div class="proposal-intro-section" style="line-height: 1.2; margin-top: 12px;">
         Thank you for considering <strong>${organizationName}</strong> for this project. As discussed, we are offering a proposal to furnish, deliver, & install, the following ${systemText} as specified below, at the above named project.

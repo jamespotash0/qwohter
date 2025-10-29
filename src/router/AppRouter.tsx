@@ -15,9 +15,16 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const isInitialized = useAuthStore((state) => state.isInitialized);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = React.useState<boolean | null>(null);
 
-  // Don't redirect until auth is initialized
+  // Show loading spinner while auth is initializing (prevents flash of sign-in page)
   if (!isInitialized) {
-    return <>{children}</>;
+    return (
+      <div className="h-screen w-full bg-[var(--content-bg)] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[var(--content-button-primary-bg)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[var(--content-muted-text)]">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   // Check if user has completed onboarding

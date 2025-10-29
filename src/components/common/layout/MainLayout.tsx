@@ -136,6 +136,52 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     }
   }, [membershipStatus, checkingMembership, shouldShowSidebar, location.pathname, navigate]);
 
+  // Redirect to sign-in if no user on protected routes (expired session handling)
+  useEffect(() => {
+    if (isInitialized && !user && shouldShowSidebar) {
+      console.log('🔒 No user on protected route, redirecting to sign-in');
+      navigate('/sign-in', { replace: true });
+    }
+  }, [isInitialized, user, shouldShowSidebar, navigate]);
+
+  // Poll session status every second for instant expiration detection
+  useEffect(() => {
+    if (!shouldShowSidebar || !isInitialized) return;
+
+    console.log('⏱️ Starting session polling...');
+
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('❌ Session check error:', error);
+          // Session invalid - log out
+          console.log('🔒 Session invalid, logging out...');
+          await handleLogout();
+          return;
+        }
+
+        if (!session && user) {
+          // Session expired but user still in store - log out
+          console.log('🔒 Session expired, logging out...');
+          await handleLogout();
+        }
+      } catch (error) {
+        console.error('❌ Error checking session:', error);
+      }
+    };
+
+    // Poll every second
+    const pollInterval = setInterval(() => {
+      checkSession();
+    }, 1000);
+
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, [shouldShowSidebar, isInitialized, user]);
+
   const handleLogout = async () => {
     const startTime = Date.now();
     const MIN_LOGOUT_TIME = 800; // 800ms minimum for smooth UX
@@ -190,6 +236,18 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[var(--content-button-primary-bg)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-[var(--content-muted-text)]">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while redirecting to sign-in
+  if (!user && shouldShowSidebar) {
+    return (
+      <div className="h-screen w-full bg-[var(--content-bg)] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[var(--content-button-primary-bg)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[var(--content-muted-text)]">Redirecting...</p>
         </div>
       </div>
     );

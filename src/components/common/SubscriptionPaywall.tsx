@@ -61,15 +61,26 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   const initialStatus = getInitialStatus();
 
   // Initialize with cached values if available
+  // If no cache: show loading spinner to prevent unauthorized access during check
+  // If cached: use cached value immediately for fast UX
   const [loading, setLoading] = useState(!initialStatus);
   const [hasAccess, setHasAccess] = useState(initialStatus?.hasAccess ?? false);
   const [blockReason, setBlockReason] = useState<string>(initialStatus?.reason ?? '');
 
   useEffect(() => {
-    // Only check if we don't have ANY cached data (neither Zustand nor localStorage)
-    if (!initialStatus) {
+    // Always revalidate on mount, even if cache exists (stale-while-revalidate pattern)
+    // This ensures we have fresh data while using cache for instant display
+    console.log('🔄 Component mounted, checking subscription...', {
+      hasCache: !!initialStatus,
+      cachedAccess: initialStatus?.hasAccess
+    });
+    checkSubscription();
+
+    // Poll subscription status every second for instant updates
+    const pollInterval = setInterval(() => {
+      console.log('⏱️ Polling subscription status...');
       checkSubscription();
-    }
+    }, 1000);
 
     // Set up realtime subscription to detect subscription changes
     const channel = supabase
@@ -82,15 +93,64 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
           table: 'subscriptions',
           filter: `organization_id=eq.${organizationId}`,
         },
-        (payload) => {
-          console.log('Subscription changed, rechecking access:', payload);
-          // Re-check subscription when it changes (no loading delay for realtime updates)
-          checkSubscription();
+        async (payload) => {
+          console.log('🔔 Subscription changed, rechecking access:', payload);
+
+          // Get the new subscription status
+          const { isValid, reason } = await stripeService.hasValidSubscription(organizationId);
+
+          // Check if status actually changed (to avoid unnecessary reloads)
+          const statusChanged = isValid !== hasAccess;
+
+          if (statusChanged) {
+            console.log('✨ Subscription status changed:', { from: hasAccess, to: isValid });
+
+            // Update state immediately
+            setHasAccess(isValid);
+            setBlockReason(reason || '');
+
+            // Update cache
+            setSubscriptionStatus({
+              hasAccess: isValid,
+              reason: reason || '',
+            });
+            localStorage.setItem(`subscription_${organizationId}`, JSON.stringify({
+              hasAccess: isValid,
+              reason: reason || '',
+              timestamp: Date.now(),
+            }));
+
+            // Show toast and reload for critical changes
+            if (isValid && !hasAccess) {
+              // Inactive → Active: Show success message and reload
+              toast.success('Subscription activated! Reloading...', { duration: 2000 });
+              setTimeout(() => {
+                window.location.reload();
+              }, 2000);
+            } else if (!isValid && hasAccess) {
+              // Active → Inactive: Show warning and reload immediately
+              toast.error('Subscription expired. Redirecting...', { duration: 1500 });
+              setTimeout(() => {
+                window.location.reload();
+              }, 1500);
+            }
+          } else {
+            // Status unchanged, just update without reload
+            checkSubscription();
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('📡 Realtime connection status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Realtime connected and listening for subscription changes');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.error('❌ Realtime connection failed:', status);
+        }
+      });
 
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
   }, [organizationId]);
@@ -99,10 +159,6 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
     const showLoading = !cachedStatus && !initialStatus;
 
     try {
-      // Start timing for minimum delay
-      const startTime = Date.now();
-      const MIN_LOADING_TIME = 2000; // 2 seconds minimum
-
       // Only show loading if we don't have cached data
       if (showLoading) {
         setLoading(true);
@@ -110,20 +166,12 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
 
       const { isValid, reason } = await stripeService.hasValidSubscription(organizationId);
 
-      // Only apply minimum delay if we showed loading spinner
-      if (showLoading) {
-        // Calculate remaining time to meet minimum delay
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime);
-
-        // Wait for remaining time if needed (so spinner shows for full 2 seconds)
-        if (remainingTime > 0) {
-          await new Promise(resolve => setTimeout(resolve, remainingTime));
-        }
-      }
+      console.log('💳 Subscription check result:', { isValid, reason, organizationId });
 
       setHasAccess(isValid);
       setBlockReason(reason || '');
+
+      console.log('💳 State updated:', { hasAccess: isValid, blockReason: reason });
 
       // Cache the result in Zustand store
       setSubscriptionStatus({
@@ -186,6 +234,7 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   // Show full-screen loading spinner while checking subscription
   // Note: isLoggingOut is handled by MainLayout's overlay, so we don't need to check it here
   if (loading) {
+    console.log('⏳ Showing loading spinner...');
     return (
       <div className="h-screen w-full bg-[var(--content-bg)] flex items-center justify-center">
         <div className="text-center">
@@ -196,7 +245,10 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
     );
   }
 
+  console.log('🚦 Paywall check:', { hasAccess, blockReason, loading });
+
   if (!hasAccess) {
+    console.log('🚫 Blocking access - showing paywall');
     // Non-owner users see simplified message
     if (!isOwner) {
       return (

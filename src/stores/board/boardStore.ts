@@ -222,6 +222,9 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
 
       if (error) throw error;
 
+      // Optimistic update: Add immediately to state for instant UI feedback
+      // Realtime will sync/deduplicate if needed (realtime checks for duplicates by ID)
+      console.log('✅ Store: Column created, adding optimistically:', data);
       set(state => ({
         workflowColumns: [...state.workflowColumns, data],
         isLoading: false
@@ -234,16 +237,33 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
 
   updateWorkflowColumn: async (id, updates) => {
     try {
+      // Optimistic update: Update immediately in state for instant UI feedback
+      console.log('✅ Store: Updating column optimistically:', id, updates);
+      set(state => ({
+        workflowColumns: state.workflowColumns.map(c => c.id === id ? { ...c, ...updates } : c)
+      }));
+
       const { error } = await supabase
         .from('project_workflow_columns')
         .update(updates)
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Store: Update failed, reverting optimistic update:', error);
+        // Revert optimistic update on error - refetch from server
+        const { data } = await supabase
+          .from('project_workflow_columns')
+          .select('*')
+          .eq('id', id)
+          .single();
 
-      set(state => ({
-        workflowColumns: state.workflowColumns.map(c => c.id === id ? { ...c, ...updates } : c)
-      }));
+        if (data) {
+          set(state => ({
+            workflowColumns: state.workflowColumns.map(c => c.id === id ? data : c)
+          }));
+        }
+        throw error;
+      }
     } catch (error: any) {
       set({ error: error.message });
       throw error;
@@ -251,20 +271,42 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   },
 
   deleteWorkflowColumn: async (id) => {
+    console.log('🏪 Store: deleteWorkflowColumn called for id:', id);
     set({ isLoading: true, error: null });
     try {
+      // Check if column is default
+      const column = get().workflowColumns.find(c => c.id === id);
+      console.log('🏪 Store: Column to delete:', column);
+      if (column?.is_default) {
+        console.log('❌ Store: Cannot delete - column is default');
+        set({ isLoading: false });
+        throw new Error('Cannot delete default column. You can rename it instead.');
+      }
+
+      // Optimistic delete: Remove from state immediately for instant UI feedback
+      console.log('🏪 Store: Removing column optimistically');
+      const previousColumns = get().workflowColumns;
+      set(state => ({
+        workflowColumns: state.workflowColumns.filter(c => c.id !== id),
+        isLoading: false
+      }));
+
+      console.log('🏪 Store: Calling Supabase DELETE...');
       const { error } = await supabase
         .from('project_workflow_columns')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Store: Supabase DELETE failed, reverting:', error);
+        // Revert optimistic delete on error
+        set({ workflowColumns: previousColumns });
+        throw error;
+      }
 
-      set(state => ({
-        workflowColumns: state.workflowColumns.filter(c => c.id !== id),
-        isLoading: false
-      }));
+      console.log('✅ Store: Supabase DELETE succeeded');
     } catch (error: any) {
+      console.error('❌ Store: deleteWorkflowColumn error:', error);
       set({ error: error.message, isLoading: false });
       throw error;
     }
@@ -460,6 +502,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
       .subscribe();
 
     // Subscribe to workflow columns changes
+    console.log('🔌 Setting up realtime subscription for columns (org:', organizationId, ')');
     const columnsSubscription = supabase
       .channel('columns-changes')
       .on(
@@ -471,10 +514,18 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
           filter: `organization_id=eq.${organizationId}`
         },
         (payload) => {
-          console.log('Column change detected:', payload);
+          console.log('🔔 Column change detected:', payload.eventType, payload);
 
           if (payload.eventType === 'INSERT') {
+            console.log('  ➕ Adding column:', payload.new);
             set(state => {
+              // Check if column already exists (optimistic update already added it)
+              const exists = state.workflowColumns.some(c => c.id === payload.new.id);
+              if (exists) {
+                console.log('  ⏭️ Column already exists (optimistic update), skipping');
+                return state;
+              }
+
               const newColumns = [...state.workflowColumns, payload.new as WorkflowColumn];
               // Update cache
               try {
@@ -485,6 +536,7 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
               return { workflowColumns: newColumns };
             });
           } else if (payload.eventType === 'UPDATE') {
+            console.log('  ✏️ Updating column:', payload.new);
             set(state => {
               const newColumns = state.workflowColumns.map(c =>
                 c.id === payload.new.id ? payload.new as WorkflowColumn : c
@@ -498,8 +550,19 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
               return { workflowColumns: newColumns };
             });
           } else if (payload.eventType === 'DELETE') {
+            console.log('  🗑️ Deleting column:', payload.old);
             set(state => {
+              const beforeCount = state.workflowColumns.length;
               const newColumns = state.workflowColumns.filter(c => c.id !== payload.old.id);
+              const afterCount = newColumns.length;
+
+              // If count didn't change, column was already removed (optimistic delete)
+              if (beforeCount === afterCount) {
+                console.log('  ⏭️ Column already deleted (optimistic delete), skipping');
+                return state;
+              }
+
+              console.log(`  📊 Columns before: ${beforeCount}, after: ${afterCount}`);
               // Update cache
               try {
                 localStorage.setItem('board_columns_cache', JSON.stringify(newColumns));

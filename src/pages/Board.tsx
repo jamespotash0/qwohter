@@ -326,15 +326,24 @@ export default function Board() {
   };
 
   const handleDeleteColumn = async (columnId: string) => {
+    console.log('🗑️ handleDeleteColumn called for columnId:', columnId);
     const column = workflowColumns.find(c => c.id === columnId);
+    console.log('📋 Column found:', column);
     const projectsInColumn = column ? getProjectsByStatus(column.name).length : 0;
 
     if (projectsInColumn > 0) {
+      console.log('⚠️ Cannot delete - column has projects:', projectsInColumn);
       alert(`Cannot delete column with ${projectsInColumn} project${projectsInColumn > 1 ? 's' : ''}. Move or delete projects first.`);
       return;
     }
 
-    await deleteWorkflowColumn(columnId);
+    console.log('✅ Calling deleteWorkflowColumn...');
+    try {
+      await deleteWorkflowColumn(columnId);
+      console.log('✅ deleteWorkflowColumn completed successfully');
+    } catch (error) {
+      console.error('❌ deleteWorkflowColumn failed:', error);
+    }
   };
 
   const handleAddColumn = async () => {
@@ -469,10 +478,17 @@ export default function Board() {
                             </div>
                           ) : (
                             <>
-                              <h3 className="font-medium text-gray-900 text-sm truncate">
-                                {column.name}
-                              </h3>
-                              <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600 font-normal">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <h3 className="font-medium text-gray-900 text-sm truncate">
+                                  {column.name}
+                                </h3>
+                                {column.is_default && (
+                                  <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 border-blue-200 bg-blue-50 text-blue-700 font-normal shrink-0">
+                                    Default
+                                  </Badge>
+                                )}
+                              </div>
+                              <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600 font-normal shrink-0">
                                 {columnProjects.length}
                               </Badge>
                             </>
@@ -492,14 +508,19 @@ export default function Board() {
                                 <PencilSimpleIcon className="w-4 h-4" />
                                 Rename
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteColumn(column.id)}
-                                className="flex items-center gap-2 text-red-600 focus:text-red-600"
-                              >
-                                <TrashIcon className="w-4 h-4" />
-                                Delete
-                              </DropdownMenuItem>
+                              {/* Only show delete for non-default columns */}
+                              {!column.is_default && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteColumn(column.id)}
+                                    className="flex items-center gap-2 text-red-600 focus:text-red-600"
+                                  >
+                                    <TrashIcon className="w-4 h-4" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </>

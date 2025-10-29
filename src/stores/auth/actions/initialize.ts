@@ -17,27 +17,124 @@ export const createInitializeAction = (get: () => FullAuthState, set: (partial: 
     }
 
     try {
-      // Mark as initialized immediately to prevent loading spinner
-      set({ isInitialized: true });
       _setLoading(true);
 
       // Get initial session from Supabase (uses cached session/cookies)
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
 
-      _setAuth(session?.user ?? null, session);
+      // Handle expired/invalid session gracefully
+      if (sessionError) {
+        console.warn('⚠️ Session expired - resetting all state like logout');
 
-      // Fetch profile if user exists
-      if (session?.user) {
-        await fetchProfile(session.user.id);
+        // Reset ALL stores (like logout does)
+        try {
+          const { useQuotesStore } = await import('@/stores/quotes/quotesStore');
+          const { useBoardStore } = await import('@/stores/board/boardStore');
+          const { useOrganizationStore } = await import('@/stores/organization/organizationStore');
+          const { useRemindersStore } = await import('@/stores/reminders/remindersStore');
+          const { useAppStore } = await import('@/stores/app/appStore');
+
+          useQuotesStore.getState().reset();
+          useBoardStore.getState().reset();
+          useOrganizationStore.getState().reset();
+          useRemindersStore.getState().reset();
+          useAppStore.getState().reset();
+        } catch (err) {
+          console.error('Error resetting stores:', err);
+        }
+
+        // Clear auth cache and state
+        clearAuthCache();
+        _setAuth(null, null);
+        _setProfile(null);
+        // Don't throw - just continue with no session
+      } else {
+        _setAuth(session?.user ?? null, session);
+
+        // Fetch profile if user exists
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        }
       }
+
+      // Mark as initialized AFTER loading session and user data
+      // This prevents flash of sign-in page on protected routes
+      set({ isInitialized: true });
 
       // Set up auth state change listener (handles sign-in, sign-out, token refresh)
       supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('🔄 Auth event:', event, '| User:', session?.user?.email || 'none');
 
+        // Log token refresh details for monitoring
+        if (event === 'TOKEN_REFRESHED' && session) {
+          console.log('🔄 Token refreshed:', {
+            refreshedAt: session.refresh_token ? new Date().toISOString() : 'N/A',
+            expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'N/A',
+            expiresIn: session.expires_in ? `${session.expires_in}s (${Math.round(session.expires_in / 60)} minutes)` : 'N/A',
+          });
+        }
+
+        // Log initial session details
+        if (event === 'INITIAL_SESSION' && session) {
+          console.log('🔐 Initial session loaded:', {
+            expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'N/A',
+            expiresIn: session.expires_in ? `${session.expires_in}s (${Math.round(session.expires_in / 60)} minutes)` : 'N/A',
+          });
+        }
+
         // Handle sign out - clear all cached data
         if (event === 'SIGNED_OUT') {
+          // Check if this is a manual logout (user clicked sign out) or automatic (session expired)
+          const isManualLogout = get().isLoggingOut;
+
+          if (!isManualLogout) {
+            console.log('⚠️ Automatic sign out detected (session expired in background)');
+            // Reset ALL stores (like logout does)
+            try {
+              const { useQuotesStore } = await import('@/stores/quotes/quotesStore');
+              const { useBoardStore } = await import('@/stores/board/boardStore');
+              const { useOrganizationStore } = await import('@/stores/organization/organizationStore');
+              const { useRemindersStore } = await import('@/stores/reminders/remindersStore');
+              const { useAppStore } = await import('@/stores/app/appStore');
+
+              useQuotesStore.getState().reset();
+              useBoardStore.getState().reset();
+              useOrganizationStore.getState().reset();
+              useRemindersStore.getState().reset();
+              useAppStore.getState().reset();
+            } catch (err) {
+              console.error('Error resetting stores:', err);
+            }
+          }
+
+          clearAuthCache();
+          _setAuth(null, null);
+          _setProfile(null);
+          return;
+        }
+
+        // Handle token refresh failure - sign out user
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          console.warn('⚠️ Token refresh failed - resetting all state like logout');
+
+          // Reset ALL stores (like logout does)
+          try {
+            const { useQuotesStore } = await import('@/stores/quotes/quotesStore');
+            const { useBoardStore } = await import('@/stores/board/boardStore');
+            const { useOrganizationStore } = await import('@/stores/organization/organizationStore');
+            const { useRemindersStore } = await import('@/stores/reminders/remindersStore');
+            const { useAppStore } = await import('@/stores/app/appStore');
+
+            useQuotesStore.getState().reset();
+            useBoardStore.getState().reset();
+            useOrganizationStore.getState().reset();
+            useRemindersStore.getState().reset();
+            useAppStore.getState().reset();
+          } catch (err) {
+            console.error('Error resetting stores:', err);
+          }
+
+          // Clear auth cache and state
           clearAuthCache();
           _setAuth(null, null);
           _setProfile(null);

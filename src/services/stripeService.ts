@@ -217,7 +217,15 @@ export const hasValidSubscription = async (organizationId: string) => {
   const validStatuses = ['active', 'trialing'];
   const status = subscription.stripe_subscription_status?.toLowerCase();
 
+  console.log('🔍 Subscription validation:', {
+    rawStatus: subscription.stripe_subscription_status,
+    lowercaseStatus: status,
+    validStatuses,
+    isIncluded: status ? validStatuses.includes(status) : false,
+  });
+
   if (!status || !validStatuses.includes(status)) {
+    console.log('❌ Status check failed:', { status, validStatuses });
     return {
       isValid: false,
       reason: subscription.stripe_subscription_status
