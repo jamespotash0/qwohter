@@ -25,8 +25,35 @@ npm run test:coverage          # Coverage report
 3. **Build Time**: Timestamp is automatically added
 4. **Vercel Integration**: When you push to Vercel, it automatically builds and increments the version
 
+### Version File in Git:
+Currently `public/version.json` IS tracked in Git. Here's how it works:
+
+```bash
+# Your workflow:
+git push origin main
+
+# Vercel receives your code with version.json (v1.0.5)
+# → Runs prebuild script
+# → Reads v1.0.5, increments to v1.0.6
+# → Builds and deploys v1.0.6
+
+# Your local version.json stays at v1.0.5
+# Vercel deployed version is v1.0.6
+```
+
+**Result:** Your local file falls behind the deployed version. This is normal!
+
+**Alternative (Recommended for cleaner workflow):**
+Add to `.gitignore` to stop tracking it:
+```bash
+echo "public/version.json" >> .gitignore
+git rm --cached public/version.json
+git commit -m "chore: ignore auto-generated version.json"
+```
+
 ### Version File Location:
 - `public/version.json` - Generated automatically during build
+- `scripts/generate-version.js` - Version generation script
 - Users are notified when a new version is deployed
 
 ### When to Manually Increment Major/Minor Versions:
@@ -41,10 +68,11 @@ git add .
 git commit -m "feat: description of changes"
 git push origin main
 # Vercel automatically:
-# 1. Runs prebuild script (increments version)
-# 2. Builds the app
-# 3. Deploys with new version
-# 4. Users see update notification
+# 1. Clones your repo
+# 2. Runs prebuild script (reads current version, increments it)
+# 3. Builds the app with new version
+# 4. Deploys
+# 5. Users see update notification on next page load
 ```
 
 ### Coding Practices to Follow
