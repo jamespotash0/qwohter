@@ -42,3 +42,33 @@ export interface PageBreakStrategy {
   breakAfterSection: string;
   minimumHeight: number;
 }
+
+export interface SectionVisibilityConfig {
+  header: boolean;
+  billingJobInfo: boolean;
+  proposalIntro: boolean;
+  wallTable: boolean;
+  panelsSection: boolean;
+  passDoors: boolean;
+  pocketDoors: boolean;
+  trackSection: boolean;
+  supportSection: boolean;
+  generalSection: boolean;
+  pricingSection: boolean;
+  termsSignature: boolean;
+}
+
+export const defaultSectionVisibility: SectionVisibilityConfig = {
+  header: true,
+  billingJobInfo: true,
+  proposalIntro: true,
+  wallTable: true,
+  panelsSection: true,
+  passDoors: true,
+  pocketDoors: true,
+  trackSection: true,
+  supportSection: true,
+  generalSection: true,
+  pricingSection: true,
+  termsSignature: true,
+};

@@ -1,4 +1,4 @@
-import { QuoteData } from './BaseQuoteTemplate';
+import { QuoteData, SectionVisibilityConfig } from './BaseQuoteTemplate';
 import { GenericWallTemplate } from './GenericWallTemplate';
 
 export class TemplateFactory {
@@ -7,9 +7,9 @@ export class TemplateFactory {
   }
 
 
-  static generateQuote(data: QuoteData): string {    
-    const template = this.getTemplate(); 
-    const result = template.generate(data);
+  static generateQuote(data: QuoteData, visibilityConfig?: SectionVisibilityConfig): string {
+    const template = this.getTemplate();
+    const result = template.generateWithCSSPagination(data, visibilityConfig);
     return result;
   }
 }

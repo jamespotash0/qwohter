@@ -1,4 +1,4 @@
-import { QuoteData, TemplateHelpers, PageBreakStrategy } from './types';
+import { QuoteData, TemplateHelpers, PageBreakStrategy, SectionVisibilityConfig, defaultSectionVisibility } from './types';
 import { createTemplateHelpers } from './template-helpers';
 import { SectionGenerators } from './section-generators';
 import { PageBreakLogic } from './page-break-logic';
@@ -58,34 +58,41 @@ export abstract class BaseQuoteTemplate {
   }
 
   // CSS-based pagination generation (simple and reliable)
-  public generateWithCSSPagination(data: QuoteData): string {
-    const proposalIntro = this.generateProposalIntro(data);
-    
-    let html = `<div class="quote-container" data-page-content="true">
-      ${this.generateHeader(data)}
-      ${this.generateBillingAndJobInfo(data)}
-      ${proposalIntro}
-      ${this.generateWallTable(data)}
-      ${this.generatePanelsSection(data)}`;
+  public generateWithCSSPagination(data: QuoteData, visibilityConfig?: SectionVisibilityConfig): string {
+    // Use default config if not provided
+    const config = visibilityConfig || defaultSectionVisibility;
 
-    // Add panel doors section if it has content
-    const passDoorsSection = this.generatePassDoorsSection(data);
-    if (passDoorsSection) {
-      html += passDoorsSection;
+    const proposalIntro = config.proposalIntro ? this.generateProposalIntro(data) : '';
+
+    let html = `<div class="quote-container" data-page-content="true">
+      ${config.header ? this.generateHeader(data) : ''}
+      ${config.billingJobInfo ? this.generateBillingAndJobInfo(data) : ''}
+      ${proposalIntro}
+      ${config.wallTable ? this.generateWallTable(data) : ''}
+      ${config.panelsSection ? this.generatePanelsSection(data) : ''}`;
+
+    // Add panel doors section if it has content and is visible
+    if (config.passDoors) {
+      const passDoorsSection = this.generatePassDoorsSection(data);
+      if (passDoorsSection) {
+        html += passDoorsSection;
+      }
     }
 
-    // Add conditional sections
-    const pocketDoorsSection = this.generatePocketDoorsSection(data);
-    if (pocketDoorsSection) {
-      html += pocketDoorsSection;
+    // Add conditional sections if visible
+    if (config.pocketDoors) {
+      const pocketDoorsSection = this.generatePocketDoorsSection(data);
+      if (pocketDoorsSection) {
+        html += pocketDoorsSection;
+      }
     }
 
     html += `
-      ${this.generateTrackSection(data)}
-      ${this.generateSupportSection(data)}
-      ${this.generateGeneralSection(data)}
-      ${this.generatePricingSection(data)}
-      ${this.generateTermsAndSignature(data)}
+      ${config.trackSection ? this.generateTrackSection(data) : ''}
+      ${config.supportSection ? this.generateSupportSection(data) : ''}
+      ${config.generalSection ? this.generateGeneralSection(data) : ''}
+      ${config.pricingSection ? this.generatePricingSection(data) : ''}
+      ${config.termsSignature ? this.generateTermsAndSignature(data) : ''}
     </div>`;
 
     // Check if proposal-intro is in the final HTML
@@ -134,3 +141,6 @@ export abstract class BaseQuoteTemplate {
     return html;
   }
 }
+
+// Re-export types for convenience
+export type { QuoteData, SectionVisibilityConfig } from './types';

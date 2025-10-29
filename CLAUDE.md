@@ -7,13 +7,46 @@ Essential guidance for Claude Code when working with QWOHTER.
 ```bash
 # Development
 npm run dev                    # Start dev server
-npm run build                  # Production build
+npm run build                  # Production build (auto-increments version)
 npm run lint && npm run build  # Validate before commits
 
 # Testing
 npm run test                   # Unit tests
 npm run test:coverage          # Coverage report
 ```
+
+## Version Management
+
+**⚠️ IMPORTANT: Version is automatically managed - DO NOT manually edit `public/version.json`**
+
+### How Versioning Works:
+1. **Automatic Increment**: `scripts/generate-version.js` runs before every build
+2. **Format**: `v1.0.{buildNumber}` where buildNumber auto-increments
+3. **Build Time**: Timestamp is automatically added
+4. **Vercel Integration**: When you push to Vercel, it automatically builds and increments the version
+
+### Version File Location:
+- `public/version.json` - Generated automatically during build
+- Users are notified when a new version is deployed
+
+### When to Manually Increment Major/Minor Versions:
+Only edit `scripts/generate-version.js` if you need to change the major/minor version:
+```javascript
+const version = `v2.0.${buildNumber}`;  // Change v1.0 to v2.0 for major updates
+```
+
+### Deployment Process:
+```bash
+git add .
+git commit -m "feat: description of changes"
+git push origin main
+# Vercel automatically:
+# 1. Runs prebuild script (increments version)
+# 2. Builds the app
+# 3. Deploys with new version
+# 4. Users see update notification
+```
+
 ### Coding Practices to Follow
 
 <File_length_and_structure>
