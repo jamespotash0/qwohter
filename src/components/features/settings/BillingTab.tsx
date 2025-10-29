@@ -436,8 +436,9 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         return;
       }
 
-      // Determine the appropriate price ID based on billing interval
-      const priceId = billingInterval === 'Monthly'
+      // Determine the appropriate price ID based on per-plan billing interval
+      const selectedInterval = planIntervals[plan.id] || 'Monthly';
+      const priceId = selectedInterval === 'Monthly'
         ? plan.stripe_price_id_monthly
         : plan.stripe_price_id_yearly;
 
