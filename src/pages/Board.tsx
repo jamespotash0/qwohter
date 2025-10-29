@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { PageContent } from '@/components/common/layout';
 import { useBoardStore, Project, ProjectPriority } from '@/stores/board/boardStore';
 import { supabase } from '@/integrations/supabase/client';
+import { animate } from 'animejs';
 import {
   Plus as PlusIcon,
   DotsThreeVertical as DotsThreeVerticalIcon,
@@ -15,7 +16,8 @@ import {
   X as XIcon,
   Check as CheckIcon,
   Flag as FlagIcon,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  DotsSixVertical as DragIcon
 } from '@phosphor-icons/react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -74,12 +76,17 @@ export default function Board() {
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [dragOverCard, setDragOverCard] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'after'>('before');
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
+  const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
+  const [columnDropSide, setColumnDropSide] = useState<'left' | 'right' | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [editingColumnName, setEditingColumnName] = useState('');
   const [isAddingColumn, setIsAddingColumn] = useState(false);
   const [newColumnName, setNewColumnName] = useState('');
   const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(new Set());
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const columnRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const isAnimatingRef = useRef(false);
 
   useEffect(() => {
     console.log('📋 Board page mounted - initializing board and setting up subscriptions');
@@ -155,6 +162,10 @@ export default function Board() {
 
   const handleDrop = async (e: React.DragEvent, targetStatus: string) => {
     e.preventDefault();
+
+    // Clear drag states immediately to remove blue border
+    setDragOverColumn(null);
+    setDragOverCard(null);
 
     if (!draggedProject) return;
 
@@ -262,6 +273,174 @@ export default function Board() {
     setDragOverColumn(null);
     setDragOverCard(null);
     setDropPosition('before');
+  };
+
+  // Column reordering handlers
+  const handleColumnDragStart = (e: React.DragEvent, columnId: string) => {
+    console.log('🔄 Column drag started:', columnId);
+    setDraggedColumnId(columnId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleColumnDragOver = (e: React.DragEvent, columnId: string) => {
+    e.preventDefault();
+    if (draggedColumnId && draggedColumnId !== columnId) {
+      setDragOverColumnId(columnId);
+
+      // Determine which side based on dragged column position relative to target
+      const sortedColumns = [...workflowColumns].sort((a, b) => a.column_order - b.column_order);
+      const draggedIndex = sortedColumns.findIndex(c => c.id === draggedColumnId);
+      const targetIndex = sortedColumns.findIndex(c => c.id === columnId);
+
+      // If dragging from left to right, show indicator on right side
+      // If dragging from right to left, show indicator on left side
+      const side = draggedIndex < targetIndex ? 'right' : 'left';
+      setColumnDropSide(side);
+    }
+  };
+
+  const handleColumnDragLeave = () => {
+    setDragOverColumnId(null);
+    setColumnDropSide(null);
+  };
+
+  const handleColumnDrop = async (e: React.DragEvent, targetColumnId: string) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent card drop handler from firing
+
+    const draggedId = draggedColumnId;
+
+    if (!draggedId || draggedId === targetColumnId) {
+      setDraggedColumnId(null);
+      setDragOverColumnId(null);
+      setColumnDropSide(null);
+      return;
+    }
+
+    console.log('🔄 Reordering column:', { from: draggedId, to: targetColumnId });
+
+    // Clear drag states immediately
+    setDraggedColumnId(null);
+    setDragOverColumnId(null);
+    setColumnDropSide(null);
+
+    // Get sorted columns
+    const sortedColumns = [...workflowColumns].sort((a, b) => a.column_order - b.column_order);
+
+    // Find indices
+    const draggedIndex = sortedColumns.findIndex(c => c.id === draggedId);
+    const targetIndex = sortedColumns.findIndex(c => c.id === targetColumnId);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      return;
+    }
+
+    // Calculate what the positions will be after reorder
+    const draggedElement = columnRefs.current.get(draggedId);
+    const targetElement = columnRefs.current.get(targetColumnId);
+
+    if (!draggedElement || !targetElement) return;
+
+    // Calculate the distance to move
+    const draggedRect = draggedElement.getBoundingClientRect();
+    const targetRect = targetElement.getBoundingClientRect();
+
+    // Determine animation direction and distance
+    const isMovingRight = draggedIndex < targetIndex;
+
+    // Get all columns that need to slide
+    const columnsToAnimate: { element: HTMLDivElement; distance: number }[] = [];
+
+    if (isMovingRight) {
+      // Dragged column moves right, columns in between slide left
+      const columnWidth = draggedRect.width + 16; // 16px is gap-4
+
+      // Animate dragged column to the right
+      columnsToAnimate.push({
+        element: draggedElement,
+        distance: (targetIndex - draggedIndex) * columnWidth
+      });
+
+      // Animate columns in between to the left
+      for (let i = draggedIndex + 1; i <= targetIndex; i++) {
+        const col = sortedColumns[i];
+        if (col) {
+          const el = columnRefs.current.get(col.id);
+          if (el) {
+            columnsToAnimate.push({
+              element: el,
+              distance: -columnWidth
+            });
+          }
+        }
+      }
+    } else {
+      // Dragged column moves left, columns in between slide right
+      const columnWidth = draggedRect.width + 16; // 16px is gap-4
+
+      // Animate dragged column to the left
+      columnsToAnimate.push({
+        element: draggedElement,
+        distance: (targetIndex - draggedIndex) * columnWidth
+      });
+
+      // Animate columns in between to the right
+      for (let i = targetIndex; i < draggedIndex; i++) {
+        const col = sortedColumns[i];
+        if (col) {
+          const el = columnRefs.current.get(col.id);
+          if (el) {
+            columnsToAnimate.push({
+              element: el,
+              distance: columnWidth
+            });
+          }
+        }
+      }
+    }
+
+    // Reorder array
+    const reordered = [...sortedColumns];
+    const [removed] = reordered.splice(draggedIndex, 1);
+    if (removed) {
+      reordered.splice(targetIndex, 0, removed);
+    }
+
+    // Prepare database updates
+    const updates = reordered.map((column, index) => ({
+      id: column.id,
+      order: index + 1
+    }));
+
+    // Set animating flag
+    isAnimatingRef.current = true;
+
+    // Start all animations simultaneously
+    columnsToAnimate.forEach(({ element, distance }) => {
+      animate(element, {
+        translateX: distance,
+        duration: 200,
+        easing: 'easeOutQuad'
+      });
+    });
+
+    // Wait for animation to complete first
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Clear all transforms before database update
+    columnsToAnimate.forEach(({ element }) => {
+      element.style.transform = '';
+    });
+
+    // Clear animating flag
+    isAnimatingRef.current = false;
+
+    // Now update database - this will trigger store update
+    await Promise.all(
+      updates.map(({ id, order }) =>
+        updateWorkflowColumn(id, { column_order: order })
+      )
+    );
   };
 
   const getProjectsByStatus = (status: string) => {
@@ -406,13 +585,41 @@ export default function Board() {
               return (
                 <div
                   key={column.id}
-                  className={`flex-shrink-0 transition-all duration-200 bg-gray-50 rounded-lg flex flex-col h-full ${
-                    isCollapsed ? 'w-12' : 'w-72'
-                  } ${dragOverColumn === column.name ? 'ring-2 ring-blue-400 bg-blue-50 p-2' : 'p-0'}`}
-                  onDragOver={(e) => handleDragOver(e, column.name)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, column.name)}
+                  ref={(el) => {
+                    if (el) {
+                      columnRefs.current.set(column.id, el);
+                    } else {
+                      columnRefs.current.delete(column.id);
+                    }
+                  }}
+                  className="flex flex-col gap-1 relative"
+                  style={isAnimatingRef.current ? { willChange: 'transform' } : undefined}
+                  draggable={!column.is_default && !isCollapsed}
+                  onDragStart={(e) => !column.is_default && handleColumnDragStart(e, column.id)}
+                  onDragOver={(e) => handleColumnDragOver(e, column.id)}
+                  onDragLeave={handleColumnDragLeave}
+                  onDrop={(e) => handleColumnDrop(e, column.id)}
                 >
+                  {/* Drop indicator - left side */}
+                  {dragOverColumnId === column.id && columnDropSide === 'left' && (
+                    <div className="absolute -left-2 top-0 bottom-0 w-0.5 bg-blue-500 z-10" />
+                  )}
+
+                  {/* Drop indicator - right side */}
+                  {dragOverColumnId === column.id && columnDropSide === 'right' && (
+                    <div className="absolute -right-2 top-0 bottom-0 w-0.5 bg-blue-500 z-10" />
+                  )}
+
+                  <div
+                    className={`flex-shrink-0 transition-all duration-300 ease-in-out rounded-lg flex flex-col h-full ${
+                      isCollapsed ? 'w-12' : 'w-72'
+                    } ${draggedColumnId === column.id ? 'opacity-40 bg-gray-200 border-2 border-dashed border-gray-400' : 'bg-gray-50'} ${
+                      dragOverColumn === column.name && !draggedColumnId ? 'ring-2 ring-blue-400 bg-blue-50 p-2' : 'p-0'
+                    }`}
+                    onDragOver={(e) => handleDragOver(e, column.name)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, column.name)}
+                  >
                   {/* Column Header */}
                   <div className="mb-3 flex items-center justify-between px-2 py-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -451,6 +658,17 @@ export default function Board() {
                             </PopoverContent>
                           </Popover>
 
+                          {/* Drag handle - only show for non-default columns */}
+                          {!column.is_default && (
+                            <button
+                              className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing"
+                              onMouseDown={(e) => e.stopPropagation()}
+                              title="Drag to reorder column"
+                            >
+                              <DragIcon className="w-4 h-4 text-gray-400" />
+                            </button>
+                          )}
+
                           {isEditing ? (
                             <div className="flex items-center gap-1 flex-1">
                               <Input
@@ -482,15 +700,15 @@ export default function Board() {
                                 <h3 className="font-medium text-gray-900 text-sm truncate">
                                   {column.name}
                                 </h3>
-                                {column.is_default && (
-                                  <Badge variant="outline" className="text-xs px-1.5 py-0 h-4 border-blue-200 bg-blue-50 text-blue-700 font-normal shrink-0">
-                                    Default
-                                  </Badge>
-                                )}
                               </div>
                               <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600 font-normal shrink-0">
                                 {columnProjects.length}
                               </Badge>
+                              {column.is_default && (
+                                <Badge className="text-xs px-1.5 py-0 h-4 bg-white border border-white text-blue-700 font-normal pointer-events-none">
+                                  Default
+                                </Badge>
+                              )}
                             </>
                           )}
 
@@ -797,6 +1015,7 @@ export default function Board() {
                       )}
                     </div>
                   )}
+                  </div>
                 </div>
               );
             })}

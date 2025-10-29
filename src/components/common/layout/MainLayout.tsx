@@ -10,6 +10,8 @@ import { useQuotesStore } from '@/stores/quotes/quotesStore';
 import { useBoardStore } from '@/stores/board/boardStore';
 import { useRemindersStore } from '@/stores/reminders/remindersStore';
 import { useAppStore } from '@/stores/app/appStore';
+import { versionCheckService } from '@/services/versionCheckService';
+import { toast } from 'sonner';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -144,11 +146,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     }
   }, [isInitialized, user, shouldShowSidebar, navigate]);
 
-  // Poll session status every second for instant expiration detection
+  // Poll session status every minute to detect expired sessions
   useEffect(() => {
     if (!shouldShowSidebar || !isInitialized) return;
 
-    console.log('⏱️ Starting session polling...');
+    console.log('⏱️ Starting session polling (1 minute interval)...');
 
     const checkSession = async () => {
       try {
@@ -172,15 +174,56 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       }
     };
 
-    // Poll every second
+    // Poll every minute (60000ms)
     const pollInterval = setInterval(() => {
       checkSession();
-    }, 1000);
+    }, 60000);
 
     return () => {
       clearInterval(pollInterval);
     };
   }, [shouldShowSidebar, isInitialized, user]);
+
+  // Poll for new app version every 30 seconds
+  useEffect(() => {
+    // Initialize version check on mount
+    versionCheckService.initializeVersionCheck();
+
+    console.log('⏱️ Starting version polling (30s interval)...');
+
+    let hasShownToast = false;
+
+    const checkVersion = async () => {
+      const hasNewVersion = await versionCheckService.checkForNewVersion();
+
+      if (hasNewVersion && !hasShownToast) {
+        // Show persistent toast once when version changes
+        hasShownToast = true;
+        toast('New version available!', {
+          description: 'A new update was made to the app.',
+          duration: Infinity, // Persist until manually dismissed
+          classNames: {
+            actionButton: '!bg-green-600 hover:!bg-green-700 !text-white',
+          },
+          action: {
+            label: 'Refresh',
+            onClick: () => {
+              versionCheckService.forceReload();
+            },
+          },
+        });
+      }
+    };
+
+    // Poll every 30 seconds
+    const pollInterval = setInterval(() => {
+      checkVersion();
+    }, 30000);
+
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, []);
 
   const handleLogout = async () => {
     const startTime = Date.now();

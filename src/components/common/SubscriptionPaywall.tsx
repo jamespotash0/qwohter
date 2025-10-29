@@ -63,24 +63,34 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   // Initialize with cached values if available
   // If no cache: show loading spinner to prevent unauthorized access during check
   // If cached: use cached value immediately for fast UX
+  // IMPORTANT: If cache says hasAccess=true, trust it and don't show loading
   const [loading, setLoading] = useState(!initialStatus);
   const [hasAccess, setHasAccess] = useState(initialStatus?.hasAccess ?? false);
   const [blockReason, setBlockReason] = useState<string>(initialStatus?.reason ?? '');
 
-  useEffect(() => {
-    // Always revalidate on mount, even if cache exists (stale-while-revalidate pattern)
-    // This ensures we have fresh data while using cache for instant display
-    console.log('🔄 Component mounted, checking subscription...', {
-      hasCache: !!initialStatus,
-      cachedAccess: initialStatus?.hasAccess
-    });
-    checkSubscription();
+  console.log('🎫 Paywall initialized:', {
+    initialStatus,
+    loading,
+    hasAccess,
+    blockReason
+  });
 
-    // Poll subscription status every second for instant updates
+  useEffect(() => {
+    // Only check if no cache exists, otherwise trust cache completely
+    // Realtime will handle updates if subscription changes
+    if (!initialStatus) {
+      console.log('🔄 No cache found, checking subscription...');
+      checkSubscription();
+    } else {
+      console.log('✅ Using cached subscription status:', initialStatus);
+    }
+
+    // Poll subscription status every 5 seconds
+    // Realtime handles instant updates, polling is just a backup
     const pollInterval = setInterval(() => {
       console.log('⏱️ Polling subscription status...');
       checkSubscription();
-    }, 1000);
+    }, 5000);
 
     // Set up realtime subscription to detect subscription changes
     const channel = supabase
