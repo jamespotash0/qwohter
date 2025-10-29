@@ -126,23 +126,63 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   // Handle success parameter from Stripe Checkout redirect
   useEffect(() => {
     const success = searchParams.get('success');
-    if (success === 'true') {
-      toast({
-        title: "Subscription activated!",
-        description: "Your subscription has been successfully activated. Refreshing your billing information...",
-      });
-
-      // Remove success param from URL
+    if (success === 'true' && organization?.id) {
+      // Remove success param from URL immediately
       setSearchParams({});
 
-      // Force refresh billing data to get updated subscription
-      setTimeout(() => {
-        if (organization?.id) {
-          loadBillingData();
+      // Show processing message
+      toast({
+        title: "Processing subscription...",
+        description: "Please wait while we verify your subscription.",
+      });
+
+      // Poll for subscription with retry logic
+      let retries = 0;
+      const maxRetries = 5; // Try for up to 10 seconds (5 retries * 2 seconds)
+
+      const checkSubscription = async () => {
+        try {
+          const { data: sub } = await stripeService.getSubscription(organization.id);
+
+          if (sub && sub.stripe_subscription_status) {
+            // Subscription found! Show success
+            toast({
+              title: "Subscription activated!",
+              description: "Your subscription has been successfully activated.",
+            });
+            loadBillingData();
+          } else if (retries < maxRetries) {
+            // Not found yet, retry
+            retries++;
+            setTimeout(checkSubscription, 2000);
+          } else {
+            // Failed after all retries - webhook likely failed
+            toast({
+              title: "Subscription processing delayed",
+              description: "Your payment was successful, but subscription activation is taking longer than expected. Please refresh in a few moments or contact support if the issue persists.",
+              variant: "destructive",
+            });
+            loadBillingData(); // Refresh anyway to show current state
+          }
+        } catch (error) {
+          console.error('Error checking subscription:', error);
+          if (retries < maxRetries) {
+            retries++;
+            setTimeout(checkSubscription, 2000);
+          } else {
+            toast({
+              title: "Error verifying subscription",
+              description: "Please refresh the page or contact support.",
+              variant: "destructive",
+            });
+          }
         }
-      }, 2000); // Wait 2 seconds for webhook to process
+      };
+
+      // Start checking after 2 seconds (give webhook time to process)
+      setTimeout(checkSubscription, 2000);
     }
-  }, [searchParams]);
+  }, [searchParams, organization?.id]);
 
   // Realtime subscription for subscription_plans
   useEffect(() => {

@@ -30,6 +30,10 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   const signOut = useAuthStore((state) => state.signOut);
   const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
 
+  // Get user role to determine paywall display
+  const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
+  const isOwner = currentUserRole === 'Owner';
+
   // Get cached subscription status from store
   const cachedStatus = useOrganizationStore((state) => state.subscriptionStatus);
   const setSubscriptionStatus = useOrganizationStore((state) => state.setSubscriptionStatus);
@@ -193,6 +197,37 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   }
 
   if (!hasAccess) {
+    // Non-owner users see simplified message
+    if (!isOwner) {
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--content-bg)]">
+          <Card className="max-w-md w-full mx-4 shadow-2xl border-gray-200">
+            <CardHeader className="text-center pb-4">
+              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8 text-orange-600" />
+              </div>
+              <CardTitle className="text-2xl text-gray-900">Subscription Required</CardTitle>
+              <CardDescription className="text-gray-600 mt-2">
+                Please contact your organization administrator to upgrade your subscription plan.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-2">
+              <Button
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                variant="ghost"
+                className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/30"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                {isLoggingOut ? 'Logging out...' : 'Sign Out'}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    // Owner users see full paywall with billing options
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--content-bg)]">
           <Card className="max-w-md w-full mx-4 shadow-2xl border-gray-200">
@@ -206,6 +241,9 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 pt-2">
+              <p className="text-sm text-gray-600 text-center">
+                Please go to billing settings to manage your subscription and restore access.
+              </p>
               <Button
                 onClick={() => navigate('/settings?tab=billing')}
                 variant="outline"
