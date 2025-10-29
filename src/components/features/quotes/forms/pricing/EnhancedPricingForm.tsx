@@ -9,9 +9,10 @@ import { EnhancedPricingData, defaultEnhancedPricing, calculateEnhancedPricing }
 interface EnhancedPricingFormProps {
   data: EnhancedPricingData;
   onUpdate: (data: EnhancedPricingData) => void;
+  onTouchedFieldsChange?: (fields: Set<string>) => void;
 }
 
-const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
+const EnhancedPricingForm = ({ data, onUpdate, onTouchedFieldsChange }: EnhancedPricingFormProps) => {
   const [localData, setLocalData] = useState<EnhancedPricingData>(() => {
     // Merge provided data with defaults to ensure all fields are present
     return { ...defaultEnhancedPricing, ...data };
@@ -101,15 +102,22 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
     }
   }, []);
 
+  // Notify parent when touched fields change
+  useEffect(() => {
+    if (onTouchedFieldsChange) {
+      onTouchedFieldsChange(touchedFields);
+    }
+  }, [touchedFields, onTouchedFieldsChange]);
+
   // Auto-calculate and update parent whenever input data changes
   useEffect(() => {
     const calculatedData = calculateEnhancedPricing(localData);
-    
+
     // Only update if calculations actually changed to prevent loops
     if (JSON.stringify(calculatedData) !== JSON.stringify(localData)) {
       setLocalData(calculatedData);
     }
-    
+
     // Debounce the parent update to prevent excessive re-renders during typing
     const timeoutId = setTimeout(() => {
       onUpdate(calculatedData);

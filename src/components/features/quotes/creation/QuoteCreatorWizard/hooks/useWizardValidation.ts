@@ -15,7 +15,8 @@ export const useWizardValidation = (
   deliveryLabor: DeliveryLabor,
   pricing: Pricing,
   quoteStatus: string,
-  organization?: OrganizationData
+  organization?: OrganizationData,
+  pricingTouchedFields?: Set<string>
 ) => {
   // Use centralized validation from wallValidation.ts
   const validateWallDimensionsLocal = (wall: WallSpecification, wallName: string): { isValid: boolean; errors: string[] } => {
@@ -257,25 +258,31 @@ export const useWizardValidation = (
       pricing.payment_upon_track_installation.trim() !== ''
     );
 
-    // Check that user has entered meaningful data (not all defaults)
-    // Require that the main material costs (excluding unseen_costs default) sum to > 0
-    const mainCostsTotal =
-      pricing.kwik_wall_materials_cost +
-      pricing.misc_materials_cost +
-      pricing.delivery_cost_track +
-      pricing.delivery_cost_panel +
-      pricing.track_equipment_costs +
-      pricing.track_labor_cost +
-      pricing.panel_equipment_costs +
-      pricing.panel_labor_cost +
-      pricing.track_freight_factory +
-      pricing.panel_freight_factory +
-      pricing.local_handling_costs;
+    // Check that required fields have been touched (filled by user)
+    // Define which fields are required to be filled
+    const requiredFields = [
+      'kwik_wall_materials_cost',
+      'misc_materials_cost',
+      'delivery_cost_track',
+      'delivery_cost_panel',
+      'track_equipment_costs',
+      'track_labor_cost',
+      'panel_equipment_costs',
+      'panel_labor_cost',
+      'track_freight_factory',
+      'panel_freight_factory',
+      'local_handling_costs',
+      'materials_markup_percentage',
+      'shipping_markup_percentage'
+    ];
 
-    const hasMeaningfulData = mainCostsTotal > 0;
+    // Check if all required fields have been touched (user interacted with them)
+    const allRequiredFieldsTouched = pricingTouchedFields
+      ? requiredFields.every(field => pricingTouchedFields.has(field))
+      : false;
 
-    return allFieldsValid && hasMeaningfulData;
-  }, [pricing]);
+    return allFieldsValid && allRequiredFieldsTouched;
+  }, [pricing, pricingTouchedFields]);
 
   const isQuoteStatusValid = useMemo(() => {
     return !!(quoteStatus && quoteStatus.trim() !== '');

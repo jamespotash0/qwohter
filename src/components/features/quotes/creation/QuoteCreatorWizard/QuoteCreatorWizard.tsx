@@ -23,6 +23,7 @@ const QuoteCreatorWizard = ({
   const [activeStep, setActiveStep] = useState(0);
   const [editingQuoteName, setEditingQuoteName] = useState(false);
   const [localQuoteName, setLocalQuoteName] = useState(quoteName);
+  const [pricingTouchedFields, setPricingTouchedFields] = useState<Set<string>>(new Set());
 
   // Use the state management hook
   const {
@@ -65,7 +66,7 @@ const QuoteCreatorWizard = ({
     isDeliveryLaborValid,
     isPricingValid,
     // isQuoteStatusValid
-  } = useWizardValidation(contactInfo, jobDetails, walls, deliveryLabor, pricing, quoteStatus, organization || undefined);
+  } = useWizardValidation(contactInfo, jobDetails, walls, deliveryLabor, pricing, quoteStatus, organization || undefined, pricingTouchedFields);
 
   // Create wizard steps with validation states
   const steps = createWizardSteps(
@@ -312,6 +313,7 @@ const QuoteCreatorWizard = ({
               onWallPocketDoorsUpdate={handleWallPocketDoorsUpdate}
               onWallStructureSupportUpdate={handleWallStructureSupportUpdate}
               onSave={handleSave}
+              onPricingTouchedFieldsUpdate={setPricingTouchedFields}
             />
           </div>
         </div>
