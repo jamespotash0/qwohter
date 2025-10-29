@@ -382,14 +382,19 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       cell: ({ getValue, row }) => {
         const quote = row.original;
         const versionGroup = quoteToGroupMap.get(quote.id);
-        const baseNumber = getBaseProposalNumber(getValue());
+        const proposalNumber = getValue();
+        const baseNumber = getBaseProposalNumber(proposalNumber);
         const isExpanded = expanded[baseNumber];
         const hasMultipleVersions = versionGroup && versionGroup.hasMultipleVersions;
+
+        // Show full proposal number (with version suffix) if it's the main version of the group
+        // or if it's a standalone quote
+        const displayNumber = proposalNumber;
 
         return (
           <div className="flex items-center gap-2">
             <div className="font-mono text-sm font-medium">
-              {baseNumber}
+              {displayNumber}
             </div>
             {hasMultipleVersions && (
               <button
@@ -451,17 +456,8 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         const versionGroup = quoteToGroupMap.get(quote.id);
 
         if (versionGroup && versionGroup.hasMultipleVersions) {
-          // Check if all versions have the same client
-          const clients = versionGroup.versions.map(v =>
-            v.job_details?.client_company || v.job_details?.client_name || ""
-          );
-          const uniqueClients = [...new Set(clients.filter(c => c))];
-
-          if (uniqueClients.length === 1) {
-            return <div className="font-medium text-sm">{uniqueClients[0]}</div>;
-          } else {
-            return <div className="text-sm text-gray-500 italic">Multiple</div>;
-          }
+          // Always show "Various" (italicized) for parent rows with multiple versions
+          return <div className="text-sm text-gray-500 italic">Various</div>;
         }
 
         const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client";
@@ -1364,7 +1360,23 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                                     <Edit3 className="mr-2 h-4 w-4" />
                                     Edit
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => onDeleteQuote(version.id)}>
+                                  <DropdownMenuSeparator />
+                                  {isArchiveView && onUnarchiveQuote ? (
+                                    <DropdownMenuItem onClick={() => onUnarchiveQuote(version.id)}>
+                                      <ArchiveRestore className="mr-2 h-4 w-4" />
+                                      Unarchive
+                                    </DropdownMenuItem>
+                                  ) : onArchiveQuote && (
+                                    <DropdownMenuItem onClick={() => onArchiveQuote(version.id)}>
+                                      <Archive className="mr-2 h-4 w-4" />
+                                      Archive
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => onDeleteQuote(version.id)}
+                                    className="text-red-600 focus:text-red-600"
+                                  >
                                     <Trash2 className="mr-2 h-4 w-4" />
                                     Delete
                                   </DropdownMenuItem>

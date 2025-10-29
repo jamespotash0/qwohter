@@ -35,7 +35,7 @@ export interface EnhancedPricingData {
 
 // Default values for new pricing data
 export const defaultEnhancedPricing: EnhancedPricingData = {
-  // Input fields
+  // Input fields - start at 0 so placeholder shows
   kwik_wall_materials_cost: 0,
   misc_materials_cost: 0,
   delivery_cost_track: 0,
@@ -49,9 +49,9 @@ export const defaultEnhancedPricing: EnhancedPricingData = {
   local_handling_costs: 0,
   materials_markup_percentage: 0,        // No default - user enters their own
   shipping_markup_percentage: 0,            // No default - user enters their own
-  
+
   // Auto-calculated fields
-  unseen_costs: 500,            // Default $500
+  unseen_costs: 500,              // Start at 0 so placeholder shows
   unseen_costs_percentage: 0,   // Auto-calculated from dollar amount
   unseen_costs_locked: true,    // Start locked (auto-calculated)
   cost_subtotal: 0,

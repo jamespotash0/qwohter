@@ -66,10 +66,10 @@ export const validateWallDimensions = (wall: any) => {
     errors.push('Height inches must be between 0 and 11 (e.g., "0", "3/4", "3 3/4", or "3-3/4")');
   }
   
-  // Panel count validation
+  // Panel count validation (0 allowed for unispan support wall systems)
   const panelCount = parseInt(wall.panelCount || '0');
-  if (isNaN(panelCount) || panelCount < 1 || panelCount > 200) {
-    errors.push('Panel count must be between 1 and 200');
+  if (isNaN(panelCount) || panelCount < 0 || panelCount > 200) {
+    errors.push('Panel count must be between 0 and 200');
   }
   
   // Wall System Type

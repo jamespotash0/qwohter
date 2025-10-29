@@ -209,7 +209,10 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
               <SelectTrigger className={`h-10 ${
                 data.contactName ? 'border-green-500' : 'border-red-500'
               }`}>
-                <SelectValue placeholder={loading ? "Loading contacts..." : "Select contact name"} />
+                <SelectValue 
+                  placeholder={loading ? "Loading contacts..." : "Select contact name"} 
+                  className="text-gray-600"
+                />
               </SelectTrigger>
               <SelectContent>
                 {contactNames.map((name) => (
@@ -270,7 +273,10 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
               <SelectTrigger className={`h-10 w-full ${
                 data.contactEmail ? 'border-green-500' : 'border-red-500'
               }`}>
-                <SelectValue placeholder={loading ? "Loading emails..." : "Select contact email"} />
+                <SelectValue 
+                  placeholder={loading ? "Loading emails..." : "Select contact email"} 
+                  className="text-gray-600"
+                />
               </SelectTrigger>
               <SelectContent>
                 {contactEmails.map((email) => (
@@ -326,7 +332,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             placeholder={organizationLoading ? "Loading..." : (data.fax ? "From organization settings" : "Not set in organization")}
             required={!!data.fax}
             className={`h-10 w-full bg-gray-50 cursor-not-allowed ${
-              data.fax ? 'border-green-500' : 'border-gray-300'
+              data.fax ? 'border-green-500' : 'border-gray-300 placeholder:text-gray-600' 
             }`}
           />
           <p className="text-xs text-muted-foreground">
@@ -422,7 +428,10 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
                 <SelectTrigger className={`h-10 w-full ${
                   data.quoteSource ? 'border-green-500' : 'border-red-500'
                 }`}>
-                  <SelectValue placeholder="Select quote source" />
+                  <SelectValue 
+                    placeholder="Select quote source" 
+                    className="text-gray-600"  
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Manual">Manual Entry</SelectItem>

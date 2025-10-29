@@ -45,7 +45,7 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
                 onChange={(e) => handleChange("date", e.target.value)}
                 required
                 className={`h-10 pr-8 sm:pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:right-1 sm:[&::-webkit-calendar-picker-indicator]:right-2 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:bg-transparent [&::-webkit-calendar-picker-indicator]:hover:bg-gray-100 [&::-webkit-calendar-picker-indicator]:rounded [&::-webkit-calendar-picker-indicator]:p-0.5 sm:[&::-webkit-calendar-picker-indicator]:p-1 [&::-webkit-calendar-picker-indicator]:w-5 [&::-webkit-calendar-picker-indicator]:h-5 sm:[&::-webkit-calendar-picker-indicator]:w-6 sm:[&::-webkit-calendar-picker-indicator]:h-4 ${
-                  data.date ? 'border-green-500' : 'border-red-500'
+                  data.date ? 'border-green-500' : 'border-red-500 placeholder:text-gray-600'
                 }`}
                 style={{
                   colorScheme: 'light'
@@ -64,7 +64,7 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
               required
               readOnly
               className={`h-10 bg-muted text-muted-foreground ${
-                data.proposalNumber ? 'border-green-500' : 'border-red-500'
+                data.proposalNumber ? 'border-green-500' : 'border-red-500 placeholder:text-gray-600'
               }`}
             />
           </div>
@@ -78,7 +78,7 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
               placeholder="Enter job location"
               id="jobLocation"
               required
-              // className={data.jobLocation ? 'border-green-500' : 'border-red-500'}
+              className={data.jobLocation ? 'border-green-500' : 'border-red-500 placeholder:text-gray-600'} 
             />
           </div>
         </div>
@@ -95,7 +95,7 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
                 placeholder="Client name"
                 required
                 className={`h-10 ${
-                  data.billedTo.name ? 'border-green-500' : 'border-red-500'
+                  data.billedTo.name ? 'border-green-500' : 'border-red-500 placeholder:text-gray-600' 
                 }`}
               />
             </div>
@@ -109,7 +109,7 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
                 placeholder="Company name"
                 required
                 className={`h-10 ${
-                  data.billedTo.company ? 'border-green-500' : 'border-red-500'
+                  data.billedTo.company ? 'border-green-500' : 'border-red-500 placeholder:text-gray-600'
                 }`}
               />
             </div>
@@ -123,7 +123,7 @@ const JobDetailsForm = ({ data, onUpdate }: JobDetailsFormProps) => {
                 placeholder="Client address"
                 id="billedAddress"
                 required
-                // className={data.billedTo.address ? 'border-green-500' : 'border-red-500'}
+                className={data.billedTo.address ? 'border-green-500' : 'border-red-500 placeholder:text-gray-600'}
               />
             </div>
           </div>

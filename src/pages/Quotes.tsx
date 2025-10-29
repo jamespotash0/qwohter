@@ -90,8 +90,111 @@ const Quotes = () => {
   };
 
   const handleDeleteQuote = async (id: string) => {
-    await deleteQuoteFromDB(id);
+    // Find if this quote is part of a version group
+    const quoteGroups = groupQuotesByVersion(quotes);
+    const quoteToDelete = quotes.find(q => q.id === id);
+
+    if (!quoteToDelete) {
+      await deleteQuoteFromDB(id);
+      setDeleteQuoteId(null);
+      return;
+    }
+
+    // Find the group this quote belongs to
+    const group = quoteGroups.find(g =>
+      g.versions.some(v => v.id === id)
+    );
+
+    if (group && group.hasMultipleVersions) {
+      // Check if the quote being deleted is the displayed main version
+      const isMainVersion = group.mainVersion.id === id || quoteToDelete.is_main_version === true;
+
+      if (isMainVersion) {
+        // This is the main version - delete ALL versions in the group (cascade delete)
+        console.log('🗑️ Cascade deleting all versions for group:', group.baseNumber);
+        for (const version of group.versions) {
+          await deleteQuoteFromDB(version.id);
+        }
+      } else {
+        // This is a child version - delete only this one
+        await deleteQuoteFromDB(id);
+      }
+    } else {
+      // Single version, no group - just delete it
+      await deleteQuoteFromDB(id);
+    }
+
     setDeleteQuoteId(null);
+  };
+
+  const handleArchiveQuote = async (id: string) => {
+    // Find if this quote is part of a version group
+    const quoteGroups = groupQuotesByVersion(quotes);
+    const quoteToArchive = quotes.find(q => q.id === id);
+
+    if (!quoteToArchive) {
+      await archiveQuote(id);
+      return;
+    }
+
+    // Find the group this quote belongs to
+    const group = quoteGroups.find(g =>
+      g.versions.some(v => v.id === id)
+    );
+
+    if (group && group.hasMultipleVersions) {
+      // Check if the quote being archived is the displayed main version
+      const isMainVersion = group.mainVersion.id === id || quoteToArchive.is_main_version === true;
+
+      if (isMainVersion) {
+        // This is the main version - archive ALL versions in the group (cascade archive)
+        console.log('📦 Cascade archiving all versions for group:', group.baseNumber);
+        for (const version of group.versions) {
+          await archiveQuote(version.id);
+        }
+      } else {
+        // This is a child version - archive only this one
+        await archiveQuote(id);
+      }
+    } else {
+      // Single version, no group - just archive it
+      await archiveQuote(id);
+    }
+  };
+
+  const handleUnarchiveQuote = async (id: string) => {
+    // Find if this quote is part of a version group
+    const quoteGroups = groupQuotesByVersion(quotes);
+    const quoteToUnarchive = quotes.find(q => q.id === id);
+
+    if (!quoteToUnarchive) {
+      await unarchiveQuote(id);
+      return;
+    }
+
+    // Find the group this quote belongs to
+    const group = quoteGroups.find(g =>
+      g.versions.some(v => v.id === id)
+    );
+
+    if (group && group.hasMultipleVersions) {
+      // Check if the quote being unarchived is the displayed main version
+      const isMainVersion = group.mainVersion.id === id || quoteToUnarchive.is_main_version === true;
+
+      if (isMainVersion) {
+        // This is the main version - unarchive ALL versions in the group (cascade unarchive)
+        console.log('📤 Cascade unarchiving all versions for group:', group.baseNumber);
+        for (const version of group.versions) {
+          await unarchiveQuote(version.id);
+        }
+      } else {
+        // This is a child version - unarchive only this one
+        await unarchiveQuote(id);
+      }
+    } else {
+      // Single version, no group - just unarchive it
+      await unarchiveQuote(id);
+    }
   };
 
 
@@ -484,8 +587,8 @@ const Quotes = () => {
           onCreateVersion={handleCreateVersion}
           onCreateQuote={() => setShowNewQuoteDialog(true)}
           // onSetReminder={handleSetReminder}
-          onArchiveQuote={showArchived ? undefined : archiveQuote}
-          onUnarchiveQuote={showArchived ? unarchiveQuote : undefined}
+          onArchiveQuote={showArchived ? undefined : handleArchiveQuote}
+          onUnarchiveQuote={showArchived ? handleUnarchiveQuote : undefined}
           isArchiveView={showArchived}
           showArchived={showArchived}
           archivedCount={archivedQuotes.length}

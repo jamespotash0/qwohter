@@ -11,8 +11,9 @@ export class SectionGenerators {
   generateHeader(data: QuoteData): string {
     // Get organization info first, then fallback to quote details
     const organizationInfo = data.organization_info;
-    
+
     const contactName = data.quote_details?.contactName || '';
+    const contactEmail = data.quote_details?.contactEmail || '';
     const address = organizationInfo?.address || data.quote_details?.address || '';
     const phone = organizationInfo?.phone || data.quote_details?.phone || '';
     const fax = organizationInfo?.fax || data.quote_details?.fax || '';
@@ -53,7 +54,7 @@ export class SectionGenerators {
 
     return `<div class="header-section" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0px 0px 30px 0px;">
       <div class="company-info" style="flex: 0 0 auto; width: 250px;">
-        <div class="company-logo" style="width: 250px; height: 100px; display: flex; align-items: center; justify-content: flex-start;">
+        <div class="company-logo" style="width: 250px; height: 120px; display: flex; align-items: center; justify-content: flex-start;">
           ${logoHtml}
         </div>
       </div>
@@ -62,6 +63,10 @@ export class SectionGenerators {
         <div class="contact-row">
           <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Contact:</span>
           <span class="value">${contactName}</span>
+        </div>
+        <div class="contact-row">
+          <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Email:</span>
+          <span class="value">${contactEmail}</span>
         </div>
         <div class="contact-row" style="display: flex; align-items: flex-start;">
           <span class="label" style="font-weight: bold; width: 80px; flex-shrink: 0; text-align: right; padding-right: 0px;">
