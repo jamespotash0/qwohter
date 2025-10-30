@@ -7,35 +7,60 @@ import {
   TrendingUp,
   FileText,
   Target,
-  Users,
-  Calendar,
+  Calculator,
+  Percent,
+  Receipt,
 } from "lucide-react";
 import { useQuotesStore } from "@/stores/quotes/quotesStore";
-import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
 import { useOrganizationStore } from "@/stores/organization/organizationStore";
 import { useAuthStore } from "@/stores/auth/authStore";
 
-// Import new analytics components with coral theme
+// Import new analytics components
+import { KPICard } from "@/components/analytics";
+import { EnhancedChartCard, TimePeriod } from "@/components/analytics/EnhancedChartCard";
 import {
-  KPICard,
-  ChartCard,
-  RevenueChart,
-  QuotesBarChart,
-  SourcePieChart,
-} from "@/components/analytics";
+  generateAnalyticsSummary,
+  formatCurrency,
+  calculateWinRate,
+  calculateConversionRate,
+  filterMainVersionQuotes,
+  calculateAverageGrossProfitPerQuote,
+  calculateAverageRevenuePerQuote,
+  calculateAverageQuoteValue,
+} from "@/utils/analyticsCalculations";
+
+// Import Recharts components
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 /**
- * Analytics Dashboard with Coral Theme (#EE6C4D)
+ * Analytics Dashboard - Comprehensive Metrics Tracking
  *
  * Features:
- * - Custom KPI cards with trend indicators
- * - Recharts visualizations
- * - Monthly/Annual view toggle
- * - Real-time data updates
+ * - KPI cards with real-time trends
+ * - Time period toggles (Weekly/Monthly/Yearly)
+ * - Revenue tracking and conversion metrics
+ * - Quote source performance
+ * - Export and enlarge capabilities
  */
 const Analytics = () => {
   const [user, setUser] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'monthly' | 'annual'>('monthly');
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('monthly');
   const quotes = useQuotesStore((state) => state.quotes);
   const quotesLoading = useQuotesStore((state) => state.isLoading);
   const fetchQuotes = useQuotesStore((state) => state.fetchQuotes);
@@ -70,192 +95,51 @@ const Analytics = () => {
     };
   }, [user]);
 
-  const parseCurrency = (formatted: string | number): number => {
-    if (typeof formatted === 'number') return formatted;
-    return Number(formatted.toString().replace(/[^0-9.-]+/g, ''));
+  // Filter to main versions only to prevent double-counting across versions
+  const mainVersionQuotes = useMemo(() => {
+    return filterMainVersionQuotes(quotes);
+  }, [quotes]);
+
+  // Generate comprehensive analytics using new calculation utilities
+  const analytics = useMemo(() => {
+    const result = generateAnalyticsSummary(mainVersionQuotes, timePeriod);
+    // Debug: Check userMetrics data
+    console.log('Analytics userMetrics:', result.userMetrics);
+    console.log('Sample quotes - created_by_name:', mainVersionQuotes.slice(0, 3).map(q => ({
+      id: q.id,
+      created_by_name: q.created_by_name,
+      creator_name: q.creator_name
+    })));
+    return result;
+  }, [mainVersionQuotes, timePeriod]);
+
+  // Chart color scheme
+  const COLORS = {
+    primary: '#EE6C4D',
+    blue: '#3B82F6',
+    green: '#10B981',
+    purple: '#8B5CF6',
+    orange: '#F97316',
+    teal: '#14B8A6',
   };
 
-  // Calculate metrics based on view mode
-  const metrics = useMemo(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
+  // Export handler for charts
+  const handleExport = (chartName: string) => {
+    console.log(`Exporting ${chartName} data...`);
+    // TODO: Implement CSV export
+  };
 
-    const quoteGroups = groupQuotesByVersion(quotes);
-
-    // Filter by period
-    const filteredQuoteGroups = viewMode === 'monthly'
-      ? quoteGroups.filter(group => {
-          const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
-          if (!baseVersion) return false;
-          const createdDate = new Date(baseVersion.created_at);
-          return createdDate.getFullYear() === currentYear && createdDate.getMonth() === currentMonth;
-        })
-      : quoteGroups.filter(group => {
-          const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
-          if (!baseVersion) return false;
-          const createdDate = new Date(baseVersion.created_at);
-          return createdDate.getFullYear() === currentYear;
-        });
-
-    // Calculate revenue by period
-    const wonQuoteGroupsInPeriod = viewMode === 'monthly'
-      ? quoteGroups.filter(group => {
-          const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
-          if (!wonVersion) return false;
-          const wonDate = new Date(wonVersion.won_at);
-          return wonDate.getFullYear() === currentYear && wonDate.getMonth() === currentMonth;
-        })
-      : quoteGroups.filter(group => {
-          const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
-          if (!wonVersion) return false;
-          const wonDate = new Date(wonVersion.won_at);
-          return wonDate.getFullYear() === currentYear;
-        });
-
-    const rejectedQuoteGroupsInPeriod = viewMode === 'monthly'
-      ? quoteGroups.filter(group => {
-          const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
-          if (!rejectedVersion) return false;
-          const rejectedDate = new Date(rejectedVersion.rejected_at);
-          return rejectedDate.getFullYear() === currentYear && rejectedDate.getMonth() === currentMonth && !group.versions.some(v => v.status === 'Won');
-        })
-      : quoteGroups.filter(group => {
-          const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
-          if (!rejectedVersion) return false;
-          const rejectedDate = new Date(rejectedVersion.rejected_at);
-          return rejectedDate.getFullYear() === currentYear && !group.versions.some(v => v.status === 'Won');
-        });
-
-    const totalRevenue = wonQuoteGroupsInPeriod.reduce((sum, group) => {
-      const wonVersion = group.versions.find(v => v.status === 'Won');
-      if (!wonVersion) return sum;
-      const total = wonVersion.total_value || wonVersion.price_details?.final_selling_price || 0;
-      return sum + (typeof total === 'number' ? total : parseCurrency(total));
-    }, 0);
-
-    const wonQuotes = wonQuoteGroupsInPeriod.length;
-    const rejectedQuotes = rejectedQuoteGroupsInPeriod.length;
-    const winRate = (wonQuotes + rejectedQuotes) > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;
-
-    // Top contributor
-    const quotesByUser: Record<string, number> = {};
-    quoteGroups.forEach(group => {
-      const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
-      const userName = baseVersion?.creator_name || 'Unknown';
-      quotesByUser[userName] = (quotesByUser[userName] || 0) + 1;
-    });
-    const topUser = Object.entries(quotesByUser).sort((a, b) => b[1] - a[1])[0] || ['None', 0];
-
-    // Chart data for revenue over time
-    const revenueData = [];
-    if (viewMode === 'annual') {
-      for (let month = 0; month < 12; month++) {
-        const monthGroups = quoteGroups.filter(group => {
-          const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
-          if (!wonVersion) return false;
-          const wonDate = new Date(wonVersion.won_at);
-          return wonDate.getFullYear() === currentYear && wonDate.getMonth() === month;
-        });
-        const monthRevenue = monthGroups.reduce((sum, group) => {
-          const wonVersion = group.versions.find(v => v.status === 'Won');
-          if (!wonVersion) return sum;
-          const total = wonVersion.total_value || wonVersion.price_details?.final_selling_price || 0;
-          return sum + (typeof total === 'number' ? total : parseCurrency(total));
-        }, 0);
-        const monthName = new Date(currentYear, month).toLocaleDateString('en-US', { month: 'short' });
-        revenueData.push({ period: monthName, revenue: monthRevenue });
-      }
-    } else {
-      // Weekly data for monthly view
-      const startOfMonth = new Date(currentYear, currentMonth, 1);
-      const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
-      const weeks = Math.ceil(endOfMonth.getDate() / 7);
-
-      for (let week = 0; week < weeks; week++) {
-        const weekStart = week * 7 + 1;
-        const weekEnd = Math.min((week + 1) * 7, endOfMonth.getDate());
-        const weekGroups = wonQuoteGroupsInPeriod.filter(group => {
-          const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
-          if (!wonVersion) return false;
-          const day = new Date(wonVersion.won_at).getDate();
-          return day >= weekStart && day <= weekEnd;
-        });
-        const weekRevenue = weekGroups.reduce((sum, group) => {
-          const wonVersion = group.versions.find(v => v.status === 'Won');
-          if (!wonVersion) return sum;
-          const total = wonVersion.total_value || wonVersion.price_details?.final_selling_price || 0;
-          return sum + (typeof total === 'number' ? total : parseCurrency(total));
-        }, 0);
-        revenueData.push({ period: `Week ${week + 1}`, revenue: weekRevenue });
-      }
-    }
-
-    // Quote status data for bar chart
-    const quotesStatusData = [
-      {
-        name: viewMode === 'monthly' ? 'This Month' : 'This Year',
-        won: wonQuotes,
-        lost: rejectedQuotes,
-        pending: filteredQuoteGroups.length - wonQuotes - rejectedQuotes,
-      },
-    ];
-
-    // Quote source data (example - you can enhance this)
-    const sourceData = [
-      { name: 'Website', value: Math.floor(filteredQuoteGroups.length * 0.4) },
-      { name: 'Referral', value: Math.floor(filteredQuoteGroups.length * 0.3) },
-      { name: 'Direct', value: Math.floor(filteredQuoteGroups.length * 0.2) },
-      { name: 'Other', value: Math.floor(filteredQuoteGroups.length * 0.1) },
-    ];
-
-    return {
-      totalQuotes: filteredQuoteGroups.length,
-      totalRevenue,
-      topUser,
-      averageRevenuePerQuote: wonQuotes > 0 ? totalRevenue / wonQuotes : 0,
-      winRate,
-      revenueData,
-      quotesStatusData,
-      sourceData,
-    };
-  }, [quotes, viewMode]);
+  // Enlarge handler for charts
+  const handleEnlarge = (chartName: string) => {
+    console.log(`Enlarging ${chartName}...`);
+    // TODO: Implement modal view
+  };
 
   return (
     <PageContent
       title="Analytics"
-      subtitle="Track performance metrics and business insights"
+      subtitle="Comprehensive performance tracking and business insights"
       showPageHeader={true}
-      headerActions={
-        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setViewMode('monthly')}
-            className={`transition-all duration-200 ${
-              viewMode === 'monthly'
-                ? 'bg-[#EE6C4D] text-white hover:bg-[#D85B3E] hover:text-white'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            Monthly
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setViewMode('annual')}
-            className={`transition-all duration-200 ${
-              viewMode === 'annual'
-                ? 'bg-[#EE6C4D] text-white hover:bg-[#D85B3E] hover:text-white'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            Annual
-          </Button>
-        </div>
-      }
     >
       {/* Loading State */}
       {quotesLoading ? (
@@ -265,66 +149,489 @@ const Analytics = () => {
         </div>
       ) : (
         <>
-          {/* KPI Cards - Using new components with coral theme */}
+          {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <KPICard
-              title={viewMode === 'monthly' ? 'Revenue This Month' : 'Revenue This Year'}
-              value={`$${(Math.round(metrics.totalRevenue * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-              subtitle="Won quotes only"
+              title="Total Revenue (All Time)"
+              value={formatCurrency(mainVersionQuotes.filter(q => q.status === 'Won').reduce((sum, q) => sum + (q.total_value || 0), 0))}
+              subtitle="Lifetime earnings"
               icon={DollarSign}
               iconColor="orange"
-              trend={{ value: 12.5, direction: 'up', label: 'vs last period' }}
             />
 
             <KPICard
-              title="Top Contributor"
-              value={metrics.topUser[0]}
-              subtitle={`${metrics.topUser[1]} quotes`}
-              icon={Users}
+              title="This Week's Revenue"
+              value={analytics.totalRevenue.formattedValue}
+              subtitle="Last 7 days"
+              icon={TrendingUp}
+              iconColor="green"
+              trend={{
+                value: analytics.totalRevenue.trend,
+                direction: analytics.totalRevenue.trendDirection,
+                label: 'vs last week'
+              }}
+            />
+
+            <KPICard
+              title="Quote Win Rate"
+              value={`${calculateWinRate(mainVersionQuotes).toFixed(1)}%`}
+              subtitle="Won / Decided (Won+Rejected)"
+              icon={Target}
               iconColor="blue"
             />
 
             <KPICard
-              title="Avg Revenue/Quote"
-              value={`$${Math.round(metrics.averageRevenuePerQuote).toLocaleString()}`}
-              subtitle="Won quotes only"
-              icon={TrendingUp}
+              title="Conversion Rate"
+              value={`${calculateConversionRate(mainVersionQuotes).toFixed(1)}%`}
+              subtitle="Won / All Submitted"
+              icon={Calculator}
               iconColor="purple"
-            />
-
-            <KPICard
-              title="Win Rate"
-              value={`${Math.round(metrics.winRate)}%`}
-              subtitle="Won vs total decided"
-              icon={Target}
-              iconColor="green"
-              trend={{ value: 4.2, direction: 'up', label: 'vs last period' }}
             />
           </div>
 
           {/* Charts Section */}
           {quotes.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ChartCard
-                title="Revenue Over Time"
-                subtitle={viewMode === 'monthly' ? 'Weekly revenue' : 'Monthly revenue'}
+              {/* Average Quote Metrics Over Time */}
+              <EnhancedChartCard
+                title="Average Quote Metrics Over Time"
+                subtitle="Track profit, revenue, and value trends"
+                showTimePeriodToggle={true}
+                onTimePeriodChange={setTimePeriod}
+                defaultTimePeriod={timePeriod}
+                onExport={() => handleExport('averages')}
+                onExpand={() => handleEnlarge('averages')}
               >
-                <RevenueChart data={metrics.revenueData} />
-              </ChartCard>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={analytics.averagesOverTime}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="date"
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                        padding: '12px',
+                      }}
+                      labelStyle={{
+                        fontWeight: 'bold',
+                        marginBottom: '8px',
+                      }}
+                      formatter={(value: number, name: string) => {
+                        const labelMap: Record<string, string> = {
+                          avgGrossProfit: 'Avg Gross Profit',
+                          avgRevenue: 'Avg Revenue',
+                          avgValue: 'Avg Quote Value',
+                        };
+                        return [formatCurrency(value), labelMap[name] || name];
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="avgGrossProfit"
+                      stroke={COLORS.green}
+                      strokeWidth={2}
+                      name="Avg Gross Profit"
+                      dot={{ r: 4 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="avgRevenue"
+                      stroke={COLORS.blue}
+                      strokeWidth={2}
+                      name="Avg Revenue"
+                      dot={{ r: 4 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="avgValue"
+                      stroke={COLORS.purple}
+                      strokeWidth={2}
+                      name="Avg Quote Value"
+                      dot={{ r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
 
-              <ChartCard
-                title="Quote Status"
-                subtitle="Won, lost, and pending quotes"
+              {/* Quote Status Breakdown */}
+              <EnhancedChartCard
+                title="Quote Status Breakdown"
+                subtitle="Distribution across all statuses"
+                onExport={() => handleExport('status')}
+                onExpand={() => handleEnlarge('status')}
               >
-                <QuotesBarChart data={metrics.quotesStatusData} />
-              </ChartCard>
+                <div className="h-[300px] flex items-center">
+                  <div className="flex-1">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
+                            { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
+                            { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
+                            { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
+                            { name: 'Rejected', value: analytics.statusBreakdown.rejected, color: '#EF4444' },
+                          ].filter(item => item.value > 0)}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={90}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {[
+                            { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
+                            { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
+                            { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
+                            { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
+                            { name: 'Rejected', value: analytics.statusBreakdown.rejected, color: '#EF4444' },
+                          ].filter(item => item.value > 0).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value: number, name: string) => [value, name]}
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #E5E7EB',
+                            borderRadius: '8px',
+                          }}
+                        />
+                        <Legend
+                          verticalAlign="middle"
+                          align="right"
+                          layout="vertical"
+                          formatter={(value, entry: any) => {
+                            const total = analytics.statusBreakdown.incomplete +
+                                         analytics.statusBreakdown.draft +
+                                         analytics.statusBreakdown.submitted +
+                                         analytics.statusBreakdown.won +
+                                         analytics.statusBreakdown.rejected;
+                            const itemValue = entry.payload?.value || 0;
+                            const percent = total > 0 ? ((itemValue / total) * 100).toFixed(1) : '0.0';
+                            return `${value}: ${itemValue} (${percent}%)`;
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </EnhancedChartCard>
 
-              <ChartCard
-                title="Quote Sources"
-                subtitle="Where quotes come from"
+              {/* Total Metrics Over Time */}
+              <EnhancedChartCard
+                title="Total Metrics Over Time"
+                subtitle="Revenue, gross profit, and pipeline value trends"
+                showTimePeriodToggle={true}
+                onTimePeriodChange={setTimePeriod}
+                defaultTimePeriod={timePeriod}
+                onExport={() => handleExport('totals')}
+                onExpand={() => handleEnlarge('totals')}
               >
-                <SourcePieChart data={metrics.sourceData} />
-              </ChartCard>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={analytics.totalsOverTime}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="date"
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                        padding: '12px',
+                      }}
+                      labelStyle={{
+                        fontWeight: 'bold',
+                        marginBottom: '8px',
+                      }}
+                      formatter={(value: number, name: string) => {
+                        const labelMap: Record<string, string> = {
+                          revenue: 'Revenue',
+                          grossProfit: 'Gross Profit',
+                          pipelineValue: 'Total Pipeline Value',
+                        };
+                        return [formatCurrency(value), labelMap[name] || name];
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke={COLORS.green}
+                      strokeWidth={2}
+                      name="Revenue"
+                      dot={{ r: 4 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="grossProfit"
+                      stroke={COLORS.blue}
+                      strokeWidth={2}
+                      name="Gross Profit"
+                      dot={{ r: 4 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="pipelineValue"
+                      stroke={COLORS.orange}
+                      strokeWidth={2}
+                      name="Total Pipeline Value"
+                      dot={{ r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Won vs Rejected Over Time */}
+              <EnhancedChartCard
+                title="Won vs Rejected Quotes"
+                subtitle="Track outcomes over time"
+                showTimePeriodToggle={true}
+                onTimePeriodChange={setTimePeriod}
+                defaultTimePeriod={timePeriod}
+                onExport={() => handleExport('won-rejected')}
+                onExpand={() => handleEnlarge('won-rejected')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics.timeSeriesData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="date"
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="rejectedCount" fill={COLORS.orange} name="Rejected" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Quotes by People */}
+              <EnhancedChartCard
+                title="Quotes by Team Member"
+                subtitle="Quote volume per person"
+                onExport={() => handleExport('by-people')}
+                onExpand={() => handleEnlarge('by-people')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics.userMetrics.slice(0, 10)} layout="vertical" margin={{ left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis type="number" stroke="#6B7280" fontSize={12} tickLine={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="userName"
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      width={120}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => [value, name]}
+                    />
+                    <Legend />
+                    <Bar dataKey="quoteCount" fill={COLORS.blue} name="Total Quotes" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Product Breakdown */}
+              <EnhancedChartCard
+                title="Most Quoted Products"
+                subtitle="Product type distribution"
+                onExport={() => handleExport('products')}
+                onExpand={() => handleEnlarge('products')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics.productMetrics}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="productType"
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="quoteCount" name="Quotes" radius={[4, 4, 0, 0]}>
+                      {analytics.productMetrics.map((entry, index) => {
+                        const productColors: Record<string, string> = {
+                          'Operable Wall': COLORS.blue,
+                          'Glass Wall': COLORS.green,
+                          'Accordion Partition': COLORS.purple,
+                        };
+                        const color = productColors[entry.productType] || COLORS.orange;
+                        return <Cell key={`cell-${index}`} fill={color} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Product Model Breakdown */}
+              <EnhancedChartCard
+                title="Product Breakdown by Model"
+                subtitle="Detailed breakdown by model for all product types"
+                onExport={() => handleExport('product-models')}
+                onExpand={() => handleEnlarge('product-models')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics.productModelMetrics} layout="vertical" margin={{ left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis type="number" stroke="#6B7280" fontSize={12} tickLine={false} allowDecimals={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="model"
+                      stroke="#6B7280"
+                      fontSize={11}
+                      tickLine={false}
+                      width={100}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => {
+                        if (name === 'Quotes') return [value, 'Quote Count'];
+                        return [value, name];
+                      }}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload.length > 0) {
+                          const item = payload[0].payload;
+                          return `${item.productType} - ${label}`;
+                        }
+                        return label;
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="quoteCount" name="Quotes" radius={[0, 4, 4, 0]}>
+                      {analytics.productModelMetrics.map((entry, index) => {
+                        // Different color for each model
+                        const modelColors = [
+                          COLORS.blue,
+                          COLORS.green,
+                          COLORS.purple,
+                          COLORS.orange,
+                          COLORS.teal,
+                          COLORS.primary,
+                          '#F59E0B', // amber
+                          '#EC4899', // pink
+                          '#6366F1', // indigo
+                          '#14B8A6', // teal
+                        ];
+                        const color = modelColors[index % modelColors.length];
+                        return <Cell key={`cell-${index}`} fill={color} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Quote Source Performance */}
+              <EnhancedChartCard
+                title="Quote Source Performance"
+                subtitle="Revenue and conversion by source"
+                onExport={() => handleExport('sources')}
+                onExpand={() => handleEnlarge('sources')}
+              >
+                <div className="h-[300px] flex flex-col">
+                  {analytics.sourceMetrics.length > 0 ? (
+                    <div className="flex-1 overflow-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Source</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Quotes</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Revenue</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Conv. Rate</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {analytics.sourceMetrics.map((source, idx) => (
+                            <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                              <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{source.source}</td>
+                              <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{source.quoteCount}</td>
+                              <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{formatCurrency(source.revenue)}</td>
+                              <td className="px-4 py-3 text-right">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  source.conversionRate >= 50
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                    : source.conversionRate >= 25
+                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                }`}>
+                                  {source.conversionRate.toFixed(1)}%
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                      No source data available
+                    </div>
+                  )}
+                </div>
+              </EnhancedChartCard>
             </div>
           ) : (
             <div className="text-center py-12">

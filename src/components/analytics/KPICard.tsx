@@ -64,6 +64,7 @@ export const KPICard = ({
         'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800',
         'shadow-sm hover:shadow-md',
         'transition-all duration-200',
+        'h-full min-h-[140px]', // Ensure uniform height across all cards
         onClick && 'cursor-pointer hover:scale-[1.02]',
         className
       )}
