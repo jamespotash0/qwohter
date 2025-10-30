@@ -1,10 +1,17 @@
 /**
- * Auth Initialization
+ * Auth Initialization (v2.0.0-hybrid)
  * Handles session restoration and auth state listeners
+ *
+ * NOW USES: React Query for session/profile fetching
+ * PREVENTS: Race conditions on multiple auth events
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { queryClient, queryKeys } from '@/lib/queryClient';
 import type { FullAuthState } from '../types';
+
+// Track in-flight auth state changes to prevent race conditions
+let authChangeInProgress = false;
 
 export const createInitializeAction = (get: () => FullAuthState, set: (partial: Partial<FullAuthState>) => void) => {
   return async () => {
@@ -19,39 +26,28 @@ export const createInitializeAction = (get: () => FullAuthState, set: (partial: 
     try {
       _setLoading(true);
 
-      // Get initial session from Supabase (uses cached session/cookies)
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      // ✅ NEW: Use React Query for session fetching (automatic deduplication!)
+      const session = await queryClient.fetchQuery({
+        queryKey: queryKeys.user.session(),
+        queryFn: async () => {
+          const { data: { session }, error } = await supabase.auth.getSession();
+          if (error) throw error;
+          return session;
+        },
+        staleTime: 60 * 1000, // 1 minute
+        retry: false,
+      });
 
-      // Handle expired/invalid session gracefully
-      if (sessionError) {
-        console.warn('⚠️ Session expired - resetting all state like logout');
-
-        // Reset ALL stores (like logout does)
-        try {
-          const { useQuotesStore } = await import('@/stores/quotes/quotesStore');
-          const { useBoardStore } = await import('@/stores/board/boardStore');
-          const { useOrganizationStore } = await import('@/stores/organization/organizationStore');
-          const { useRemindersStore } = await import('@/stores/reminders/remindersStore');
-          const { useAppStore } = await import('@/stores/app/appStore');
-
-          useQuotesStore.getState().reset();
-          useBoardStore.getState().reset();
-          useOrganizationStore.getState().reset();
-          useRemindersStore.getState().reset();
-          useAppStore.getState().reset();
-        } catch (err) {
-          console.error('Error resetting stores:', err);
-        }
-
-        // Clear auth cache and state
+      // Handle no session gracefully
+      if (!session) {
+        console.warn('⚠️ No session - resetting all state');
         clearAuthCache();
         _setAuth(null, null);
         _setProfile(null);
-        // Don't throw - just continue with no session
       } else {
         _setAuth(session?.user ?? null, session);
 
-        // Fetch profile if user exists
+        // ✅ NEW: Fetch profile using React Query (automatic deduplication!)
         if (session?.user) {
           await fetchProfile(session.user.id);
         }
@@ -65,6 +61,12 @@ export const createInitializeAction = (get: () => FullAuthState, set: (partial: 
       supabase.auth.onAuthStateChange(async (event, session) => {
         console.log('🔄 Auth event:', event, '| User:', session?.user?.email || 'none');
 
+        // ✅ NEW: Prevent race conditions from multiple rapid auth events
+        if (authChangeInProgress) {
+          console.log('⏭️ Auth change already in progress, skipping duplicate event');
+          return;
+        }
+
         // Log token refresh details for monitoring
         if (event === 'TOKEN_REFRESHED' && session) {
           console.log('🔄 Token refreshed:', {
@@ -72,6 +74,9 @@ export const createInitializeAction = (get: () => FullAuthState, set: (partial: 
             expiresAt: session.expires_at ? new Date(session.expires_at * 1000).toISOString() : 'N/A',
             expiresIn: session.expires_in ? `${session.expires_in}s (${Math.round(session.expires_in / 60)} minutes)` : 'N/A',
           });
+          // ✅ Token refresh doesn't need to refetch profile - just update session
+          queryClient.setQueryData(queryKeys.user.session(), session);
+          return; // Skip profile refetch on token refresh
         }
 
         // Log initial session details
@@ -153,14 +158,24 @@ export const createInitializeAction = (get: () => FullAuthState, set: (partial: 
         const newUserId = session?.user?.id;
 
         if (currentUserId !== newUserId) {
-          _setAuth(session?.user ?? null, session);
+          // ✅ Set flag to prevent concurrent updates
+          authChangeInProgress = true;
 
-          if (session?.user) {
-            // Reset logging out state when user signs in
-            set({ isLoggingOut: false });
-            await fetchProfile(session.user.id);
-          } else {
-            _setProfile(null);
+          try {
+            _setAuth(session?.user ?? null, session);
+
+            if (session?.user) {
+              // Reset logging out state when user signs in
+              set({ isLoggingOut: false });
+              await fetchProfile(session.user.id);
+            } else {
+              _setProfile(null);
+              // Clear React Query cache on sign out
+              queryClient.clear();
+            }
+          } finally {
+            // ✅ Always reset flag
+            authChangeInProgress = false;
           }
         } else {
           console.log('⏭️ Skipping auth update - user unchanged');
@@ -175,19 +190,28 @@ export const createInitializeAction = (get: () => FullAuthState, set: (partial: 
     }
 
     // Helper: Fetch user profile from database
+    // ✅ NEW: Uses React Query (automatic deduplication!)
     async function fetchProfile(userId: string) {
       try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
+        const profile = await queryClient.fetchQuery({
+          queryKey: queryKeys.user.profile(userId),
+          queryFn: async () => {
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', userId)
+              .single();
 
-        if (error && error.code !== 'PGRST116') {
-          throw error; // Ignore "not found" errors
-        }
+            if (error && error.code !== 'PGRST116') {
+              throw error; // Ignore "not found" errors
+            }
 
-        _setProfile(data || null);
+            return data || null;
+          },
+          staleTime: 5 * 60 * 1000, // 5 minutes
+        });
+
+        _setProfile(profile);
       } catch (error) {
         console.error('❌ Profile fetch error:', error);
         _setError(error instanceof Error ? error.message : 'Failed to fetch profile');

@@ -9,8 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 // import { Card, CardContent } from "@/components/ui/card";
 import { QwohterLogo } from "@/components/common/QwohterLogo";
 import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
-import { useOrganizationStore } from "@/stores/organization/organizationStore";
-import { useAuthStore } from "@/stores/auth/authStore";
+import { useCurrentOrganization, useOrganizationMembers } from "@/hooks/queries/useOrganization";
+import { useUser, useProfile, useAuthStatus, useSignOut } from "@/auth";
 import { stripeService } from "@/services/stripeService";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef } from "react";
@@ -83,16 +83,15 @@ export function AppSidebar({
   const [userOrganizations, setUserOrganizations] = useState<UserOrganization[]>([]);
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(false);
 
-  // Use Zustand stores directly - they're already cached and won't cause re-fetches
-  const user = useAuthStore((state) => state.user);
-  const userProfile = useAuthStore((state) => state.profile);
-  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
-  const isAuthInitialized = useAuthStore((state) => state.isInitialized);
-  const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
-  const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
-  const members = useOrganizationStore((state) => state.members);
-  const setOrganization = useOrganizationStore((state) => state.setOrganization);
-  const setCurrentUserRole = useOrganizationStore((state) => state.setCurrentUserRole); 
+  // Use React Query hooks for organization data
+  const user = useUser();
+  const { data: userProfile } = useProfile(user?.id);
+  const { isInitialized: isAuthInitialized } = useAuthStatus();
+  const { isPending: isLoggingOut } = useSignOut();
+
+  // Get current organization and role from React Query
+  const { organization: currentOrganization, role: currentUserRole } = useCurrentOrganization(user?.id || '');
+  const { data: members = [] } = useOrganizationMembers(currentOrganization?.id || '', !!currentOrganization?.id); 
 
   // Generate user initials
   const getUserInitials = (name?: string, email?: string) => {
@@ -247,14 +246,8 @@ export function AppSidebar({
       if (error) throw error;
 
       if (membershipData?.organizations) {
-        const org = membershipData.organizations as any;
-        const role = membershipData.role as 'Owner' | 'Admin' | 'Member';
-
-        // Update organization store
-        setOrganization(org);
-        setCurrentUserRole(role);
-
-        // Refresh the page to reload all organization-specific data
+        // Refresh the page to reload all organization-specific data with the new organization
+        // React Query will automatically fetch the new organization data
         window.location.reload();
       }
     } catch (error) {

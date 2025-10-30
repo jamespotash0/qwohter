@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
-import { useAuthStore } from '@/stores/auth/authStore';
+import { useUser, useAuthStatus, useSignOut } from '@/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { SubscriptionPaywall } from '@/components/common/SubscriptionPaywall';
-import { useCurrentOrganization, useOrganizationStore } from '@/stores/organization/organizationStore';
-import { useQuotesStore } from '@/stores/quotes/quotesStore';
-import { useBoardStore } from '@/stores/board/boardStore';
-import { useRemindersStore } from '@/stores/reminders/remindersStore';
-import { useAppStore } from '@/stores/app/appStore';
+import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
+// import { useQuotesStore } from '@/stores/quotes/quotesStore';
+// import { useBoardStore } from '@/stores/board/boardStore';
+// import { useRemindersStore } from '@/stores/reminders/remindersStore';
+// import { useAppStore } from '@/stores/app/appStore';
 import { versionCheckService } from '@/services/versionCheckService';
 import { toast } from 'sonner';
 
@@ -30,16 +30,15 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Use auth store instead of local state for cached auth
-  const user = useAuthStore((state) => state.user);
-  const isInitialized = useAuthStore((state) => state.isInitialized);
-  const isAuthChanging = useAuthStore((state) => state.isAuthChanging);
-  const isLoading = useAuthStore((state) => state.isLoading);
-  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
-  const signOut = useAuthStore((state) => state.signOut);
+  // ✅ v3.0.0: Use new auth hooks
+  const user = useUser();
+  const { isInitialized, isLoading } = useAuthStatus();
+  const { mutate: signOut, isPending: isLoggingOut } = useSignOut();
 
-  // Get current organization for paywall
-  const currentOrganization = useCurrentOrganization();
+  // Note: isAuthChanging removed in v3.0 (handled by AuthEventMutex)
+
+  // Get current organization for paywall from React Query
+  const { organization: currentOrganization } = useCurrentOrganization(user?.id || '');
 
   // Membership status tracking
   const [membershipStatus, setMembershipStatus] = useState<string | null>(null);
@@ -117,14 +116,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     // Only redirect if:
     // 1. Auth is initialized
     // 2. Auth is NOT loading (prevents redirect while fetching session)
-    // 3. Auth is NOT changing (prevents redirect during state changes)
-    // 4. User is not logged in
-    if (isInitialized && !isLoading && !isAuthChanging && !user) {
+    // 3. User is not logged in
+    // Note: v3.0.0 removed isAuthChanging check (AuthEventMutex handles this)
+    if (isInitialized && !isLoading && !user) {
       // Save current location before redirecting to sign-in
       localStorage.setItem('auth_redirect_url', location.pathname + location.search);
       navigate('/sign-in');
     }
-  }, [navigate, shouldShowSidebar, isInitialized, isLoading, isAuthChanging, user, location.pathname, location.search]);
+  }, [navigate, shouldShowSidebar, isInitialized, isLoading, user, location.pathname, location.search]);
 
   // Redirect based on membership status
   useEffect(() => {
@@ -146,11 +145,17 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     }
   }, [isInitialized, user, shouldShowSidebar, navigate]);
 
-  // Poll session status every minute to detect expired sessions
+  // ✅ v3.0.0: Session polling now handled by AuthProvider automatically
+  // AuthProvider's onAuthStateChange listener detects session expiry
+  // and triggers SIGNED_OUT event, which clears all state
+  // Manual polling is no longer needed
+
+  // Legacy session check (can be removed after v3.0 migration is complete)
   useEffect(() => {
     if (!shouldShowSidebar || !isInitialized) return;
 
-    console.log('⏱️ Starting session polling (1 minute interval)...');
+    // Reduced polling frequency since AuthProvider handles most cases
+    console.log('⏱️ Legacy session check (fallback only)...');
 
     const checkSession = async () => {
       try {
@@ -158,14 +163,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
         if (error) {
           console.error('❌ Session check error:', error);
-          // Session invalid - log out
           console.log('🔒 Session invalid, logging out...');
           await handleLogout();
           return;
         }
 
         if (!session && user) {
-          // Session expired but user still in store - log out
           console.log('🔒 Session expired, logging out...');
           await handleLogout();
         }
@@ -174,10 +177,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       }
     };
 
-    // Poll every minute (60000ms)
+    // Poll less frequently (5 minutes instead of 1 minute)
+    // AuthProvider handles real-time session changes
     const pollInterval = setInterval(() => {
       checkSession();
-    }, 60000);
+    }, 300000); // 5 minutes
 
     return () => {
       clearInterval(pollInterval);
@@ -229,31 +233,28 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     const startTime = Date.now();
     const MIN_LOGOUT_TIME = 800; // 800ms minimum for smooth UX
 
-    // Set logging out state IMMEDIATELY to hide user info and show loading overlay
-    useAuthStore.getState()._setLoggingOut(true);
+    // ✅ v3.0.0: Use new signOut mutation with callback
+    // Note: signOut mutation triggers AuthProvider's SIGNED_OUT handler
+    // which automatically clears React Query cache and resets stores
 
-    // Wait a frame to ensure UI updates (loading overlay shows)
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    signOut(undefined, {
+      onSuccess: async () => {
+        // Ensure minimum display time for loading spinner (smooth UX)
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, MIN_LOGOUT_TIME - elapsedTime);
+        if (remainingTime > 0) {
+          await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
 
-    // Reset all stores to clear UI
-    useQuotesStore.getState().reset();
-    useBoardStore.getState().reset();
-    useOrganizationStore.getState().reset();
-    useRemindersStore.getState().reset();
-    useAppStore.getState().reset();
-
-    // Sign out (this will clear auth state)
-    await signOut();
-
-    // Ensure minimum display time for loading spinner (smooth UX)
-    const elapsedTime = Date.now() - startTime;
-    const remainingTime = Math.max(0, MIN_LOGOUT_TIME - elapsedTime);
-    if (remainingTime > 0) {
-      await new Promise(resolve => setTimeout(resolve, remainingTime));
-    }
-
-    // Navigate to sign-in (stores handle cleanup, no reload needed)
-    navigate('/sign-in', { replace: true });
+        // Navigate to sign-in
+        navigate('/sign-in', { replace: true });
+      },
+      onError: (error) => {
+        console.error('Logout error:', error);
+        // Even on error, navigate to sign-in
+        navigate('/sign-in', { replace: true });
+      },
+    });
   };
 
   // For public routes, render children directly without layout

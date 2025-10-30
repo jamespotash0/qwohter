@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 import { useQuotesStore } from "@/stores/quotes/quotesStore";
-import { useOrganizationSettings } from "@/hooks/useCompanySettings";
+import { useCurrentOrganization } from "@/hooks/queries";
+import { useUser } from "@/auth";
 import { QuoteCreatorWizardProps } from './types/wizardTypes';
 import { useWizardState } from './hooks/useWizardState';
 import { useWizardValidation } from './hooks/useWizardValidation';
@@ -54,7 +55,8 @@ const QuoteCreatorWizard = ({
   }, [quoteName]);
 
   // Get organization settings for conditional fax validation
-  const { organization } = useOrganizationSettings();
+  const user = useUser();
+  const { organization } = useCurrentOrganization(user?.id);
 
   // Use the validation hook
   const {

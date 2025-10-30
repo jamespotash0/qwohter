@@ -18,7 +18,8 @@ import { stripeService } from "@/services/stripeService";
 import { formatDateEST } from "@/utils/dateUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { loadStripe } from '@stripe/stripe-js';
-import { useOrganizationStore } from "@/stores/organization/organizationStore";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryClient";
 
 interface BillingTabProps {
   organization: any;
@@ -71,6 +72,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   organization,
   userRole
 }) => {
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(false); // Never show loading spinner - use cached data
   const [subscription, setSubscription] = useState<any>(() => {
@@ -240,12 +242,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         async (payload) => {
           console.log('Subscription changed:', payload);
 
-          // Clear paywall cache to force re-check on next navigation
-          const setSubscriptionStatus = useOrganizationStore.getState().setSubscriptionStatus;
-          setSubscriptionStatus({
-            hasAccess: false,
-            reason: '',
-          });
+          // Clear subscription cache to force re-check on next navigation
+          queryClient.invalidateQueries({ queryKey: queryKeys.subscription.status(organization.id) });
 
           // Reload subscription data
           const { data: subData, error: subError } = await stripeService.getSubscription(organization.id);

@@ -1,12 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Edit2, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { CompanyInfoDialog } from "./CompanyInfoDialog";
-import { useOrganizationSettings } from "@/hooks/useCompanySettings";
-import { useProfile } from "@/stores/auth/authStore";
-import { useOrganizations } from "@/hooks/useOrganizations";
+import { useUser, useProfile } from "@/auth";
+import { useCurrentOrganization, useUpdateOrganization } from "@/hooks/queries";
 import { extractCompanyInfoForForm } from "@/lib/types/settings/companySettings";
 
 export function CompanySettingsSection() {
@@ -17,30 +16,41 @@ export function CompanySettingsSection() {
     setIsDialogOpen(value);
   };
 
-  const {
-    organization,
-    isLoading,
-    updateCompanyInfo,
-    hasCompanyInfo
-  } = useOrganizationSettings();
+  // Get user and organization from React Query
+  const user = useUser();
+  const { data: profile } = useProfile(user?.id);
+  const { organization, role: currentUserRole, isLoading } = useCurrentOrganization(user?.id);
+  const { mutate: updateOrganization } = useUpdateOrganization();
 
-  // Get user profile from auth store
-  const profile = useProfile();
-  const { currentUserRole } = useOrganizations();
+  // Helper to check if organization has company info
+  const hasCompanyInfo = useMemo(() => {
+    if (!organization) return false;
+    const hasPhone = !!(organization.phone_number?.trim());
+    const hasFax = !!(organization.fax_number?.trim());
+    const hasAddress = !!(organization.company_address?.trim());
+    const hasWebsite = !!(organization.website?.trim());
+    return hasPhone || hasFax || hasAddress || hasWebsite;
+  }, [organization]);
 
   const handleEdit = () => {
     setIsDialogOpenDebug(true);
   };
 
   const handleSave = async (data: any) => {
-    try {
-      await updateCompanyInfo(data);
-      toast.success("Company information updated successfully");
-      setIsDialogOpenDebug(false);
-    } catch (error) {
-      // console.error('❌ Error in handleSave:', error);
-      toast.error("Failed to update company information");
-    }
+    if (!organization?.id) return;
+
+    updateOrganization(
+      { organizationId: organization.id, updates: data },
+      {
+        onSuccess: () => {
+          toast.success("Company information updated successfully");
+          setIsDialogOpenDebug(false);
+        },
+        onError: () => {
+          toast.error("Failed to update company information");
+        },
+      }
+    );
   };
 
   if (isLoading) {
@@ -49,14 +59,14 @@ export function CompanySettingsSection() {
 
   const companyData = organization ?
     extractCompanyInfoForForm(organization) : null;
-  
+
   // Check if user is admin
   const isAdmin = currentUserRole === 'Admin' || currentUserRole === 'Owner';
 
   return (
     <div className="space-y-4">
       {/* Company Information Display */}
-      {hasCompanyInfo() ? (
+      {hasCompanyInfo ? (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between">

@@ -22,6 +22,15 @@ export interface Database {
           updated_at: string;
           organization_id: string;
           customization?: any;
+          archived?: boolean;
+          is_main_version?: boolean;
+          total_value?: number | null;
+          subtotal?: number | null;
+          margin_percentage?: number | null;
+          won_at?: string;
+          submitted_at?: string;
+          rejected_at?: string;
+          closed_at?: string;
         };
         Insert: {
           id?: string;
@@ -42,6 +51,12 @@ export interface Database {
           updated_at?: string;
           organization_id: string;
           customization?: any;
+          archived?: boolean;
+          is_main_version?: boolean;
+          won_at?: string;
+          submitted_at?: string;
+          rejected_at?: string;
+          closed_at?: string;
         };
         Update: {
           id?: string;
@@ -62,6 +77,12 @@ export interface Database {
           updated_at?: string;
           organization_id?: string;
           customization?: any;
+          archived?: boolean;
+          is_main_version?: boolean;
+          won_at?: string;
+          submitted_at?: string;
+          rejected_at?: string;
+          closed_at?: string;
         };
       };
       profiles: {
@@ -370,6 +391,120 @@ export interface Database {
           metadata?: any;
           created_at?: string;
           updated_at?: string;
+        };
+      };
+      projects: {
+        Row: {
+          id: string;
+          quote_id: string;
+          workflow_status: string;
+          board_order: number;
+          priority: 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | null;
+          completion_date: string | null;
+          organization_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          quote_id: string;
+          workflow_status: string;
+          board_order?: number;
+          priority?: 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | null;
+          completion_date?: string | null;
+          organization_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          quote_id?: string;
+          workflow_status?: string;
+          board_order?: number;
+          priority?: 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | null;
+          completion_date?: string | null;
+          organization_id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      project_workflow_columns: {
+        Row: {
+          id: string;
+          name: string;
+          color: string;
+          column_order: number;
+          is_default: boolean;
+          organization_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          color: string;
+          column_order: number;
+          is_default?: boolean;
+          organization_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          color?: string;
+          column_order?: number;
+          is_default?: boolean;
+          organization_id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      reminders: {
+        Row: {
+          id: string;
+          quote_id: string;
+          organization_id: string;
+          title: string;
+          description: string | null;
+          due_date: string;
+          priority: 'High' | 'Medium' | 'Low';
+          status: 'Pending' | 'Completed' | 'Cancelled';
+          assigned_to: string | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+          completed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          quote_id: string;
+          organization_id: string;
+          title: string;
+          description?: string | null;
+          due_date: string;
+          priority?: 'High' | 'Medium' | 'Low';
+          status?: 'Pending' | 'Completed' | 'Cancelled';
+          assigned_to?: string | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+          completed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          quote_id?: string;
+          organization_id?: string;
+          title?: string;
+          description?: string | null;
+          due_date?: string;
+          priority?: 'High' | 'Medium' | 'Low';
+          status?: 'Pending' | 'Completed' | 'Cancelled';
+          assigned_to?: string | null;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+          completed_at?: string | null;
         };
       };
     };

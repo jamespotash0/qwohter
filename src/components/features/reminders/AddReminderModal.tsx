@@ -13,7 +13,7 @@ import { useQuotesStore } from '@/stores/quotes/quotesStore';
 import { reminderService, type ReminderType } from '@/services/reminderService';
 import { quoteActivityService } from '@/services/quoteActivityService';
 import { toast } from 'sonner';
-import { useProfile } from '@/stores/auth/authStore';
+import { useUser, useProfile } from '@/auth';
 import { supabase } from '@/integrations/supabase/client'
 
 interface AddReminderModalProps {
@@ -44,7 +44,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get user profile from auth store
-  const profile = useProfile();
+  const { data: profile } = useProfile();
 
   // Get active (non-archived) quotes
   const activeQuotes = useMemo(() => {

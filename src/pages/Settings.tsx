@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { User as UserIcon, Building, Shield, CreditCard, Palette, Users } from "lucide-react";
-import { useCurrentOrganization, useOrganizationStore } from "@/stores/organization/organizationStore";
-import { useAuthStore } from "@/stores/auth/authStore";
+import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
+import { useUser, useProfile } from "@/auth";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryClient";
 import { ProfileTab } from "@/components/features/settings/ProfileTab";
 import { OrganizationTab } from "@/components/features/settings/OrganizationTab";
 import { SecurityTab } from "@/components/features/settings/SecurityTab";
@@ -30,11 +32,23 @@ const Settings = () => {
     }
   });
 
-  const user = useAuthStore((state) => state.user);
-  const profile = useAuthStore((state) => state.profile);
-  const organization = useCurrentOrganization();
-  const refetchOrganization = useOrganizationStore((state) => state.fetchOrganization);
-  const userRole = useOrganizationStore((state) => state.currentUserRole);
+  const user = useUser();
+  const { data: profile } = useProfile(user?.id);
+  const queryClient = useQueryClient();
+
+  // Get current organization and role from React Query
+  const { organization, role: userRole } = useCurrentOrganization(user?.id || '');
+
+  // Function to refetch organization data
+  const refetchOrganization = async (userId?: string, forceRefresh?: boolean) => {
+    const targetUserId = userId || user?.id;
+    if (targetUserId) {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.organization.byUser(targetUserId) });
+      if (forceRefresh) {
+        await queryClient.refetchQueries({ queryKey: queryKeys.organization.byUser(targetUserId) });
+      }
+    }
+  };
 
   // Check subscription status
   useEffect(() => {
@@ -95,7 +109,7 @@ const Settings = () => {
     if (tabFromUrl && tabFromUrl !== activeTab) {
       setActiveTab(tabFromUrl);
     }
-  }, [tabFromUrl]);
+  }, [tabFromUrl, activeTab]);
 
   // Don't show loading spinner - organization and role should be cached
   // If they're not available, show settings anyway with default values

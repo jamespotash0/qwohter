@@ -3,7 +3,7 @@ import { ErrorBoundary, QuoteErrorBoundary } from "@/components/ErrorBoundary";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
-import { useAuthStore } from "@/stores/auth/authStore";
+import { useUser, useAuthStatus } from "@/auth";
 import { supabase } from "@/integrations/supabase/client";
 
 // Lazy load pages for better performance
@@ -11,8 +11,9 @@ import React from "react";
 
 // Protected auth route wrapper - redirects to dashboard if already logged in AND completed onboarding
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
-  const user = useAuthStore((state) => state.user);
-  const isInitialized = useAuthStore((state) => state.isInitialized);
+  // ✅ v3.0.0: Use new auth hooks
+  const user = useUser();
+  const { isInitialized } = useAuthStatus();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = React.useState<boolean | null>(null);
 
   // IMPORTANT: Check if user has completed onboarding (BEFORE any early returns!)
@@ -77,7 +78,6 @@ const AccountInactive = lazy(() => import("@/pages/AccountInactive"));
 // Main application pages - import eagerly to prevent navigation flicker
 import Dashboard from "@/pages/Dashboard";
 import Analytics from "@/pages/Analytics";
-import Team from "@/pages/Team";
 import Settings from "@/pages/Settings";
 const NotFound = lazy(() => import("@/pages/NotFound"));
 

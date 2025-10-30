@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
 import { LogoUpload } from "@/components/common/uploads/LogoUpload";
 import { LogoUploadResult } from "@/services/LogoUploadService";
-import { useAuthStore } from "@/stores/auth/authStore";
+import { useUser } from "@/auth";
 
 interface OrganizationTabProps {
   organization: any;
@@ -21,7 +21,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
   userRole,
   onOrganizationUpdate
 }) => {
-  const currentUser = useAuthStore((state) => state.user);
+  const currentUser = useUser();
 
   // Individual field editing states
   const [isEditingName, setIsEditingName] = useState(false);

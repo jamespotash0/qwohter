@@ -32,10 +32,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { useOrganizations } from "@/hooks/useOrganizations";
-import { useQuotesStore } from "@/stores/quotes/quotesStore";
-import { useOrganizationStore } from "@/stores/organization/organizationStore";
-import { useAuthStore } from "@/stores/auth/authStore";
+import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
+import { useQuotes } from "@/hooks/queries/useQuotes";
+import { useUser, useProfile } from "@/auth";
 import { quoteActivityService, type QuoteActivity } from "@/services/quoteActivityService";
 import { AddReminderModal } from "@/components/features/reminders/AddReminderModal";
 import { reminderService, type Reminder } from "@/services/reminderService";
@@ -52,18 +51,19 @@ import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
 const Dashboard = () => {
   const navigate = useNavigate();
 
-  // Use auth store instead of local state
-  const user = useAuthStore((state) => state.user);
-  const profile = useAuthStore((state) => state.profile);
+  // Use auth and React Query hooks
+  const user = useUser();
+  const { data: profile } = useProfile(user?.id);
+
+  // React Query hooks for organization and quotes
+  const { organization: currentOrganization, isLoading: orgLoading } = useCurrentOrganization(user?.id);
+  const organizationId = currentOrganization?.id || null;
+  const { data: quotes = [], isLoading: quotesLoading } = useQuotes(user?.id);
+
+  console.log('[Dashboard] Using organization:', { id: organizationId, name: currentOrganization?.name });
 
   const [recentActivities, setRecentActivities] = useState<QuoteActivity[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
-
-  // Get organization ID from the store instead of separate localStorage cache
-  const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
-  const organizationId = currentOrganization?.id || null;
-
-  console.log('[Dashboard] Using organization:', { id: organizationId, name: currentOrganization?.name });
   const [showAddReminderModal, setShowAddReminderModal] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -78,12 +78,6 @@ const Dashboard = () => {
     }
   });
 
-  const quotes = useQuotesStore((state) => state.quotes);
-  const quotesLoading = useQuotesStore((state) => state.isLoading);
-  const fetchQuotes = useQuotesStore((state) => state.fetchQuotes);
-
-  useOrganizations();
-
   // Update cache when profile loads (sidebar already does this, but just in case)
   useEffect(() => {
     if (profile && profile.id && JSON.stringify(profile) !== JSON.stringify(cachedProfile)) {
@@ -95,15 +89,7 @@ const Dashboard = () => {
   // Always prefer cached data to prevent flashing
   const effectiveProfile = cachedProfile || (profile?.id ? profile : null);
 
-  // Organization ID is now pulled directly from the store above, no need for separate fetch
-
-  // Fetch quotes when we have organization ID
-  useEffect(() => {
-    // Only fetch if user is authenticated and we have an organization ID
-    if (user && organizationId) {
-      fetchQuotes(organizationId);
-    }
-  }, [user, organizationId, fetchQuotes]);
+  // React Query automatically fetches quotes - no manual fetching needed!
 
   // Fetch recent activities from database and subscribe to real-time updates
   useEffect(() => {
@@ -377,14 +363,14 @@ const Dashboard = () => {
     const wonQuoteGroupsThisMonth = quoteGroups.filter(group => {
       const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
       if (!wonVersion) return false;
-      const wonDate = new Date(wonVersion.won_at);
+      const wonDate = new Date(wonVersion.won_at!);
       return wonDate >= thisMonth;
     });
 
     const wonQuoteGroupsLastMonth = quoteGroups.filter(group => {
       const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
       if (!wonVersion) return false;
-      const wonDate = new Date(wonVersion.won_at);
+      const wonDate = new Date(wonVersion.won_at!);
       return wonDate >= lastMonth && wonDate <= lastMonthEnd;
     });
 
@@ -414,7 +400,7 @@ const Dashboard = () => {
     const wonThisMonth = wonQuoteGroupsThisMonth.length;
     const rejectedThisMonth = quoteGroups.filter(group => {
       const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
-      if (!rejectedVersion) return false;
+      if (!rejectedVersion || !rejectedVersion.rejected_at) return false;
       const rejectedDate = new Date(rejectedVersion.rejected_at);
       return rejectedDate >= thisMonth && !group.versions.some(v => v.status === 'Won');
     }).length;
@@ -425,7 +411,7 @@ const Dashboard = () => {
     const wonLastMonth = wonQuoteGroupsLastMonth.length;
     const rejectedLastMonth = quoteGroups.filter(group => {
       const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
-      if (!rejectedVersion) return false;
+      if (!rejectedVersion || !rejectedVersion.rejected_at) return false;
       const rejectedDate = new Date(rejectedVersion.rejected_at);
       return rejectedDate >= lastMonth && rejectedDate <= lastMonthEnd && !group.versions.some(v => v.status === 'Won');
     }).length;

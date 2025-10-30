@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, Users, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuthStore } from '@/stores/auth/authStore';
+import { useSignOut } from '@/auth';
 import { onboardingStateHelpers } from '@/services/onboardingStateService';
 
 interface MembershipData {
@@ -40,7 +40,7 @@ const PendingApproval: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const signOut = useAuthStore((state) => state.signOut);
+  const { mutate: signOut, isPending: isLoggingOut } = useSignOut();
 
   const checkMembershipStatus = async () => {
     try {
@@ -89,9 +89,12 @@ const PendingApproval: React.FC = () => {
     });
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/sign-in');
+  const handleSignOut = () => {
+    signOut(undefined, {
+      onSuccess: () => {
+        navigate('/sign-in');
+      }
+    });
   };
 
   useEffect(() => {
@@ -182,8 +185,9 @@ const PendingApproval: React.FC = () => {
               onClick={handleSignOut}
               variant="outline"
               className="w-full"
+              disabled={isLoggingOut}
             >
-              Sign Out
+              {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
             </Button>
           </div>
 

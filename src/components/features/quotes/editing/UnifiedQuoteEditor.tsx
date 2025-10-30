@@ -15,11 +15,12 @@ import {
 import { generateQuoteText } from '@/components/features/quotes/generation/QuoteTextGenerator';
 import { SmartQuoteHelper, QuoteSection, SmartQuoteData } from '@/templates/SmartQuoteTemplate';
 import { MixedContentEngine, MixedContentSection } from '@/utils/mixedContentEngine';
-import { QuoteData, SectionVisibilityConfig } from '@/templates/BaseQuoteTemplate';
-import { defaultSectionVisibility } from '@/templates/BaseTemplate/types';
+import { QuoteData } from '@/templates/BaseQuoteTemplate';
+import { defaultSectionVisibility, SectionVisibilityConfig } from '@/templates/BaseTemplate/types';
 import { Quote } from '@/stores/quotes/quotesStore';
 import { useCurrentQuote } from '@/stores/quotes/quotesStore';
-import { useOrganizationSettings } from '@/hooks/useCompanySettings';
+import { useCurrentOrganization } from '@/hooks/queries';
+import { useUser } from '@/auth';
 import { QuoteDataPanelCore as QuoteDataPanel } from './UnifiedQuoteEditor/QuoteDataPanel/QuoteDataPanelCore';
 import LivePreviewPanel from './UnifiedQuoteEditor/LivePreviewPanel';
 import QuickEditModal from './UnifiedQuoteEditor/QuickEditModal';
@@ -112,7 +113,8 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   }, [sectionVisibility]);
 
   // Get organization settings to add to quote data
-  const { organization } = useOrganizationSettings();
+  const user = useUser();
+  const { organization } = useCurrentOrganization(user?.id);
 
   // Data sync engine
   const syncEngine = useMemo(() => ({

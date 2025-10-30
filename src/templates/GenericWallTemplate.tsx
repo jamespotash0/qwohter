@@ -81,16 +81,11 @@ export class GenericWallTemplate extends BaseQuoteTemplate {
                            data.quote_details?.company_name?.trim() ||
                            '';
 
-    // Fallback: Try to get from organization store if not in quote data
+    // Note: Fallback removed - organization name should always come from quote data
+    // If it's missing, it indicates a data integrity issue that should be fixed at the source
     if (!organizationName) {
-      try {
-        const { useOrganizationStore } = require('@/stores/organization/organizationStore');
-        const currentOrg = useOrganizationStore.getState().currentOrganization;
-        organizationName = currentOrg?.name || '';
-        console.log('[GenericWallTemplate] Fallback to organization store:', organizationName);
-      } catch (err) {
-        console.warn('[GenericWallTemplate] Could not access organization store:', err);
-      }
+      console.warn('[GenericWallTemplate] No organization name found in quote data');
+      organizationName = 'Organization Name Not Available';
     }
 
     const walls = data.wall_details?.walls || {};

@@ -1,21 +1,19 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { PageContent } from "@/components/common/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   DollarSign,
-  TrendingUp,
   FileText,
   Target,
   Users,
   Calendar,
 } from "lucide-react";
-import { useQuotesStore } from "@/stores/quotes/quotesStore";
+import { useQuotes } from "@/hooks/queries/useQuotes";
 import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
-import { useOrganizationStore } from "@/stores/organization/organizationStore";
-import { useAuthStore } from "@/stores/auth/authStore";
+import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
+import { useUser } from "@/auth";
 import { AnalyticsPageCharts } from "@/components/common/charts/AnalyticsPageCharts";
 
 /**
@@ -28,46 +26,16 @@ import { AnalyticsPageCharts } from "@/components/common/charts/AnalyticsPageCha
  */
 const Analytics = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
   const [viewMode, setViewMode] = useState<'monthly' | 'annual'>('monthly');
-  const quotes = useQuotesStore((state) => state.quotes);
-  const quotesLoading = useQuotesStore((state) => state.isLoading);
-  const fetchQuotes = useQuotesStore((state) => state.fetchQuotes);
-  const subscribeToRealtime = useQuotesStore((state) => state.subscribeToRealtime);
-  const unsubscribeFromRealtime = useQuotesStore((state) => state.unsubscribeFromRealtime);
-  // Use Zustand stores directly to avoid re-fetches
-  const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
-  const profile = useAuthStore((state) => state.profile);
 
-  // Get current user for analytics data
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-      }
-    };
-    getCurrentUser();
-  }, []);
+  // Get user from new auth system
+  const user = useUser();
 
-  // Fetch quotes and setup realtime subscription when page mounts
-  useEffect(() => {
-    if (!user) return;
+  // Fetch quotes using React Query (includes automatic realtime subscriptions)
+  const { data: quotes = [], isLoading: quotesLoading } = useQuotes(user?.id);
 
-    console.log('📊 Analytics page mounted - fetching quotes and setting up subscription');
-
-    // Fetch quotes
-    fetchQuotes({ refresh: true });
-
-    // Setup realtime subscription
-    subscribeToRealtime();
-
-    // Cleanup: unsubscribe when page unmounts
-    return () => {
-      console.log('🧹 Analytics page unmounting - cleaning up subscription');
-      unsubscribeFromRealtime();
-    };
-  }, [user]); // Only re-run if user changes
+  // Get current organization from React Query
+  const { organization: currentOrganization } = useCurrentOrganization(user?.id || '');
 
   const parseCurrency = (formatted: string | number): number => {
     if (typeof formatted === 'number') return formatted;
@@ -103,7 +71,7 @@ const Analytics = () => {
     const quotesByUser: Record<string, number> = {};
     quoteGroups.forEach(group => {
       const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
-      const userName = baseVersion?.creator_name || 'Unknown';
+      const userName = baseVersion?.created_by_name || 'Unknown';
       quotesByUser[userName] = (quotesByUser[userName] || 0) + 1;
     });
 
@@ -144,13 +112,13 @@ const Analytics = () => {
       ? quoteGroups.filter(group => {
           const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
           if (!wonVersion) return false;
-          const wonDate = new Date(wonVersion.won_at);
+          const wonDate = new Date(wonVersion.won_at!);
           return wonDate.getFullYear() === currentYear && wonDate.getMonth() === currentMonth;
         })
       : quoteGroups.filter(group => {
           const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
           if (!wonVersion) return false;
-          const wonDate = new Date(wonVersion.won_at);
+          const wonDate = new Date(wonVersion.won_at!);
           return wonDate.getFullYear() === currentYear;
         });
 
@@ -158,13 +126,13 @@ const Analytics = () => {
       ? quoteGroups.filter(group => {
           const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
           if (!rejectedVersion) return false;
-          const rejectedDate = new Date(rejectedVersion.rejected_at);
+          const rejectedDate = new Date(rejectedVersion.rejected_at!);
           return rejectedDate.getFullYear() === currentYear && rejectedDate.getMonth() === currentMonth && !group.versions.some(v => v.status === 'Won');
         })
       : quoteGroups.filter(group => {
           const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
           if (!rejectedVersion) return false;
-          const rejectedDate = new Date(rejectedVersion.rejected_at);
+          const rejectedDate = new Date(rejectedVersion.rejected_at!);
           return rejectedDate.getFullYear() === currentYear && !group.versions.some(v => v.status === 'Won');
         });
 
@@ -172,7 +140,7 @@ const Analytics = () => {
       const wonVersion = group.versions.find(v => v.status === 'Won');
       if (!wonVersion) return sum;
       // Use denormalized total_value field if available, fallback to price_details
-      const total = wonVersion.total_value || wonVersion.price_details?.final_selling_price || 0;
+      const total = wonVersion.total_value ?? wonVersion.price_details?.final_selling_price ?? 0;
       return sum + (typeof total === 'number' ? total : parseCurrency(total));
     }, 0);
 

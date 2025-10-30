@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector, devtools } from 'zustand/middleware';
-import { useAuthStore } from '../auth/authStore';
+import { supabase } from '@/integrations/supabase/client';
 import { useQuotesStore } from '../quotes/quotesStore';
 import { useUIStore } from '../ui/uiStore';
 
@@ -71,16 +71,16 @@ export const useAppStore = create<AppState>()(
       // Initialize the entire application
       initialize: async () => {
         const startTime = performance.now();
-        
+
         try {
-    
-          await useAuthStore.getState().initialize();
-          
-          // Wait for auth to settle, then initialize other stores
-          const authState = useAuthStore.getState();
-          if (authState.user) {
-            await useQuotesStore.getState().initialize();
-          }
+
+          // ✅ v3.0.0: Auth initialization now handled by AuthProvider
+          // OLD: await useAuthStore.getState().initialize();
+          // NEW: AuthProvider handles this automatically
+
+          // ✅ v3.0.0: Quote store initialization removed
+          // OLD: await useQuotesStore.getState().initialize();
+          // NEW: React Query handles initialization automatically via useQuotes() hook
           
           // Set up online/offline listeners
           if (typeof window !== 'undefined') {
@@ -130,13 +130,14 @@ export const useAppStore = create<AppState>()(
         
         try {
           useUIStore.getState().setGlobalLoading(true, 'Syncing data...');
-          
+
           // Re-fetch quotes if user is authenticated
-          const authState = useAuthStore.getState();
-          if (authState.user) {
+          // Check Supabase session directly instead of old auth store
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
             await useQuotesStore.getState().fetchQuotes({ refresh: true });
           }
-          
+
           set({ lastSync: new Date() });
         } catch (error) {
           console.error('❌ Data sync failed:', error);
@@ -185,8 +186,7 @@ export const useAppStore = create<AppState>()(
       reset: () => {
         
         // Reset all stores
-        useAuthStore.getState()._setAuth(null, null);
-        useAuthStore.getState()._setProfile(null);
+        // Note: Auth is managed by AuthProvider - use signOut instead
         useQuotesStore.getState()._setQuotes([]);
         useUIStore.getState().resetUI();
         
@@ -213,22 +213,9 @@ export const useAppStore = create<AppState>()(
   )
 );
 
-// Subscribe to auth changes to manage data initialization
-useAuthStore.subscribe(
-  (state) => state.user,
-  (user, previousUser) => {
-    const appState = useAppStore.getState();
-    
-    if (user && !previousUser && appState.isInitialized) {
-      // User just signed in, initialize data stores
-      useQuotesStore.getState().initialize();
-    } else if (!user && previousUser) {
-      // User signed out, clear data stores
-      useQuotesStore.getState()._setQuotes([]);
-      useQuotesStore.getState().setCurrentQuote(null);
-    }
-  }
-);
+// ✅ v3.0.0: Auth subscription removed
+// Auth state changes are now handled by AuthProvider
+// Data cleanup on sign out is handled in AuthProvider's handleSignedOut
 
 // Selectors for common app patterns
 export const useAppInitialized = () => useAppStore((state) => state.isInitialized);

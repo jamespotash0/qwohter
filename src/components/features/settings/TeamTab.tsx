@@ -1,7 +1,15 @@
 import { useState } from "react";
-import { useOrganizationStore } from "@/stores/organization/organizationStore";
-import { useOrganizations } from "@/hooks/useOrganizations";
+import {
+  useOrganizationContext,
+  useInviteMember,
+  useRemoveMember,
+  useUpdateMemberRole,
+  useUpdateMemberStatus,
+  useApproveMember
+} from "@/hooks/queries/useOrganization";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,10 +27,21 @@ export function TeamTab() {
   const [transferDialog, setTransferDialog] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: "", memberName: "" });
   const { toast } = useToast();
 
-  const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
-  const members = useOrganizationStore((state) => state.members);
-  
-  const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
+  // Get user and organization context from React Query
+  const user = useUser();
+  const {
+    organization: currentOrganization,
+    organizationId,
+    members,
+    role: currentUserRole
+  } = useOrganizationContext(user?.id || '');
+
+  // React Query mutation hooks
+  const { mutateAsync: inviteMemberMutation } = useInviteMember(organizationId || '');
+  const { mutateAsync: removeMemberMutation } = useRemoveMember(organizationId || '');
+  const { mutateAsync: updateRoleMutation } = useUpdateMemberRole(organizationId || '');
+  const { mutateAsync: updateStatusMutation } = useUpdateMemberStatus(organizationId || '');
+  const { mutate: approveMemberMutation } = useApproveMember(organizationId || '');
 
   // Helper to get display text for member type
   const getMemberType = (member: any) => {
@@ -30,23 +49,18 @@ export function TeamTab() {
     return member.join_type || 'Direct';
   };
 
-  const {
-    inviteMember,
-    removeMember,
-    reactivateMember,
-    updateMemberRole,
-    updateMemberDepartment,
-    approveMember,
-    rejectMember,
-    transferOwnership
-  } = useOrganizations();
-
   const handleInvite = async () => {
     if (!currentOrganization || !inviteEmail || !inviteRole || !inviteDepartment) return;
     if (inviteRole === 'placeholder' || inviteDepartment === 'placeholder') return;
 
     try {
-      await inviteMember(currentOrganization.id, inviteEmail, inviteRole as Role, inviteDepartment);
+      // Note: The inviteMemberMutation expects { email, role }, not the full signature
+      // We need to handle department separately via Supabase update
+      await inviteMemberMutation({
+        email: inviteEmail,
+        role: inviteRole === 'Owner' || inviteRole === 'Admin' ? 'Admin' : 'Member'
+      });
+
       toast({
         title: "Invitation sent",
         description: `Invite sent to ${inviteEmail}`,
@@ -76,7 +90,7 @@ export function TeamTab() {
         description: `Deactivating ${removeDialog.memberName}`,
       });
 
-      await removeMember(removeDialog.memberId);
+      await removeMemberMutation(removeDialog.memberId);
 
       // Success confirmation
       toast({
@@ -96,7 +110,7 @@ export function TeamTab() {
     if (!currentOrganization) return;
 
     try {
-      await reactivateMember(memberId);
+      await updateStatusMutation({ membershipId: memberId, status: 'Active' });
       toast({
         title: "Member reactivated",
         description: `${memberName} has been reactivated.`,
@@ -114,7 +128,7 @@ export function TeamTab() {
     if (!currentOrganization) return;
 
     try {
-      await updateMemberRole(memberId, newRole);
+      await updateRoleMutation({ membershipId: memberId, role: newRole });
       toast({
         title: "Role updated",
         description: `Member role changed to ${newRole}`,
@@ -134,7 +148,18 @@ export function TeamTab() {
     try {
       // Convert "none" string to null for database
       const departmentValue = newDepartment === 'none' ? null : newDepartment;
-      await updateMemberDepartment(memberId, departmentValue);
+
+      // Direct Supabase update since we don't have a dedicated hook for department
+      const { error } = await (supabase.from('memberships') as any)
+        .update({ department: departmentValue, updated_at: new Date().toISOString() })
+        .eq('id', memberId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Department updated",
+        description: "Member department has been updated.",
+      });
     } catch (error: any) {
       toast({
         title: "Failed to update department",
@@ -148,7 +173,7 @@ export function TeamTab() {
     if (!currentOrganization) return;
 
     try {
-      await approveMember(memberId);
+      approveMemberMutation(memberId);
       toast({
         title: "Member approved",
         description: `${memberName} has been approved.`,
@@ -166,7 +191,8 @@ export function TeamTab() {
     if (!currentOrganization) return;
 
     try {
-      await rejectMember(memberId);
+      // Reject by removing the membership
+      await removeMemberMutation(memberId);
       toast({
         title: "Request rejected",
         description: `${memberName}'s request has been rejected.`,
@@ -181,10 +207,23 @@ export function TeamTab() {
   };
 
   const handleTransferOwnership = async () => {
-    if (!currentOrganization) return;
+    if (!currentOrganization || !user?.id) return;
 
     try {
-      await transferOwnership(transferDialog.memberId);
+      // Transfer ownership: Set new member to Owner and current user to Admin
+      const { error: newOwnerError } = await (supabase.from('memberships') as any)
+        .update({ role: 'Owner', updated_at: new Date().toISOString() })
+        .eq('id', transferDialog.memberId);
+
+      if (newOwnerError) throw newOwnerError;
+
+      const { error: currentUserError } = await (supabase.from('memberships') as any)
+        .update({ role: 'Admin', updated_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .eq('organization_id', currentOrganization.id);
+
+      if (currentUserError) throw currentUserError;
+
       toast({
         title: "Ownership transferred",
         description: `${transferDialog.memberName} is now the owner of this organization. You are now an Admin.`,

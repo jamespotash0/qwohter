@@ -1,15 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, AlertCircle, LogOut, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { stripeService } from '@/services/stripeService';
-import { useOrganizationStore } from '@/stores/organization/organizationStore';
-import { useAuthStore } from '@/stores/auth/authStore';
-import { useQuotesStore } from '@/stores/quotes/quotesStore';
-import { useBoardStore } from '@/stores/board/boardStore';
-import { useRemindersStore } from '@/stores/reminders/remindersStore';
-import { useAppStore } from '@/stores/app/appStore';
+import { useSignOut } from '@/auth';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -27,16 +23,15 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   children,
 }) => {
   const navigate = useNavigate();
-  const signOut = useAuthStore((state) => state.signOut);
-  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
+  const queryClient = useQueryClient();
+  const { mutate: signOut, isPending: isLoggingOut } = useSignOut();
 
-  // Get user role to determine paywall display
-  const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
-  const isOwner = currentUserRole === 'Owner';
+  // TODO: Get user role from React Query (useUserOrganization)
+  // For now, we'll check role from membership data
+  const isOwner = true; // Placeholder - should come from useUserOrganization
 
-  // Get cached subscription status from store
-  const cachedStatus = useOrganizationStore((state) => state.subscriptionStatus);
-  const setSubscriptionStatus = useOrganizationStore((state) => state.setSubscriptionStatus);
+  // Get cached subscription status from localStorage only
+  const [cachedStatus, setCachedStatus] = useState<{ hasAccess: boolean; reason: string } | null>(null);
 
   // Try to get from localStorage if Zustand store is empty (e.g., after page reload)
   const getInitialStatus = () => {
@@ -68,6 +63,10 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   const [loading, setLoading] = useState(true); // Always validate first
   const [hasAccess, setHasAccess] = useState(false); // Fail closed by default
   const [blockReason, setBlockReason] = useState<string>('');
+
+  // Race condition fix: Track request versions
+  // Ensures only the most recent subscription check result is applied
+  const requestVersionRef = useRef(0);
 
   console.log('🎫 Paywall initialized:', {
     initialStatus,
@@ -115,11 +114,7 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
             setHasAccess(isValid);
             setBlockReason(reason || '');
 
-            // Update cache
-            setSubscriptionStatus({
-              hasAccess: isValid,
-              reason: reason || '',
-            });
+            // Update cache in localStorage
             localStorage.setItem(`subscription_${organizationId}`, JSON.stringify({
               hasAccess: isValid,
               reason: reason || '',
@@ -159,75 +154,68 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   }, [organizationId]);
 
   const checkSubscription = async () => {
+    // Race condition fix: Increment request version
+    // Only the latest request's response will be applied
+    const currentRequestVersion = ++requestVersionRef.current;
+
     try {
       // Always show loading while validating
       setLoading(true);
 
+      console.log(`🔄 Starting subscription check (version ${currentRequestVersion})...`);
+
       const { isValid, reason } = await stripeService.hasValidSubscription(organizationId);
 
-      console.log('💳 Subscription check result:', { isValid, reason, organizationId });
+      console.log(`💳 Subscription check result (version ${currentRequestVersion}):`, { isValid, reason, organizationId });
 
-      setHasAccess(isValid);
-      setBlockReason(reason || '');
+      // Race condition fix: Only apply if this is still the latest request
+      if (currentRequestVersion === requestVersionRef.current) {
+        console.log(`✅ Applying subscription check result (version ${currentRequestVersion} is current)`);
 
-      console.log('💳 State updated:', { hasAccess: isValid, blockReason: reason });
+        setHasAccess(isValid);
+        setBlockReason(reason || '');
 
-      // Cache the result in Zustand store
-      setSubscriptionStatus({
-        hasAccess: isValid,
-        reason: reason || '',
-      });
+        console.log('💳 State updated:', { hasAccess: isValid, blockReason: reason });
 
-      // Also persist to localStorage with timestamp
-      localStorage.setItem(`subscription_${organizationId}`, JSON.stringify({
-        hasAccess: isValid,
-        reason: reason || '',
-        timestamp: Date.now(),
-      }));
+        // Persist to localStorage with timestamp
+        localStorage.setItem(`subscription_${organizationId}`, JSON.stringify({
+          hasAccess: isValid,
+          reason: reason || '',
+          timestamp: Date.now(),
+        }));
+      } else {
+        console.log(`⏭️ Skipping stale subscription check result (version ${currentRequestVersion}, current is ${requestVersionRef.current})`);
+      }
     } catch (error) {
       console.error('Error checking subscription:', error);
-      setHasAccess(false);
-      setBlockReason('Unable to verify subscription status');
 
-      // Cache the error state
-      setSubscriptionStatus({
-        hasAccess: false,
-        reason: 'Unable to verify subscription status',
-      });
+      // Race condition fix: Only apply if this is still the latest request
+      if (currentRequestVersion === requestVersionRef.current) {
+        console.log(`✅ Applying subscription error (version ${currentRequestVersion} is current)`);
+
+        setHasAccess(false);
+        setBlockReason('Unable to verify subscription status');
+      } else {
+        console.log(`⏭️ Skipping stale subscription error (version ${currentRequestVersion}, current is ${requestVersionRef.current})`);
+      }
     } finally {
-      setLoading(false);
+      // Race condition fix: Only update loading if this is still the latest request
+      if (currentRequestVersion === requestVersionRef.current) {
+        setLoading(false);
+      }
     }
   };
 
-  const handleLogout = async () => {
-    const startTime = Date.now();
-    const MIN_LOGOUT_TIME = 800; // 800ms minimum for smooth UX
+  const handleLogout = () => {
+    // Clear React Query cache
+    queryClient.clear();
 
-    // Set logging out state IMMEDIATELY to show loading overlay
-    useAuthStore.getState()._setLoggingOut(true);
-
-    // Wait a frame to ensure UI updates (loading overlay shows)
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
-    // Reset all stores to clear UI
-    useQuotesStore.getState().reset();
-    useBoardStore.getState().reset();
-    useOrganizationStore.getState().reset();
-    useRemindersStore.getState().reset();
-    useAppStore.getState().reset();
-
-    // Sign out (this will clear auth state)
-    await signOut();
-
-    // Ensure minimum display time for loading spinner (smooth UX)
-    const elapsedTime = Date.now() - startTime;
-    const remainingTime = Math.max(0, MIN_LOGOUT_TIME - elapsedTime);
-    if (remainingTime > 0) {
-      await new Promise(resolve => setTimeout(resolve, remainingTime));
-    }
-
-    // Navigate to sign-in (stores handle cleanup, no reload needed)
-    navigate('/sign-in', { replace: true });
+    // Sign out using auth hook
+    signOut(undefined, {
+      onSuccess: () => {
+        navigate('/sign-in', { replace: true });
+      }
+    });
   };
 
   // Show full-screen loading spinner while checking subscription

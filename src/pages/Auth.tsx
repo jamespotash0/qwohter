@@ -25,7 +25,7 @@ import { validateInviteToken } from "@/utils/inviteTokens";
 import { tempSignupService } from "@/services/tempSignupService";
 import { supabase } from "@/integrations/supabase/client";
 import { stripeService } from "@/services/stripeService";
-import { useOrganizationStore } from "@/stores/organization/organizationStore";
+import { fetchOrganizationByUserId } from "@/services/organizationService";
 
 // Import extracted hooks
 import { useAuthFlow, useAuthFormState, useCompanyInfoState } from "./Auth/hooks";
@@ -361,53 +361,28 @@ const Auth = () => {
   const onSelectPlan = async (planName: string, billingPeriod: 'monthly' | 'yearly') => {
     authFlow.setLoading(true);
     try {
-      // Get current organization from store or fetch from database
-      let currentOrg = useOrganizationStore.getState().currentOrganization;
-
-      // If not in store, fetch it using the userId
-      if (!currentOrg && authFlow.userId) {
-        const { data: membershipData, error: membershipError } = await supabase
-          .from('memberships')
-          .select(`
-            organization_id,
-            organizations (
-              id,
-              name,
-              organization_code
-            )
-          `)
-          .eq('user_id', authFlow.userId)
-          .single();
-
-        if (membershipError || !membershipData) {
-          toast({
-            title: 'Error',
-            description: 'No organization found. Please complete the organization setup first.',
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        // Use the organization from the joined query
-        const orgData = (membershipData as any).organizations;
-        if (!orgData) {
-          toast({
-            title: 'Error',
-            description: 'Organization not found. Please try again.',
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        currentOrg = {
-          id: orgData.id,
-          name: orgData.name,
-          organization_code: orgData.organization_code
-        } as any;
-
-        // Update the store with the fetched organization
-        useOrganizationStore.getState().setOrganization(currentOrg);
+      // Fetch current organization from database
+      if (!authFlow.userId) {
+        toast({
+          title: 'Error',
+          description: 'User not found. Please try again.',
+          variant: 'destructive',
+        });
+        return;
       }
+
+      const membership = await fetchOrganizationByUserId(authFlow.userId);
+
+      if (!membership?.organization) {
+        toast({
+          title: 'Error',
+          description: 'No organization found. Please complete the organization setup first.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const currentOrg = membership.organization;
 
       if (!currentOrg) {
         toast({
@@ -450,8 +425,18 @@ const Auth = () => {
   const onActivateTrial = async () => {
     authFlow.setLoading(true);
     try {
-      // Get current organization
-      const currentOrg = useOrganizationStore.getState().currentOrganization;
+      // Fetch current organization from database
+      if (!authFlow.userId) {
+        toast({
+          title: 'Error',
+          description: 'User not found. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const membership = await fetchOrganizationByUserId(authFlow.userId);
+      const currentOrg = membership?.organization;
 
       if (!currentOrg) {
         toast({

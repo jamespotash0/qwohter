@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeInput, validateSecurity, authRateLimiter } from '@/utils/security';
-import { useUser } from '@/stores/auth/authStore';
-import { useOrganizations } from '@/hooks/useOrganizations';
+import { useUser } from '@/auth';
+import { useCurrentOrganization } from '@/hooks/queries';
 import { toast } from 'sonner';
 
 /**
@@ -10,7 +10,7 @@ import { toast } from 'sonner';
  */
 export const useSecureActions = () => {
   const user = useUser();
-  const { currentUserRole, currentOrganization } = useOrganizations();
+  const { organization: currentOrganization, role: currentUserRole } = useCurrentOrganization(user?.id);
 
   /**
    * Secure quote creation with validation

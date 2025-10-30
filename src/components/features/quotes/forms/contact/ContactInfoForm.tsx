@@ -3,8 +3,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { User, Mail, Phone, Printer, MapPin, Globe, Plus, TrendingUp } from "lucide-react";
-import { useOrganizations } from "@/hooks/useOrganizations";
-import { useOrganizationSettings } from "@/hooks/useCompanySettings";
+import { useCurrentOrganization, useOrganizationMembers } from "@/hooks/queries";
+import { useUser } from "@/auth";
 import { extractCompanyInfoForForm } from "@/lib/types/settings/companySettings";
 
 interface ContactInfoData {
@@ -24,8 +24,10 @@ interface ContactInfoFormProps {
 }
 
 const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
-  const { currentOrganization, members, loading } = useOrganizations();
-  const { organization, isLoading: organizationLoading } = useOrganizationSettings();
+  const user = useUser();
+  const { organization, isLoading: loading } = useCurrentOrganization(user?.id);
+  const { data: members = [] } = useOrganizationMembers(organization?.id || '', !!organization?.id);
+  const organizationLoading = loading;
   const [showCustomNameInput, setShowCustomNameInput] = useState(false);
   const [showCustomEmailInput, setShowCustomEmailInput] = useState(false);
   const [showCustomQuoteSourceInput, setShowCustomQuoteSourceInput] = useState(false);
@@ -40,21 +42,21 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
 
   // Automatically set organization name when organization loads
   useEffect(() => {
-    if (currentOrganization && !data.organizationName) {
-      console.log('[ContactInfoForm] Setting organizationName:', currentOrganization.name);
-      handleChange('organizationName', currentOrganization.name);
+    if (organization && !data.organizationName) {
+      console.log('[ContactInfoForm] Setting organizationName:', organization.name);
+      handleChange('organizationName', organization.name);
     }
-  }, [currentOrganization, data.organizationName]);
+  }, [organization, data.organizationName]);
 
   // Debug: Log when organization is not available
   useEffect(() => {
-    if (!currentOrganization) {
-      console.warn('[ContactInfoForm] currentOrganization is not available');
+    if (!organization) {
+      console.warn('[ContactInfoForm] organization is not available');
     }
-  }, [currentOrganization]);
+  }, [organization]);
 
   // Get active members from the organization
-  const activeMembers = members.filter(member => member.status === 'Active');
+  const activeMembers = (members || []).filter(member => member.status === 'Active');
   
   // Create contact options from organization members
   const contactNames = activeMembers
@@ -280,7 +282,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
               </SelectTrigger>
               <SelectContent>
                 {contactEmails.map((email) => (
-                  <SelectItem key={email} value={email}>
+                  <SelectItem key={email} value={email!}>
                     {email}
                   </SelectItem>
                 ))}
