@@ -80,7 +80,11 @@ export const useEditingValidation = (
         }
         
         // Check for panel finish dependency
-        if (wall.panelFinishCategory && (!wall.panelFinishSpecificItem || wall.panelFinishSpecificItem === '')) {
+        // Only require specific item if the category has specific items available
+        const categoriesWithoutSpecificItems = ["Uncovered", "C.O.M. Material", "Field Painting by Others", "Full-Height Marker (Tack) Board"];
+        if (wall.panelFinishCategory &&
+            !categoriesWithoutSpecificItems.includes(wall.panelFinishCategory) &&
+            (!wall.panelFinishSpecificItem || wall.panelFinishSpecificItem === '')) {
           return false;
         }
         

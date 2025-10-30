@@ -314,7 +314,7 @@ export const getFinalClosureSystemOptions = (model: string): string[] => {
 
 export const panelConfigurations = ["Individual Panels", "Hinged-Paired Panels", "Continuously-Hinged Panels"];
 export const passDoorOptions = ["Single", "Double"];
-export const panelFinishCategories = ["Koroseal Standard Vinyl", "Koroseal Upgrade Vinyl", "Shaw Standard Carpet", "HyTex Upgrade Carpet", "HyTex Standard Fabric", "HyTex Upgrade Fabric", "Standard Wood Veneer", "Wilsonart High Pressure Laminate (HPL)", "Full Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
+export const panelFinishCategories = ["Koroseal Standard Vinyl", "Koroseal Upgrade Vinyl", "Shaw Standard Carpet", "HyTex Upgrade Carpet", "HyTex Standard Fabric", "HyTex Upgrade Fabric", "Standard Wood Veneer", "Wilsonart High Pressure Laminate (HPL)", "Full-Height Marker (Tack) Board", "Uncovered", "C.O.M. Material", "Field Painting by Others"];
 export const verticalSealOptions = ["Trimless Astragal", "Cap-type Astragal"]; //all models, not specified for hufcor models
 export const bottomSealOptions = ["Operable", "Adjustable", "Automatic", "Retractable", "Retractable (2\")", "Retractable (4\")", "Fixed"]; //Retractable and fixed only for hufcor models
 export const topSealOptions = ["Fixed", "Operable", "Retractable"]; //only for Hufcor 641/642, is it retractable
