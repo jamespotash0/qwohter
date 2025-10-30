@@ -85,13 +85,6 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
       console.log('✅ Using cached subscription status:', initialStatus);
     }
 
-    // Poll subscription status every 5 seconds
-    // Realtime handles instant updates, polling is just a backup
-    const pollInterval = setInterval(() => {
-      console.log('⏱️ Polling subscription status...');
-      checkSubscription();
-    }, 5000);
-
     // Set up realtime subscription to detect subscription changes
     const channel = supabase
       .channel(`subscription-changes-${organizationId}`)
@@ -160,7 +153,6 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
       });
 
     return () => {
-      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
   }, [organizationId]);
