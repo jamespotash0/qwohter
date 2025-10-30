@@ -367,7 +367,7 @@ export const useQuotesStore = create<QuotesState>()(
                 proposal_number: proposalInfo.fullNumber,
                 project_name: projectName,
                 quote_details: quoteData.contactInfo || {},
-                quote_source: quoteData.contactInfo?.quoteSource || 'Manual',
+                quote_source: quoteData.contactInfo?.quoteSource || 'Manual Entry',
                 job_details: {
                   job_location: quoteData.jobDetails.jobLocation || '',
                   client_name: quoteData.jobDetails.billedTo.name || '',

@@ -121,8 +121,9 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
 
     // Check if current quoteSource is not in the dropdown options and set custom input if needed
     const standardQuoteSources = [
-      'Manual', 'Website_Lead', 'Contractor_Referral', 'Phone_Inquiry', 
-      'Email_Inquiry', 'Trade_Show', 'Repeat_Customer'
+      'Manual Entry', 'Website Lead', 'Contractor Referral', 'Manufacturer Referral',
+      'Architect Referral', 'Phone Inquiry', 'Email Inquiry', 'Trade Show',
+      'Repeat Customer'
     ];
     
     if (data.quoteSource && !standardQuoteSources.includes(data.quoteSource)) {
@@ -434,14 +435,16 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Manual">Manual Entry</SelectItem>
-                  <SelectItem value="Website_Lead">Website Lead</SelectItem>
-                  <SelectItem value="Contractor_Referral">Contractor Referral</SelectItem>
-                  <SelectItem value="Phone_Inquiry">Phone Inquiry</SelectItem>
-                  <SelectItem value="Email_Inquiry">Email Inquiry</SelectItem>
-                  <SelectItem value="Trade_Show">Trade Show</SelectItem>
-                  <SelectItem value="Repeat_Customer">Repeat Customer</SelectItem>
-                  <SelectItem value="custom">
+                  <SelectItem value="Manual Entry">Manual Entry</SelectItem>
+                  <SelectItem value="Website Lead">Website Lead</SelectItem>
+                  <SelectItem value="Contractor Referral">Contractor Referral</SelectItem>
+                  <SelectItem value="Manufacturer Referral">Manufacturer Referral</SelectItem>
+                  <SelectItem value="Architect Referral">Architect Referral</SelectItem>
+                  <SelectItem value="Phone Inquiry">Phone Inquiry</SelectItem>
+                  <SelectItem value="Email Inquiry">Email Inquiry</SelectItem>
+                  <SelectItem value="Trade Show">Trade Show</SelectItem>
+                  <SelectItem value="Repeat Customer">Repeat Customer</SelectItem>
+                  <SelectItem value="Custom">
                     <div className="flex items-center gap-2">
                       <Plus className="w-4 h-4" />
                       Add custom source...
