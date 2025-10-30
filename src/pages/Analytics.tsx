@@ -234,87 +234,92 @@ const Analytics = () => {
         </div>
       }
     >
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Total Revenue */}
-        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800">
-                <DollarSign className="w-6 h-6 text-green-600 dark:text-green-300" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">{viewMode === 'monthly' ? 'Revenue This Month' : 'Revenue This Year'}</h3>
-                <p className="text-2xl font-bold text-[var(--content-header-text)]">${(Math.round(metrics.totalRevenue * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                <p className="text-xs mt-1 text-[var(--content-muted-text)]">Won quotes only</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Top User */}
-        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800">
-                <Users className="w-6 h-6 text-blue-600 dark:text-blue-300" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Top Contributor</h3>
-                <p className="text-2xl font-bold text-[var(--content-header-text)] truncate">{metrics.topUser[0]}</p>
-                <p className="text-xs mt-1 text-[var(--content-muted-text)]">{metrics.topUser[1]} quotes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Average Revenue Per Quote */}
-        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
-                <DollarSign className="w-6 h-6 text-purple-600 dark:text-purple-300" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Avg Revenue/Quote</h3>
-                <p className="text-2xl font-bold text-[var(--content-header-text)]">${Math.round(metrics.averageRevenuePerQuote).toLocaleString()}</p>
-                <p className="text-xs mt-1 text-[var(--content-muted-text)]">Won quotes only</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Conversion Rate */}
-        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900 dark:to-orange-800">
-                <Target className="w-6 h-6 text-orange-600 dark:text-orange-300" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Conversion Rate</h3>
-                <p className="text-2xl font-bold text-[var(--content-header-text)]">{Math.round(metrics.conversionRate)}%</p>
-                <p className="text-xs mt-1 text-[var(--content-muted-text)]">Won vs Total quotes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Section */}
+      {/* Loading State - Show while fetching fresh data from database */}
       {quotesLoading ? (
-        <div className="text-center py-12">
-          <div className="w-8 h-8 border-4 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted">Loading analytics data...</p>
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="w-12 h-12 border-4 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-[var(--content-muted-text)]">Loading analytics data...</p>
         </div>
-      ) : quotes.length > 0 ? (
-        <AnalyticsPageCharts quotes={quotes} viewMode={viewMode} />
       ) : (
-        <div className="text-center py-12">
-          <FileText className="h-12 w-12 text-muted mx-auto mb-4 opacity-50" />
-          <p className="text-muted mb-4">No quotes data available</p>
-          <p className="text-sm text-muted">Create some quotes to see analytics</p>
-        </div>
+        <>
+          {/* Metrics Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Total Revenue */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800">
+                    <DollarSign className="w-6 h-6 text-green-600 dark:text-green-300" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">{viewMode === 'monthly' ? 'Revenue This Month' : 'Revenue This Year'}</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">${(Math.round(metrics.totalRevenue * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                    <p className="text-xs mt-1 text-[var(--content-muted-text)]">Won quotes only</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Top User */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800">
+                    <Users className="w-6 h-6 text-blue-600 dark:text-blue-300" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Top Contributor</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)] truncate">{metrics.topUser[0]}</p>
+                    <p className="text-xs mt-1 text-[var(--content-muted-text)]">{metrics.topUser[1]} quotes</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Average Revenue Per Quote */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
+                    <DollarSign className="w-6 h-6 text-purple-600 dark:text-purple-300" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Avg Revenue/Quote</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">${Math.round(metrics.averageRevenuePerQuote).toLocaleString()}</p>
+                    <p className="text-xs mt-1 text-[var(--content-muted-text)]">Won quotes only</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Conversion Rate */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900 dark:to-orange-800">
+                    <Target className="w-6 h-6 text-orange-600 dark:text-orange-300" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Conversion Rate</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{Math.round(metrics.conversionRate)}%</p>
+                    <p className="text-xs mt-1 text-[var(--content-muted-text)]">Won vs Total quotes</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts Section */}
+          {quotes.length > 0 ? (
+            <AnalyticsPageCharts quotes={quotes} viewMode={viewMode} />
+          ) : (
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 text-muted mx-auto mb-4 opacity-50" />
+              <p className="text-muted mb-4">No quotes data available</p>
+              <p className="text-sm text-muted">Create some quotes to see analytics</p>
+            </div>
+          )}
+        </>
       )}
     </PageContent>
   );

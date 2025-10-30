@@ -15,19 +15,8 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
   const isInitialized = useAuthStore((state) => state.isInitialized);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = React.useState<boolean | null>(null);
 
-  // Show loading spinner while auth is initializing (prevents flash of sign-in page)
-  if (!isInitialized) {
-    return (
-      <div className="h-screen w-full bg-[var(--content-bg)] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[var(--content-button-primary-bg)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[var(--content-muted-text)]">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Check if user has completed onboarding
+  // IMPORTANT: Check if user has completed onboarding (BEFORE any early returns!)
+  // Hooks must always be called in the same order - move this BEFORE the loading check
   React.useEffect(() => {
     const checkOnboarding = async () => {
       if (!user) {
@@ -52,6 +41,18 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
 
     checkOnboarding();
   }, [user]);
+
+  // Show loading spinner while auth is initializing (prevents flash of sign-in page)
+  if (!isInitialized) {
+    return (
+      <div className="h-screen w-full bg-[var(--content-bg)] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[var(--content-button-primary-bg)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[var(--content-muted-text)]">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // If user is logged in AND has completed onboarding, redirect to dashboard
   if (user && hasCompletedOnboarding) {

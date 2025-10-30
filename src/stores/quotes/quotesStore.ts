@@ -17,6 +17,50 @@ const getCurrentUser = () => {
   return user;
 };
 
+// Smart cache helpers
+const CACHE_KEY = 'quotes_cache';
+const CACHE_TIME_KEY = 'quotes_cache_time';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function loadCachedQuotes(): Quote[] {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    const cacheTime = localStorage.getItem(CACHE_TIME_KEY);
+
+    if (cached && cacheTime) {
+      const age = Date.now() - parseInt(cacheTime);
+
+      // Only use cache if less than 5 minutes old
+      if (age < CACHE_TTL) {
+        console.log(`📦 Loading quotes from cache (${Math.round(age / 1000)}s old)`);
+        return JSON.parse(cached);
+      } else {
+        console.log('⏰ Cache expired, will fetch from database');
+        // Clear expired cache
+        localStorage.removeItem(CACHE_KEY);
+        localStorage.removeItem(CACHE_TIME_KEY);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load cached quotes:', error);
+    // Clear corrupted cache
+    localStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem(CACHE_TIME_KEY);
+  }
+
+  return [];
+}
+
+function saveCacheQuotes(quotes: Quote[]) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(quotes));
+    localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+    console.log('💾 Quotes cached');
+  } catch (error) {
+    console.error('Failed to cache quotes:', error);
+  }
+}
+
 // Define Quote interface directly in store
 export interface Quote {
   id: string;
@@ -125,17 +169,13 @@ export const useQuotesStore = create<QuotesState>()(
   devtools(
     subscribeWithSelector(
       immer((set, get) => ({
-        // Initial state - load from cache
-        quotes: (() => {
-          try {
-            const cached = localStorage.getItem('quotes_cache');
-            return cached ? JSON.parse(cached) : [];
-          } catch {
-            return [];
-          }
-        })(),
+        // Initial state - load from cache if valid (< 5 min old)
+        // Cache provides fast initial display, but always fetch fresh data
+        quotes: loadCachedQuotes(),
         currentQuote: null,
-        isLoading: false,
+        // Always show loading spinner for consistent, trustworthy UX
+        // Users know data is being fetched, not just seeing stale cache
+        isLoading: true,
         error: null,
         isRealtimeConnected: false,
         filters: {
@@ -158,11 +198,14 @@ export const useQuotesStore = create<QuotesState>()(
 
         // Fetch quotes with optional refresh
         fetchQuotes: async (options = {}) => {
-          const { _setQuotes, _setLoading, _setError } = get();
+          const { quotes, _setQuotes, _setLoading, _setError } = get();
 
           try {
-            // Never show loading spinner - cache is already displayed
-            _setLoading(false);
+            // Only show loading spinner if we don't have cached data
+            // This prevents flash of loading screen when cache exists
+            if (quotes.length === 0) {
+              _setLoading(true);
+            }
             _setError(null);
 
             // Check authentication first
@@ -254,23 +297,23 @@ export const useQuotesStore = create<QuotesState>()(
                 status: q.status
               })));
 
-              // Cache the quotes for instant display on next visit
-              try {
-                localStorage.setItem('quotes_cache', JSON.stringify(processedQuotes));
-              } catch (e) {
-                console.error('Failed to cache quotes:', e);
-              }
-
+              // Update store with fresh data from database
               _setQuotes(processedQuotes);
               set((state) => {
                 state.pagination.total = count;
               });
+
+              // Cache the fresh data with timestamp
+              saveCacheQuotes(processedQuotes);
             } else {
-              localStorage.removeItem('quotes_cache');
               _setQuotes([]);
               set((state) => {
                 state.pagination.total = 0;
               });
+
+              // Clear cache when no quotes
+              localStorage.removeItem(CACHE_KEY);
+              localStorage.removeItem(CACHE_TIME_KEY);
             }
 
           } catch (error) {
@@ -694,12 +737,6 @@ export const useQuotesStore = create<QuotesState>()(
                       const exists = state.quotes.some(q => q.id === newQuote.id);
                       if (!exists) {
                         state.quotes.unshift(newQuote);
-                        // Update cache
-                        try {
-                          localStorage.setItem('quotes_cache', JSON.stringify(state.quotes));
-                        } catch (e) {
-                          console.error('Failed to update quotes cache:', e);
-                        }
                       }
                     });
                     return;
@@ -719,12 +756,6 @@ export const useQuotesStore = create<QuotesState>()(
                             // Update quote with latest data from database
                             // creator_name is now properly handled by convertRowToQuote
                             state.quotes[index] = updatedQuote;
-                            // Update cache
-                            try {
-                              localStorage.setItem('quotes_cache', JSON.stringify(state.quotes));
-                            } catch (e) {
-                              console.error('Failed to update quotes cache:', e);
-                            }
                           }
 
                           // Update current quote if it's the one being edited
@@ -737,12 +768,6 @@ export const useQuotesStore = create<QuotesState>()(
                       case 'DELETE': {
                         if (oldRecord) {
                           state.quotes = state.quotes.filter(q => q.id !== oldRecord.id);
-                          // Update cache
-                          try {
-                            localStorage.setItem('quotes_cache', JSON.stringify(state.quotes));
-                          } catch (e) {
-                            console.error('Failed to update quotes cache:', e);
-                          }
 
                           // Clear current quote if it was deleted
                           if (state.currentQuote?.id === oldRecord.id) {
