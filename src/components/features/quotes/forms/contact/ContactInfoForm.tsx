@@ -431,7 +431,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
                 }`}>
                   <SelectValue 
                     placeholder="Select quote source" 
-                    className="text-gray-600"  
+                    className="text-gray-600"   
                   />
                 </SelectTrigger>
                 <SelectContent>
