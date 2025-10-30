@@ -154,7 +154,7 @@ export interface OperableWallSpecification extends BaseWallSpecification {
   };
 
   export const getPanelFinishSpecificItems = (category: string): string[] => {
-    const categoriesWithoutSpecificItems = ["Uncovered", "C.O.M. Material", "Field Painting by Others"];
+    const categoriesWithoutSpecificItems = ["Uncovered", "C.O.M. Material", "Field Painting by Others", "Full-Height Marker (Tack) Board"];
     if (categoriesWithoutSpecificItems.includes(category)) return [];
     const mapping: Record<string, string[]> = {
 
