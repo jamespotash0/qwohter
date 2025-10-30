@@ -444,7 +444,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
                   <SelectItem value="Email Inquiry">Email Inquiry</SelectItem>
                   <SelectItem value="Trade Show">Trade Show</SelectItem>
                   <SelectItem value="Repeat Customer">Repeat Customer</SelectItem>
-                  <SelectItem value="Custom">
+                  <SelectItem value="custom">
                     <div className="flex items-center gap-2">
                       <Plus className="w-4 h-4" />
                       Add custom source...
