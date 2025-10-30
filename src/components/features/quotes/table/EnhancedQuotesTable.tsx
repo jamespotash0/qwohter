@@ -1347,21 +1347,54 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
 
                             {/* Quote Source */}
                             <td className="px-4 py-2">
-                              <Select
-                                value={version.quote_source || ""}
-                                onValueChange={(value) => onQuoteSourceChange(version.id, value)}
-                              >
-                                <SelectTrigger className="w-full h-8 border-0 text-xs px-3 bg-gray-100 text-gray-800">
-                                  <SelectValue placeholder="Select source" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {getQuoteSourceOptions().map((source) => (
-                                    <SelectItem key={source.value} value={source.value}>
-                                      {source.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              {(() => {
+                                const versionQuoteSource = version.quote_source;
+                                const isCustomVersionSource = versionQuoteSource && !getQuoteSourceOptions().some(opt => opt.value === versionQuoteSource);
+
+                                return (
+                                  <Select
+                                    value={versionQuoteSource || ""}
+                                    onValueChange={(value) => onQuoteSourceChange(version.id, value)}
+                                  >
+                                    <SelectTrigger className={`w-full h-8 border-0 text-xs px-3 ${
+                                      isCustomVersionSource
+                                        ? "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                                        : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                                    }`}>
+                                      <SelectValue placeholder="Select source" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {/* Custom value for this version */}
+                                      {isCustomVersionSource && versionQuoteSource && (
+                                        <>
+                                          <SelectItem value={versionQuoteSource} className="bg-amber-50 dark:bg-amber-950/30">
+                                            {versionQuoteSource}
+                                          </SelectItem>
+                                          <div className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400 border-b">
+                                            Standard Options:
+                                          </div>
+                                        </>
+                                      )}
+                                      {/* Standard options - show new format only */}
+                                      {getQuoteSourceOptions()
+                                        .filter(source => !source.value.includes('_') && source.value !== 'Manual')
+                                        .map((source) => (
+                                          <SelectItem key={source.value} value={source.value}>
+                                            {source.label}
+                                          </SelectItem>
+                                        ))}
+                                      {/* Legacy format options - hidden but available for SelectValue */}
+                                      {getQuoteSourceOptions()
+                                        .filter(source => source.value.includes('_') || source.value === 'Manual')
+                                        .map((source) => (
+                                          <SelectItem key={source.value} value={source.value} className="hidden">
+                                            {source.label}
+                                          </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                  </Select>
+                                );
+                              })()}
                             </td>
 
                             {/* Created By */}
