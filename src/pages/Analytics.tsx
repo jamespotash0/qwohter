@@ -1,16 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContent } from "@/components/common/layout";
-import { Button } from "@/components/ui/button";
 import {
   DollarSign,
   TrendingUp,
   FileText,
   Target,
   Calculator,
-  Percent,
-  Receipt,
+  X,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  // DialogHeader,
+  // DialogTitle,
+} from "@/components/ui/dialog";
 import { useQuotesStore } from "@/stores/quotes/quotesStore";
 import { useOrganizationStore } from "@/stores/organization/organizationStore";
 import { useAuthStore } from "@/stores/auth/authStore";
@@ -24,15 +28,22 @@ import {
   calculateWinRate,
   calculateConversionRate,
   filterMainVersionQuotes,
-  calculateAverageGrossProfitPerQuote,
-  calculateAverageRevenuePerQuote,
-  calculateAverageQuoteValue,
+  // calculateAverageGrossProfitPerQuote,
+  // calculateAverageRevenuePerQuote,
+  // calculateAverageQuoteValue,
+  calculateAveragesOverTime,
+  calculateTotalsOverTime,
+  calculateWonRejectedOverTime,
+  calculateUserMetrics,
+  makeAveragesCumulative,
+  makeTotalsCumulative,
+  makeWonRejectedCumulative,
 } from "@/utils/analyticsCalculations";
 
 // Import Recharts components
 import {
-  AreaChart,
-  Area,
+  // AreaChart,
+  // Area,
   BarChart,
   Bar,
   LineChart,
@@ -61,6 +72,18 @@ import {
 const Analytics = () => {
   const [user, setUser] = useState<any>(null);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('monthly');
+  const [averagesTimePeriod, setAveragesTimePeriod] = useState<TimePeriod>('monthly');
+  const [totalsTimePeriod, setTotalsTimePeriod] = useState<TimePeriod>('monthly');
+  const [teamTimePeriod, setTeamTimePeriod] = useState<TimePeriod>('monthly');
+  const [wonRejectedTimePeriod, setWonRejectedTimePeriod] = useState<TimePeriod>('monthly');
+  const [averagesPeriodOffset, setAveragesPeriodOffset] = useState(0);
+  const [totalsPeriodOffset, setTotalsPeriodOffset] = useState(0);
+  const [wonRejectedPeriodOffset, setWonRejectedPeriodOffset] = useState(0);
+  const [teamPeriodOffset, setTeamPeriodOffset] = useState(0);
+  const [averagesCumulative, setAveragesCumulative] = useState(false);
+  const [totalsCumulative, setTotalsCumulative] = useState(false);
+  const [wonRejectedCumulative, setWonRejectedCumulative] = useState(false);
+  const [enlargedChart, setEnlargedChart] = useState<string | null>(null);
   const quotes = useQuotesStore((state) => state.quotes);
   const quotesLoading = useQuotesStore((state) => state.isLoading);
   const fetchQuotes = useQuotesStore((state) => state.fetchQuotes);
@@ -113,6 +136,26 @@ const Analytics = () => {
     return result;
   }, [mainVersionQuotes, timePeriod]);
 
+  // Individual chart data with their own time periods
+  const averagesData = useMemo(() => {
+    const data = calculateAveragesOverTime(mainVersionQuotes, averagesTimePeriod, 12, averagesPeriodOffset);
+    return averagesCumulative ? makeAveragesCumulative(data) : data;
+  }, [mainVersionQuotes, averagesTimePeriod, averagesPeriodOffset, averagesCumulative]);
+
+  const totalsData = useMemo(() => {
+    const data = calculateTotalsOverTime(mainVersionQuotes, totalsTimePeriod, 12, totalsPeriodOffset);
+    return totalsCumulative ? makeTotalsCumulative(data) : data;
+  }, [mainVersionQuotes, totalsTimePeriod, totalsPeriodOffset, totalsCumulative]);
+
+  const wonRejectedData = useMemo(() => {
+    const data = calculateWonRejectedOverTime(mainVersionQuotes, wonRejectedTimePeriod, 12, wonRejectedPeriodOffset);
+    return wonRejectedCumulative ? makeWonRejectedCumulative(data) : data;
+  }, [mainVersionQuotes, wonRejectedTimePeriod, wonRejectedPeriodOffset, wonRejectedCumulative]);
+
+  const teamData = useMemo(() => {
+    return calculateUserMetrics(mainVersionQuotes);
+  }, [mainVersionQuotes]);
+
   // Chart color scheme
   const COLORS = {
     primary: '#EE6C4D',
@@ -131,8 +174,7 @@ const Analytics = () => {
 
   // Enlarge handler for charts
   const handleEnlarge = (chartName: string) => {
-    console.log(`Enlarging ${chartName}...`);
-    // TODO: Implement modal view
+    setEnlargedChart(chartName);
   };
 
   return (
@@ -192,79 +234,582 @@ const Analytics = () => {
           {/* Charts Section */}
           {quotes.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Row 1: Average and Total Metrics Over Time */}
               {/* Average Quote Metrics Over Time */}
               <EnhancedChartCard
                 title="Average Quote Metrics Over Time"
                 subtitle="Track profit, revenue, and value trends"
                 showTimePeriodToggle={true}
-                onTimePeriodChange={setTimePeriod}
-                defaultTimePeriod={timePeriod}
+                showCumulativeToggle={true}
+                isCumulative={averagesCumulative}
+                onCumulativeToggle={setAveragesCumulative}
+                onTimePeriodChange={setAveragesTimePeriod}
+                onPeriodOffsetChange={setAveragesPeriodOffset}
+                defaultTimePeriod={averagesTimePeriod}
                 onExport={() => handleExport('averages')}
                 onExpand={() => handleEnlarge('averages')}
               >
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={analytics.averagesOverTime}>
+                  {averagesCumulative ? (
+                    <LineChart data={averagesData} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={10}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (averagesTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            avgGrossProfit: 'Avg Gross Profit',
+                            avgRevenue: 'Avg Revenue',
+                            avgValue: 'Avg Quote Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgGrossProfit"
+                        stroke={COLORS.green}
+                        strokeWidth={2}
+                        name="Avg Gross Profit"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgRevenue"
+                        stroke={COLORS.blue}
+                        strokeWidth={2}
+                        name="Avg Revenue"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgValue"
+                        stroke={COLORS.purple}
+                        strokeWidth={2}
+                        name="Avg Quote Value"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  ) : (
+                    <BarChart data={averagesData} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={10}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (averagesTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            avgGrossProfit: 'Avg Gross Profit',
+                            avgRevenue: 'Avg Revenue',
+                            avgValue: 'Avg Quote Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Bar dataKey="avgGrossProfit" fill={COLORS.green} name="Avg Gross Profit" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avgRevenue" fill={COLORS.blue} name="Avg Revenue" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avgValue" fill={COLORS.purple} name="Avg Quote Value" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Total Metrics Over Time */}
+              <EnhancedChartCard
+                title="Total Metrics Over Time"
+                subtitle="Revenue, gross profit, and pipeline value trends"
+                showTimePeriodToggle={true}
+                showCumulativeToggle={true}
+                isCumulative={totalsCumulative}
+                onCumulativeToggle={setTotalsCumulative}
+                onTimePeriodChange={setTotalsTimePeriod}
+                onPeriodOffsetChange={setTotalsPeriodOffset}
+                defaultTimePeriod={totalsTimePeriod}
+                onExport={() => handleExport('totals')}
+                onExpand={() => handleEnlarge('totals')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  {totalsCumulative ? (
+                    <LineChart data={totalsData} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={10}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (totalsTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            revenue: 'Revenue',
+                            grossProfit: 'Gross Profit',
+                            pipelineValue: 'Total Pipeline Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke={COLORS.green}
+                        strokeWidth={2}
+                        name="Revenue"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="grossProfit"
+                        stroke={COLORS.blue}
+                        strokeWidth={2}
+                        name="Gross Profit"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="pipelineValue"
+                        stroke={COLORS.orange}
+                        strokeWidth={2}
+                        name="Total Pipeline Value"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  ) : (
+                    <BarChart data={totalsData} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={10}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (totalsTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            revenue: 'Revenue',
+                            grossProfit: 'Gross Profit',
+                            pipelineValue: 'Total Pipeline Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Bar dataKey="revenue" fill={COLORS.green} name="Revenue" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="grossProfit" fill={COLORS.blue} name="Gross Profit" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="pipelineValue" fill={COLORS.orange} name="Total Pipeline Value" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Row 2: Product Charts */}
+              {/* Product Breakdown */}
+              <EnhancedChartCard
+                title="Most Quoted Products"
+                subtitle="Product type distribution"
+                onExport={() => handleExport('products')}
+                onExpand={() => handleEnlarge('products')}
+              >
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={analytics.productMetrics} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                     <XAxis
-                      dataKey="date"
+                      dataKey="productType"
                       stroke="#6B7280"
-                      fontSize={12}
+                      fontSize={10}
                       tickLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={120}
                     />
                     <YAxis
                       stroke="#6B7280"
                       fontSize={12}
                       tickLine={false}
-                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      allowDecimals={false}
                     />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: 'white',
                         border: '1px solid #E5E7EB',
                         borderRadius: '8px',
-                        padding: '12px',
                       }}
-                      labelStyle={{
-                        fontWeight: 'bold',
-                        marginBottom: '8px',
-                      }}
-                      formatter={(value: number, name: string) => {
-                        const labelMap: Record<string, string> = {
-                          avgGrossProfit: 'Avg Gross Profit',
-                          avgRevenue: 'Avg Revenue',
-                          avgValue: 'Avg Quote Value',
+                    />
+                    <Bar dataKey="quoteCount" name="Quotes" radius={[4, 4, 0, 0]}>
+                      {analytics.productMetrics.map((entry, index) => {
+                        const productColors: Record<string, string> = {
+                          'Operable Wall': COLORS.blue,
+                          'Glass Wall': COLORS.green,
+                          'Accordion Partition': COLORS.purple,
                         };
-                        return [formatCurrency(value), labelMap[name] || name];
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="avgGrossProfit"
-                      stroke={COLORS.green}
-                      strokeWidth={2}
-                      name="Avg Gross Profit"
-                      dot={{ r: 4 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="avgRevenue"
-                      stroke={COLORS.blue}
-                      strokeWidth={2}
-                      name="Avg Revenue"
-                      dot={{ r: 4 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="avgValue"
-                      stroke={COLORS.purple}
-                      strokeWidth={2}
-                      name="Avg Quote Value"
-                      dot={{ r: 4 }}
-                    />
-                  </LineChart>
+                        const color = productColors[entry.productType] || COLORS.orange;
+                        return <Cell key={`cell-${index}`} fill={color} />;
+                      })}
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               </EnhancedChartCard>
 
+              {/* Product Model Breakdown */}
+              <EnhancedChartCard
+                title="Product Breakdown by Model"
+                subtitle="Detailed breakdown by model for all product types"
+                onExport={() => handleExport('product-models')}
+                onExpand={() => handleEnlarge('product-models')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics.productModelMetrics} layout="vertical" margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis type="number" stroke="#6B7280" fontSize={12} tickLine={false} allowDecimals={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="model"
+                      stroke="#6B7280"
+                      fontSize={11}
+                      tickLine={false}
+                      width={100}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => {
+                        if (name === 'Quotes') return [value, 'Quote Count'];
+                        return [value, name];
+                      }}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload.length > 0) {
+                          const item = payload[0]!.payload;
+                          return `${item.productType} - ${label}`;
+                        }
+                        return label;
+                      }}
+                    />
+                    <Bar dataKey="quoteCount" name="Quotes" radius={[0, 4, 4, 0]}>
+                      {analytics.productModelMetrics.map((_, index) => {
+                        // Different color for each model
+                        const modelColors = [
+                          COLORS.blue,
+                          COLORS.green,
+                          COLORS.purple,
+                          COLORS.orange,
+                          COLORS.teal,
+                          COLORS.primary,
+                          '#F59E0B', // amber
+                          '#EC4899', // pink
+                          '#6366F1', // indigo
+                          '#14B8A6', // teal
+                        ];
+                        const color = modelColors[index % modelColors.length];
+                        return <Cell key={`cell-${index}`} fill={color} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Row 3: Quoted Charts (Won/Rejected + Team Member) */}
+              {/* Won vs Rejected Over Time */}
+              <EnhancedChartCard
+                title="Won vs Rejected Quotes"
+                subtitle="Track outcomes over time"
+                showTimePeriodToggle={true}
+                showCumulativeToggle={true}
+                isCumulative={wonRejectedCumulative}
+                onCumulativeToggle={setWonRejectedCumulative}
+                onTimePeriodChange={setWonRejectedTimePeriod}
+                onPeriodOffsetChange={setWonRejectedPeriodOffset}
+                defaultTimePeriod={wonRejectedTimePeriod}
+                onExport={() => handleExport('won-rejected')}
+                onExpand={() => handleEnlarge('won-rejected')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  {wonRejectedCumulative ? (
+                    <LineChart data={wonRejectedData} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={10}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (wonRejectedTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="wonCount"
+                        stroke={COLORS.green}
+                        strokeWidth={2}
+                        name="Won"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="rejectedCount"
+                        stroke={COLORS.orange}
+                        strokeWidth={2}
+                        name="Rejected"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  ) : (
+                    <BarChart data={wonRejectedData} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={10}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (wonRejectedTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="rejectedCount" fill={COLORS.orange} name="Rejected" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Quotes by People */}
+              <EnhancedChartCard
+                title="Quotes by Team Member"
+                subtitle="Quote volume per person"
+                onExport={() => handleExport('by-people')}
+                onExpand={() => handleEnlarge('by-people')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics.userMetrics.slice(0, 10)} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="userName"
+                      stroke="#6B7280"
+                      fontSize={10}
+                      tickLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => [value, name]}
+                    />
+                    <Legend />
+                    <Bar dataKey="quoteCount" fill={COLORS.blue} name="Total Quotes" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Row 4: Quote Status Charts */}
               {/* Quote Status Breakdown */}
               <EnhancedChartCard
                 title="Quote Status Breakdown"
@@ -330,260 +875,6 @@ const Analytics = () => {
                 </div>
               </EnhancedChartCard>
 
-              {/* Total Metrics Over Time */}
-              <EnhancedChartCard
-                title="Total Metrics Over Time"
-                subtitle="Revenue, gross profit, and pipeline value trends"
-                showTimePeriodToggle={true}
-                onTimePeriodChange={setTimePeriod}
-                defaultTimePeriod={timePeriod}
-                onExport={() => handleExport('totals')}
-                onExpand={() => handleEnlarge('totals')}
-              >
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={analytics.totalsOverTime}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis
-                      dataKey="date"
-                      stroke="#6B7280"
-                      fontSize={12}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      stroke="#6B7280"
-                      fontSize={12}
-                      tickLine={false}
-                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #E5E7EB',
-                        borderRadius: '8px',
-                        padding: '12px',
-                      }}
-                      labelStyle={{
-                        fontWeight: 'bold',
-                        marginBottom: '8px',
-                      }}
-                      formatter={(value: number, name: string) => {
-                        const labelMap: Record<string, string> = {
-                          revenue: 'Revenue',
-                          grossProfit: 'Gross Profit',
-                          pipelineValue: 'Total Pipeline Value',
-                        };
-                        return [formatCurrency(value), labelMap[name] || name];
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="revenue"
-                      stroke={COLORS.green}
-                      strokeWidth={2}
-                      name="Revenue"
-                      dot={{ r: 4 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="grossProfit"
-                      stroke={COLORS.blue}
-                      strokeWidth={2}
-                      name="Gross Profit"
-                      dot={{ r: 4 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="pipelineValue"
-                      stroke={COLORS.orange}
-                      strokeWidth={2}
-                      name="Total Pipeline Value"
-                      dot={{ r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </EnhancedChartCard>
-
-              {/* Won vs Rejected Over Time */}
-              <EnhancedChartCard
-                title="Won vs Rejected Quotes"
-                subtitle="Track outcomes over time"
-                showTimePeriodToggle={true}
-                onTimePeriodChange={setTimePeriod}
-                defaultTimePeriod={timePeriod}
-                onExport={() => handleExport('won-rejected')}
-                onExpand={() => handleEnlarge('won-rejected')}
-              >
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analytics.timeSeriesData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis
-                      dataKey="date"
-                      stroke="#6B7280"
-                      fontSize={12}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      stroke="#6B7280"
-                      fontSize={12}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #E5E7EB',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Legend />
-                    <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="rejectedCount" fill={COLORS.orange} name="Rejected" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </EnhancedChartCard>
-
-              {/* Quotes by People */}
-              <EnhancedChartCard
-                title="Quotes by Team Member"
-                subtitle="Quote volume per person"
-                onExport={() => handleExport('by-people')}
-                onExpand={() => handleEnlarge('by-people')}
-              >
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analytics.userMetrics.slice(0, 10)} layout="vertical" margin={{ left: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis type="number" stroke="#6B7280" fontSize={12} tickLine={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="userName"
-                      stroke="#6B7280"
-                      fontSize={12}
-                      tickLine={false}
-                      width={120}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #E5E7EB',
-                        borderRadius: '8px',
-                      }}
-                      formatter={(value: number, name: string) => [value, name]}
-                    />
-                    <Legend />
-                    <Bar dataKey="quoteCount" fill={COLORS.blue} name="Total Quotes" radius={[0, 4, 4, 0]} />
-                    <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </EnhancedChartCard>
-
-              {/* Product Breakdown */}
-              <EnhancedChartCard
-                title="Most Quoted Products"
-                subtitle="Product type distribution"
-                onExport={() => handleExport('products')}
-                onExpand={() => handleEnlarge('products')}
-              >
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analytics.productMetrics}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis
-                      dataKey="productType"
-                      stroke="#6B7280"
-                      fontSize={12}
-                      tickLine={false}
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
-                    />
-                    <YAxis
-                      stroke="#6B7280"
-                      fontSize={12}
-                      tickLine={false}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #E5E7EB',
-                        borderRadius: '8px',
-                      }}
-                    />
-                    <Legend />
-                    <Bar dataKey="quoteCount" name="Quotes" radius={[4, 4, 0, 0]}>
-                      {analytics.productMetrics.map((entry, index) => {
-                        const productColors: Record<string, string> = {
-                          'Operable Wall': COLORS.blue,
-                          'Glass Wall': COLORS.green,
-                          'Accordion Partition': COLORS.purple,
-                        };
-                        const color = productColors[entry.productType] || COLORS.orange;
-                        return <Cell key={`cell-${index}`} fill={color} />;
-                      })}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </EnhancedChartCard>
-
-              {/* Product Model Breakdown */}
-              <EnhancedChartCard
-                title="Product Breakdown by Model"
-                subtitle="Detailed breakdown by model for all product types"
-                onExport={() => handleExport('product-models')}
-                onExpand={() => handleEnlarge('product-models')}
-              >
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analytics.productModelMetrics} layout="vertical" margin={{ left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis type="number" stroke="#6B7280" fontSize={12} tickLine={false} allowDecimals={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="model"
-                      stroke="#6B7280"
-                      fontSize={11}
-                      tickLine={false}
-                      width={100}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #E5E7EB',
-                        borderRadius: '8px',
-                      }}
-                      formatter={(value: number, name: string) => {
-                        if (name === 'Quotes') return [value, 'Quote Count'];
-                        return [value, name];
-                      }}
-                      labelFormatter={(label, payload) => {
-                        if (payload && payload.length > 0) {
-                          const item = payload[0].payload;
-                          return `${item.productType} - ${label}`;
-                        }
-                        return label;
-                      }}
-                    />
-                    <Legend />
-                    <Bar dataKey="quoteCount" name="Quotes" radius={[0, 4, 4, 0]}>
-                      {analytics.productModelMetrics.map((entry, index) => {
-                        // Different color for each model
-                        const modelColors = [
-                          COLORS.blue,
-                          COLORS.green,
-                          COLORS.purple,
-                          COLORS.orange,
-                          COLORS.teal,
-                          COLORS.primary,
-                          '#F59E0B', // amber
-                          '#EC4899', // pink
-                          '#6366F1', // indigo
-                          '#14B8A6', // teal
-                        ];
-                        const color = modelColors[index % modelColors.length];
-                        return <Cell key={`cell-${index}`} fill={color} />;
-                      })}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </EnhancedChartCard>
-
               {/* Quote Source Performance */}
               <EnhancedChartCard
                 title="Quote Source Performance"
@@ -642,6 +933,708 @@ const Analytics = () => {
           )}
         </>
       )}
+
+      {/* Enlarged Chart Modal */}
+      <Dialog open={!!enlargedChart} onOpenChange={(open) => !open && setEnlargedChart(null)}>
+        <DialogContent className="max-w-[95vw] h-[92vh] p-3 pb-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-auto pt-6">
+            {/* Average Quote Metrics Over Time */}
+            {enlargedChart === 'averages' && (
+              <EnhancedChartCard
+                title="Average Quote Metrics Over Time"
+                subtitle="Track profit, revenue, and value trends"
+                showTimePeriodToggle={true}
+                showCumulativeToggle={true}
+                isCumulative={averagesCumulative}
+                onCumulativeToggle={setAveragesCumulative}
+                onTimePeriodChange={setAveragesTimePeriod}
+                onPeriodOffsetChange={setAveragesPeriodOffset}
+                defaultTimePeriod={averagesTimePeriod}
+                onExport={() => handleExport('averages')}
+                className="h-full"
+              >
+                <div className="pb-0 -mb-6">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                    {averagesCumulative ? (
+                      <LineChart data={averagesData} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <XAxis
+                          dataKey="date"
+                          stroke="#6B7280"
+                          fontSize={12}
+                          tickLine={false}
+                          interval={0}
+                          angle={-45}
+                          textAnchor="end"
+                          height={50}
+                        />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (averagesTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            avgGrossProfit: 'Avg Gross Profit',
+                            avgRevenue: 'Avg Revenue',
+                            avgValue: 'Avg Quote Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgGrossProfit"
+                        stroke={COLORS.green}
+                        strokeWidth={2}
+                        name="Avg Gross Profit"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgRevenue"
+                        stroke={COLORS.blue}
+                        strokeWidth={2}
+                        name="Avg Revenue"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgValue"
+                        stroke={COLORS.purple}
+                        strokeWidth={2}
+                        name="Avg Quote Value"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  ) : (
+                    <BarChart data={averagesData} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={50}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (averagesTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            avgGrossProfit: 'Avg Gross Profit',
+                            avgRevenue: 'Avg Revenue',
+                            avgValue: 'Avg Quote Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Bar dataKey="avgGrossProfit" fill={COLORS.green} name="Avg Gross Profit" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avgRevenue" fill={COLORS.blue} name="Avg Revenue" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avgValue" fill={COLORS.purple} name="Avg Quote Value" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+            )}
+
+            {/* Total Metrics Over Time */}
+            {enlargedChart === 'totals' && (
+              <EnhancedChartCard
+                title="Total Metrics Over Time"
+                subtitle="Revenue, profit, and pipeline trends"
+                showTimePeriodToggle={true}
+                showCumulativeToggle={true}
+                isCumulative={totalsCumulative}
+                onCumulativeToggle={setTotalsCumulative}
+                onTimePeriodChange={setTotalsTimePeriod}
+                onPeriodOffsetChange={setTotalsPeriodOffset}
+                defaultTimePeriod={totalsTimePeriod}
+                onExport={() => handleExport('totals')}
+                className="h-full"
+              >
+                <div className="pb-0 -mb-6">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                    {totalsCumulative ? (
+                      <LineChart data={totalsData} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={50}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (totalsTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            revenue: 'Revenue',
+                            grossProfit: 'Gross Profit',
+                            pipelineValue: 'Total Pipeline Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke={COLORS.green}
+                        strokeWidth={2}
+                        name="Revenue"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="grossProfit"
+                        stroke={COLORS.blue}
+                        strokeWidth={2}
+                        name="Gross Profit"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="pipelineValue"
+                        stroke={COLORS.orange}
+                        strokeWidth={2}
+                        name="Total Pipeline Value"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  ) : (
+                    <BarChart data={totalsData} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={50}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (totalsTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            revenue: 'Revenue',
+                            grossProfit: 'Gross Profit',
+                            pipelineValue: 'Total Pipeline Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Bar dataKey="revenue" fill={COLORS.green} name="Revenue" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="grossProfit" fill={COLORS.blue} name="Gross Profit" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="pipelineValue" fill={COLORS.orange} name="Total Pipeline Value" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+            )}
+
+            {/* Won vs Rejected Quotes */}
+            {enlargedChart === 'won-rejected' && (
+              <EnhancedChartCard
+                title="Won vs Rejected Quotes"
+                subtitle="Track outcomes over time"
+                showTimePeriodToggle={true}
+                showCumulativeToggle={true}
+                isCumulative={wonRejectedCumulative}
+                onCumulativeToggle={setWonRejectedCumulative}
+                onTimePeriodChange={setWonRejectedTimePeriod}
+                onPeriodOffsetChange={setWonRejectedPeriodOffset}
+                defaultTimePeriod={wonRejectedTimePeriod}
+                onExport={() => handleExport('won-rejected')}
+                className="h-full"
+              >
+                <div className="pb-0 -mb-6">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                    {wonRejectedCumulative ? (
+                      <LineChart data={wonRejectedData} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={50}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (wonRejectedTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="wonCount"
+                        stroke={COLORS.green}
+                        strokeWidth={2}
+                        name="Won"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="rejectedCount"
+                        stroke={COLORS.orange}
+                        strokeWidth={2}
+                        name="Rejected"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  ) : (
+                    <BarChart data={wonRejectedData} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={50}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (wonRejectedTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="rejectedCount" fill={COLORS.orange} name="Rejected" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+            )}
+
+            {/* Most Quoted Products */}
+            {enlargedChart === 'products' && (
+              <EnhancedChartCard
+                title="Most Quoted Products"
+                subtitle="Product type distribution"
+                onExport={() => handleExport('products')}
+                className="h-full"
+              >
+                <div className="pb-0 -mb-6">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                    <BarChart data={analytics.productMetrics} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="productType"
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis stroke="#6B7280" fontSize={12} tickLine={false} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number) => [value, 'Quote Count']}
+                    />
+                    <Bar dataKey="quoteCount" name="Quotes" radius={[4, 4, 0, 0]}>
+                      {analytics.productMetrics.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={Object.values(COLORS)[index % Object.values(COLORS).length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+            )}
+
+            {/* Product Breakdown by Model */}
+            {enlargedChart === 'product-models' && (
+              <EnhancedChartCard
+                title="Product Breakdown by Model"
+                subtitle="Detailed product distribution by model"
+                onExport={() => handleExport('product-models')}
+                className="h-full"
+              >
+                <div className="pb-0 -mb-6">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                    <BarChart
+                    data={analytics.productModelMetrics}
+                    layout="horizontal"
+                    margin={{ left: 10, right: 30, top: 5, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis type="number" stroke="#6B7280" fontSize={12} tickLine={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="fullLabel"
+                      stroke="#6B7280"
+                      fontSize={11}
+                      tickLine={false}
+                      width={150}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => {
+                        if (name === 'Quotes') return [value, 'Quote Count'];
+                        return [value, name];
+                      }}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload.length > 0) {
+                          const item = payload[0]!.payload;
+                          return `${item.productType} - ${label}`;
+                        }
+                        return label;
+                      }}
+                    />
+                    <Bar dataKey="quoteCount" name="Quotes" radius={[0, 4, 4, 0]}>
+                      {analytics.productModelMetrics.map((_, index) => {
+                        const modelColors = [
+                          COLORS.blue,
+                          COLORS.green,
+                          COLORS.purple,
+                          COLORS.orange,
+                          COLORS.teal,
+                          COLORS.primary,
+                          '#F59E0B',
+                          '#EC4899',
+                          '#6366F1',
+                          '#14B8A6',
+                        ];
+                        const color = modelColors[index % modelColors.length];
+                        return <Cell key={`cell-${index}`} fill={color} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+            )}
+
+            {/* Quotes by Team Member */}
+            {enlargedChart === 'by-people' && (
+              <EnhancedChartCard
+                title="Quotes by Team Member"
+                subtitle="Individual performance tracking"
+                showTimePeriodToggle={true}
+                onTimePeriodChange={setTeamTimePeriod}
+                onPeriodOffsetChange={setTeamPeriodOffset}
+                defaultTimePeriod={teamTimePeriod}
+                onExport={() => handleExport('by-people')}
+                className="h-full"
+              >
+                <div className="pb-0 -mb-6">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                    <BarChart data={analytics.userMetrics} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="userName"
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis stroke="#6B7280" fontSize={12} tickLine={false} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => {
+                        if (name === 'Total Quotes') return [value, 'Quote Count'];
+                        if (name === 'Won') return [value, 'Won Quotes'];
+                        return [value, name];
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="totalQuotes" fill={COLORS.blue} name="Total Quotes" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="wonQuotes" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+            )}
+
+            {/* Quote Source Performance */}
+            {enlargedChart === 'sources' && (
+              <EnhancedChartCard
+                title="Quote Source Performance"
+                subtitle="Track where your quotes come from"
+                onExport={() => handleExport('sources')}
+                className="h-full"
+              >
+                <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                  <PieChart>
+                    <Pie
+                      data={analytics.sourceMetrics}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={200}
+                      fill="#8884d8"
+                      dataKey="count"
+                    >
+                      {analytics.sourceMetrics.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={Object.values(COLORS)[index % Object.values(COLORS).length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number) => [value, 'Quote Count']}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+            )}
+
+            {/* Quotes by Status */}
+            {enlargedChart === 'status' && (
+              <EnhancedChartCard
+                title="Quote Status Breakdown"
+                subtitle="Distribution across all statuses"
+                onExport={() => handleExport('status')}
+                className="h-full"
+              >
+                <div className="h-full flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
+                          { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
+                          { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
+                          { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
+                          { name: 'Rejected', value: analytics.statusBreakdown.rejected, color: '#EF4444' },
+                        ].filter(item => item.value > 0)}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={true}
+                        label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(1)}%)`}
+                        outerRadius={180}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {[
+                          { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
+                          { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
+                          { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
+                          { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
+                          { name: 'Rejected', value: analytics.statusBreakdown.rejected, color: '#EF4444' },
+                        ].filter(item => item.value > 0).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number, name: string) => [value, name]}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Legend
+                        verticalAlign="middle"
+                        align="right"
+                        layout="vertical"
+                        formatter={(value, entry: any) => {
+                          const total = analytics.statusBreakdown.incomplete +
+                                       analytics.statusBreakdown.draft +
+                                       analytics.statusBreakdown.submitted +
+                                       analytics.statusBreakdown.won +
+                                       analytics.statusBreakdown.rejected;
+                          const itemValue = entry.payload?.value || 0;
+                          const percent = total > 0 ? ((itemValue / total) * 100).toFixed(1) : '0.0';
+                          return `${value}: ${itemValue} (${percent}%)`;
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageContent>
   );
 };

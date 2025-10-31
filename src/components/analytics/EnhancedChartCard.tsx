@@ -10,6 +10,7 @@
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,25 +24,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Download, Maximize2, MoreVertical, Filter } from 'lucide-react';
+import { Download, Maximize2, MoreVertical, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ReactNode, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { format, subMonths, subWeeks, subYears, startOfWeek } from 'date-fns';
 
 export type TimePeriod = 'weekly' | 'monthly' | 'yearly';
 
 export interface EnhancedChartCardProps {
   title: string;
   subtitle?: string;
-  children: ReactNode | ((timePeriod: TimePeriod) => ReactNode);
+  children: ReactNode | ((timePeriod: TimePeriod, periodOffset: number) => ReactNode);
   showTimePeriodToggle?: boolean;
   showFilter?: boolean;
+  showCumulativeToggle?: boolean;
+  isCumulative?: boolean;
+  onCumulativeToggle?: (cumulative: boolean) => void;
   onExport?: () => void;
   onExpand?: () => void;
   onFilterClick?: () => void;
   onTimePeriodChange?: (period: TimePeriod) => void;
+  onPeriodOffsetChange?: (offset: number) => void;
   defaultTimePeriod?: TimePeriod;
   className?: string;
   height?: string;
+  hideHeader?: boolean; // Hide title/subtitle (useful for enlarged modal)
   // Additional metrics to display in header
   primaryMetric?: {
     value: string;
@@ -63,21 +70,56 @@ export const EnhancedChartCard = ({
   children,
   showTimePeriodToggle = false,
   showFilter = false,
+  showCumulativeToggle = false,
+  isCumulative = false,
+  onCumulativeToggle,
   onExport,
   onExpand,
   onFilterClick,
   onTimePeriodChange,
+  onPeriodOffsetChange,
   defaultTimePeriod = 'monthly',
   className,
   height = 'h-80',
+  hideHeader = false,
   primaryMetric,
   secondaryMetric,
 }: EnhancedChartCardProps) => {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>(defaultTimePeriod);
+  const [periodOffset, setPeriodOffset] = useState(0);
 
   const handleTimePeriodChange = (period: TimePeriod) => {
     setTimePeriod(period);
+    setPeriodOffset(0); // Reset offset when changing period type
     onTimePeriodChange?.(period);
+    onPeriodOffsetChange?.(0);
+  };
+
+  const handlePeriodNavigation = (direction: 'prev' | 'next') => {
+    const newOffset = direction === 'prev' ? periodOffset + 1 : periodOffset - 1;
+    if (newOffset < 0) return; // Can't go to future
+    setPeriodOffset(newOffset);
+    onPeriodOffsetChange?.(newOffset);
+  };
+
+  const getPeriodLabel = () => {
+    const now = new Date();
+
+    let targetDate: Date;
+    switch (timePeriod) {
+      case 'weekly':
+        targetDate = subWeeks(now, periodOffset);
+        const weekStart = startOfWeek(targetDate, { weekStartsOn: 0 });
+        return format(weekStart, "MMM d ''yy");
+      case 'monthly':
+        targetDate = subMonths(now, periodOffset);
+        return format(targetDate, "MMM ''yy"); // Oct '24, Nov '24, etc.
+      case 'yearly':
+        targetDate = subYears(now, periodOffset);
+        return format(targetDate, 'yyyy');
+      default:
+        return '';
+    }
   };
 
   const getTrendColor = (direction?: 'up' | 'down' | 'neutral') => {
@@ -98,35 +140,24 @@ export const EnhancedChartCard = ({
       )}
     >
       <CardHeader className="pb-3">
+        {/* Top row: Title/Subtitle on left, Controls on right */}
         <div className="flex items-start justify-between gap-4">
           {/* Title and subtitle */}
-          <div className="flex-1 min-w-0">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-              {title}
-            </h3>
-            {subtitle && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                {subtitle}
-              </p>
-            )}
-          </div>
+          {!hideHeader && (
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                {title}
+              </h3>
+              {subtitle && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {subtitle}
+                </p>
+              )}
+            </div>
+          )}
 
-          {/* Actions row */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Time period selector */}
-            {showTimePeriodToggle && (
-              <Select value={timePeriod} onValueChange={handleTimePeriodChange}>
-                <SelectTrigger className="h-8 w-[130px] text-xs border-gray-200 dark:border-gray-700">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weekly">Weekly View</SelectItem>
-                  <SelectItem value="monthly">Monthly View</SelectItem>
-                  <SelectItem value="yearly">Yearly View</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-
+          {/* Right side controls (right to left: Ellipsis → Monthly View → Calendar) */}
+          <div className={cn("flex items-center gap-2 flex-shrink-0", hideHeader ? "" : "ml-auto")}>
             {/* Filter button */}
             {showFilter && (
               <Button
@@ -140,7 +171,47 @@ export const EnhancedChartCard = ({
               </Button>
             )}
 
-            {/* Action menu (ellipsis) */}
+            {/* Period navigation - leftmost of the right side */}
+            {showTimePeriodToggle && (
+              <div className="flex items-center gap-1 border border-gray-200 dark:border-gray-700 rounded-md px-2 h-8">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handlePeriodNavigation('prev')}
+                  className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300 min-w-[70px] text-center">
+                  {getPeriodLabel()}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handlePeriodNavigation('next')}
+                  disabled={periodOffset === 0}
+                  className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            {/* Time period selector - middle */}
+            {showTimePeriodToggle && (
+              <Select value={timePeriod} onValueChange={handleTimePeriodChange}>
+                <SelectTrigger className="h-8 w-[130px] text-xs border-gray-200 dark:border-gray-700">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="weekly">Weekly View</SelectItem>
+                  <SelectItem value="monthly">Monthly View</SelectItem>
+                  <SelectItem value="yearly">Yearly View</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+
+            {/* Action menu (ellipsis) - rightmost */}
             {(onExport || onExpand) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -170,6 +241,20 @@ export const EnhancedChartCard = ({
             )}
           </div>
         </div>
+
+        {/* Second row: Cumulative toggle aligned under view dropdown */}
+        {showCumulativeToggle && (
+          <div className="mt-3 flex justify-end">
+            <div className="flex items-center gap-1.5 border border-gray-200 dark:border-gray-700 rounded-md px-2 h-8 w-fit mr-10">
+              <span className="text-xs text-gray-600 dark:text-gray-400">Cumulative</span>
+              <Switch
+                checked={isCumulative}
+                onCheckedChange={onCumulativeToggle}
+                className="scale-75"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Metrics row */}
         {(primaryMetric || secondaryMetric) && (
@@ -240,7 +325,7 @@ export const EnhancedChartCard = ({
       </CardHeader>
 
       <CardContent className={cn('pt-2', height)}>
-        {typeof children === 'function' ? children(timePeriod) : children}
+        {typeof children === 'function' ? children(timePeriod, periodOffset) : children}
       </CardContent>
     </Card>
   );

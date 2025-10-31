@@ -9,7 +9,7 @@
  */
 
 import { Quote } from '@/stores/quotes/quotesStore';
-import { startOfWeek, startOfMonth, startOfYear, format, subWeeks, subMonths, subYears } from 'date-fns';
+import { startOfWeek, startOfMonth, startOfYear, endOfWeek, endOfMonth, endOfYear, addDays, getDay, format, subWeeks, subMonths, subYears, getDaysInMonth } from 'date-fns';
 
 export type TimePeriod = 'weekly' | 'monthly' | 'yearly';
 
@@ -75,6 +75,7 @@ export interface RevenueVsQuotedData {
 
 export interface AveragesOverTimeData {
   date: string;
+  fullDate?: Date; // Store full date for tooltip formatting
   avgGrossProfit: number;
   avgRevenue: number;
   avgValue: number;
@@ -82,9 +83,17 @@ export interface AveragesOverTimeData {
 
 export interface TotalsOverTimeData {
   date: string;
+  fullDate?: Date; // Store full date for tooltip formatting
   revenue: number; // Total revenue (won quotes)
   grossProfit: number; // Total gross profit (won quotes)
   pipelineValue: number; // Total pipeline value (all quotes in Won/Draft/Submitted/Rejected)
+}
+
+export interface WonRejectedOverTimeData {
+  date: string;
+  fullDate?: Date; // Store full date for tooltip formatting
+  wonCount: number;
+  rejectedCount: number;
 }
 
 export interface AnalyticsSummary {
@@ -355,18 +364,19 @@ export const calculateMetricWithTrend = (
   quotes: Quote[],
   period: TimePeriod,
   calculator: (quotes: Quote[]) => number,
-  formatter: (value: number) => string
+  formatter: (value: number) => string,
+  dateField: 'created_at' | 'submitted_at' | 'won_at' | 'rejected_at' = 'submitted_at'
 ): MetricWithTrend => {
   const now = new Date();
   const currentPeriodStart = getStartDate(period, now);
   const previousPeriodStart = getPreviousPeriodStart(period, currentPeriodStart);
 
   // Current period
-  const currentQuotes = filterQuotesByDateRange(quotes, currentPeriodStart, now, 'submitted_at');
+  const currentQuotes = filterQuotesByDateRange(quotes, currentPeriodStart, now, dateField);
   const currentValue = calculator(currentQuotes);
 
   // Previous period
-  const previousQuotes = filterQuotesByDateRange(quotes, previousPeriodStart, currentPeriodStart, 'submitted_at');
+  const previousQuotes = filterQuotesByDateRange(quotes, previousPeriodStart, currentPeriodStart, dateField);
   const previousValue = calculator(previousQuotes);
 
   // Calculate trend
@@ -388,9 +398,10 @@ export const calculateMetricWithTrend = (
 export const calculateSourceMetrics = (quotes: Quote[]): QuoteSourceMetrics[] => {
   const sourceMap = new Map<string, QuoteSourceMetrics>();
 
-  // Only consider submitted/won/rejected quotes
+  // Only consider submitted/won/rejected quotes and main versions only
   const relevantQuotes = quotes.filter((q) =>
-    q.status === 'Submitted' || q.status === 'Won' || q.status === 'Rejected'
+    (q.status === 'Submitted' || q.status === 'Won' || q.status === 'Rejected') &&
+    (q.is_main_version === true || q.is_main_version === undefined)
   );
 
   relevantQuotes.forEach((quote) => {
@@ -559,39 +570,83 @@ export const calculateProductModelMetrics = (quotes: Quote[]): ProductModelMetri
 export const calculateAveragesOverTime = (
   quotes: Quote[],
   period: TimePeriod,
-  periodsToShow: number = 12
+  periodsToShow: number = 12,
+  periodOffset: number = 0
 ): AveragesOverTimeData[] => {
-  const now = new Date();
-  const dataPoints: AveragesOverTimeData[] = [];
+  let baseDate = new Date();
 
-  // Generate data points for each period
-  for (let i = periodsToShow - 1; i >= 0; i--) {
-    let periodStart: Date;
-    let periodEnd: Date;
-
+  // Adjust base date based on offset
+  if (periodOffset > 0) {
     switch (period) {
       case 'weekly':
-        periodStart = startOfWeek(subWeeks(now, i), { weekStartsOn: 0 });
-        periodEnd = startOfWeek(subWeeks(now, i - 1), { weekStartsOn: 0 });
+        baseDate = subWeeks(baseDate, periodOffset);
         break;
       case 'monthly':
-        periodStart = startOfMonth(subMonths(now, i));
-        periodEnd = startOfMonth(subMonths(now, i - 1));
+        baseDate = subMonths(baseDate, periodOffset);
         break;
       case 'yearly':
-        periodStart = startOfYear(subYears(now, i));
-        periodEnd = startOfYear(subYears(now, i - 1));
+        baseDate = subYears(baseDate, periodOffset);
         break;
     }
+  }
 
-    const periodQuotes = filterQuotesByDateRange(quotes, periodStart, periodEnd, 'submitted_at');
+  const dataPoints: AveragesOverTimeData[] = [];
 
-    dataPoints.push({
-      date: formatDateForPeriod(periodStart, period),
-      avgGrossProfit: calculateAverageGrossProfitPerQuote(periodQuotes),
-      avgRevenue: calculateAverageRevenuePerQuote(periodQuotes),
-      avgValue: calculateAverageQuoteValue(periodQuotes),
-    });
+  switch (period) {
+    case 'weekly': {
+      // Show 7 days: Sunday through Saturday with day names and dates (e.g., Mon 11/6)
+      const weekStart = startOfWeek(baseDate, { weekStartsOn: 0 });
+      for (let i = 0; i < 7; i++) {
+        const dayStart = addDays(weekStart, i);
+        const dayEnd = addDays(dayStart, 1);
+        const periodQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'submitted_at');
+
+        dataPoints.push({
+          date: format(dayStart, 'EEE M/d'), // Mon 11/6, Tue 11/7, etc.
+          avgGrossProfit: calculateAverageGrossProfitPerQuote(periodQuotes),
+          avgRevenue: calculateAverageRevenuePerQuote(periodQuotes),
+          avgValue: calculateAverageQuoteValue(periodQuotes),
+        });
+      }
+      break;
+    }
+    case 'monthly': {
+      // Show all days of the month (1st to last day)
+      const monthStart = startOfMonth(baseDate);
+      const daysInMonth = getDaysInMonth(baseDate);
+      for (let i = 0; i < daysInMonth; i++) {
+        const dayStart = addDays(monthStart, i);
+        const dayEnd = addDays(dayStart, 1);
+        const periodQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'submitted_at');
+
+        dataPoints.push({
+          date: format(dayStart, 'd'), // 1, 2, 3, ..., 31
+          fullDate: dayStart, // Store full date for tooltip
+          avgGrossProfit: calculateAverageGrossProfitPerQuote(periodQuotes),
+          avgRevenue: calculateAverageRevenuePerQuote(periodQuotes),
+          avgValue: calculateAverageQuoteValue(periodQuotes),
+        });
+      }
+      break;
+    }
+    case 'yearly': {
+      // Show all 12 months: Jan, Feb, ..., Dec
+      const yearStart = startOfYear(baseDate);
+      for (let i = 0; i < 12; i++) {
+        const monthStart = new Date(yearStart);
+        monthStart.setMonth(i);
+        const monthEnd = endOfMonth(monthStart);
+        const periodQuotes = filterQuotesByDateRange(quotes, monthStart, monthEnd, 'submitted_at');
+
+        dataPoints.push({
+          date: format(monthStart, "MMM ''yy"), // Jan '25, Feb '25, etc.
+          avgGrossProfit: calculateAverageGrossProfitPerQuote(periodQuotes),
+          avgRevenue: calculateAverageRevenuePerQuote(periodQuotes),
+          avgValue: calculateAverageQuoteValue(periodQuotes),
+        });
+      }
+      break;
+    }
   }
 
   return dataPoints;
@@ -619,12 +674,23 @@ export const calculateRevenueVsQuoted = (
         periodEnd = startOfWeek(subWeeks(now, i - 1), { weekStartsOn: 0 });
         break;
       case 'monthly':
-        periodStart = startOfMonth(subMonths(now, i));
-        periodEnd = startOfMonth(subMonths(now, i - 1));
+        // For monthly view, show days within the current month
+        const monthStart = startOfMonth(now);
+        const monthEnd = now;
+        const totalDays = Math.floor((monthEnd.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24));
+        const dayInterval = Math.floor(totalDays / (periodsToShow - 1));
+        periodStart = new Date(monthStart);
+        periodStart.setDate(monthStart.getDate() + (i * dayInterval));
+        periodEnd = new Date(monthStart);
+        periodEnd.setDate(monthStart.getDate() + ((i + 1) * dayInterval));
         break;
       case 'yearly':
-        periodStart = startOfYear(subYears(now, i));
-        periodEnd = startOfYear(subYears(now, i - 1));
+        // For yearly view, show all 12 months of the current year
+        const yearStart = startOfYear(now);
+        periodStart = new Date(yearStart);
+        periodStart.setMonth(periodsToShow - 1 - i);
+        periodEnd = new Date(periodStart);
+        periodEnd.setMonth(periodStart.getMonth() + 1);
         break;
     }
 
@@ -654,65 +720,319 @@ export const calculateRevenueVsQuoted = (
 export const calculateTotalsOverTime = (
   quotes: Quote[],
   period: TimePeriod,
-  periodsToShow: number = 12
+  periodsToShow: number = 12,
+  periodOffset: number = 0
 ): TotalsOverTimeData[] => {
-  const now = new Date();
-  const dataPoints: TotalsOverTimeData[] = [];
+  let baseDate = new Date();
 
-  // Generate data points for each period
-  for (let i = periodsToShow - 1; i >= 0; i--) {
-    let periodStart: Date;
-    let periodEnd: Date;
-
+  // Adjust base date based on offset
+  if (periodOffset > 0) {
     switch (period) {
       case 'weekly':
-        periodStart = startOfWeek(subWeeks(now, i), { weekStartsOn: 0 });
-        periodEnd = startOfWeek(subWeeks(now, i - 1), { weekStartsOn: 0 });
+        baseDate = subWeeks(baseDate, periodOffset);
         break;
       case 'monthly':
-        periodStart = startOfMonth(subMonths(now, i));
-        periodEnd = startOfMonth(subMonths(now, i - 1));
+        baseDate = subMonths(baseDate, periodOffset);
         break;
       case 'yearly':
-        periodStart = startOfYear(subYears(now, i));
-        periodEnd = startOfYear(subYears(now, i - 1));
+        baseDate = subYears(baseDate, periodOffset);
         break;
     }
+  }
 
-    // Revenue: Won quotes in this period
-    const wonQuotes = filterQuotesByDateRange(quotes, periodStart, periodEnd, 'won_at')
-      .filter((q) => q.status === 'Won' && (q.is_main_version === true || q.is_main_version === undefined));
-    const revenue = wonQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
+  const dataPoints: TotalsOverTimeData[] = [];
 
-    // Gross Profit: Calculate from won quotes
-    let grossProfit = 0;
-    wonQuotes.forEach((q) => {
-      const profitAmount = q.price_details?.final_selling_price_profit_amount;
-      if (profitAmount !== undefined && profitAmount !== null) {
-        grossProfit += profitAmount;
-      } else if (q.margin_percentage && q.total_value) {
-        grossProfit += q.total_value * (q.margin_percentage / 100);
+  switch (period) {
+    case 'weekly': {
+      // Show 7 days: Sunday through Saturday with day names and dates (e.g., Mon 11/6)
+      const weekStart = startOfWeek(baseDate, { weekStartsOn: 0 });
+      for (let i = 0; i < 7; i++) {
+        const dayStart = addDays(weekStart, i);
+        const dayEnd = addDays(dayStart, 1);
+
+        // Revenue: Won quotes in this period
+        const wonQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'won_at')
+          .filter((q) => q.status === 'Won' && (q.is_main_version === true || q.is_main_version === undefined));
+        const revenue = wonQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
+
+        // Gross Profit: Calculate from won quotes
+        let grossProfit = 0;
+        wonQuotes.forEach((q) => {
+          const profitAmount = q.price_details?.final_selling_price_profit_amount;
+          if (profitAmount !== undefined && profitAmount !== null) {
+            grossProfit += profitAmount;
+          } else if (q.margin_percentage && q.total_value) {
+            grossProfit += q.total_value * (q.margin_percentage / 100);
+          }
+        });
+
+        // Pipeline Value: All quotes in Won/Draft/Submitted/Rejected status
+        const pipelineQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'created_at')
+          .filter((q) =>
+            (q.status === 'Won' || q.status === 'Draft' || q.status === 'Submitted' || q.status === 'Rejected') &&
+            (q.is_main_version === true || q.is_main_version === undefined)
+          );
+        const pipelineValue = pipelineQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
+
+        dataPoints.push({
+          date: format(dayStart, 'EEE M/d'), // Mon 11/6, Tue 11/7, etc.
+          revenue: revenue,
+          grossProfit: grossProfit,
+          pipelineValue: pipelineValue,
+        });
       }
-    });
+      break;
+    }
+    case 'monthly': {
+      // Show all days of the month (1st to last day)
+      const monthStart = startOfMonth(baseDate);
+      const daysInMonth = getDaysInMonth(baseDate);
+      for (let i = 0; i < daysInMonth; i++) {
+        const dayStart = addDays(monthStart, i);
+        const dayEnd = addDays(dayStart, 1);
 
-    // Pipeline Value: All quotes in Won/Draft/Submitted/Rejected status (excludes only Incomplete)
-    // Use created_at as the date field since we want to capture when quotes entered the pipeline
-    const pipelineQuotes = filterQuotesByDateRange(quotes, periodStart, periodEnd, 'created_at')
-      .filter((q) =>
-        (q.status === 'Won' || q.status === 'Draft' || q.status === 'Submitted' || q.status === 'Rejected') &&
-        (q.is_main_version === true || q.is_main_version === undefined)
-      );
-    const pipelineValue = pipelineQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
+        // Revenue: Won quotes in this period
+        const wonQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'won_at')
+          .filter((q) => q.status === 'Won' && (q.is_main_version === true || q.is_main_version === undefined));
+        const revenue = wonQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
 
-    dataPoints.push({
-      date: formatDateForPeriod(periodStart, period),
-      revenue,
-      grossProfit,
-      pipelineValue,
-    });
+        // Gross Profit: Calculate from won quotes
+        let grossProfit = 0;
+        wonQuotes.forEach((q) => {
+          const profitAmount = q.price_details?.final_selling_price_profit_amount;
+          if (profitAmount !== undefined && profitAmount !== null) {
+            grossProfit += profitAmount;
+          } else if (q.margin_percentage && q.total_value) {
+            grossProfit += q.total_value * (q.margin_percentage / 100);
+          }
+        });
+
+        // Pipeline Value: All quotes in Won/Draft/Submitted/Rejected status
+        const pipelineQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'created_at')
+          .filter((q) =>
+            (q.status === 'Won' || q.status === 'Draft' || q.status === 'Submitted' || q.status === 'Rejected') &&
+            (q.is_main_version === true || q.is_main_version === undefined)
+          );
+        const pipelineValue = pipelineQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
+
+        dataPoints.push({
+          date: format(dayStart, 'd'), // 1, 2, 3, ..., 31
+          fullDate: dayStart, // Store full date for tooltip
+          revenue: revenue,
+          grossProfit: grossProfit,
+          pipelineValue: pipelineValue,
+        });
+      }
+      break;
+    }
+    case 'yearly': {
+      // Show all 12 months: Jan, Feb, ..., Dec
+      const yearStart = startOfYear(baseDate);
+      for (let i = 0; i < 12; i++) {
+        const monthStart = new Date(yearStart);
+        monthStart.setMonth(i);
+        const monthEnd = endOfMonth(monthStart);
+
+        // Revenue: Won quotes in this period
+        const wonQuotes = filterQuotesByDateRange(quotes, monthStart, monthEnd, 'won_at')
+          .filter((q) => q.status === 'Won' && (q.is_main_version === true || q.is_main_version === undefined));
+        const revenue = wonQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
+
+        // Gross Profit: Calculate from won quotes
+        let grossProfit = 0;
+        wonQuotes.forEach((q) => {
+          const profitAmount = q.price_details?.final_selling_price_profit_amount;
+          if (profitAmount !== undefined && profitAmount !== null) {
+            grossProfit += profitAmount;
+          } else if (q.margin_percentage && q.total_value) {
+            grossProfit += q.total_value * (q.margin_percentage / 100);
+          }
+        });
+
+        // Pipeline Value: All quotes in Won/Draft/Submitted/Rejected status
+        const pipelineQuotes = filterQuotesByDateRange(quotes, monthStart, monthEnd, 'created_at')
+          .filter((q) =>
+            (q.status === 'Won' || q.status === 'Draft' || q.status === 'Submitted' || q.status === 'Rejected') &&
+            (q.is_main_version === true || q.is_main_version === undefined)
+          );
+        const pipelineValue = pipelineQuotes.reduce((sum, q) => sum + (q.total_value || 0), 0);
+
+        dataPoints.push({
+          date: format(monthStart, "MMM ''yy"), // Jan '25, Feb '25, etc.
+          revenue: revenue,
+          grossProfit: grossProfit,
+          pipelineValue: pipelineValue,
+        });
+      }
+      break;
+    }
   }
 
   return dataPoints;
+};
+
+/**
+ * Calculate won vs rejected counts over time
+ * Shows current period only (not historical spread)
+ */
+export const calculateWonRejectedOverTime = (
+  quotes: Quote[],
+  period: TimePeriod,
+  periodsToShow: number = 12,
+  periodOffset: number = 0
+): WonRejectedOverTimeData[] => {
+  let baseDate = new Date();
+
+  // Adjust base date based on offset
+  if (periodOffset > 0) {
+    switch (period) {
+      case 'weekly':
+        baseDate = subWeeks(baseDate, periodOffset);
+        break;
+      case 'monthly':
+        baseDate = subMonths(baseDate, periodOffset);
+        break;
+      case 'yearly':
+        baseDate = subYears(baseDate, periodOffset);
+        break;
+    }
+  }
+
+  const dataPoints: WonRejectedOverTimeData[] = [];
+
+  switch (period) {
+    case 'weekly': {
+      // Show 7 days: Sunday through Saturday
+      const weekStart = startOfWeek(baseDate, { weekStartsOn: 0 });
+      for (let i = 0; i < 7; i++) {
+        const dayStart = addDays(weekStart, i);
+        const dayEnd = addDays(dayStart, 1);
+
+        const wonQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'won_at')
+          .filter((q) => q.status === 'Won' && (q.is_main_version === true || q.is_main_version === undefined));
+
+        const rejectedQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'rejected_at')
+          .filter((q) => q.status === 'Rejected' && (q.is_main_version === true || q.is_main_version === undefined));
+
+        dataPoints.push({
+          date: format(dayStart, 'EEE M/d'), // Mon 11/6, Tue 11/7, etc.
+          wonCount: wonQuotes.length,
+          rejectedCount: rejectedQuotes.length,
+        });
+      }
+      break;
+    }
+    case 'monthly': {
+      // Show all days of the month (1st to last day)
+      const monthStart = startOfMonth(baseDate);
+      const daysInMonth = getDaysInMonth(baseDate);
+      for (let i = 0; i < daysInMonth; i++) {
+        const dayStart = addDays(monthStart, i);
+        const dayEnd = addDays(dayStart, 1);
+
+        const wonQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'won_at')
+          .filter((q) => q.status === 'Won' && (q.is_main_version === true || q.is_main_version === undefined));
+
+        const rejectedQuotes = filterQuotesByDateRange(quotes, dayStart, dayEnd, 'rejected_at')
+          .filter((q) => q.status === 'Rejected' && (q.is_main_version === true || q.is_main_version === undefined));
+
+        dataPoints.push({
+          date: format(dayStart, 'd'), // 1, 2, 3, ..., 31
+          fullDate: dayStart, // Store full date for tooltip
+          wonCount: wonQuotes.length,
+          rejectedCount: rejectedQuotes.length,
+        });
+      }
+      break;
+    }
+    case 'yearly': {
+      // Show all 12 months: Jan, Feb, ..., Dec
+      const yearStart = startOfYear(baseDate);
+      for (let i = 0; i < 12; i++) {
+        const monthStart = new Date(yearStart);
+        monthStart.setMonth(i);
+        const monthEnd = endOfMonth(monthStart);
+
+        const wonQuotes = filterQuotesByDateRange(quotes, monthStart, monthEnd, 'won_at')
+          .filter((q) => q.status === 'Won' && (q.is_main_version === true || q.is_main_version === undefined));
+
+        const rejectedQuotes = filterQuotesByDateRange(quotes, monthStart, monthEnd, 'rejected_at')
+          .filter((q) => q.status === 'Rejected' && (q.is_main_version === true || q.is_main_version === undefined));
+
+        dataPoints.push({
+          date: format(monthStart, "MMM ''yy"), // Jan '25, Feb '25, etc.
+          wonCount: wonQuotes.length,
+          rejectedCount: rejectedQuotes.length,
+        });
+      }
+      break;
+    }
+  }
+
+  return dataPoints;
+};
+
+/**
+ * Convert averages data to cumulative averages
+ */
+export const makeAveragesCumulative = (data: AveragesOverTimeData[]): AveragesOverTimeData[] => {
+  let cumulativeGrossProfit = 0;
+  let cumulativeRevenue = 0;
+  let cumulativeValue = 0;
+
+  return data.map((point) => {
+    cumulativeGrossProfit += point.avgGrossProfit;
+    cumulativeRevenue += point.avgRevenue;
+    cumulativeValue += point.avgValue;
+
+    return {
+      ...point,
+      avgGrossProfit: cumulativeGrossProfit,
+      avgRevenue: cumulativeRevenue,
+      avgValue: cumulativeValue,
+    };
+  });
+};
+
+/**
+ * Convert totals data to cumulative totals
+ */
+export const makeTotalsCumulative = (data: TotalsOverTimeData[]): TotalsOverTimeData[] => {
+  let cumulativeRevenue = 0;
+  let cumulativeGrossProfit = 0;
+  let cumulativePipeline = 0;
+
+  return data.map((point) => {
+    cumulativeRevenue += point.revenue;
+    cumulativeGrossProfit += point.grossProfit;
+    cumulativePipeline += point.pipelineValue;
+
+    return {
+      ...point,
+      revenue: cumulativeRevenue,
+      grossProfit: cumulativeGrossProfit,
+      pipelineValue: cumulativePipeline,
+    };
+  });
+};
+
+/**
+ * Convert won/rejected data to cumulative counts
+ */
+export const makeWonRejectedCumulative = (data: WonRejectedOverTimeData[]): WonRejectedOverTimeData[] => {
+  let cumulativeWon = 0;
+  let cumulativeRejected = 0;
+
+  return data.map((point) => {
+    cumulativeWon += point.wonCount;
+    cumulativeRejected += point.rejectedCount;
+
+    return {
+      ...point,
+      wonCount: cumulativeWon,
+      rejectedCount: cumulativeRejected,
+    };
+  });
 };
 
 /**
@@ -739,7 +1059,8 @@ export const generateAnalyticsSummary = (
       mainVersionQuotes,
       period,
       calculateTotalRevenue,
-      formatCurrency
+      formatCurrency,
+      'won_at'
     ),
     quotesSent: calculateMetricWithTrend(
       mainVersionQuotes,
