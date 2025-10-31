@@ -259,6 +259,10 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
     navigate('/sign-in', { replace: true });
   };
 
+  // Get sidebar state - only call this hook for protected routes
+  const sidebarState = shouldShowSidebar ? useSidebar() : null;
+  const sidebarOpen = sidebarState?.open ?? false;
+
   // For public routes, render children directly without layout
   if (!shouldShowSidebar) {
     // Editor route needs auth check but no sidebar
@@ -312,16 +316,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   ) : (
     children
   );
-
-  // Get sidebar state - only available for protected routes when SidebarProvider is present
-  let sidebarOpen = false;
-  try {
-    const sidebar = useSidebar();
-    sidebarOpen = sidebar.open;
-  } catch (e) {
-    // SidebarProvider not available (public route) - use default value
-    sidebarOpen = false;
-  }
 
   return (
       <div className={`h-screen flex w-full overflow-hidden ${isBoardPage ? 'bg-sidebar' : 'bg-[var(--content-bg)]'}`}>
