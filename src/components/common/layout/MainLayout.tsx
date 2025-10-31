@@ -29,7 +29,6 @@ interface MainLayoutProps {
 const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { open: sidebarOpen } = useSidebar();
 
   // Use auth store instead of local state for cached auth
   const user = useAuthStore((state) => state.user);
@@ -314,19 +313,29 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
     children
   );
 
-  return (
-    <div className={`h-screen flex w-full overflow-hidden ${isBoardPage ? 'bg-sidebar' : 'bg-[var(--content-bg)]'}`}>
-        {/* Logout overlay to prevent flash */}
-        {isLoggingOut && (
-          <div className="absolute inset-0 bg-background z-50 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-muted-foreground">Signing out...</p>
-            </div>
-          </div>
-        )}
+  // Get sidebar state - only available for protected routes when SidebarProvider is present
+  let sidebarOpen = false;
+  try {
+    const sidebar = useSidebar();
+    sidebarOpen = sidebar.open;
+  } catch (e) {
+    // SidebarProvider not available (public route) - use default value
+    sidebarOpen = false;
+  }
 
-        <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
+  return (
+      <div className={`h-screen flex w-full overflow-hidden ${isBoardPage ? 'bg-sidebar' : 'bg-[var(--content-bg)]'}`}>
+          {/* Logout overlay to prevent flash */}
+          {isLoggingOut && (
+            <div className="absolute inset-0 bg-background z-50 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-muted-foreground">Signing out...</p>
+              </div>
+            </div>
+          )}
+
+          <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Main Content */}
           <main className="flex-1 overflow-hidden">
@@ -363,9 +372,31 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
 };
 
 export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
-  return (
-    <SidebarProvider defaultOpen={false}>
-      <MainLayoutContent>{children}</MainLayoutContent>
-    </SidebarProvider>
-  );
+  const location = useLocation();
+
+  // Check if current route should show sidebar
+  const shouldShowSidebar = ![
+    '/',
+    '/sign-in',
+    '/create-account',
+    '/auth',
+    '/forgot-password',
+    '/reset-password',
+    '/pending-approval',
+    '/access-denied',
+    '/account-inactive',
+    '/demo-contact'
+  ].includes(location.pathname) && !location.pathname.startsWith('/editor/');
+
+  // Wrap with SidebarProvider only for protected routes
+  if (shouldShowSidebar) {
+    return (
+      <SidebarProvider defaultOpen={false}>
+        <MainLayoutContent>{children}</MainLayoutContent>
+      </SidebarProvider>
+    );
+  }
+
+  // Public routes render without SidebarProvider
+  return <MainLayoutContent>{children}</MainLayoutContent>;
 };
