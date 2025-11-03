@@ -584,29 +584,42 @@ export const useOrganizations = () => {
   }, []); // Empty deps - only run once on mount
 
   useEffect(() => {
-    // Subscribe to real-time membership role changes
-    let cleanup: (() => void) | undefined;
+    // Subscribe to real-time membership role changes and user deletion
+    let cleanupMembership: (() => void) | undefined;
+    let cleanupUserDeletion: (() => void) | undefined;
 
     subscribeToMembershipChanges().then((cleanupFn) => {
-      cleanup = cleanupFn;
+      cleanupMembership = cleanupFn;
     });
 
-    return () => {
-      if (cleanup) cleanup();
-    };
-  }, []); // Run once on mount
-
-  useEffect(() => {
-    // Subscribe to real-time organization members changes
-    let cleanup: (() => void) | undefined;
-
-    if (currentOrganization?.id) {
-      const subscribeToOrgMembers = useOrganizationStore.getState().subscribeToOrganizationMembersChanges;
-      cleanup = subscribeToOrgMembers(currentOrganization.id);
+    // Subscribe to user deletion if user exists
+    if (user?.id) {
+      const subscribeToUserDel = useOrganizationStore.getState().subscribeToUserDeletion;
+      cleanupUserDeletion = subscribeToUserDel(user.id);
     }
 
     return () => {
-      if (cleanup) cleanup();
+      if (cleanupMembership) cleanupMembership();
+      if (cleanupUserDeletion) cleanupUserDeletion();
+    };
+  }, [user?.id]); // Re-subscribe if user changes
+
+  useEffect(() => {
+    // Subscribe to real-time organization members changes and deletion
+    let cleanupMembers: (() => void) | undefined;
+    let cleanupDeletion: (() => void) | undefined;
+
+    if (currentOrganization?.id) {
+      const subscribeToOrgMembers = useOrganizationStore.getState().subscribeToOrganizationMembersChanges;
+      const subscribeToOrgDeletion = useOrganizationStore.getState().subscribeToOrganizationDeletion;
+
+      cleanupMembers = subscribeToOrgMembers(currentOrganization.id);
+      cleanupDeletion = subscribeToOrgDeletion(currentOrganization.id);
+    }
+
+    return () => {
+      if (cleanupMembers) cleanupMembers();
+      if (cleanupDeletion) cleanupDeletion();
     };
   }, [currentOrganization?.id]); // Re-subscribe if organization changes
 

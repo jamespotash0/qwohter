@@ -76,8 +76,10 @@ interface OrganizationState {
   updateOrganization: (updates: Partial<Organization>) => Promise<void>;
   setSubscriptionStatus: (status: { hasAccess: boolean; reason: string }) => void;
   checkSubscriptionStatus: (organizationId: string) => Promise<void>;
-  subscribeToMembershipChanges: () => void;
+  subscribeToMembershipChanges: () => Promise<() => void>;
   subscribeToOrganizationMembersChanges: (organizationId: string) => () => void;
+  subscribeToOrganizationDeletion: (organizationId: string) => () => void;
+  subscribeToUserDeletion: (userId: string) => () => void;
   reset: () => void;
 }
 
@@ -447,7 +449,7 @@ export const useOrganizationStore = create<OrganizationState>()(
         }
       },
 
-      // Subscribe to real-time membership changes
+      // Subscribe to real-time membership changes (role, status, deletion)
       subscribeToMembershipChanges: async () => {
         try {
           const { data: { user } } = await supabase.auth.getUser();
@@ -464,19 +466,53 @@ export const useOrganizationStore = create<OrganizationState>()(
             .on(
               'postgres_changes',
               {
-                event: 'UPDATE',
+                event: '*', // Listen to all events (UPDATE, DELETE)
                 schema: 'public',
                 table: 'memberships',
                 filter: `user_id=eq.${user.id}`,
               },
-              (payload) => {
-                console.log('🔄 Membership role changed:', payload);
-                const newRole = payload.new.role as 'Owner' | 'Admin' | 'Member';
+              async (payload) => {
+                console.log('🔄 Membership changed:', payload);
 
-                // Update localStorage cache
-                localStorage.setItem('org_cached_user_role', newRole);
+                // Handle DELETE event - user was removed from organization
+                if (payload.eventType === 'DELETE') {
+                  console.log('🗑️ Membership deleted - logging out');
 
-                set({ currentUserRole: newRole });
+                  // Clear all organization data
+                  get().reset();
+
+                  // Force logout and redirect to sign-in
+                  await supabase.auth.signOut();
+                  window.location.href = '/sign-in';
+                  return;
+                }
+
+                // Handle UPDATE event
+                if (payload.eventType === 'UPDATE') {
+                  const newStatus = payload.new.status;
+                  const newRole = payload.new.role as 'Owner' | 'Admin' | 'Member';
+
+                  // If status changed to Inactive, log out the user
+                  if (newStatus === 'Inactive') {
+                    console.log('⚠️ Membership set to Inactive - logging out');
+
+                    // Clear all organization data
+                    get().reset();
+
+                    // Force logout and redirect to sign-in
+                    await supabase.auth.signOut();
+                    window.location.href = '/sign-in';
+                    return;
+                  }
+
+                  // Update role if it changed
+                  console.log('🔄 Membership role changed:', newRole);
+
+                  // Update localStorage cache
+                  localStorage.setItem('org_cached_user_role', newRole);
+
+                  set({ currentUserRole: newRole });
+                }
               }
             )
             .subscribe();
@@ -586,6 +622,74 @@ export const useOrganizationStore = create<OrganizationState>()(
         // Return cleanup function
         return () => {
           console.log('🧹 Cleaning up organization members subscription');
+          supabase.removeChannel(channel);
+        };
+      },
+
+      // Subscribe to organization deletion
+      subscribeToOrganizationDeletion: (organizationId: string) => {
+        console.log('🔔 Setting up organization deletion subscription for org:', organizationId);
+
+        const channel = supabase
+          .channel(`org-deletion-${organizationId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'DELETE',
+              schema: 'public',
+              table: 'organizations',
+              filter: `id=eq.${organizationId}`,
+            },
+            async (payload) => {
+              console.log('🗑️ Organization deleted:', payload);
+
+              // Clear all organization data
+              get().reset();
+
+              // Force logout and redirect to sign-in
+              await supabase.auth.signOut();
+              window.location.href = '/sign-in';
+            }
+          )
+          .subscribe();
+
+        // Return cleanup function
+        return () => {
+          console.log('🧹 Cleaning up organization deletion subscription');
+          supabase.removeChannel(channel);
+        };
+      },
+
+      // Subscribe to user profile deletion from auth.users table
+      subscribeToUserDeletion: (userId: string) => {
+        console.log('🔔 Setting up user deletion subscription for user:', userId);
+
+        const channel = supabase
+          .channel(`user-deletion-${userId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'DELETE',
+              schema: 'auth',
+              table: 'users',
+              filter: `id=eq.${userId}`,
+            },
+            async (payload) => {
+              console.log('🗑️ User account deleted from database:', payload);
+
+              // Clear all organization data
+              get().reset();
+
+              // Force logout and redirect to sign-in
+              await supabase.auth.signOut();
+              window.location.href = '/sign-in';
+            }
+          )
+          .subscribe();
+
+        // Return cleanup function
+        return () => {
+          console.log('🧹 Cleaning up user deletion subscription');
           supabase.removeChannel(channel);
         };
       },

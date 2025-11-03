@@ -157,8 +157,37 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
         }
       });
 
+    // Also listen for organization deletion
+    const orgDeletionChannel = supabase
+      .channel(`org-deletion-paywall-${organizationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'organizations',
+          filter: `id=eq.${organizationId}`,
+        },
+        async (payload) => {
+          console.log('🗑️ Organization deleted - signing out:', payload);
+
+          // Clear organization cache
+          localStorage.removeItem('org_cached_organization');
+          localStorage.removeItem('org_cached_user_role');
+          localStorage.removeItem('org_cached_membership');
+          localStorage.removeItem('org_cached_members');
+          localStorage.removeItem(`subscription_${organizationId}`);
+
+          // Force logout and redirect
+          await supabase.auth.signOut();
+          window.location.href = '/sign-in';
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
+      supabase.removeChannel(orgDeletionChannel);
     };
   }, [organizationId]);
 
@@ -166,6 +195,30 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
     try {
       // Always show loading while validating
       setLoading(true);
+
+      // First, check if organization still exists
+      const { data: orgCheck, error: orgError } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('id', organizationId)
+        .maybeSingle();
+
+      // If organization doesn't exist, log out immediately
+      if (!orgCheck || orgError) {
+        console.log('🗑️ Organization no longer exists - logging out');
+
+        // Clear all caches
+        localStorage.removeItem('org_cached_organization');
+        localStorage.removeItem('org_cached_user_role');
+        localStorage.removeItem('org_cached_membership');
+        localStorage.removeItem('org_cached_members');
+        localStorage.removeItem(`subscription_${organizationId}`);
+
+        // Force logout
+        await supabase.auth.signOut();
+        window.location.href = '/sign-in';
+        return;
+      }
 
       const { isValid, reason, inGracePeriod: isGrace, graceDaysRemaining: graceDays } = await stripeService.hasValidSubscription(organizationId);
 
