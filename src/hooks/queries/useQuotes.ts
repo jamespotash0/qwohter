@@ -51,12 +51,13 @@ export function useQuotes(
 ) {
   const queryKey = queryKeys.quotes.list(userId || '', filters);
 
-  // Set up realtime subscription
+  // Set up realtime subscription (optional - gracefully handles CHANNEL_ERROR)
+  // Note: Realtime must be enabled in Supabase Dashboard for quotes table
   useRealtimeSubscription(
     'quotes',
     queryKey,
     {}, // No filter needed - we filter on client side
-    !!userId && enabled
+    false // Disabled for now - enable after configuring Supabase Realtime
   );
 
   return useQuery({
