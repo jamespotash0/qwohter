@@ -555,7 +555,9 @@ const LandingEnhanced = () => {
             {/* Left - Pricing Card (White) */}
             <div className="pricing-card bg-white rounded-l-3xl shadow-2xl border border-gray-200 opacity-0 p-12 flex flex-col" style={{ width: '50%' }}>
               <div>
-                <h3 className="text-4xl font-bold text-[var(--landing-text-on-light)] mb-6">$20/user/month</h3>
+                <h3 className="text-4xl font-bold text-[var(--landing-text-on-light)] mb-6">
+                  $20<span className="text-lg font-normal text-gray-500">/user/month</span>
+                </h3>
                 <p className="text-base text-[var(--landing-text-muted-light)] mb-8 leading-relaxed">
                   Simple per-user pricing that scales with your team. No commitment, no credit card required for your 14-day free trial.
                 </p>
