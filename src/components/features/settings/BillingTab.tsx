@@ -106,8 +106,9 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       return [];
     }
   });
-  const [billingInterval, setBillingInterval] = useState<'Monthly' | 'Yearly'>('Monthly');
-  const [planIntervals, setPlanIntervals] = useState<Record<string, 'Monthly' | 'Yearly'>>({});
+  // COMMENTED OUT: Only monthly billing supported now
+  // const [billingInterval, setBillingInterval] = useState<'Monthly' | 'Yearly'>('Monthly');
+  // const [planIntervals, setPlanIntervals] = useState<Record<string, 'Monthly' | 'Yearly'>>({});
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -436,11 +437,12 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         return;
       }
 
-      // Determine the appropriate price ID based on per-plan billing interval
-      const selectedInterval = planIntervals[plan.id] || 'Monthly';
-      const priceId = selectedInterval === 'Monthly'
-        ? plan.stripe_price_id_monthly
-        : plan.stripe_price_id_yearly;
+      // UPDATED: Only monthly billing supported now
+      // const selectedInterval = planIntervals[plan.id] || 'Monthly';
+      // const priceId = selectedInterval === 'Monthly'
+      //   ? plan.stripe_price_id_monthly
+      //   : plan.stripe_price_id_yearly;
+      const priceId = plan.stripe_price_id_monthly;
 
       if (!priceId || priceId.includes('placeholder')) {
         toast({
@@ -567,6 +569,25 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     }
   };
 
+  const handleManageBilling = async () => {
+    if (!organization?.id) return;
+
+    try {
+      await stripeService.createPortalSession({
+        organizationId: organization.id,
+        returnUrl: window.location.href,
+      });
+      // User will be redirected to Stripe Customer Portal
+    } catch (error: any) {
+      console.error('Error opening billing portal:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to open billing portal. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handlePauseSubscription = async () => {
     if (!subscription?.stripe_subscription_id) return;
 
@@ -690,14 +711,15 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     });
   };
 
-  const getDisplayPrice = (plan: SubscriptionPlan) => {
-    if (billingInterval === 'Monthly') {
-      return plan.price_per_month;
-    }
-    // For annual, show the monthly equivalent
-    const monthlyEquivalent = plan.price_per_yearly / 12;
-    return Number.isInteger(monthlyEquivalent) ? monthlyEquivalent : monthlyEquivalent.toFixed(2);
-  };
+  // COMMENTED OUT: Only monthly billing supported now
+  // const getDisplayPrice = (plan: SubscriptionPlan) => {
+  //   if (billingInterval === 'Monthly') {
+  //     return plan.price_per_month;
+  //   }
+  //   // For annual, show the monthly equivalent
+  //   const monthlyEquivalent = plan.price_per_yearly / 12;
+  //   return Number.isInteger(monthlyEquivalent) ? monthlyEquivalent : monthlyEquivalent.toFixed(2);
+  // };
 
   const isCurrentPlan = (plan: SubscriptionPlan) => {
     // Only consider it current if subscription exists, is active, AND not cancelled/paused
@@ -738,7 +760,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         <div>
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Plan & Billing</h2>
-            <Button
+            {/* COMMENTED OUT: Compare Plans feature temporarily disabled */}
+            {/* <Button
               variant="outline"
               size="sm"
               className="h-9"
@@ -746,7 +769,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
             >
               <ArrowLeftRight className="w-4 h-4 mr-2" />
               Compare plans
-            </Button>
+            </Button> */}
           </div>
           <div className="h-px bg-gray-200 dark:bg-gray-700 mb-4"></div>
         </div>
@@ -820,7 +843,9 @@ export const BillingTab: React.FC<BillingTabProps> = ({
           const isCurrent = isCurrentPlan(plan);
           const isProcessing = processingPlan === plan.id;
           const isIndividualPlan = plan.name === 'Individual';
-          const displayPrice = getDisplayPrice(plan);
+          // UPDATED: Only monthly billing supported now
+          // const displayPrice = getDisplayPrice(plan);
+          const displayPrice = plan.price_per_month;
           // Disable Individual plan if organization has more than 1 user
           const isIndividualDisabled = isIndividualPlan && userCount > 1;
 
@@ -837,7 +862,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                       <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                         {plan.display_name}
                       </h3>
-                      <button
+                      {/* COMMENTED OUT: Monthly/Yearly toggle - only monthly billing supported now */}
+                      {/* <button
                         onClick={() => {
                           const currentInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
                             ? (subscription.billing_interval?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly')
@@ -868,64 +894,38 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                             })()
                           }}
                         />
-                      </button>
+                      </button> */}
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {plan.description}
                     </p>
                   </div>
 
-                  {/* Price */}
+                  {/* Price - UPDATED: Only monthly billing supported now */}
                   <div>
-                    {(() => {
-                      const selectedInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
-                        ? (subscription.billing_interval?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly')
-                        : (planIntervals[plan.id] || 'Monthly');
-
-                      return selectedInterval === 'Monthly' ? (
-                        <>
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                              ${plan.price_per_month}
-                            </span>
-                            <span className="text-gray-500 dark:text-gray-400 text-xs">
-                              {isIndividualPlan ? '/ month' : '/ user / month'}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Billed monthly
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                              ${(() => {
-                                const monthlyEquivalent = plan.price_per_yearly / 12;
-                                return Number.isInteger(monthlyEquivalent) ? monthlyEquivalent : monthlyEquivalent.toFixed(2);
-                              })()}
-                            </span>
-                            <span className="text-gray-500 dark:text-gray-400 text-xs">
-                              {isIndividualPlan ? '/ month' : '/ user / month'}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Billed annually (${Number.isInteger(plan.price_per_yearly) ? plan.price_per_yearly : plan.price_per_yearly.toFixed(2)}{isIndividualPlan ? '' : '/user'}/year) <span className="text-green-600 dark:text-green-400">(save {Math.round((1 - (plan.price_per_yearly / 12) / plan.price_per_month) * 100)}%)</span>
-                          </p>
-                        </>
-                      );
-                    })()}
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                        ${plan.price_per_month}
+                      </span>
+                      <span className="text-gray-500 dark:text-gray-400 text-xs">
+                        {isIndividualPlan ? '/ month' : '/ user / month'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Billed monthly
+                    </p>
                   </div>
 
-                  {/* CTA Button */}
+                  {/* CTA Button - UPDATED: Removed interval change logic since only monthly billing */}
                   {(() => {
-                    const selectedInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
-                      ? (subscription.billing_interval?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly')
-                      : (planIntervals[plan.id] || 'Monthly');
-                    const currentInterval = subscription?.billing_interval?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly';
-                    const isIntervalChanged = isCurrent && planIntervals[plan.id] && selectedInterval !== currentInterval;
+                    // COMMENTED OUT: Interval-related logic
+                    // const selectedInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
+                    //   ? (subscription.billing_interval?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly')
+                    //   : (planIntervals[plan.id] || 'Monthly');
+                    // const currentInterval = subscription?.billing_interval?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly';
+                    // const isIntervalChanged = isCurrent && planIntervals[plan.id] && selectedInterval !== currentInterval;
 
-                    if (isCurrent && !isIntervalChanged) {
+                    if (isCurrent) {
                       // Current plan with same interval - show "Current Plan"
                       return (
                         <Button
@@ -961,12 +961,6 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                             <>
                               <Loader2 className="w-4 h-4 animate-spin" />
                               <span>Processing...</span>
-                            </>
-                          ) : isIntervalChanged ? (
-                            // If current plan but interval changed, show "Switch Plan"
-                            <>
-                              <ArrowLeftRight className="w-4 h-4" />
-                              <span>Switch Plan</span>
                             </>
                           ) : subscription?.cancel_at_period_end ? (
                             // If current subscription is canceled, show "Switch Plan"
@@ -1157,59 +1151,73 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         </div>
       </div>
 
-      {/* Manage Plan Dialog */}
+      {/* Manage Plan Dialog - Redesigned */}
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Manage Plan</DialogTitle>
+        <DialogContent className="sm:max-w-[480px] p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-4">
+            <DialogTitle className="text-2xl font-bold">Manage Plan</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-3">
+          <div className="px-6 pb-6">
             {/* Current Plan Info - Only show if subscription exists */}
             {subscription && (
               <>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Plan</span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {plans.find(p => p.id === subscription.plan_id)?.display_name || 'Unknown'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Users</span>
-                  <span className="text-sm text-gray-900 dark:text-white">{userCount}</span>
-                </div>
-                <div className="flex justify-between items-center py-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Status</span>
-                  <Badge className={`${
-                    subscription.stripe_subscription_status?.toLowerCase() === 'paused'
-                      ? 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900/30'
-                      : subscription.pause_at_period_end
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30'
-                      : subscription.cancel_at_period_end
-                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30'
-                      : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                  } border-0`}>
-                    {subscription.stripe_subscription_status?.toLowerCase() === 'paused'
-                      ? 'Paused'
-                      : subscription.pause_at_period_end
-                      ? 'Pausing'
-                      : subscription.cancel_at_period_end ? 'Canceling' : 'Active'}
-                  </Badge>
-                </div>
-                {subscription.current_period_end && (
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {subscription.cancel_at_period_end ? 'Ends' : 'Renews'}
-                    </span>
-                    <span className="text-sm font-bold text-gray-900 dark:text-white">
-                      {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
+                {/* Plan Info Card */}
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-800/30 rounded-xl p-5 mb-6 border border-gray-200 dark:border-gray-700">
+                  <div className="space-y-4">
+                    {/* Plan Name */}
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Current Plan</p>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {plans.find(p => p.id === subscription.plan_id)?.display_name || 'Unknown'}
+                      </h3>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t border-gray-200 dark:border-gray-700"></div>
+
+                    {/* Plan Details Grid - 3 columns */}
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Status</p>
+                        <p className={`text-lg font-bold ${
+                          subscription.stripe_subscription_status?.toLowerCase() === 'paused'
+                            ? 'text-gray-500 dark:text-gray-400'
+                            : subscription.pause_at_period_end
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : subscription.cancel_at_period_end
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-green-600 dark:text-green-400'
+                        }`}>
+                          {subscription.stripe_subscription_status?.toLowerCase() === 'paused'
+                            ? 'Paused'
+                            : subscription.pause_at_period_end
+                            ? 'Pausing'
+                            : subscription.cancel_at_period_end ? 'Canceling' : 'Active'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Team Size</p>
+                        <p className="text-lg font-bold text-gray-900 dark:text-white">{userCount} {userCount === 1 ? 'user' : 'users'}</p>
+                      </div>
+                      {subscription.current_period_end && (
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                            {subscription.cancel_at_period_end ? 'Ends On' : 'Renews On'}
+                          </p>
+                          <p className="text-lg font-bold text-gray-900 dark:text-white">
+                            {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
+                </div>
               </>
             )}
 
-            {subscription?.stripe_subscription_status?.toLowerCase() === 'paused' ? (
+            {/* COMMENTED OUT: Pause/Resume functionality temporarily disabled */}
+            {/* {subscription?.stripe_subscription_status?.toLowerCase() === 'paused' ? (
               // Resume paused subscription
               <>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -1269,65 +1277,62 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                   </Button>
                 </div>
               </>
-            ) : subscription?.cancel_at_period_end ? (
+            ) : */ subscription?.cancel_at_period_end ? (
               // Reactivate view
-              <>
+              <div className="space-y-5">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Your subscription is scheduled to end on {new Date(subscription.current_period_end).toLocaleDateString()}. Reactivate to continue your service.
+                  Your subscription is scheduled to end on <span className="font-semibold">{new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>. Reactivate to continue your service.
                 </p>
-                <div className="flex justify-end gap-2 mt-6">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCancelDialog(false)}
-                    disabled={isReactivating}
-                  >
-                    Close
-                  </Button>
+                <div className="space-y-3">
                   <Button
                     onClick={handleReactivateSubscription}
                     disabled={isReactivating}
-                    className="bg-[#EE6C4D] hover:bg-[#d85a3d] text-white"
+                    className="w-full bg-[#EE6C4D] hover:bg-[#d85a3d] text-white h-11 text-base font-semibold shadow-sm"
                   >
                     {isReactivating ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
                         <span>Reactivating...</span>
                       </>
                     ) : (
-                      <span>Reactivate</span>
+                      <span>Reactivate Subscription</span>
                     )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleManageBilling}
+                    disabled={!hasPermission}
+                    className="w-full h-11 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    Update Payment Method
                   </Button>
                 </div>
-              </>
+              </div>
             ) : (
-              // Active subscription - show pause and cancel options
-              <>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Manage your subscription below. You can pause billing temporarily or cancel to end at the current period.
+              // Active subscription - COMMENTED OUT: Pause functionality temporarily disabled
+              // Now only showing cancel option
+              <div className="space-y-5">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  You can cancel your subscription at any time. Your access will continue until the end of the current billing period.
                 </p>
-                <div className="flex justify-end gap-2 mt-6">
+                <div className="space-y-3">
                   <Button
-                    onClick={handlePauseSubscription}
-                    disabled={isCancelling}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    variant="outline"
+                    onClick={handleManageBilling}
+                    disabled={!hasPermission}
+                    className="w-full h-11 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
                   >
-                    {isCancelling ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        <span>Pausing...</span>
-                      </>
-                    ) : (
-                      <span>Pause Subscription</span>
-                    )}
+                    Update Payment Method
                   </Button>
                   <Button
-                    variant="destructive"
+                    variant="outline"
                     onClick={handleCancelSubscription}
                     disabled={isCancelling}
+                    className="w-full h-11 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10"
                   >
                     {isCancelling ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
                         <span>Canceling...</span>
                       </>
                     ) : (
@@ -1335,40 +1340,37 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                     )}
                   </Button>
                 </div>
-              </>
+              </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Compare Plans Modal */}
-      <Dialog open={showCompareModal} onOpenChange={setShowCompareModal}>
+      {/* COMMENTED OUT: Compare Plans Modal - feature temporarily disabled */}
+      {/* <Dialog open={showCompareModal} onOpenChange={setShowCompareModal}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Compare Plans</DialogTitle>
           </DialogHeader>
           <div className="mt-4">
             {/* Plans comparison table */}
-            <div className={`grid gap-4`} style={{ gridTemplateColumns: `minmax(150px, 1fr) repeat(${plans.length}, 1fr)` }}>
+            {/* <div className={`grid gap-4`} style={{ gridTemplateColumns: `minmax(150px, 1fr) repeat(${plans.length}, 1fr)` }}>
               {/* Header Row */}
-              <div className="font-semibold text-gray-900 dark:text-white">Features</div>
+              {/* <div className="font-semibold text-gray-900 dark:text-white">Features</div>
               {plans.sort((a, b) => a.sort_order - b.sort_order).map((plan) => (
                 <div key={plan.id} className="text-center">
                   <h3 className="font-bold text-lg text-gray-900 dark:text-white">{plan.display_name}</h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    ${billingInterval === 'Monthly' ? plan.price_per_month : (() => {
-                      const monthlyEquivalent = plan.price_per_yearly / 12;
-                      return Number.isInteger(monthlyEquivalent) ? monthlyEquivalent : monthlyEquivalent.toFixed(2);
-                    })()} / user / month
+                    ${plan.price_per_month} / user / month
                   </p>
                 </div>
               ))}
 
               {/* Divider */}
-              <div className="border-b border-gray-200 dark:border-gray-700 my-2" style={{ gridColumn: `1 / -1` }}></div>
+              {/* <div className="border-b border-gray-200 dark:border-gray-700 my-2" style={{ gridColumn: `1 / -1` }}></div>
 
               {/* Feature Rows */}
-              {(() => {
+              {/* {(() => {
                 // Collect all unique features from all plans
                 const allFeatures = new Set<string>();
                 plans.forEach(plan => {
@@ -1405,11 +1407,11 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                     })}
                   </React.Fragment>
                 ));
-              })()}
-            </div>
+              })()} */}
+            {/* </div>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
     </div>
     </div>
   );

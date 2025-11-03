@@ -18,6 +18,7 @@ interface HandleOrganizationSubmitParams {
   foundVia: string;
   submissionInProgress: boolean;
   setSubmissionInProgress: (inProgress: boolean) => void;
+  setOrganizationId: (id: string | null) => void;
   setStep: (step: 'auth' | 'verify-otp' | 'organization' | 'company-info') => void;
   setLoading: (loading: boolean) => void;
   navigate: NavigateFunction;
@@ -36,6 +37,7 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
     foundVia,
     submissionInProgress,
     setSubmissionInProgress,
+    setOrganizationId,
     setStep,
     setLoading,
     navigate,
@@ -86,6 +88,9 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
 
     if (result.success) {
       if (orgChoice === 'create' && result.data) {
+        // Store organizationId in state for trial enrollment
+        setOrganizationId(result.data.organizationId);
+
         toast({
           title: 'Organization created!',
           description: `${result.data.organizationName} has been created successfully. Your code: ${result.data.organizationCode}`,
@@ -95,7 +100,8 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
           step: 'company-info',
           userId,
           orgName: result.data.organizationName,
-          orgCode: result.data.organizationCode
+          orgCode: result.data.organizationCode,
+          organizationId: result.data.organizationId
         });
       } else if (orgChoice === 'join' && result.data) {
         // Check if user joined via invite token and mark it as used

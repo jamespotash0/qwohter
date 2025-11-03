@@ -131,6 +131,7 @@ serve(async (req) => {
         plan_id: planId,
       },
       subscription_data: {
+        trial_period_days: 14, // Set trial at subscription level (recommended by Stripe)
         metadata: {
           organization_id: organizationId,
           plan_id: planId,

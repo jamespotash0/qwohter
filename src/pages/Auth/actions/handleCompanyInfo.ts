@@ -6,9 +6,11 @@
 import { organizationSettingsService } from '@/services/companySettingsService';
 import { LogoUploadResult } from '@/services/LogoUploadService';
 import { NavigateFunction } from 'react-router-dom';
+import { createTrialSubscription } from '@/services/stripeService';
 
 interface HandleCompanyInfoSubmitParams {
   userId: string | null;
+  organizationId: string | null;
   companyPhone: string;
   companyFax: string;
   companyAddress: string;
@@ -28,6 +30,7 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
 }) => {
   const {
     userId,
+    organizationId,
     companyPhone,
     companyFax,
     companyAddress,
@@ -37,7 +40,8 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
     foundVia,
     setLoading,
     toast,
-    setStep,
+    clearAuthState,
+    redirectAfterAuth,
   } = params;
 
   if (!userId || !companyPhone || !companyAddress || !companyWebsite || !quoteStartingPoint) return;
@@ -45,6 +49,7 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
   console.log('=== Company Info Submit ===');
   console.log('Industry:', industry);
   console.log('Found Via:', foundVia);
+  console.log('Organization ID:', organizationId);
 
   setLoading(true);
   try {
@@ -59,15 +64,37 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
       found_via: foundVia,
     });
 
-    toast({
-      title: 'Company information saved!',
-      description: 'Almost done! Choose how you want to get started.',
-    });
+    console.log('Company info saved, now creating trial subscription...');
 
-    // Go to trial activation step to let user choose
-    if (setStep) {
-      setStep('trial-activation');
+    // Automatically enroll in 14-day Stripe trial
+    if (organizationId) {
+      const trialResult = await createTrialSubscription(organizationId);
+
+      if (trialResult.success) {
+        console.log('Trial subscription created successfully:', trialResult.data);
+        toast({
+          title: 'Welcome to Qwohter!',
+          description: 'Your 14-day free trial has started. No credit card required!',
+        });
+      } else {
+        console.error('Trial creation failed:', trialResult.error);
+        // Don't block onboarding if trial fails - user can activate later
+        toast({
+          title: 'Setup Complete',
+          description: 'You can activate your trial from the billing page.',
+        });
+      }
+    } else {
+      console.warn('No organizationId available for trial enrollment');
+      toast({
+        title: 'Company information saved!',
+        description: 'Please activate your trial from the billing page.',
+      });
     }
+
+    // Clear auth state and redirect to dashboard
+    clearAuthState();
+    redirectAfterAuth();
   } catch (error: any) {
     toast({
       title: 'Company Info Error',

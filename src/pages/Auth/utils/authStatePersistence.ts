@@ -11,6 +11,7 @@ interface AuthFlowState {
   orgChoice?: string;
   orgName?: string;
   orgCode?: string;
+  organizationId?: string; // For trial enrollment
   timestamp?: number;
 }
 

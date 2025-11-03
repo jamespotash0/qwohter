@@ -130,6 +130,7 @@ const Auth = () => {
       if (savedState.orgChoice) authFlow.setOrgChoice(savedState.orgChoice as any);
       if (savedState.orgName) formState.setOrgName(savedState.orgName);
       if (savedState.orgCode) formState.setOrgCode(savedState.orgCode);
+      if (savedState.organizationId) authFlow.setOrganizationId(savedState.organizationId);
 
       if (savedState.step && savedState.step !== 'auth') {
         authFlow.setStep(savedState.step as any);
@@ -310,6 +311,7 @@ const Auth = () => {
       foundVia: formState.foundVia,
       submissionInProgress: authFlow.submissionInProgress,
       setSubmissionInProgress: authFlow.setSubmissionInProgress,
+      setOrganizationId: authFlow.setOrganizationId,
       setStep: authFlow.setStep,
       setLoading: authFlow.setLoading,
       navigate,
@@ -323,6 +325,7 @@ const Auth = () => {
     e.preventDefault();
     await handleCompanyInfoSubmit({
       userId: authFlow.userId,
+      organizationId: authFlow.organizationId,
       companyPhone: companyInfo.companyPhone,
       companyFax: companyInfo.companyFax,
       companyAddress: companyInfo.companyAddress,
@@ -462,8 +465,8 @@ const Auth = () => {
         return;
       }
 
-      // Enroll organization in 14-day trial
-      const trialResult = await stripeService.enrollInFreeTrial(currentOrg.id);
+      // Enroll organization in 14-day trial with Stripe subscription
+      const trialResult = await stripeService.createTrialSubscription(currentOrg.id);
 
       if (trialResult.error) {
         toast({

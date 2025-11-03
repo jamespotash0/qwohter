@@ -521,64 +521,61 @@ export const getDaysRemaining = (currentPeriodEnd: string | null): number | null
 };
 
 /**
- * Auto-enroll organization in 14-day free trial
- * Called during signup to give immediate access
- * This creates a local subscription record with 'trialing' status
- * User must choose a paid plan before trial ends
+ * Create Stripe-managed trial subscription
+ * Called automatically during signup to create actual Stripe subscription with 14-day trial
+ * This replaces the old enrollInFreeTrial which only created a local record
  */
-export const enrollInFreeTrial = async (organizationId: string): Promise<{ success: boolean; error: string | null }> => {
+export const createTrialSubscription = async (organizationId: string): Promise<{ success: boolean; error: string | null; data?: any }> => {
   try {
-    // Check if organization already has a subscription
-    const { data: existingSubscription } = await getSubscription(organizationId);
-
-    if (existingSubscription) {
-      console.log('Organization already has subscription, skipping trial enrollment');
-      return { success: true, error: null };
+    // Get current user's session token
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return { success: false, error: 'Not authenticated' };
     }
 
-    // Get the Individual plan as default trial plan
-    const planResult = await getPlanByName('Individual');
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (planResult.error || !planResult.data) {
-      console.error('Failed to get Individual plan for trial:', planResult.error);
-      return { success: false, error: 'Individual plan not found' };
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const functionsUrl = supabaseUrl?.replace('.supabase.co', '.supabase.co/functions/v1') || '';
+
+    console.log('Creating trial subscription for organization:', organizationId);
+
+    const response = await fetch(`${functionsUrl}/create-trial-subscription`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        organizationId,
+        userEmail: user?.email,
+        userName: user?.user_metadata?.full_name,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Trial subscription creation failed:', errorText);
+      return { success: false, error: `HTTP ${response.status}: ${errorText}` };
     }
 
-    const individualPlan = planResult.data as SubscriptionPlan;
+    const result = await response.json();
 
-    // Calculate trial end date (14 days from now)
-    const trialEndDate = new Date();
-    trialEndDate.setDate(trialEndDate.getDate() + 14);
-
-    // Create subscription record with trialing status
-    const { error } = await supabase
-      .from('subscriptions')
-      .insert({
-        organization_id: organizationId,
-        plan_id: individualPlan.id,
-        stripe_subscription_status: 'trialing',
-        current_period_end: trialEndDate.toISOString(),
-        is_active: true,
-        access_blocked: false,
-        has_used_trial: true, // Mark that trial has been used
-        number_of_active_users: 1,
-      } as any);
-
-    if (error) {
-      console.error('Error enrolling in free trial:', error);
-      return { success: false, error: error.message };
+    if (!result.success) {
+      return { success: false, error: result.error || 'Failed to create trial subscription' };
     }
 
-    console.log('Successfully enrolled organization in 14-day free trial');
-    return { success: true, error: null };
+    console.log('Trial subscription created successfully:', result);
+    return { success: true, error: null, data: result };
   } catch (error) {
-    console.error('Error enrolling in free trial:', error);
+    console.error('Error creating trial subscription:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to enroll in free trial'
+      error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 };
+
 
 // ============================================================================
 // EXPORT SERVICE OBJECT
@@ -612,5 +609,5 @@ export const stripeService = {
   // Trial Period Helpers
   // Note: 14-day free trial auto-enrollment on signup
   getDaysRemaining,
-  enrollInFreeTrial,
+  createTrialSubscription, // Stripe-managed trial
 };

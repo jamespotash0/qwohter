@@ -6,7 +6,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Zap } from 'lucide-react';
 import {
   useStaggerFadeIn,
   useMagneticHover,
@@ -555,40 +554,23 @@ const LandingEnhanced = () => {
             {/* Left - Pricing Card (White) */}
             <div className="pricing-card bg-white rounded-l-3xl shadow-2xl border border-gray-200 opacity-0 p-12 flex flex-col" style={{ width: '50%' }}>
               <div>
-                <h3 className="text-4xl font-bold text-[var(--landing-text-on-light)] mb-6">
-                  $20<span className="text-lg font-normal text-gray-500">/user/month</span>
+                {/* Plan Name and Description */}
+                <div className="mb-8">
+                  <h3 className="text-4xl font-bold text-[var(--landing-text-on-light)] mb-3">
+                    Team Plan
+                  </h3>
+                  <p className="text-lg text-[var(--landing-text-muted-light)]">
+                    A plan for businesses of all sizes
+                  </p>
+                </div>
+
+                {/* Price */}
+                <h3 className="text-5xl font-bold text-[var(--landing-text-on-light)] mb-6">
+                  $20<span className="text-xl font-normal text-gray-500">/user/month</span>
                 </h3>
-                <p className="text-base text-[var(--landing-text-muted-light)] mb-8 leading-relaxed">
+                <p className="text-base text-[var(--landing-text-muted-light)] mb-10 leading-relaxed">
                   Simple per-user pricing that scales with your team. No commitment, no credit card required for your 14-day free trial.
                 </p>
-
-                {/* Plan Features */}
-                <div className="space-y-4 mb-10">
-                  <div className="flex items-start space-x-3">
-                    <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                    </svg>
-                    <span className="text-[var(--landing-text-on-light)] text-base">Unlimited quotes</span>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                    </svg>
-                    <span className="text-[var(--landing-text-on-light)] text-base">Custom form creation</span>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                    </svg>
-                    <span className="text-[var(--landing-text-on-light)] text-base">Template designer</span>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                    </svg>
-                    <span className="text-[var(--landing-text-on-light)] text-base">Advanced analytics</span>
-                  </div>
-                </div>
 
                 <Button
                   onClick={(e) => {
@@ -621,6 +603,33 @@ const LandingEnhanced = () => {
             <div className="bg-gray-50 rounded-r-3xl shadow-2xl border border-l-0 border-gray-200 p-12 flex flex-col opacity-0 animate-fade-in" style={{ animationDelay: '0.2s', width: '50%' }}>
               <h4 className="text-2xl font-bold text-[var(--landing-text-on-light)] mb-8">Included in every account:</h4>
               <div className="space-y-4 mb-8">
+                {/* Basic Features - moved from left side */}
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-[var(--landing-text-on-light)] text-base font-medium">Unlimited quotes</span>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-[var(--landing-text-on-light)] text-base font-medium">Custom form creation</span>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-[var(--landing-text-on-light)] text-base font-medium">Template designer</span>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-[var(--landing-text-on-light)] text-base font-medium">Advanced analytics</span>
+                </div>
+
+                {/* Advanced Features */}
                 <div className="flex items-start space-x-3">
                   <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
