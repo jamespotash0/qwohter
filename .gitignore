@@ -33,11 +33,15 @@ playwright.config.ts
 .vscode/*
 !.vscode/extensions.json
 .idea
-.md
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-.env
+
+# Worktree-specific files (don't commit these)
+TASK.md
+HOTFIX_WORKFLOW.md
+MULTI_AGENT_GUIDE.md
+.claude/context.md
