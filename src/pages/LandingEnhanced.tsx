@@ -18,7 +18,6 @@ import { animeOnScroll, fadeInUp, elasticBounce, rippleEffect } from '@/utils/an
 const LandingEnhanced = () => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isAnnual, setIsAnnual] = useState(false);
   const [navTextColor, setNavTextColor] = useState('text-white');
 
   // Animation refs
@@ -154,7 +153,7 @@ const LandingEnhanced = () => {
                   handleRipple(e);
                   handleGetDemo();
                 }}
-                className="bg-[var(--landing-primary)] hover:bg-[var(--landing-primary-hover)] text-white px-6 py-2.5 rounded-full hover:shadow-lg hover:scale-105 transition-all duration-300 font-medium relative overflow-hidden"
+                className="bg-[#EE6C4D] hover:bg-[#d95a3d] text-white px-6 py-2.5 rounded-full hover:shadow-lg hover:scale-105 transition-all duration-300 font-medium relative overflow-hidden"
               >
                 Get a Demo
               </Button>
@@ -192,11 +191,11 @@ const LandingEnhanced = () => {
                     handleRipple(e);
                     handleGetDemo();
                   }}
-                  className="bg-[var(--landing-primary)] hover:bg-[var(--landing-primary-hover)] text-white px-12 py-6 rounded-full hover:shadow-2xl hover:scale-105 transition-all duration-300 font-semibold text-lg relative overflow-hidden group"
-                  style={{ boxShadow: 'var(--landing-primary-light) 0px 10px 40px' }}
+                  className="bg-[#EE6C4D] hover:bg-[#d95a3d] text-white px-12 py-6 rounded-full hover:shadow-2xl hover:scale-105 transition-all duration-300 font-semibold text-lg relative overflow-hidden group"
+                  style={{ boxShadow: 'rgba(238, 108, 77, 0.3) 0px 10px 40px' }}
                 >
                   <span className="relative z-10">Get a Demo</span>
-                  <div className="absolute inset-0 bg-[var(--landing-primary-hover)] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 bg-[#d95a3d] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </Button>
                 <Button
                   variant="outline"
@@ -542,188 +541,119 @@ const LandingEnhanced = () => {
       {/* Pricing Section */}
       <section id="pricing" ref={pricingRef} className="px-8 py-16 bg-[var(--landing-bg-light)]">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
+          <div className="text-center mb-16">
             <h2 className="text-5xl font-bold text-[var(--landing-text-on-light)] mb-6">
               Simple, <span className="text-[var(--landing-primary)]">transparent pricing</span>
             </h2>
-            <p className="text-xl text-[var(--landing-text-muted-light)] max-w-3xl mx-auto mb-8">
-              Choose the plan that fits your business. No hidden fees, no surprises. Cancel anytime.
+            <p className="text-xl text-[var(--landing-text-muted-light)] max-w-3xl mx-auto">
+              One straightforward price. No hidden fees, no surprises. Pay only for what you use.
             </p>
-
-            {/* Billing Toggle */}
-            <div className="flex items-center justify-center gap-4 mt-8">
-              <span className={`text-lg font-medium transition-colors duration-300 ${!isAnnual ? 'text-[var(--landing-primary)]' : 'text-[var(--landing-text-muted-light)]'}`}>
-                Monthly
-              </span>
-              <button
-                onClick={() => setIsAnnual(!isAnnual)}
-                className="relative w-16 h-8 bg-[var(--landing-text-muted-light)]/30 rounded-full transition-colors duration-300 hover:bg-[var(--landing-text-muted-light)]/40 focus:outline-none focus:ring-2 focus:ring-[var(--landing-primary)] focus:ring-offset-2"
-                style={{ backgroundColor: isAnnual ? 'var(--landing-primary)' : 'rgba(107, 106, 105, 0.3)' }}
-              >
-                <span
-                  className="absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-300"
-                  style={{ transform: isAnnual ? 'translateX(32px)' : 'translateX(0)' }}
-                />
-              </button>
-              <span className={`text-lg font-medium transition-colors duration-300 ${isAnnual ? 'text-[var(--landing-primary)]' : 'text-[var(--landing-text-muted-light)]'}`}>
-                Annual
-              </span>
-            </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* Starter Plan */}
-            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 animate-fade-in">
-              <div className="text-center">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Starter</h3>
-                <p className="text-gray-600 mb-6">Perfect for small teams (up to 2 users)</p>
-                <div className="mb-2">
-                  <span className="text-5xl font-bold text-gray-900">
-                    ${isAnnual ? '288' : '29'}
-                  </span>
-                  <span className="text-gray-600">{isAnnual ? '/year' : '/month'}</span>
+          {/* Pricing Card and Features Side by Side */}
+          <div className="flex justify-center items-stretch gap-0 max-w-6xl mx-auto">
+            {/* Left - Pricing Card (White) */}
+            <div className="pricing-card bg-white rounded-l-3xl shadow-2xl border border-gray-200 opacity-0 p-12 flex flex-col" style={{ width: '50%' }}>
+              <div>
+                <h3 className="text-4xl font-bold text-[var(--landing-text-on-light)] mb-6">$20/user/month</h3>
+                <p className="text-base text-[var(--landing-text-muted-light)] mb-8 leading-relaxed">
+                  Simple per-user pricing that scales with your team. No commitment, no credit card required for your 14-day free trial.
+                </p>
+
+                {/* Plan Features */}
+                <div className="space-y-4 mb-10">
+                  <div className="flex items-start space-x-3">
+                    <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                    </svg>
+                    <span className="text-[var(--landing-text-on-light)] text-base">Unlimited quotes</span>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                    </svg>
+                    <span className="text-[var(--landing-text-on-light)] text-base">Custom form creation</span>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                    </svg>
+                    <span className="text-[var(--landing-text-on-light)] text-base">Template designer</span>
+                  </div>
+                  <div className="flex items-start space-x-3">
+                    <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                    </svg>
+                    <span className="text-[var(--landing-text-on-light)] text-base">Advanced analytics</span>
+                  </div>
                 </div>
-                <div className="h-[52px] mb-6 flex items-center justify-center">
-                  {isAnnual && (
-                    <p className="text-sm text-green-600 font-medium">
-                      Save 17% annually ($24/month)
-                    </p>
-                  )}
-                </div>
-                <Button className="w-full bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900 hover:from-gray-200 hover:to-gray-300 hover:scale-105 transition-all duration-300 mb-8 shadow-md">
-                  Start Free Trial
+
+                <Button
+                  onClick={(e) => {
+                    handleRipple(e);
+                    navigate('/create-account');
+                  }}
+                  className="w-full bg-[#EE6C4D] hover:bg-[#d95a3d] text-white px-8 py-4 text-base font-medium hover:scale-[1.02] transition-all duration-300 mb-6 relative overflow-hidden rounded-lg"
+                >
+                  Start your 14-day free trial
                 </Button>
-              </div>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Up to 2 users</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Unlimited quotes</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Unlimited templates</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Unlimited forms</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Basic analytics</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Standard support</span>
+
+                <div className="flex items-center justify-center gap-6 text-sm text-gray-500">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>No credit card required</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span>Cancel anytime</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Professional Plan */}
-            <div className="bg-white rounded-2xl p-8 shadow-2xl border-2 border-[var(--landing-primary)] hover:shadow-3xl transition-all duration-500 relative hover:-translate-y-2 scale-105 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <span className="bg-[var(--landing-primary)] text-white px-6 py-2 rounded-full text-sm font-semibold shadow-lg">Most Popular</span>
-              </div>
-              <div className="text-center">
-                <h3 className="text-2xl font-bold text-[var(--landing-text-on-light)] mb-2">Professional</h3>
-                <p className="text-[var(--landing-text-muted-light)] mb-6">For growing teams (up to 10 users)</p>
-                <div className="mb-2">
-                  <span className="text-5xl font-bold text-[var(--landing-primary)]">
-                    ${isAnnual ? '948' : '99'}
-                  </span>
-                  <span className="text-[var(--landing-text-muted-light)]">{isAnnual ? '/year' : '/month'}</span>
+            {/* Right - Features List (Light Gray Background) */}
+            <div className="bg-gray-50 rounded-r-3xl shadow-2xl border border-l-0 border-gray-200 p-12 flex flex-col opacity-0 animate-fade-in" style={{ animationDelay: '0.2s', width: '50%' }}>
+              <h4 className="text-2xl font-bold text-[var(--landing-text-on-light)] mb-8">Included in every account:</h4>
+              <div className="space-y-4 mb-8">
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-[var(--landing-text-on-light)] text-base font-medium">Real-time collaboration & sync</span>
                 </div>
-                <div className="h-[52px] mb-6 flex items-center justify-center">
-                  {isAnnual && (
-                    <p className="text-sm text-green-600 font-medium">
-                      Save 20% annually ($79/month)
-                    </p>
-                  )}
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-[var(--landing-text-on-light)] text-base font-medium">Secure encrypted data storage</span>
                 </div>
-                <Button className="w-full bg-[var(--landing-primary)] hover:bg-[var(--landing-primary-hover)] text-white hover:scale-105 hover:shadow-xl transition-all duration-300 mb-8">
-                  Start Free Trial
-                </Button>
-              </div>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Up to 10 users</span>
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-[var(--landing-text-on-light)] text-base font-medium">Role-based access control</span>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Unlimited quotes</span>
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-[var(--landing-text-on-light)] text-base font-medium">PDF export & CSV downloads</span>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Unlimited templates</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Unlimited forms</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Advanced analytics</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Team collaboration</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Priority support</span>
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                  </svg>
+                  <span className="text-[var(--landing-text-on-light)] text-base font-medium">Auto-save & version control</span>
                 </div>
               </div>
-            </div>
 
-            {/* Business Plan */}
-            <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200 hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-              <div className="text-center">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Business</h3>
-                <p className="text-gray-600 mb-6">For larger teams (10+ users)</p>
-                <div className="mb-2">
-                  <span className="text-5xl font-bold text-gray-900">Custom</span>
-                </div>
-                <div className="h-[52px] mb-6 flex items-center justify-center">
-                  <p className="text-sm text-gray-500">Tailored to your needs</p>
-                </div>
-                <Button className="w-full bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900 hover:from-gray-200 hover:to-gray-300 hover:scale-105 transition-all duration-300 mb-8 shadow-md">
-                  Contact Sales
-                </Button>
-              </div>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">10+ users</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Unlimited quotes</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Unlimited templates</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Unlimited forms</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Advanced analytics</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Custom integrations</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-green-600 text-lg">✓</span>
-                  <span className="text-gray-700">Dedicated support</span>
-                </div>
-              </div>
+              <p className="text-xs text-gray-500 mt-auto leading-relaxed">
+                Pricing is in USD and renews automatically unless cancelled. You can add or remove users at any time. Scale up or down as your team grows.
+              </p>
             </div>
           </div>
         </div>
