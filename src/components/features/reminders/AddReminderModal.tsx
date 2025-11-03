@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Bell, Calendar as CalendarIcon, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useQuotesStore } from '@/stores/quotes/quotesStore';
+import { useQuotes } from '@/hooks/queries/useQuotes';
 import { reminderService, type ReminderType } from '@/services/reminderService';
 import { quoteActivityService } from '@/services/quoteActivityService';
 import { toast } from 'sonner';
@@ -34,7 +34,10 @@ interface Reminder {
 }
 
 export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCreated }: AddReminderModalProps) => {
-  const quotes = useQuotesStore((state) => state.quotes);
+  // Get user and quotes using React Query
+  const user = useUser();
+  const { data: quotes = [] } = useQuotes(user?.id);
+
   const [reminderType, setReminderType] = useState<string>('');
   const [alertName, setAlertName] = useState('');
   const [quoteReference, setQuoteReference] = useState<string>('none');

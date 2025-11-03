@@ -1,46 +1,32 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import QuoteCreatorWizard from "@/components/features/quotes/creation/QuoteCreatorWizard";
-import { supabase } from "@/integrations/supabase/client";
-import { useQuotesStore } from "@/stores/quotes/quotesStore";
+import { useQuotes } from "@/stores/quotes/quotesStore";
+import { useUser } from "@/auth";
 
 const NewQuote = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [user, setUser] = useState<any>(null);
-  const quotes = useQuotesStore((state) => state.quotes);
-  
+
+  // Use new auth system
+  const user = useUser();
+  const { data: quotes = [] } = useQuotes(user?.id);
+
   // Check if we're editing a draft quote
   const editProposalNumber = searchParams.get('edit');
   const existingQuote = editProposalNumber ? quotes.find(q => q.proposal_number === editProposalNumber) : null;
-  
+
   // Get quote name from URL params or existing quote, fallback to empty string
   const initialQuoteName = existingQuote?.project_name || searchParams.get('name') || "";
   const [quoteName, setQuoteName] = useState(initialQuoteName);
 
+  // Auth is handled by AuthProvider
   useEffect(() => {
-    // Check authentication
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/auth");
-        return;
-      }
-      setUser(session.user);
-    };
+    if (!user) {
+      navigate("/auth");
+    }
+  }, [user, navigate]);
 
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      if (!session) {
-        navigate("/auth");
-      } else {
-        setUser(session.user);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
 
   // Update quote name if URL params change
   useEffect(() => {

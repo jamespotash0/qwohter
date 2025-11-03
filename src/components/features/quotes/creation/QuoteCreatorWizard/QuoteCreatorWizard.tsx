@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
-import { useQuotesStore } from "@/stores/quotes/quotesStore";
+import { useCreateQuote, useUpdateQuote } from "@/stores/quotes/quotesStore";
 import { useCurrentOrganization } from "@/hooks/queries";
 import { useUser } from "@/auth";
 import { QuoteCreatorWizardProps } from './types/wizardTypes';
@@ -13,14 +13,23 @@ import { StepNavigation } from './components/StepNavigation';
 import { StepContent } from './components/StepContent';
 import { NavigationFooter } from './components/NavigationFooter';
 
-const QuoteCreatorWizard = ({ 
-  quoteName, 
-  onBackToDashboard, 
-  onQuoteNameChange, 
-  existingQuote 
+const QuoteCreatorWizard = ({
+  quoteName,
+  onBackToDashboard,
+  onQuoteNameChange,
+  existingQuote
 }: QuoteCreatorWizardProps) => {
-  const createQuote = useQuotesStore((state) => state.createQuote);
-  const updateQuote = useQuotesStore((state) => state.updateQuote);
+  const { mutate: createQuoteMutation } = useCreateQuote();
+  const { mutate: updateQuoteMutation } = useUpdateQuote();
+
+  // Wrappers for backward compatibility
+  const createQuote = (quoteData: any) => {
+    createQuoteMutation(quoteData);
+  };
+
+  const updateQuote = (id: string, updates: any) => {
+    updateQuoteMutation({ id, updates });
+  };
   const [activeStep, setActiveStep] = useState(0);
   const [editingQuoteName, setEditingQuoteName] = useState(false);
   const [localQuoteName, setLocalQuoteName] = useState(quoteName);

@@ -3,8 +3,8 @@
  * Use hooks from @/hooks/queries instead
  *
  * Migration:
- * - import { useQuotes, useCreateQuote, useUpdateQuote } from '@/hooks/queries'
- * - const { data: quotes } = useQuotes(userId)
+ * - import { useQuotes, useCreateQuote, useUpdateQuote } from '@/hooks/queries/useQuotes'
+ * - const { data: quotes = [] } = useQuotes(userId)
  * - const { mutate: createQuote } = useCreateQuote()
  * - const { mutate: updateQuote } = useUpdateQuote()
  *
@@ -14,11 +14,14 @@
 // Re-export types from service layer
 export type { Quote, QuoteFilters, CreateQuoteData, UpdateQuoteData } from '@/services/quotesService';
 
-// Deprecated: These should use React Query hooks instead
-export { useQuotes as useQuotesStore } from '@/hooks/queries';
+// Re-export React Query hooks for backward compatibility
+export {
+  useQuotes,
+  useQuote,
+  useCreateQuote,
+  useUpdateQuote,
+  useDeleteQuote,
+} from '@/hooks/queries/useQuotes';
 
-// Deprecated: Use useQuote(quoteId) instead
-export const useCurrentQuote = () => {
-  console.warn('useCurrentQuote is deprecated. Use useQuote(quoteId) from @/hooks/queries instead');
-  return null;
-};
+// Legacy alias for backward compatibility
+export { useQuotes as useQuotesStore } from '@/hooks/queries/useQuotes';

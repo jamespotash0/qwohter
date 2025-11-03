@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuotesStore, Quote } from "@/stores/quotes/quotesStore";
+import { Quote, useUpdateQuote } from "@/stores/quotes/quotesStore";
 import { useToast } from "@/hooks/use-toast";
 import UnifiedQuoteEditor from "@/components/features/quotes/editing/UnifiedQuoteEditor";
 import { SmartQuoteData } from "@/templates/SmartQuoteTemplate";
@@ -17,12 +17,35 @@ const QuoteEdit = () => {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const updateQuote = useQuotesStore((state) => state.updateQuote);
-  const updateWallSystem = useQuotesStore((state) => state.updateWallSystem);
-  const removeWallSystem = useQuotesStore((state) => state.removeWallSystem);
-  const markAsDownloaded = useQuotesStore((state) => state.markAsDownloaded);
-  const saveQuoteCustomization = useQuotesStore((state) => state.saveQuoteCustomization);
-  const fetchQuotes = useQuotesStore((state) => state.fetchQuotes);
+  // Use React Query mutation hook
+  const { mutate: updateQuoteMutation } = useUpdateQuote();
+
+  // Wrapper functions for backward compatibility with UnifiedQuoteEditor
+  const updateQuote = (id: string, updates: any) => {
+    updateQuoteMutation({ id, updates });
+  };
+
+  // These were convenience wrappers that called updateQuote
+  const updateWallSystem = (id: string, wallSystemUpdates: any) => {
+    updateQuoteMutation({ id, updates: { wall_details: wallSystemUpdates } });
+  };
+
+  const removeWallSystem = (id: string) => {
+    updateQuoteMutation({ id, updates: { wall_details: null } });
+  };
+
+  const markAsDownloaded = (id: string) => {
+    updateQuoteMutation({ id, updates: { downloaded: true } });
+  };
+
+  const saveQuoteCustomization = (id: string, customization: any) => {
+    updateQuoteMutation({ id, updates: { customization } });
+  };
+
+  // React Query automatically refetches, no manual fetch needed
+  const fetchQuotes = () => {
+    // No-op: React Query handles this automatically
+  };
 
   // Alias for compatibility
   const refreshQuotes = fetchQuotes;

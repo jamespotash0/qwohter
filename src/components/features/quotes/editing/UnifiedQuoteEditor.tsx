@@ -18,7 +18,6 @@ import { MixedContentEngine, MixedContentSection } from '@/utils/mixedContentEng
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
 import { defaultSectionVisibility, SectionVisibilityConfig } from '@/templates/BaseTemplate/types';
 import { Quote } from '@/stores/quotes/quotesStore';
-import { useCurrentQuote } from '@/stores/quotes/quotesStore';
 import { useCurrentOrganization } from '@/hooks/queries';
 import { useUser } from '@/auth';
 import { QuoteDataPanelCore as QuoteDataPanel } from './UnifiedQuoteEditor/QuoteDataPanel/QuoteDataPanelCore';
@@ -63,12 +62,9 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   className = ''
 }) => {
   const { toast } = useToast();
-  
-  // Get current quote from realtime store
-  const realtimeQuote = useCurrentQuote();
-  
-  // Use realtime quote if available and matches the current quote ID, otherwise use prop
-  const activeQuote = (realtimeQuote?.id === quote.id) ? realtimeQuote : quote;
+
+  // React Query handles realtime updates automatically, use the prop
+  const activeQuote = quote;
   
   // Core unified state
   const [state, setState] = useState<UnifiedQuoteState>({
