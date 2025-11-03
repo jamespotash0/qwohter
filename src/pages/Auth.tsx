@@ -513,9 +513,9 @@ const Auth = () => {
               onClick={() => navigate('/')}
             >
               <img
-                src="/logos/Landing_Page_Logo_Light.svg"
+                src="/logos/New_Landing_Page_Logo_DarkonLightBackground.svg"
                 alt="Qwohter Logo"
-                className="h-8 w-auto"
+                className="h-8 w-auto transition-transform duration-200 hover:scale-105"
               />
             </div>
           </div>

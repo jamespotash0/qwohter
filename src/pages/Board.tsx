@@ -87,6 +87,7 @@ export default function Board() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const columnRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const isAnimatingRef = useRef(false);
+  const lastColumnDropTarget = useRef<{ columnId: string; side: 'left' | 'right' } | null>(null);
 
   useEffect(() => {
     console.log('📋 Board page mounted - initializing board and setting up subscriptions');
@@ -135,7 +136,10 @@ export default function Board() {
   const handleDragOver = (e: React.DragEvent, columnName: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    setDragOverColumn(columnName);
+    // Only show column drop zone if we're dragging a card, not a column
+    if (!draggedColumnId) {
+      setDragOverColumn(columnName);
+    }
   };
 
   const handleDragLeave = () => {
@@ -146,6 +150,9 @@ export default function Board() {
   const handleCardDragOver = (e: React.DragEvent, cardId: string) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Don't show card drop indicators if we're dragging a column
+    if (draggedColumnId) return;
 
     // Determine if hovering over top or bottom half of the card
     const rect = e.currentTarget.getBoundingClientRect();
@@ -285,21 +292,30 @@ export default function Board() {
   const handleColumnDragOver = (e: React.DragEvent, columnId: string) => {
     e.preventDefault();
     if (draggedColumnId && draggedColumnId !== columnId) {
-      setDragOverColumnId(columnId);
+      // Check if we already have an indicator set for this column (using ref for immediate check)
+      if (lastColumnDropTarget.current?.columnId === columnId) {
+        // Already showing indicator for this column, don't recalculate
+        return;
+      }
 
-      // Determine which side based on dragged column position relative to target
+      // Calculate which side to show indicator on
       const sortedColumns = [...workflowColumns].sort((a, b) => a.column_order - b.column_order);
       const draggedIndex = sortedColumns.findIndex(c => c.id === draggedColumnId);
       const targetIndex = sortedColumns.findIndex(c => c.id === columnId);
 
-      // If dragging from left to right, show indicator on right side
-      // If dragging from right to left, show indicator on left side
+      // If dragging from left to right, always show indicator on right side of target
+      // If dragging from right to left, always show indicator on left side of target
       const side = draggedIndex < targetIndex ? 'right' : 'left';
+
+      // Update both ref (immediate) and state (for rendering)
+      lastColumnDropTarget.current = { columnId, side };
+      setDragOverColumnId(columnId);
       setColumnDropSide(side);
     }
   };
 
   const handleColumnDragLeave = () => {
+    lastColumnDropTarget.current = null;
     setDragOverColumnId(null);
     setColumnDropSide(null);
   };
@@ -314,6 +330,7 @@ export default function Board() {
       setDraggedColumnId(null);
       setDragOverColumnId(null);
       setColumnDropSide(null);
+      lastColumnDropTarget.current = null;
       return;
     }
 
@@ -323,6 +340,7 @@ export default function Board() {
     setDraggedColumnId(null);
     setDragOverColumnId(null);
     setColumnDropSide(null);
+    lastColumnDropTarget.current = null;
 
     // Get sorted columns
     const sortedColumns = [...workflowColumns].sort((a, b) => a.column_order - b.column_order);
@@ -574,7 +592,7 @@ export default function Board() {
           <p className="text-gray-600 mb-4">No workflow columns found. Run the migration to create default columns.</p>
         </div>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-4 pt-2 pl-2 h-[calc(100vh-10rem)]">
+        <div className="flex gap-4 overflow-x-auto pb-4 pt-2 pl-2 flex-1 min-h-0">
           {workflowColumns
             .sort((a, b) => a.column_order - b.column_order)
             .map(column => {
@@ -594,8 +612,6 @@ export default function Board() {
                   }}
                   className="flex flex-col gap-1 relative"
                   style={isAnimatingRef.current ? { willChange: 'transform' } : undefined}
-                  draggable={!column.is_default && !isCollapsed}
-                  onDragStart={(e) => !column.is_default && handleColumnDragStart(e, column.id)}
                   onDragOver={(e) => handleColumnDragOver(e, column.id)}
                   onDragLeave={handleColumnDragLeave}
                   onDrop={(e) => handleColumnDrop(e, column.id)}
@@ -660,13 +676,17 @@ export default function Board() {
 
                           {/* Drag handle - only show for non-default columns */}
                           {!column.is_default && (
-                            <button
+                            <div
+                              draggable
+                              onDragStart={(e) => {
+                                e.stopPropagation();
+                                handleColumnDragStart(e, column.id);
+                              }}
                               className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing"
-                              onMouseDown={(e) => e.stopPropagation()}
                               title="Drag to reorder column"
                             >
                               <DragIcon className="w-4 h-4 text-gray-400" />
-                            </button>
+                            </div>
                           )}
 
                           {isEditing ? (
@@ -774,7 +794,7 @@ export default function Board() {
                   {/* Column Cards */}
                   {!isCollapsed && (
                     <div
-                      className="space-y-2 px-2 pb-2 flex-1 overflow-y-auto min-h-[100px]"
+                      className="space-y-1.5 px-2 pb-2 overflow-y-auto h-[calc(100vh-13rem)]"
                       onDragOver={(e) => {
                         // Only handle at container level if empty, otherwise cards handle it
                         if (columnProjects.length === 0) {
@@ -817,8 +837,12 @@ export default function Board() {
                               onDragStart={(e) => handleDragStart(e, project.id)}
                               onDragOver={(e) => handleCardDragOver(e, project.id)}
                               onDragLeave={handleCardDragLeave}
+                              onMouseDown={(e) => {
+                                // Prevent column drag when clicking on card
+                                e.stopPropagation();
+                              }}
                               onClick={() => setSelectedProject(project)}
-                              className={`bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col h-36 relative ${
+                              className={`bg-white rounded-lg border border-gray-200 p-2.5 cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col min-h-[120px] relative ${
                                 draggedProject === project.id ? 'opacity-50' : ''
                               }`}
                             >
@@ -846,7 +870,7 @@ export default function Board() {
                             </div>
 
                             {/* Card Header */}
-                            <div className="flex-1 min-w-0 pr-6">
+                            <div className="flex-1 min-w-0 pr-6 mb-2">
                               <h4 className="font-medium text-gray-900 text-sm line-clamp-1 mb-1">
                                 {quote?.project_name || 'Untitled Project'}
                               </h4>
@@ -859,7 +883,7 @@ export default function Board() {
                                 </p>
                               )}
                               {clientAddress && clientAddress !== '-' && clientAddress !== 'N/A' && clientAddress !== 'Unknown' && (
-                                <div className="flex items-center gap-1 text-[0.65rem]">
+                                <div className="flex items-center gap-1 text-[0.65rem] mt-0.5">
                                   <MapPinIcon className="w-3 h-3 flex-shrink-0 text-gray-400" />
                                   <p className="truncate text-gray-400">{clientAddress}</p>
                                 </div>

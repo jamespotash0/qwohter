@@ -1,41 +1,92 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContent } from "@/components/common/layout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   DollarSign,
   TrendingUp,
   FileText,
   Target,
-  Users,
-  Calendar,
+  X,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  // DialogHeader,
+  // DialogTitle,
+} from "@/components/ui/dialog";
 import { useQuotesStore } from "@/stores/quotes/quotesStore";
-import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
 import { useOrganizationStore } from "@/stores/organization/organizationStore";
 import { useAuthStore } from "@/stores/auth/authStore";
-import { AnalyticsPageCharts } from "@/components/common/charts/AnalyticsPageCharts";
+
+// Import new analytics components
+import { KPICard } from "@/components/analytics";
+import { EnhancedChartCard, TimePeriod } from "@/components/analytics/EnhancedChartCard";
+import {
+  generateAnalyticsSummary,
+  formatCurrency,
+  calculateWinRate,
+  filterMainVersionQuotes,
+  // calculateAverageGrossProfitPerQuote,
+  // calculateAverageRevenuePerQuote,
+  // calculateAverageQuoteValue,
+  calculateAveragesOverTime,
+  calculateTotalsOverTime,
+  calculateWonRejectedOverTime,
+  calculateUserMetrics,
+  makeAveragesCumulative,
+  makeTotalsCumulative,
+  makeWonRejectedCumulative,
+} from "@/utils/analyticsCalculations";
+
+// Import Recharts components
+import {
+  // AreaChart,
+  // Area,
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 /**
- * Streamlined Analytics using AppLayout
+ * Analytics Dashboard - Comprehensive Metrics Tracking
  *
- * This demonstrates the new unified approach:
- * - AppLayout handles authentication, layout, sidebar automatically
- * - ContentCard provides consistent card styling
- * - Focus only on analytics-specific content
+ * Features:
+ * - KPI cards with real-time trends
+ * - Time period toggles (Weekly/Monthly/Yearly)
+ * - Revenue tracking and conversion metrics
+ * - Quote source performance
+ * - Export and enlarge capabilities
  */
 const Analytics = () => {
-  const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'monthly' | 'annual'>('monthly');
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('monthly');
+  const [averagesTimePeriod, setAveragesTimePeriod] = useState<TimePeriod>('monthly');
+  const [totalsTimePeriod, setTotalsTimePeriod] = useState<TimePeriod>('monthly');
+  const [teamTimePeriod, setTeamTimePeriod] = useState<TimePeriod>('monthly');
+  const [wonRejectedTimePeriod, setWonRejectedTimePeriod] = useState<TimePeriod>('monthly');
+  const [averagesPeriodOffset, setAveragesPeriodOffset] = useState(0);
+  const [totalsPeriodOffset, setTotalsPeriodOffset] = useState(0);
+  const [wonRejectedPeriodOffset, setWonRejectedPeriodOffset] = useState(0);
+  const [teamPeriodOffset, setTeamPeriodOffset] = useState(0);
+  const [averagesCumulative, setAveragesCumulative] = useState(false);
+  const [totalsCumulative, setTotalsCumulative] = useState(false);
+  const [wonRejectedCumulative, setWonRejectedCumulative] = useState(false);
+  const [enlargedChart, setEnlargedChart] = useState<string | null>(null);
   const quotes = useQuotesStore((state) => state.quotes);
   const quotesLoading = useQuotesStore((state) => state.isLoading);
   const fetchQuotes = useQuotesStore((state) => state.fetchQuotes);
   const subscribeToRealtime = useQuotesStore((state) => state.subscribeToRealtime);
   const unsubscribeFromRealtime = useQuotesStore((state) => state.unsubscribeFromRealtime);
-  // Use Zustand stores directly to avoid re-fetches
   const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
   const profile = useAuthStore((state) => state.profile);
 
@@ -50,272 +101,1592 @@ const Analytics = () => {
     getCurrentUser();
   }, []);
 
-  // Fetch quotes and setup realtime subscription when page mounts
+  // Fetch quotes and setup realtime subscription
   useEffect(() => {
     if (!user) return;
 
     console.log('📊 Analytics page mounted - fetching quotes and setting up subscription');
 
-    // Fetch quotes
     fetchQuotes({ refresh: true });
-
-    // Setup realtime subscription
     subscribeToRealtime();
 
-    // Cleanup: unsubscribe when page unmounts
     return () => {
       console.log('🧹 Analytics page unmounting - cleaning up subscription');
       unsubscribeFromRealtime();
     };
-  }, [user]); // Only re-run if user changes
+  }, [user]);
 
-  const parseCurrency = (formatted: string | number): number => {
-    if (typeof formatted === 'number') return formatted;
-    return Number(formatted.toString().replace(/[^0-9.-]+/g, ''));
+  // Filter to main versions only to prevent double-counting across versions
+  const mainVersionQuotes = useMemo(() => {
+    return filterMainVersionQuotes(quotes);
+  }, [quotes]);
+
+  // Generate comprehensive analytics using new calculation utilities
+  const analytics = useMemo(() => {
+    const result = generateAnalyticsSummary(mainVersionQuotes, timePeriod);
+    // Debug: Check userMetrics data
+    console.log('Analytics userMetrics:', result.userMetrics);
+    console.log('Sample quotes - created_by_name:', mainVersionQuotes.slice(0, 3).map(q => ({
+      id: q.id,
+      created_by_name: q.created_by_name,
+      creator_name: q.creator_name
+    })));
+    return result;
+  }, [mainVersionQuotes, timePeriod]);
+
+  // Individual chart data with their own time periods
+  const averagesData = useMemo(() => {
+    const data = calculateAveragesOverTime(mainVersionQuotes, averagesTimePeriod, 12, averagesPeriodOffset);
+    return averagesCumulative ? makeAveragesCumulative(data) : data;
+  }, [mainVersionQuotes, averagesTimePeriod, averagesPeriodOffset, averagesCumulative]);
+
+  const totalsData = useMemo(() => {
+    const data = calculateTotalsOverTime(mainVersionQuotes, totalsTimePeriod, 12, totalsPeriodOffset);
+    return totalsCumulative ? makeTotalsCumulative(data) : data;
+  }, [mainVersionQuotes, totalsTimePeriod, totalsPeriodOffset, totalsCumulative]);
+
+  const wonRejectedData = useMemo(() => {
+    const data = calculateWonRejectedOverTime(mainVersionQuotes, wonRejectedTimePeriod, 12, wonRejectedPeriodOffset);
+    return wonRejectedCumulative ? makeWonRejectedCumulative(data) : data;
+  }, [mainVersionQuotes, wonRejectedTimePeriod, wonRejectedPeriodOffset, wonRejectedCumulative]);
+
+  const teamData = useMemo(() => {
+    return calculateUserMetrics(mainVersionQuotes);
+  }, [mainVersionQuotes]);
+
+  // Chart color scheme
+  const COLORS = {
+    primary: '#EE6C4D',
+    blue: '#3B82F6',
+    green: '#10B981',
+    purple: '#8B5CF6',
+    orange: '#F97316',
+    teal: '#14B8A6',
   };
 
-  // Calculate metrics based on view mode
-  const metrics = useMemo(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
+  // Export handler for charts
+  const handleExport = (chartName: string) => {
+    console.log(`Exporting ${chartName} data...`);
+    // TODO: Implement CSV export
+  };
 
-    // Group quotes by version to avoid counting duplicates
-    const quoteGroups = groupQuotesByVersion(quotes);
-
-    // Filter quote groups based on view mode - use created_at for quote creation metrics
-    // Use base version creation date for filtering
-    const filteredQuoteGroups = viewMode === 'monthly'
-      ? quoteGroups.filter(group => {
-          const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
-          if (!baseVersion) return false;
-          const createdDate = new Date(baseVersion.created_at);
-          return createdDate.getFullYear() === currentYear && createdDate.getMonth() === currentMonth;
-        })
-      : quoteGroups.filter(group => {
-          const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
-          if (!baseVersion) return false;
-          const createdDate = new Date(baseVersion.created_at);
-          return createdDate.getFullYear() === currentYear;
-        });
-
-    // Quote groups by user - count groups, not individual versions
-    const quotesByUser: Record<string, number> = {};
-    quoteGroups.forEach(group => {
-      const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
-      const userName = baseVersion?.creator_name || 'Unknown';
-      quotesByUser[userName] = (quotesByUser[userName] || 0) + 1;
-    });
-
-    // Quote groups per month (for current year)
-    const quotesPerMonth: Record<string, number> = {};
-    if (viewMode === 'annual') {
-      for (let month = 0; month < 12; month++) {
-        const monthQuoteGroups = quoteGroups.filter(group => {
-          const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
-          if (!baseVersion) return false;
-          const createdDate = new Date(baseVersion.created_at);
-          return createdDate.getFullYear() === currentYear && createdDate.getMonth() === month;
-        });
-        const monthName = new Date(currentYear, month).toLocaleDateString('en-US', { month: 'short' });
-        quotesPerMonth[monthName] = monthQuoteGroups.length;
-      }
-    } else {
-      // For monthly view, show weeks
-      const startOfMonth = new Date(currentYear, currentMonth, 1);
-      const endOfMonth = new Date(currentYear, currentMonth + 1, 0);
-      const weeks = Math.ceil(endOfMonth.getDate() / 7);
-
-      for (let week = 0; week < weeks; week++) {
-        const weekStart = week * 7 + 1;
-        const weekEnd = Math.min((week + 1) * 7, endOfMonth.getDate());
-        const weekQuoteGroups = filteredQuoteGroups.filter(group => {
-          const baseVersion = group.versions.find(v => !v.proposal_number.includes('.'));
-          if (!baseVersion) return false;
-          const day = new Date(baseVersion.created_at).getDate();
-          return day >= weekStart && day <= weekEnd;
-        });
-        quotesPerMonth[`Week ${week + 1}`] = weekQuoteGroups.length;
-      }
-    }
-
-    // Calculate revenue using won_at timestamp for accurate period filtering
-    const wonQuoteGroupsInPeriod = viewMode === 'monthly'
-      ? quoteGroups.filter(group => {
-          const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
-          if (!wonVersion) return false;
-          const wonDate = new Date(wonVersion.won_at);
-          return wonDate.getFullYear() === currentYear && wonDate.getMonth() === currentMonth;
-        })
-      : quoteGroups.filter(group => {
-          const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
-          if (!wonVersion) return false;
-          const wonDate = new Date(wonVersion.won_at);
-          return wonDate.getFullYear() === currentYear;
-        });
-
-    const rejectedQuoteGroupsInPeriod = viewMode === 'monthly'
-      ? quoteGroups.filter(group => {
-          const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
-          if (!rejectedVersion) return false;
-          const rejectedDate = new Date(rejectedVersion.rejected_at);
-          return rejectedDate.getFullYear() === currentYear && rejectedDate.getMonth() === currentMonth && !group.versions.some(v => v.status === 'Won');
-        })
-      : quoteGroups.filter(group => {
-          const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
-          if (!rejectedVersion) return false;
-          const rejectedDate = new Date(rejectedVersion.rejected_at);
-          return rejectedDate.getFullYear() === currentYear && !group.versions.some(v => v.status === 'Won');
-        });
-
-    const totalRevenue = wonQuoteGroupsInPeriod.reduce((sum, group) => {
-      const wonVersion = group.versions.find(v => v.status === 'Won');
-      if (!wonVersion) return sum;
-      // Use denormalized total_value field if available, fallback to price_details
-      const total = wonVersion.total_value || wonVersion.price_details?.final_selling_price || 0;
-      return sum + (typeof total === 'number' ? total : parseCurrency(total));
-    }, 0);
-
-    const wonQuotes = wonQuoteGroupsInPeriod.length;
-    const rejectedQuotes = rejectedQuoteGroupsInPeriod.length;
-
-    // Win Rate = Won / (Won + Lost) - Same as conversion rate for this use case
-    const winRate = (wonQuotes + rejectedQuotes) > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;
-
-    // Conversion Rate = Won / (Won + Rejected) - Only quotes that reached a decision
-    // This is more accurate than Won / Total Created, since not all quotes may be decided yet
-    const conversionRate = (wonQuotes + rejectedQuotes) > 0 ? (wonQuotes / (wonQuotes + rejectedQuotes)) * 100 : 0;
-
-    return {
-      totalQuotes: filteredQuoteGroups.length,
-      totalRevenue,
-      quotesByUser,
-      quotesPerMonth,
-      topUser: Object.entries(quotesByUser).sort((a, b) => b[1] - a[1])[0] || ['None', 0],
-      averageRevenuePerQuote: wonQuotes > 0 ? totalRevenue / wonQuotes : 0,
-      winRate,
-      conversionRate,
-    };
-  }, [quotes, viewMode]);
+  // Enlarge handler for charts
+  const handleEnlarge = (chartName: string) => {
+    setEnlargedChart(chartName);
+  };
 
   return (
     <PageContent
       title="Analytics"
-      subtitle="Track performance metrics and business insights"
+      subtitle="Comprehensive performance tracking and business insights"
       showPageHeader={true}
-      headerActions={
-        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-[var(--sidebar-bg)] p-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setViewMode('monthly')}
-            className={`transition-all duration-200 ${
-              viewMode === 'monthly'
-                ? 'bg-[var(--sidebar-nav-bg-active)] text-[var(--sidebar-nav-text-active)] hover:bg-[var(--sidebar-nav-bg-active)] hover:text-[var(--sidebar-nav-text-active)]'
-                : 'text-[var(--sidebar-nav-text)] hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]'
-            }`}
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            Monthly
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setViewMode('annual')}
-            className={`transition-all duration-200 ${
-              viewMode === 'annual'
-                ? 'bg-[var(--sidebar-nav-bg-active)] text-[var(--sidebar-nav-text-active)] hover:bg-[var(--sidebar-nav-bg-active)] hover:text-[var(--sidebar-nav-text-active)]'
-                : 'text-[var(--sidebar-nav-text)] hover:bg-[var(--sidebar-nav-bg-hover)] hover:text-[var(--sidebar-nav-text-hover)]'
-            }`}
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            Annual
-          </Button>
-        </div>
-      }
     >
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Total Revenue */}
-        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800">
-                <DollarSign className="w-6 h-6 text-green-600 dark:text-green-300" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">{viewMode === 'monthly' ? 'Revenue This Month' : 'Revenue This Year'}</h3>
-                <p className="text-2xl font-bold text-[var(--content-header-text)]">${(Math.round(metrics.totalRevenue * 100) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                <p className="text-xs mt-1 text-[var(--content-muted-text)]">Won quotes only</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Top User */}
-        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800">
-                <Users className="w-6 h-6 text-blue-600 dark:text-blue-300" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Top Contributor</h3>
-                <p className="text-2xl font-bold text-[var(--content-header-text)] truncate">{metrics.topUser[0]}</p>
-                <p className="text-xs mt-1 text-[var(--content-muted-text)]">{metrics.topUser[1]} quotes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Average Revenue Per Quote */}
-        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
-                <DollarSign className="w-6 h-6 text-purple-600 dark:text-purple-300" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Avg Revenue/Quote</h3>
-                <p className="text-2xl font-bold text-[var(--content-header-text)]">${Math.round(metrics.averageRevenuePerQuote).toLocaleString()}</p>
-                <p className="text-xs mt-1 text-[var(--content-muted-text)]">Won quotes only</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Conversion Rate */}
-        <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
-          <CardContent className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900 dark:to-orange-800">
-                <Target className="w-6 h-6 text-orange-600 dark:text-orange-300" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Conversion Rate</h3>
-                <p className="text-2xl font-bold text-[var(--content-header-text)]">{Math.round(metrics.conversionRate)}%</p>
-                <p className="text-xs mt-1 text-[var(--content-muted-text)]">Won vs Total quotes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Section */}
+      {/* Loading State */}
       {quotesLoading ? (
-        <div className="text-center py-12">
-          <div className="w-8 h-8 border-4 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted">Loading analytics data...</p>
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="w-12 h-12 border-4 border-[#EE6C4D] border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading analytics data...</p>
         </div>
-      ) : quotes.length > 0 ? (
-        <AnalyticsPageCharts quotes={quotes} viewMode={viewMode} />
       ) : (
-        <div className="text-center py-12">
-          <FileText className="h-12 w-12 text-muted mx-auto mb-4 opacity-50" />
-          <p className="text-muted mb-4">No quotes data available</p>
-          <p className="text-sm text-muted">Create some quotes to see analytics</p>
-        </div>
+        <>
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <KPICard
+              title="Total Revenue (All Time)"
+              value={formatCurrency(mainVersionQuotes.filter(q => q.status === 'Won').reduce((sum, q) => sum + (q.total_value || 0), 0))}
+              subtitle="Lifetime earnings"
+              icon={DollarSign}
+              iconColor="orange"
+            />
+
+            <KPICard
+              title="This Week's Revenue"
+              value={analytics.totalRevenue.formattedValue}
+              subtitle="Last 7 days"
+              icon={TrendingUp}
+              iconColor="green"
+              trend={{
+                value: analytics.totalRevenue.trend,
+                direction: analytics.totalRevenue.trendDirection,
+                label: 'vs last week'
+              }}
+            />
+
+            <KPICard
+              title="Quote Win Rate"
+              value={`${calculateWinRate(mainVersionQuotes).toFixed(1)}%`}
+              subtitle="Won / Decided (Won+Rejected)"
+              icon={Target}
+              iconColor="blue"
+            />
+
+            <KPICard
+              title="Total Quotes This Week"
+              value={(() => {
+                const now = new Date();
+                // Get the start of this week (Sunday)
+                const startOfThisWeek = new Date(now);
+                startOfThisWeek.setDate(now.getDate() - now.getDay());
+                startOfThisWeek.setHours(0, 0, 0, 0);
+
+                const thisWeekCount = mainVersionQuotes.filter(q => {
+                  const createdDate = new Date(q.created_at);
+                  return createdDate >= startOfThisWeek;
+                }).length;
+
+                return thisWeekCount.toString();
+              })()}
+              subtitle="Since Sunday"
+              icon={FileText}
+              iconColor="purple"
+              trend={(() => {
+                const now = new Date();
+
+                // Get the start of this week (Sunday)
+                const startOfThisWeek = new Date(now);
+                startOfThisWeek.setDate(now.getDate() - now.getDay());
+                startOfThisWeek.setHours(0, 0, 0, 0);
+
+                // Get the start of last week (Sunday)
+                const startOfLastWeek = new Date(startOfThisWeek);
+                startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
+
+                // Count quotes this week
+                const thisWeekCount = mainVersionQuotes.filter(q => {
+                  const createdDate = new Date(q.created_at);
+                  return createdDate >= startOfThisWeek;
+                }).length;
+
+                // Count quotes last week
+                const lastWeekCount = mainVersionQuotes.filter(q => {
+                  const createdDate = new Date(q.created_at);
+                  return createdDate >= startOfLastWeek && createdDate < startOfThisWeek;
+                }).length;
+
+                // Calculate trend
+                if (lastWeekCount === 0) {
+                  return thisWeekCount > 0 ? {
+                    value: 100,
+                    direction: 'up' as const,
+                    label: 'vs last week'
+                  } : undefined;
+                }
+
+                const trendValue = ((thisWeekCount - lastWeekCount) / lastWeekCount) * 100;
+
+                return {
+                  value: Math.abs(trendValue),
+                  direction: trendValue >= 0 ? 'up' as const : 'down' as const,
+                  label: 'vs last week'
+                };
+              })()}
+            />
+          </div>
+
+          {/* Charts Section */}
+          {quotes.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Row 1: Average and Total Metrics Over Time */}
+              {/* Average Quote Metrics Over Time */}
+              <EnhancedChartCard
+                title="Average Quote Metrics Over Time"
+                subtitle="Track profit, revenue, and value trends"
+                showTimePeriodToggle={true}
+                showCumulativeToggle={true}
+                isCumulative={averagesCumulative}
+                onCumulativeToggle={setAveragesCumulative}
+                onTimePeriodChange={setAveragesTimePeriod}
+                onPeriodOffsetChange={setAveragesPeriodOffset}
+                defaultTimePeriod={averagesTimePeriod}
+                onExport={() => handleExport('averages')}
+                onExpand={() => handleEnlarge('averages')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  {averagesCumulative ? (
+                    <LineChart data={averagesData} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={10}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (averagesTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            avgGrossProfit: 'Avg Gross Profit',
+                            avgRevenue: 'Avg Revenue',
+                            avgValue: 'Avg Quote Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgGrossProfit"
+                        stroke={COLORS.green}
+                        strokeWidth={2}
+                        name="Avg Gross Profit"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgRevenue"
+                        stroke={COLORS.blue}
+                        strokeWidth={2}
+                        name="Avg Revenue"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgValue"
+                        stroke={COLORS.purple}
+                        strokeWidth={2}
+                        name="Avg Quote Value"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  ) : (
+                    <BarChart data={averagesData} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={10}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (averagesTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            avgGrossProfit: 'Avg Gross Profit',
+                            avgRevenue: 'Avg Revenue',
+                            avgValue: 'Avg Quote Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Bar dataKey="avgGrossProfit" fill={COLORS.green} name="Avg Gross Profit" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avgRevenue" fill={COLORS.blue} name="Avg Revenue" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avgValue" fill={COLORS.purple} name="Avg Quote Value" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Total Metrics Over Time */}
+              <EnhancedChartCard
+                title="Total Metrics Over Time"
+                subtitle="Revenue, gross profit, and pipeline value trends"
+                showTimePeriodToggle={true}
+                showCumulativeToggle={true}
+                isCumulative={totalsCumulative}
+                onCumulativeToggle={setTotalsCumulative}
+                onTimePeriodChange={setTotalsTimePeriod}
+                onPeriodOffsetChange={setTotalsPeriodOffset}
+                defaultTimePeriod={totalsTimePeriod}
+                onExport={() => handleExport('totals')}
+                onExpand={() => handleEnlarge('totals')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  {totalsCumulative ? (
+                    <LineChart data={totalsData} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={10}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (totalsTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            revenue: 'Revenue',
+                            grossProfit: 'Gross Profit',
+                            pipelineValue: 'Total Pipeline Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke={COLORS.green}
+                        strokeWidth={2}
+                        name="Revenue"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="grossProfit"
+                        stroke={COLORS.blue}
+                        strokeWidth={2}
+                        name="Gross Profit"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="pipelineValue"
+                        stroke={COLORS.orange}
+                        strokeWidth={2}
+                        name="Total Pipeline Value"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  ) : (
+                    <BarChart data={totalsData} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={10}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (totalsTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            revenue: 'Revenue',
+                            grossProfit: 'Gross Profit',
+                            pipelineValue: 'Total Pipeline Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Bar dataKey="revenue" fill={COLORS.green} name="Revenue" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="grossProfit" fill={COLORS.blue} name="Gross Profit" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="pipelineValue" fill={COLORS.orange} name="Total Pipeline Value" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Row 2: Product Charts */}
+              {/* Product Breakdown */}
+              <EnhancedChartCard
+                title="Most Quoted Products"
+                subtitle="Product type distribution"
+                onExport={() => handleExport('products')}
+                onExpand={() => handleEnlarge('products')}
+              >
+                <ResponsiveContainer width="100%" height={350}>
+                  <BarChart data={analytics.productMetrics} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="productType"
+                      stroke="#6B7280"
+                      fontSize={10}
+                      tickLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={120}
+                    />
+                    <YAxis
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                    />
+                    <Bar dataKey="quoteCount" name="Quotes" radius={[4, 4, 0, 0]}>
+                      {analytics.productMetrics.map((entry, index) => {
+                        const productColors: Record<string, string> = {
+                          'Operable Wall': COLORS.blue,
+                          'Glass Wall': COLORS.green,
+                          'Accordion Partition': COLORS.purple,
+                        };
+                        const color = productColors[entry.productType] || COLORS.orange;
+                        return <Cell key={`cell-${index}`} fill={color} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Product Model Breakdown */}
+              <EnhancedChartCard
+                title="Product Breakdown by Model"
+                subtitle="Detailed breakdown by model for all product types"
+                onExport={() => handleExport('product-models')}
+                onExpand={() => handleEnlarge('product-models')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics.productModelMetrics} layout="vertical" margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis type="number" stroke="#6B7280" fontSize={12} tickLine={false} allowDecimals={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="model"
+                      stroke="#6B7280"
+                      fontSize={11}
+                      tickLine={false}
+                      width={100}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => {
+                        if (name === 'Quotes') return [value, 'Quote Count'];
+                        return [value, name];
+                      }}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload.length > 0) {
+                          const item = payload[0]!.payload;
+                          return `${item.productType} - ${label}`;
+                        }
+                        return label;
+                      }}
+                    />
+                    <Bar dataKey="quoteCount" name="Quotes" radius={[0, 4, 4, 0]}>
+                      {analytics.productModelMetrics.map((_, index) => {
+                        // Different color for each model
+                        const modelColors = [
+                          COLORS.blue,
+                          COLORS.green,
+                          COLORS.purple,
+                          COLORS.orange,
+                          COLORS.teal,
+                          COLORS.primary,
+                          '#F59E0B', // amber
+                          '#EC4899', // pink
+                          '#6366F1', // indigo
+                          '#14B8A6', // teal
+                        ];
+                        const color = modelColors[index % modelColors.length];
+                        return <Cell key={`cell-${index}`} fill={color} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Row 3: Quoted Charts (Won/Rejected + Team Member) */}
+              {/* Won vs Rejected Over Time */}
+              <EnhancedChartCard
+                title="Won vs Rejected Quotes"
+                subtitle="Track outcomes over time"
+                showTimePeriodToggle={true}
+                showCumulativeToggle={true}
+                isCumulative={wonRejectedCumulative}
+                onCumulativeToggle={setWonRejectedCumulative}
+                onTimePeriodChange={setWonRejectedTimePeriod}
+                onPeriodOffsetChange={setWonRejectedPeriodOffset}
+                defaultTimePeriod={wonRejectedTimePeriod}
+                onExport={() => handleExport('won-rejected')}
+                onExpand={() => handleEnlarge('won-rejected')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  {wonRejectedCumulative ? (
+                    <LineChart data={wonRejectedData} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={10}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (wonRejectedTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="wonCount"
+                        stroke={COLORS.green}
+                        strokeWidth={2}
+                        name="Won"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="rejectedCount"
+                        stroke={COLORS.orange}
+                        strokeWidth={2}
+                        name="Rejected"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  ) : (
+                    <BarChart data={wonRejectedData} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={10}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (wonRejectedTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="rejectedCount" fill={COLORS.orange} name="Rejected" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Quotes by People */}
+              <EnhancedChartCard
+                title="Quotes by Team Member"
+                subtitle="Quote volume per person"
+                onExport={() => handleExport('by-people')}
+                onExpand={() => handleEnlarge('by-people')}
+              >
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analytics.userMetrics.slice(0, 10)} margin={{ left: -10, right: 10, top: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="userName"
+                      stroke="#6B7280"
+                      fontSize={10}
+                      tickLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => [value, name]}
+                    />
+                    <Legend />
+                    <Bar dataKey="quoteCount" fill={COLORS.blue} name="Total Quotes" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+
+              {/* Row 4: Quote Status Charts */}
+              {/* Quote Status Breakdown */}
+              <EnhancedChartCard
+                title="Quote Status Breakdown"
+                subtitle="Distribution across all statuses"
+                onExport={() => handleExport('status')}
+                onExpand={() => handleEnlarge('status')}
+              >
+                <div className="h-[300px] flex items-center">
+                  <div className="flex-1">
+                    <ResponsiveContainer width="100%" height={300}>
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
+                            { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
+                            { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
+                            { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
+                            { name: 'Rejected', value: analytics.statusBreakdown.rejected, color: '#EF4444' },
+                          ].filter(item => item.value > 0)}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={90}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {[
+                            { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
+                            { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
+                            { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
+                            { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
+                            { name: 'Rejected', value: analytics.statusBreakdown.rejected, color: '#EF4444' },
+                          ].filter(item => item.value > 0).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value: number, name: string) => [value, name]}
+                          contentStyle={{
+                            backgroundColor: 'white',
+                            border: '1px solid #E5E7EB',
+                            borderRadius: '8px',
+                          }}
+                        />
+                        <Legend
+                          verticalAlign="middle"
+                          align="right"
+                          layout="vertical"
+                          formatter={(value, entry: any) => {
+                            const total = analytics.statusBreakdown.incomplete +
+                                         analytics.statusBreakdown.draft +
+                                         analytics.statusBreakdown.submitted +
+                                         analytics.statusBreakdown.won +
+                                         analytics.statusBreakdown.rejected;
+                            const itemValue = entry.payload?.value || 0;
+                            const percent = total > 0 ? ((itemValue / total) * 100).toFixed(1) : '0.0';
+                            return `${value}: ${itemValue} (${percent}%)`;
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </EnhancedChartCard>
+
+              {/* Quote Source Performance */}
+              <EnhancedChartCard
+                title="Quote Source Performance"
+                subtitle="Revenue and conversion by source"
+                onExport={() => handleExport('sources')}
+                onExpand={() => handleEnlarge('sources')}
+              >
+                <div className="h-[300px] flex flex-col">
+                  {analytics.sourceMetrics.length > 0 ? (
+                    <div className="flex-1 overflow-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                          <tr>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Source</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Quotes</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Revenue</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Conv. Rate</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {analytics.sourceMetrics.map((source, idx) => (
+                            <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                              <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{source.source}</td>
+                              <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{source.quoteCount}</td>
+                              <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{formatCurrency(source.revenue)}</td>
+                              <td className="px-4 py-3 text-right">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  source.conversionRate >= 50
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                    : source.conversionRate >= 25
+                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                }`}>
+                                  {source.conversionRate.toFixed(1)}%
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                      No source data available
+                    </div>
+                  )}
+                </div>
+              </EnhancedChartCard>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-4">No quotes data available</p>
+              <p className="text-sm text-gray-500">Create some quotes to see analytics</p>
+            </div>
+          )}
+        </>
       )}
+
+      {/* Enlarged Chart Modal */}
+      <Dialog open={!!enlargedChart} onOpenChange={(open) => !open && setEnlargedChart(null)}>
+        <DialogContent className="max-w-[95vw] h-[92vh] p-3 pb-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-auto pt-6">
+            {/* Average Quote Metrics Over Time */}
+            {enlargedChart === 'averages' && (
+              <EnhancedChartCard
+                title="Average Quote Metrics Over Time"
+                subtitle="Track profit, revenue, and value trends"
+                showTimePeriodToggle={true}
+                showCumulativeToggle={true}
+                isCumulative={averagesCumulative}
+                onCumulativeToggle={setAveragesCumulative}
+                onTimePeriodChange={setAveragesTimePeriod}
+                onPeriodOffsetChange={setAveragesPeriodOffset}
+                defaultTimePeriod={averagesTimePeriod}
+                onExport={() => handleExport('averages')}
+                className="h-full"
+              >
+                <div className="pb-0 -mb-6">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                    {averagesCumulative ? (
+                      <LineChart data={averagesData} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <XAxis
+                          dataKey="date"
+                          stroke="#6B7280"
+                          fontSize={12}
+                          tickLine={false}
+                          interval={0}
+                          angle={-45}
+                          textAnchor="end"
+                          height={50}
+                        />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (averagesTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            avgGrossProfit: 'Avg Gross Profit',
+                            avgRevenue: 'Avg Revenue',
+                            avgValue: 'Avg Quote Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgGrossProfit"
+                        stroke={COLORS.green}
+                        strokeWidth={2}
+                        name="Avg Gross Profit"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgRevenue"
+                        stroke={COLORS.blue}
+                        strokeWidth={2}
+                        name="Avg Revenue"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgValue"
+                        stroke={COLORS.purple}
+                        strokeWidth={2}
+                        name="Avg Quote Value"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  ) : (
+                    <BarChart data={averagesData} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={50}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (averagesTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            avgGrossProfit: 'Avg Gross Profit',
+                            avgRevenue: 'Avg Revenue',
+                            avgValue: 'Avg Quote Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Bar dataKey="avgGrossProfit" fill={COLORS.green} name="Avg Gross Profit" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avgRevenue" fill={COLORS.blue} name="Avg Revenue" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avgValue" fill={COLORS.purple} name="Avg Quote Value" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+            )}
+
+            {/* Total Metrics Over Time */}
+            {enlargedChart === 'totals' && (
+              <EnhancedChartCard
+                title="Total Metrics Over Time"
+                subtitle="Revenue, profit, and pipeline trends"
+                showTimePeriodToggle={true}
+                showCumulativeToggle={true}
+                isCumulative={totalsCumulative}
+                onCumulativeToggle={setTotalsCumulative}
+                onTimePeriodChange={setTotalsTimePeriod}
+                onPeriodOffsetChange={setTotalsPeriodOffset}
+                defaultTimePeriod={totalsTimePeriod}
+                onExport={() => handleExport('totals')}
+                className="h-full"
+              >
+                <div className="pb-0 -mb-6">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                    {totalsCumulative ? (
+                      <LineChart data={totalsData} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={50}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (totalsTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            revenue: 'Revenue',
+                            grossProfit: 'Gross Profit',
+                            pipelineValue: 'Total Pipeline Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke={COLORS.green}
+                        strokeWidth={2}
+                        name="Revenue"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="grossProfit"
+                        stroke={COLORS.blue}
+                        strokeWidth={2}
+                        name="Gross Profit"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="pipelineValue"
+                        stroke={COLORS.orange}
+                        strokeWidth={2}
+                        name="Total Pipeline Value"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  ) : (
+                    <BarChart data={totalsData} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={50}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                          padding: '12px',
+                        }}
+                        labelStyle={{
+                          fontWeight: 'bold',
+                          marginBottom: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (totalsTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                        formatter={(value: number, name: string) => {
+                          const labelMap: Record<string, string> = {
+                            revenue: 'Revenue',
+                            grossProfit: 'Gross Profit',
+                            pipelineValue: 'Total Pipeline Value',
+                          };
+                          return [formatCurrency(value), labelMap[name] || name];
+                        }}
+                      />
+                      <Bar dataKey="revenue" fill={COLORS.green} name="Revenue" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="grossProfit" fill={COLORS.blue} name="Gross Profit" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="pipelineValue" fill={COLORS.orange} name="Total Pipeline Value" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+            )}
+
+            {/* Won vs Rejected Quotes */}
+            {enlargedChart === 'won-rejected' && (
+              <EnhancedChartCard
+                title="Won vs Rejected Quotes"
+                subtitle="Track outcomes over time"
+                showTimePeriodToggle={true}
+                showCumulativeToggle={true}
+                isCumulative={wonRejectedCumulative}
+                onCumulativeToggle={setWonRejectedCumulative}
+                onTimePeriodChange={setWonRejectedTimePeriod}
+                onPeriodOffsetChange={setWonRejectedPeriodOffset}
+                defaultTimePeriod={wonRejectedTimePeriod}
+                onExport={() => handleExport('won-rejected')}
+                className="h-full"
+              >
+                <div className="pb-0 -mb-6">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                    {wonRejectedCumulative ? (
+                      <LineChart data={wonRejectedData} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={50}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (wonRejectedTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="wonCount"
+                        stroke={COLORS.green}
+                        strokeWidth={2}
+                        name="Won"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="rejectedCount"
+                        stroke={COLORS.orange}
+                        strokeWidth={2}
+                        name="Rejected"
+                        dot={false}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  ) : (
+                    <BarChart data={wonRejectedData} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        interval={0}
+                        angle={-45}
+                        textAnchor="end"
+                        height={50}
+                      />
+                      <YAxis
+                        stroke="#6B7280"
+                        fontSize={12}
+                        tickLine={false}
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                        }}
+                        labelFormatter={(label, payload) => {
+                          if (wonRejectedTimePeriod === 'monthly' && payload && payload[0]?.payload?.fullDate) {
+                            const fullDate = payload[0].payload.fullDate;
+                            return new Intl.DateTimeFormat('en-US', {
+                              weekday: 'short',
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }).format(new Date(fullDate));
+                          }
+                          return label;
+                        }}
+                      />
+                      <Legend />
+                      <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="rejectedCount" fill={COLORS.orange} name="Rejected" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+            )}
+
+            {/* Most Quoted Products */}
+            {enlargedChart === 'products' && (
+              <EnhancedChartCard
+                title="Most Quoted Products"
+                subtitle="Product type distribution"
+                onExport={() => handleExport('products')}
+                className="h-full"
+              >
+                <div className="pb-0 -mb-6">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                    <BarChart data={analytics.productMetrics} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="productType"
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis stroke="#6B7280" fontSize={12} tickLine={false} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number) => [value, 'Quote Count']}
+                    />
+                    <Bar dataKey="quoteCount" name="Quotes" radius={[4, 4, 0, 0]}>
+                      {analytics.productMetrics.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={Object.values(COLORS)[index % Object.values(COLORS).length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+            )}
+
+            {/* Product Breakdown by Model */}
+            {enlargedChart === 'product-models' && (
+              <EnhancedChartCard
+                title="Product Breakdown by Model"
+                subtitle="Detailed product distribution by model"
+                onExport={() => handleExport('product-models')}
+                className="h-full"
+              >
+                <div className="pb-0 -mb-6">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                    <BarChart
+                    data={analytics.productModelMetrics}
+                    layout="horizontal"
+                    margin={{ left: 10, right: 30, top: 5, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis type="number" stroke="#6B7280" fontSize={12} tickLine={false} />
+                    <YAxis
+                      type="category"
+                      dataKey="fullLabel"
+                      stroke="#6B7280"
+                      fontSize={11}
+                      tickLine={false}
+                      width={150}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => {
+                        if (name === 'Quotes') return [value, 'Quote Count'];
+                        return [value, name];
+                      }}
+                      labelFormatter={(label, payload) => {
+                        if (payload && payload.length > 0) {
+                          const item = payload[0]!.payload;
+                          return `${item.productType} - ${label}`;
+                        }
+                        return label;
+                      }}
+                    />
+                    <Bar dataKey="quoteCount" name="Quotes" radius={[0, 4, 4, 0]}>
+                      {analytics.productModelMetrics.map((_, index) => {
+                        const modelColors = [
+                          COLORS.blue,
+                          COLORS.green,
+                          COLORS.purple,
+                          COLORS.orange,
+                          COLORS.teal,
+                          COLORS.primary,
+                          '#F59E0B',
+                          '#EC4899',
+                          '#6366F1',
+                          '#14B8A6',
+                        ];
+                        const color = modelColors[index % modelColors.length];
+                        return <Cell key={`cell-${index}`} fill={color} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+            )}
+
+            {/* Quotes by Team Member */}
+            {enlargedChart === 'by-people' && (
+              <EnhancedChartCard
+                title="Quotes by Team Member"
+                subtitle="Individual performance tracking"
+                showTimePeriodToggle={true}
+                onTimePeriodChange={setTeamTimePeriod}
+                onPeriodOffsetChange={setTeamPeriodOffset}
+                defaultTimePeriod={teamTimePeriod}
+                onExport={() => handleExport('by-people')}
+                className="h-full"
+              >
+                <div className="pb-0 -mb-6">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                    <BarChart data={analytics.userMetrics} margin={{ left: -10, right: 10, top: 5, bottom: -20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis
+                      dataKey="userName"
+                      stroke="#6B7280"
+                      fontSize={12}
+                      tickLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis stroke="#6B7280" fontSize={12} tickLine={false} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number, name: string) => {
+                        if (name === 'Total Quotes') return [value, 'Quote Count'];
+                        if (name === 'Won') return [value, 'Won Quotes'];
+                        return [value, name];
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="totalQuotes" fill={COLORS.blue} name="Total Quotes" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="wonQuotes" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+            )}
+
+            {/* Quote Source Performance */}
+            {enlargedChart === 'sources' && (
+              <EnhancedChartCard
+                title="Quote Source Performance"
+                subtitle="Track where your quotes come from"
+                onExport={() => handleExport('sources')}
+                className="h-full"
+              >
+                <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                  <PieChart>
+                    <Pie
+                      data={analytics.sourceMetrics}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={200}
+                      fill="#8884d8"
+                      dataKey="count"
+                    >
+                      {analytics.sourceMetrics.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={Object.values(COLORS)[index % Object.values(COLORS).length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'white',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: number) => [value, 'Quote Count']}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </EnhancedChartCard>
+            )}
+
+            {/* Quotes by Status */}
+            {enlargedChart === 'status' && (
+              <EnhancedChartCard
+                title="Quote Status Breakdown"
+                subtitle="Distribution across all statuses"
+                onExport={() => handleExport('status')}
+                className="h-full"
+              >
+                <div className="h-full flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={500}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
+                          { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
+                          { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
+                          { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
+                          { name: 'Rejected', value: analytics.statusBreakdown.rejected, color: '#EF4444' },
+                        ].filter(item => item.value > 0)}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={true}
+                        label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(1)}%)`}
+                        outerRadius={180}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {[
+                          { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
+                          { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
+                          { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
+                          { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
+                          { name: 'Rejected', value: analytics.statusBreakdown.rejected, color: '#EF4444' },
+                        ].filter(item => item.value > 0).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value: number, name: string) => [value, name]}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #E5E7EB',
+                          borderRadius: '8px',
+                        }}
+                      />
+                      <Legend
+                        verticalAlign="middle"
+                        align="right"
+                        layout="vertical"
+                        formatter={(value, entry: any) => {
+                          const total = analytics.statusBreakdown.incomplete +
+                                       analytics.statusBreakdown.draft +
+                                       analytics.statusBreakdown.submitted +
+                                       analytics.statusBreakdown.won +
+                                       analytics.statusBreakdown.rejected;
+                          const itemValue = entry.payload?.value || 0;
+                          const percent = total > 0 ? ((itemValue / total) * 100).toFixed(1) : '0.0';
+                          return `${value}: ${itemValue} (${percent}%)`;
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </EnhancedChartCard>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageContent>
   );
 };

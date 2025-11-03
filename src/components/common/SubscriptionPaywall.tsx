@@ -60,13 +60,14 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
 
   const initialStatus = getInitialStatus();
 
-  // Initialize with cached values if available
-  // If no cache: show loading spinner to prevent unauthorized access during check
-  // If cached: use cached value immediately for fast UX
-  // IMPORTANT: If cache says hasAccess=true, trust it and don't show loading
-  const [loading, setLoading] = useState(!initialStatus);
-  const [hasAccess, setHasAccess] = useState(initialStatus?.hasAccess ?? false);
-  const [blockReason, setBlockReason] = useState<string>(initialStatus?.reason ?? '');
+  // Validate-first approach: ALWAYS validate before showing UI
+  // - Show loading spinner until validation completes (~200ms)
+  // - Show definitive UI (never wrong, never flashes)
+  // - Realtime handles all future updates (instant, no revalidation needed)
+  // - Simple, secure, no false UI ever
+  const [loading, setLoading] = useState(true); // Always validate first
+  const [hasAccess, setHasAccess] = useState(false); // Fail closed by default
+  const [blockReason, setBlockReason] = useState<string>('');
 
   console.log('🎫 Paywall initialized:', {
     initialStatus,
@@ -76,21 +77,16 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   });
 
   useEffect(() => {
-    // Only check if no cache exists, otherwise trust cache completely
-    // Realtime will handle updates if subscription changes
-    if (!initialStatus) {
-      console.log('🔄 No cache found, checking subscription...');
-      checkSubscription();
-    } else {
-      console.log('✅ Using cached subscription status:', initialStatus);
-    }
+    // VALIDATE-FIRST APPROACH: Simple, secure, never shows wrong UI
+    // 1. Always validate subscription on mount (200ms)
+    // 2. Show loading spinner during validation (clear feedback)
+    // 3. Show definitive UI after validation (never wrong)
+    // 4. Realtime handles all future changes (instant, no revalidation)
 
-    // Poll subscription status every 5 seconds
-    // Realtime handles instant updates, polling is just a backup
-    const pollInterval = setInterval(() => {
-      console.log('⏱️ Polling subscription status...');
-      checkSubscription();
-    }, 5000);
+    console.log('🔄 Validating subscription before showing UI...');
+
+    // ALWAYS validate first - show loading until complete
+    checkSubscription();
 
     // Set up realtime subscription to detect subscription changes
     const channel = supabase
@@ -144,10 +140,8 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
                 window.location.reload();
               }, 1500);
             }
-          } else {
-            // Status unchanged, just update without reload
-            checkSubscription();
           }
+          // Removed recursive checkSubscription() call that was causing race conditions
         }
       )
       .subscribe((status) => {
@@ -160,19 +154,14 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
       });
 
     return () => {
-      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
   }, [organizationId]);
 
   const checkSubscription = async () => {
-    const showLoading = !cachedStatus && !initialStatus;
-
     try {
-      // Only show loading if we don't have cached data
-      if (showLoading) {
-        setLoading(true);
-      }
+      // Always show loading while validating
+      setLoading(true);
 
       const { isValid, reason } = await stripeService.hasValidSubscription(organizationId);
 

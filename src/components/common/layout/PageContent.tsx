@@ -26,9 +26,9 @@ export const PageContent: React.FC<PageContentProps> = ({
   headerActions
 }) => {
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={`flex flex-col h-full ${className}`}>
       {showPageHeader && (title || subtitle) && (
-        <div className="mb-8 flex items-center justify-between gap-6">
+        <div className="mb-6 flex items-center justify-between gap-6 flex-shrink-0">
           <div className="flex-1">
             {title && (
               <h1 className="text-3xl font-bold tracking-tight text-[var(--content-header-text)]">{title}</h1>
@@ -44,7 +44,7 @@ export const PageContent: React.FC<PageContentProps> = ({
           )}
         </div>
       )}
-      <div className={`space-y-6 ${contentClassName}`}>
+      <div className={`flex-1 min-h-0 flex flex-col ${contentClassName}`}>
         {children}
       </div>
     </div>
