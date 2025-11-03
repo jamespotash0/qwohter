@@ -12,6 +12,7 @@ import { useRemindersStore } from '@/stores/reminders/remindersStore';
 import { useAppStore } from '@/stores/app/appStore';
 import { versionCheckService } from '@/services/versionCheckService';
 import { toast } from 'sonner';
+import { useTrialReminder } from '@/hooks/useTrialReminder';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -40,6 +41,9 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
 
   // Get current organization for paywall
   const currentOrganization = useCurrentOrganization();
+
+  // Trial reminder system - shows daily payment method reminder
+  useTrialReminder();
 
   // Membership status tracking
   const [membershipStatus, setMembershipStatus] = useState<string | null>(null);

@@ -334,6 +334,10 @@ export interface Database {
           stripe_subscription_id: string | null;
           stripe_subscription_status: string | null;
           current_period_end: string | null;
+          trial_start: string | null;
+          trial_end: string | null;
+          has_payment_method: boolean;
+          last_payment_reminder_sent_at: string | null;
           is_active: boolean;
           access_blocked: boolean;
           access_blocked_reason: string | null;
@@ -349,6 +353,10 @@ export interface Database {
           stripe_subscription_id?: string | null;
           stripe_subscription_status?: string | null;
           current_period_end?: string | null;
+          trial_start?: string | null;
+          trial_end?: string | null;
+          has_payment_method?: boolean;
+          last_payment_reminder_sent_at?: string | null;
           is_active?: boolean;
           access_blocked?: boolean;
           access_blocked_reason?: string | null;
@@ -364,6 +372,10 @@ export interface Database {
           stripe_subscription_id?: string | null;
           stripe_subscription_status?: string | null;
           current_period_end?: string | null;
+          trial_start?: string | null;
+          trial_end?: string | null;
+          has_payment_method?: boolean;
+          last_payment_reminder_sent_at?: string | null;
           is_active?: boolean;
           access_blocked?: boolean;
           access_blocked_reason?: string | null;

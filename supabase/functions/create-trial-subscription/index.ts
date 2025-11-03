@@ -1,5 +1,8 @@
+//@ts-ignore
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+//@ts-ignore
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
+//@ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
@@ -184,6 +187,13 @@ serve(async (req) => {
       );
     }
 
+    // Get customer payment methods to check if payment method is attached
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: customerId,
+      type: 'card',
+    });
+    const hasPaymentMethod = paymentMethods.data.length > 0;
+
     // Create or update subscription record in database
     if (existingSubscription) {
       await supabase
@@ -192,8 +202,13 @@ serve(async (req) => {
           stripe_customer_id: customerId,
           stripe_subscription_id: subscription.id,
           stripe_subscription_status: subscription.status,
+          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
           current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          trial_start: subscription.trial_start ? new Date(subscription.trial_start * 1000).toISOString() : null,
+          trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+          has_payment_method: hasPaymentMethod,
           plan_id: plan.id,
+          number_of_users: quantity,
           is_active: true,
           access_blocked: false,
           updated_at: new Date().toISOString(),
@@ -207,8 +222,13 @@ serve(async (req) => {
           stripe_customer_id: customerId,
           stripe_subscription_id: subscription.id,
           stripe_subscription_status: subscription.status,
+          current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
           current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+          trial_start: subscription.trial_start ? new Date(subscription.trial_start * 1000).toISOString() : null,
+          trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+          has_payment_method: hasPaymentMethod,
           plan_id: plan.id,
+          number_of_users: quantity,
           is_active: true,
           access_blocked: false,
         });

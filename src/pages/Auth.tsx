@@ -17,15 +17,15 @@ import { AuthForm } from "@/components/auth/AuthForm";
 import { OtpVerificationForm } from "@/components/auth/OtpVerificationForm";
 import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
 import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
-import { SubscriptionSelectionForm } from "@/components/auth/SubscriptionSelectionForm";
-import { TrialActivationForm } from "@/components/auth/TrialActivationForm";
+// import { SubscriptionSelectionForm } from "@/components/auth/SubscriptionSelectionForm";
+// import { TrialActivationForm } from "@/components/auth/TrialActivationForm";
 import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
 import { LogoUploadResult } from "@/services/LogoUploadService";
 import { validateInviteToken } from "@/utils/inviteTokens";
 import { tempSignupService } from "@/services/tempSignupService";
 import { supabase } from "@/integrations/supabase/client";
-import { stripeService } from "@/services/stripeService";
-import { useOrganizationStore } from "@/stores/organization/organizationStore";
+// import { stripeService } from "@/services/stripeService";
+// import { useOrganizationStore } from "@/stores/organization/organizationStore";
 
 // Import extracted hooks
 import { useAuthFlow, useAuthFormState, useCompanyInfoState } from "./Auth/hooks";
@@ -337,7 +337,7 @@ const Auth = () => {
       toast,
       clearAuthState,
       redirectAfterAuth: () => redirectAfterAuth(navigate),
-      setStep: authFlow.setStep,
+      // setStep: authFlow.setStep,
       navigate,
     });
   };
@@ -361,144 +361,6 @@ const Auth = () => {
     handleLogoError(error, toast);
   };
 
-  const onSelectPlan = async (planName: string, billingPeriod: 'monthly' | 'yearly') => {
-    authFlow.setLoading(true);
-    try {
-      // Get current organization from store or fetch from database
-      let currentOrg = useOrganizationStore.getState().currentOrganization;
-
-      // If not in store, fetch it using the userId
-      if (!currentOrg && authFlow.userId) {
-        const { data: membershipData, error: membershipError } = await supabase
-          .from('memberships')
-          .select(`
-            organization_id,
-            organizations (
-              id,
-              name,
-              organization_code
-            )
-          `)
-          .eq('user_id', authFlow.userId)
-          .single();
-
-        if (membershipError || !membershipData) {
-          toast({
-            title: 'Error',
-            description: 'No organization found. Please complete the organization setup first.',
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        // Use the organization from the joined query
-        const orgData = (membershipData as any).organizations;
-        if (!orgData) {
-          toast({
-            title: 'Error',
-            description: 'Organization not found. Please try again.',
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        currentOrg = {
-          id: orgData.id,
-          name: orgData.name,
-          organization_code: orgData.organization_code
-        } as any;
-
-        // Update the store with the fetched organization
-        useOrganizationStore.getState().setOrganization(currentOrg);
-      }
-
-      if (!currentOrg) {
-        toast({
-          title: 'Error',
-          description: 'No organization found. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // All plans include a 14-day free trial configured in Stripe
-      // Redirect user to complete their setup and choose a plan
-      toast({
-        title: 'Welcome!',
-        description: 'Complete your setup by choosing a plan. All plans include a 14-day free trial.',
-      });
-      clearAuthState();
-      // Redirect to billing settings to choose a plan
-      navigate('/settings?tab=billing');
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to process subscription',
-        variant: 'destructive',
-      });
-    } finally {
-      authFlow.setLoading(false);
-    }
-  };
-
-  const onSkipSubscription = () => {
-    toast({
-      title: 'Setup completed!',
-      description: 'You can choose a plan later in Settings.',
-    });
-    clearAuthState();
-    navigate('/dashboard');
-  };
-
-  const onActivateTrial = async () => {
-    authFlow.setLoading(true);
-    try {
-      // Get current organization
-      const currentOrg = useOrganizationStore.getState().currentOrganization;
-
-      if (!currentOrg) {
-        toast({
-          title: 'Error',
-          description: 'No organization found. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // Enroll organization in 14-day trial with Stripe subscription
-      const trialResult = await stripeService.createTrialSubscription(currentOrg.id);
-
-      if (trialResult.error) {
-        toast({
-          title: 'Error',
-          description: trialResult.error || 'Failed to activate trial',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      toast({
-        title: 'Trial activated!',
-        description: 'Your 14-day free trial starts today. Enjoy full access to all features!',
-      });
-
-      clearAuthState();
-      navigate('/dashboard');
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to activate trial',
-        variant: 'destructive',
-      });
-    } finally {
-      authFlow.setLoading(false);
-    }
-  };
-
-  const onChoosePlan = () => {
-    clearAuthState();
-    navigate('/settings?tab=billing');
-  };
 
   // ============================================================================
   // RENDER
@@ -560,28 +422,12 @@ const Auth = () => {
       <div className="min-h-screen flex items-center justify-center p-8">
         <div className="w-full flex items-center justify-center">
           <div className={`w-full relative z-10 ${
-            authFlow.step === "subscription" || authFlow.step === "trial-activation" ? "max-w-4xl" :
             authFlow.step === "auth" && !authFlow.isSignUp ? "max-w-md" :
             "max-w-lg"
           }`}>
-            {/* Trial Activation step - no card wrapper */}
-            {authFlow.step === "trial-activation" ? (
-              <TrialActivationForm
-                loading={authFlow.loading}
-                onActivateTrial={onActivateTrial}
-                onChoosePlan={onChoosePlan}
-              />
-            ) : authFlow.step === "subscription" ? (
-              /* Subscription step - no card wrapper */
-              <SubscriptionSelectionForm
-                loading={authFlow.loading}
-                onSelectPlan={onSelectPlan}
-                onSkip={onSkipSubscription}
-              />
-            ) : (
-              /* Main form card for other steps */
-                <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
-                {!["subscription", "trial-activation", "verify-otp"].includes(authFlow.step) && (
+            {/* Main form card for all steps */}
+            <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
+                {!["verify-otp"].includes(authFlow.step) && (
                 <CardHeader className="text-center space-y-3 pb-2 pt-6 px-8">
                   {/* Progress Indicator - show for all onboarding steps */}
                   {authFlow.step !== "auth" && (
@@ -699,7 +545,6 @@ const Auth = () => {
               )}
                 </CardContent>
               </Card>
-            )}
           </div>
         </div>
       </div>

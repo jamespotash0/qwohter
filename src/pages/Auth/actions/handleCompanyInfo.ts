@@ -25,7 +25,6 @@ interface HandleCompanyInfoSubmitParams {
 }
 
 export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitParams & {
-  setStep?: (step: 'trial-activation') => void;
   navigate: NavigateFunction;
 }) => {
   const {

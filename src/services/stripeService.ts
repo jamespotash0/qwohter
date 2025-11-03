@@ -39,6 +39,9 @@ interface Subscription {
   stripe_subscription_id: string | null;
   stripe_subscription_status: string | null;
   current_period_end: string | null;
+  trial_start: string | null;
+  trial_end: string | null;
+  has_payment_method: boolean;
   is_active: boolean;
   has_used_trial: boolean;
   access_blocked: boolean;
@@ -232,6 +235,34 @@ export const hasValidSubscription = async (organizationId: string) => {
         ? `Subscription status: ${subscription.stripe_subscription_status}`
         : 'No subscription status set',
     };
+  }
+
+  // Check trial expiration
+  // If on trial, expired, and no payment method - block access
+  if (status === 'trialing') {
+    const trialEnd = subscription.trial_end;
+    const hasPaymentMethod = subscription.has_payment_method;
+
+    if (trialEnd) {
+      const now = new Date();
+      const trialEndDate = new Date(trialEnd);
+      const isExpired = trialEndDate < now;
+
+      console.log('🆓 Trial check:', {
+        trialEnd,
+        now: now.toISOString(),
+        isExpired,
+        hasPaymentMethod,
+      });
+
+      if (isExpired && !hasPaymentMethod) {
+        console.log('❌ Trial expired without payment method');
+        return {
+          isValid: false,
+          reason: 'Your free trial has expired. Please add a payment method to continue.',
+        };
+      }
+    }
   }
 
   return {

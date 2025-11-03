@@ -110,7 +110,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   // const [billingInterval, setBillingInterval] = useState<'Monthly' | 'Yearly'>('Monthly');
   // const [planIntervals, setPlanIntervals] = useState<Record<string, 'Monthly' | 'Yearly'>>({});
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
-  const [showCompareModal, setShowCompareModal] = useState(false);
+  // const [showCompareModal, setShowCompareModal] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isReactivating, setIsReactivating] = useState(false);
@@ -588,91 +588,91 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     }
   };
 
-  const handlePauseSubscription = async () => {
-    if (!subscription?.stripe_subscription_id) return;
+  // const handlePauseSubscription = async () => {
+  //   if (!subscription?.stripe_subscription_id) return;
 
-    try {
-      setIsCancelling(true); // Reuse cancelling state for loading
+  //   try {
+  //     setIsCancelling(true); // Reuse cancelling state for loading
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pause-subscription`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        },
-        body: JSON.stringify({
-          subscriptionId: subscription.stripe_subscription_id,
-        }),
-      });
+  //     const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pause-subscription`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+  //       },
+  //       body: JSON.stringify({
+  //         subscriptionId: subscription.stripe_subscription_id,
+  //       }),
+  //     });
 
-      const data = await response.json();
+  //     const data = await response.json();
 
-      if (!response.ok) {
-        console.error('Pause response error:', data);
-        throw new Error(data.error || 'Failed to pause subscription');
-      }
+  //     if (!response.ok) {
+  //       console.error('Pause response error:', data);
+  //       throw new Error(data.error || 'Failed to pause subscription');
+  //     }
 
-      toast({
-        title: "Subscription Paused",
-        description: "Your subscription has been paused. You can resume it anytime.",
-      });
+  //     toast({
+  //       title: "Subscription Paused",
+  //       description: "Your subscription has been paused. You can resume it anytime.",
+  //     });
 
-      setShowCancelDialog(false);
-      await loadBillingData();
-    } catch (error: any) {
-      console.error('Error pausing subscription:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to pause subscription. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCancelling(false);
-    }
-  };
+  //     setShowCancelDialog(false);
+  //     await loadBillingData();
+  //   } catch (error: any) {
+  //     console.error('Error pausing subscription:', error);
+  //     toast({
+  //       title: "Error",
+  //       description: error.message || "Failed to pause subscription. Please try again.",
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     setIsCancelling(false);
+  //   }
+  // };
 
-  const handleResumeSubscription = async () => {
-    if (!subscription?.stripe_subscription_id) return;
+  // const handleResumeSubscription = async () => {
+  //   if (!subscription?.stripe_subscription_id) return;
 
-    try {
-      setIsReactivating(true);
+  //   try {
+  //     setIsReactivating(true);
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resume-subscription`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-        },
-        body: JSON.stringify({
-          subscriptionId: subscription.stripe_subscription_id,
-        }),
-      });
+  //     const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resume-subscription`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+  //       },
+  //       body: JSON.stringify({
+  //         subscriptionId: subscription.stripe_subscription_id,
+  //       }),
+  //     });
 
-      const data = await response.json();
+  //     const data = await response.json();
 
-      if (!response.ok) {
-        console.error('Resume response error:', data);
-        throw new Error(data.error || 'Failed to resume subscription');
-      }
+  //     if (!response.ok) {
+  //       console.error('Resume response error:', data);
+  //       throw new Error(data.error || 'Failed to resume subscription');
+  //     }
 
-      toast({
-        title: "Subscription Resumed",
-        description: "Your subscription has been resumed successfully.",
-      });
+  //     toast({
+  //       title: "Subscription Resumed",
+  //       description: "Your subscription has been resumed successfully.",
+  //     });
 
-      setShowCancelDialog(false);
-      await loadBillingData();
-    } catch (error: any) {
-      console.error('Error resuming subscription:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to resume subscription. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsReactivating(false);
-    }
-  };
+  //     setShowCancelDialog(false);
+  //     await loadBillingData();
+  //   } catch (error: any) {
+  //     console.error('Error resuming subscription:', error);
+  //     toast({
+  //       title: "Error",
+  //       description: error.message || "Failed to resume subscription. Please try again.",
+  //       variant: "destructive",
+  //     });
+  //   } finally {
+  //     setIsReactivating(false);
+  //   }
+  // };
 
   const handleDownloadInvoice = (invoiceUrl: string) => {
     window.open(invoiceUrl, '_blank');
@@ -783,29 +783,48 @@ export const BillingTab: React.FC<BillingTabProps> = ({
           </p>
         )}
 
-        {/* Billing Period Progress Bar - Only show when subscription exists and is active */}
-        {subscription && subscription.current_period_start && subscription.current_period_end && subscription.is_active && (
+        {/* Billing/Trial Period Progress Bar - Show when subscription exists and is active */}
+        {subscription && subscription.is_active && (
           <div className="flex items-center gap-4">
           {(() => {
-            const periodStart = new Date(subscription.current_period_start);
-            const periodEnd = new Date(subscription.current_period_end);
+            // Check if on trial
+            const isOnTrial = subscription.stripe_subscription_status?.toLowerCase() === 'trialing';
+            const hasTrialDates = subscription.trial_start && subscription.trial_end;
+            const hasBillingDates = subscription.current_period_start && subscription.current_period_end;
+
+            // Use trial dates if on trial, otherwise use billing period dates
+            const periodStart = isOnTrial && hasTrialDates
+              ? new Date(subscription.trial_start)
+              : hasBillingDates ? new Date(subscription.current_period_start) : null;
+            const periodEnd = isOnTrial && hasTrialDates
+              ? new Date(subscription.trial_end)
+              : hasBillingDates ? new Date(subscription.current_period_end) : null;
+
+            if (!periodStart || !periodEnd) return null;
+
             const now = new Date();
             const totalDuration = periodEnd.getTime() - periodStart.getTime();
             const elapsed = now.getTime() - periodStart.getTime();
             const progress = Math.min(Math.max((elapsed / totalDuration) * 100, 0), 100);
-            const daysRemaining = Math.ceil((periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            const daysRemaining = Math.max(0, Math.ceil((periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+
+            const periodLabel = isOnTrial ? 'Free Trial' : 'Billing Period';
+            const progressBarColor = isOnTrial ? 'bg-blue-500' : 'bg-[#EE6C4D]';
 
             return (
               <>
                 <div className="flex-1">
-                  <div className="flex justify-end items-center mb-1">
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                      {periodLabel}
+                    </p>
                     <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
                       {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
                     </p>
                   </div>
                   <div className="relative w-full h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                     <div
-                      className="absolute top-0 left-0 h-full transition-all duration-300 bg-[#EE6C4D]"
+                      className={`absolute top-0 left-0 h-full transition-all duration-300 ${progressBarColor}`}
                       style={{ width: `${progress}%` }}
                     ></div>
                   </div>
@@ -1313,7 +1332,9 @@ export const BillingTab: React.FC<BillingTabProps> = ({
               // Now only showing cancel option
               <div className="space-y-5">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  You can cancel your subscription at any time. Your access will continue until the end of the current billing period.
+                  {subscription.stripe_subscription_status?.toLowerCase() === 'trialing'
+                    ? 'You can cancel your free trial at any time. Your access will continue until the end of the trial period.'
+                    : 'You can cancel your subscription at any time. Your access will continue until the end of the current billing period.'}
                 </p>
                 <div className="space-y-3">
                   <Button
@@ -1336,7 +1357,11 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                         <span>Canceling...</span>
                       </>
                     ) : (
-                      <span>Cancel Subscription</span>
+                      <span>
+                        {subscription.stripe_subscription_status?.toLowerCase() === 'trialing'
+                          ? 'Cancel Free Trial'
+                          : 'Cancel Subscription'}
+                      </span>
                     )}
                   </Button>
                 </div>

@@ -1,5 +1,8 @@
+//@ts-ignore
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+//@ts-ignore
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
+//@ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
@@ -172,6 +175,13 @@ serve(async (req) => {
         const isPaused = subscription.pause_collection !== null && subscription.pause_collection !== undefined;
         const displayStatus = isPaused ? 'Paused' : status.charAt(0).toUpperCase() + status.slice(1);
 
+        // Get customer payment methods
+        const paymentMethods = await stripe.paymentMethods.list({
+          customer: subscription.customer as string,
+          type: 'card',
+        });
+        const hasPaymentMethod = paymentMethods.data.length > 0;
+
         // Update subscription status and billing period
         await supabase
           .from('subscriptions')
@@ -179,13 +189,16 @@ serve(async (req) => {
             stripe_subscription_status: displayStatus,
             current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            trial_start: subscription.trial_start ? new Date(subscription.trial_start * 1000).toISOString() : null,
+            trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+            has_payment_method: hasPaymentMethod,
             cancel_at_period_end: subscription.cancel_at_period_end || false,
             is_active: ['active', 'trialing'].includes(status) && !isPaused,
             updated_at: new Date().toISOString(),
           })
           .eq('stripe_subscription_id', stripeSubscriptionId);
 
-        console.log('Updated subscription status:', stripeSubscriptionId, displayStatus, 'isPaused:', isPaused);
+        console.log('Updated subscription status:', stripeSubscriptionId, displayStatus, 'isPaused:', isPaused, 'hasPayment:', hasPaymentMethod);
         break;
       }
 
@@ -403,6 +416,46 @@ serve(async (req) => {
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge;
         console.log('Charge refunded:', charge.id);
+        break;
+      }
+
+      case 'payment_method.attached': {
+        const paymentMethod = event.data.object as Stripe.PaymentMethod;
+        const customerId = paymentMethod.customer as string;
+
+        // Mark that customer has payment method
+        await supabase
+          .from('subscriptions')
+          .update({
+            has_payment_method: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_customer_id', customerId);
+
+        console.log('Payment method attached for customer:', customerId);
+        break;
+      }
+
+      case 'payment_method.detached': {
+        const paymentMethod = event.data.object as Stripe.PaymentMethod;
+        const customerId = paymentMethod.customer as string;
+
+        // Check if customer has any remaining payment methods
+        const paymentMethods = await stripe.paymentMethods.list({
+          customer: customerId,
+          type: 'card',
+        });
+        const hasPaymentMethod = paymentMethods.data.length > 0;
+
+        await supabase
+          .from('subscriptions')
+          .update({
+            has_payment_method: hasPaymentMethod,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_customer_id', customerId);
+
+        console.log('Payment method detached for customer:', customerId, 'remaining:', hasPaymentMethod);
         break;
       }
 
