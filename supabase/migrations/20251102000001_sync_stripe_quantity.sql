@@ -2,7 +2,7 @@
 -- ================================
 --
 -- CURRENT BEHAVIOR:
--- - The sync_subscription_user_count trigger updates subscriptions.number_of_users locally
+-- - The sync_subscription_user_count trigger updates subscriptions.number_of_active_users locally
 -- - This count is accurate and reflects active team members in real-time
 -- - The local count is used for billing calculations and display
 --
@@ -22,7 +22,7 @@
 --
 -- 3. SCHEDULED: Periodic sync (optional, not yet implemented)
 --    - Create a scheduled Edge Function that runs hourly
---    - Compares local number_of_users with Stripe subscription quantity
+--    - Compares local number_of_active_users with Stripe subscription quantity
 --    - Syncs any differences found
 --
 -- WHY NOT USE TRIGGERS?
@@ -45,8 +45,8 @@ ADD COLUMN IF NOT EXISTS stripe_quantity_pending_sync BOOLEAN DEFAULT FALSE;
 CREATE OR REPLACE FUNCTION mark_stripe_quantity_for_sync()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- When number_of_users changes locally, mark for sync
-  IF NEW.number_of_users IS DISTINCT FROM OLD.number_of_users THEN
+  -- When number_of_active_users changes locally, mark for sync
+  IF NEW.number_of_active_users IS DISTINCT FROM OLD.number_of_active_users THEN
     NEW.stripe_quantity_pending_sync := TRUE;
   END IF;
   RETURN NEW;
@@ -56,7 +56,7 @@ $$ LANGUAGE plpgsql;
 -- Trigger to mark when sync is needed
 DROP TRIGGER IF EXISTS mark_quantity_sync_needed ON subscriptions;
 CREATE TRIGGER mark_quantity_sync_needed
-BEFORE UPDATE OF number_of_users ON subscriptions
+BEFORE UPDATE OF number_of_active_users ON subscriptions
 FOR EACH ROW
 EXECUTE FUNCTION mark_stripe_quantity_for_sync();
 
@@ -66,7 +66,7 @@ SELECT
   s.id,
   s.organization_id,
   s.stripe_subscription_id,
-  s.number_of_users AS local_quantity,
+  s.number_of_active_users AS local_quantity,
   s.stripe_quantity_pending_sync,
   s.updated_at
 FROM subscriptions s
@@ -74,9 +74,9 @@ WHERE s.stripe_quantity_pending_sync = TRUE
   AND s.stripe_subscription_id IS NOT NULL;
 
 COMMENT ON VIEW subscriptions_pending_sync IS
-'Shows subscriptions where local number_of_users has changed but Stripe quantity may not be synced yet.
+'Shows subscriptions where local number_of_active_users has changed but Stripe quantity may not be synced yet.
 Use this view in a scheduled Edge Function to batch-sync quantities to Stripe.';
 
 COMMENT ON COLUMN subscriptions.stripe_quantity_pending_sync IS
-'Indicates that local number_of_users has changed and Stripe subscription quantity may need to be updated.
+'Indicates that local number_of_active_users has changed and Stripe subscription quantity may need to be updated.
 Reset to FALSE after successfully calling manage-seats Edge Function.';

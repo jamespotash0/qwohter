@@ -10,7 +10,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
  *
  * This function runs periodically (e.g., every hour) to:
  * 1. Find subscriptions where stripe_quantity_pending_sync = true
- * 2. Compare local number_of_users with Stripe subscription quantity
+ * 2. Compare local number_of_active_users with Stripe subscription quantity
  * 3. Update Stripe subscription quantity with proration
  * 4. Clear the pending_sync flag
  *
@@ -39,7 +39,7 @@ serve(async (req) => {
     // Get all subscriptions pending sync
     const { data: subscriptions, error: fetchError } = await supabase
       .from('subscriptions')
-      .select('id, organization_id, stripe_subscription_id, number_of_users')
+      .select('id, organization_id, stripe_subscription_id, number_of_active_users')
       .eq('stripe_quantity_pending_sync', true)
       .not('stripe_subscription_id', 'is', null);
 
@@ -77,7 +77,7 @@ serve(async (req) => {
         );
 
         const currentStripeQuantity = stripeSubscription.items.data[0]?.quantity || 1;
-        const localQuantity = subscription.number_of_users || 1;
+        const localQuantity = subscription.number_of_active_users || 1;
 
         // Only update if quantities differ
         if (currentStripeQuantity !== localQuantity) {

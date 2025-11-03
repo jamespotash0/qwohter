@@ -1,5 +1,8 @@
+//@ts-ignore
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+//@ts-ignore
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
+//@ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
@@ -147,7 +150,7 @@ serve(async (req) => {
     await supabase
       .from('subscriptions')
       .update({
-        number_of_users: newQuantity,
+        number_of_active_users: newQuantity,
         updated_at: new Date().toISOString(),
       })
       .eq('id', subscription.id);

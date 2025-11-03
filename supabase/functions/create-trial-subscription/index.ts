@@ -208,7 +208,7 @@ serve(async (req) => {
           trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
           has_payment_method: hasPaymentMethod,
           plan_id: plan.id,
-          number_of_users: quantity,
+          number_of_active_users: quantity,
           is_active: true,
           access_blocked: false,
           updated_at: new Date().toISOString(),
@@ -228,7 +228,7 @@ serve(async (req) => {
           trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
           has_payment_method: hasPaymentMethod,
           plan_id: plan.id,
-          number_of_users: quantity,
+          number_of_active_users: quantity,
           is_active: true,
           access_blocked: false,
         });

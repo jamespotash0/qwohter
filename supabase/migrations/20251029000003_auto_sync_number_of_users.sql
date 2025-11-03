@@ -1,4 +1,4 @@
--- Function to sync number_of_users in subscriptions table with ACTIVE member count ONLY
+-- Function to sync number_of_active_users in subscriptions table with ACTIVE member count ONLY
 -- This function recounts ALL members with status='Active' and updates the subscription
 -- It does NOT simply increment/decrement, it performs a full recount for accuracy
 CREATE OR REPLACE FUNCTION sync_subscription_user_count()
@@ -17,9 +17,9 @@ BEGIN
   WHERE organization_id = target_org_id
     AND status = 'Active';
 
-  -- Update the subscription's number_of_users to match active member count
+  -- Update the subscription's number_of_active_users to match active member count
   UPDATE subscriptions
-  SET number_of_users = active_count,
+  SET number_of_active_users = active_count,
       updated_at = NOW()
   WHERE organization_id = target_org_id;
 
@@ -42,9 +42,9 @@ EXECUTE FUNCTION sync_subscription_user_count();
 -- Fires when: Member status changes (e.g., Pending→Active, Active→Inactive)
 -- Effect: Recounts active members
 -- Examples:
---   - Pending → Active: number_of_users INCREASES
---   - Active → Inactive: number_of_users DECREASES
---   - Active → Suspended: number_of_users DECREASES
+--   - Pending → Active: number_of_active_users INCREASES
+--   - Active → Inactive: number_of_active_users DECREASES
+--   - Active → Suspended: number_of_active_users DECREASES
 CREATE TRIGGER sync_user_count_on_update
 AFTER UPDATE OF status ON memberships
 FOR EACH ROW
@@ -61,7 +61,7 @@ EXECUTE FUNCTION sync_subscription_user_count();
 
 -- Add comments
 COMMENT ON FUNCTION sync_subscription_user_count IS
-'Automatically updates subscriptions.number_of_users to match ACTIVE member count only.
+'Automatically updates subscriptions.number_of_active_users to match ACTIVE member count only.
 Triggers on INSERT, UPDATE (status change), and DELETE of memberships.
 Only members with status=''Active'' are counted. Pending, Inactive, and Suspended members are excluded.';
 
