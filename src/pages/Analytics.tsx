@@ -6,7 +6,6 @@ import {
   TrendingUp,
   FileText,
   Target,
-  Calculator,
   X,
 } from "lucide-react";
 import {
@@ -26,7 +25,6 @@ import {
   generateAnalyticsSummary,
   formatCurrency,
   calculateWinRate,
-  calculateConversionRate,
   filterMainVersionQuotes,
   // calculateAverageGrossProfitPerQuote,
   // calculateAverageRevenuePerQuote,
@@ -223,11 +221,65 @@ const Analytics = () => {
             />
 
             <KPICard
-              title="Conversion Rate"
-              value={`${calculateConversionRate(mainVersionQuotes).toFixed(1)}%`}
-              subtitle="Won / All Submitted"
-              icon={Calculator}
+              title="Total Quotes This Week"
+              value={(() => {
+                const now = new Date();
+                // Get the start of this week (Sunday)
+                const startOfThisWeek = new Date(now);
+                startOfThisWeek.setDate(now.getDate() - now.getDay());
+                startOfThisWeek.setHours(0, 0, 0, 0);
+
+                const thisWeekCount = mainVersionQuotes.filter(q => {
+                  const createdDate = new Date(q.created_at);
+                  return createdDate >= startOfThisWeek;
+                }).length;
+
+                return thisWeekCount.toString();
+              })()}
+              subtitle="Since Sunday"
+              icon={FileText}
               iconColor="purple"
+              trend={(() => {
+                const now = new Date();
+
+                // Get the start of this week (Sunday)
+                const startOfThisWeek = new Date(now);
+                startOfThisWeek.setDate(now.getDate() - now.getDay());
+                startOfThisWeek.setHours(0, 0, 0, 0);
+
+                // Get the start of last week (Sunday)
+                const startOfLastWeek = new Date(startOfThisWeek);
+                startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
+
+                // Count quotes this week
+                const thisWeekCount = mainVersionQuotes.filter(q => {
+                  const createdDate = new Date(q.created_at);
+                  return createdDate >= startOfThisWeek;
+                }).length;
+
+                // Count quotes last week
+                const lastWeekCount = mainVersionQuotes.filter(q => {
+                  const createdDate = new Date(q.created_at);
+                  return createdDate >= startOfLastWeek && createdDate < startOfThisWeek;
+                }).length;
+
+                // Calculate trend
+                if (lastWeekCount === 0) {
+                  return thisWeekCount > 0 ? {
+                    value: 100,
+                    direction: 'up' as const,
+                    label: 'vs last week'
+                  } : undefined;
+                }
+
+                const trendValue = ((thisWeekCount - lastWeekCount) / lastWeekCount) * 100;
+
+                return {
+                  value: Math.abs(trendValue),
+                  direction: trendValue >= 0 ? 'up' as const : 'down' as const,
+                  label: 'vs last week'
+                };
+              })()}
             />
           </div>
 
