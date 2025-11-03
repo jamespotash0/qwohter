@@ -314,21 +314,41 @@ export const OperableWallFormFields: React.FC<OperableWallFormFieldsProps> = ({
 
             <div className="space-y-2">
               <Label htmlFor="panelFinishSpecificItem" className={labelClass}>
-                Panel Finish Specific Item 
-                {selectedPanelFinishCategory != '' && (<span className="text-red-500"> *</span>)}
+                Panel Finish Specific Item
+                {(() => {
+                  const categoriesWithoutSpecificItems = ["Uncovered", "C.O.M. Material", "Field Painting by Others", "Full-Height Marker (Tack) Board"];
+                  const requiresSpecificItem = selectedPanelFinishCategory && !categoriesWithoutSpecificItems.includes(selectedPanelFinishCategory);
+                  return requiresSpecificItem && (<span className="text-red-500"> *</span>);
+                })()}
               </Label>
               <Select
                 value={selectedPanelFinishSpecificItem}
                 onValueChange={(value) => handleFieldChange("panelFinishSpecificItem", value)}
-                disabled={!selectedPanelFinishCategory || selectedPanelFinishCategory === "None"}
+                disabled={(() => {
+                  const categoriesWithoutSpecificItems = ["Uncovered", "C.O.M. Material", "Field Painting by Others", "Full-Height Marker (Tack) Board"];
+                  // Disable if no category selected, "None" selected, or category has no specific items
+                  return !selectedPanelFinishCategory ||
+                         selectedPanelFinishCategory === "None" ||
+                         categoriesWithoutSpecificItems.includes(selectedPanelFinishCategory);
+                })()}
               >
                  <SelectTrigger
                   className={`border rounded-md ${
-                    selectedPanelFinishCategory === "" 
-                      ? "border-gray-300"  // nothing selected yet
-                      : (!selectedPanelFinishSpecificItem || selectedPanelFinishSpecificItem === "None")
-                        ? "border-red-500" // invalid
-                        : "border-green-500" // completed
+                    (() => {
+                      const categoriesWithoutSpecificItems = ["Uncovered", "C.O.M. Material", "Field Painting by Others", "Full-Height Marker (Tack) Board"];
+                      const requiresSpecificItem = selectedPanelFinishCategory && !categoriesWithoutSpecificItems.includes(selectedPanelFinishCategory);
+
+                      if (selectedPanelFinishCategory === "") {
+                        return "border-gray-300"; // nothing selected yet
+                      }
+                      if (requiresSpecificItem && (!selectedPanelFinishSpecificItem || selectedPanelFinishSpecificItem === "None")) {
+                        return "border-red-500"; // invalid - required but missing
+                      }
+                      if (selectedPanelFinishSpecificItem && selectedPanelFinishSpecificItem !== "None") {
+                        return "border-green-500"; // completed
+                      }
+                      return "border-gray-300"; // optional/disabled
+                    })()
                   }`}
                 >
                   <SelectValue placeholder="Select specific item" />

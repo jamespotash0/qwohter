@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { useUser, useAuthStatus, useSignOut } from '@/auth';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,7 +26,7 @@ interface MainLayoutProps {
  * - Consistent layout structure for all authenticated pages
  * - Public pages (auth, landing) bypass this layout entirely
  */
-export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -61,6 +61,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   // Check if we're on a full-screen wizard page (no padding/max-width)
   const isFullScreenPage = ['/quotes/new'].includes(location.pathname) ||
     location.pathname.startsWith('/quotes/edit-incomplete/');
+
+  // Check if we're on the Board page (show bottom border with padding)
+  const isBoardPage = location.pathname === '/board';
 
   // Check membership status for protected routes
   useEffect(() => {
@@ -257,6 +260,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     });
   };
 
+  // Get sidebar state - only call this hook for protected routes
+  const sidebarState = shouldShowSidebar ? useSidebar() : null;
+  const sidebarOpen = sidebarState?.open ?? false;
+
   // For public routes, render children directly without layout
   if (!shouldShowSidebar) {
     // Editor route needs auth check but no sidebar
@@ -312,19 +319,18 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   );
 
   return (
-    <SidebarProvider defaultOpen={false}>
-      <div className="h-screen flex w-full bg-[var(--content-bg)] overflow-hidden">
-        {/* Logout overlay to prevent flash */}
-        {isLoggingOut && (
-          <div className="absolute inset-0 bg-background z-50 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-muted-foreground">Signing out...</p>
+      <div className={`h-screen flex w-full overflow-hidden ${isBoardPage ? 'bg-sidebar' : 'bg-[var(--content-bg)]'}`}>
+          {/* Logout overlay to prevent flash */}
+          {isLoggingOut && (
+            <div className="absolute inset-0 bg-background z-50 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-muted-foreground">Signing out...</p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
+          <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Main Content */}
           <main className="flex-1 overflow-hidden">
@@ -333,9 +339,22 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               <div className="h-full overflow-auto">
                 {content}
               </div>
+            ) : isBoardPage ? (
+              // Board page: Card-based layout with sidebar background
+              <div className="h-full pt-3 pr-3 pl-4 pb-3">
+                <div className="h-full max-w-[1400px] mx-auto">
+                  <div className="h-full shadow-xl flex flex-col relative z-10 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                    <div className="flex-1 overflow-y-auto bg-sidebar">
+                      <div className="h-full pt-4 px-6 pb-6 bg-white dark:bg-gray-900">
+                        {content}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             ) : (
-              // Standard layout with padding and max-width
-              <div className="h-full py-8 px-8 lg:px-12 space-y-4 overflow-auto">
+              // Standard layout with padding and max-width (original)
+              <div className={`h-full pt-6 pb-8 space-y-4 overflow-auto ${sidebarOpen ? 'px-8 lg:px-12' : 'px-6 lg:px-10'}`}>
                 <div className="max-w-[1350px] mx-auto w-full">
                   {content}
                 </div>
@@ -344,6 +363,35 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </main>
         </div>
       </div>
-    </SidebarProvider>
   );
+};
+
+export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+  const location = useLocation();
+
+  // Check if current route should show sidebar
+  const shouldShowSidebar = ![
+    '/',
+    '/sign-in',
+    '/create-account',
+    '/auth',
+    '/forgot-password',
+    '/reset-password',
+    '/pending-approval',
+    '/access-denied',
+    '/account-inactive',
+    '/demo-contact'
+  ].includes(location.pathname) && !location.pathname.startsWith('/editor/');
+
+  // Wrap with SidebarProvider only for protected routes
+  if (shouldShowSidebar) {
+    return (
+      <SidebarProvider defaultOpen={false}>
+        <MainLayoutContent>{children}</MainLayoutContent>
+      </SidebarProvider>
+    );
+  }
+
+  // Public routes render without SidebarProvider
+  return <MainLayoutContent>{children}</MainLayoutContent>;
 };

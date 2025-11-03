@@ -203,7 +203,7 @@ ${formData.firstName} ${formData.lastName}
               }}
             >
               <img
-                src="/logos/Landing_Page_Logo_Light.svg"
+                src="/logos/New_Landing_Page_Logo_DarkonLightBackground.svg"
                 alt="Qwohter Logo"
                 className="h-8 w-auto"
               />

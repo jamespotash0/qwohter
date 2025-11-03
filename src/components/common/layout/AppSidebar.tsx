@@ -257,13 +257,13 @@ export function AppSidebar({
 
   return (
     <Sidebar
-      className="bg-sidebar-bg transition-all duration-300 ease-in-out"
+      className="bg-sidebar-bg transition-all duration-200 ease-in-out"
       collapsible="icon"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Header with Logo and Collapse Toggle */}
-      <SidebarHeader className={`transition-all duration-300 ease-in-out ${isCollapsed ? 'px-2 pt-3 pb-0' : 'px-4 pt-4 pb-1 pl-6'}`}>
+      <SidebarHeader className={`transition-all duration-200 ease-in-out ${isCollapsed ? 'px-0 pt-5 pb-0' : 'px-4 pt-6 pb-1 pl-6'}`}>
         <div className="flex items-center justify-between">
           {/* Logo or Menu Icon Toggle */}
           <div className={`flex items-center transition-all duration-300 ${isCollapsed ? 'justify-center w-full' : ''}`}>
@@ -392,7 +392,7 @@ export function AppSidebar({
               </DropdownMenu>
             </div>
           ) : (
-            <div className="px-2 mb-4 flex justify-center animate-in fade-in zoom-in-50 duration-300">
+            <div className="mb-4 flex justify-center animate-in fade-in zoom-in-50 duration-300">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="p-0 rounded-lg transition-all duration-200 focus:outline-none focus-visible:outline-none" style={{ backgroundColor: 'transparent' }}>
@@ -590,7 +590,7 @@ export function AppSidebar({
                 </div>
               )
             ) : !isCollapsed ? (
-              <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="space-y-3 animate-in fade-in duration-300 delay-150">
               {/* User Profile Section */}
                 <div className="flex items-center justify-between p-3 rounded-xl group transition-all duration-200">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -627,17 +627,17 @@ export function AppSidebar({
                 </div>
               </div>
             ) : (
-              <div className="space-y-2 animate-in fade-in zoom-in-50 duration-300">
-                {/* User Avatar Collapsed */}
-                <div className="flex justify-center p-2">
-                  <Avatar className="h-8 w-8 ring-2 ring-[var(--sidebar-user-avatar-bg)] transition-all duration-300">
+              <div className="relative flex justify-center items-center h-12 animate-in fade-in zoom-in-50 duration-300">
+                {/* User Avatar Collapsed - Visible by default, hidden on hover */}
+                <div className={`transition-all duration-200 ease-in-out ${isHovered ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}>
+                  <Avatar className="h-8 w-8 ring-2 ring-[var(--sidebar-user-avatar-bg)]">
                     <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-xs font-semibold">
                       {userInitials}
                     </AvatarFallback>
                   </Avatar>
                 </div>
-                {/* Logout Button Collapsed */}
-                <div className="flex justify-center">
+                {/* Logout Button Collapsed - Visible on hover, replaces avatar */}
+                <div className={`absolute inset-0 flex items-center justify-center transition-all duration-200 ease-in-out ${isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
                   <Button
                     variant="ghost"
                     size="sm"
