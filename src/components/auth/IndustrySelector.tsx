@@ -17,22 +17,22 @@ export interface IndustrySelectorProps {
 }
 
 const INDUSTRY_OPTIONS = [
-  { value: 'construction', label: 'Construction' },
-  { value: 'manufacturing', label: 'Manufacturing' },
-  { value: 'technology', label: 'Technology' },
-  { value: 'healthcare', label: 'Healthcare' },
-  { value: 'education', label: 'Education' },
-  { value: 'retail', label: 'Retail' },
-  { value: 'hospitality', label: 'Hospitality' },
-  { value: 'financial-services', label: 'Financial Services' },
-  { value: 'real-estate', label: 'Real Estate' },
-  { value: 'transportation', label: 'Transportation' },
-  { value: 'energy', label: 'Energy & Utilities' },
-  { value: 'agriculture', label: 'Agriculture' },
-  { value: 'consulting', label: 'Consulting' },
-  { value: 'non-profit', label: 'Non-Profit' },
-  { value: 'government', label: 'Government' },
-  { value: 'other', label: 'Other' }
+  { value: 'Construction', label: 'Construction' },
+  { value: 'Manufacturing', label: 'Manufacturing' },
+  { value: 'Technology', label: 'Technology' },
+  { value: 'Healthcare', label: 'Healthcare' },
+  { value: 'Education', label: 'Education' },
+  { value: 'Retail', label: 'Retail' },
+  { value: 'Hospitality', label: 'Hospitality' },
+  { value: 'Financial Services', label: 'Financial Services' },
+  { value: 'Real Estate', label: 'Real Estate' },
+  { value: 'Transportation', label: 'Transportation' },
+  { value: 'Energy & Utilities', label: 'Energy & Utilities' },
+  { value: 'Agriculture', label: 'Agriculture' },
+  { value: 'Consulting', label: 'Consulting' },
+  { value: 'Non-Profit', label: 'Non-Profit' },
+  { value: 'Government', label: 'Government' },
+  { value: 'Other', label: 'Other' }
 ];
 
 export const IndustrySelector: React.FC<IndustrySelectorProps> = ({
@@ -47,16 +47,17 @@ export const IndustrySelector: React.FC<IndustrySelectorProps> = ({
   );
 
   const handleSelectChange = (selectedValue: string) => {
-    if (selectedValue === 'other') {
+    if (selectedValue === 'Other') {
       setIsCustomSelected(true);
       if (customIndustry) {
         onChange(customIndustry);
+      } else {
+        onChange(''); // Clear value when "Other" is selected without custom input
       }
     } else {
       setIsCustomSelected(false);
-      // Store the label (display text) instead of the value
-      const selectedOption = INDUSTRY_OPTIONS.find(opt => opt.value === selectedValue);
-      onChange(selectedOption?.label || selectedValue);
+      // Values and labels now match (both capitalized), so just pass the value directly
+      onChange(selectedValue);
     }
   };
 
@@ -67,8 +68,8 @@ export const IndustrySelector: React.FC<IndustrySelectorProps> = ({
     }
   };
 
-  // Determine what should be shown in the select
-  const displayValue = isCustomSelected ? 'other' : value;
+  // Values and labels now match (both capitalized), so we can use value directly
+  const displayValue = isCustomSelected ? 'Other' : value;
 
   return (
     <div className="space-y-3">

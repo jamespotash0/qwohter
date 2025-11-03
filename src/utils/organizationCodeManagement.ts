@@ -25,15 +25,16 @@ export const isOrganizationCodeUnique = async (code: string): Promise<boolean> =
     .from('organizations')
     .select('id')
     .eq('organization_code', code)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code === 'PGRST116') {
-    // No rows found - code is unique
-    return true;
+  if (error) {
+    // If there's an error, log it and assume code is not unique (safe default)
+    console.error('Error checking organization code uniqueness:', error);
+    return false;
   }
 
-  // If data exists or there's another error, code is not unique
-  return false;
+  // If no data found, code is unique. If data exists, code is not unique
+  return data === null;
 };
 
 /**
