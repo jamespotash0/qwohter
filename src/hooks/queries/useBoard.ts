@@ -35,14 +35,13 @@ export function useProjects(organizationId?: string, enabled: boolean = true) {
   const queryKey = queryKeys.board.tasks(organizationId || '');
 
   // Set up realtime subscription for this organization's projects
-  // Note: Realtime must be enabled in Supabase Dashboard for projects table
   useRealtimeSubscription(
     'projects',
     queryKey,
     {
       filter: `organization_id=eq.${organizationId}`,
     },
-    false // Disabled for now - enable after configuring Supabase Realtime
+    !!organizationId && enabled
   );
 
   return useQuery({

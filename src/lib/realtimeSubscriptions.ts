@@ -106,7 +106,14 @@ export function subscribeToTableChanges(
     if (status === 'SUBSCRIBED') {
       console.log(`✅ Realtime: Subscribed to ${table}`, { filter, queryKey });
     } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-      console.error(`❌ Realtime: Connection failed for ${table}:`, status);
+      console.warn(
+        `⚠️ Realtime: Connection failed for ${table} (${status}).\n` +
+        `This is non-critical - the app will continue to work with regular polling.\n` +
+        `Possible causes:\n` +
+        `1. RLS policies may need SELECT permission for authenticated users\n` +
+        `2. Check Supabase Dashboard → Database → Replication → ${table} table\n` +
+        `3. Ensure realtime is enabled for INSERT, UPDATE, DELETE events`
+      );
     }
   });
 
