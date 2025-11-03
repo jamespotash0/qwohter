@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { User as UserIcon, Building, Shield, CreditCard, Palette, Users } from "lucide-react";
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
@@ -39,8 +39,8 @@ const Settings = () => {
   // Get current organization and role from React Query
   const { organization, role: userRole } = useCurrentOrganization(user?.id || '');
 
-  // Function to refetch organization data
-  const refetchOrganization = async (userId?: string, forceRefresh?: boolean) => {
+  // Function to refetch organization data (memoized to prevent recreating on every render)
+  const refetchOrganization = useCallback(async (userId?: string, forceRefresh?: boolean) => {
     const targetUserId = userId || user?.id;
     if (targetUserId) {
       await queryClient.invalidateQueries({ queryKey: queryKeys.organization.byUser(targetUserId) });
@@ -48,7 +48,7 @@ const Settings = () => {
         await queryClient.refetchQueries({ queryKey: queryKeys.organization.byUser(targetUserId) });
       }
     }
-  };
+  }, [user?.id, queryClient]);
 
   // Check subscription status
   useEffect(() => {
@@ -104,12 +104,12 @@ const Settings = () => {
     return undefined;
   }, [organization?.id]);
 
-  // Sync activeTab with URL
+  // Sync activeTab with URL (only when URL changes, not when activeTab changes)
   useEffect(() => {
-    if (tabFromUrl && tabFromUrl !== activeTab) {
+    if (tabFromUrl) {
       setActiveTab(tabFromUrl);
     }
-  }, [tabFromUrl, activeTab]);
+  }, [tabFromUrl]); // Removed activeTab from dependencies to prevent infinite loop
 
   // Don't show loading spinner - organization and role should be cached
   // If they're not available, show settings anyway with default values
@@ -198,7 +198,7 @@ const Settings = () => {
       const { offsetLeft, offsetWidth } = activeTabElement;
       setIndicatorStyle({ left: offsetLeft, width: offsetWidth });
     }
-  }, [activeTab, availableTabs]);
+  }, [activeTab]); // Only depend on activeTab - availableTabs not needed
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
