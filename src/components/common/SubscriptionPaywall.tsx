@@ -68,6 +68,8 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   const [loading, setLoading] = useState(true); // Always validate first
   const [hasAccess, setHasAccess] = useState(false); // Fail closed by default
   const [blockReason, setBlockReason] = useState<string>('');
+  const [inGracePeriod, setInGracePeriod] = useState(false);
+  const [graceDaysRemaining, setGraceDaysRemaining] = useState<number>(0);
 
   console.log('🎫 Paywall initialized:', {
     initialStatus,
@@ -103,7 +105,7 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
           console.log('🔔 Subscription changed, rechecking access:', payload);
 
           // Get the new subscription status
-          const { isValid, reason } = await stripeService.hasValidSubscription(organizationId);
+          const { isValid, reason, inGracePeriod: isGrace, graceDaysRemaining: graceDays } = await stripeService.hasValidSubscription(organizationId);
 
           // Check if status actually changed (to avoid unnecessary reloads)
           const statusChanged = isValid !== hasAccess;
@@ -114,6 +116,8 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
             // Update state immediately
             setHasAccess(isValid);
             setBlockReason(reason || '');
+            setInGracePeriod(isGrace || false);
+            setGraceDaysRemaining(graceDays || 0);
 
             // Update cache
             setSubscriptionStatus({
@@ -163,14 +167,16 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
       // Always show loading while validating
       setLoading(true);
 
-      const { isValid, reason } = await stripeService.hasValidSubscription(organizationId);
+      const { isValid, reason, inGracePeriod: isGrace, graceDaysRemaining: graceDays } = await stripeService.hasValidSubscription(organizationId);
 
-      console.log('💳 Subscription check result:', { isValid, reason, organizationId });
+      console.log('💳 Subscription check result:', { isValid, reason, inGracePeriod: isGrace, graceDaysRemaining: graceDays, organizationId });
 
       setHasAccess(isValid);
       setBlockReason(reason || '');
+      setInGracePeriod(isGrace || false);
+      setGraceDaysRemaining(graceDays || 0);
 
-      console.log('💳 State updated:', { hasAccess: isValid, blockReason: reason });
+      console.log('💳 State updated:', { hasAccess: isValid, blockReason: reason, inGracePeriod: isGrace, graceDaysRemaining: graceDays });
 
       // Cache the result in Zustand store
       setSubscriptionStatus({
@@ -251,8 +257,8 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
     // Non-owner users see simplified message
     if (!isOwner) {
       return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--content-bg)]">
-          <Card className="max-w-md w-full mx-4 shadow-2xl border-gray-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 dark:bg-black/40">
+          <Card className="max-w-md w-full mx-4 shadow-2xl border-white/20 bg-white/70 backdrop-blur-xl backdrop-saturate-150 dark:bg-gray-900/70 dark:border-gray-700/50">
             <CardHeader className="text-center pb-4">
               <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <AlertCircle className="w-8 h-8 text-orange-600" />
@@ -279,30 +285,102 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
     }
 
     // Owner users see full paywall with billing options
+    const isTrialExpired = blockReason?.toLowerCase().includes('trial');
+    const isInGracePeriod = blockReason?.toLowerCase().includes('grace');
+
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--content-bg)]">
-          <Card className="max-w-md w-full mx-4 shadow-2xl border-gray-200">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 dark:bg-black/40">
+          <Card className={`max-w-lg w-full mx-4 shadow-2xl bg-white/70 backdrop-blur-xl backdrop-saturate-150 dark:bg-gray-900/70 ${isInGracePeriod ? 'border-red-500/50 border-2' : 'border-white/20 dark:border-gray-700/50'}`}>
             <CardHeader className="text-center pb-4">
-              <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertCircle className="w-8 h-8 text-orange-600" />
+              <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                isInGracePeriod ? 'bg-red-100 animate-pulse' : 'bg-orange-100'
+              }`}>
+                <AlertCircle className={`w-8 h-8 ${isInGracePeriod ? 'text-red-600' : 'text-orange-600'}`} />
               </div>
-              <CardTitle className="text-2xl text-gray-900">Subscription Required</CardTitle>
-              <CardDescription className="text-gray-600 mt-2">
-                {blockReason || 'A valid subscription is required to access this feature'}
+              <CardTitle className="text-2xl text-gray-900">
+                {isInGracePeriod
+                  ? '🚨 GRACE PERIOD - Action Required!'
+                  : isTrialExpired
+                  ? 'Your Trial Has Ended'
+                  : 'Subscription Required'}
+              </CardTitle>
+              <CardDescription className="text-gray-600 mt-2 text-base">
+                {isInGracePeriod
+                  ? 'Your trial has expired! Add a payment method NOW or lose access in a few days.'
+                  : isTrialExpired
+                  ? 'Good news — your work is saved! Continue right where you left off.'
+                  : (blockReason || 'A valid subscription is required to access this feature')}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 pt-2">
+            <CardContent className="space-y-4 pt-2">
+              {/* Grace period warning */}
+              {isInGracePeriod && (
+                <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4">
+                  <h3 className="text-sm font-bold text-red-900 mb-2">
+                    ⚠️ URGENT: Access Ending Soon
+                  </h3>
+                  <p className="text-sm text-red-800 font-medium">
+                    You have limited time to add a payment method. Without action, you'll lose access to all features and data.
+                  </p>
+                </div>
+              )}
+
+              {/* Value proposition */}
+              {(isTrialExpired || isInGracePeriod) && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-2">
+                    What You'll Keep:
+                  </h3>
+                  <ul className="space-y-1 text-sm text-gray-700">
+                    <li className="flex items-center gap-2">
+                      <span className="text-green-600">✓</span>
+                      All your proposals and quotes
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-green-600">✓</span>
+                      Full team collaboration
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-green-600">✓</span>
+                      Advanced analytics & reporting
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-green-600">✓</span>
+                      Priority support
+                    </li>
+                  </ul>
+                </div>
+              )}
+
+              {/* Social proof */}
+              {(isTrialExpired || isInGracePeriod) && (
+                <div className="text-center py-2">
+                  <p className="text-sm text-gray-600">
+                    Join <span className="font-semibold text-gray-900">500+ companies</span> using Qwohter
+                  </p>
+                </div>
+              )}
+
               <p className="text-sm text-gray-600 text-center">
-                Please go to billing settings to manage your subscription and restore access.
+                {isInGracePeriod
+                  ? 'Add payment now to keep your data and continue working.'
+                  : isTrialExpired
+                  ? 'Choose a plan to continue where you left off.'
+                  : 'Please go to billing settings to manage your subscription and restore access.'}
               </p>
+
               <Button
                 onClick={() => navigate('/settings?tab=billing')}
-                variant="outline"
-                className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
+                className={`w-full h-12 text-base font-semibold ${
+                  isInGracePeriod
+                    ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 animate-pulse'
+                    : 'bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700'
+                }`}
               >
-                <CreditCard className="w-4 h-4 mr-2" />
-                Go to Billing Settings
+                <CreditCard className="w-5 h-5 mr-2" />
+                {isInGracePeriod ? 'Add Payment NOW' : isTrialExpired ? 'Choose Your Plan' : 'Go to Billing Settings'}
               </Button>
+
               <div className="pt-2 border-t border-gray-200">
                 <Button
                   onClick={handleLogout}

@@ -14,6 +14,7 @@ import { useAuthStore } from "@/stores/auth/authStore";
 import { stripeService } from "@/services/stripeService";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef } from "react";
+import { TrialProgressRing } from "@/components/trial/TrialProgressRing";
 
 interface AppSidebarProps {
   user: string;
@@ -80,6 +81,8 @@ export function AppSidebar({
   const [clickedItem, setClickedItem] = useState<string | null>(null);
   const previousPathRef = useRef<string>('');
   const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
+  const [inGracePeriod, setInGracePeriod] = useState(false);
+  const [graceDaysRemaining, setGraceDaysRemaining] = useState<number>(0);
   const [userOrganizations, setUserOrganizations] = useState<UserOrganization[]>([]);
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(false);
 
@@ -187,7 +190,7 @@ export function AppSidebar({
     fetchUserOrganizations();
   }, [user?.id]);
 
-  // Check for trial status
+  // Check for trial status and grace period
   useEffect(() => {
     const checkTrialStatus = async () => {
       if (!currentOrganization?.id) return;
@@ -195,11 +198,42 @@ export function AppSidebar({
       const { data: subscription } = await stripeService.getSubscription(currentOrganization.id);
 
       const status = subscription?.stripe_subscription_status?.toLowerCase();
-      if (status === 'trialing' && subscription?.current_period_end) {
-        const daysLeft = stripeService.getDaysRemaining(subscription.current_period_end);
-        setTrialDaysRemaining(daysLeft);
+      if (status === 'trialing' && subscription?.trial_end) {
+        const trialEndDate = new Date(subscription.trial_end);
+        const now = new Date();
+        const daysLeft = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (daysLeft >= 0) {
+          // Active trial
+          setTrialDaysRemaining(daysLeft);
+          setInGracePeriod(false);
+          setGraceDaysRemaining(0);
+        } else if (!subscription.has_payment_method) {
+          // Trial expired, check grace period (3 days)
+          const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
+          const graceDays = Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (graceDays > 0) {
+            // In grace period
+            setTrialDaysRemaining(null);
+            setInGracePeriod(true);
+            setGraceDaysRemaining(graceDays);
+          } else {
+            // Grace period expired
+            setTrialDaysRemaining(null);
+            setInGracePeriod(false);
+            setGraceDaysRemaining(0);
+          }
+        } else {
+          // Has payment method
+          setTrialDaysRemaining(null);
+          setInGracePeriod(false);
+          setGraceDaysRemaining(0);
+        }
       } else {
         setTrialDaysRemaining(null);
+        setInGracePeriod(false);
+        setGraceDaysRemaining(0);
       }
     };
 
@@ -304,24 +338,74 @@ export function AppSidebar({
         </div>
       </SidebarHeader>
 
-      {/* Trial Banner */}
-      {trialDaysRemaining !== null && !isCollapsed && (
+      {/* Enhanced Trial Banner with Progress Ring */}
+      {(trialDaysRemaining !== null || inGracePeriod) && !isCollapsed && (
         <div className="px-4 pt-3 pb-2 animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="bg-gradient-to-r from-emerald-600 to-green-600 rounded-lg p-3 text-white shadow-md">
-            <div className="flex items-center gap-2 mb-1">
-              <Clock className="w-4 h-4" />
-              <span className="text-sm font-semibold">Free Trial</span>
+          <div className={`rounded-lg p-4 text-white shadow-lg ${
+            inGracePeriod
+              ? 'bg-gradient-to-r from-red-700 via-red-600 to-pink-700 animate-pulse'
+              : trialDaysRemaining !== null && trialDaysRemaining <= 3
+              ? 'bg-gradient-to-r from-red-600 to-pink-600'
+              : trialDaysRemaining !== null && trialDaysRemaining <= 7
+              ? 'bg-gradient-to-r from-yellow-500 to-orange-600'
+              : 'bg-gradient-to-r from-emerald-600 to-green-600'
+          } ${trialDaysRemaining !== null && trialDaysRemaining <= 3 ? 'animate-pulse' : ''}`}>
+            <div className="flex items-start gap-3">
+              {/* Progress Ring or Grace Period Display */}
+              <div className="flex-shrink-0">
+                {inGracePeriod ? (
+                  <div className="w-[50px] h-[50px] flex flex-col items-center justify-center">
+                    <div className="text-2xl font-bold text-white">
+                      {graceDaysRemaining}
+                    </div>
+                  </div>
+                ) : (
+                  <TrialProgressRing
+                    daysRemaining={trialDaysRemaining || 0}
+                    size={50}
+                    strokeWidth={4}
+                  />
+                )}
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-bold">
+                    {inGracePeriod ? 'GRACE PERIOD' : 'Free Trial'}
+                  </span>
+                  {(inGracePeriod || (trialDaysRemaining !== null && trialDaysRemaining <= 3)) && (
+                    <span className="text-xs bg-white/30 px-1.5 py-0.5 rounded font-semibold">
+                      {inGracePeriod ? 'URGENT!' : trialDaysRemaining !== null && trialDaysRemaining <= 1 ? 'URGENT' : 'ENDING SOON'}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs font-medium opacity-95 mb-2">
+                  {inGracePeriod
+                    ? `${graceDaysRemaining} ${graceDaysRemaining === 1 ? 'day' : 'days'} until access ends`
+                    : `${trialDaysRemaining} ${trialDaysRemaining === 1 ? 'day' : 'days'} left`
+                  }
+                </p>
+                {!inGracePeriod && trialDaysRemaining !== null && (
+                  <div className="text-xs opacity-90 mb-1">
+                    {Math.round((trialDaysRemaining / 14) * 100)}% of trial remaining
+                  </div>
+                )}
+                {inGracePeriod && (
+                  <div className="text-xs opacity-95 font-semibold">
+                    Trial expired - Add payment NOW!
+                  </div>
+                )}
+              </div>
             </div>
-            <p className="text-xs opacity-90">
-              {trialDaysRemaining} {trialDaysRemaining === 1 ? 'day' : 'days'} remaining
-            </p>
+
             <Button
               onClick={() => navigate('/settings?tab=billing')}
               variant="ghost"
               size="sm"
-              className="w-full mt-2 h-7 text-xs bg-white/20 hover:bg-white/30 text-white border-0"
+              className="w-full mt-3 h-8 text-xs bg-white/25 hover:bg-white/40 text-white border-0 font-semibold shadow-sm hover:shadow-md transition-all"
             >
-              Upgrade Plan
+              {inGracePeriod ? 'Add Payment NOW' : trialDaysRemaining !== null && trialDaysRemaining <= 3 ? 'Add Payment Now' : 'Add Payment Method'}
             </Button>
           </div>
         </div>

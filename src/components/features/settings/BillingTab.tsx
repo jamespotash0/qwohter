@@ -1332,7 +1332,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
               // Now only showing cancel option
               <div className="space-y-5">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {subscription.stripe_subscription_status?.toLowerCase() === 'trialing'
+                  {subscription?.stripe_subscription_status?.toLowerCase() === 'trialing'
                     ? 'You can cancel your free trial at any time. Your access will continue until the end of the trial period.'
                     : 'You can cancel your subscription at any time. Your access will continue until the end of the current billing period.'}
                 </p>
@@ -1358,7 +1358,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                       </>
                     ) : (
                       <span>
-                        {subscription.stripe_subscription_status?.toLowerCase() === 'trialing'
+                        {subscription?.stripe_subscription_status?.toLowerCase() === 'trialing'
                           ? 'Cancel Free Trial'
                           : 'Cancel Subscription'}
                       </span>

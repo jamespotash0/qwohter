@@ -9,7 +9,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-
+import type { Database } from '@/integrations/supabase/types';
 // Type definitions
 interface SubscriptionPlan {
   id: string;
@@ -195,6 +195,7 @@ export const updateSubscription = async (
 /**
  * Check if organization has valid subscription
  * Uses local cache for fast access control decisions
+ * Includes 3-day grace period after trial expiration
  */
 export const hasValidSubscription = async (organizationId: string) => {
   const { data: subscription, error } = await getSubscription(organizationId);
@@ -203,6 +204,7 @@ export const hasValidSubscription = async (organizationId: string) => {
     return {
       isValid: false,
       reason: 'No subscription found',
+      inGracePeriod: false,
     };
   }
 
@@ -211,6 +213,7 @@ export const hasValidSubscription = async (organizationId: string) => {
     return {
       isValid: false,
       reason: subscription.access_blocked_reason || 'Access blocked',
+      inGracePeriod: false,
     };
   }
 
@@ -234,11 +237,12 @@ export const hasValidSubscription = async (organizationId: string) => {
       reason: subscription.stripe_subscription_status
         ? `Subscription status: ${subscription.stripe_subscription_status}`
         : 'No subscription status set',
+      inGracePeriod: false,
     };
   }
 
-  // Check trial expiration
-  // If on trial, expired, and no payment method - block access
+  // Check trial expiration with 3-DAY GRACE PERIOD
+  // If on trial, expired, and no payment method - check grace period
   if (status === 'trialing') {
     const trialEnd = subscription.trial_end;
     const hasPaymentMethod = subscription.has_payment_method;
@@ -256,11 +260,33 @@ export const hasValidSubscription = async (organizationId: string) => {
       });
 
       if (isExpired && !hasPaymentMethod) {
-        console.log('❌ Trial expired without payment method');
-        return {
-          isValid: false,
-          reason: 'Your free trial has expired. Please add a payment method to continue.',
-        };
+        // Trial expired without payment - check grace period (3 days)
+        const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
+        const inGracePeriod = now <= gracePeriodEnd;
+        const graceDaysRemaining = Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        console.log('⏰ Grace period check:', {
+          gracePeriodEnd: gracePeriodEnd.toISOString(),
+          inGracePeriod,
+          graceDaysRemaining: Math.max(0, graceDaysRemaining),
+        });
+
+        if (inGracePeriod) {
+          console.log('✅ In grace period - allowing access');
+          return {
+            isValid: true,
+            reason: '',
+            inGracePeriod: true,
+            graceDaysRemaining: Math.max(0, graceDaysRemaining),
+          };
+        } else {
+          console.log('❌ Grace period expired');
+          return {
+            isValid: false,
+            reason: 'Your free trial and grace period have expired. Please add a payment method to continue.',
+            inGracePeriod: false,
+          };
+        }
       }
     }
   }
@@ -268,6 +294,7 @@ export const hasValidSubscription = async (organizationId: string) => {
   return {
     isValid: true,
     reason: null,
+    inGracePeriod: false,
   };
 };
 
@@ -275,6 +302,7 @@ export const hasValidSubscription = async (organizationId: string) => {
  * Block organization access (manual override)
  */
 export const blockAccess = async (organizationId: string, reason: string) => {
+  
   const { error } = await supabase
     .from('subscriptions')
     .update({

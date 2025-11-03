@@ -43,6 +43,9 @@ import { formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
 import { toast } from "sonner";
 import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
 import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
+import { TrialStatusCard } from "@/components/trial/TrialStatusCard";
+import { TrialExpiryModal } from "@/components/trial/TrialExpiryModal";
+import { stripeService } from "@/services/stripeService";
 
 /**
  * Dashboard - Executive Overview
@@ -62,6 +65,7 @@ const Dashboard = () => {
   // Get organization ID from the store instead of separate localStorage cache
   const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
   const organizationId = currentOrganization?.id || null;
+  const members = useOrganizationStore((state) => state.members);
 
   console.log('[Dashboard] Using organization:', { id: organizationId, name: currentOrganization?.name });
   const [showAddReminderModal, setShowAddReminderModal] = useState(false);
@@ -78,11 +82,100 @@ const Dashboard = () => {
     }
   });
 
+  // Trial status state
+  const [trialStatus, setTrialStatus] = useState<{
+    isOnTrial: boolean;
+    daysRemaining: number;
+    trialEnd: string | null;
+    hasPaymentMethod: boolean;
+    inGracePeriod?: boolean;
+    graceDaysRemaining?: number;
+  } | null>(null);
+  const [showTrialCard, setShowTrialCard] = useState(false);
+  const [showExpiryModal, setShowExpiryModal] = useState(false);
+
   const quotes = useQuotesStore((state) => state.quotes);
   const quotesLoading = useQuotesStore((state) => state.isLoading);
   const fetchQuotes = useQuotesStore((state) => state.fetchQuotes);
 
   useOrganizations();
+
+  // Fetch trial status (including grace period)
+  useEffect(() => {
+    const checkTrialStatus = async () => {
+      if (!organizationId) return;
+
+      const { data: subscription } = await stripeService.getSubscription(organizationId);
+
+      if (subscription) {
+        const status = subscription.stripe_subscription_status?.toLowerCase();
+        const isOnTrial = status === 'trialing';
+        const trialEnd = subscription.trial_end;
+        const hasPaymentMethod = subscription.has_payment_method || false;
+
+        if (isOnTrial && trialEnd) {
+          const now = new Date();
+          const trialEndDate = new Date(trialEnd);
+          const isTrialExpired = now > trialEndDate;
+
+          let statusData: typeof trialStatus = null;
+
+          if (!isTrialExpired) {
+            // Still in active trial
+            const daysLeft = stripeService.getDaysRemaining(trialEnd);
+            if (daysLeft !== null) {
+              statusData = {
+                isOnTrial: true,
+                daysRemaining: daysLeft,
+                trialEnd,
+                hasPaymentMethod,
+                inGracePeriod: false,
+              };
+            }
+          } else {
+            // Trial expired - check grace period
+            const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
+            const inGracePeriod = now <= gracePeriodEnd;
+
+            if (inGracePeriod && !hasPaymentMethod) {
+              const graceDaysLeft = Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              statusData = {
+                isOnTrial: true,
+                daysRemaining: 0, // Trial days = 0
+                trialEnd,
+                hasPaymentMethod,
+                inGracePeriod: true,
+                graceDaysRemaining: Math.max(0, graceDaysLeft),
+              };
+            }
+          }
+
+          if (statusData) {
+            setTrialStatus(statusData);
+
+            // Check if card has been dismissed
+            const dismissedUntil = localStorage.getItem('trial_card_dismissed_until');
+            const nowTimestamp = Date.now();
+            const shouldShow = !dismissedUntil || nowTimestamp > parseInt(dismissedUntil);
+            setShowTrialCard(shouldShow);
+
+            // Show expiry modal at 3-day mark (only during trial, not grace period)
+            if (!statusData.inGracePeriod && statusData.daysRemaining === 3) {
+              setShowExpiryModal(true);
+            }
+          } else {
+            setTrialStatus(null);
+            setShowTrialCard(false);
+          }
+        } else {
+          setTrialStatus(null);
+          setShowTrialCard(false);
+        }
+      }
+    };
+
+    checkTrialStatus();
+  }, [organizationId]);
 
   // Update cache when profile loads (sidebar already does this, but just in case)
   useEffect(() => {
@@ -415,7 +508,8 @@ const Dashboard = () => {
     const rejectedThisMonth = quoteGroups.filter(group => {
       const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
       if (!rejectedVersion) return false;
-      const rejectedDate = new Date(rejectedVersion.rejected_at);
+      const rejectedDate = rejectedVersion.rejected_at ? new Date(rejectedVersion.rejected_at) : null;
+      if (!rejectedDate) return false;
       return rejectedDate >= thisMonth && !group.versions.some(v => v.status === 'Won');
     }).length;
     const decidedThisMonth = wonThisMonth + rejectedThisMonth;
@@ -426,7 +520,8 @@ const Dashboard = () => {
     const rejectedLastMonth = quoteGroups.filter(group => {
       const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
       if (!rejectedVersion) return false;
-      const rejectedDate = new Date(rejectedVersion.rejected_at);
+      const rejectedDate = rejectedVersion.rejected_at ? new Date(rejectedVersion.rejected_at) : null;
+      if (!rejectedDate) return false;
       return rejectedDate >= lastMonth && rejectedDate <= lastMonthEnd && !group.versions.some(v => v.status === 'Won');
     }).length;
     const decidedLastMonth = wonLastMonth + rejectedLastMonth;
@@ -701,6 +796,20 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Trial Status Card - Shown only during trial (replaces Revenue card position) */}
+      {showTrialCard && trialStatus && (
+        <div className="mb-8">
+          <TrialStatusCard
+            daysRemaining={trialStatus.daysRemaining}
+            trialEnd={trialStatus.trialEnd || ''}
+            hasPaymentMethod={trialStatus.hasPaymentMethod}
+            inGracePeriod={trialStatus.inGracePeriod}
+            graceDaysRemaining={trialStatus.graceDaysRemaining}
+            onDismiss={() => setShowTrialCard(false)}
+          />
+        </div>
+      )}
+
       {/* Key Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {quotesLoading ? (
@@ -722,8 +831,9 @@ const Dashboard = () => {
           </>
         ) : (
           <>
-            {/* Total Revenue */}
-            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+            {/* Total Revenue - Hidden during trial, shown after */}
+            {!(showTrialCard && trialStatus) && (
+              <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800">
@@ -752,6 +862,7 @@ const Dashboard = () => {
                 </div>
               </CardContent>
             </Card>
+            )}
 
             {/* Active Quotes */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
@@ -1183,6 +1294,20 @@ const Dashboard = () => {
           navigate(`/quotes/new?name=${encodeURIComponent(quoteName)}`);
         }}
       />
+
+      {/* Trial Expiry Modal - 3-day warning */}
+      {trialStatus && (
+        <TrialExpiryModal
+          daysRemaining={trialStatus.daysRemaining}
+          open={showExpiryModal}
+          onClose={() => setShowExpiryModal(false)}
+          metrics={{
+            quotesCreated: quotes.length,
+            totalRevenue: metrics.totalRevenue,
+            teamMembers: members?.length || 0,
+          }}
+        />
+      )}
     </PageContent>
   );
 };
