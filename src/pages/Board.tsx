@@ -1,7 +1,18 @@
 import { useEffect, useState, useRef } from 'react';
 import { PageContent } from '@/components/common/layout';
-import { useBoardStore, Project, ProjectPriority } from '@/stores/board/boardStore';
-import { supabase } from '@/integrations/supabase/client';
+import { Project, ProjectPriority } from '@/stores/board/boardStore';
+import {
+  useProjects,
+  useWorkflowColumns,
+  useUpdateProject,
+  useDeleteProject,
+  useCreateWorkflowColumn,
+  useUpdateWorkflowColumn,
+  useDeleteWorkflowColumn,
+  useMoveBoardItem,
+} from '@/hooks/queries/useBoard';
+import { useUser } from '@/auth';
+import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
 import { animate } from 'animejs';
 import {
   Plus as PlusIcon,
@@ -60,17 +71,22 @@ const COLUMN_COLORS = [
 // ];
 
 export default function Board() {
-  const {
-    projects,
-    workflowColumns,
-    updateProject,
-    updateWorkflowColumn,
-    deleteWorkflowColumn,
-    createWorkflowColumn,
-    deleteProject,
-    initializeBoard,
-    subscribeToChanges
-  } = useBoardStore();
+  // Get user and organization
+  const user = useUser();
+  const { organization } = useCurrentOrganization(user?.id || '');
+  const organizationId = organization?.id || '';
+
+  // Fetch data using React Query (includes automatic realtime subscriptions)
+  const { data: projects = [], isLoading: projectsLoading } = useProjects(organizationId, !!organizationId);
+  const { data: workflowColumns = [], isLoading: columnsLoading } = useWorkflowColumns(organizationId, !!organizationId);
+
+  // Mutations
+  const { mutate: updateProject } = useUpdateProject(organizationId);
+  const { mutate: deleteProject } = useDeleteProject(organizationId);
+  const { mutate: createWorkflowColumn } = useCreateWorkflowColumn(organizationId);
+  const { mutate: updateWorkflowColumn } = useUpdateWorkflowColumn(organizationId);
+  const { mutate: deleteWorkflowColumn } = useDeleteWorkflowColumn(organizationId);
+  const { mutate: moveBoardItem } = useMoveBoardItem(organizationId);
 
   const [draggedProject, setDraggedProject] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
@@ -89,48 +105,18 @@ export default function Board() {
   const isAnimatingRef = useRef(false);
   const lastColumnDropTarget = useRef<{ columnId: string; side: 'left' | 'right' } | null>(null);
 
-  useEffect(() => {
-    console.log('📋 Board page mounted - initializing board and setting up subscriptions');
+  // React Query automatically handles:
+  // - Data fetching via useProjects/useWorkflowColumns
+  // - Realtime subscriptions (built into hooks)
+  // - Cleanup on unmount
+  // No manual initialization needed!
 
-    // Initialize board data (fetches projects and columns)
-    initializeBoard();
-
-    // Get organization ID and setup realtime subscriptions
-    const setupRealtimeSubscriptions = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return undefined;
-
-      const { data: membership } = await supabase
-        .from('memberships')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (membership?.organization_id) {
-        // Subscribe to real-time changes
-        const unsubscribe = subscribeToChanges(membership.organization_id);
-        return unsubscribe;
-      }
-      return undefined;
-    };
-
-    const subscriptionPromise = setupRealtimeSubscriptions();
-
-    // Cleanup subscriptions on unmount
-    return () => {
-      console.log('🧹 Board page unmounting - cleaning up subscriptions');
-      subscriptionPromise.then(unsubscribe => {
-        if (unsubscribe) unsubscribe();
-      });
-    };
-  }, []); // Empty dependency array - only run on mount/unmount
-
-  const handleDragStart = async (e: React.DragEvent, projectId: string) => {
+  const handleDragStart = (e: React.DragEvent, projectId: string) => {
     setDraggedProject(projectId);
     e.dataTransfer.effectAllowed = 'move';
 
     // Set board_order to null when picking up the card
-    await updateProject(projectId, { board_order: null as any });
+    updateProject({ id: projectId, updates: { board_order: null as any } });
   };
 
   const handleDragOver = (e: React.DragEvent, columnName: string) => {
@@ -273,7 +259,7 @@ export default function Board() {
 
     // STEP 6: Execute all updates
     for (const { id, updates: projectUpdates } of updates) {
-      await updateProject(id, projectUpdates);
+      updateProject({ id, updates: projectUpdates });
     }
 
     setDraggedProject(null);
@@ -454,11 +440,9 @@ export default function Board() {
     isAnimatingRef.current = false;
 
     // Now update database - this will trigger store update
-    await Promise.all(
-      updates.map(({ id, order }) =>
-        updateWorkflowColumn(id, { column_order: order })
-      )
-    );
+    updates.forEach(({ id, order }) => {
+      updateWorkflowColumn({ id, updates: { column_order: order } });
+    });
   };
 
   const getProjectsByStatus = (status: string) => {
@@ -505,16 +489,16 @@ export default function Board() {
     setEditingColumnName(currentName);
   };
 
-  const handleSaveColumnName = async (columnId: string) => {
+  const handleSaveColumnName = (columnId: string) => {
     if (!editingColumnName.trim()) return;
 
     const oldName = workflowColumns.find(c => c.id === columnId)?.name;
-    await updateWorkflowColumn(columnId, { name: editingColumnName });
+    updateWorkflowColumn({ id: columnId, updates: { name: editingColumnName } });
 
     if (oldName) {
       const projectsToUpdate = projects.filter(p => p.workflow_status === oldName);
       for (const project of projectsToUpdate) {
-        await updateProject(project.id, { workflow_status: editingColumnName });
+        updateProject({ id: project.id, updates: { workflow_status: editingColumnName } });
       }
     }
 
@@ -522,7 +506,7 @@ export default function Board() {
     setEditingColumnName('');
   };
 
-  const handleDeleteColumn = async (columnId: string) => {
+  const handleDeleteColumn = (columnId: string) => {
     console.log('🗑️ handleDeleteColumn called for columnId:', columnId);
     const column = workflowColumns.find(c => c.id === columnId);
     console.log('📋 Column found:', column);
@@ -535,21 +519,17 @@ export default function Board() {
     }
 
     console.log('✅ Calling deleteWorkflowColumn...');
-    try {
-      await deleteWorkflowColumn(columnId);
-      console.log('✅ deleteWorkflowColumn completed successfully');
-    } catch (error) {
-      console.error('❌ deleteWorkflowColumn failed:', error);
-    }
+    deleteWorkflowColumn(columnId);
+    console.log('✅ deleteWorkflowColumn called');
   };
 
-  const handleAddColumn = async () => {
+  const handleAddColumn = () => {
     if (!newColumnName.trim()) return;
 
     const maxOrder = Math.max(...workflowColumns.map(c => c.column_order), -1);
     const randomColor = COLUMN_COLORS[Math.floor(Math.random() * COLUMN_COLORS.length)]?.value;
 
-    await createWorkflowColumn({
+    createWorkflowColumn({
       name: newColumnName,
       color: randomColor as any,
       column_order: maxOrder + 1,
@@ -560,8 +540,8 @@ export default function Board() {
     setNewColumnName('');
   };
 
-  const handleChangeColumnColor = async (columnId: string, color: string) => {
-    await updateWorkflowColumn(columnId, { color });
+  const handleChangeColumnColor = (columnId: string, color: string) => {
+    updateWorkflowColumn({ id: columnId, updates: { color } });
   };
 
   const toggleColumnCollapse = (columnId: string) => {
@@ -914,14 +894,14 @@ export default function Board() {
                                         {(['Highest', 'High', 'Medium', 'Low', 'Lowest'] as ProjectPriority[]).map((priority) => (
                                           <button
                                             key={priority}
-                                            onClick={() => updateProject(project.id, { priority })}
+                                            onClick={() => updateProject({ id: project.id, updates: { priority } })}
                                             className={`w-full text-left px-2 py-1 text-xs rounded capitalize border ${getPriorityColor(priority)} hover:opacity-80`}
                                           >
                                             {priority}
                                           </button>
                                         ))}
                                         <button
-                                          onClick={() => updateProject(project.id, { priority: undefined })}
+                                          onClick={() => updateProject({ id: project.id, updates: { priority: undefined } })}
                                           className="w-full text-left px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                         >
                                           Clear Priority
@@ -945,11 +925,11 @@ export default function Board() {
                                         <Input
                                           type="date"
                                           value={project.completion_date || ''}
-                                          onChange={(e) => updateProject(project.id, { completion_date: e.target.value })}
+                                          onChange={(e) => updateProject({ id: project.id, updates: { completion_date: e.target.value } })}
                                           className="text-sm"
                                         />
                                         <button
-                                          onClick={() => updateProject(project.id, { completion_date: undefined })}
+                                          onClick={() => updateProject({ id: project.id, updates: { completion_date: undefined } })}
                                           className="w-full px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                         >
                                           Clear Date
@@ -981,14 +961,14 @@ export default function Board() {
                                         {(['Highest', 'High', 'Medium', 'Low', 'Lowest'] as ProjectPriority[]).map((priority) => (
                                           <button
                                             key={priority}
-                                            onClick={() => updateProject(project.id, { priority })}
+                                            onClick={() => updateProject({ id: project.id, updates: { priority } })}
                                             className={`w-full text-left px-2 py-1 text-xs rounded capitalize border ${getPriorityColor(priority)} hover:opacity-80`}
                                           >
                                             {priority}
                                           </button>
                                         ))}
                                         <button
-                                          onClick={() => updateProject(project.id, { priority: undefined })}
+                                          onClick={() => updateProject({ id: project.id, updates: { priority: undefined } })}
                                           className="w-full text-left px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                         >
                                           Clear Priority
@@ -1112,7 +1092,7 @@ export default function Board() {
                   <p className="text-sm text-gray-600 mb-1">Priority</p>
                   <select
                     value={selectedProject.priority || ''}
-                    onChange={(e) => updateProject(selectedProject.id, { priority: e.target.value as ProjectPriority || undefined })}
+                    onChange={(e) => updateProject({ id: selectedProject.id, updates: { priority: e.target.value as ProjectPriority || undefined } })}
                     className={`w-full text-sm px-2 py-1 rounded border ${getPriorityColor(selectedProject.priority)} font-medium capitalize`}
                   >
                     <option value="">None</option>
@@ -1131,7 +1111,7 @@ export default function Board() {
                 <Input
                   type="date"
                   value={selectedProject.completion_date || ''}
-                  onChange={(e) => updateProject(selectedProject.id, { completion_date: e.target.value })}
+                  onChange={(e) => updateProject({ id: selectedProject.id, updates: { completion_date: e.target.value } })}
                   className="max-w-xs"
                 />
               </div>

@@ -11,3 +11,18 @@
 
 // Re-export types from service layer
 export type { Project, WorkflowColumn, CreateBoardItemData, UpdateBoardItemData } from '@/services/boardService';
+
+// Re-export React Query hooks for backward compatibility
+export {
+  useProjects,
+  useWorkflowColumns,
+  useUpdateProject,
+  useDeleteProject,
+  useCreateWorkflowColumn,
+  useUpdateWorkflowColumn,
+  useDeleteWorkflowColumn,
+  useMoveBoardItem,
+} from '@/hooks/queries/useBoard';
+
+// Define ProjectPriority type (previously part of store)
+export type ProjectPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
