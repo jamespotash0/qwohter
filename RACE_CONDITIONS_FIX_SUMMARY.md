@@ -163,12 +163,119 @@ members.filter(m => isMembershipActive(m.status))
 
 ---
 
+### Phase 6: Clean Up Orphaned Trigger Functions
+
+**File:** `supabase/migrations/20251103000007_cleanup_orphaned_trigger_functions.sql`
+
+**Identified 4 orphaned trigger functions:**
+1. `create_project_on_quote_won()` - Replaced by `sync_project_on_quote_status_change()`
+2. `sync_profile_email()` - Never used, email handled by `handle_auth_user_email_sync()`
+3. `update_dashboard_configurations_updated_at()` - Table doesn't exist
+4. `update_product_series_timestamp()` - Wrong pattern, should use generic `handle_updated_at()`
+
+**What It Does:**
+1. Removes all 4 orphaned functions
+2. Verifies cleanup was successful
+3. Documents the standard pattern for updated_at triggers
+
+**Pattern Discovered:**
+The codebase uses a single generic `handle_updated_at()` function for all tables, not table-specific functions.
+
+**Result:** ✅ Database cleaned of dead code, reduces confusion
+
+---
+
+### Phase 7: Consolidate Updated_At Functions
+
+**File:** `supabase/migrations/20251103000008_consolidate_updated_at_functions.sql`
+
+**Found 3 different functions doing the same thing:**
+1. `handle_updated_at()` - 6 tables (optimized - only updates if row changed)
+2. `update_updated_at_column()` - 5 tables (always updates)
+3. `update_reminders_updated_at()` - 1 table (always updates)
+
+**What It Does:**
+1. Switches all 12 tables to use `handle_updated_at()`
+2. Drops the 2 redundant functions
+3. All tables now get the optimization
+
+**Optimization:**
+```sql
+IF row(NEW.*) IS DISTINCT FROM row(OLD.*) THEN
+  NEW.updated_at = now();
+END IF;
+```
+This only updates the timestamp if data actually changed, preventing false timestamp updates.
+
+**Tables Affected:**
+- form_definitions, form_submissions, project_workflow_columns, projects, user_onboarding_progress (switched from `update_updated_at_column`)
+- reminders (switched from `update_reminders_updated_at`)
+
+**Result:** ✅ Single source of truth, all tables optimized, easier maintenance
+
+---
+
+### Phase 8: Add Missing Updated_At Triggers
+
+**File:** `supabase/migrations/20251103000009_add_missing_updated_at_triggers.sql`
+
+**Found 7 tables with `updated_at` column but no trigger:**
+1. invite_tokens
+2. product_categories
+3. product_manufacturers
+4. product_models
+5. product_series
+6. product_types
+7. quotes_formbuilder_test (test table)
+
+**Note:** `subscriptions_pending_sync` is a VIEW (not a table), so it can't have triggers. We'll secure it with RLS in Phase 9 instead.
+
+**What It Does:**
+1. Adds `handle_updated_at()` trigger to all 7 missing tables
+2. All 19 tables with `updated_at` now have automatic timestamp updates
+3. Follows consistent naming: `update_<table_name>_updated_at`
+
+**Before:** 12 tables had triggers, 7 tables missing, 1 view (can't have triggers)
+**After:** 19 tables have triggers (100%), 1 view protected by RLS instead
+
+**Result:** ✅ Complete coverage, all tables with updated_at get automatic timestamps
+
+---
+
+### Phase 9: Add RLS to Subscriptions Pending Sync View
+
+**File:** `supabase/migrations/20251103000010_add_rls_to_subscriptions_pending_sync_view.sql`
+
+**Problem:** `subscriptions_pending_sync` is a **view** (not a table), so it can't have BEFORE/AFTER triggers for `updated_at`, but it still needs security!
+
+**Solution:** Add Row Level Security (RLS) to the view instead
+
+**What It Does:**
+1. Enables RLS on the `subscriptions_pending_sync` view
+2. Sets `security_barrier = true` to prevent function-based data leakage
+3. Creates policy: Users can only see subscriptions for their organization
+4. Checks active membership using `auth.uid()`
+
+**Why This Matters:**
+- Views CAN have RLS (even though they can't have triggers)
+- Without RLS, any authenticated user could query all pending subscriptions
+- Now properly secured with organization-based access control
+
+**Result:** ✅ View is secured, users can only see their own organization's data
+
+---
+
 ## 📊 Files Changed Summary
 
-### Database Migrations (4 files)
+### Database Migrations (10 files)
 - ✅ `20251103000003_fix_subscription_trigger_case_bug.sql` - **Fixed critical bug**
 - ✅ `20251103000004_normalize_membership_statuses.sql` - **Normalize memberships**
 - ✅ `20251103000005_normalize_quote_statuses.sql` - **Normalize quotes**
+- ✅ `20251103000006_normalize_membership_roles.sql` - **Normalize roles**
+- ✅ `20251103000007_cleanup_orphaned_trigger_functions.sql` - **Remove 4 orphaned functions**
+- ✅ `20251103000008_consolidate_updated_at_functions.sql` - **Consolidate to single optimized function**
+- ✅ `20251103000009_add_missing_updated_at_triggers.sql` - **Add triggers to 7 missing tables**
+- ✅ `20251103000010_add_rls_to_subscriptions_pending_sync_view.sql` - **Add RLS to view**
 - ✅ `20251027205043_add_subscription_status_trigger.sql.backup` - **Deleted (broken)**
 
 ### Frontend Code (6 files)
@@ -179,9 +286,14 @@ members.filter(m => isMembershipActive(m.status))
 - ✅ `src/components/common/SubscriptionPaywall.tsx` - **Removed polling, simplified**
 - ✅ `src/utils/teamManagementHelpers.ts` - **Example using helpers**
 
-### Documentation (2 files)
+### Documentation (7 files)
 - ✅ `STATUS_NORMALIZATION_GUIDE.md` - **Complete reference guide**
 - ✅ `RACE_CONDITIONS_FIX_SUMMARY.md` - **This file**
+- ✅ `TRIGGER_AUDIT_AND_CLEANUP.sql` - **Database trigger audit script**
+- ✅ `CLEANUP_ORPHANED_FUNCTIONS.sql` - **Investigation script for orphaned functions**
+- ✅ `VERIFY_UPDATED_AT_PATTERN.sql` - **Verify updated_at trigger pattern**
+- ✅ `CHECK_UPDATED_AT_FUNCTIONS.sql` - **Compare updated_at function definitions**
+- ✅ `FIND_MISSING_UPDATED_AT_TRIGGERS.sql` - **Find tables missing triggers**
 
 ---
 
