@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadStripe } from '@stripe/stripe-js';
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
+import { useSession } from "@/auth";
 
 interface BillingTabProps {
   organization: any;
@@ -74,6 +75,10 @@ export const BillingTab: React.FC<BillingTabProps> = ({
 }) => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // ✅ v3.0.0: Use new auth session hook
+  const { data: session } = useSession();
+
   const [loading, setLoading] = useState(false); // Never show loading spinner - use cached data
   const [subscription, setSubscription] = useState<any>(() => {
     try {
@@ -383,7 +388,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
           organizationId: organization.id,
@@ -493,7 +498,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
           subscriptionId: subscription.stripe_subscription_id,
@@ -533,7 +538,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
           subscriptionId: subscription.stripe_subscription_id,
@@ -575,7 +580,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
           subscriptionId: subscription.stripe_subscription_id,
@@ -618,7 +623,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          'Authorization': `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
           subscriptionId: subscription.stripe_subscription_id,

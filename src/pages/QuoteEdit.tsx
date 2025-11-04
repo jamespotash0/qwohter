@@ -5,6 +5,7 @@ import { Quote, useUpdateQuote } from "@/stores/quotes/quotesStore";
 import { useToast } from "@/hooks/use-toast";
 import UnifiedQuoteEditor from "@/components/features/quotes/editing/UnifiedQuoteEditor";
 import { SmartQuoteData } from "@/templates/SmartQuoteTemplate";
+import { useUser } from "@/auth";
 // import { WallDetails } from "@/types/quote";
 
 const QuoteEdit = () => {
@@ -13,7 +14,10 @@ const QuoteEdit = () => {
   }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [user, setUser] = useState<any>(null);
+
+  // ✅ v3.0.0: Use new auth hook
+  const user = useUser();
+
   const [quote, setQuote] = useState<Quote | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -26,16 +30,23 @@ const QuoteEdit = () => {
   };
 
   // These were convenience wrappers that called updateQuote
-  const updateWallSystem = (id: string, wallSystemUpdates: any) => {
-    updateQuoteMutation({ id, updates: { wall_details: wallSystemUpdates } });
+  const updateWallSystem = async (quoteId: string, wallName: string, wallData: any) => {
+    return updateQuoteMutation({ 
+      id: quoteId, 
+      updates: { 
+        wall_details: { 
+          walls: { [wallName]: wallData } 
+        } 
+      } 
+    });
   };
 
-  const removeWallSystem = (id: string) => {
-    updateQuoteMutation({ id, updates: { wall_details: null } });
+  const removeWallSystem = async (quoteId: string, wallName: string) => {
+    return updateQuoteMutation({ id: quoteId, updates: { wall_details: { id: '', walls: {} } } });
   };
 
-  const markAsDownloaded = (id: string) => {
-    updateQuoteMutation({ id, updates: { downloaded: true } });
+  const markAsDownloaded = async (id: string) => {
+    return updateQuoteMutation({ id, updates: { downloaded: true } });
   };
 
   const saveQuoteCustomization = (id: string, customization: any) => {
@@ -52,16 +63,10 @@ const QuoteEdit = () => {
 
   // Check authentication
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/auth");
-        return;
-      }
-      setUser(session.user);
-    };
-    checkAuth();
-  }, [navigate]);
+    if (!user) {
+      navigate("/auth");
+    }
+  }, [user, navigate]);
 
   // Load quote based on URL parameters
   useEffect(() => {
@@ -77,7 +82,8 @@ const QuoteEdit = () => {
           .select('*')
           .eq('proposal_number', proposalNumber)
           .order('version', { ascending: false })
-          .limit(1);
+          .limit(1)
+          .returns<Quote[]>();
 
         if (error) {
           throw error;

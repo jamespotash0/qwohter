@@ -52,6 +52,7 @@ export interface UpdateQuoteData {
   date_last_downloaded?: string;
   version?: number;
   customization?: Record<string, any>;
+  downloaded?: boolean;
   archived?: boolean;
   total_value?: number;
   subtotal?: number;

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Lock, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSignOut } from "@/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { sanitizeInput } from "@/utils/security";
 
@@ -21,6 +22,9 @@ const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // ✅ v3.0.0: Use new auth mutation for sign out
+  const { mutate: signOut } = useSignOut();
 
   useEffect(() => {
 
@@ -192,13 +196,15 @@ const ResetPassword = () => {
         throw error;
       }
 
-
       // Sign out the user for security - they should sign in with new password
-      const { error: signOutError } = await supabase.auth.signOut();
-      if (signOutError) {
-        console.error('Error signing out after password reset:', signOutError);
-      } else {
-      }
+      signOut(undefined, {
+        onSuccess: () => {
+          console.log('✅ User signed out after password reset');
+        },
+        onError: (error) => {
+          console.error('Error signing out after password reset:', error);
+        }
+      });
 
       setSuccess(true);
       toast({

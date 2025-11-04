@@ -2,14 +2,15 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import QuoteCreatorWizard from "@/components/features/quotes/creation/QuoteCreatorWizard";
 import { useQuotes } from "@/stores/quotes/quotesStore";
-import { useUser } from "@/auth";
+import { useUser, useSignOut } from "@/auth";
 
 const NewQuote = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  // Use new auth system
+  // ✅ v3.0.0: Use new auth system
   const user = useUser();
+  const { mutate: signOut } = useSignOut();
   const { data: quotes = [] } = useQuotes(user?.id);
 
   // Check if we're editing a draft quote
@@ -40,9 +41,12 @@ const NewQuote = () => {
     }
   }, [searchParams, quoteName, existingQuote]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
+  const handleLogout = () => {
+    signOut(undefined, {
+      onSuccess: () => {
+        navigate("/auth");
+      }
+    });
   };
 
   const handleBackToDashboard = () => {

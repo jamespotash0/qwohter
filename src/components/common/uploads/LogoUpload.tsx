@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { LogoUploadService, LogoUploadResult, LogoValidationResult } from '@/services/LogoUploadService';
 import { supabase } from '@/integrations/supabase/client';
+import { useUser } from '@/auth';
 
 interface LogoUploadProps {
   onUploadSuccess: (result: LogoUploadResult) => void;
@@ -32,6 +33,9 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
   disabled = false,
   className = ''
 }) => {
+  // ✅ v3.0.0: Use new auth hook
+  const authUser = useUser();
+
   const [uploadState, setUploadState] = useState<UploadState>({
     isDragging: false,
     isUploading: false,
@@ -100,15 +104,13 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
 
       // Step 2: Save to database immediately
       try {
-        // Get current authenticated user ID
-        const { data: { user } } = await supabase.auth.getUser();
         let orgId = '';
-        
-        if (user) {
+
+        if (authUser) {
           const { data: membershipData } = await supabase
             .from('memberships')
             .select('organization_id')
-            .eq('user_id', user.id)
+            .eq('user_id', authUser.id)
             .eq('status', 'Active')
             .single();
 
