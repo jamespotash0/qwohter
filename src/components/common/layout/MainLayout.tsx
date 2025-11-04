@@ -148,55 +148,20 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
     }
   }, [isInitialized, user, shouldShowSidebar, navigate]);
 
-  // ✅ v3.0.0: Session polling now handled by AuthProvider automatically
+  // ✅ v3.0.0: Session management fully handled by AuthProvider
   // AuthProvider's onAuthStateChange listener detects session expiry
-  // and triggers SIGNED_OUT event, which clears all state
-  // Manual polling is no longer needed
+  // and triggers SIGNED_OUT event, which automatically:
+  // - Clears React Query cache
+  // - Resets all stores
+  // - Redirects to sign-in
+  // Manual polling removed in v3.0.0 - no longer needed
 
-  // Legacy session check (can be removed after v3.0 migration is complete)
-  useEffect(() => {
-    if (!shouldShowSidebar || !isInitialized) return;
-
-    // Reduced polling frequency since AuthProvider handles most cases
-    console.log('⏱️ Legacy session check (fallback only)...');
-
-    const checkSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error('❌ Session check error:', error);
-          console.log('🔒 Session invalid, logging out...');
-          await handleLogout();
-          return;
-        }
-
-        if (!session && user) {
-          console.log('🔒 Session expired, logging out...');
-          await handleLogout();
-        }
-      } catch (error) {
-        console.error('❌ Error checking session:', error);
-      }
-    };
-
-    // Poll less frequently (5 minutes instead of 1 minute)
-    // AuthProvider handles real-time session changes
-    const pollInterval = setInterval(() => {
-      checkSession();
-    }, 300000); // 5 minutes
-
-    return () => {
-      clearInterval(pollInterval);
-    };
-  }, [shouldShowSidebar, isInitialized, user]);
-
-  // Poll for new app version every 30 seconds
+  // Poll for new app version every 5 minutes
   useEffect(() => {
     // Initialize version check on mount
     versionCheckService.initializeVersionCheck();
 
-    console.log('⏱️ Starting version polling (30s interval)...');
+    console.log('⏱️ Starting version polling (5min interval)...');
 
     let hasShownToast = false;
 
@@ -222,10 +187,10 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
       }
     };
 
-    // Poll every 30 seconds
+    // Poll every 5 minutes (reduced from 30s for better performance)
     const pollInterval = setInterval(() => {
       checkVersion();
-    }, 30000);
+    }, 300000); // 5 minutes
 
     return () => {
       clearInterval(pollInterval);
