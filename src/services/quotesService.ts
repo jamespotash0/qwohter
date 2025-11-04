@@ -186,13 +186,24 @@ export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
     throw new Error('User not assigned to an organization');
   }
 
-  // Create quote
+  // Get user's name from profile to set created_by_name
+  // Fallback to email if full_name is not set
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', session.user.id)
+    .single();
+
+  const createdByName = profileData?.full_name || session.user.email || 'Unknown';
+
+  // Create quote with created_by_name explicitly set
   const { data, error } = await supabase
     .from('quotes')
     .insert({
       ...quoteData,
       organization_id: membershipData.organization_id,
       created_by: session.user.id,
+      created_by_name: createdByName,
     } as any)
     .select()
     .single();
