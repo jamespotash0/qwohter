@@ -393,19 +393,19 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
     sectionVisibility
   ]);
 
-  // Sync with realtime quote updates
+  // React Query automatically handles realtime updates through the quote prop
+  // When the parent component receives updated data, it passes a new quote prop
+  // which triggers a re-render with fresh data
   useEffect(() => {
-    if (realtimeQuote?.id === quote.id && realtimeQuote !== quote) {
-      console.log('📡 Syncing UnifiedQuoteEditor with realtime quote update');
-      
+    if (quote && quote.id === state.rawData.id) {
+      // Update state when quote prop changes (from React Query refetch)
       setState(prev => ({
         ...prev,
-        rawData: realtimeQuote,
+        rawData: quote,
         // Don't mark as dirty since this is an external update
       }));
     }
-  }, [realtimeQuote, quote.id]);
-
+  }, [quote]);
 
   // Update document title when project name or proposal number changes
   useEffect(() => {
