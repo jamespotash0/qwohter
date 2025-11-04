@@ -19,7 +19,7 @@ async function fetchSubscriptionStatus(organizationId: string): Promise<{
   try {
     const { data, error } = await supabase
       .from('subscriptions')
-      .select('status, current_period_end')
+      .select('stripe_subscription_status, current_period_end')
       .eq('organization_id', organizationId)
       .single();
 
@@ -32,11 +32,13 @@ async function fetchSubscriptionStatus(organizationId: string): Promise<{
       };
     }
 
-    const hasAccess = data.status === 'Active' || data.status === 'Trialing';
+    // Case-insensitive comparison to match database trigger
+    const hasAccess = data.stripe_subscription_status?.toLowerCase() === 'active' ||
+                      data.stripe_subscription_status?.toLowerCase() === 'trialing';
 
     return {
       hasAccess,
-      status: data.status,
+      status: data.stripe_subscription_status,
       reason: hasAccess ? '' : 'Subscription is not active',
     };
   } catch (error) {

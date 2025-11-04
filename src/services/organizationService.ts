@@ -134,7 +134,17 @@ export async function fetchOrganizationMembers(organizationId: string): Promise<
   const { data: membersData, error: membersError } = await supabase
     .from('memberships')
     .select('id, user_id, organization_id, role, status, joined_at, join_type, department')
-    .eq('organization_id', organizationId);
+    .eq('organization_id', organizationId)
+    .returns<{
+      id: string;
+      user_id: string;
+      organization_id: string;
+      role: string;
+      status: string;
+      joined_at: string;
+      join_type?: string;
+      department?: string;
+    }[]>();
 
   if (membersError) throw membersError;
   if (!membersData || membersData.length === 0) return [];
@@ -144,7 +154,8 @@ export async function fetchOrganizationMembers(organizationId: string): Promise<
   const { data: profilesData } = await supabase
     .from('profiles')
     .select('id, email, full_name')
-    .in('id', userIds);
+    .in('id', userIds)
+    .returns<{ id: string; email: string; full_name: string; }[]>();
 
   // Create profile map
   const profilesMap = new Map(
@@ -206,7 +217,7 @@ export interface SubscriptionStatus {
 export async function checkSubscriptionStatus(organizationId: string): Promise<SubscriptionStatus> {
   const { data, error } = await supabase
     .from('subscriptions')
-    .select('status, current_period_end')
+    .select('stripe_subscription_status, current_period_end')
     .eq('organization_id', organizationId)
     .single();
 
@@ -218,11 +229,13 @@ export async function checkSubscriptionStatus(organizationId: string): Promise<S
     };
   }
 
-  const hasAccess = data.status === 'Active' || data.status === 'Trialing';
+  // Case-insensitive comparison to match database trigger
+  const hasAccess = data.stripe_subscription_status?.toLowerCase() === 'active' ||
+                    data.stripe_subscription_status?.toLowerCase() === 'trialing';
 
   return {
     hasAccess,
-    status: data.status,
+    status: data.stripe_subscription_status,
     reason: hasAccess ? '' : 'Subscription is not active',
   };
 }

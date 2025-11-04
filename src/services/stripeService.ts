@@ -211,6 +211,16 @@ export const hasValidSubscription = async (organizationId: string) => {
     };
   }
 
+  // Check is_active flag (master switch for subscription access)
+  // This is set to false when subscription is canceled, paused, or otherwise inactive
+  // Must match the database has_valid_subscription() function for consistency
+  if (!subscription.is_active) {
+    return {
+      isValid: false,
+      reason: 'Subscription is not active',
+    };
+  }
+
   // Check subscription status (cached from Stripe)
   // We store capitalized statuses in DB (Active, Trialing, Canceled, etc.)
   // Compare case-insensitively
@@ -218,6 +228,8 @@ export const hasValidSubscription = async (organizationId: string) => {
   const status = subscription.stripe_subscription_status?.toLowerCase();
 
   console.log('🔍 Subscription validation:', {
+    isActive: subscription.is_active,
+    accessBlocked: subscription.access_blocked,
     rawStatus: subscription.stripe_subscription_status,
     lowercaseStatus: status,
     validStatuses,

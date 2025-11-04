@@ -381,7 +381,7 @@ class InitializationService {
     try {
       const { data, error } = await supabase
         .from('subscriptions')
-        .select('status, current_period_end')
+        .select('stripe_subscription_status, current_period_end')
         .eq('organization_id', organizationId)
         .single();
 
@@ -393,7 +393,9 @@ class InitializationService {
         };
       }
 
-      const hasAccess = data.status === 'Active' || data.status === 'Trialing';
+      // Case-insensitive comparison to match database trigger
+      const hasAccess = data.stripe_subscription_status?.toLowerCase() === 'active' ||
+                        data.stripe_subscription_status?.toLowerCase() === 'trialing';
 
       // Store in React Query cache
       queryClient.setQueryData(
