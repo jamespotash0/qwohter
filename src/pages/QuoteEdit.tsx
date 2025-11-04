@@ -22,35 +22,35 @@ const QuoteEdit = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Use React Query mutation hook
-  const { mutate: updateQuoteMutation } = useUpdateQuote();
+  const { mutateAsync: updateQuoteMutation } = useUpdateQuote();
 
   // Wrapper functions for backward compatibility with UnifiedQuoteEditor
-  const updateQuote = (id: string, updates: any) => {
-    updateQuoteMutation({ id, updates });
+  const updateQuote = async (id: string, updates: any) => {
+    return await updateQuoteMutation({ id, updates });
   };
 
   // These were convenience wrappers that called updateQuote
   const updateWallSystem = async (quoteId: string, wallName: string, wallData: any) => {
-    return updateQuoteMutation({ 
-      id: quoteId, 
-      updates: { 
-        wall_details: { 
-          walls: { [wallName]: wallData } 
-        } 
-      } 
+    return await updateQuoteMutation({
+      id: quoteId,
+      updates: {
+        wall_details: {
+          walls: { [wallName]: wallData }
+        }
+      }
     });
   };
 
   const removeWallSystem = async (quoteId: string, wallName: string) => {
-    return updateQuoteMutation({ id: quoteId, updates: { wall_details: { id: '', walls: {} } } });
+    return await updateQuoteMutation({ id: quoteId, updates: { wall_details: { id: '', walls: {} } } });
   };
 
   const markAsDownloaded = async (id: string) => {
-    return updateQuoteMutation({ id, updates: { downloaded: true } });
+    return await updateQuoteMutation({ id, updates: { downloaded: true } });
   };
 
-  const saveQuoteCustomization = (id: string, customization: any) => {
-    updateQuoteMutation({ id, updates: { customization } });
+  const saveQuoteCustomization = async (id: string, customization: any) => {
+    return await updateQuoteMutation({ id, updates: { customization } });
   };
 
   // React Query automatically refetches, no manual fetch needed

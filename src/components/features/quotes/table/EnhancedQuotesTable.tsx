@@ -419,9 +419,9 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               >
                 <Badge variant="secondary" className="flex items-center gap-1 text-xs cursor-pointer">
                   {isExpanded ? (
-                    <ChevronRight className="h-3 w-3" />
-                  ) : (
                     <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
                   )}
                   <Layers className="h-3 w-3" />
                 </Badge>

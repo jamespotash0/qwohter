@@ -28,6 +28,7 @@ import {
   unarchiveQuote,
   updateQuoteStatus as updateQuoteStatusService,
   setMainVersion as setMainVersionService,
+  createQuoteVersion,
   type CreateQuoteData,
   type UpdateQuoteData,
   type QuoteFilters,
@@ -112,13 +113,10 @@ export function useCreateQuote() {
     },
 
     // On success: Invalidate quotes list
-    onSuccess: (newQuote) => {
+    onSuccess: () => {
       toast.success('Quote created successfully');
 
-      // Invalidate to get fresh data from server
-      if (newQuote.organization_id) {
-        invalidateQueries.quotesList(newQuote.organization_id);
-      }
+      // Invalidate all quotes lists to refresh the table
       invalidateQueries.allQuotes();
     },
 
@@ -159,14 +157,11 @@ export function useUpdateQuote() {
       return { previousQuote, id };
     },
 
-    onSuccess: (updatedQuote) => {
+    onSuccess: () => {
       toast.success('Quote updated successfully');
 
-      // Invalidate related queries
-      invalidateQueries.quoteDetail(updatedQuote.id);
-      if (updatedQuote.organization_id) {
-        invalidateQueries.quotesList(updatedQuote.organization_id);
-      }
+      // Invalidate all quotes lists to refresh the table
+      invalidateQueries.allQuotes();
     },
 
     onError: (error, variables, context) => {
@@ -198,40 +193,42 @@ export function useDeleteQuote() {
 
     // Optimistic update: Remove from list immediately
     onMutate: async (quoteId) => {
-      // Get organization ID from the quote
-      const quote = queryClient.getQueryData(queryKeys.quotes.detail(quoteId)) as Quote;
-      const organizationId = quote?.organization_id;
+      // Find the quote in ALL cached lists to get organization_id
+      const cacheData = queryClient.getQueriesData<Quote[]>({ queryKey: ['quotes', 'list'] });
 
-      if (!organizationId) return;
+      let organizationId: string | undefined;
+      let previousQuotes: Quote[] | undefined;
 
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({
-        queryKey: queryKeys.quotes.list(organizationId)
-      });
+      for (const [queryKey, quotes] of cacheData) {
+        if (quotes) {
+          const quote = quotes.find(q => q.id === quoteId);
+          if (quote) {
+            organizationId = quote.organization_id;
+            previousQuotes = quotes;
 
-      // Snapshot for rollback
-      const previousQuotes = queryClient.getQueryData(
-        queryKeys.quotes.list(organizationId)
-      );
+            // Cancel outgoing refetches for this specific list
+            await queryClient.cancelQueries({ queryKey });
 
-      // Optimistically remove
-      queryClient.setQueryData(
-        queryKeys.quotes.list(organizationId),
-        (old: Quote[] = []) => old.filter((q) => q.id !== quoteId)
-      );
+            // Optimistically remove from this list
+            queryClient.setQueryData(queryKey, quotes.filter((q) => q.id !== quoteId));
+            break;
+          }
+        }
+      }
 
       return { previousQuotes, organizationId, quoteId };
     },
 
-    onSuccess: (quoteId, variables, context) => {
+    onSuccess: () => {
       toast.success('Quote deleted successfully');
 
-      if (context?.organizationId) {
-        invalidateQueries.quotesList(context.organizationId);
-      }
+      // Invalidate all quotes lists to refresh the table
+      invalidateQueries.allQuotes();
     },
 
     onError: (error, variables, context) => {
+      console.error('Delete quote error:', error);
+
       if (context?.previousQuotes && context?.organizationId) {
         queryClient.setQueryData(
           queryKeys.quotes.list(context.organizationId),
@@ -239,7 +236,8 @@ export function useDeleteQuote() {
         );
       }
 
-      toast.error('Failed to delete quote');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to delete quote: ${errorMessage}`);
     },
   });
 }
@@ -264,12 +262,10 @@ export function useUpdateQuoteStatus() {
       return { rollback, quoteId };
     },
 
-    onSuccess: (updatedQuote) => {
-      toast.success(`Quote status updated to ${updatedQuote.status}`);
-      invalidateQueries.quoteDetail(updatedQuote.id);
-      if (updatedQuote.organization_id) {
-        invalidateQueries.quotesList(updatedQuote.organization_id);
-      }
+    onSuccess: () => {
+      toast.success('Quote status updated successfully');
+      // Invalidate all quotes lists to refresh the table
+      invalidateQueries.allQuotes();
     },
 
     onError: (error, variables, context) => {
@@ -291,15 +287,15 @@ export function useArchiveQuote() {
     mutationFn: async (quoteId: string) => {
       return archiveQuote(quoteId);
     },
-    onSuccess: (updatedQuote) => {
+    onSuccess: () => {
       toast.success('Quote archived successfully');
-      invalidateQueries.quoteDetail(updatedQuote.id);
-      if (updatedQuote.organization_id) {
-        invalidateQueries.quotesList(updatedQuote.organization_id);
-      }
+      // Invalidate all quotes lists to refresh both active and archived views
+      invalidateQueries.allQuotes();
     },
     onError: (error) => {
-      toast.error('Failed to archive quote');
+      console.error('Archive quote error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to archive quote: ${errorMessage}`);
     },
   });
 }
@@ -316,15 +312,15 @@ export function useUnarchiveQuote() {
     mutationFn: async (quoteId: string) => {
       return unarchiveQuote(quoteId);
     },
-    onSuccess: (updatedQuote) => {
+    onSuccess: () => {
       toast.success('Quote unarchived successfully');
-      invalidateQueries.quoteDetail(updatedQuote.id);
-      if (updatedQuote.organization_id) {
-        invalidateQueries.quotesList(updatedQuote.organization_id);
-      }
+      // Invalidate all quotes lists to refresh both active and archived views
+      invalidateQueries.allQuotes();
     },
     onError: (error) => {
-      toast.error('Failed to unarchive quote');
+      console.error('Unarchive quote error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to unarchive quote: ${errorMessage}`);
     },
   });
 }
@@ -335,8 +331,6 @@ export function useUnarchiveQuote() {
  * Sets a quote as the main version in its version group
  */
 export function useSetMainVersion() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async ({ quoteId, baseProposalNumber }: { quoteId: string; baseProposalNumber: string }) => {
       return setMainVersionService(quoteId, baseProposalNumber);
@@ -344,10 +338,41 @@ export function useSetMainVersion() {
     onSuccess: () => {
       toast.success('Main version updated');
       // Invalidate all quotes lists to refresh the data
-      queryClient.invalidateQueries({ queryKey: queryKeys.quotes.lists() });
+      invalidateQueries.allQuotes();
     },
     onError: (error) => {
       toast.error('Failed to set main version');
+    },
+  });
+}
+
+/**
+ * Hook: Create Quote Version
+ *
+ * Creates a new version of an existing quote
+ */
+export function useCreateQuoteVersion() {
+  return useMutation({
+    mutationFn: async ({
+      quoteId,
+      newProposalNumber,
+      versionNumber
+    }: {
+      quoteId: string;
+      newProposalNumber: string;
+      versionNumber: number;
+    }) => {
+      return createQuoteVersion(quoteId, newProposalNumber, versionNumber);
+    },
+    onSuccess: () => {
+      toast.success('Quote version created successfully');
+      // Invalidate all quotes lists to refresh the table
+      invalidateQueries.allQuotes();
+    },
+    onError: (error) => {
+      console.error('Create version error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to create version: ${errorMessage}`);
     },
   });
 }

@@ -7,7 +7,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
-
+import * as authService from '@/auth/services/authService';
 // ============================================================================
 // Types
 // ============================================================================
@@ -76,11 +76,8 @@ export async function fetchQuotes(
   userId: string,
   filters?: QuoteFilters
 ): Promise<Quote[]> {
-  const { data: { session }, error: authError } = await supabase.auth.getSession();
-
-  if (authError) {
-    throw new Error('Authentication failed: ' + authError.message);
-  }
+  // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
+  const session = await authService.getSession();
 
   if (!session?.user) {
     throw new Error('Not authenticated');
@@ -172,7 +169,8 @@ export async function fetchQuoteById(quoteId: string): Promise<Quote> {
  * Create a new quote
  */
 export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
-  const { data: { session } } = await supabase.auth.getSession();
+  // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
+  const session = await authService.getSession();
   if (!session?.user) throw new Error('Not authenticated');
 
   // Get user's organization
@@ -198,14 +196,16 @@ export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
   const createdByName = profileData?.full_name || session.user.email || 'Unknown';
 
   // Create quote with created_by_name explicitly set
+  const insertData = {
+    ...quoteData,
+    organization_id: membershipData.organization_id,
+    created_by: session.user.id,
+    created_by_name: createdByName,
+  };
+
   const { data, error } = await supabase
     .from('quotes')
-    .insert({
-      ...quoteData,
-      organization_id: membershipData.organization_id,
-      created_by: session.user.id,
-      created_by_name: createdByName,
-    } as any)
+    .insert(insertData as any)
     .select()
     .single();
 

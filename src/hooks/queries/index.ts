@@ -16,6 +16,7 @@ export {
   useArchiveQuote,
   useUnarchiveQuote,
   useSetMainVersion,
+  useCreateQuoteVersion,
 } from './useQuotes';
 
 // Organization

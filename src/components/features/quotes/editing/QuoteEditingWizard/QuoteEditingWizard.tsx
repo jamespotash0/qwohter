@@ -17,11 +17,11 @@ const QuoteEditingWizard = ({
   onBackToDashboard,
   onQuoteNameChange
 }: QuoteEditingWizardProps) => {
-  const { mutate: updateQuoteMutation } = useUpdateQuote();
+  const { mutateAsync: updateQuoteMutation } = useUpdateQuote();
 
   // Wrapper for backward compatibility
-  const updateQuote = (id: string, updates: any) => {
-    updateQuoteMutation({ id, updates });
+  const updateQuote = async (id: string, updates: any) => {
+    return await updateQuoteMutation({ id, updates });
   };
   const [activeStep, setActiveStep] = useState(0);
   const [editingQuoteName, setEditingQuoteName] = useState(false);
