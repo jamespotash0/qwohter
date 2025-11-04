@@ -3,9 +3,11 @@
  * Handles editing of sections that contain both static text and dynamic form variables
  */
 
+import { TemplateMarkers } from './templateMarkers';
+
 export interface MixedContentSection {
   id: string;
-  template: string; // HTML with ${variable} placeholders
+  template: string; // HTML with ${variable} placeholders OR semantic markup
   variables: string[]; // List of variables found in template
   isCustomized: boolean; // Whether user has customized this section
 }
@@ -44,16 +46,30 @@ export class MixedContentEngine {
 
   /**
    * Populate template variables with current form data
+   *
+   * Supports two modes:
+   * 1. New semantic markup mode (using TemplateMarkers)
+   * 2. Legacy ${variable} mode (for backward compatibility)
    */
   static populateTemplate(template: string, formData: any): string {
+    // Check if template uses new semantic markup
+    if (TemplateMarkers.hasMarkedElements(template)) {
+      // Use TemplateMarkers.reEvaluate() for semantic markup
+      return TemplateMarkers.reEvaluate(template, formData, {
+        preserveUserEdits: true,
+        updateOriginalValues: true
+      });
+    }
+
+    // Fallback: Use legacy ${variable} replacement for backward compatibility
     let populated = template;
-    
+
     // Replace ${variable} with actual values from form data
     populated = populated.replace(/\$\{([^}]+)\}/g, (match, variablePath) => {
       const value = this.getNestedValue(formData, variablePath);
       return value !== undefined ? value : match; // Keep placeholder if no value
     });
-    
+
     return populated;
   }
 

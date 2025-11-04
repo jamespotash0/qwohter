@@ -2,6 +2,7 @@ import { BaseQuoteTemplate, QuoteData } from './BaseQuoteTemplate';
 import { WallSpecification, isGlassWall, isOperableWall, isAccordionPartition } from '@/lib/types';
 import { AccordionWallSpecification } from '@/lib/types/walls/accordion';
 import { SmartQuoteHelper } from './SmartQuoteTemplate';
+import { TemplateMarkers } from '@/utils/templateMarkers';
 
 export class GenericWallTemplate extends BaseQuoteTemplate {
   
@@ -95,7 +96,11 @@ export class GenericWallTemplate extends BaseQuoteTemplate {
       return '';
     }
 
-    const systemText = wallCount > 1 ? "wall systems" : "wall system";
+    const systemText = TemplateMarkers.conditional({
+      expression: 'wallCount > 1 ? "wall systems" : "wall system"',
+      result: wallCount > 1 ? "wall systems" : "wall system",
+      dependencies: ['wall_details.walls']
+    });
 
     // Only show intro if we have an organization name
     if (!organizationName) {
@@ -131,7 +136,11 @@ export class GenericWallTemplate extends BaseQuoteTemplate {
           { text: `<strong>Model ${wall.model}</strong>`, condition: SmartQuoteHelper.hasValue(wall.model) },
           { text: `featuring <strong>${wall.panelOperation}</strong> operation`, condition: SmartQuoteHelper.hasValue(wall.panelOperation) },
           // { text: `configured with <strong>${panelCountText} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
-          { text: `configured with <strong>${wall.panelCount && parseInt(wall.panelCount as any || '1') > 1 ? 'Multiple' : 'Single'} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
+          { text: `configured with <strong>${TemplateMarkers.conditional({
+            expression: 'panelCount > 1 ? "Multiple" : "Single"',
+            result: (wall.panelCount && parseInt(wall.panelCount as any || '1') > 1) ? 'Multiple' : 'Single',
+            dependencies: [`wall_details.walls.${wallName}.panelCount`]
+          })} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
           { text: `for use on a <strong>${wall.trackType} Layout</strong>.`, condition: SmartQuoteHelper.hasValue(wall.trackType) },
           // { text: `The wall is <strong>${heightText}</strong> in height`, condition: SmartQuoteHelper.hasAllValues(String(wall.heightFeet || ''), String(wall.heightInches || '')) },
           { text: `The wall is <strong>${this.helpers.formatDimensions('0', '0', String(wall.heightFeet || ''), String(wall.heightInches || ''), false).split(' x ')[1]}</strong> in height, with panel lengths varying as required.`, condition: SmartQuoteHelper.hasAllValues(String(wall.heightFeet || ''), String(wall.heightInches || '')) },
@@ -150,7 +159,11 @@ export class GenericWallTemplate extends BaseQuoteTemplate {
           { text: `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> utilizes the Kwik-Wall` },
           { text: `<strong>${wall.series} series</strong>`, condition: SmartQuoteHelper.hasValue(wall.series) },
           { text: `<strong>Model ${wall.model}</strong>`, condition: SmartQuoteHelper.hasValue(wall.model) },
-          { text: `configured with <strong>${wall.panelCount && parseInt(wall.panelCount as any || '1') > 1 ? 'Multiple' : 'Single'} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
+          { text: `configured with <strong>${TemplateMarkers.conditional({
+            expression: 'panelCount > 1 ? "Multiple" : "Single"',
+            result: (wall.panelCount && parseInt(wall.panelCount as any || '1') > 1) ? 'Multiple' : 'Single',
+            dependencies: [`wall_details.walls.${wallName}.panelCount`]
+          })} ${wall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(wall.panelConfiguration) },
           { text: `for use on a <strong>${wall.trackType} Layout</strong>.`, condition: SmartQuoteHelper.hasValue(wall.trackType) },
           { text: `The wall is <strong>${this.helpers.formatDimensions('0', '0', String(wall.heightFeet || ''), String(wall.heightInches || ''), false).split(' x ')[1]}</strong> in height, with panel lengths varying as required.`, condition: SmartQuoteHelper.hasAllValues(String(wall.heightFeet || ''), String(wall.heightInches || '')) },
           { text: `Each panel is nominally <strong>${wall.panelThickness}</strong> thick`, condition: SmartQuoteHelper.hasValue(wall.panelThickness) },
@@ -169,7 +182,11 @@ export class GenericWallTemplate extends BaseQuoteTemplate {
           { text: `<strong>${wallName.replace(/\s+/g, '&nbsp;')}</strong> utilizes the Kwik-Wall Accordion Partition`},
           { text: `<strong>${accordionWall.series}</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.series) },
           { text: `<strong>Model ${accordionWall.model}</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.model) },
-          { text: `configured with <strong>${accordionWall.panelCount && parseInt(accordionWall.panelCount as any || '1') > 1 ? 'Multiple' : 'Single'} ${accordionWall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.panelConfiguration) },
+          { text: `configured with <strong>${TemplateMarkers.conditional({
+            expression: 'panelCount > 1 ? "Multiple" : "Single"',
+            result: (accordionWall.panelCount && parseInt(accordionWall.panelCount as any || '1') > 1) ? 'Multiple' : 'Single',
+            dependencies: [`wall_details.walls.${wallName}.panelCount`]
+          })} ${accordionWall.panelConfiguration}</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.panelConfiguration) },
           { text: `featuring <strong>${accordionWall.operation}</strong> operation.`, condition: SmartQuoteHelper.hasValue(accordionWall.operation) },
           { text: `The partition is <strong>${this.helpers.formatDimensions('0', '0', String(accordionWall.heightFeet || ''), String(accordionWall.heightInches || ''), false).split(' x ')[1]}</strong> in height, with panels folding as required.`, condition: SmartQuoteHelper.hasAllValues(String(accordionWall.heightFeet || ''), String(accordionWall.heightInches || '')) },
           { text: `Panels faces are covered with <strong>${accordionWall.panelFace}</strong>`, condition: SmartQuoteHelper.hasValue(accordionWall.panelFace) },
@@ -231,10 +248,13 @@ export class GenericWallTemplate extends BaseQuoteTemplate {
       return '';
     }).join(', and ');
 
-    const summary = 
-      wallsWithTrackSystems.length > 1 
+    const summary = TemplateMarkers.conditional({
+      expression: 'wallsWithTrackSystems.length > 1 ? "These track systems allow..." : "The track system allows..."',
+      result: wallsWithTrackSystems.length > 1
         ? `These track systems allow for the specified movement of the panels, as noted in parentheses, along the overhead track, enabling flexible operation and easy stacking when the walls are not in use.`
-        : `The track system allows for the specified movement of the panels, as noted in parentheses, along the overhead track, enabling flexible operation and easy stacking when the wall is not in use.`
+        : `The track system allows for the specified movement of the panels, as noted in parentheses, along the overhead track, enabling flexible operation and easy stacking when the wall is not in use.`,
+      dependencies: ['wall_details.walls']
+    });
     return `
       <div class="track-section" style="line-height: 1.15; margin-top: 0px;">
         <p class="section-header-item" style="margin: 1.5em 0 0.5em 0; font-weight: bold; font-size: 12pt;">TRACK:</p>
