@@ -26,6 +26,7 @@ import { tempSignupService } from "@/services/tempSignupService";
 import { supabase } from "@/integrations/supabase/client";
 import { stripeService } from "@/services/stripeService";
 import { fetchOrganizationByUserId } from "@/services/organizationService";
+import * as authService from "@/auth/services/authService";
 
 // Import extracted hooks
 import { useAuthFlow, useAuthFormState, useCompanyInfoState } from "./Auth/hooks";
@@ -150,7 +151,8 @@ const Auth = () => {
       if (authFlow.step !== 'auth') return;
       if (authFlow.redirectingRef.current) return;
 
-      const { data: { session } } = await supabase.auth.getSession();
+      // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
+      const session = await authService.getSession();
       if (!session) return;
 
       try {
@@ -239,13 +241,8 @@ const Auth = () => {
       return;
     }
 
-    // Resend OTP using the same approach as initial signup
-    const { error } = await supabase.auth.signInWithOtp({
-      email: formState.email,
-      options: {
-        shouldCreateUser: false
-      }
-    });
+    // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
+    const { error } = await authService.resendOtp(formState.email);
 
     if (error) {
       // Extract the wait time from Supabase error message

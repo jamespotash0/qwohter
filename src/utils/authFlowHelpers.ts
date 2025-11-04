@@ -9,6 +9,7 @@ import { sanitizeInput } from "@/utils/security";
 import { onboardingStateHelpers } from "@/services/onboardingStateService";
 import { OrganizationCreationLimiter } from "@/services/rateLimitingService";
 import { tempSignupService } from "@/services/tempSignupService";
+import * as authService from "@/auth/services/authService";
 
 export interface AuthResult {
   success: boolean;
@@ -47,11 +48,8 @@ export const authFlowHelpers = {
     console.log('Email:', email);
 
     try {
-      // Try Supabase auth signin
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
+      const { user, error } = await authService.signIn({ email, password });
 
       if (error) {
         console.log('SignIn error:', error);
@@ -76,7 +74,7 @@ export const authFlowHelpers = {
         };
       }
 
-      if (!data.user) {
+      if (!user) {
         return {
           success: false,
           error: "Failed to sign in. Please try again."
@@ -86,21 +84,21 @@ export const authFlowHelpers = {
       console.log('SignIn successful, determining next step...');
 
       // Determine where user should go next
-      const nextStep = await onboardingStateHelpers.determineOnboardingStep(data.user.id);
+      const nextStep = await onboardingStateHelpers.determineOnboardingStep(user.id);
 
       if (!nextStep) {
         // User completed onboarding
         return {
           success: true,
           nextStep: 'complete',
-          data: { userId: data.user.id }
+          data: { userId: user.id }
         };
       }
 
       return {
         success: true,
         nextStep: nextStep as any,
-        data: { userId: data.user.id }
+        data: { userId: user.id }
       };
 
     } catch (error: any) {
@@ -151,15 +149,11 @@ export const authFlowHelpers = {
         fullName
       });
 
-      // Create user with email and password - this will send OTP automatically
-      const { data, error } = await supabase.auth.signUp({
+      // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
+      const { user, error } = await authService.signUp({
         email,
         password,
-        options: {
-          data: {
-            full_name: fullName
-          }
-        }
+        fullName
       });
 
       if (error) {
@@ -207,7 +201,7 @@ export const authFlowHelpers = {
       }
 
       // Check if user already exists (Supabase returns user with empty identities array for existing users)
-      if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+      if (user && (!user.identities || user.identities.length === 0)) {
         console.log('SignUp detected existing user (empty identities)');
         tempSignupService.clear();
         return {
@@ -258,12 +252,8 @@ export const authFlowHelpers = {
         };
       }
 
-      // Verify the OTP code (user was already created by signUp)
-      const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
-        email,
-        token: otpCode,
-        type: 'email'
-      });
+      // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
+      const { user: verifyUser, error: verifyError } = await authService.verifyOtp(email, otpCode);
 
       if (verifyError) {
         if (verifyError.message.includes('expired')) {
@@ -281,8 +271,8 @@ export const authFlowHelpers = {
       }
 
       // User is now verified and logged in
-      if (verifyData.user) {
-        console.log('Email verified successfully for user:', verifyData.user.id);
+      if (verifyUser) {
+        console.log('Email verified successfully for user:', verifyUser.id);
 
         // Update profile with full name (user was created by signUp, profile created by trigger)
         const { error: profileError } = await supabase
@@ -290,7 +280,7 @@ export const authFlowHelpers = {
           .update({
             full_name: tempData.fullName
           })
-          .eq('id', verifyData.user.id);
+          .eq('id', verifyUser.id);
 
         if (profileError) {
           console.error('Error updating profile with full name:', profileError);
@@ -301,7 +291,7 @@ export const authFlowHelpers = {
 
         return {
           success: true,
-          data: { userId: verifyData.user.id },
+          data: { userId: verifyUser.id },
           nextStep: 'organization'
         };
       }
@@ -336,9 +326,9 @@ export const authFlowHelpers = {
     try {
     console.log('Profile setup: updating full_name for userId:', userId);
 
-    // Fetch auth user to get their email
-    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-    if (authError || !authUser) {
+    // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
+    const authUser = await authService.getCurrentUser();
+    if (!authUser) {
       return { success: false, error: "Failed to fetch user email" };
     }
 

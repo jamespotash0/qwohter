@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { subscribeWithSelector, devtools } from 'zustand/middleware';
-import { supabase } from '@/integrations/supabase/client';
 import { useUIStore } from '../ui/uiStore';
 import { queryClient } from '@/lib/queryClient';
+import * as authService from '@/auth/services/authService';
 
 interface AppState {
   // Application lifecycle
@@ -133,7 +133,8 @@ export const useAppStore = create<AppState>()(
 
           // Re-fetch quotes if user is authenticated
           // React Query handles this automatically via invalidation
-          const { data: { session } } = await supabase.auth.getSession();
+          // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
+          const session = await authService.getSession();
           if (session?.user) {
             await queryClient.invalidateQueries({ queryKey: ['quotes'] });
           }
