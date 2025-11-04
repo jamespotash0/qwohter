@@ -49,8 +49,23 @@ const QuoteEdit = () => {
     return await updateQuoteMutation({ id, updates: { date_last_downloaded: new Date().toISOString() } });
   };
 
-  const saveQuoteCustomization = async (id: string, customization: any) => {
-    return await updateQuoteMutation({ id, updates: { customization } });
+  const saveQuoteCustomization = async (id: string, customization: any, currentDocumentVersion: number) => {
+    // Increment document version when customization changes
+    const newDocumentVersion = currentDocumentVersion + 1;
+
+    // Store the new document version in customization metadata
+    const customizationWithVersion = {
+      ...customization,
+      version: newDocumentVersion
+    };
+
+    return await updateQuoteMutation({
+      id,
+      updates: {
+        customization: customizationWithVersion,
+        document_version: newDocumentVersion
+      }
+    });
   };
 
   // React Query automatically refetches, no manual fetch needed
@@ -157,12 +172,13 @@ const QuoteEdit = () => {
       
       // Then, save customizations if they exist
       if (customSections) {
+        const currentDocumentVersion = quote.document_version || 0;
         await saveQuoteCustomization(quote.id, {
           customSections: customSections,
           customHTML: customHTML,
           isCustomized: isCustomized || true,
           lastModified: new Date()
-        });
+        }, currentDocumentVersion);
       }
       
       refreshQuotes();

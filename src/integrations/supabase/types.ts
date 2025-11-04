@@ -17,7 +17,7 @@ export interface Database {
           quote_source?: string;
           created_by: string;
           date_last_downloaded?: string;
-          version: number;
+          document_version: number;
           created_at: string;
           updated_at: string;
           organization_id: string;
@@ -46,7 +46,7 @@ export interface Database {
           quote_source?: string;
           created_by?: string;
           date_last_downloaded?: string;
-          version?: number;
+          document_version?: number;
           created_at?: string;
           updated_at?: string;
           organization_id: string;
@@ -72,7 +72,7 @@ export interface Database {
           quote_source?: string;
           created_by?: string;
           date_last_downloaded?: string;
-          version?: number;
+          document_version?: number;
           created_at?: string;
           updated_at?: string;
           organization_id?: string;

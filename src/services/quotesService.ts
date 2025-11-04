@@ -50,7 +50,7 @@ export interface UpdateQuoteData {
   price_details?: Record<string, any>;
   status?: string;
   date_last_downloaded?: string;
-  version?: number;
+  document_version?: number;
   customization?: Record<string, any>;
   archived?: boolean;
   total_value?: number;
@@ -98,7 +98,7 @@ export async function fetchQuotes(
         id, created_by, created_by_name, organization_id, proposal_number, project_name,
         quote_details, job_details, delivery_details, labor_details,
         wall_details, price_details, status, date_last_downloaded,
-        version, created_at, updated_at, customization,
+        document_version, created_at, updated_at, customization,
         quote_source, archived, is_main_version,
         total_value, subtotal,
         submitted_at, won_at, rejected_at, closed_at, margin_percentage
@@ -126,7 +126,7 @@ export async function fetchQuotes(
         id, created_by, created_by_name, organization_id, proposal_number, project_name,
         quote_details, job_details, delivery_details, labor_details,
         wall_details, price_details, status, date_last_downloaded,
-        version, created_at, updated_at, customization,
+        document_version, created_at, updated_at, customization,
         quote_source, archived, is_main_version,
         total_value, subtotal,
         submitted_at, won_at, rejected_at, closed_at, margin_percentage
@@ -339,7 +339,7 @@ export async function createQuoteVersion(
       ...existingQuote,
       id: undefined,
       proposal_number: newProposalNumber,
-      version: versionNumber,
+      document_version: versionNumber,
       is_main_version: false,
       created_by: session.user.id,
       created_by_name: createdByName,
