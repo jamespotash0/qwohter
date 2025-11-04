@@ -592,7 +592,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       filterFn: 'equals',
       enableSorting: false,
     }),
-    columnHelper.accessor('creator_name', {
+    columnHelper.accessor('created_by_name', {
       id: 'created_by',
       header: 'Created By',
       cell: ({ row }) => {
@@ -603,7 +603,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           return <div className="text-sm italic text-gray-500">Various</div>;
         }
 
-        return <div className="text-sm text-gray-600">{quote.creator_name || 'Unknown'}</div>;
+        return <div className="text-sm text-gray-600">{quote.created_by_name || 'Unknown'}</div>;
       },
       size: 200,
       enableSorting: false,
@@ -1399,7 +1399,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
 
                             {/* Created By */}
                             <td className="px-4 py-2 text-xs text-gray-500">
-                              {version.creator_name || "Unknown"}
+                              {version.created_by_name || "Unknown"}
                             </td>
 
                             {/* Created At */}
