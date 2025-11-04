@@ -45,7 +45,8 @@ export interface PageBreakStrategy {
 
 export interface SectionVisibilityConfig {
   header: boolean;
-  billingJobInfo: boolean;
+  billedToTable: boolean;
+  jobInfoTable: boolean;
   proposalIntro: boolean;
   wallTable: boolean;
   panelsSection: boolean;
@@ -60,7 +61,8 @@ export interface SectionVisibilityConfig {
 
 export const defaultSectionVisibility: SectionVisibilityConfig = {
   header: true,
-  billingJobInfo: true,
+  billedToTable: true,
+  jobInfoTable: true,
   proposalIntro: true,
   wallTable: true,
   panelsSection: true,

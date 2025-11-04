@@ -66,7 +66,7 @@ export abstract class BaseQuoteTemplate {
 
     let html = `<div class="quote-container" data-page-content="true">
       ${config.header ? this.generateHeader(data) : ''}
-      ${config.billingJobInfo ? this.generateBillingAndJobInfo(data) : ''}
+      ${this.sectionGenerators.generateBillingAndJobInfo(data, config.billedToTable, config.jobInfoTable)}
       ${proposalIntro}
       ${config.wallTable ? this.generateWallTable(data) : ''}
       ${config.panelsSection ? this.generatePanelsSection(data) : ''}`;

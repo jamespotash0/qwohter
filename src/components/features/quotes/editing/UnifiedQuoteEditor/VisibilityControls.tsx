@@ -15,7 +15,8 @@ interface SectionControl {
 
 const sectionControls: SectionControl[] = [
   { key: 'header', label: 'Header', description: 'Company logo and contact information' },
-  { key: 'billingJobInfo', label: 'Billing & Job Info', description: 'Client and project details' },
+  { key: 'billedToTable', label: 'Billed To (Left Table)', description: 'Client billing information' },
+  { key: 'jobInfoTable', label: 'Job Info (Right Table)', description: 'Date, proposal number, project name, job location' },
   { key: 'proposalIntro', label: 'Proposal Introduction', description: 'Opening text and project overview' },
   { key: 'wallTable', label: 'Wall Specifications Table', description: 'Summary of all wall systems' },
   { key: 'panelsSection', label: 'Panels Section', description: 'Panel specifications and details' },

@@ -92,77 +92,108 @@ export class SectionGenerators {
     </div>`;
   }
 
-  generateBillingAndJobInfo(data: QuoteData): string {
-    const date = this.helpers.formatDate(data.job_details?.date || '');
-    const proposalNumber = data.proposal_number || 'N/A';
-    const jobLocation = data.job_details?.job_location || '';
+  // Separate methods for each table
+  generateBilledToTable(data: QuoteData): string {
     const billedToName = data.job_details?.client_name || '';
     const billedToCompany = data.job_details?.client_company || '';
     const billedToAddress = data.job_details?.client_address || '';
+
+    return `<div class="billing-table" style="width: 30%;">
+      <div style="font-weight: bold; margin-bottom: 4px;">BILLED TO:</div>
+      <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+        <tr>
+          <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 8px 4px;">
+            ${billedToName}
+          </td>
+        </tr>
+        <tr>
+          <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 8px 4px;">
+            ${billedToCompany}
+          </td>
+        </tr>
+        <tr>
+          <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 8px 4px;">
+            ${billedToAddress}
+          </td>
+        </tr>
+      </table>
+    </div>`;
+  }
+
+  generateJobInfoTable(data: QuoteData): string {
+    const date = this.helpers.formatDate(data.job_details?.date || '');
+    const proposalNumber = data.proposal_number || 'N/A';
+    const jobLocation = data.job_details?.job_location || '';
     const projectName = data.project_name;
 
+    return `<div class="job-info-section" style="flex-grow: 1;">
+      <!-- <div style="font-weight: bold; margin-left: 40px; margin-bottom: 4px; height: 16px"></div> -->
+      <table style="width: 80%; border-collapse: collapse; margin-left: 175px">
+        <colgroup>
+          <col style="width: 30%;">
+          <col style="width: 50%;">
+        </colgroup>
+        <tr>
+          <td style="font-weight: bold; padding: 4px; width: 80px; border: none; text-align: right;">
+            Date:
+          </td>
+          <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
+            ${date}
+          </td>
+        </tr>
+        <tr>
+          <td style="font-weight: bold; padding: 4px; border: none; text-align: right;">
+            Proposal #:
+          </td>
+          <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
+            ${proposalNumber}
+          </td>
+        </tr>
+        <tr>
+          <td style="font-weight: bold; padding: 4px; border: none; text-align: right;">
+            Project Name:
+          </td>
+          <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
+            ${projectName}
+          </td>
+        </tr>
+        <tr>
+          <td style="font-weight: bold; padding: 4px; width: 25px; border: none; text-align: right; white-space: nowrap;">
+            Job Location:
+          </td>
+          <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black; white-space: normal; word-break: break-word; max-width: 300px;">
+            ${jobLocation}
+          </td>
+        </tr>
+      </table>
+    </div>`;
+  }
+
+  // Legacy wrapper that combines both tables (for backward compatibility)
+  generateBillingAndJobInfo(data: QuoteData, showBilledTo: boolean = true, showJobInfo: boolean = true): string {
+    if (!showBilledTo && !showJobInfo) return '';
+
+    const billedToSection = showBilledTo ? this.generateBilledToTable(data) : '';
+    const jobInfoSection = showJobInfo ? this.generateJobInfoTable(data) : '';
+
+    // If only job info is shown, add spacer to maintain right positioning
+    if (!showBilledTo && showJobInfo) {
+      return `<div class="billing-job-container" style="display: flex; gap: 40px; align-items: flex-start; margin-top: -40px;">
+        <div style="width: 30%;"></div>
+        ${jobInfoSection}
+      </div>`;
+    }
+
+    if (showBilledTo && !showJobInfo) {
+      return `<div class="billing-job-container" style="display: flex; gap: 40px; align-items: flex-start; margin-top: -40px;">
+        ${billedToSection}
+      </div>`;
+    }
+
+    // Both are shown
     return `<div class="billing-job-container" style="display: flex; gap: 40px; align-items: flex-start; margin-top: -40px;">
-      <div class="billing-table" style="width: 30%;">
-        <div style="font-weight: bold; margin-bottom: 4px;">BILLED TO:</div>
-        <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
-          <tr>
-            <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 8px 4px;">
-              ${billedToName}
-            </td>
-          </tr>
-          <tr>
-            <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 8px 4px;">
-              ${billedToCompany}
-            </td>
-          </tr>
-          <tr>
-            <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 8px 4px;">
-              ${billedToAddress}
-            </td>
-          </tr>
-        </table>
-      </div>
-      <div class="job-info-section" style="flex-grow: 1;">
-        <!-- <div style="font-weight: bold; margin-left: 40px; margin-bottom: 4px; height: 16px"></div> -->
-        <table style="width: 80%; border-collapse: collapse; margin-left: 175px">
-          <colgroup>
-            <col style="width: 30%;">
-            <col style="width: 50%;">
-          </colgroup>
-          <tr>
-            <td style="font-weight: bold; padding: 4px; width: 80px; border: none; text-align: right;">
-              Date:
-            </td>
-            <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
-              ${date}
-            </td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold; padding: 4px; border: none; text-align: right;">
-              Proposal #:
-            </td>
-            <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
-              ${proposalNumber}
-            </td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold; padding: 4px; border: none; text-align: right;">
-              Project Name:
-            </td>
-            <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
-              ${projectName}
-            </td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold; padding: 4px; width: 25px; border: none; text-align: right; white-space: nowrap;">
-              Job Location:
-            </td>
-            <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black; white-space: normal; word-break: break-word; max-width: 300px;">
-              ${jobLocation}
-            </td>
-          </tr>
-        </table>
-      </div>
+      ${billedToSection}
+      ${jobInfoSection}
     </div>`;
   }
 
