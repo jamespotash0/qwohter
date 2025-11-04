@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { subscribeWithSelector, devtools } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuotesStore } from '../quotes/quotesStore';
 import { useUIStore } from '../ui/uiStore';
+import { queryClient } from '@/lib/queryClient';
 
 interface AppState {
   // Application lifecycle
@@ -132,10 +132,10 @@ export const useAppStore = create<AppState>()(
           useUIStore.getState().setGlobalLoading(true, 'Syncing data...');
 
           // Re-fetch quotes if user is authenticated
-          // Check Supabase session directly instead of old auth store
+          // React Query handles this automatically via invalidation
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
-            await useQuotesStore.getState().fetchQuotes({ refresh: true });
+            await queryClient.invalidateQueries({ queryKey: ['quotes'] });
           }
 
           set({ lastSync: new Date() });
@@ -184,12 +184,13 @@ export const useAppStore = create<AppState>()(
 
       // Reset entire application state
       reset: () => {
-        
+
         // Reset all stores
         // Note: Auth is managed by AuthProvider - use signOut instead
-        useQuotesStore.getState()._setQuotes([]);
+        // React Query cache is cleared automatically on sign out
+        queryClient.clear();
         useUIStore.getState().resetUI();
-        
+
         // Reset app store
         set({
           isInitialized: false,
@@ -201,7 +202,7 @@ export const useAppStore = create<AppState>()(
             memoryUsage: null,
           },
         });
-        
+
       },
 
       // Get application info

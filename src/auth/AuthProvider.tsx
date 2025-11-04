@@ -204,30 +204,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Clear ALL React Query cache (includes user, session, profile, org, quotes, etc.)
     queryClient.clear();
 
-    // Reset Zustand stores (if any remain for UI state only)
-    // Note: organizationStore has been migrated to React Query and is cleared with queryClient.clear() above
+    // Reset remaining Zustand stores (only appStore remains - others migrated to React Query)
+    // Note: quotesStore, organizationStore, boardStore, and remindersStore
+    //       have all been migrated to React Query and are cleared with queryClient.clear() above
     try {
-      // Dynamic imports to avoid circular dependencies
-      const stores = await Promise.all([
-        import('@/stores/quotes/quotesStore').catch(() => null),
-        import('@/stores/board/boardStore').catch(() => null),
-        import('@/stores/reminders/remindersStore').catch(() => null),
-        import('@/stores/app/appStore').catch(() => null),
-      ]);
-
-      stores.forEach((store) => {
-        if (store && 'useQuotesStore' in store) {
-          (store as any).useQuotesStore.getState().reset?.();
-        } else if (store && 'useBoardStore' in store) {
-          (store as any).useBoardStore.getState().reset?.();
-        } else if (store && 'useRemindersStore' in store) {
-          (store as any).useRemindersStore.getState().reset?.();
-        } else if (store && 'useAppStore' in store) {
-          (store as any).useAppStore.getState().reset?.();
-        }
-      });
+      // Only appStore remains as a Zustand store for app-level UI state
+      const { useAppStore } = await import('@/stores/app/appStore');
+      useAppStore.getState().reset();
     } catch (err) {
-      console.error('Error resetting stores:', err);
+      console.error('Error resetting app store:', err);
     }
 
     // Clear auth-related localStorage
