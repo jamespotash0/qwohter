@@ -24,7 +24,9 @@ import { QuoteDataPanelCore as QuoteDataPanel } from './UnifiedQuoteEditor/Quote
 import LivePreviewPanel from './UnifiedQuoteEditor/LivePreviewPanel';
 import QuickEditModal from './UnifiedQuoteEditor/QuickEditModal';
 import VisibilityControls from './UnifiedQuoteEditor/VisibilityControls';
+import { MigrationBanner } from './UnifiedQuoteEditor/MigrationBanner';
 import { formatDateEST } from '@/utils/dateUtils';
+import { needsSemanticMarkupMigration } from '@/utils/semanticMarkupDetection';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,6 +90,10 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   const [hoveredSectionId, setHoveredSectionId] = useState<string | null>(null);
   // Smart PDF is now the only mode - no toggle needed
   const showSmartPDFPreview = true;
+
+  // Migration detection state
+  const [showMigrationBanner, setShowMigrationBanner] = useState(false);
+  const [isUpgrading, setIsUpgrading] = useState(false);
 
   // Section visibility configuration with localStorage
   const [sectionVisibility, setSectionVisibility] = useState<SectionVisibilityConfig>(() => {
@@ -281,6 +287,13 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       return syncEngine.applySectionOverrides(baseHTML, regularOverrides);
     }
   }), [organization, sectionVisibility]);
+
+  // Check for migration on mount
+  useEffect(() => {
+    if (quote && needsSemanticMarkupMigration(quote)) {
+      setShowMigrationBanner(true);
+    }
+  }, [quote]);
 
   // Initialize editor
   useEffect(() => {
@@ -554,11 +567,6 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         lastSaved: new Date()
       }));
 
-      toast({
-        title: "Quote Saved",
-        description: "All changes have been saved successfully.",
-      });
-
     } catch (error) {
       console.error('Save error:', error);
       toast({
@@ -680,6 +688,58 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       handleTitleCancel();
     }
   }, [handleTitleSave, handleTitleCancel]);
+
+  // Handle migration upgrade
+  const handleUpgradeTemplate = useCallback(async () => {
+    try {
+      setIsUpgrading(true);
+
+      // Regenerate the template with current form data (no customizations)
+      const baseHTML = syncEngine.generateBaseHTML(quote, sectionVisibility);
+
+      // Clear all customizations and use fresh template
+      setState(prev => ({
+        ...prev,
+        generatedHTML: baseHTML,
+        previewHTML: baseHTML,
+        mixedContentSections: new Map(), // Clear all custom sections
+        isDirty: true // Mark as dirty so user can save
+      }));
+
+      // Save the upgraded quote
+      const sections = SmartQuoteHelper.extractSections(baseHTML);
+      const unifiedData: SmartQuoteData = {
+        ...quote,
+        customSections: sections,
+        customHTML: baseHTML,
+        isCustomized: false // Not customized anymore since we regenerated
+      };
+
+      onSave?.(unifiedData);
+
+      // Hide banner and show success message
+      setShowMigrationBanner(false);
+      toast({
+        title: "Template Upgraded",
+        description: "Your quote now has live-preview editing enabled. Changes to form data will update immediately.",
+      });
+
+    } catch (error) {
+      console.error('Upgrade error:', error);
+      toast({
+        title: "Upgrade Failed",
+        description: "Failed to upgrade template. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpgrading(false);
+    }
+  }, [quote, syncEngine, sectionVisibility, onSave, toast]);
+
+  // Handle dismissing migration banner
+  const handleDismissMigration = useCallback(() => {
+    setShowMigrationBanner(false);
+  }, []);
 
   if (isLoading) {
     return (
@@ -878,6 +938,17 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
 
           {/* Live Preview Panel - Takes remaining space */}
           <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
+            {/* Migration Banner */}
+            {showMigrationBanner && (
+              <div className="p-4">
+                <MigrationBanner
+                  onUpgrade={handleUpgradeTemplate}
+                  onDismiss={handleDismissMigration}
+                  isUpgrading={isUpgrading}
+                />
+              </div>
+            )}
+
             <LivePreviewPanel
               className="flex-1"
               previewHTML={state.previewHTML}

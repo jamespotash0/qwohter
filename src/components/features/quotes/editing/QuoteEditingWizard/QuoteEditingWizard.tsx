@@ -133,9 +133,8 @@ const QuoteEditingWizard = ({
         quote_source: contactInfo.quoteSource,
         status: quoteStatus
       });
-      
+
       resetChangeTracking();
-      toast.success("Quote updated successfully!");
       onBackToDashboard();
     } catch (error) {
       toast.error("Failed to update quote");
