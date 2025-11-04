@@ -616,7 +616,37 @@ const Quotes = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the quote.
+              {(() => {
+                const quoteToDelete = allQuotes.find(q => q.id === deleteQuoteId);
+                if (quoteToDelete) {
+                  // Check if this is a main version with multiple versions
+                  const quoteGroups = groupQuotesByVersion(allQuotes);
+                  const group = quoteGroups.find(g => g.versions.some(v => v.id === deleteQuoteId));
+                  const isMainVersion = group ? (group.mainVersion.id === deleteQuoteId || quoteToDelete.is_main_version === true) : false;
+                  const hasMultipleVersions = group && group.hasMultipleVersions;
+
+                  return (
+                    <>
+                      This action cannot be undone. This will permanently delete:
+                      <div className="text-lg font-semibold text-foreground mt-2">
+                        Quote #{quoteToDelete.proposal_number} - {quoteToDelete.project_name || 'Untitled Quote'}
+                      </div>
+                      {isMainVersion && hasMultipleVersions && (
+                        <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive">
+                          <div className="font-semibold">⚠️ Warning: This is the main version</div>
+                          <div className="mt-1 text-sm">
+                            Deleting it will also delete all {group!.versions.length - 1} other version(s) in this group.
+                          </div>
+                          <div className="mt-2 text-sm font-medium">
+                            To delete only this version, first set a new main version using the dropdown in the quotes table.
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                }
+                return "This action cannot be undone. This will permanently delete the quote.";
+              })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

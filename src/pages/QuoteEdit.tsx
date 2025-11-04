@@ -46,7 +46,7 @@ const QuoteEdit = () => {
   };
 
   const markAsDownloaded = async (id: string) => {
-    return await updateQuoteMutation({ id, updates: { downloaded: true } });
+    return await updateQuoteMutation({ id, updates: { date_last_downloaded: new Date().toISOString() } });
   };
 
   const saveQuoteCustomization = async (id: string, customization: any) => {

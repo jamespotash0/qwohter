@@ -52,7 +52,6 @@ export interface UpdateQuoteData {
   date_last_downloaded?: string;
   version?: number;
   customization?: Record<string, any>;
-  downloaded?: boolean;
   archived?: boolean;
   total_value?: number;
   subtotal?: number;
@@ -303,10 +302,37 @@ export async function createQuoteVersion(
   newProposalNumber: string,
   versionNumber: number
 ): Promise<Quote> {
-  // Fetch existing quote
+  // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
+  const session = await authService.getSession();
+  if (!session?.user) throw new Error('Not authenticated');
+
+  // Fetch existing quote (RLS ensures user has access)
   const existingQuote = await fetchQuoteById(existingQuoteId);
 
-  // Create new version
+  // Fetch organization details to ensure organization name is available
+  const { data: orgData } = await supabase
+    .from('organizations')
+    .select('name')
+    .eq('id', existingQuote.organization_id)
+    .maybeSingle();
+
+  // Get user's name from profile to set created_by_name
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', session.user.id)
+    .maybeSingle();
+
+  const createdByName = (profileData as any)?.full_name || session.user.email || 'Unknown';
+
+  // Ensure quote_details has organization name
+  const quoteDetails = {
+    ...(existingQuote.quote_details as any || {}),
+    organizationName: (existingQuote.quote_details as any)?.organizationName || (orgData as any)?.name || 'Organization Name Not Available'
+  };
+
+  // Create new version with proper user context and organization name
+  // RLS policies automatically ensure user has access to this organization
   const { data, error } = await supabase
     .from('quotes')
     .insert({
@@ -315,13 +341,21 @@ export async function createQuoteVersion(
       proposal_number: newProposalNumber,
       version: versionNumber,
       is_main_version: false,
+      created_by: session.user.id,
+      created_by_name: createdByName,
+      organization_id: existingQuote.organization_id,
+      quote_details: quoteDetails,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     } as any)
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error creating quote version:', error);
+    throw new Error(error.message || 'Failed to create quote version');
+  }
+
   return data as Quote;
 }
 
