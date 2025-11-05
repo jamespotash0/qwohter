@@ -176,32 +176,7 @@ const DemoContact = () => {
   };
 
   return (
-    <>
-      {/* Success Modal Overlay */}
-      {isSubmitted && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <Card className="max-w-md w-full mx-4 p-8 text-center relative animate-in zoom-in-95 duration-300">
-            {/* Close Button */}
-            <button
-              onClick={handleCloseSuccessModal}
-              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
-              aria-label="Close"
-            >
-              <X className="w-5 h-5 text-gray-600" />
-            </button>
-
-            <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-6" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Thank You!
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Your demo request has been sent successfully. We'll get back to you within 24 hours to schedule your personalized demonstration.
-            </p>
-          </Card>
-        </div>
-      )}
-
-      <div className="min-h-screen bg-white overflow-x-hidden">
+    <div className="min-h-screen bg-white overflow-x-hidden">
       {/* Navigation Bar - Matching Landing Page */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
@@ -430,6 +405,24 @@ const DemoContact = () => {
                 </div>
               </div>
             </form>
+
+            {/* Success Message */}
+            {isSubmitted && (
+              <div className="mt-4 p-4 bg-green-100 border border-green-300 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-green-800 font-medium">Form submitted successfully!</p>
+                  <p className="text-green-700 text-sm mt-1">We'll get back to you within 24 hours.</p>
+                </div>
+                <button
+                  onClick={handleCloseSuccessModal}
+                  className="text-green-600 hover:text-green-800 transition-colors"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </Card>
 
           {/* Right Side - Features with animations */}
@@ -505,8 +498,7 @@ const DemoContact = () => {
           </div>
         </div>
       </footer>
-      </div>
-    </>
+    </div>
   );
 };
 
