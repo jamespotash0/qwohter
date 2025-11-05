@@ -27,7 +27,7 @@ export async function sendDemoRequestEmail(data: DemoRequestData): Promise<{
   error?: string;
 }> {
   try {
-    const { data: responseData, error } = await supabase.functions.invoke('send-demo-email', {
+    const { data: responseData, error } = await supabase.functions.invoke('demo-email', {
       body: data,
     });
 
