@@ -97,15 +97,10 @@ export function useUpdateProject(organizationId: string) {
       return { previousProjects };
     },
     onSuccess: (data, variables) => {
-      // Don't show toast for board movements (drag-and-drop, status changes, reordering)
       const isBoardMovement =
         Object.keys(variables.updates).every(key =>
           ['workflow_column_status', 'order', 'position'].includes(key)
         );
-
-      if (!isBoardMovement) {
-        toast.success('Project updated successfully');
-      }
 
       queryClient.invalidateQueries({ queryKey: queryKeys.board.tasks(organizationId) });
     },
@@ -189,7 +184,6 @@ export function useCreateWorkflowColumn(organizationId: string) {
       return { previousColumns };
     },
     onSuccess: () => {
-      toast.success('Workflow column created successfully');
       queryClient.invalidateQueries({ queryKey: [...queryKeys.board.all, 'columns', organizationId] });
     },
     onError: (error, variables, context) => {
@@ -229,7 +223,6 @@ export function useUpdateWorkflowColumn(organizationId: string) {
       return { previousColumns };
     },
     onSuccess: () => {
-      toast.success('Workflow column updated successfully');
       queryClient.invalidateQueries({ queryKey: [...queryKeys.board.all, 'columns', organizationId] });
     },
     onError: (error, variables, context) => {
@@ -309,7 +302,6 @@ export function useMoveBoardItem(organizationId: string) {
       return moveBoardItem(itemId, newColumnStatus, newOrder);
     },
     onSuccess: () => {
-      // Silent update - no toast for drag-and-drop movements
       queryClient.invalidateQueries({ queryKey: queryKeys.board.tasks(organizationId) });
     },
     onError: (error) => {
