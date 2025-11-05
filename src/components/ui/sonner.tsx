@@ -11,6 +11,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       closeButton
+      duration={4000}
+      visibleToasts={5}
       toastOptions={{
         classNames: {
           toast:
@@ -23,6 +25,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           closeButton:
             "group-[.toast]:absolute group-[.toast]:right-2 group-[.toast]:top-2 group-[.toast]:flex group-[.toast]:items-center group-[.toast]:justify-center group-[.toast]:w-6 group-[.toast]:h-6 group-[.toast]:rounded-full group-[.toast]:bg-muted/80 group-[.toast]:text-foreground/70 group-[.toast]:hover:bg-muted group-[.toast]:hover:text-foreground group-[.toast]:transition-all group-[.toast]:duration-200 group-[.toast]:focus:ring-2 group-[.toast]:focus:ring-ring group-[.toast]:focus:outline-none",
         },
+        unstyled: false,
       }}
       {...props}
     />
