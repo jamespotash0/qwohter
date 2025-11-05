@@ -62,6 +62,20 @@ const LandingEnhanced = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Handle hash navigation (e.g., /#features, /#usecases, /#pricing)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      // Small delay to ensure DOM is fully rendered
+      setTimeout(() => {
+        const element = document.querySelector(hash);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+  }, []);
+
   // Scroll-triggered animations
   useEffect(() => {
     if (featuresRef.current) {
@@ -87,8 +101,9 @@ const LandingEnhanced = () => {
   }, []);
 
   const handleGetDemo = () => {
-    navigate('/demo-contact');
+    navigate('/demo');
   };
+
 
   const handleSignIn = () => {
     navigate('/sign-in');
@@ -137,6 +152,13 @@ const LandingEnhanced = () => {
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--landing-primary)] transition-all duration-300 group-hover:w-full" />
                 </a>
               ))}
+              <span
+                onClick={() => navigate('/contact-us')}
+                className={`${navTextColor} hover:text-[var(--landing-primary)] font-medium cursor-pointer transition-all duration-300 relative group`}
+              >
+                Contact Us
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--landing-primary)] transition-all duration-300 group-hover:w-full" />
+              </span>
             </div>
 
             {/* Right Actions */}
@@ -196,12 +218,6 @@ const LandingEnhanced = () => {
                 >
                   <span className="relative z-10">Get a Demo</span>
                   <div className="absolute inset-0 bg-[#d95a3d] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </Button>
-                <Button
-                  variant="outline"
-                  className="bg-[#F7F2E9] hover:bg-[#F7F2E9]/90 text-[var(--landing-text-on-light)] px-10 py-6 rounded-full hover:shadow-xl hover:scale-105 transition-all duration-300 font-semibold text-lg border-0"
-                >
-                  Contact Sales
                 </Button>
               </div>
 
@@ -678,12 +694,14 @@ const LandingEnhanced = () => {
                 Generate, design, and track your quotes with ease.
               </p>
               <div className="flex space-x-4">
-                <Button variant="outline" size="sm" className="border-[var(--landing-text-muted-dark)] text-[var(--landing-text-on-dark)] hover:bg-[var(--landing-primary)] hover:border-[var(--landing-primary)] hover:text-white transition-all duration-300">
+                {/* <Button variant="outline" size="sm" className="border-[var(--landing-text-muted-dark)] text-[var(--landing-text-on-dark)] hover:bg-[var(--landing-primary)] hover:border-[var(--landing-primary)] hover:text-white transition-all duration-300">
                   Twitter
-                </Button>
-                <Button variant="outline" size="sm" className="border-[var(--landing-text-muted-dark)] text-[var(--landing-text-on-dark)] hover:bg-[var(--landing-primary)] hover:border-[var(--landing-primary)] hover:text-white transition-all duration-300">
-                  LinkedIn
-                </Button>
+                </Button> */}
+                <a href="https://www.linkedin.com/company/qwohter" target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm" className="border-[var(--landing-text-muted-dark)] text-[var(--landing-text-on-dark)] hover:bg-[var(--landing-primary)] hover:border-[var(--landing-primary)] hover:text-white transition-all duration-300">
+                    LinkedIn
+                  </Button>
+                </a>
               </div>
             </div>
 
@@ -692,18 +710,18 @@ const LandingEnhanced = () => {
               <ul className="space-y-3 text-[var(--landing-text-muted-dark)]">
                 <li><a href="#features" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Features</a></li>
                 <li><a href="#pricing" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Pricing</a></li>
-                <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Integrations</a></li>
-                <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">API</a></li>
+                {/* <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Integrations</a></li> */}
+                {/* <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">API</a></li> */}
               </ul>
             </div>
 
             <div>
               <h3 className="font-semibold mb-6 text-lg text-[var(--landing-text-on-dark)]">Company</h3>
               <ul className="space-y-3 text-[var(--landing-text-muted-dark)]">
-                <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">About</a></li>
-                <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Blog</a></li>
-                <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Careers</a></li>
-                <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Contact</a></li>
+                {/* <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">About</a></li> */}
+                {/* <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Blog</a></li> */}
+                {/* <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Careers</a></li> */}
+                <li><a href="/contact-us" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Contact</a></li>
               </ul>
             </div>
           </div>
@@ -713,6 +731,9 @@ const LandingEnhanced = () => {
               © 2025 Qwohter Inc. All rights reserved.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-[var(--landing-text-muted-dark)]">
+              <a href="/contact-us#faq" className="hover:text-[var(--landing-primary)] transition-colors duration-300">
+                FAQ
+              </a>
               <a href="/privacy-policy" className="hover:text-[var(--landing-primary)] transition-colors duration-300">
                 Privacy notice
               </a>

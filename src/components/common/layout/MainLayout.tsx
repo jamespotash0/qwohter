@@ -55,7 +55,8 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
     '/pending-approval',
     '/access-denied',
     '/account-inactive',
-    '/demo-contact'
+    '/demo',
+    '/contact-us'
   ].includes(location.pathname) && !location.pathname.startsWith('/editor/');
 
   // Check if we're on a full-screen wizard page (no padding/max-width)
@@ -345,7 +346,8 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     '/pending-approval',
     '/access-denied',
     '/account-inactive',
-    '/demo-contact'
+    '/demo',
+    '/contact-us'
   ].includes(location.pathname) && !location.pathname.startsWith('/editor/');
 
   // Wrap with SidebarProvider only for protected routes

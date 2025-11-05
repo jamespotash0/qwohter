@@ -10,7 +10,7 @@ import { fadeInUp, animeOnScroll } from '@/utils/animations';
 import { sendDemoRequestEmail } from '@/services/emailService';
 import { toast } from 'sonner';
 
-const DemoContact = () => {
+const Demo = () => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [navTextColor, setNavTextColor] = useState('text-[var(--landing-text-on-light)]');
@@ -137,6 +137,7 @@ const DemoContact = () => {
 
     try {
       // Send email via backend service
+      console.log('Sending demo request email...');
       const result = await sendDemoRequestEmail({
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -147,12 +148,16 @@ const DemoContact = () => {
         agreeToUpdates: agreeToUpdates,
       });
 
+      console.log('Email result:', result);
+
       if (result.success) {
         // Show success state
         setIsSubmitted(true);
         toast.success('Demo request sent successfully!');
+        setIsSubmitting(false);
       } else {
         // Show error toast
+        console.error('Email failed:', result.error);
         toast.error(result.error || 'Failed to send demo request. Please try again.');
         setIsSubmitting(false);
       }
@@ -213,6 +218,13 @@ const DemoContact = () => {
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--landing-primary)] transition-all duration-300 group-hover:w-full" />
                 </a>
               ))}
+              <span
+                onClick={() => navigate('/contact-us')}
+                className={`${navTextColor} hover:text-[var(--landing-primary)] font-medium cursor-pointer transition-all duration-300 relative group`}
+              >
+                Contact Us
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--landing-primary)] transition-all duration-300 group-hover:w-full" />
+              </span>
             </div>
 
             {/* Right Actions - Matching Landing Page */}
@@ -233,6 +245,11 @@ const DemoContact = () => {
       <div className="max-w-7xl mx-auto px-6 py-16 pt-32">
         {/* Heading */}
         <div className="text-center mb-16">
+          <div className="inline-block mb-4 px-6 py-2 bg-[var(--landing-primary)]/10 rounded-full">
+            <span className="text-[var(--landing-primary)] font-semibold text-sm uppercase tracking-wider">
+              Book a Demo
+            </span>
+          </div>
           <h1 className="text-5xl text-gray-900 leading-tight">
             Turn quote <span className="font-bold text-orange-500">chaos</span> into <span className="font-bold text-blue-600">clarity</span><br />
             and <span className="font-bold">close more deals</span>
@@ -502,4 +519,4 @@ const DemoContact = () => {
   );
 };
 
-export default DemoContact;
+export default Demo;
