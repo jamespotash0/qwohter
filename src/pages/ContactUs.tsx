@@ -130,7 +130,6 @@ const ContactUs = () => {
 
       if (result.success) {
         setIsSubmitted(true);
-        toast.success('Message sent successfully!');
         setIsSubmitting(false);
       } else {
         console.error('Email failed:', result.error);
@@ -155,39 +154,68 @@ const ContactUs = () => {
   };
 
   const faqs = [
-    {
-      question: 'What makes Qwohter different from using spreadsheets or Word documents?',
-      answer: 'Unlike spreadsheets and documents, Qwohter automates calculations, prevents pricing errors, maintains consistent branding, and tracks quote status in real-time. You can generate professional quotes in minutes instead of hours, with built-in version control and approval workflows.'
-    },
-    {
-      question: 'Can I add my company logo and branding to quotes?',
-      answer: 'Yes! Upload your logo, customize colors, and set your brand fonts to create professional, on-brand quotes every time. All quotes automatically include your company information and branding preferences.'
-    },
-    {
-      question: 'How does the pricing calculator work?',
-      answer: 'Our intelligent pricing engine lets you input material costs, labor hours, overhead percentages, and profit margins. It automatically calculates totals, applies discounts, and can save pricing rules for reuse. You can also set different pricing tiers for various client types.'
-    },
-    {
-      question: 'Can multiple team members collaborate on quotes?',
-      answer: 'Absolutely. Invite team members, assign roles (Admin, Member, Viewer), and work together on quotes. Track who made changes, get approvals before sending, and maintain a complete audit trail of all modifications.'
-    },
-    {
-      question: 'What happens after I send a quote to a client?',
-      answer: 'Qwohter tracks quote status from "Draft" through "Sent," "Viewed," "Accepted," or "Rejected." You can see when clients open quotes, send follow-up reminders, and convert accepted quotes into projects on your board.'
-    },
-    {
-      question: 'Do I need to install any software?',
-      answer: 'No installation needed! Qwohter is 100% cloud-based and works in any modern web browser. Access your quotes from anywhere, on any device. Your data syncs automatically across all devices.'
-    },
-    {
-      question: 'Can I export quotes as PDFs?',
-      answer: 'Yes! Every quote can be downloaded as a professional PDF with your branding. You can also email quotes directly to clients from within Qwohter, with automatic tracking of opens and views.'
-    },
-    {
-      question: 'Is there a limit to how many quotes I can create?',
-      answer: 'No limits! Create unlimited quotes, save unlimited templates, and manage as many projects as you need. All plans include unlimited quote generation and storage.'
-    }
-  ];
+  {
+    question: 'How do I sign up and get started?',
+    answer: 'Click "Sign In" in the header and select "Create Account." Enter your email, create a password, and set up your organization profile. You’ll be guided through a short onboarding to add company details, upload your logo, and create your first quote—most users complete setup in under 5 minutes.'
+  },
+  {
+    question: 'What does Qwohter cost?',
+    answer: 'We offer a single, simple plan: $20 per user per month. No tiers, no usage limits—just one predictable rate. Billing updates automatically as you add or remove active users.'
+  },
+  {
+    question: 'How do I add new users to my account?',
+    answer: 'Organization owners and admins can invite team members from Settings → Team. Click "Invite Member," enter their email, and assign a role (Admin, Member, Viewer). Invited users receive an email to join and billing adjusts automatically for active users.'
+  },
+  {
+    question: 'How do I create and export quotes?',
+    answer: 'Create quotes using our editor or start from a template. When ready, download a branded PDF with one click, email the quote to clients directly from Qwohter, or share a secure link for online viewing and approval.'
+  },
+  {
+    question: 'Can multiple team members work on quotes together?',
+    answer: 'Yes. Invite unlimited team members, assign roles, collaborate in real-time, and track changes. Use approval workflows to require sign-off before a quote is sent. An audit trail shows who made which edits.'
+  },
+  {
+    question: 'How does quote tracking work?',
+    answer: 'Qwohter tracks each quote’s lifecycle (Draft → Submitted → Rejected → Accepted). You can send automated follow-up reminders and convert accepted quotes directly into projects on your board.'
+  },
+  {
+    question: 'Can I analyze quote performance?',
+    answer: 'Yes. Qwohter includes built-in analytics that help you understand how your team performs over time. Track total quotes sent, win rate, revenue, and other key metrics. Use insights to identify what’s working and improve your quoting process.'
+  },
+  {
+    question: 'Can I export quotes as PDFs or share them online?',
+    answer: 'Yes — download professional, branded PDFs of any quote, email quotes to clients from within Qwohter, or share a secure view-only link so clients can review and approve online.'
+  },
+  {
+    question: 'Can I customize my quote forms?',
+    answer: 'Absolutely. Create your own quote forms by adding custom fields, dropdowns, and sections that match your business workflow. You can tailor forms to capture the right data for your team and clients, and even use different layouts for different project types.'
+  },
+  {
+    question: 'Is my data secure?',
+    answer: 'Yes. Data is encrypted in transit and at rest using industry-standard protections. We run on secure cloud infrastructure with backups, support multi-factor authentication, and follow common compliance practices to keep your quotes and client data safe.'
+  },
+  {
+    question: 'Is there a free trial?',
+    answer: 'Yes — we offer a 14-day free trial with full access to all features. No credit card required to start. You can create unlimited quotes, invite team members, and explore all features. Cancel anytime during the trial with no charges.'
+  },
+  {
+    question: 'Can I cancel my subscription anytime?',
+    answer: 'Yes. Cancel anytime from Account Settings — there are no long-term contracts or cancellation fees. You’ll retain access until the end of your current billing period and can export all your data before losing access.'
+  },
+  {
+    question: 'What kind of support do you offer?',
+    answer: 'We provide email support for all users with typical response times under 24 hours. Our Help Center includes guides, tutorials, and best practices to help you get the most from Qwohter.'
+  },
+  {
+    question: 'Can I customize quotes with my branding?',
+    answer: 'Absolutely. Upload your company logo, set brand colors and fonts, and add business info. Branding is automatically applied to quotes and you can create multiple templates for different project types or clients.'
+  },
+  {
+    question: 'What makes Qwohter different from other platforms?',
+    answer: 'Qwohter combines the flexibility of spreadsheets with the structure of a purpose-built quoting tool. It supports complex cascading form data — so fields and pricing automatically adapt based on previous selections — making even the most detailed quotes fast and error-free. You can customize your own quote forms, apply your branding, collaborate with your team, and track real performance metrics — all in one place without the clutter of traditional CRMs or estimating software.'
+  }
+];
+
 
   const toggleFaq = (index: number) => {
     setOpenFaqIndex(openFaqIndex === index ? null : index);
