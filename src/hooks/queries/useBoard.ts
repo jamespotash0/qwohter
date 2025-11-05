@@ -170,7 +170,17 @@ export function useCreateWorkflowColumn(organizationId: string) {
 
       const previousColumns = queryClient.getQueryData<WorkflowColumn[]>(queryKey);
 
-      // Optimistically add
+      // Client-side validation: Check for duplicate names BEFORE optimistic update
+      const isDuplicate = previousColumns?.some(
+        col => col.name.toLowerCase() === newColumn.name.toLowerCase()
+      );
+
+      if (isDuplicate) {
+        // Don't do optimistic update, throw error immediately
+        throw new Error(`A workflow column named "${newColumn.name}" already exists. Please choose a different name.`);
+      }
+
+      // Optimistically add (only if validation passes)
       const tempColumn: WorkflowColumn = {
         id: `temp-${Date.now()}`,
         organization_id: organizationId,
@@ -187,7 +197,10 @@ export function useCreateWorkflowColumn(organizationId: string) {
       queryClient.invalidateQueries({ queryKey: [...queryKeys.board.all, 'columns', organizationId] });
     },
     onError: (error, variables, context) => {
-      toast.error('Failed to create workflow column');
+      // Show the specific error message from validation
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create workflow column';
+      toast.error(errorMessage);
+
       if (context?.previousColumns) {
         queryClient.setQueryData([...queryKeys.board.all, 'columns', organizationId], context.previousColumns);
       }
@@ -213,7 +226,18 @@ export function useUpdateWorkflowColumn(organizationId: string) {
 
       const previousColumns = queryClient.getQueryData<WorkflowColumn[]>(queryKey);
 
-      // Optimistically update
+      // Client-side validation: Check for duplicate names when renaming
+      if (updates.name && previousColumns) {
+        const isDuplicate = previousColumns.some(
+          col => col.id !== id && col.name.toLowerCase() === updates.name!.toLowerCase()
+        );
+
+        if (isDuplicate) {
+          throw new Error(`A workflow column named "${updates.name}" already exists. Please choose a different name.`);
+        }
+      }
+
+      // Optimistically update (only if validation passes)
       queryClient.setQueryData<WorkflowColumn[]>(queryKey, (old = []) =>
         old.map((column) =>
           column.id === id ? { ...column, ...updates, updated_at: new Date().toISOString() } : column
@@ -226,7 +250,10 @@ export function useUpdateWorkflowColumn(organizationId: string) {
       queryClient.invalidateQueries({ queryKey: [...queryKeys.board.all, 'columns', organizationId] });
     },
     onError: (error, variables, context) => {
-      toast.error('Failed to update workflow column');
+      // Show the specific error message from validation
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update workflow column';
+      toast.error(errorMessage);
+
       if (context?.previousColumns) {
         queryClient.setQueryData([...queryKeys.board.all, 'columns', organizationId], context.previousColumns);
       }

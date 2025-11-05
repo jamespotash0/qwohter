@@ -252,6 +252,17 @@ export async function createWorkflowColumn(
   organizationId: string,
   columnData: CreateWorkflowColumnData
 ): Promise<WorkflowColumn> {
+  // Check for duplicate column names (case-insensitive)
+  const { data: existingColumns } = await supabase
+    .from('project_workflow_columns')
+    .select('name')
+    .eq('organization_id', organizationId)
+    .ilike('name', columnData.name);
+
+  if (existingColumns && existingColumns.length > 0) {
+    throw new Error(`A workflow column named "${columnData.name}" already exists. Please choose a different name.`);
+  }
+
   const { data, error } = await supabase
     .from('project_workflow_columns')
     .insert({
@@ -272,6 +283,29 @@ export async function updateWorkflowColumn(
   columnId: string,
   updates: UpdateWorkflowColumnData
 ): Promise<WorkflowColumn> {
+  // If renaming, check for duplicate column names (case-insensitive)
+  if (updates.name) {
+    // Get current column to find organization_id
+    const { data: currentColumn } = await supabase
+      .from('project_workflow_columns')
+      .select('organization_id')
+      .eq('id', columnId)
+      .single();
+
+    if (currentColumn) {
+      const { data: existingColumns } = await supabase
+        .from('project_workflow_columns')
+        .select('id, name')
+        .eq('organization_id', currentColumn.organization_id)
+        .ilike('name', updates.name)
+        .neq('id', columnId); // Exclude current column
+
+      if (existingColumns && existingColumns.length > 0) {
+        throw new Error(`A workflow column named "${updates.name}" already exists. Please choose a different name.`);
+      }
+    }
+  }
+
   const { data, error } = await supabase
     .from('project_workflow_columns')
     .update(updates)
