@@ -96,8 +96,17 @@ export function useUpdateProject(organizationId: string) {
 
       return { previousProjects };
     },
-    onSuccess: () => {
-      toast.success('Project updated successfully');
+    onSuccess: (data, variables) => {
+      // Don't show toast for board movements (drag-and-drop, status changes, reordering)
+      const isBoardMovement =
+        Object.keys(variables.updates).every(key =>
+          ['workflow_column_status', 'order', 'position'].includes(key)
+        );
+
+      if (!isBoardMovement) {
+        toast.success('Project updated successfully');
+      }
+
       queryClient.invalidateQueries({ queryKey: queryKeys.board.tasks(organizationId) });
     },
     onError: (error, variables, context) => {
@@ -300,7 +309,7 @@ export function useMoveBoardItem(organizationId: string) {
       return moveBoardItem(itemId, newColumnStatus, newOrder);
     },
     onSuccess: () => {
-      toast.success('Item moved successfully');
+      // Silent update - no toast for drag-and-drop movements
       queryClient.invalidateQueries({ queryKey: queryKeys.board.tasks(organizationId) });
     },
     onError: (error) => {
