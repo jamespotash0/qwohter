@@ -292,28 +292,24 @@ export class SectionGenerators {
     const parsedTotal = totalValue ?
       (typeof totalValue === 'string' ? parseFloat(totalValue.replace(/[^0-9.-]/g, '')) : totalValue) : 0;
 
-    const basePrice = this.helpers.formatCurrency(parsedBasePrice);
-    const freight = this.helpers.formatCurrency(parsedFreight);
-    const total = this.helpers.formatCurrency(parsedTotal);
-
-    // Wrap all dynamic values with semantic markup
-    const basePriceMarked = basePrice ? TemplateMarkers.dynamic({
+    // Wrap raw numeric values with semantic markup (TemplateMarkers will format as currency)
+    const basePriceMarked = TemplateMarkers.dynamic({
       path: 'price_details.base_selling_price',
-      value: basePrice,
+      value: parsedBasePrice,
       format: 'currency'
-    }) : '';
+    });
 
-    const freightMarked = freight ? TemplateMarkers.dynamic({
+    const freightMarked = TemplateMarkers.dynamic({
       path: 'price_details.shipping_selling_price',
-      value: freight,
+      value: parsedFreight,
       format: 'currency'
-    }) : '';
+    });
 
-    const totalMarked = total ? TemplateMarkers.dynamic({
+    const totalMarked = TemplateMarkers.dynamic({
       path: 'price_details.final_selling_price',
-      value: total,
+      value: parsedTotal,
       format: 'currency'
-    }) : '';
+    });
 
     return `<div class="pricing-section" style="margin-top: 10px;">
       <table style="width: 90%; border-collapse: collapse; table-layout: fixed;">
