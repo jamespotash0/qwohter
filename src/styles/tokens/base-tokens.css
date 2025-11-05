@@ -54,10 +54,10 @@
     /* Landing Primary Color - Coral/Orange */
     --landing-primary: #EE6C4D;          /* Main CTA and accents */
     --landing-primary-hover: #D85B3E;    /* Hover state */
-    --landing-primary-light: #F7897566;  /* 40% opacity for backgrounds */
+    --landing-primary-light: #f7877366;  /* 40% opacity for backgrounds */
 
     /* Landing Dark Background - Near Black */
-    --landing-bg-dark: #20201F;          /* Main dark background (80% usage) */
+    --landing-bg-dark: #1f1f1ee6;          /* Main dark background (90% usage) */
     --landing-bg-dark-rgb: 32, 32, 31;   /* RGB for opacity variations */
 
     /* Landing Light Color - Off White/Beige */
@@ -65,7 +65,7 @@
 
     /* Landing Text Colors */
     --landing-text-on-dark: #F7F2E9;     /* Text on dark backgrounds */
-    --landing-text-on-light: #20201F;    /* Text on light backgrounds */
+    --landing-text-on-light: #1f1f1ee6;    /* Text on light backgrounds */
     --landing-text-muted-dark: #B8B7B6;  /* Muted text on dark bg */
     --landing-text-muted-light: #6B6A69; /* Muted text on light bg */
 

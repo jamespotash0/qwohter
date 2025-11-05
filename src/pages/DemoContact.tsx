@@ -1,14 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { ArrowLeft, CheckCircle, Eye, Zap, Users } from 'lucide-react';
+import { useStaggerFadeIn, useMagneticHover } from '@/hooks/useAnimations';
+import { fadeInUp, animeOnScroll } from '@/utils/animations';
 
 const DemoContact = () => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [navTextColor, setNavTextColor] = useState('text-[var(--landing-text-on-light)]');
+
+  // Animation refs
+  const formCardRef = useRef<HTMLDivElement>(null);
+  const featuresRef = useStaggerFadeIn('.feature-item', 150);
+  const submitButtonRef = useMagneticHover(0.3);
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -32,9 +41,22 @@ const DemoContact = () => {
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
+      // Keep nav text dark on light background
+      setNavTextColor('text-[var(--landing-text-on-light)]');
     };
     window.addEventListener('scroll', handleScroll);
+    handleScroll(); // Run on mount
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Scroll-triggered animations for feature cards
+  useEffect(() => {
+    if (featuresRef.current) {
+      const featureItems = featuresRef.current.querySelectorAll('.feature-item');
+      animeOnScroll(featureItems, (target) => {
+        fadeInUp(target as HTMLElement, 0);
+      }, 0.2);
+    }
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -134,7 +156,7 @@ ${formData.firstName} ${formData.lastName}
     `);
 
     // Open default email client with pre-filled content
-    const mailtoLink = `mailto:demo@qwohter.com?subject=${subject}&body=${body}`;
+    const mailtoLink = `mailto:info@qwohter.com?subject=${subject}&body=${body}`;
     window.open(mailtoLink, '_blank');
 
     // Show success state
@@ -187,16 +209,19 @@ ${formData.firstName} ${formData.lastName}
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Navigation Bar */}
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? 'bg-white/95 backdrop-blur-sm border-b border-gray-100' : 'bg-transparent'
-      }`}>
+    <div className="min-h-screen bg-white overflow-x-hidden">
+      {/* Navigation Bar - Matching Landing Page */}
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+          isScrolled
+            ? 'bg-[var(--landing-bg-dark)]/75 backdrop-blur-md border-b border-[var(--landing-primary)]/20 shadow-sm'
+            : 'bg-transparent'
+        }`}>
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex items-center justify-between h-16">
-            {/* Logo */}
+            {/* Logo - Dark on light background */}
             <div
-              className="flex items-center cursor-pointer"
+              className="flex items-center cursor-pointer group"
               onClick={() => {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
                 navigate('/');
@@ -205,37 +230,33 @@ ${formData.firstName} ${formData.lastName}
               <img
                 src="/logos/New_Landing_Page_Logo_DarkonLightBackground.svg"
                 alt="Qwohter Logo"
-                className="h-8 w-auto"
+                className="h-8 w-auto transition-transform duration-300 group-hover:scale-110"
               />
             </div>
 
-            {/* Center Navigation */}
+            {/* Center Navigation - Matching Landing Page */}
             <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center space-x-12">
-              <a href="/#features" className="text-gray-600 hover:text-gray-900 font-medium cursor-pointer transition-colors duration-200">
-                Features
-              </a>
-              <a href="/#usecases" className="text-gray-600 hover:text-gray-900 font-medium cursor-pointer transition-colors duration-200">
-                Use Cases
-              </a>
-              <a href="/#pricing" className="text-gray-600 hover:text-gray-900 font-medium cursor-pointer transition-colors duration-200">
-                Pricing
-              </a>
+              {['Features', 'Use Cases', 'Pricing'].map((item) => (
+                <a
+                  key={item}
+                  href={`/#${item.toLowerCase().replace(' ', '')}`}
+                  className={`${navTextColor} hover:text-[var(--landing-primary)] font-medium cursor-pointer transition-all duration-300 relative group`}
+                >
+                  {item}
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--landing-primary)] transition-all duration-300 group-hover:w-full" />
+                </a>
+              ))}
             </div>
 
-            {/* Right Actions */}
+            {/* Right Actions - Matching Landing Page */}
             <div className="flex items-center space-x-8">
               <span
                 onClick={() => navigate('/sign-in')}
-                className="text-gray-600 hover:text-gray-900 font-medium cursor-pointer transition-colors duration-200"
+                className={`${navTextColor} hover:text-[var(--landing-primary)] font-medium cursor-pointer transition-all duration-300 relative group`}
               >
                 Sign In
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--landing-primary)] transition-all duration-300 group-hover:w-full" />
               </span>
-              <Button
-                onClick={() => navigate('/demo-contact')}
-                className="bg-orange-500 text-white px-6 py-2.5 rounded-full hover:bg-orange-600 transition-colors duration-200 font-medium"
-              >
-                Get a Demo
-              </Button>
             </div>
           </div>
         </div>
@@ -253,14 +274,14 @@ ${formData.firstName} ${formData.lastName}
 
         {/* Form and Features Grid */}
         <div className="grid lg:grid-cols-2 gap-12 items-start">
-          {/* Left Side - Form (Hovering Card) */}
-          <Card className="bg-gray-50 p-8 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+          {/* Left Side - Form (Cream Card) */}
+          <Card className="bg-[var(--landing-bg-light)] p-8 shadow-xl hover:shadow-2xl transition-shadow duration-300 border-none">
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Note: Last two items have tighter spacing */}
               {/* Row 1: First Name and Last Name */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-900 mb-2">
                     First Name
                   </label>
                   <Input
@@ -269,16 +290,16 @@ ${formData.firstName} ${formData.lastName}
                     type="text"
                     value={formData.firstName}
                     onChange={handleInputChange}
-                    placeholder="Angel"
-                    className={`w-full placeholder:text-gray-400 ${errors.firstName ? 'border-red-500' : ''}`}
+                    placeholder="First Name"
+                    className={`w-full placeholder:text-gray-400 bg-white text-gray-900 ${errors.firstName ? 'border-red-500' : ''}`}
                   />
                   {errors.firstName && (
-                    <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>
+                    <p className="text-red-400 text-xs mt-1">{errors.firstName}</p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-900 mb-2">
                     Last Name
                   </label>
                   <Input
@@ -287,11 +308,11 @@ ${formData.firstName} ${formData.lastName}
                     type="text"
                     value={formData.lastName}
                     onChange={handleInputChange}
-                    placeholder="Phillips"
-                    className={`w-full placeholder:text-gray-400 ${errors.lastName ? 'border-red-500' : ''}`}
+                    placeholder="Last Name"
+                    className={`w-full placeholder:text-gray-400 bg-white text-gray-900 ${errors.lastName ? 'border-red-500' : ''}`}
                   />
                   {errors.lastName && (
-                    <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>
+                    <p className="text-red-400 text-xs mt-1">{errors.lastName}</p>
                   )}
                 </div>
               </div>
@@ -299,7 +320,7 @@ ${formData.firstName} ${formData.lastName}
               {/* Row 2: Work Email and Company */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-900 mb-2">
                     Work Email
                   </label>
                   <Input
@@ -308,16 +329,16 @@ ${formData.firstName} ${formData.lastName}
                     type="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    placeholder="name@company.com"
-                    className={`w-full placeholder:text-gray-400 ${errors.email ? 'border-red-500' : ''}`}
+                    placeholder="Enter your email"
+                    className={`w-full placeholder:text-gray-400 bg-white text-gray-900 ${errors.email ? 'border-red-500' : ''}`}
                   />
                   {errors.email && (
-                    <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+                    <p className="text-red-400 text-xs mt-1">{errors.email}</p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="company" className="block text-sm font-medium text-gray-900 mb-2">
                     Company
                   </label>
                   <Input
@@ -326,18 +347,18 @@ ${formData.firstName} ${formData.lastName}
                     type="text"
                     value={formData.company}
                     onChange={handleInputChange}
-                    placeholder="Acme Corp."
-                    className={`w-full placeholder:text-gray-400 ${errors.company ? 'border-red-500' : ''}`}
+                    placeholder="Enter your company name"
+                    className={`w-full placeholder:text-gray-400 bg-white text-gray-900 ${errors.company ? 'border-red-500' : ''}`}
                   />
                   {errors.company && (
-                    <p className="text-red-500 text-xs mt-1">{errors.company}</p>
+                    <p className="text-red-400 text-xs mt-1">{errors.company}</p>
                   )}
                 </div>
               </div>
 
               {/* How did you hear about us */}
               <div>
-                <label htmlFor="hearAboutUs" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="hearAboutUs" className="block text-sm font-medium text-gray-900 mb-2">
                   How did you hear about us?
                 </label>
                 <Input
@@ -346,17 +367,17 @@ ${formData.firstName} ${formData.lastName}
                   type="text"
                   value={formData.hearAboutUs}
                   onChange={handleInputChange}
-                  placeholder="Enter your message"
-                  className={`w-full placeholder:text-gray-400 ${errors.hearAboutUs ? 'border-red-500' : ''}`}
+                  placeholder="How did you hear about us"
+                  className={`w-full placeholder:text-gray-400 bg-white text-gray-900 ${errors.hearAboutUs ? 'border-red-500' : ''}`}
                 />
                 {errors.hearAboutUs && (
-                  <p className="text-red-500 text-xs mt-1">{errors.hearAboutUs}</p>
+                  <p className="text-red-400 text-xs mt-1">{errors.hearAboutUs}</p>
                 )}
               </div>
 
               {/* Message */}
               <div>
-                <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="message" className="block text-sm font-medium text-gray-900 mb-2">
                   Message
                 </label>
                 <Textarea
@@ -366,10 +387,10 @@ ${formData.firstName} ${formData.lastName}
                   value={formData.message}
                   onChange={handleInputChange}
                   placeholder="Tell us about your quoting needs and challenges..."
-                  className={`w-full placeholder:text-gray-400 bg-white ${errors.message ? 'border-red-500' : ''}`}
+                  className={`w-full placeholder:text-gray-400 bg-white text-gray-900 ${errors.message ? 'border-red-500' : ''}`}
                 />
                 {errors.message && (
-                  <p className="text-red-500 text-xs mt-1">{errors.message}</p>
+                  <p className="text-red-400 text-xs mt-1">{errors.message}</p>
                 )}
               </div>
 
@@ -382,7 +403,7 @@ ${formData.firstName} ${formData.lastName}
                     id="agreeToUpdates"
                     checked={agreeToUpdates}
                     onChange={(e) => setAgreeToUpdates(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-gray-300 text-gray-900 focus:ring-orange-500 flex-shrink-0"
+                    className="w-3.5 h-3.5 rounded border-gray-500 text-orange-500 focus:ring-orange-500 flex-shrink-0 bg-white"
                   />
                   <label htmlFor="agreeToUpdates" className="text-[11px] text-gray-600 cursor-pointer leading-tight">
                     Yes, I'd like to receive news and updates by email
@@ -394,18 +415,20 @@ ${formData.firstName} ${formData.lastName}
                   <p className="text-[11px] text-gray-600 leading-tight flex-1 pr-2">
                     By submitting this form<br />
                     you agree with our{' '}
-                    <a href="/privacy-policy" className="text-blue-600 hover:underline">
+                    <a href="/privacy-policy" className="text-blue-600 hover:text-blue-500 hover:underline">
                       Privacy Policy
                     </a>
                   </p>
 
                   <Button
+                    ref={submitButtonRef}
                     type="submit"
-                    className="bg-gray-900 hover:bg-gray-800 text-white py-3 text-base font-medium shadow-lg hover:shadow-xl transition-all duration-300 whitespace-nowrap rounded-full w-1/2"
+                    className="bg-[var(--landing-primary)] hover:bg-[var(--landing-primary-hover)] text-white py-3 text-base font-medium shadow-lg hover:shadow-xl transition-all duration-300 whitespace-nowrap rounded-full w-1/2"
+                    disabled={isSubmitting}
                   >
                     {isSubmitting ? (
                       <div className="flex items-center justify-center gap-2">
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
                         Sending...
                       </div>
                     ) : (
@@ -417,9 +440,9 @@ ${formData.firstName} ${formData.lastName}
             </form>
           </Card>
 
-          {/* Right Side - Features */}
-          <div className="space-y-8">
-            <div className="flex items-start gap-4">
+          {/* Right Side - Features with animations */}
+          <div ref={featuresRef} className="space-y-8">
+            <div className="feature-item flex items-start gap-4 opacity-0">
               <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
                 <Zap className="w-6 h-6 text-white" />
               </div>
@@ -431,7 +454,7 @@ ${formData.firstName} ${formData.lastName}
               </div>
             </div>
 
-            <div className="flex items-start gap-4">
+            <div className="feature-item flex items-start gap-4 opacity-0">
               <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
                 <Eye className="w-6 h-6 text-white" />
               </div>
@@ -443,7 +466,7 @@ ${formData.firstName} ${formData.lastName}
               </div>
             </div>
 
-            <div className="flex items-start gap-4">
+            <div className="feature-item flex items-start gap-4 opacity-0">
               <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
                 <Users className="w-6 h-6 text-white" />
               </div>

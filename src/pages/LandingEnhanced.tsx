@@ -153,7 +153,7 @@ const LandingEnhanced = () => {
                   handleRipple(e);
                   handleGetDemo();
                 }}
-                className="bg-[#EE6C4D] hover:bg-[#d95a3d] text-white px-6 py-2.5 rounded-full hover:shadow-lg hover:scale-105 transition-all duration-300 font-medium relative overflow-hidden"
+                className="bg-[var(--landing-primary)] hover:bg-[#d95a3d] text-white px-6 py-2.5 rounded-full hover:shadow-lg hover:scale-105 transition-all duration-300 font-medium relative overflow-hidden"
               >
                 Get a Demo
               </Button>
@@ -191,7 +191,7 @@ const LandingEnhanced = () => {
                     handleRipple(e);
                     handleGetDemo();
                   }}
-                  className="bg-[#EE6C4D] hover:bg-[#d95a3d] text-white px-12 py-6 rounded-full hover:shadow-2xl hover:scale-105 transition-all duration-300 font-semibold text-lg relative overflow-hidden group"
+                  className="bg-[var(--landing-primary)] hover:bg-[#d95a3d] text-white px-12 py-6 rounded-full hover:shadow-2xl hover:scale-105 transition-all duration-300 font-semibold text-lg relative overflow-hidden group"
                   style={{ boxShadow: 'rgba(238, 108, 77, 0.3) 0px 10px 40px' }}
                 >
                   <span className="relative z-10">Get a Demo</span>
@@ -595,7 +595,7 @@ const LandingEnhanced = () => {
                     handleRipple(e);
                     navigate('/create-account');
                   }}
-                  className="w-full bg-[#EE6C4D] hover:bg-[#d95a3d] text-white px-8 py-4 text-base font-medium hover:scale-[1.02] transition-all duration-300 mb-6 relative overflow-hidden rounded-lg"
+                  className="w-full bg-[var(--landing-primary)] hover:bg-[#d95a3d] text-white px-8 py-4 text-base font-medium hover:scale-[1.02] transition-all duration-300 mb-6 relative overflow-hidden rounded-lg"
                 >
                   Start your 14-day free trial
                 </Button>
