@@ -157,8 +157,15 @@ export function useUpdateQuote() {
       return { previousQuote, id };
     },
 
-    onSuccess: () => {
-      toast.success('Quote updated successfully');
+    onSuccess: (data, variables) => {
+      // Don't show toast for download tracking (silent update)
+      const isDownloadTracking =
+        Object.keys(variables.updates).length === 1 &&
+        'date_last_downloaded' in variables.updates;
+
+      if (!isDownloadTracking) {
+        toast.success('Quote updated successfully');
+      }
 
       // Invalidate all quotes lists to refresh the table
       invalidateQueries.allQuotes();

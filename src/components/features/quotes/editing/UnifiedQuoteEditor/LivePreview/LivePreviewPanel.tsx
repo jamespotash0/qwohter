@@ -123,7 +123,8 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
                 minHeight: '1056px', // Full page height at 96 DPI
                 width: '816px', // Page width at 96 DPI
                 background: 'white',
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                position: 'relative'
               }}
             >
 
@@ -141,6 +142,23 @@ export const LivePreviewPanelCore: React.FC<LivePreviewPanelProps> = ({
                   overflow: 'visible'
                 }}
               />
+
+              {/* Page Number - matches PDF output */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '36px', // 0.5in from bottom (72px per inch / 2)
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  fontFamily: 'Arial, sans-serif',
+                  fontSize: '10pt',
+                  color: '#666',
+                  pointerEvents: 'none',
+                  userSelect: 'none'
+                }}
+              >
+                Page {page.pageNumber}
+              </div>
             </div>
           ))
           ) : (
