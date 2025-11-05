@@ -175,7 +175,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error in send-demo-email function:', error);
+    console.error('Error in demo-email function:', error);
 
     return new Response(
       JSON.stringify({

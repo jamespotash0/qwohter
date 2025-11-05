@@ -32,7 +32,7 @@ export async function sendDemoRequestEmail(data: DemoRequestData): Promise<{
     });
 
     if (error) {
-      console.error('Error invoking send-demo-email function:', error);
+      console.error('Error invoking demo-email function:', error);
       return {
         success: false,
         error: error.message || 'Failed to send demo request email'
