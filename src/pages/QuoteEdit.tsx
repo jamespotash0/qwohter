@@ -96,7 +96,7 @@ const QuoteEdit = () => {
           .from('quotes')
           .select('*')
           .eq('proposal_number', proposalNumber)
-          .order('version', { ascending: false })
+          .order('document_version', { ascending: false })
           .limit(1)
           .returns<Quote[]>();
 
