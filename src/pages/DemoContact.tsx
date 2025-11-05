@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { ArrowLeft, CheckCircle, Eye, Zap, Users } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Eye, Zap, Users, X } from 'lucide-react';
 import { useStaggerFadeIn, useMagneticHover } from '@/hooks/useAnimations';
 import { fadeInUp, animeOnScroll } from '@/utils/animations';
+import { sendDemoRequestEmail } from '@/services/emailService';
+import { toast } from 'sonner';
 
 const DemoContact = () => {
   const navigate = useNavigate();
@@ -133,83 +135,73 @@ const DemoContact = () => {
 
     setIsSubmitting(true);
 
-    // Create email content
-    const subject = encodeURIComponent('Demo Request - Qwohter Quote Management Platform');
-    const body = encodeURIComponent(`
-Hello,
+    try {
+      // Send email via backend service
+      const result = await sendDemoRequestEmail({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        company: formData.company,
+        hearAboutUs: formData.hearAboutUs,
+        message: formData.message,
+        agreeToUpdates: agreeToUpdates,
+      });
 
-I would like to request a demo of the Qwohter platform.
-
-Contact Details:
-- Name: ${formData.firstName} ${formData.lastName}
-- Email: ${formData.email}
-- Company: ${formData.company}
-- How I heard about you: ${formData.hearAboutUs}
-
-Message:
-${formData.message}
-
-Please contact me to schedule a demonstration.
-
-Best regards,
-${formData.firstName} ${formData.lastName}
-    `);
-
-    // Open default email client with pre-filled content
-    const mailtoLink = `mailto:info@qwohter.com?subject=${subject}&body=${body}`;
-    window.open(mailtoLink, '_blank');
-
-    // Show success state
-    setTimeout(() => {
+      if (result.success) {
+        // Show success state
+        setIsSubmitted(true);
+        toast.success('Demo request sent successfully!');
+      } else {
+        // Show error toast
+        toast.error(result.error || 'Failed to send demo request. Please try again.');
+        setIsSubmitting(false);
+      }
+    } catch (error) {
+      console.error('Error submitting demo request:', error);
+      toast.error('An unexpected error occurred. Please try again.');
       setIsSubmitting(false);
-      setIsSubmitted(true);
-    }, 1000);
+    }
   };
 
-
-  if (isSubmitted) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <Card className="max-w-md w-full p-8 text-center">
-          <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-6" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            Thank You!
-          </h1>
-          <p className="text-gray-600 mb-6">
-            Your demo request has been sent. We'll get back to you within 24 hours to schedule your personalized demonstration.
-          </p>
-          <div className="space-y-3">
-            <Button
-              onClick={() => navigate('/')}
-              className="w-full bg-orange-500 hover:bg-orange-600"
-            >
-              Back to Home
-            </Button>
-            <Button
-              onClick={() => {
-                setIsSubmitted(false);
-                setFormData({
-                  firstName: '',
-                  lastName: '',
-                  email: '',
-                  company: '',
-                  hearAboutUs: '',
-                  message: ''
-                });
-              }}
-              variant="outline"
-              className="w-full"
-            >
-              Send Another Request
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
-  }
+  const handleCloseSuccessModal = () => {
+    setIsSubmitted(false);
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      company: '',
+      hearAboutUs: '',
+      message: ''
+    });
+  };
 
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden">
+    <>
+      {/* Success Modal Overlay */}
+      {isSubmitted && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <Card className="max-w-md w-full mx-4 p-8 text-center relative animate-in zoom-in-95 duration-300">
+            {/* Close Button */}
+            <button
+              onClick={handleCloseSuccessModal}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5 text-gray-600" />
+            </button>
+
+            <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-6" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Thank You!
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Your demo request has been sent successfully. We'll get back to you within 24 hours to schedule your personalized demonstration.
+            </p>
+          </Card>
+        </div>
+      )}
+
+      <div className="min-h-screen bg-white overflow-x-hidden">
       {/* Navigation Bar - Matching Landing Page */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
@@ -513,7 +505,8 @@ ${formData.firstName} ${formData.lastName}
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   );
 };
 
