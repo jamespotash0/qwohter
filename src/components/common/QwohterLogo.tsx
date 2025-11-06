@@ -27,11 +27,11 @@ export const QwohterLogo: React.FC<QwohterLogoProps> = ({
   const getLogoSrc = () => {
     switch (effectiveTheme) {
       case 'dark':
-        return '/logos/Dashboard-Page-Background-Dark-Logo.svg';
+        return '/logos/Main_Sidebar_Logo_Dark.svg';
       case 'light':
-        return '/logos/Dashboard-Page-Background-White-Logo.svg';
+        return '/logos/Main_Sidebar_Logo_Light.svg';
       default:
-        return '/logos/Dashboard-Page-Background-Dark-Logo.svg';
+        return '/logos/Main_Sidebar_Logo_Light.svg';
     }
   };
 
@@ -43,7 +43,7 @@ export const QwohterLogo: React.FC<QwohterLogoProps> = ({
       <img
         src={logoSrc}
         alt="Qwohter"
-        className={`${sizeClasses[size]} object-contain`}
+        className={`${sizeClasses[size]} object-contain transition-transform duration-200 hover:scale-105 cursor-pointer`}
         onError={(e) => {
           // Fallback to placeholder if SVG file doesn't exist
           const target = e.target as HTMLImageElement;

@@ -1,7 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { PageContent } from '@/components/common/layout';
-import { useBoardStore, Project, ProjectPriority } from '@/stores/board/boardStore';
-import { supabase } from '@/integrations/supabase/client';
+import { Project, ProjectPriority } from '@/stores/board/boardStore';
+import {
+  useProjects,
+  useWorkflowColumns,
+  useUpdateProject,
+  useDeleteProject,
+  useCreateWorkflowColumn,
+  useUpdateWorkflowColumn,
+  useDeleteWorkflowColumn,
+  useMoveBoardItem,
+} from '@/hooks/queries/useBoard';
+import { useUser } from '@/auth';
+import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
+import { animate } from 'animejs';
 import {
   Plus as PlusIcon,
   DotsThreeVertical as DotsThreeVerticalIcon,
@@ -15,7 +27,8 @@ import {
   X as XIcon,
   Check as CheckIcon,
   Flag as FlagIcon,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  DotsSixVertical as DragIcon
 } from '@phosphor-icons/react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -58,120 +71,61 @@ const COLUMN_COLORS = [
 // ];
 
 export default function Board() {
-  const {
-    projects,
-    workflowColumns,
-    updateProject,
-    updateWorkflowColumn,
-    deleteWorkflowColumn,
-    createWorkflowColumn,
-    deleteProject,
-    isLoading,
-    initializeBoard,
-    subscribeToChanges
-  } = useBoardStore();
+  // Get user and organization
+  const user = useUser();
+  const { organization } = useCurrentOrganization(user?.id || '');
+  const organizationId = organization?.id || '';
+
+  // Fetch data using React Query (includes automatic realtime subscriptions)
+  const { data: projects = [], isLoading: projectsLoading } = useProjects(organizationId, !!organizationId);
+  const { data: workflowColumns = [], isLoading: columnsLoading } = useWorkflowColumns(organizationId, !!organizationId);
+
+  // Mutations
+  const { mutate: updateProject } = useUpdateProject(organizationId);
+  const { mutate: deleteProject } = useDeleteProject(organizationId);
+  const { mutate: createWorkflowColumn } = useCreateWorkflowColumn(organizationId);
+  const { mutate: updateWorkflowColumn } = useUpdateWorkflowColumn(organizationId);
+  const { mutate: deleteWorkflowColumn } = useDeleteWorkflowColumn(organizationId);
+  const { mutate: moveBoardItem } = useMoveBoardItem(organizationId);
 
   const [draggedProject, setDraggedProject] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [dragOverCard, setDragOverCard] = useState<string | null>(null);
   const [dropPosition, setDropPosition] = useState<'before' | 'after'>('before');
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
+  const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
+  const [columnDropSide, setColumnDropSide] = useState<'left' | 'right' | null>(null);
   const [editingColumn, setEditingColumn] = useState<string | null>(null);
   const [editingColumnName, setEditingColumnName] = useState('');
   const [isAddingColumn, setIsAddingColumn] = useState(false);
   const [newColumnName, setNewColumnName] = useState('');
   const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(new Set());
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const columnRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const isAnimatingRef = useRef(false);
+  const lastColumnDropTarget = useRef<{ columnId: string; side: 'left' | 'right' } | null>(null);
 
-  useEffect(() => {
-    // Fetch fresh board data every time the page is visited
-    const fetchBoardData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  // React Query automatically handles:
+  // - Data fetching via useProjects/useWorkflowColumns
+  // - Realtime subscriptions (built into hooks)
+  // - Cleanup on unmount
+  // No manual initialization needed!
 
-      const { data: membership } = await supabase
-        .from('memberships')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!membership) return;
-
-      // Fetch fresh projects data (with latest quote_ids)
-      // Only show projects where the quote is the main version AND has Won status
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          quotes!inner (
-            id,
-            proposal_number,
-            project_name,
-            quote_details,
-            job_details,
-            price_details,
-            status,
-            is_main_version
-          )
-        `)
-        .eq('organization_id', membership.organization_id)
-        .eq('quotes.is_main_version', true)
-        .eq('quotes.status', 'Won')
-        .order('board_order', { ascending: true });
-
-      if (!projectsError && projectsData) {
-        // Update the board store with fresh data
-        const boardState = useBoardStore.getState();
-        boardState.projects = projectsData;
-      }
-    };
-
-    // Initialize board data (fetches columns once)
-    initializeBoard();
-
-    // Fetch fresh projects data
-    fetchBoardData();
-
-    // Get organization ID for subscriptions
-    const getOrgIdAndSubscribe = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return undefined;
-
-      const { data: membership } = await supabase
-        .from('memberships')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (membership) {
-        // Subscribe to real-time changes
-        const unsubscribe = subscribeToChanges(membership.organization_id);
-        return unsubscribe;
-      }
-      return undefined;
-    };
-
-    const subscriptionPromise = getOrgIdAndSubscribe();
-
-    // Cleanup subscriptions on unmount
-    return () => {
-      subscriptionPromise.then(unsubscribe => {
-        if (unsubscribe) unsubscribe();
-      });
-    };
-  }, [initializeBoard, subscribeToChanges]);
-
-  const handleDragStart = async (e: React.DragEvent, projectId: string) => {
+  const handleDragStart = (e: React.DragEvent, projectId: string) => {
     setDraggedProject(projectId);
     e.dataTransfer.effectAllowed = 'move';
 
     // Set board_order to null when picking up the card
-    await updateProject(projectId, { board_order: null as any });
+    updateProject({ id: projectId, updates: { board_order: null as any } });
   };
 
   const handleDragOver = (e: React.DragEvent, columnName: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    setDragOverColumn(columnName);
+    // Only show column drop zone if we're dragging a card, not a column
+    if (!draggedColumnId) {
+      setDragOverColumn(columnName);
+    }
   };
 
   const handleDragLeave = () => {
@@ -182,6 +136,9 @@ export default function Board() {
   const handleCardDragOver = (e: React.DragEvent, cardId: string) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Don't show card drop indicators if we're dragging a column
+    if (draggedColumnId) return;
 
     // Determine if hovering over top or bottom half of the card
     const rect = e.currentTarget.getBoundingClientRect();
@@ -198,6 +155,10 @@ export default function Board() {
 
   const handleDrop = async (e: React.DragEvent, targetStatus: string) => {
     e.preventDefault();
+
+    // Clear drag states immediately to remove blue border
+    setDragOverColumn(null);
+    setDragOverCard(null);
 
     if (!draggedProject) return;
 
@@ -298,13 +259,190 @@ export default function Board() {
 
     // STEP 6: Execute all updates
     for (const { id, updates: projectUpdates } of updates) {
-      await updateProject(id, projectUpdates);
+      updateProject({ id, updates: projectUpdates });
     }
 
     setDraggedProject(null);
     setDragOverColumn(null);
     setDragOverCard(null);
     setDropPosition('before');
+  };
+
+  // Column reordering handlers
+  const handleColumnDragStart = (e: React.DragEvent, columnId: string) => {
+    console.log('🔄 Column drag started:', columnId);
+    setDraggedColumnId(columnId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleColumnDragOver = (e: React.DragEvent, columnId: string) => {
+    e.preventDefault();
+    if (draggedColumnId && draggedColumnId !== columnId) {
+      // Check if we already have an indicator set for this column (using ref for immediate check)
+      if (lastColumnDropTarget.current?.columnId === columnId) {
+        // Already showing indicator for this column, don't recalculate
+        return;
+      }
+
+      // Calculate which side to show indicator on
+      const sortedColumns = [...workflowColumns].sort((a, b) => a.column_order - b.column_order);
+      const draggedIndex = sortedColumns.findIndex(c => c.id === draggedColumnId);
+      const targetIndex = sortedColumns.findIndex(c => c.id === columnId);
+
+      // If dragging from left to right, always show indicator on right side of target
+      // If dragging from right to left, always show indicator on left side of target
+      const side = draggedIndex < targetIndex ? 'right' : 'left';
+
+      // Update both ref (immediate) and state (for rendering)
+      lastColumnDropTarget.current = { columnId, side };
+      setDragOverColumnId(columnId);
+      setColumnDropSide(side);
+    }
+  };
+
+  const handleColumnDragLeave = () => {
+    lastColumnDropTarget.current = null;
+    setDragOverColumnId(null);
+    setColumnDropSide(null);
+  };
+
+  const handleColumnDrop = async (e: React.DragEvent, targetColumnId: string) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent card drop handler from firing
+
+    const draggedId = draggedColumnId;
+
+    if (!draggedId || draggedId === targetColumnId) {
+      setDraggedColumnId(null);
+      setDragOverColumnId(null);
+      setColumnDropSide(null);
+      lastColumnDropTarget.current = null;
+      return;
+    }
+
+    console.log('🔄 Reordering column:', { from: draggedId, to: targetColumnId });
+
+    // Clear drag states immediately
+    setDraggedColumnId(null);
+    setDragOverColumnId(null);
+    setColumnDropSide(null);
+    lastColumnDropTarget.current = null;
+
+    // Get sorted columns
+    const sortedColumns = [...workflowColumns].sort((a, b) => a.column_order - b.column_order);
+
+    // Find indices
+    const draggedIndex = sortedColumns.findIndex(c => c.id === draggedId);
+    const targetIndex = sortedColumns.findIndex(c => c.id === targetColumnId);
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      return;
+    }
+
+    // Calculate what the positions will be after reorder
+    const draggedElement = columnRefs.current.get(draggedId);
+    const targetElement = columnRefs.current.get(targetColumnId);
+
+    if (!draggedElement || !targetElement) return;
+
+    // Calculate the distance to move
+    const draggedRect = draggedElement.getBoundingClientRect();
+    const targetRect = targetElement.getBoundingClientRect();
+
+    // Determine animation direction and distance
+    const isMovingRight = draggedIndex < targetIndex;
+
+    // Get all columns that need to slide
+    const columnsToAnimate: { element: HTMLDivElement; distance: number }[] = [];
+
+    if (isMovingRight) {
+      // Dragged column moves right, columns in between slide left
+      const columnWidth = draggedRect.width + 16; // 16px is gap-4
+
+      // Animate dragged column to the right
+      columnsToAnimate.push({
+        element: draggedElement,
+        distance: (targetIndex - draggedIndex) * columnWidth
+      });
+
+      // Animate columns in between to the left
+      for (let i = draggedIndex + 1; i <= targetIndex; i++) {
+        const col = sortedColumns[i];
+        if (col) {
+          const el = columnRefs.current.get(col.id);
+          if (el) {
+            columnsToAnimate.push({
+              element: el,
+              distance: -columnWidth
+            });
+          }
+        }
+      }
+    } else {
+      // Dragged column moves left, columns in between slide right
+      const columnWidth = draggedRect.width + 16; // 16px is gap-4
+
+      // Animate dragged column to the left
+      columnsToAnimate.push({
+        element: draggedElement,
+        distance: (targetIndex - draggedIndex) * columnWidth
+      });
+
+      // Animate columns in between to the right
+      for (let i = targetIndex; i < draggedIndex; i++) {
+        const col = sortedColumns[i];
+        if (col) {
+          const el = columnRefs.current.get(col.id);
+          if (el) {
+            columnsToAnimate.push({
+              element: el,
+              distance: columnWidth
+            });
+          }
+        }
+      }
+    }
+
+    // Reorder array
+    const reordered = [...sortedColumns];
+    const [removed] = reordered.splice(draggedIndex, 1);
+    if (removed) {
+      reordered.splice(targetIndex, 0, removed);
+    }
+
+    // Prepare database updates
+    const updates = reordered.map((column, index) => ({
+      id: column.id,
+      order: index + 1
+    }));
+
+    // Set animating flag
+    isAnimatingRef.current = true;
+
+    // Start all animations simultaneously
+    columnsToAnimate.forEach(({ element, distance }) => {
+      animate(element, {
+        translateX: distance,
+        duration: 200,
+        easing: 'easeOutQuad'
+      });
+    });
+
+    // Wait for animation to complete first
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Clear all transforms before database update
+    columnsToAnimate.forEach(({ element }) => {
+      element.style.transform = '';
+    });
+
+    // Clear animating flag
+    isAnimatingRef.current = false;
+
+    // Now update database - this will trigger store update
+    updates.forEach(({ id, order }) => {
+      updateWorkflowColumn({ id, updates: { column_order: order } });
+    });
   };
 
   const getProjectsByStatus = (status: string) => {
@@ -351,16 +489,16 @@ export default function Board() {
     setEditingColumnName(currentName);
   };
 
-  const handleSaveColumnName = async (columnId: string) => {
+  const handleSaveColumnName = (columnId: string) => {
     if (!editingColumnName.trim()) return;
 
     const oldName = workflowColumns.find(c => c.id === columnId)?.name;
-    await updateWorkflowColumn(columnId, { name: editingColumnName });
+    updateWorkflowColumn({ id: columnId, updates: { name: editingColumnName } });
 
     if (oldName) {
       const projectsToUpdate = projects.filter(p => p.workflow_status === oldName);
       for (const project of projectsToUpdate) {
-        await updateProject(project.id, { workflow_status: editingColumnName });
+        updateProject({ id: project.id, updates: { workflow_status: editingColumnName } });
       }
     }
 
@@ -368,25 +506,30 @@ export default function Board() {
     setEditingColumnName('');
   };
 
-  const handleDeleteColumn = async (columnId: string) => {
+  const handleDeleteColumn = (columnId: string) => {
+    console.log('🗑️ handleDeleteColumn called for columnId:', columnId);
     const column = workflowColumns.find(c => c.id === columnId);
+    console.log('📋 Column found:', column);
     const projectsInColumn = column ? getProjectsByStatus(column.name).length : 0;
 
     if (projectsInColumn > 0) {
+      console.log('⚠️ Cannot delete - column has projects:', projectsInColumn);
       alert(`Cannot delete column with ${projectsInColumn} project${projectsInColumn > 1 ? 's' : ''}. Move or delete projects first.`);
       return;
     }
 
-    await deleteWorkflowColumn(columnId);
+    console.log('✅ Calling deleteWorkflowColumn...');
+    deleteWorkflowColumn(columnId);
+    console.log('✅ deleteWorkflowColumn called');
   };
 
-  const handleAddColumn = async () => {
+  const handleAddColumn = () => {
     if (!newColumnName.trim()) return;
 
     const maxOrder = Math.max(...workflowColumns.map(c => c.column_order), -1);
     const randomColor = COLUMN_COLORS[Math.floor(Math.random() * COLUMN_COLORS.length)]?.value;
 
-    await createWorkflowColumn({
+    createWorkflowColumn({
       name: newColumnName,
       color: randomColor as any,
       column_order: maxOrder + 1,
@@ -397,8 +540,8 @@ export default function Board() {
     setNewColumnName('');
   };
 
-  const handleChangeColumnColor = async (columnId: string, color: string) => {
-    await updateWorkflowColumn(columnId, { color });
+  const handleChangeColumnColor = (columnId: string, color: string) => {
+    updateWorkflowColumn({ id: columnId, updates: { color } });
   };
 
   const toggleColumnCollapse = (columnId: string) => {
@@ -421,19 +564,15 @@ export default function Board() {
   return (
     <PageContent
       title="Project Board"
+      subtitle="Visualize and manage your project workflow stages"
       showPageHeader={true}
     >
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center h-64 gap-3">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-          <div className="text-gray-500 font-medium">Loading projects...</div>
-        </div>
-      ) : workflowColumns.length === 0 ? (
+      {workflowColumns.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-600 mb-4">No workflow columns found. Run the migration to create default columns.</p>
         </div>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-4 pt-2 pl-2 h-[calc(100vh-10rem)]">
+        <div className="flex gap-4 overflow-x-auto pb-4 pt-2 pl-2 flex-1 min-h-0">
           {workflowColumns
             .sort((a, b) => a.column_order - b.column_order)
             .map(column => {
@@ -444,13 +583,39 @@ export default function Board() {
               return (
                 <div
                   key={column.id}
-                  className={`flex-shrink-0 transition-all duration-200 bg-gray-50 rounded-lg flex flex-col h-full ${
-                    isCollapsed ? 'w-12' : 'w-72'
-                  } ${dragOverColumn === column.name ? 'ring-2 ring-blue-400 bg-blue-50 p-2' : 'p-0'}`}
-                  onDragOver={(e) => handleDragOver(e, column.name)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, column.name)}
+                  ref={(el) => {
+                    if (el) {
+                      columnRefs.current.set(column.id, el);
+                    } else {
+                      columnRefs.current.delete(column.id);
+                    }
+                  }}
+                  className="flex flex-col gap-1 relative"
+                  style={isAnimatingRef.current ? { willChange: 'transform' } : undefined}
+                  onDragOver={(e) => handleColumnDragOver(e, column.id)}
+                  onDragLeave={handleColumnDragLeave}
+                  onDrop={(e) => handleColumnDrop(e, column.id)}
                 >
+                  {/* Drop indicator - left side */}
+                  {dragOverColumnId === column.id && columnDropSide === 'left' && (
+                    <div className="absolute -left-2 top-0 bottom-0 w-0.5 bg-blue-500 z-10" />
+                  )}
+
+                  {/* Drop indicator - right side */}
+                  {dragOverColumnId === column.id && columnDropSide === 'right' && (
+                    <div className="absolute -right-2 top-0 bottom-0 w-0.5 bg-blue-500 z-10" />
+                  )}
+
+                  <div
+                    className={`flex-shrink-0 transition-all duration-300 ease-in-out rounded-lg flex flex-col h-full ${
+                      isCollapsed ? 'w-12' : 'w-72'
+                    } ${draggedColumnId === column.id ? 'opacity-40 bg-gray-200 border-2 border-dashed border-gray-400' : 'bg-gray-50'} ${
+                      dragOverColumn === column.name && !draggedColumnId ? 'ring-2 ring-blue-400 bg-blue-50 p-2' : 'p-0'
+                    }`}
+                    onDragOver={(e) => handleDragOver(e, column.name)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, column.name)}
+                  >
                   {/* Column Header */}
                   <div className="mb-3 flex items-center justify-between px-2 py-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -489,6 +654,21 @@ export default function Board() {
                             </PopoverContent>
                           </Popover>
 
+                          {/* Drag handle - only show for non-default columns */}
+                          {!column.is_default && (
+                            <div
+                              draggable
+                              onDragStart={(e) => {
+                                e.stopPropagation();
+                                handleColumnDragStart(e, column.id);
+                              }}
+                              className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing"
+                              title="Drag to reorder column"
+                            >
+                              <DragIcon className="w-4 h-4 text-gray-400" />
+                            </div>
+                          )}
+
                           {isEditing ? (
                             <div className="flex items-center gap-1 flex-1">
                               <Input
@@ -516,12 +696,19 @@ export default function Board() {
                             </div>
                           ) : (
                             <>
-                              <h3 className="font-medium text-gray-900 text-sm truncate">
-                                {column.name}
-                              </h3>
-                              <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600 font-normal">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <h3 className="font-medium text-gray-900 text-sm truncate">
+                                  {column.name}
+                                </h3>
+                              </div>
+                              <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600 font-normal shrink-0">
                                 {columnProjects.length}
                               </Badge>
+                              {column.is_default && (
+                                <Badge className="text-xs px-1.5 py-0 h-4 bg-white border border-white text-blue-700 font-normal pointer-events-none">
+                                  Default
+                                </Badge>
+                              )}
                             </>
                           )}
 
@@ -539,14 +726,19 @@ export default function Board() {
                                 <PencilSimpleIcon className="w-4 h-4" />
                                 Rename
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() => handleDeleteColumn(column.id)}
-                                className="flex items-center gap-2 text-red-600 focus:text-red-600"
-                              >
-                                <TrashIcon className="w-4 h-4" />
-                                Delete
-                              </DropdownMenuItem>
+                              {/* Only show delete for non-default columns */}
+                              {!column.is_default && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteColumn(column.id)}
+                                    className="flex items-center gap-2 text-red-600 focus:text-red-600"
+                                  >
+                                    <TrashIcon className="w-4 h-4" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </>
@@ -582,7 +774,7 @@ export default function Board() {
                   {/* Column Cards */}
                   {!isCollapsed && (
                     <div
-                      className="space-y-2 px-2 pb-2 flex-1 overflow-y-auto min-h-[100px]"
+                      className="space-y-1.5 px-2 pb-2 overflow-y-auto h-[calc(100vh-13rem)]"
                       onDragOver={(e) => {
                         // Only handle at container level if empty, otherwise cards handle it
                         if (columnProjects.length === 0) {
@@ -625,8 +817,12 @@ export default function Board() {
                               onDragStart={(e) => handleDragStart(e, project.id)}
                               onDragOver={(e) => handleCardDragOver(e, project.id)}
                               onDragLeave={handleCardDragLeave}
+                              onMouseDown={(e) => {
+                                // Prevent column drag when clicking on card
+                                e.stopPropagation();
+                              }}
                               onClick={() => setSelectedProject(project)}
-                              className={`bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col h-36 relative ${
+                              className={`bg-white rounded-lg border border-gray-200 p-2.5 cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col min-h-[120px] relative ${
                                 draggedProject === project.id ? 'opacity-50' : ''
                               }`}
                             >
@@ -654,7 +850,7 @@ export default function Board() {
                             </div>
 
                             {/* Card Header */}
-                            <div className="flex-1 min-w-0 pr-6">
+                            <div className="flex-1 min-w-0 pr-6 mb-2">
                               <h4 className="font-medium text-gray-900 text-sm line-clamp-1 mb-1">
                                 {quote?.project_name || 'Untitled Project'}
                               </h4>
@@ -667,7 +863,7 @@ export default function Board() {
                                 </p>
                               )}
                               {clientAddress && clientAddress !== '-' && clientAddress !== 'N/A' && clientAddress !== 'Unknown' && (
-                                <div className="flex items-center gap-1 text-[0.65rem]">
+                                <div className="flex items-center gap-1 text-[0.65rem] mt-0.5">
                                   <MapPinIcon className="w-3 h-3 flex-shrink-0 text-gray-400" />
                                   <p className="truncate text-gray-400">{clientAddress}</p>
                                 </div>
@@ -698,14 +894,14 @@ export default function Board() {
                                         {(['Highest', 'High', 'Medium', 'Low', 'Lowest'] as ProjectPriority[]).map((priority) => (
                                           <button
                                             key={priority}
-                                            onClick={() => updateProject(project.id, { priority })}
+                                            onClick={() => updateProject({ id: project.id, updates: { priority } })}
                                             className={`w-full text-left px-2 py-1 text-xs rounded capitalize border ${getPriorityColor(priority)} hover:opacity-80`}
                                           >
                                             {priority}
                                           </button>
                                         ))}
                                         <button
-                                          onClick={() => updateProject(project.id, { priority: undefined })}
+                                          onClick={() => updateProject({ id: project.id, updates: { priority: undefined } })}
                                           className="w-full text-left px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                         >
                                           Clear Priority
@@ -729,11 +925,11 @@ export default function Board() {
                                         <Input
                                           type="date"
                                           value={project.completion_date || ''}
-                                          onChange={(e) => updateProject(project.id, { completion_date: e.target.value })}
+                                          onChange={(e) => updateProject({ id: project.id, updates: { completion_date: e.target.value } })}
                                           className="text-sm"
                                         />
                                         <button
-                                          onClick={() => updateProject(project.id, { completion_date: undefined })}
+                                          onClick={() => updateProject({ id: project.id, updates: { completion_date: undefined } })}
                                           className="w-full px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                         >
                                           Clear Date
@@ -765,14 +961,14 @@ export default function Board() {
                                         {(['Highest', 'High', 'Medium', 'Low', 'Lowest'] as ProjectPriority[]).map((priority) => (
                                           <button
                                             key={priority}
-                                            onClick={() => updateProject(project.id, { priority })}
+                                            onClick={() => updateProject({ id: project.id, updates: { priority } })}
                                             className={`w-full text-left px-2 py-1 text-xs rounded capitalize border ${getPriorityColor(priority)} hover:opacity-80`}
                                           >
                                             {priority}
                                           </button>
                                         ))}
                                         <button
-                                          onClick={() => updateProject(project.id, { priority: undefined })}
+                                          onClick={() => updateProject({ id: project.id, updates: { priority: undefined } })}
                                           className="w-full text-left px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                         >
                                           Clear Priority
@@ -823,6 +1019,7 @@ export default function Board() {
                       )}
                     </div>
                   )}
+                  </div>
                 </div>
               );
             })}
@@ -895,7 +1092,7 @@ export default function Board() {
                   <p className="text-sm text-gray-600 mb-1">Priority</p>
                   <select
                     value={selectedProject.priority || ''}
-                    onChange={(e) => updateProject(selectedProject.id, { priority: e.target.value as ProjectPriority || undefined })}
+                    onChange={(e) => updateProject({ id: selectedProject.id, updates: { priority: e.target.value as ProjectPriority || undefined } })}
                     className={`w-full text-sm px-2 py-1 rounded border ${getPriorityColor(selectedProject.priority)} font-medium capitalize`}
                   >
                     <option value="">None</option>
@@ -914,7 +1111,7 @@ export default function Board() {
                 <Input
                   type="date"
                   value={selectedProject.completion_date || ''}
-                  onChange={(e) => updateProject(selectedProject.id, { completion_date: e.target.value })}
+                  onChange={(e) => updateProject({ id: selectedProject.id, updates: { completion_date: e.target.value } })}
                   className="max-w-xs"
                 />
               </div>

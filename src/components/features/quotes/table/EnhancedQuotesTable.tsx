@@ -86,7 +86,7 @@ interface EnhancedQuotesTableProps {
 }
 
 const statusColors = {
-  Incomplete: "bg-amber-100 text-amber-800",
+  Incomplete: "bg-purple-100 text-purple-800",
   Draft: "bg-gray-100 text-gray-800",
   Pending: "bg-yellow-100 text-yellow-800",
   Submitted: "bg-yellow-100 text-yellow-800",
@@ -95,14 +95,27 @@ const statusColors = {
 };
 
 const getQuoteSourceOptions = () => [
-  { value: "Manual", label: "Manual Entry" },
-  { value: "Website_Lead", label: "Website Lead" },
-  { value: "Contractor_Referral", label: "Contractor Referral" },
-  { value: "Phone_Inquiry", label: "Phone Inquiry" },
-  { value: "Email_Inquiry", label: "Email Inquiry" },
-  { value: "Trade_Show", label: "Trade Show" },
-  { value: "Repeat_Customer", label: "Repeat Customer" }
+  { value: "Manual Entry", label: "Manual Entry" },
+  { value: "Website Lead", label: "Website Lead" },
+  { value: "Contractor Referral", label: "Contractor Referral" },
+  { value: "Manufacturer Referral", label: "Manufacturer Referral" },
+  { value: "Architect Referral", label: "Architect Referral" },
+  { value: "Phone Inquiry", label: "Phone Inquiry" },
+  { value: "Email Inquiry", label: "Email Inquiry" },
+  { value: "Trade Show", label: "Trade Show" },
+  { value: "Repeat Customer", label: "Repeat Customer" }
 ];
+
+// Helper function to format quote source for display (handles custom values)
+const formatQuoteSource = (value: string | null | undefined): string => {
+  if (!value) return "Not specified";
+
+  const option = getQuoteSourceOptions().find(opt => opt.value === value);
+  if (option) return option.label;
+
+  // Return custom values exactly as entered (no transformation)
+  return value;
+};
 
 const columnLabels: Record<string, string> = {
   proposal_number: "Proposal #",
@@ -382,14 +395,19 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       cell: ({ getValue, row }) => {
         const quote = row.original;
         const versionGroup = quoteToGroupMap.get(quote.id);
-        const baseNumber = getBaseProposalNumber(getValue());
+        const proposalNumber = getValue();
+        const baseNumber = getBaseProposalNumber(proposalNumber);
         const isExpanded = expanded[baseNumber];
         const hasMultipleVersions = versionGroup && versionGroup.hasMultipleVersions;
+
+        // Show full proposal number (with version suffix) if it's the main version of the group
+        // or if it's a standalone quote
+        const displayNumber = proposalNumber;
 
         return (
           <div className="flex items-center gap-2">
             <div className="font-mono text-sm font-medium">
-              {baseNumber}
+              {displayNumber}
             </div>
             {hasMultipleVersions && (
               <button
@@ -401,9 +419,9 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               >
                 <Badge variant="secondary" className="flex items-center gap-1 text-xs cursor-pointer">
                   {isExpanded ? (
-                    <ChevronRight className="h-3 w-3" />
-                  ) : (
                     <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
                   )}
                   <Layers className="h-3 w-3" />
                 </Badge>
@@ -451,17 +469,8 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         const versionGroup = quoteToGroupMap.get(quote.id);
 
         if (versionGroup && versionGroup.hasMultipleVersions) {
-          // Check if all versions have the same client
-          const clients = versionGroup.versions.map(v =>
-            v.job_details?.client_company || v.job_details?.client_name || ""
-          );
-          const uniqueClients = [...new Set(clients.filter(c => c))];
-
-          if (uniqueClients.length === 1) {
-            return <div className="font-medium text-sm">{uniqueClients[0]}</div>;
-          } else {
-            return <div className="text-sm text-gray-500 italic">Multiple</div>;
-          }
+          // Always show "Various" (italicized) for parent rows with multiple versions
+          return <div className="text-sm text-gray-500 italic">Various</div>;
         }
 
         const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client";
@@ -537,20 +546,39 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       cell: ({ row, getValue }) => {
         const quote = row.original;
         const versionGroup = quoteToGroupMap.get(quote.id);
+        const currentValue = getValue();
 
         if (versionGroup && versionGroup.hasMultipleVersions) {
           return <div className="text-sm italic text-gray-500">Various</div>;
         }
 
+        // Check if current value is a custom source (not in standard options)
+        const isCustomSource = currentValue && !getQuoteSourceOptions().some(opt => opt.value === currentValue);
+
         return (
           <Select
-            value={getValue() || ""}
+            value={currentValue || ""}
             onValueChange={(value) => onQuoteSourceChange(row.original.id, value)}
           >
-            <SelectTrigger className="w-full h-8 border-0 text-xs px-3 bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+            <SelectTrigger className={`w-full h-8 border-0 text-xs px-3 ${
+              isCustomSource
+                ? "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+            }`}>
               <SelectValue placeholder="Select source" />
             </SelectTrigger>
             <SelectContent>
+              {/* Show current custom value first if it exists */}
+              {isCustomSource && (
+                <>
+                  <SelectItem value={currentValue!} className="bg-amber-50 dark:bg-amber-950/30">
+                    {formatQuoteSource(currentValue)}
+                  </SelectItem>
+                  <div className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400 border-b">
+                    Standard Options:
+                  </div>
+                </>
+              )}
               {getQuoteSourceOptions().map((source) => (
                 <SelectItem key={source.value} value={source.value}>
                   {source.label}
@@ -564,7 +592,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       filterFn: 'equals',
       enableSorting: false,
     }),
-    columnHelper.accessor('creator_name', {
+    columnHelper.accessor('created_by_name', {
       id: 'created_by',
       header: 'Created By',
       cell: ({ row }) => {
@@ -575,7 +603,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           return <div className="text-sm italic text-gray-500">Various</div>;
         }
 
-        return <div className="text-sm text-gray-600">{quote.creator_name || 'Unknown'}</div>;
+        return <div className="text-sm text-gray-600">{quote.created_by_name || 'Unknown'}</div>;
       },
       size: 200,
       enableSorting: false,
@@ -1319,26 +1347,59 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
 
                             {/* Quote Source */}
                             <td className="px-4 py-2">
-                              <Select
-                                value={version.quote_source || ""}
-                                onValueChange={(value) => onQuoteSourceChange(version.id, value)}
-                              >
-                                <SelectTrigger className="w-full h-8 border-0 text-xs px-3 bg-gray-100 text-gray-800">
-                                  <SelectValue placeholder="Select source" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {getQuoteSourceOptions().map((source) => (
-                                    <SelectItem key={source.value} value={source.value}>
-                                      {source.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              {(() => {
+                                const versionQuoteSource = version.quote_source;
+                                const isCustomVersionSource = versionQuoteSource && !getQuoteSourceOptions().some(opt => opt.value === versionQuoteSource);
+
+                                return (
+                                  <Select
+                                    value={versionQuoteSource || ""}
+                                    onValueChange={(value) => onQuoteSourceChange(version.id, value)}
+                                  >
+                                    <SelectTrigger className={`w-full h-8 border-0 text-xs px-3 ${
+                                      isCustomVersionSource
+                                        ? "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                                        : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                                    }`}>
+                                      <SelectValue placeholder="Select source" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {/* Custom value for this version */}
+                                      {isCustomVersionSource && versionQuoteSource && (
+                                        <>
+                                          <SelectItem value={versionQuoteSource} className="bg-amber-50 dark:bg-amber-950/30">
+                                            {versionQuoteSource}
+                                          </SelectItem>
+                                          <div className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400 border-b">
+                                            Standard Options:
+                                          </div>
+                                        </>
+                                      )}
+                                      {/* Standard options - show new format only */}
+                                      {getQuoteSourceOptions()
+                                        .filter(source => !source.value.includes('_') && source.value !== 'Manual')
+                                        .map((source) => (
+                                          <SelectItem key={source.value} value={source.value}>
+                                            {source.label}
+                                          </SelectItem>
+                                        ))}
+                                      {/* Legacy format options - hidden but available for SelectValue */}
+                                      {getQuoteSourceOptions()
+                                        .filter(source => source.value.includes('_') || source.value === 'Manual')
+                                        .map((source) => (
+                                          <SelectItem key={source.value} value={source.value} className="hidden">
+                                            {source.label}
+                                          </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                  </Select>
+                                );
+                              })()}
                             </td>
 
                             {/* Created By */}
                             <td className="px-4 py-2 text-xs text-gray-500">
-                              {version.creator_name || "Unknown"}
+                              {version.created_by_name || "Unknown"}
                             </td>
 
                             {/* Created At */}
@@ -1364,7 +1425,23 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                                     <Edit3 className="mr-2 h-4 w-4" />
                                     Edit
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => onDeleteQuote(version.id)}>
+                                  <DropdownMenuSeparator />
+                                  {isArchiveView && onUnarchiveQuote ? (
+                                    <DropdownMenuItem onClick={() => onUnarchiveQuote(version.id)}>
+                                      <ArchiveRestore className="mr-2 h-4 w-4" />
+                                      Unarchive
+                                    </DropdownMenuItem>
+                                  ) : onArchiveQuote && (
+                                    <DropdownMenuItem onClick={() => onArchiveQuote(version.id)}>
+                                      <Archive className="mr-2 h-4 w-4" />
+                                      Archive
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => onDeleteQuote(version.id)}
+                                    className="text-red-600 focus:text-red-600"
+                                  >
                                     <Trash2 className="mr-2 h-4 w-4" />
                                     Delete
                                   </DropdownMenuItem>

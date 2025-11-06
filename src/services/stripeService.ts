@@ -19,7 +19,11 @@ interface SubscriptionPlan {
   stripe_product_id: string | null;
   stripe_price_id_monthly: string | null;
   stripe_price_id_yearly: string | null;
-  features: string[] | string;
+  price_per_month: number;
+  price_per_yearly: number;
+  max_users: number | null;
+  min_users: number | null;
+  features: any;
   is_active: boolean;
   sort_order: number;
   created_at: string;
@@ -30,11 +34,13 @@ interface Subscription {
   id: string;
   organization_id: string;
   plan_id: string;
+  number_of_active_users: number | null;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   stripe_subscription_status: string | null;
   current_period_end: string | null;
   is_active: boolean;
+  has_used_trial: boolean;
   access_blocked: boolean;
   access_blocked_reason: string | null;
   metadata: Record<string, unknown>;
@@ -98,6 +104,8 @@ export const getPlanByName = async (name: string) => {
  * For full billing details, use getStripeSubscription()
  */
 export const getSubscription = async (organizationId: string): Promise<{ data: Subscription | null; error: string | null }> => {
+  console.log('getSubscription: Fetching for org', organizationId);
+
   const { data, error } = await supabase
     .from('subscriptions')
     .select(`
@@ -105,14 +113,15 @@ export const getSubscription = async (organizationId: string): Promise<{ data: S
       plan:subscription_plans(*)
     `)
     .eq('organization_id', organizationId)
-    .single();
+    .maybeSingle(); // Use maybeSingle instead of single to handle no rows gracefully
 
   if (error) {
     console.error('Error fetching subscription:', error);
     return { data: null, error: error.message };
   }
 
-  return { data: data as Subscription, error: null };
+  console.log('getSubscription: Result', data);
+  return { data: data as Subscription | null, error: null };
 };
 
 /**
@@ -202,10 +211,33 @@ export const hasValidSubscription = async (organizationId: string) => {
     };
   }
 
+  // Check is_active flag (master switch for subscription access)
+  // This is set to false when subscription is canceled, paused, or otherwise inactive
+  // Must match the database has_valid_subscription() function for consistency
+  if (!subscription.is_active) {
+    return {
+      isValid: false,
+      reason: 'Subscription is not active',
+    };
+  }
+
   // Check subscription status (cached from Stripe)
-  // Note: Stripe uses lowercase, but we may have capitalized versions in DB
-  const validStatuses = ['Active', 'Trialing'];
-  if (!subscription.stripe_subscription_status || !validStatuses.includes(subscription.stripe_subscription_status)) {
+  // We store capitalized statuses in DB (Active, Trialing, Canceled, etc.)
+  // Compare case-insensitively
+  const validStatuses = ['active', 'trialing'];
+  const status = subscription.stripe_subscription_status?.toLowerCase();
+
+  console.log('🔍 Subscription validation:', {
+    isActive: subscription.is_active,
+    accessBlocked: subscription.access_blocked,
+    rawStatus: subscription.stripe_subscription_status,
+    lowercaseStatus: status,
+    validStatuses,
+    isIncluded: status ? validStatuses.includes(status) : false,
+  });
+
+  if (!status || !validStatuses.includes(status)) {
+    console.log('❌ Status check failed:', { status, validStatuses });
     return {
       isValid: false,
       reason: subscription.stripe_subscription_status
@@ -432,57 +464,130 @@ export const createPortalSession = async (params: {
 };
 
 // ============================================================================
-// FREE TRIAL ENROLLMENT
+// INVOICES & BILLING HISTORY
 // ============================================================================
 
 /**
- * Start free trial by enrolling organization in the Free plan
- * Creates a subscription record with 30-day trial access
+ * Get invoices from Stripe
+ * Fetches actual billing history from Stripe API
  */
-export const startFreeTrial = async (organizationId: string): Promise<{ success: boolean; error: string | null }> => {
+export const getInvoices = async (organizationId: string) => {
   try {
-    // Get the Free plan
-    const { data: freePlan, error: planError } = await getPlanByName('Free');
-
-    if (planError || !freePlan) {
-      return { success: false, error: 'Free plan not found' };
+    // Get current user's session token
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return { data: null, error: 'Not authenticated' };
     }
 
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-invoices`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        organizationId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { data: null, error: `HTTP ${response.status}: ${errorText}` };
+    }
+
+    const { invoices, error } = await response.json();
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    return { data: invoices, error: null };
+  } catch (error) {
+    console.error('Error fetching invoices:', error);
+    return {
+      data: null,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+};
+
+// ============================================================================
+// TRIAL PERIOD HELPERS
+// ============================================================================
+
+/**
+ * Get days remaining for current subscription/trial period
+ * Returns null if no subscription or no end date
+ * Note: 14-day free trial is managed by Stripe and automatically applied
+ * when users subscribe through Stripe Checkout
+ */
+export const getDaysRemaining = (currentPeriodEnd: string | null): number | null => {
+  if (!currentPeriodEnd) return null;
+
+  const now = new Date();
+  const endDate = new Date(currentPeriodEnd);
+  const diffTime = endDate.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  return diffDays > 0 ? diffDays : 0;
+};
+
+/**
+ * Auto-enroll organization in 14-day free trial
+ * Called during signup to give immediate access
+ * This creates a local subscription record with 'trialing' status
+ * User must choose a paid plan before trial ends
+ */
+export const enrollInFreeTrial = async (organizationId: string): Promise<{ success: boolean; error: string | null }> => {
+  try {
     // Check if organization already has a subscription
     const { data: existingSubscription } = await getSubscription(organizationId);
 
     if (existingSubscription) {
-      return { success: false, error: 'Organization already has a subscription' };
+      console.log('Organization already has subscription, skipping trial enrollment');
+      return { success: true, error: null };
     }
 
-    // Create subscription record for free trial
-    const trialEndDate = new Date();
-    trialEndDate.setDate(trialEndDate.getDate() + 30); // 30 days from now
+    // Get the Individual plan as default trial plan
+    const planResult = await getPlanByName('Individual');
 
-    const { data, error } = await supabase
+    if (planResult.error || !planResult.data) {
+      console.error('Failed to get Individual plan for trial:', planResult.error);
+      return { success: false, error: 'Individual plan not found' };
+    }
+
+    const individualPlan = planResult.data as SubscriptionPlan;
+
+    // Calculate trial end date (14 days from now)
+    const trialEndDate = new Date();
+    trialEndDate.setDate(trialEndDate.getDate() + 14);
+
+    // Create subscription record with trialing status
+    const { error } = await supabase
       .from('subscriptions')
       .insert({
         organization_id: organizationId,
-        plan_id: freePlan.id,
-        stripe_subscription_status: 'Trialing',
+        plan_id: individualPlan.id,
+        stripe_subscription_status: 'trialing',
         current_period_end: trialEndDate.toISOString(),
         is_active: true,
         access_blocked: false,
-      } as any)
-      .select()
-      .single();
+        has_used_trial: true, // Mark that trial has been used
+        number_of_active_users: 1,
+      } as any);
 
     if (error) {
-      console.error('Error creating free trial:', error);
+      console.error('Error enrolling in free trial:', error);
       return { success: false, error: error.message };
     }
 
+    console.log('Successfully enrolled organization in 14-day free trial');
     return { success: true, error: null };
   } catch (error) {
-    console.error('Error starting free trial:', error);
+    console.error('Error enrolling in free trial:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to start free trial'
+      error: error instanceof Error ? error.message : 'Failed to enroll in free trial'
     };
   }
 };
@@ -513,6 +618,11 @@ export const stripeService = {
   createCheckoutSession,
   createPortalSession,
 
-  // Free Trial
-  startFreeTrial,
+  // Invoices & Billing History
+  getInvoices,
+
+  // Trial Period Helpers
+  // Note: 14-day free trial auto-enrollment on signup
+  getDaysRemaining,
+  enrollInFreeTrial,
 };

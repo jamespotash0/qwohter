@@ -6,44 +6,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useResetPassword } from "@/auth";
 import { sanitizeInput } from "@/utils/security";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // ✅ v3.0.0: Use new auth mutation hook
+  const { mutate: resetPassword, isPending: loading } = useResetPassword();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) {
-        throw error;
+    resetPassword(
+      { email },
+      {
+        onSuccess: () => {
+          setSent(true);
+          toast({
+            title: "Reset link sent!",
+            description: "Check your email for password reset instructions.",
+          });
+        },
+        onError: (error: any) => {
+          toast({
+            title: "Error",
+            description: error.message || "Failed to send reset email. Please try again.",
+            variant: "destructive",
+          });
+        },
       }
-
-      setSent(true);
-      toast({
-        title: "Reset link sent!",
-        description: "Check your email for password reset instructions.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send reset email. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    );
   };
 
   const handleBackToSignIn = () => {
@@ -62,7 +59,7 @@ const ForgotPassword = () => {
               onClick={() => navigate('/')}
             >
               <img
-                src="/logos/Landing_Page_Logo_Light.svg"
+                src="/logos/New_Landing_Page_Logo_DarkonLightBackground.svg"
                 alt="Qwohter Logo"
                 className="h-8 w-auto"
               />

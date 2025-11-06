@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { subscribeWithSelector, devtools } from 'zustand/middleware';
-import { useAuthStore } from '../auth/authStore';
-import { useQuotesStore } from '../quotes/quotesStore';
 import { useUIStore } from '../ui/uiStore';
+import { queryClient } from '@/lib/queryClient';
+import * as authService from '@/auth/services/authService';
 
 interface AppState {
   // Application lifecycle
@@ -71,16 +71,16 @@ export const useAppStore = create<AppState>()(
       // Initialize the entire application
       initialize: async () => {
         const startTime = performance.now();
-        
+
         try {
-    
-          await useAuthStore.getState().initialize();
-          
-          // Wait for auth to settle, then initialize other stores
-          const authState = useAuthStore.getState();
-          if (authState.user) {
-            await useQuotesStore.getState().initialize();
-          }
+
+          // ✅ v3.0.0: Auth initialization now handled by AuthProvider
+          // OLD: await useAuthStore.getState().initialize();
+          // NEW: AuthProvider handles this automatically
+
+          // ✅ v3.0.0: Quote store initialization removed
+          // OLD: await useQuotesStore.getState().initialize();
+          // NEW: React Query handles initialization automatically via useQuotes() hook
           
           // Set up online/offline listeners
           if (typeof window !== 'undefined') {
@@ -130,13 +130,15 @@ export const useAppStore = create<AppState>()(
         
         try {
           useUIStore.getState().setGlobalLoading(true, 'Syncing data...');
-          
+
           // Re-fetch quotes if user is authenticated
-          const authState = useAuthStore.getState();
-          if (authState.user) {
-            await useQuotesStore.getState().fetchQuotes({ refresh: true });
+          // React Query handles this automatically via invalidation
+          // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
+          const session = await authService.getSession();
+          if (session?.user) {
+            await queryClient.invalidateQueries({ queryKey: ['quotes'] });
           }
-          
+
           set({ lastSync: new Date() });
         } catch (error) {
           console.error('❌ Data sync failed:', error);
@@ -183,13 +185,13 @@ export const useAppStore = create<AppState>()(
 
       // Reset entire application state
       reset: () => {
-        
+
         // Reset all stores
-        useAuthStore.getState()._setAuth(null, null);
-        useAuthStore.getState()._setProfile(null);
-        useQuotesStore.getState()._setQuotes([]);
+        // Note: Auth is managed by AuthProvider - use signOut instead
+        // React Query cache is cleared automatically on sign out
+        queryClient.clear();
         useUIStore.getState().resetUI();
-        
+
         // Reset app store
         set({
           isInitialized: false,
@@ -201,7 +203,7 @@ export const useAppStore = create<AppState>()(
             memoryUsage: null,
           },
         });
-        
+
       },
 
       // Get application info
@@ -213,22 +215,9 @@ export const useAppStore = create<AppState>()(
   )
 );
 
-// Subscribe to auth changes to manage data initialization
-useAuthStore.subscribe(
-  (state) => state.user,
-  (user, previousUser) => {
-    const appState = useAppStore.getState();
-    
-    if (user && !previousUser && appState.isInitialized) {
-      // User just signed in, initialize data stores
-      useQuotesStore.getState().initialize();
-    } else if (!user && previousUser) {
-      // User signed out, clear data stores
-      useQuotesStore.getState()._setQuotes([]);
-      useQuotesStore.getState().setCurrentQuote(null);
-    }
-  }
-);
+// ✅ v3.0.0: Auth subscription removed
+// Auth state changes are now handled by AuthProvider
+// Data cleanup on sign out is handled in AuthProvider's handleSignedOut
 
 // Selectors for common app patterns
 export const useAppInitialized = () => useAppStore((state) => state.isInitialized);

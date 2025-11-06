@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
-import { useAuthStore } from '@/stores/auth/authStore';
+import { useUser, useAuthStatus, useSignOut } from '@/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { SubscriptionPaywall } from '@/components/common/SubscriptionPaywall';
-import { useCurrentOrganization, useOrganizationStore } from '@/stores/organization/organizationStore';
-import { useQuotesStore } from '@/stores/quotes/quotesStore';
-import { useBoardStore } from '@/stores/board/boardStore';
-import { useRemindersStore } from '@/stores/reminders/remindersStore';
-import { useAppStore } from '@/stores/app/appStore';
+import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
+// import { useQuotesStore } from '@/stores/quotes/quotesStore';
+// import { useBoardStore } from '@/stores/board/boardStore';
+// import { useRemindersStore } from '@/stores/reminders/remindersStore';
+// import { useAppStore } from '@/stores/app/appStore';
+import { versionCheckService } from '@/services/versionCheckService';
+import { toast } from 'sonner';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -24,19 +26,19 @@ interface MainLayoutProps {
  * - Consistent layout structure for all authenticated pages
  * - Public pages (auth, landing) bypass this layout entirely
  */
-export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Use auth store instead of local state for cached auth
-  const user = useAuthStore((state) => state.user);
-  const isInitialized = useAuthStore((state) => state.isInitialized);
-  const isAuthChanging = useAuthStore((state) => state.isAuthChanging);
-  const isLoading = useAuthStore((state) => state.isLoading);
-  const signOut = useAuthStore((state) => state.signOut);
+  // ✅ v3.0.0: Use new auth hooks
+  const user = useUser();
+  const { isInitialized, isLoading } = useAuthStatus();
+  const { mutate: signOut, isPending: isLoggingOut } = useSignOut();
 
-  // Get current organization for paywall
-  const currentOrganization = useCurrentOrganization();
+  // Note: isAuthChanging removed in v3.0 (handled by AuthEventMutex)
+
+  // Get current organization for paywall from React Query
+  const { organization: currentOrganization } = useCurrentOrganization(user?.id || '');
 
   // Membership status tracking
   const [membershipStatus, setMembershipStatus] = useState<string | null>(null);
@@ -53,13 +55,16 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     '/pending-approval',
     '/access-denied',
     '/account-inactive',
-    '/demo-contact',
-    '/subscription'
+    '/demo',
+    '/contact-us'
   ].includes(location.pathname) && !location.pathname.startsWith('/editor/');
 
   // Check if we're on a full-screen wizard page (no padding/max-width)
   const isFullScreenPage = ['/quotes/new'].includes(location.pathname) ||
     location.pathname.startsWith('/quotes/edit-incomplete/');
+
+  // Check if we're on the Board page (show bottom border with padding)
+  const isBoardPage = location.pathname === '/board';
 
   // Check membership status for protected routes
   useEffect(() => {
@@ -115,14 +120,14 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     // Only redirect if:
     // 1. Auth is initialized
     // 2. Auth is NOT loading (prevents redirect while fetching session)
-    // 3. Auth is NOT changing (prevents redirect during state changes)
-    // 4. User is not logged in
-    if (isInitialized && !isLoading && !isAuthChanging && !user) {
+    // 3. User is not logged in
+    // Note: v3.0.0 removed isAuthChanging check (AuthEventMutex handles this)
+    if (isInitialized && !isLoading && !user) {
       // Save current location before redirecting to sign-in
       localStorage.setItem('auth_redirect_url', location.pathname + location.search);
       navigate('/sign-in');
     }
-  }, [navigate, shouldShowSidebar, isInitialized, isLoading, isAuthChanging, user, location.pathname, location.search]);
+  }, [navigate, shouldShowSidebar, isInitialized, isLoading, user, location.pathname, location.search]);
 
   // Redirect based on membership status
   useEffect(() => {
@@ -136,17 +141,94 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     }
   }, [membershipStatus, checkingMembership, shouldShowSidebar, location.pathname, navigate]);
 
-  const handleLogout = async () => {
-    // Reset all stores before signing out to clear all data
-    useQuotesStore.getState().reset();
-    useBoardStore.getState().reset();
-    useOrganizationStore.getState().reset();
-    useRemindersStore.getState().reset();
-    useAppStore.getState().reset();
+  // Redirect to sign-in if no user on protected routes (expired session handling)
+  useEffect(() => {
+    if (isInitialized && !user && shouldShowSidebar) {
+      console.log('🔒 No user on protected route, redirecting to sign-in');
+      navigate('/sign-in', { replace: true });
+    }
+  }, [isInitialized, user, shouldShowSidebar, navigate]);
 
-    await signOut();
-    navigate('/sign-in');
+  // ✅ v3.0.0: Session management fully handled by AuthProvider
+  // AuthProvider's onAuthStateChange listener detects session expiry
+  // and triggers SIGNED_OUT event, which automatically:
+  // - Clears React Query cache
+  // - Resets all stores
+  // - Redirects to sign-in
+  // Manual polling removed in v3.0.0 - no longer needed
+
+  // Poll for new app version every 5 minutes
+  useEffect(() => {
+    // Initialize version check on mount
+    versionCheckService.initializeVersionCheck();
+
+    console.log('⏱️ Starting version polling (5min interval)...');
+
+    let hasShownToast = false;
+
+    const checkVersion = async () => {
+      const hasNewVersion = await versionCheckService.checkForNewVersion();
+
+      if (hasNewVersion && !hasShownToast) {
+        // Show persistent toast once when version changes
+        hasShownToast = true;
+        toast('New version available!', {
+          description: 'A new update was made to the app.',
+          duration: Infinity, // Persist until manually dismissed
+          classNames: {
+            actionButton: '!bg-green-600 hover:!bg-green-700 !text-white',
+          },
+          action: {
+            label: 'Refresh',
+            onClick: () => {
+              versionCheckService.forceReload();
+            },
+          },
+        });
+      }
+    };
+
+    // Poll every 5 minutes (reduced from 30s for better performance)
+    const pollInterval = setInterval(() => {
+      checkVersion();
+    }, 300000); // 5 minutes
+
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    const startTime = Date.now();
+    const MIN_LOGOUT_TIME = 800; // 800ms minimum for smooth UX
+
+    // ✅ v3.0.0: Use new signOut mutation with callback
+    // Note: signOut mutation triggers AuthProvider's SIGNED_OUT handler
+    // which automatically clears React Query cache and resets stores
+
+    signOut(undefined, {
+      onSuccess: async () => {
+        // Ensure minimum display time for loading spinner (smooth UX)
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, MIN_LOGOUT_TIME - elapsedTime);
+        if (remainingTime > 0) {
+          await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
+
+        // Navigate to sign-in
+        navigate('/sign-in', { replace: true });
+      },
+      onError: (error) => {
+        console.error('Logout error:', error);
+        // Even on error, navigate to sign-in
+        navigate('/sign-in', { replace: true });
+      },
+    });
   };
+
+  // Get sidebar state - only call this hook for protected routes
+  const sidebarState = shouldShowSidebar ? useSidebar() : null;
+  const sidebarOpen = sidebarState?.open ?? false;
 
   // For public routes, render children directly without layout
   if (!shouldShowSidebar) {
@@ -164,28 +246,36 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     return <>{children}</>;
   }
 
-  // Only show loading on first initialization, not on subsequent navigations
+  // Show loading only for auth initialization
   if (!isInitialized) {
     return (
-      <SidebarProvider defaultOpen={false}>
-        <div className="h-screen flex w-full bg-[var(--content-bg)] overflow-hidden">
-          <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
-          <main className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-12 h-12 border-4 border-[var(--content-button-primary-bg)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-[var(--content-muted-text)]">Loading...</p>
-            </div>
-          </main>
+      <div className="h-screen w-full bg-[var(--content-bg)] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[var(--content-button-primary-bg)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[var(--content-muted-text)]">Loading...</p>
         </div>
-      </SidebarProvider>
+      </div>
     );
   }
 
-  // Main layout with persistent sidebar
-  // Wrap content with subscription paywall if organization exists
-  // Exclude settings and pending-approval pages from paywall
+  // Show loading while redirecting to sign-in
+  if (!user && shouldShowSidebar) {
+    return (
+      <div className="h-screen w-full bg-[var(--content-bg)] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[var(--content-button-primary-bg)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[var(--content-muted-text)]">Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if we need to wait for subscription check on protected routes
   const excludedPaths = ['/settings', '/pending-approval'];
   const shouldApplyPaywall = currentOrganization?.id && !excludedPaths.includes(location.pathname);
+
+  // Main layout with persistent sidebar
+  // Wrap content with subscription paywall if organization exists
   const content = shouldApplyPaywall ? (
     <SubscriptionPaywall organizationId={currentOrganization.id}>
       {children}
@@ -195,28 +285,19 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   );
 
   return (
-    <SidebarProvider defaultOpen={false}>
-      <div className="h-screen flex w-full bg-[var(--content-bg)] overflow-hidden">
-        <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Top Header Bar - Commented out for now */}
-          {/* <header className="h-16 bg-white dark:bg-[#1A1C23] border-b-2 border-gray-100 dark:border-[var(--sidebar-border)] flex items-center px-8 shrink-0 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-1 bg-[var(--sidebar-icon-active)] rounded-full"></div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-                {location.pathname === '/dashboard' && 'Dashboard'}
-                {location.pathname === '/quotes' && 'Quotes'}
-                {location.pathname === '/forms' && 'Forms'}
-                {location.pathname === '/board' && 'Board'}
-                {location.pathname === '/analytics' && 'Analytics'}
-                {location.pathname === '/team' && 'Team'}
-                {location.pathname === '/settings' && 'Settings'}
-                {location.pathname.startsWith('/forms/builder/') && 'Form Builder'}
-                {location.pathname.startsWith('/quotes/new') && 'New Quote'}
-              </h2>
+      <div className={`h-screen flex w-full overflow-hidden ${isBoardPage ? 'bg-sidebar' : 'bg-[var(--content-bg)]'}`}>
+          {/* Logout overlay to prevent flash */}
+          {isLoggingOut && (
+            <div className="absolute inset-0 bg-background z-50 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-muted-foreground">Signing out...</p>
+              </div>
             </div>
-          </header> */}
+          )}
 
+          <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
+        <div className="flex-1 flex flex-col overflow-hidden">
           {/* Main Content */}
           <main className="flex-1 overflow-hidden">
             {isFullScreenPage ? (
@@ -224,9 +305,22 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               <div className="h-full overflow-auto">
                 {content}
               </div>
+            ) : isBoardPage ? (
+              // Board page: Card-based layout with sidebar background
+              <div className="h-full pt-3 pr-3 pl-4 pb-3">
+                <div className="h-full max-w-[1400px] mx-auto">
+                  <div className="h-full shadow-xl flex flex-col relative z-10 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                    <div className="flex-1 overflow-y-auto bg-sidebar">
+                      <div className="h-full pt-4 px-6 pb-6 bg-white dark:bg-gray-900">
+                        {content}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             ) : (
-              // Standard layout with padding and max-width
-              <div className="h-full py-8 px-8 lg:px-12 space-y-4 overflow-auto">
+              // Standard layout with padding and max-width (original)
+              <div className={`h-full pt-6 pb-8 space-y-4 overflow-auto ${sidebarOpen ? 'px-8 lg:px-12' : 'px-6 lg:px-10'}`}>
                 <div className="max-w-[1350px] mx-auto w-full">
                   {content}
                 </div>
@@ -235,6 +329,36 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </main>
         </div>
       </div>
-    </SidebarProvider>
   );
+};
+
+export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+  const location = useLocation();
+
+  // Check if current route should show sidebar
+  const shouldShowSidebar = ![
+    '/',
+    '/sign-in',
+    '/create-account',
+    '/auth',
+    '/forgot-password',
+    '/reset-password',
+    '/pending-approval',
+    '/access-denied',
+    '/account-inactive',
+    '/demo',
+    '/contact-us'
+  ].includes(location.pathname) && !location.pathname.startsWith('/editor/');
+
+  // Wrap with SidebarProvider only for protected routes
+  if (shouldShowSidebar) {
+    return (
+      <SidebarProvider defaultOpen={false}>
+        <MainLayoutContent>{children}</MainLayoutContent>
+      </SidebarProvider>
+    );
+  }
+
+  // Public routes render without SidebarProvider
+  return <MainLayoutContent>{children}</MainLayoutContent>;
 };

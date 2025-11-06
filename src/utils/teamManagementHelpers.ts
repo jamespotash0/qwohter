@@ -6,6 +6,7 @@
  */
 
 import { sanitizeInput } from "@/utils/security";
+import { isMembershipActive, isMembershipPending, hasAdminPrivileges, isRoleOwner } from "./statusHelpers";
 
 export type Role = 'Admin' | 'Member' | 'Owner';
 
@@ -38,7 +39,7 @@ export const teamManagementHelpers = {
       // This is secure because the useOrganizations hook uses RLS policies
       if (currentOrganization?.organization_code) {
         // Only return code if user has admin privileges (checked by UI state)
-        if (['admin', 'owner'].includes(currentUserRole || '')) {
+        if (hasAdminPrivileges(currentUserRole)) {
           return currentOrganization.organization_code;
         }
       }
@@ -161,8 +162,9 @@ export const teamManagementHelpers = {
    * Calculate team statistics from members array
    */
   calculateTeamStats: (members: any[]) => {
-    const activeMembersCount = members.filter(m => m.status === 'Active' || m.status === 'active').length;
-    const pendingMembersCount = members.filter(m => m.status === 'Pending' || m.status === 'pending').length;
+    // Use case-insensitive status helpers
+    const activeMembersCount = members.filter(m => isMembershipActive(m.status)).length;
+    const pendingMembersCount = members.filter(m => isMembershipPending(m.status)).length;
     const totalMembersCount = members.length;
     
     const roleDistribution = members.reduce((acc, member) => {
@@ -194,12 +196,12 @@ export const teamManagementHelpers = {
     }
 
     // Only admins and owners can manage members
-    if (!['Admin', 'Owner'].includes(currentUserRole || '')) {
+    if (!hasAdminPrivileges(currentUserRole)) {
       return false;
     }
 
     // Can't modify owner roles
-    if (targetMemberRole === 'Owner' && action.includes('role')) {
+    if (isRoleOwner(targetMemberRole) && action.includes('role')) {
       return false;
     }
 

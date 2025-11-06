@@ -1,12 +1,19 @@
 import { useState } from "react";
-import { useOrganizationStore } from "@/stores/organization/organizationStore";
-import { useOrganizations } from "@/hooks/useOrganizations";
+import {
+  useOrganizationContext,
+  useInviteMember,
+  useRemoveMember,
+  useUpdateMemberRole,
+  useUpdateMemberStatus,
+  useApproveMember
+} from "@/hooks/queries/useOrganization";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MoreVertical, Trash2, Crown, AlertTriangle, RotateCcw } from "lucide-react";
@@ -14,15 +21,27 @@ import type { Role } from "@/utils/teamManagementHelpers";
 
 export function TeamTab() {
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<Role>("Member");
+  const [inviteRole, setInviteRole] = useState<string>("");
+  const [inviteDepartment, setInviteDepartment] = useState<string>("");
   const [removeDialog, setRemoveDialog] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: "", memberName: "" });
   const [transferDialog, setTransferDialog] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: "", memberName: "" });
   const { toast } = useToast();
 
-  const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
-  const members = useOrganizationStore((state) => state.members);
-  
-  const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
+  // Get user and organization context from React Query
+  const user = useUser();
+  const {
+    organization: currentOrganization,
+    organizationId,
+    members,
+    role: currentUserRole
+  } = useOrganizationContext(user?.id || '');
+
+  // React Query mutation hooks
+  const { mutateAsync: inviteMemberMutation } = useInviteMember(organizationId || '');
+  const { mutateAsync: removeMemberMutation } = useRemoveMember(organizationId || '');
+  const { mutateAsync: updateRoleMutation } = useUpdateMemberRole(organizationId || '');
+  const { mutateAsync: updateStatusMutation } = useUpdateMemberStatus(organizationId || '');
+  const { mutate: approveMemberMutation } = useApproveMember(organizationId || '');
 
   // Helper to get display text for member type
   const getMemberType = (member: any) => {
@@ -30,27 +49,25 @@ export function TeamTab() {
     return member.join_type || 'Direct';
   };
 
-  const {
-    inviteMember,
-    removeMember,
-    reactivateMember,
-    updateMemberRole,
-    approveMember,
-    rejectMember,
-    transferOwnership
-  } = useOrganizations();
-
   const handleInvite = async () => {
-    if (!currentOrganization || !inviteEmail) return;
+    if (!currentOrganization || !inviteEmail || !inviteRole || !inviteDepartment) return;
+    if (inviteRole === 'placeholder' || inviteDepartment === 'placeholder') return;
 
     try {
-      await inviteMember(currentOrganization.id, inviteEmail, inviteRole);
+      // Note: The inviteMemberMutation expects { email, role }, not the full signature
+      // We need to handle department separately via Supabase update
+      await inviteMemberMutation({
+        email: inviteEmail,
+        role: inviteRole === 'Owner' || inviteRole === 'Admin' ? 'Admin' : 'Member'
+      });
+
       toast({
         title: "Invitation sent",
         description: `Invite sent to ${inviteEmail}`,
       });
       setInviteEmail("");
-      setInviteRole("Member");
+      setInviteRole("");
+      setInviteDepartment("");
     } catch (error: any) {
       toast({
         title: "Failed to send invite",
@@ -63,13 +80,23 @@ export function TeamTab() {
   const handleRemoveMember = async () => {
     if (!currentOrganization) return;
 
+    // Close dialog immediately for responsive feel
+    setRemoveDialog({ open: false, memberId: "", memberName: "" });
+
     try {
-      await removeMember(removeDialog.memberId);
+      // Show immediate feedback
+      toast({
+        title: "Removing member...",
+        description: `Deactivating ${removeDialog.memberName}`,
+      });
+
+      await removeMemberMutation(removeDialog.memberId);
+
+      // Success confirmation
       toast({
         title: "Member removed",
         description: `${removeDialog.memberName} has been removed from the organization.`,
       });
-      setRemoveDialog({ open: false, memberId: "", memberName: "" });
     } catch (error: any) {
       toast({
         title: "Failed to remove member",
@@ -83,7 +110,7 @@ export function TeamTab() {
     if (!currentOrganization) return;
 
     try {
-      await reactivateMember(memberId);
+      await updateStatusMutation({ membershipId: memberId, status: 'Active' });
       toast({
         title: "Member reactivated",
         description: `${memberName} has been reactivated.`,
@@ -101,7 +128,7 @@ export function TeamTab() {
     if (!currentOrganization) return;
 
     try {
-      await updateMemberRole(memberId, newRole);
+      await updateRoleMutation({ membershipId: memberId, role: newRole });
       toast({
         title: "Role updated",
         description: `Member role changed to ${newRole}`,
@@ -115,11 +142,38 @@ export function TeamTab() {
     }
   };
 
+  const handleDepartmentChange = async (memberId: string, newDepartment: string) => {
+    if (!currentOrganization) return;
+
+    try {
+      // Convert "none" string to null for database
+      const departmentValue = newDepartment === 'none' ? null : newDepartment;
+
+      // Direct Supabase update since we don't have a dedicated hook for department
+      const { error } = await (supabase.from('memberships') as any)
+        .update({ department: departmentValue, updated_at: new Date().toISOString() })
+        .eq('id', memberId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Department updated",
+        description: "Member department has been updated.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to update department",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleApprove = async (memberId: string, memberName: string) => {
     if (!currentOrganization) return;
 
     try {
-      await approveMember(memberId);
+      approveMemberMutation(memberId);
       toast({
         title: "Member approved",
         description: `${memberName} has been approved.`,
@@ -137,7 +191,8 @@ export function TeamTab() {
     if (!currentOrganization) return;
 
     try {
-      await rejectMember(memberId);
+      // Reject by removing the membership
+      await removeMemberMutation(memberId);
       toast({
         title: "Request rejected",
         description: `${memberName}'s request has been rejected.`,
@@ -152,10 +207,23 @@ export function TeamTab() {
   };
 
   const handleTransferOwnership = async () => {
-    if (!currentOrganization) return;
+    if (!currentOrganization || !user?.id) return;
 
     try {
-      await transferOwnership(transferDialog.memberId);
+      // Transfer ownership: Set new member to Owner and current user to Admin
+      const { error: newOwnerError } = await (supabase.from('memberships') as any)
+        .update({ role: 'Owner', updated_at: new Date().toISOString() })
+        .eq('id', transferDialog.memberId);
+
+      if (newOwnerError) throw newOwnerError;
+
+      const { error: currentUserError } = await (supabase.from('memberships') as any)
+        .update({ role: 'Admin', updated_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .eq('organization_id', currentOrganization.id);
+
+      if (currentUserError) throw currentUserError;
+
       toast({
         title: "Ownership transferred",
         description: `${transferDialog.memberName} is now the owner of this organization. You are now an Admin.`,
@@ -181,16 +249,31 @@ export function TeamTab() {
   };
 
   return (
-    <div className="max-w-3xl">
+    <div className="w-full max-w-5xl min-w-[640px]">
       {/* Team Members Header & Invite Section */}
       <div className="mb-8">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Team Members</h2>
         <div className="h-px bg-gray-200 dark:bg-gray-700 mb-6"></div>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Email Address
-          </label>
+          <div className="flex gap-2 mb-2">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Email Address
+              </label>
+            </div>
+            <div className="w-44">
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                Department
+              </label>
+            </div>
+            <div className="w-44">
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+                Role
+              </label>
+            </div>
+            <div className="w-[88px]"></div>
+          </div>
           <div className="flex gap-2">
             <Input
               type="email"
@@ -199,9 +282,27 @@ export function TeamTab() {
               onChange={(e) => setInviteEmail(e.target.value)}
               className="flex-1 placeholder:text-gray-400"
             />
-            <Select value={inviteRole} onValueChange={(value) => setInviteRole(value as Role)}>
-              <SelectTrigger className="w-28">
-                <SelectValue />
+            <Select value={inviteDepartment || undefined} onValueChange={setInviteDepartment}>
+              <SelectTrigger className="w-44 [&>span[data-placeholder]]:text-gray-400">
+                <SelectValue placeholder="Department" />
+              </SelectTrigger>
+              <SelectContent className="w-48 max-h-80 [&>*]:scroll-smooth">
+                <SelectItem value="Customer Success">Customer Success</SelectItem>
+                <SelectItem value="Engineering">Engineering</SelectItem>
+                <SelectItem value="Executive">Executive</SelectItem>
+                <SelectItem value="Finance">Finance</SelectItem>
+                <SelectItem value="HR">HR</SelectItem>
+                <SelectItem value="IT">IT</SelectItem>
+                <SelectItem value="Marketing">Marketing</SelectItem>
+                <SelectItem value="Operations">Operations</SelectItem>
+                <SelectItem value="Product">Product</SelectItem>
+                <SelectItem value="Sales">Sales</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={inviteRole || undefined} onValueChange={(value) => setInviteRole(value as Role)}>
+              <SelectTrigger className="w-44 [&>span[data-placeholder]]:text-gray-400">
+                <SelectValue placeholder="Role" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Member">Member</SelectItem>
@@ -210,7 +311,7 @@ export function TeamTab() {
             </Select>
             <Button
               onClick={handleInvite}
-              disabled={!inviteEmail}
+              disabled={!inviteEmail || !inviteDepartment || !inviteRole}
               className="bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white px-6"
             >
               Invite
@@ -229,6 +330,9 @@ export function TeamTab() {
                   Member
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Department
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -244,12 +348,12 @@ export function TeamTab() {
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
               {members.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                     No team members yet. Invite someone to get started!
                   </td>
                 </tr>
               ) : (
-                members.map((member) => (
+                [...members].sort((a, b) => new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime()).map((member) => (
                   <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
@@ -282,6 +386,44 @@ export function TeamTab() {
                             </>
                           )}
                         </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <div className="w-44">
+                        {member.status === 'Active' ? (
+                          currentUserRole === 'Member' ? (
+                            <span className="text-sm text-gray-700 dark:text-gray-300">
+                              {member.department || <span className="text-gray-400">—</span>}
+                            </span>
+                          ) : (
+                            <Select
+                              value={member.department || 'none'}
+                              onValueChange={(value) => handleDepartmentChange(member.user_id, value)}
+                            >
+                              <SelectTrigger className="w-auto min-w-[100px] h-8 text-sm border-0 shadow-none hover:bg-gray-100 dark:hover:bg-gray-800 focus:ring-0 focus:ring-offset-0 px-0 pr-1 gap-1 [&>svg]:bg-gray-100 [&>svg]:dark:bg-gray-800 [&>svg]:rounded [&>svg]:p-0.75">
+                                <SelectValue placeholder="Select department" />
+                              </SelectTrigger>
+                              <SelectContent className="w-48 max-h-80 [&>*]:scroll-smooth">
+                                <SelectItem value="none">—</SelectItem>
+                                <SelectItem value="Customer Success">Customer Success</SelectItem>
+                                <SelectItem value="Engineering">Engineering</SelectItem>
+                                <SelectItem value="Executive">Executive</SelectItem>
+                                <SelectItem value="Finance">Finance</SelectItem>
+                                <SelectItem value="HR">HR</SelectItem>
+                                <SelectItem value="IT">IT</SelectItem>
+                                <SelectItem value="Marketing">Marketing</SelectItem>
+                                <SelectItem value="Operations">Operations</SelectItem>
+                                <SelectItem value="Product">Product</SelectItem>
+                                <SelectItem value="Sales">Sales</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )
+                        ) : (
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            —
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-4">
@@ -426,8 +568,15 @@ export function TeamTab() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Remove Team Member</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to remove {removeDialog.memberName} from the organization?
+            <DialogDescription className="space-y-2">
+              <p>Are you sure you want to remove <span className="font-semibold">{removeDialog.memberName}</span> from the organization?</p>
+              <p className="text-sm">This action will:</p>
+              <ul className="text-sm list-disc list-inside space-y-1 ml-2">
+                <li>Deactivate their account and revoke access</li>
+                <li>Preserve their quotes and data</li>
+                <li>Display their name as "Deactivated User" on quotes</li>
+                <li>Allow reactivation later if needed</li>
+              </ul>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -441,7 +590,7 @@ export function TeamTab() {
               variant="destructive"
               onClick={handleRemoveMember}
             >
-              Remove
+              Remove Member
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -4,14 +4,15 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { InfoIcon } from "@/components/ui/info-icon";
 import { useEffect, useState, useCallback } from "react";
 import { EnhancedPricingData, defaultEnhancedPricing, calculateEnhancedPricing } from "@/lib/types/pricing/enhancedPricing";
-import { Calculator } from "lucide-react";
+// import { Calculator } from "lucide-react";
 
 interface EnhancedPricingFormProps {
   data: EnhancedPricingData;
   onUpdate: (data: EnhancedPricingData) => void;
+  onTouchedFieldsChange?: (fields: Set<string>) => void;
 }
 
-const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
+const EnhancedPricingForm = ({ data, onUpdate, onTouchedFieldsChange }: EnhancedPricingFormProps) => {
   const [localData, setLocalData] = useState<EnhancedPricingData>(() => {
     // Merge provided data with defaults to ensure all fields are present
     return { ...defaultEnhancedPricing, ...data };
@@ -21,17 +22,16 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
   const [touchedFields, setTouchedFields] = useState<Set<string>>(() => {
     const touched = new Set<string>();
 
-    // Check if this is an existing quote (has any non-default data)
+    // Check if this is an existing quote (has any meaningful non-zero data)
     // If so, mark ALL fields as touched since they've been saved before
-    const hasAnyData =
-      data.kwik_wall_materials_cost !== undefined ||
-      data.misc_materials_cost !== undefined ||
-      data.final_selling_price !== undefined ||
-      Object.keys(data).some(key =>
-        data[key as keyof EnhancedPricingData] !== defaultEnhancedPricing[key as keyof EnhancedPricingData]
-      );
+    const hasAnyMeaningfulData =
+      (data.kwik_wall_materials_cost !== undefined && data.kwik_wall_materials_cost > 0) ||
+      (data.misc_materials_cost !== undefined && data.misc_materials_cost > 0) ||
+      (data.final_selling_price !== undefined && data.final_selling_price > 0) ||
+      (data.materials_markup_percentage !== undefined && data.materials_markup_percentage > 0) ||
+      (data.shipping_markup_percentage !== undefined && data.shipping_markup_percentage > 0);
 
-    if (hasAnyData) {
+    if (hasAnyMeaningfulData) {
       // This is an existing quote - mark all input fields as touched
       touched.add('kwik_wall_materials_cost');
       touched.add('misc_materials_cost');
@@ -50,6 +50,14 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
       touched.add('payment_upon_track_installation');
     }
 
+    // Always mark payment fields as touched if they have default values
+    if (data.payment_upon_drawings && data.payment_upon_drawings.trim() !== '') {
+      touched.add('payment_upon_drawings');
+    }
+    if (data.payment_upon_track_installation && data.payment_upon_track_installation.trim() !== '') {
+      touched.add('payment_upon_track_installation');
+    }
+
     return touched;
   });
 
@@ -58,6 +66,11 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
     materials_markup_percentage: data.materials_markup_percentage && data.materials_markup_percentage > 0 ? data.materials_markup_percentage.toString() : '',
     shipping_markup_percentage: data.shipping_markup_percentage && data.shipping_markup_percentage > 0 ? data.shipping_markup_percentage.toString() : '',
   });
+
+  // Handle field focus - mark as touched when user clicks/focuses on a field
+  const handleFieldFocus = useCallback((field: keyof EnhancedPricingData) => {
+    setTouchedFields(prev => new Set(prev).add(field));
+  }, []);
 
   // Handle currency input changes - mark as touched and update local state
   const handleCurrencyChange = useCallback((field: keyof EnhancedPricingData, value: number) => {
@@ -89,15 +102,22 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
     }
   }, []);
 
+  // Notify parent when touched fields change
+  useEffect(() => {
+    if (onTouchedFieldsChange) {
+      onTouchedFieldsChange(touchedFields);
+    }
+  }, [touchedFields, onTouchedFieldsChange]);
+
   // Auto-calculate and update parent whenever input data changes
   useEffect(() => {
     const calculatedData = calculateEnhancedPricing(localData);
-    
+
     // Only update if calculations actually changed to prevent loops
     if (JSON.stringify(calculatedData) !== JSON.stringify(localData)) {
       setLocalData(calculatedData);
     }
-    
+
     // Debounce the parent update to prevent excessive re-renders during typing
     const timeoutId = setTimeout(() => {
       onUpdate(calculatedData);
@@ -166,7 +186,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
             
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Label htmlFor="kwik_wall_materials_cost" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="kwik_wall_materials_cost" className="text-sm font-medium text-gray-900">
                   Kwik-Wall Materials Cost <span className="text-red-500">*</span>
                 </Label>
                 <InfoIcon 
@@ -176,19 +196,18 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                 />
               </div>
               <CurrencyInput
-                showZeroAsEmpty={!touchedFields.has('kwik_wall_materials_cost')}
                 id="kwik_wall_materials_cost"
                 value={localData.kwik_wall_materials_cost}
                 onChange={(value) => handleCurrencyChange("kwik_wall_materials_cost", value)}
-                placeholder="$0.00"
+                touched={touchedFields.has('kwik_wall_materials_cost')}
                 className={`w-full h-11 border ${touchedFields.has('kwik_wall_materials_cost') ? "border-green-500" : "border-red-500"}
-                    focus:ring-blue-500 focus:border-blue-500`}
+                    bg-gray-100 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600`}
               />
             </div>
 
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Label htmlFor="misc_materials_cost" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="misc_materials_cost" className="text-sm font-medium text-gray-900">
                   Misc. Materials From Shop <span className="text-red-500">*</span>
                 </Label>
                 <InfoIcon 
@@ -198,21 +217,20 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                 />
               </div>
               <CurrencyInput
-                showZeroAsEmpty={!touchedFields.has('misc_materials_cost')}
                 id="misc_materials_cost"
                 value={localData.misc_materials_cost}
                 onChange={(value) => handleCurrencyChange("misc_materials_cost", value)}
-                placeholder="$0.00"
-                className= {`w-full h-11 border ${touchedFields.has('misc_materials_cost') ? "border-green-500" : "border-red-500"} 
-                  focus:ring-blue-500 focus:border-blue-500`}
-                />
+                touched={touchedFields.has('misc_materials_cost')}
+                className={`w-full h-11 border ${touchedFields.has('misc_materials_cost') ? "border-green-500" : "border-red-500"}
+                  bg-gray-100 focus:ring-blue-500 focus:border-blue-500`}
+              />
             </div>
 
             {/* Delivery Costs Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="delivery_cost_track" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="delivery_cost_track" className="text-sm font-medium text-gray-900">
                     Delivery Cost (Track to Site) <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
@@ -222,19 +240,17 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
-                showZeroAsEmpty={!touchedFields.has('delivery_cost_track')}
                   id="delivery_cost_track"
                   value={localData.delivery_cost_track}
                   onChange={(value) => handleCurrencyChange("delivery_cost_track", value)}
-                  placeholder="$0.00"
                   className={`w-full h-11 border ${touchedFields.has('delivery_cost_track') ? "border-green-500" : "border-red-500"} 
-                    focus:ring-blue-500 focus:border-blue-500`}
+                    bg-gray-100 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600`}
                 />
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="delivery_cost_panel" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="delivery_cost_panel" className="text-sm font-medium text-gray-900">
                     Delivery Cost (Panels to Site) <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
@@ -244,13 +260,11 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
-                showZeroAsEmpty={!touchedFields.has('delivery_cost_panel')}
                   id="delivery_cost_panel"
                   value={localData.delivery_cost_panel}
                   onChange={(value) => handleCurrencyChange("delivery_cost_panel", value)}
-                  placeholder="$0.00"
                   className={`w-full h-11 border ${touchedFields.has('delivery_cost_panel') ? "border-green-500" : "border-red-500"}
-                    focus:ring-blue-500 focus:border-blue-500`}
+                    bg-gray-100 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600`}
                 />
               </div>
             </div>
@@ -259,7 +273,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="track_labor_cost" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="track_labor_cost" className="text-sm font-medium text-gray-900">
                     Labor to Install Track <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
@@ -269,19 +283,17 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
-                showZeroAsEmpty={!touchedFields.has('track_labor_cost')}
                   id="track_labor_cost"
                   value={localData.track_labor_cost}
                   onChange={(value) => handleCurrencyChange("track_labor_cost", value)}
-                  placeholder="$0.00"
                   className={`w-full h-11 border ${touchedFields.has('track_labor_cost') ? "border-green-500" : "border-red-500"} 
-                    focus:ring-blue-500 focus:border-blue-500`}                
+                    bg-gray-100 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600`}                
                 />
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="panel_labor_cost" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="panel_labor_cost" className="text-sm font-medium text-gray-900">
                     Labor to Install Panels <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
@@ -291,13 +303,11 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
-                showZeroAsEmpty={!touchedFields.has('panel_labor_cost')}
                   id="panel_labor_cost"
                   value={localData.panel_labor_cost}
                   onChange={(value) => handleCurrencyChange("panel_labor_cost", value)}
-                  placeholder="$0.00"
                   className={`w-full h-11 border ${touchedFields.has('panel_labor_cost') ? "border-green-500" : "border-red-500"} 
-                    focus:ring-blue-500 focus:border-blue-500`}  
+                    bg-gray-100 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600`}  
                 />
               </div>
             </div>
@@ -306,7 +316,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="track_equipment_costs" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="track_equipment_costs" className="text-sm font-medium text-gray-900">
                     Track Equipment Costs <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
@@ -316,19 +326,17 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
-                showZeroAsEmpty={!touchedFields.has('track_equipment_costs')}
                   id="track_equipment_costs"
                   value={localData.track_equipment_costs}
                   onChange={(value) => handleCurrencyChange("track_equipment_costs", value)}
-                  placeholder="$0.00"
                   className={`w-full h-11 border ${touchedFields.has('track_equipment_costs') ? "border-green-500" : "border-red-500"} 
-                    focus:ring-blue-500 focus:border-blue-500`}
+                    bg-gray-100 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600`}
                 />
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="panel_equipment_costs" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="panel_equipment_costs" className="text-sm font-medium text-gray-900">
                     Panel Equipment Costs <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
@@ -338,13 +346,11 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
-                showZeroAsEmpty={!touchedFields.has('panel_equipment_costs')}
                   id="panel_equipment_costs"
                   value={localData.panel_equipment_costs}
                   onChange={(value) => handleCurrencyChange("panel_equipment_costs", value)}
-                  placeholder="$0.00"
                   className={`w-full h-11 border ${touchedFields.has('panel_equipment_costs') ? "border-green-500" : "border-red-500"} 
-                    focus:ring-blue-500 focus:border-blue-500`}
+                    bg-gray-100 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600`}
                 />
               </div>
             </div>
@@ -355,7 +361,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
           <div className="mt-8">
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Label htmlFor="unseen_costs" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="unseen_costs" className="text-sm font-medium text-gray-900">
                   Unseen Costs
                 </Label>
                 <InfoIcon 
@@ -379,11 +385,9 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
               <div className="flex items-center gap-2">
                 <div className="flex-1">
                   <CurrencyInput
-                showZeroAsEmpty={!touchedFields.has('unseen_costs')}
                     id="unseen_costs"
                     value={localData.unseen_costs}
                     onChange={(value) => handleCurrencyChange("unseen_costs", value)}
-                    placeholder="$0.00"
                     disabled={localData.unseen_costs_locked}
                     className={`w-full h-11 border ${
                       localData.unseen_costs_locked
@@ -405,7 +409,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="track_freight_factory" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="track_freight_factory" className="text-sm font-medium text-gray-900">
                     Factory Freight (Tracks) <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
@@ -415,19 +419,17 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
-                showZeroAsEmpty={!touchedFields.has('track_freight_factory')}
                   id="track_freight_factory"
                   value={localData.track_freight_factory}
                   onChange={(value) => handleCurrencyChange("track_freight_factory", value)}
-                  placeholder="$0.00"
                   className={`w-full h-11 border ${touchedFields.has('track_freight_factory') ? "border-green-500" : "border-red-500"} 
-                    focus:ring-blue-500 focus:border-blue-500`}
+                    bg-gray-100 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600`}
                 />
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="panel_freight_factory" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="panel_freight_factory" className="text-sm font-medium text-gray-900">
                     Factory Freight (Panels) <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
@@ -437,19 +439,17 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
-                showZeroAsEmpty={!touchedFields.has('panel_freight_factory')}
                   id="panel_freight_factory"
                   value={localData.panel_freight_factory}
                   onChange={(value) => handleCurrencyChange("panel_freight_factory", value)}
-                  placeholder="$0.00"
                   className={`w-full h-11 border ${touchedFields.has('panel_freight_factory') ? "border-green-500" : "border-red-500"} 
-                    focus:ring-blue-500 focus:border-blue-500`}
+                    bg-gray-100 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600`}
                 />
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="local_handling_costs" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="local_handling_costs" className="text-sm font-medium text-gray-900">
                     Local Handling Costs <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
@@ -459,13 +459,11 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                   />
                 </div>
                 <CurrencyInput
-                showZeroAsEmpty={!touchedFields.has('local_handling_costs')}
                   id="local_handling_costs"
                   value={localData.local_handling_costs}
                   onChange={(value) => handleCurrencyChange("local_handling_costs", value)}
-                  placeholder="$0.00"
                   className={`w-full h-11 border ${touchedFields.has('local_handling_costs') ? "border-green-500" : "border-red-500"} 
-                    focus:ring-blue-500 focus:border-blue-500`}
+                    bg-gray-100 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600`}
                 />
               </div>
             </div>
@@ -477,7 +475,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="materials_markup_percentage" className="text-sm font-medium text-gray-500">
+                  <Label htmlFor="materials_markup_percentage" className="text-sm font-medium text-gray-900">
                     Base Cost Markup Percentage <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
@@ -495,7 +493,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                       onChange={(e) => handlePercentageChange("materials_markup_percentage", e.target.value)}
                       placeholder="Enter a number"
                       className={`w-full h-11 border ${touchedFields.has('materials_markup_percentage') ? "border-green-500" : "border-red-500"} 
-                        focus:ring-blue-500 focus:border-blue-500`}   
+                        bg-gray-100 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600`}   
                     />
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
                   </div>
@@ -510,7 +508,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="shipping_markup_percentage" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="shipping_markup_percentage" className="text-sm font-medium text-gray-900">
                     Shipping Markup Percentage <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
@@ -528,7 +526,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                       onChange={(e) => handlePercentageChange("shipping_markup_percentage", e.target.value)}
                       placeholder="Enter a number"
                       className={`w-full h-11 border ${touchedFields.has('shipping_markup_percentage') ? "border-green-500" : "border-red-500"} 
-                        focus:ring-blue-500 focus:border-blue-500`}   
+                        bg-gray-100 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600`}   
                     />
                     <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
                   </div>
@@ -543,62 +541,8 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
             </div>
           </div>
 
-          {/* Cost Totals */}
-          <div className="mt-8 p-6 bg-slate-50 rounded-lg border border-slate-200">
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="font-medium text-gray-700">Cost Subtotal</span>
-                <span className="font-semibold text-gray-900">{formatCurrency(localData.cost_subtotal)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="font-medium text-gray-700">Base Cost Markup Percentage ({localData.materials_markup_percentage}%)</span>
-                <span className="font-semibold text-green-600">{formatCurrency(localData.base_selling_price - localData.cost_subtotal)}</span>
-              </div>
-              <div className="flex justify-between items-center pt-3 border-t border-emerald-200">
-                <span className="text-xl font-bold text-gray-900">Base Selling Price</span>
-                <span className="text-2xl font-bold text-blue-600">{formatCurrency(localData.base_selling_price)}</span>
-              </div>
-              
-              {/* Shipping & Handling Section */}
-              <div className="pt-3 border-t border-emerald-200 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700">Shipping & Freight Cost Subtotal</span>
-                  <span className="font-semibold text-gray-900">{formatCurrency(localData.shipping_cost_subtotal)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700">Shipping Markup Percentage ({localData.shipping_markup_percentage}%)</span>
-                  <span className="font-semibold text-orange-600">{formatCurrency(localData.shipping_selling_price - localData.shipping_cost_subtotal)}</span>
-                </div>
-                <div className="flex justify-between items-center pt-3 border-t border-orange-200">
-                  <span className="text-xl font-bold text-gray-900">Shipping Selling Price</span>
-                  <span className="text-2xl font-bold text-orange-600">{formatCurrency(localData.shipping_selling_price)}</span>
-                </div>
-              </div>
-              
-              {/* Final Selling Price */}
-              <div className="pt-4 border-t-2 border-emerald-300">
-                <div className="flex justify-between items-center">
-                  <span className="text-2xl font-bold text-gray-900">Final Selling Price</span>
-                  <span className="text-3xl font-bold text-emerald-600">{formatCurrency(localData.final_selling_price)}</span>
-                </div>
-                {/* Total Gross Profit */}
-                {localData.final_selling_price > 0 && (localData.cost_subtotal > 0 || localData.shipping_cost_subtotal > 0) && (
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="font-medium text-gray-700">
-                      Total Gross Profit ({localData.final_selling_gross_profit_percentage.toFixed(1)}%)
-                    </span>
-                    <span className="font-semibold text-emerald-600">
-                      {formatCurrency(localData.final_selling_price_profit_amount)}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-          {/* Payment Terms */}
-          <div className="mt-8 p-6 bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl border border-gray-200">
+           {/* Payment Terms */}
+          <div className="mt-8">
             <h4 className="text-lg font-semibold text-gray-900 mb-4">Payment Terms</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
@@ -626,7 +570,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                     placeholder="Enter a number"
                     required
                     className={`w-full h-11 border ${touchedFields.has('payment_upon_drawings') ? "border-green-500" : "border-red-500"} 
-                        focus:ring-blue-500 focus:border-blue-500`}   
+                        focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600`}   
                   />
                   <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
                 </div>
@@ -634,7 +578,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
               
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="payment_upon_track_installation" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="payment_upon_track_installation" className="text-sm font-medium text-gray-900">
                     Payment % Upon Track Installation <span className="text-red-500">*</span>
                   </Label>
                   <InfoIcon 
@@ -657,7 +601,7 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
                     placeholder="Enter a number"
                     required
                     className={`w-full h-11 border ${touchedFields.has('payment_upon_track_installation') ? "border-green-500" : "border-red-500"} 
-                        focus:ring-blue-500 focus:border-blue-500`}   
+                        focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-600`}   
                   />
                   <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">%</span>
                 </div>
@@ -665,8 +609,61 @@ const EnhancedPricingForm = ({ data, onUpdate }: EnhancedPricingFormProps) => {
             </div>
           </div>
         </div>
+
+        {/* Cost Totals */}
+        <div className="mt-8 p-6 bg-slate-50 rounded-lg border border-slate-200">
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="font-medium text-gray-700">Cost Subtotal</span>
+              <span className="font-semibold text-gray-900">{formatCurrency(localData.cost_subtotal)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="font-medium text-gray-700">Base Cost Markup Percentage ({localData.materials_markup_percentage}%)</span>
+              <span className="font-semibold text-green-600">{formatCurrency(localData.base_selling_price - localData.cost_subtotal)}</span>
+            </div>
+            <div className="flex justify-between items-center pt-3 border-t border-emerald-200">
+              <span className="text-xl font-bold text-gray-900">Base Selling Price</span>
+              <span className="text-2xl font-bold text-blue-600">{formatCurrency(localData.base_selling_price)}</span>
+            </div>
+            
+            {/* Shipping & Handling Section */}
+            <div className="pt-3 border-t border-emerald-200 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="font-medium text-gray-700">Shipping & Freight Cost Subtotal</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(localData.shipping_cost_subtotal)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-medium text-gray-700">Shipping Markup Percentage ({localData.shipping_markup_percentage}%)</span>
+                <span className="font-semibold text-orange-600">{formatCurrency(localData.shipping_selling_price - localData.shipping_cost_subtotal)}</span>
+              </div>
+              <div className="flex justify-between items-center pt-3 border-t border-orange-200">
+                <span className="text-xl font-bold text-gray-900">Shipping Selling Price</span>
+                <span className="text-2xl font-bold text-orange-600">{formatCurrency(localData.shipping_selling_price)}</span>
+              </div>
+            </div>
+            
+            {/* Final Selling Price */}
+            <div className="pt-4 border-t-2 border-emerald-300">
+              <div className="flex justify-between items-center">
+                <span className="text-2xl font-bold text-gray-900">Final Selling Price</span>
+                <span className="text-3xl font-bold text-emerald-600">{formatCurrency(localData.final_selling_price)}</span>
+              </div>
+              {/* Total Gross Profit */}
+              {localData.final_selling_price > 0 && (localData.cost_subtotal > 0 || localData.shipping_cost_subtotal > 0) && (
+                <div className="flex justify-between items-center mt-2">
+                  <span className="font-medium text-gray-700">
+                    Total Gross Profit ({localData.final_selling_gross_profit_percentage.toFixed(1)}%)
+                  </span>
+                  <span className="font-semibold text-emerald-600">
+                    {formatCurrency(localData.final_selling_price_profit_amount)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
-    
+    </div>
   );
 };
 

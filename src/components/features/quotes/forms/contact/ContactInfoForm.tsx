@@ -3,8 +3,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEffect, useState } from "react";
 import { User, Mail, Phone, Printer, MapPin, Globe, Plus, TrendingUp } from "lucide-react";
-import { useOrganizations } from "@/hooks/useOrganizations";
-import { useOrganizationSettings } from "@/hooks/useCompanySettings";
+import { useCurrentOrganization, useOrganizationMembers } from "@/hooks/queries";
+import { useUser } from "@/auth";
 import { extractCompanyInfoForForm } from "@/lib/types/settings/companySettings";
 
 interface ContactInfoData {
@@ -24,8 +24,10 @@ interface ContactInfoFormProps {
 }
 
 const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
-  const { currentOrganization, members, loading } = useOrganizations();
-  const { organization, isLoading: organizationLoading } = useOrganizationSettings();
+  const user = useUser();
+  const { organization, isLoading: loading } = useCurrentOrganization(user?.id);
+  const { data: members = [] } = useOrganizationMembers(organization?.id || '', !!organization?.id);
+  const organizationLoading = loading;
   const [showCustomNameInput, setShowCustomNameInput] = useState(false);
   const [showCustomEmailInput, setShowCustomEmailInput] = useState(false);
   const [showCustomQuoteSourceInput, setShowCustomQuoteSourceInput] = useState(false);
@@ -40,13 +42,21 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
 
   // Automatically set organization name when organization loads
   useEffect(() => {
-    if (currentOrganization && !data.organizationName) {
-      handleChange('organizationName', currentOrganization.name);
+    if (organization && !data.organizationName) {
+      console.log('[ContactInfoForm] Setting organizationName:', organization.name);
+      handleChange('organizationName', organization.name);
     }
-  }, [currentOrganization, data.organizationName]);
+  }, [organization, data.organizationName]);
+
+  // Debug: Log when organization is not available
+  useEffect(() => {
+    if (!organization) {
+      console.warn('[ContactInfoForm] organization is not available');
+    }
+  }, [organization]);
 
   // Get active members from the organization
-  const activeMembers = members.filter(member => member.status === 'Active');
+  const activeMembers = (members || []).filter(member => member.status === 'Active');
   
   // Create contact options from organization members
   const contactNames = activeMembers
@@ -113,8 +123,9 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
 
     // Check if current quoteSource is not in the dropdown options and set custom input if needed
     const standardQuoteSources = [
-      'Manual', 'Website_Lead', 'Contractor_Referral', 'Phone_Inquiry', 
-      'Email_Inquiry', 'Trade_Show', 'Repeat_Customer'
+      'Manual Entry', 'Website Lead', 'Contractor Referral', 'Manufacturer Referral',
+      'Architect Referral', 'Phone Inquiry', 'Email Inquiry', 'Trade Show',
+      'Repeat Customer'
     ];
     
     if (data.quoteSource && !standardQuoteSources.includes(data.quoteSource)) {
@@ -201,7 +212,10 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
               <SelectTrigger className={`h-10 ${
                 data.contactName ? 'border-green-500' : 'border-red-500'
               }`}>
-                <SelectValue placeholder={loading ? "Loading contacts..." : "Select contact name"} />
+                <SelectValue 
+                  placeholder={loading ? "Loading contacts..." : "Select contact name"} 
+                  className="text-gray-600"
+                />
               </SelectTrigger>
               <SelectContent>
                 {contactNames.map((name) => (
@@ -262,11 +276,14 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
               <SelectTrigger className={`h-10 w-full ${
                 data.contactEmail ? 'border-green-500' : 'border-red-500'
               }`}>
-                <SelectValue placeholder={loading ? "Loading emails..." : "Select contact email"} />
+                <SelectValue 
+                  placeholder={loading ? "Loading emails..." : "Select contact email"} 
+                  className="text-gray-600"
+                />
               </SelectTrigger>
               <SelectContent>
                 {contactEmails.map((email) => (
-                  <SelectItem key={email} value={email}>
+                  <SelectItem key={email} value={email!}>
                     {email}
                   </SelectItem>
                 ))}
@@ -318,7 +335,7 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
             placeholder={organizationLoading ? "Loading..." : (data.fax ? "From organization settings" : "Not set in organization")}
             required={!!data.fax}
             className={`h-10 w-full bg-gray-50 cursor-not-allowed ${
-              data.fax ? 'border-green-500' : 'border-gray-300'
+              data.fax ? 'border-green-500' : 'border-gray-300 placeholder:text-gray-600' 
             }`}
           />
           <p className="text-xs text-muted-foreground">
@@ -414,16 +431,21 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
                 <SelectTrigger className={`h-10 w-full ${
                   data.quoteSource ? 'border-green-500' : 'border-red-500'
                 }`}>
-                  <SelectValue placeholder="Select quote source" />
+                  <SelectValue 
+                    placeholder="Select quote source" 
+                    className="text-gray-600"   
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Manual">Manual Entry</SelectItem>
-                  <SelectItem value="Website_Lead">Website Lead</SelectItem>
-                  <SelectItem value="Contractor_Referral">Contractor Referral</SelectItem>
-                  <SelectItem value="Phone_Inquiry">Phone Inquiry</SelectItem>
-                  <SelectItem value="Email_Inquiry">Email Inquiry</SelectItem>
-                  <SelectItem value="Trade_Show">Trade Show</SelectItem>
-                  <SelectItem value="Repeat_Customer">Repeat Customer</SelectItem>
+                  <SelectItem value="Manual Entry">Manual Entry</SelectItem>
+                  <SelectItem value="Website Lead">Website Lead</SelectItem>
+                  <SelectItem value="Contractor Referral">Contractor Referral</SelectItem>
+                  <SelectItem value="Manufacturer Referral">Manufacturer Referral</SelectItem>
+                  <SelectItem value="Architect Referral">Architect Referral</SelectItem>
+                  <SelectItem value="Phone Inquiry">Phone Inquiry</SelectItem>
+                  <SelectItem value="Email Inquiry">Email Inquiry</SelectItem>
+                  <SelectItem value="Trade Show">Trade Show</SelectItem>
+                  <SelectItem value="Repeat Customer">Repeat Customer</SelectItem>
                   <SelectItem value="custom">
                     <div className="flex items-center gap-2">
                       <Plus className="w-4 h-4" />

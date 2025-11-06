@@ -26,6 +26,7 @@ interface StepContentProps {
   onWallPocketDoorsUpdate: (wallName: string, pocketDoorsConfig: { foldType: string; foldStyle: string }) => void;
   onWallStructureSupportUpdate: (wallName: string, structureSupport: string) => void;
   onSave: () => Promise<void>;
+  onPricingTouchedFieldsUpdate?: (fields: Set<string>) => void;
 }
 
 export const StepContent = ({
@@ -43,7 +44,8 @@ export const StepContent = ({
   onPricingUpdate,
   onWallPocketDoorsUpdate,
   onWallStructureSupportUpdate,
-  onSave
+  onSave,
+  onPricingTouchedFieldsUpdate
 }: StepContentProps) => {
   switch (stepId) {
     case "contact":
@@ -60,11 +62,12 @@ export const StepContent = ({
       return <DeliveryLaborForm data={deliveryLabor} onUpdate={onDeliveryLaborUpdate} />;
     case "pricing":
       return (
-        <EnhancedPricingForm 
+        <EnhancedPricingForm
           data={pricing || defaultEnhancedPricing}
-          onUpdate={onPricingUpdate} 
+          onUpdate={onPricingUpdate}
           onGenerate={onSave}
           quoteData={allQuoteData}
+          onTouchedFieldsChange={onPricingTouchedFieldsUpdate}
         />
       );
     default:

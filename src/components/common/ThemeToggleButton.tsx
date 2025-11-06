@@ -7,12 +7,12 @@ export function ThemeToggleButton() {
   return (
     <button
       onClick={toggleTheme}
-      className="p-2 rounded-lg hover:bg-[var(--sidebar-nav-bg-hover)] transition-colors flex items-center justify-center"
+      className="p-1.5 rounded-lg hover:bg-[var(--sidebar-nav-bg-hover)] transition-colors flex items-center justify-center"
     >
       {theme === 'dark' ? (
-        <Moon className="h-5 w-5 text-[var(--sidebar-icon-moon)]" />
+        <Moon className="h-[18px] w-[18px] text-[var(--sidebar-icon-moon)]" />
       ) : (
-        <Sun className="h-5 w-5 text-[var(--sidebar-icon-sun)]" />
+        <Sun className="h-[18px] w-[18px] text-[var(--sidebar-icon-sun)]" />
       )}
     </button>
   );

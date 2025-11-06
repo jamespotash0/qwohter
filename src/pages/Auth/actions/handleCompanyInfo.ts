@@ -23,7 +23,8 @@ interface HandleCompanyInfoSubmitParams {
 }
 
 export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitParams & {
-  setStep?: (step: 'subscription') => void;
+  setStep?: (step: 'trial-activation') => void;
+  navigate: NavigateFunction;
 }) => {
   const {
     userId,
@@ -36,8 +37,6 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
     foundVia,
     setLoading,
     toast,
-    clearAuthState,
-    redirectAfterAuth,
     setStep,
   } = params;
 
@@ -62,15 +61,12 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
 
     toast({
       title: 'Company information saved!',
-      description: 'Choose your subscription plan to continue.',
+      description: 'Almost done! Choose how you want to get started.',
     });
 
-    // Go to subscription selection step instead of redirecting
+    // Go to trial activation step to let user choose
     if (setStep) {
-      setStep('subscription');
-    } else {
-      clearAuthState();
-      redirectAfterAuth();
+      setStep('trial-activation');
     }
   } catch (error: any) {
     toast({

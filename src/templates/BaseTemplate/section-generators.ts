@@ -1,5 +1,6 @@
 import { QuoteData, TemplateHelpers } from './types';
 import { isGlassWall, isOperableWall } from '../../lib/types';
+import { TemplateMarkers } from '../../utils/templateMarkers';
 
 export class SectionGenerators {
   private helpers: TemplateHelpers;
@@ -11,13 +12,50 @@ export class SectionGenerators {
   generateHeader(data: QuoteData): string {
     // Get organization info first, then fallback to quote details
     const organizationInfo = data.organization_info;
-    
+
     const contactName = data.quote_details?.contactName || '';
+    const contactEmail = data.quote_details?.contactEmail || '';
     const address = organizationInfo?.address || data.quote_details?.address || '';
     const phone = organizationInfo?.phone || data.quote_details?.phone || '';
     const fax = organizationInfo?.fax || data.quote_details?.fax || '';
     const website = organizationInfo?.website || data.quote_details?.website || '';
-    
+
+    // Wrap all dynamic values with semantic markup
+    const contactNameMarked = contactName ? TemplateMarkers.dynamic({
+      path: 'quote_details.contactName',
+      value: contactName,
+      format: 'text'
+    }) : '';
+
+    const contactEmailMarked = contactEmail ? TemplateMarkers.dynamic({
+      path: 'quote_details.contactEmail',
+      value: contactEmail,
+      format: 'text'
+    }) : '';
+
+    const addressMarked = address ? TemplateMarkers.dynamic({
+      path: organizationInfo?.address ? 'organization_info.address' : 'quote_details.address',
+      value: address,
+      format: 'text'
+    }) : '';
+
+    const phoneMarked = phone ? TemplateMarkers.dynamic({
+      path: organizationInfo?.phone ? 'organization_info.phone' : 'quote_details.phone',
+      value: phone,
+      format: 'text'
+    }) : '';
+
+    const faxMarked = fax ? TemplateMarkers.dynamic({
+      path: organizationInfo?.fax ? 'organization_info.fax' : 'quote_details.fax',
+      value: fax,
+      format: 'text'
+    }) : '';
+
+    const websiteMarked = website ? TemplateMarkers.dynamic({
+      path: organizationInfo?.website ? 'organization_info.website' : 'quote_details.website',
+      value: website,
+      format: 'text'
+    }) : '';
 
     // For now, try to use logo_public_url (should work with public bucket)
     // If that doesn't work, we can construct the public URL from logo_url
@@ -49,11 +87,11 @@ export class SectionGenerators {
           onError="this.style.display='none'"
         />`
       : '';
-    
+
 
     return `<div class="header-section" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0px 0px 30px 0px;">
       <div class="company-info" style="flex: 0 0 auto; width: 250px;">
-        <div class="company-logo" style="width: 250px; height: 100px; display: flex; align-items: center; justify-content: flex-start;">
+        <div class="company-logo" style="width: 250px; height: 120px; display: flex; align-items: center; justify-content: flex-start;">
           ${logoHtml}
         </div>
       </div>
@@ -61,103 +99,182 @@ export class SectionGenerators {
       <div class="contact-details" style="flex: 1; min-width: 0; padding-left: 70px;">
         <div class="contact-row">
           <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Contact:</span>
-          <span class="value">${contactName}</span>
+          <span class="value">${contactNameMarked}</span>
+        </div>
+        <div class="contact-row">
+          <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Email:</span>
+          <span class="value">${contactEmailMarked}</span>
         </div>
         <div class="contact-row" style="display: flex; align-items: flex-start;">
           <span class="label" style="font-weight: bold; width: 80px; flex-shrink: 0; text-align: right; padding-right: 0px;">
             Address:
           </span>
           <span class="value" style="flex: 1; white-space: normal;">
-            ${address}
+            ${addressMarked}
           </span>
         </div>
         <div class="contact-row">
           <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Phone:</span>
-          <span class="value">${phone}</span>
+          <span class="value">${phoneMarked}</span>
         </div>
         ${hasFax ? `<div class="contact-row">
           <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Fax:</span>
-          <span class="value">${fax}</span>
+          <span class="value">${faxMarked}</span>
         </div>` : ''}
         <div class="contact-row">
           <span class="label" style="display: inline-block; width: 80px; font-weight: bold;">Website:</span>
-          <span class="value website-link" style="text-decoration: underline; text-underline-offset: 3px;">${website}</span>
+          <span class="value website-link" style="text-decoration: underline; text-underline-offset: 3px;">${websiteMarked}</span>
         </div>
       </div>
     </div>`;
   }
 
-  generateBillingAndJobInfo(data: QuoteData): string {
-    const date = this.helpers.formatDate(data.job_details?.date || '');
-    const proposalNumber = data.proposal_number || 'N/A';
-    const jobLocation = data.job_details?.job_location || '';
+  // Separate methods for each table
+  generateBilledToTable(data: QuoteData): string {
     const billedToName = data.job_details?.client_name || '';
     const billedToCompany = data.job_details?.client_company || '';
     const billedToAddress = data.job_details?.client_address || '';
+
+    // Wrap all dynamic values with semantic markup
+    const billedToNameMarked = billedToName ? TemplateMarkers.dynamic({
+      path: 'job_details.client_name',
+      value: billedToName,
+      format: 'text'
+    }) : '';
+
+    const billedToCompanyMarked = billedToCompany ? TemplateMarkers.dynamic({
+      path: 'job_details.client_company',
+      value: billedToCompany,
+      format: 'text'
+    }) : '';
+
+    const billedToAddressMarked = billedToAddress ? TemplateMarkers.dynamic({
+      path: 'job_details.client_address',
+      value: billedToAddress,
+      format: 'text'
+    }) : '';
+
+    return `<div class="billing-table" style="width: 30%;">
+      <div style="font-weight: bold; margin-bottom: 4px;">BILLED TO:</div>
+      <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+        <tr>
+          <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 8px 4px;">
+            ${billedToNameMarked}
+          </td>
+        </tr>
+        <tr>
+          <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 8px 4px;">
+            ${billedToCompanyMarked}
+          </td>
+        </tr>
+        <tr>
+          <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 8px 4px;">
+            ${billedToAddressMarked}
+          </td>
+        </tr>
+      </table>
+    </div>`;
+  }
+
+  generateJobInfoTable(data: QuoteData): string {
+    const date = this.helpers.formatDate(data.job_details?.date || '');
+    const proposalNumber = data.proposal_number || 'N/A';
+    const jobLocation = data.job_details?.job_location || '';
     const projectName = data.project_name;
 
+    // Wrap all dynamic values with semantic markup
+    const dateMarked = date ? TemplateMarkers.dynamic({
+      path: 'job_details.date',
+      value: date,
+      format: 'text'
+    }) : '';
+
+    const proposalNumberMarked = proposalNumber ? TemplateMarkers.dynamic({
+      path: 'proposal_number',
+      value: proposalNumber,
+      format: 'text'
+    }) : '';
+
+    const projectNameMarked = projectName ? TemplateMarkers.dynamic({
+      path: 'project_name',
+      value: projectName,
+      format: 'text'
+    }) : '';
+
+    const jobLocationMarked = jobLocation ? TemplateMarkers.dynamic({
+      path: 'job_details.job_location',
+      value: jobLocation,
+      format: 'text'
+    }) : '';
+
+    return `<div class="job-info-section" style="flex-grow: 1;">
+      <!-- <div style="font-weight: bold; margin-left: 40px; margin-bottom: 4px; height: 16px"></div> -->
+      <table style="width: 80%; border-collapse: collapse; margin-left: 175px">
+        <colgroup>
+          <col style="width: 30%;">
+          <col style="width: 50%;">
+        </colgroup>
+        <tr>
+          <td style="font-weight: bold; padding: 4px; width: 80px; border: none; text-align: right;">
+            Date:
+          </td>
+          <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
+            ${dateMarked}
+          </td>
+        </tr>
+        <tr>
+          <td style="font-weight: bold; padding: 4px; border: none; text-align: right;">
+            Proposal #:
+          </td>
+          <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
+            ${proposalNumberMarked}
+          </td>
+        </tr>
+        <tr>
+          <td style="font-weight: bold; padding: 4px; border: none; text-align: right;">
+            Project Name:
+          </td>
+          <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
+            ${projectNameMarked}
+          </td>
+        </tr>
+        <tr>
+          <td style="font-weight: bold; padding: 4px; width: 25px; border: none; text-align: right; white-space: nowrap;">
+            Job Location:
+          </td>
+          <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black; white-space: normal; word-break: break-word; max-width: 300px;">
+            ${jobLocationMarked}
+          </td>
+        </tr>
+      </table>
+    </div>`;
+  }
+
+  // Legacy wrapper that combines both tables (for backward compatibility)
+  generateBillingAndJobInfo(data: QuoteData, showBilledTo: boolean = true, showJobInfo: boolean = true): string {
+    if (!showBilledTo && !showJobInfo) return '';
+
+    const billedToSection = showBilledTo ? this.generateBilledToTable(data) : '';
+    const jobInfoSection = showJobInfo ? this.generateJobInfoTable(data) : '';
+
+    // If only job info is shown, add spacer to maintain right positioning
+    if (!showBilledTo && showJobInfo) {
+      return `<div class="billing-job-container" style="display: flex; gap: 40px; align-items: flex-start; margin-top: -40px;">
+        <div style="width: 30%;"></div>
+        ${jobInfoSection}
+      </div>`;
+    }
+
+    if (showBilledTo && !showJobInfo) {
+      return `<div class="billing-job-container" style="display: flex; gap: 40px; align-items: flex-start; margin-top: -40px;">
+        ${billedToSection}
+      </div>`;
+    }
+
+    // Both are shown
     return `<div class="billing-job-container" style="display: flex; gap: 40px; align-items: flex-start; margin-top: -40px;">
-      <div class="billing-table" style="width: 30%;">
-        <div style="font-weight: bold; margin-bottom: 4px;">BILLED TO:</div>
-        <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
-          <tr>
-            <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 8px 4px;">
-              ${billedToName}
-            </td>
-          </tr>
-          <tr>
-            <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 8px 4px;">
-              ${billedToCompany}
-            </td>
-          </tr>
-          <tr>
-            <td style="border: none; border-bottom: 0.5px solid black; padding: 4px 4px 8px 4px;">
-              ${billedToAddress}
-            </td>
-          </tr>
-        </table>
-      </div>
-      <div class="job-info-section" style="flex-grow: 1;">
-        <!-- <div style="font-weight: bold; margin-left: 40px; margin-bottom: 4px; height: 16px"></div> -->
-        <table style="width: 80%; border-collapse: collapse; margin-left: 175px">
-          <colgroup>
-            <col style="width: 30%;">
-            <col style="width: 50%;">
-          </colgroup>
-          <tr>
-            <td style="font-weight: bold; padding: 4px; width: 80px; border: none; text-align: right;">
-              Date:
-            </td>
-            <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
-              ${date}
-            </td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold; padding: 4px; border: none; text-align: right;">
-              Proposal #:
-            </td>
-            <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
-              ${proposalNumber}
-            </td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold; padding: 4px; border: none; text-align: right;">
-              Project Name:
-            </td>
-            <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
-              ${projectName}
-            </td>
-          </tr>
-          <tr>
-            <td style="font-weight: bold; padding: 4px; width: 25px; border: none; text-align: right; white-space: nowrap;">
-              Job Location:
-            </td>
-            <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black; white-space: normal; word-break: break-word; max-width: 300px;">
-              ${jobLocation}
-            </td>
-          </tr>
-        </table>
-      </div>
+      ${billedToSection}
+      ${jobInfoSection}
     </div>`;
   }
 
@@ -168,16 +285,31 @@ export class SectionGenerators {
     const totalValue = data.price_details?.final_selling_price;
 
     // Additional processing to ensure numeric values with better null handling
-    const parsedBasePrice = basePriceValue ? 
+    const parsedBasePrice = basePriceValue ?
       (typeof basePriceValue === 'string' ? parseFloat(basePriceValue.replace(/[^0-9.-]/g, '')) : basePriceValue) : 0;
-    const parsedFreight = freightValue ? 
+    const parsedFreight = freightValue ?
       (typeof freightValue === 'string' ? parseFloat(freightValue.replace(/[^0-9.-]/g, '')) : freightValue) : 0;
-    const parsedTotal = totalValue ? 
+    const parsedTotal = totalValue ?
       (typeof totalValue === 'string' ? parseFloat(totalValue.replace(/[^0-9.-]/g, '')) : totalValue) : 0;
 
-    const basePrice = this.helpers.formatCurrency(parsedBasePrice);
-    const freight = this.helpers.formatCurrency(parsedFreight);
-    const total = this.helpers.formatCurrency(parsedTotal);
+    // Wrap raw numeric values with semantic markup (TemplateMarkers will format as currency)
+    const basePriceMarked = TemplateMarkers.dynamic({
+      path: 'price_details.base_selling_price',
+      value: parsedBasePrice,
+      format: 'currency'
+    });
+
+    const freightMarked = TemplateMarkers.dynamic({
+      path: 'price_details.shipping_selling_price',
+      value: parsedFreight,
+      format: 'currency'
+    });
+
+    const totalMarked = TemplateMarkers.dynamic({
+      path: 'price_details.final_selling_price',
+      value: parsedTotal,
+      format: 'currency'
+    });
 
     return `<div class="pricing-section" style="margin-top: 10px;">
       <table style="width: 90%; border-collapse: collapse; table-layout: fixed;">
@@ -187,15 +319,15 @@ export class SectionGenerators {
         </colgroup>
         <tr>
           <td style="border: 0.5px solid black; padding: 8px 8px 12px 8px;"><strong> As described, furnished and installed</strong></td>
-          <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${basePrice}</strong></td>
+          <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${basePriceMarked}</strong></td>
         </tr>
         <tr>
           <td style="border: 0.5px solid black; padding: 8px;"><strong>Estimated Inbound Freight + Local Delivery</strong></td>
-          <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${freight}</strong></td>
+          <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${freightMarked}</strong></td>
         </tr>
         <tr>
           <td style="border: 0.5px solid black; padding: 8px 8px 12px 8px;"><strong>Total</strong></td>
-          <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${total}</strong></td>
+          <td style="border: 0.5px solid black; text-align: right; padding: 8px 8px 12px 8px;"><strong>${totalMarked}</strong></td>
         </tr>
       </table>
     </div>`;
@@ -207,6 +339,31 @@ export class SectionGenerators {
     const paymentUponDrawings = data.price_details?.payment_upon_drawings || '33';
     const paymentUponTrackInstallation = data.price_details?.payment_upon_track_installation || '33';
 
+    // Wrap all dynamic values with semantic markup
+    const laborTypeMarked = laborType ? TemplateMarkers.dynamic({
+      path: 'labor_details.laborType',
+      value: laborType,
+      format: 'text'
+    }) : '';
+
+    const wageRateMarked = wageRate ? TemplateMarkers.dynamic({
+      path: 'labor_details.wageRate',
+      value: wageRate,
+      format: 'text'
+    }) : '';
+
+    const paymentUponDrawingsMarked = paymentUponDrawings ? TemplateMarkers.dynamic({
+      path: 'price_details.payment_upon_drawings',
+      value: paymentUponDrawings,
+      format: 'text'
+    }) : '';
+
+    const paymentUponTrackInstallationMarked = paymentUponTrackInstallation ? TemplateMarkers.dynamic({
+      path: 'price_details.payment_upon_track_installation',
+      value: paymentUponTrackInstallation,
+      format: 'text'
+    }) : '';
+
     return `<div class="statement-section" style="line-height: 1.15;">
       <br><strong>Above Proposal is a Good Faith Estimate, Based on the Information Provided & Subject to Revision Upon Site Visit & Inspection. Pricing is Firm for 60 Days From Date Above</strong>
     </div>
@@ -215,7 +372,7 @@ export class SectionGenerators {
       <div class="terms-list">
         <div class="term-item section-header-item" style="break-inside: avoid; margin-bottom: 8px; font-weight: bold; font-size: 12pt; margin-top: 1.5em;">GENERAL NOTES AND TERMS:</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">1. <strong>Electrical, HVAC, and sprinkler system modifications</strong>, if required, are the responsibility of others.</div>
-        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">2. All labor is <strong>${laborType}</strong>, performed at <strong>${wageRate ? wageRate + ' ' : ''}Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</div>
+        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">2. All labor is <strong>${laborTypeMarked}</strong>, performed at <strong>${wageRateMarked ? wageRateMarked + ' ' : ''}Wage Rates</strong> during regular hours (Monday–Friday, 7:00 AM–3:30 PM).</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">3. <span style="color: red;">Quoted delivery pricing assumes <strong>elevator or ground-level access</strong>. Deliveries involving stairs, restricted access, or requiring additional equipment (e.g., outside lift) are subject to additional charges.</span></div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">4. Pricing is <strong>exclusive of any applicable taxes</strong>, which will be added as required.</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">5. The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</div>
@@ -226,8 +383,8 @@ export class SectionGenerators {
         <div class="term-item payment-terms-item" style="break-inside: avoid; margin-bottom: 4px;">
           10. <strong> Payment Terms:</strong>
           <div style="padding-left: 2rem; margin-top: 4px;">
-            <div>– <strong>${paymentUponDrawings}%</strong> due upon approval of shop drawings</div>
-            <div>– <strong>${paymentUponTrackInstallation}%</strong> due upon track installation</div>
+            <div>– <strong>${paymentUponDrawingsMarked}%</strong> due upon approval of shop drawings</div>
+            <div>– <strong>${paymentUponTrackInstallationMarked}%</strong> due upon track installation</div>
             <div>– Remaining balance due upon final completion</div>
           </div>
         </div>
@@ -247,12 +404,12 @@ export class SectionGenerators {
 
   generatePocketDoorsSection(data: QuoteData): string {
     const walls = data.wall_details?.walls || {};
-    
+
     const wallsWithPockets = Object.entries(walls)
       .filter(([_, wall]) => {
         // Check per-wall configuration - require both fold type AND fold style
-        
-        if (wall.pocketDoors?.foldType && 
+
+        if (wall.pocketDoors?.foldType &&
             wall.pocketDoors.foldType.toLowerCase().trim() !== 'none' &&
             wall.pocketDoors.foldType.trim() !== '' &&
             wall.pocketDoors?.foldStyle &&
@@ -262,8 +419,8 @@ export class SectionGenerators {
         }
         return false;
       })
-      .map(([name, wall]) => ({ 
-        name, 
+      .map(([name, wall]) => ({
+        name,
         type: wall.pocketDoors!.foldType,
         style: wall.pocketDoors!.foldStyle || ''
       }));
@@ -274,7 +431,27 @@ export class SectionGenerators {
 
     // Create inline sentence describing each wall's pocket doors
     const wallDescriptions = wallsWithPockets
-      .map(wall => `<strong>${wall.name.replace(/\s+/g, '&nbsp;')}</strong> will use <strong>${wall.type} ${wall.style}</strong> pocket doors`)
+      .map(wall => {
+        const wallNameMarked = TemplateMarkers.dynamic({
+          path: `wall_details.walls.${wall.name}.name`,
+          value: wall.name,
+          format: 'text'
+        });
+
+        const pocketTypeMarked = TemplateMarkers.dynamic({
+          path: `wall_details.walls.${wall.name}.pocketDoors.foldType`,
+          value: wall.type,
+          format: 'text'
+        });
+
+        const pocketStyleMarked = TemplateMarkers.dynamic({
+          path: `wall_details.walls.${wall.name}.pocketDoors.foldStyle`,
+          value: wall.style,
+          format: 'text'
+        });
+
+        return `<strong>${wallNameMarked}</strong> will use <strong>${pocketTypeMarked} ${pocketStyleMarked}</strong> pocket doors`;
+      })
       .join(', and ');
 
     const summary = wallsWithPockets.length > 1
@@ -351,16 +528,46 @@ export class SectionGenerators {
       .map(wall => {
         const qty = parseInt(wall.quantity) || 0;
         const quantityText = qty === 1 ? 'One' : qty === 2 ? 'Two' : `${qty}`;
-        
+
+        const wallNameMarked = TemplateMarkers.dynamic({
+          path: `wall_details.walls.${wall.name}.name`,
+          value: wall.name,
+          format: 'text'
+        });
+
+        const quantityMarked = TemplateMarkers.dynamic({
+          path: `wall_details.walls.${wall.name}.${wall.isGlassWall ? 'passDoorQuantity' : 'passDoorQuantity'}`,
+          value: quantityText,
+          format: 'text'
+        });
+
         if (wall.isGlassWall) {
           // For glass walls, show both option and type if both exist
-          const passDescription = wall.option && wall.option !== wall.type 
-            ? `<strong>${wall.type} ${wall.option}</strong>` 
-            : `<strong>${wall.type}</strong>`;
-          return `<strong>${wall.name.replace(/\s+/g, '&nbsp;')}</strong> has <strong>${quantityText}</strong> ${passDescription} <strong>Pass Door</strong>`;
+          const passDoorTypeMarked = wall.type ? TemplateMarkers.dynamic({
+            path: `wall_details.walls.${wall.name}.passDoorType`,
+            value: wall.type,
+            format: 'text'
+          }) : '';
+
+          const passDoorOptionMarked = (wall.option && wall.option !== wall.type) ? TemplateMarkers.dynamic({
+            path: `wall_details.walls.${wall.name}.passDoorOption`,
+            value: wall.option,
+            format: 'text'
+          }) : '';
+
+          const passDescription = wall.option && wall.option !== wall.type
+            ? `<strong>${passDoorTypeMarked} ${passDoorOptionMarked}</strong>`
+            : `<strong>${passDoorTypeMarked}</strong>`;
+          return `<strong>${wallNameMarked}</strong> has <strong>${quantityMarked}</strong> ${passDescription} <strong>Pass Door</strong>`;
         } else {
           // For operable walls, use the standard format
-          return `<strong>${wall.name.replace(/\s+/g, '&nbsp;')}</strong> has <strong>${quantityText} ${wall.type} Pass Door</strong> panel${qty > 1 ? 's' : ''}`;
+          const passDoorPanelsMarked = wall.type ? TemplateMarkers.dynamic({
+            path: `wall_details.walls.${wall.name}.passDoorPanels`,
+            value: wall.type,
+            format: 'text'
+          }) : '';
+
+          return `<strong>${wallNameMarked}</strong> has <strong>${quantityMarked} ${passDoorPanelsMarked} Pass Door</strong> panel${qty > 1 ? 's' : ''}`;
         }
       })
       .join(', and ');

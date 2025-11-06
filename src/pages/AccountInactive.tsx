@@ -1,17 +1,20 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "@/stores/auth/authStore";
-import { useOrganizationStore } from "@/stores/organization/organizationStore";
+import { useUser, useSignOut } from "@/auth";
+import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, LogOut, Mail } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 const AccountInactive = () => {
   const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
-  const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
-  const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
+
+  // ✅ v3.0.0: Already using new auth hooks
+  const user = useUser();
+  const { mutate: signOut } = useSignOut();
+
+  // Get current organization and role from React Query
+  const { organization: currentOrganization, role: currentUserRole } = useCurrentOrganization(user?.id || '');
 
   useEffect(() => {
     // If user becomes active again, redirect to dashboard
@@ -20,9 +23,12 @@ const AccountInactive = () => {
     }
   }, [currentUserRole, navigate]);
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
+  const handleSignOut = () => {
+    signOut(undefined, {
+      onSuccess: () => {
+        navigate("/auth");
+      }
+    });
   };
 
   const handleContactSupport = () => {

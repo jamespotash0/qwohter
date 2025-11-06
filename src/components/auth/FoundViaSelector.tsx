@@ -17,23 +17,23 @@ export interface FoundViaSelectorProps {
 }
 
 const FOUND_VIA_OPTIONS = [
-  { value: 'google-search', label: 'Google Search' },
-  { value: 'social-media', label: 'Social Media' },
-  { value: 'referral', label: 'Referral from Friend/Colleague' },
-  { value: 'industry-website', label: 'Industry Website' },
-  { value: 'trade-show', label: 'Trade Show/Conference' },
-  { value: 'online-ad', label: 'Online Advertisement' },
-  { value: 'youtube', label: 'YouTube' },
-  { value: 'linkedin', label: 'LinkedIn' },
-  { value: 'facebook', label: 'Facebook' },
-  { value: 'instagram', label: 'Instagram' },
-  { value: 'email-newsletter', label: 'Email Newsletter' },
-  { value: 'blog-article', label: 'Blog Article' },
-  { value: 'podcast', label: 'Podcast' },
-  { value: 'webinar', label: 'Webinar' },
-  { value: 'existing-customer', label: 'Existing Customer' },
-  { value: 'partner-recommendation', label: 'Partner Recommendation' },
-  { value: 'other', label: 'Other' }
+  { value: 'Google Search', label: 'Google Search' },
+  { value: 'Social Media', label: 'Social Media' },
+  { value: 'Referral from Friend/Colleague', label: 'Referral from Friend/Colleague' },
+  { value: 'Industry Website', label: 'Industry Website' },
+  { value: 'Trade Show/Conference', label: 'Trade Show/Conference' },
+  { value: 'Online Advertisement', label: 'Online Advertisement' },
+  { value: 'YouTube', label: 'YouTube' },
+  { value: 'LinkedIn', label: 'LinkedIn' },
+  { value: 'Facebook', label: 'Facebook' },
+  { value: 'Instagram', label: 'Instagram' },
+  { value: 'Email Newsletter', label: 'Email Newsletter' },
+  { value: 'Blog Article', label: 'Blog Article' },
+  { value: 'Podcast', label: 'Podcast' },
+  { value: 'Webinar', label: 'Webinar' },
+  { value: 'Existing Customer', label: 'Existing Customer' },
+  { value: 'Partner Recommendation', label: 'Partner Recommendation' },
+  { value: 'Other', label: 'Other' }
 ];
 
 export const FoundViaSelector: React.FC<FoundViaSelectorProps> = ({
@@ -48,16 +48,17 @@ export const FoundViaSelector: React.FC<FoundViaSelectorProps> = ({
   );
 
   const handleSelectChange = (selectedValue: string) => {
-    if (selectedValue === 'other') {
+    if (selectedValue === 'Other') {
       setIsCustomSelected(true);
       if (customSource) {
         onChange(customSource);
+      } else {
+        onChange(''); // Clear value when "Other" is selected without custom input
       }
     } else {
       setIsCustomSelected(false);
-      // Store the label (display text) instead of the value
-      const selectedOption = FOUND_VIA_OPTIONS.find(opt => opt.value === selectedValue);
-      onChange(selectedOption?.label || selectedValue);
+      // Values and labels now match (both capitalized), so just pass the value directly
+      onChange(selectedValue);
     }
   };
 
@@ -68,8 +69,8 @@ export const FoundViaSelector: React.FC<FoundViaSelectorProps> = ({
     }
   };
 
-  // Determine what should be shown in the select
-  const displayValue = isCustomSelected ? 'other' : value;
+  // Values and labels now match (both capitalized), so we can use value directly
+  const displayValue = isCustomSelected ? 'Other' : value;
 
   return (
     <div className="space-y-3">

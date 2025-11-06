@@ -1,27 +1,37 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  Save, 
-  Download, 
-  RefreshCw, 
+import {
+  Save,
+  Download,
+  RefreshCw,
   FileText,
   Edit3,
   ZoomIn,
   ZoomOut,
-  Settings
+  Settings,
+  Eye
 } from 'lucide-react';
 import { generateQuoteText } from '@/components/features/quotes/generation/QuoteTextGenerator';
 import { SmartQuoteHelper, QuoteSection, SmartQuoteData } from '@/templates/SmartQuoteTemplate';
 import { MixedContentEngine, MixedContentSection } from '@/utils/mixedContentEngine';
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
+import { defaultSectionVisibility, SectionVisibilityConfig } from '@/templates/BaseTemplate/types';
 import { Quote } from '@/stores/quotes/quotesStore';
-import { useCurrentQuote } from '@/stores/quotes/quotesStore';
-import { useOrganizationSettings } from '@/hooks/useCompanySettings';
+import { useCurrentOrganization } from '@/hooks/queries';
+import { useUser } from '@/auth';
 import { QuoteDataPanelCore as QuoteDataPanel } from './UnifiedQuoteEditor/QuoteDataPanel/QuoteDataPanelCore';
 import LivePreviewPanel from './UnifiedQuoteEditor/LivePreviewPanel';
 import QuickEditModal from './UnifiedQuoteEditor/QuickEditModal';
+import VisibilityControls from './UnifiedQuoteEditor/VisibilityControls';
+import { MigrationBanner } from './UnifiedQuoteEditor/MigrationBanner';
 import { formatDateEST } from '@/utils/dateUtils';
+import { needsSemanticMarkupMigration } from '@/utils/semanticMarkupDetection';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // Unified state interface
 interface UnifiedQuoteState {
@@ -54,12 +64,9 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   className = ''
 }) => {
   const { toast } = useToast();
-  
-  // Get current quote from realtime store
-  const realtimeQuote = useCurrentQuote();
-  
-  // Use realtime quote if available and matches the current quote ID, otherwise use prop
-  const activeQuote = (realtimeQuote?.id === quote.id) ? realtimeQuote : quote;
+
+  // React Query handles realtime updates automatically, use the prop
+  const activeQuote = quote;
   
   // Core unified state
   const [state, setState] = useState<UnifiedQuoteState>({
@@ -84,13 +91,37 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   // Smart PDF is now the only mode - no toggle needed
   const showSmartPDFPreview = true;
 
+  // Migration detection state
+  const [showMigrationBanner, setShowMigrationBanner] = useState(false);
+  const [isUpgrading, setIsUpgrading] = useState(false);
+
+  // Section visibility configuration with localStorage
+  const [sectionVisibility, setSectionVisibility] = useState<SectionVisibilityConfig>(() => {
+    const saved = localStorage.getItem('quotePreviewVisibilityConfig');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse saved visibility config:', e);
+        return defaultSectionVisibility;
+      }
+    }
+    return defaultSectionVisibility;
+  });
+
+  // Save visibility config to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('quotePreviewVisibilityConfig', JSON.stringify(sectionVisibility));
+  }, [sectionVisibility]);
+
   // Get organization settings to add to quote data
-  const { organization } = useOrganizationSettings();
+  const user = useUser();
+  const { organization } = useCurrentOrganization(user?.id);
 
   // Data sync engine
   const syncEngine = useMemo(() => ({
     // Generate base HTML from raw quote data
-    generateBaseHTML: (data: QuoteData): string => {
+    generateBaseHTML: (data: QuoteData, visibilityConfig?: SectionVisibilityConfig): string => {
       try {
         // Add organization data to quote data before generating template
         const dataWithOrgInfo: QuoteData = {
@@ -111,7 +142,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           orgInfo: dataWithOrgInfo.organization_info
         });
 
-        return generateQuoteText(dataWithOrgInfo);
+        return generateQuoteText(dataWithOrgInfo, visibilityConfig);
       } catch (error) {
         console.error('Error generating base HTML:', error);
         return '';
@@ -224,11 +255,12 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
 
     // Generate unified preview combining raw data + overrides + mixed content
     generateUnifiedPreview: (
-      data: QuoteData, 
-      overrides: Map<string, string>, 
-      mixedSections: Map<string, MixedContentSection>
+      data: QuoteData,
+      overrides: Map<string, string>,
+      mixedSections: Map<string, MixedContentSection>,
+      visibilityConfig?: SectionVisibilityConfig
     ): string => {
-      let baseHTML = syncEngine.generateBaseHTML(data);
+      let baseHTML = syncEngine.generateBaseHTML(data, visibilityConfig);
       
       // First, apply mixed content sections (populate templates with current form data)
       mixedSections.forEach((mixedSection, sectionId) => {
@@ -254,24 +286,31 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       
       return syncEngine.applySectionOverrides(baseHTML, regularOverrides);
     }
-  }), [organization]);
+  }), [organization, sectionVisibility]);
+
+  // Check for migration on mount
+  useEffect(() => {
+    if (quote && needsSemanticMarkupMigration(quote)) {
+      setShowMigrationBanner(true);
+    }
+  }, [quote]);
 
   // Initialize editor
   useEffect(() => {
     const initializeEditor = async () => {
       try {
         setIsLoading(true);
-        
-        const baseHTML = syncEngine.generateBaseHTML(quote);
+
+        const baseHTML = syncEngine.generateBaseHTML(quote, sectionVisibility);
         let previewHTML = baseHTML;
         let mixedContentSections = new Map<string, MixedContentSection>();
-        
+
         // Load existing customizations if they exist
         if (quote.customization?.customSections) {
           const customSections = quote.customization.customSections;
-          
+
           console.log('🔄 Loading saved customizations:', customSections.map(s => ({ id: s.id, isVisible: s.isVisible, contentLength: s.content?.length })));
-          
+
           // Define sections that should NOT be loaded as mixed content (pure form-driven content)
           const formDrivenSections = [
             'billing-job', 'billing-and-job-info', // Job info depends on form fields
@@ -279,7 +318,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
             'wall-specifications' // Wall specs table depends on form fields
             // All other sections now use mixed content editing
           ];
-          
+
           // Convert custom sections to mixed content sections
           customSections.forEach(section => {
             if (section.content && section.isVisible) {
@@ -288,15 +327,15 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
                 console.log(`🚫 Skipping form-driven section override: ${section.id} - will regenerate from form data`);
                 return;
               }
-              
+
               console.log(`🔄 Loading mixed content section: ${section.id}`);
-              
+
               const mixedSection = MixedContentEngine.createMixedSection(
                 section.id,
                 section.content,
                 true // Mark as customized since it was saved
               );
-              
+
               mixedContentSections.set(section.id, mixedSection);
               console.log(`📝 Mixed content section loaded for ${section.id}:`, {
                 variables: mixedSection.variables,
@@ -304,10 +343,10 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
               });
             }
           });
-          
+
           // Apply mixed content to generate the preview
           if (mixedContentSections.size > 0) {
-            previewHTML = syncEngine.generateUnifiedPreview(quote, new Map(), mixedContentSections);
+            previewHTML = syncEngine.generateUnifiedPreview(quote, new Map(), mixedContentSections, sectionVisibility);
           }
         }
         
@@ -336,48 +375,50 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
     };
 
     initializeEditor();
-  }, [quote, syncEngine, toast]);
+  }, [quote, syncEngine, toast, sectionVisibility]);
 
   // Real-time preview updates when data changes
   useEffect(() => {
     if (!isLoading) {
       console.log('🔄 Preview update triggered. Current rawData:', state.rawData);
-      
+
       const newPreview = syncEngine.generateUnifiedPreview(
-        state.rawData, 
-        new Map(), 
-        state.mixedContentSections
+        state.rawData,
+        new Map(),
+        state.mixedContentSections,
+        sectionVisibility
       );
-      
+
       console.log('✅ Generated new preview HTML length:', newPreview.length);
-      
+
       setState(prev => ({
         ...prev,
         previewHTML: newPreview,
-        generatedHTML: syncEngine.generateBaseHTML(state.rawData)
+        generatedHTML: syncEngine.generateBaseHTML(state.rawData, sectionVisibility)
         // Preserve isDirty state during preview updates
       }));
     }
   }, [
-    JSON.stringify(state.rawData), 
+    JSON.stringify(state.rawData),
     state.mixedContentSections,
-    syncEngine, 
-    isLoading
+    syncEngine,
+    isLoading,
+    sectionVisibility
   ]);
 
-  // Sync with realtime quote updates
+  // React Query automatically handles realtime updates through the quote prop
+  // When the parent component receives updated data, it passes a new quote prop
+  // which triggers a re-render with fresh data
   useEffect(() => {
-    if (realtimeQuote?.id === quote.id && realtimeQuote !== quote) {
-      console.log('📡 Syncing UnifiedQuoteEditor with realtime quote update');
-      
+    if (quote && quote.id === state.rawData.id) {
+      // Update state when quote prop changes (from React Query refetch)
       setState(prev => ({
         ...prev,
-        rawData: realtimeQuote,
+        rawData: quote,
         // Don't mark as dirty since this is an external update
       }));
     }
-  }, [realtimeQuote, quote.id]);
-
+  }, [quote]);
 
   // Update document title when project name or proposal number changes
   useEffect(() => {
@@ -432,26 +473,26 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   const handleSectionOverride = useCallback((sectionId: string, content: string) => {
     setState(prev => {
       console.log(`🔄 Processing ${sectionId} as mixed content`);
-      
+
       // Get original template from generated HTML
-      const baseHTML = syncEngine.generateBaseHTML(prev.rawData);
+      const baseHTML = syncEngine.generateBaseHTML(prev.rawData, sectionVisibility);
       const sections = SmartQuoteHelper.extractSections(baseHTML);
       const originalSection = sections.find(s => s.id === sectionId);
       const originalTemplate = originalSection?.content || '';
-      
+
       const mixedResult = MixedContentEngine.processSectionForMixedContent(
         sectionId,
         content,
         originalTemplate,
         prev.rawData
       );
-      
+
       if (mixedResult.shouldSaveAsMixed && mixedResult.mixedSection) {
         const newMixedSections = new Map(prev.mixedContentSections);
         newMixedSections.set(sectionId, mixedResult.mixedSection);
-        
+
         // Generate preview with mixed content
-        const newPreview = syncEngine.generateUnifiedPreview(prev.rawData, new Map(), newMixedSections);
+        const newPreview = syncEngine.generateUnifiedPreview(prev.rawData, new Map(), newMixedSections, sectionVisibility);
         
         console.log(`📝 Mixed content section updated for ${sectionId}:`, {
           template: mixedResult.mixedSection.template.substring(0, 100) + '...',
@@ -469,7 +510,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       
       return prev;
     });
-  }, [syncEngine]);
+  }, [syncEngine, sectionVisibility]);
 
   // Zoom controls
   const handleZoomIn = () => setZoomLevel(prev => Math.min(200, prev + 10));
@@ -526,11 +567,6 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         lastSaved: new Date()
       }));
 
-      toast({
-        title: "Quote Saved",
-        description: "All changes have been saved successfully.",
-      });
-
     } catch (error) {
       console.error('Save error:', error);
       toast({
@@ -566,31 +602,31 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   // Reset to last saved state from database
   const handleReset = useCallback(() => {
     // Restore the original quote data from database and clear any customizations
-    const baseHTML = syncEngine.generateBaseHTML(quote);
+    const baseHTML = syncEngine.generateBaseHTML(quote, sectionVisibility);
     let restoredHTML = baseHTML;
     let restoredMixedSections = new Map<string, MixedContentSection>();
-    
+
     // If the quote has saved customizations, restore them
     if (quote.customization?.customSections) {
       const customSections = quote.customization.customSections;
-      
+
       customSections.forEach(section => {
         if (section.content && section.isVisible) {
           console.log(`🔄 Reset: Restoring mixed content section: ${section.id}`);
-          
+
           const mixedSection = MixedContentEngine.createMixedSection(
             section.id,
             section.content,
             true // Mark as customized since it was saved
           );
-          
+
           restoredMixedSections.set(section.id, mixedSection);
         }
       });
-      
+
       // Apply the restored mixed content to generate the preview
       if (restoredMixedSections.size > 0) {
-        restoredHTML = syncEngine.generateUnifiedPreview(quote, new Map(), restoredMixedSections);
+        restoredHTML = syncEngine.generateUnifiedPreview(quote, new Map(), restoredMixedSections, sectionVisibility);
       }
     }
 
@@ -610,7 +646,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       title: "Quote Reset",
       description: "All changes have been reverted to the last saved state from the database.",
     });
-  }, [quote, syncEngine, toast]);
+  }, [quote, syncEngine, toast, sectionVisibility]);
 
   // Close modal
   const handleCloseModal = useCallback(() => {
@@ -652,6 +688,58 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       handleTitleCancel();
     }
   }, [handleTitleSave, handleTitleCancel]);
+
+  // Handle migration upgrade
+  const handleUpgradeTemplate = useCallback(async () => {
+    try {
+      setIsUpgrading(true);
+
+      // Regenerate the template with current form data (no customizations)
+      const baseHTML = syncEngine.generateBaseHTML(quote, sectionVisibility);
+
+      // Clear all customizations and use fresh template
+      setState(prev => ({
+        ...prev,
+        generatedHTML: baseHTML,
+        previewHTML: baseHTML,
+        mixedContentSections: new Map(), // Clear all custom sections
+        isDirty: true // Mark as dirty so user can save
+      }));
+
+      // Save the upgraded quote
+      const sections = SmartQuoteHelper.extractSections(baseHTML);
+      const unifiedData: SmartQuoteData = {
+        ...quote,
+        customSections: sections,
+        customHTML: baseHTML,
+        isCustomized: false // Not customized anymore since we regenerated
+      };
+
+      onSave?.(unifiedData);
+
+      // Hide banner and show success message
+      setShowMigrationBanner(false);
+      toast({
+        title: "Template Upgraded",
+        description: "Your quote now has live-preview editing enabled. Changes to form data will update immediately.",
+      });
+
+    } catch (error) {
+      console.error('Upgrade error:', error);
+      toast({
+        title: "Upgrade Failed",
+        description: "Failed to upgrade template. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpgrading(false);
+    }
+  }, [quote, syncEngine, sectionVisibility, onSave, toast]);
+
+  // Handle dismissing migration banner
+  const handleDismissMigration = useCallback(() => {
+    setShowMigrationBanner(false);
+  }, []);
 
   if (isLoading) {
     return (
@@ -774,6 +862,25 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
                 <div className="w-px h-6 bg-gray-300" />
 
                 {/* Action Buttons */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+                    >
+                      <Eye className="w-4 h-4 mr-1.5" />
+                      Sections
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-[380px] p-0">
+                    <VisibilityControls
+                      visibility={sectionVisibility}
+                      onChange={setSectionVisibility}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
                 <Button
                   variant="ghost"
                   size="sm"
@@ -831,6 +938,17 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
 
           {/* Live Preview Panel - Takes remaining space */}
           <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
+            {/* Migration Banner */}
+            {showMigrationBanner && (
+              <div className="p-4">
+                <MigrationBanner
+                  onUpgrade={handleUpgradeTemplate}
+                  onDismiss={handleDismissMigration}
+                  isUpgrading={isUpgrading}
+                />
+              </div>
+            )}
+
             <LivePreviewPanel
               className="flex-1"
               previewHTML={state.previewHTML}

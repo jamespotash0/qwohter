@@ -3,7 +3,7 @@ import { ErrorBoundary, QuoteErrorBoundary } from "@/components/ErrorBoundary";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
-import { useAuthStore } from "@/stores/auth/authStore";
+import { useUser, useAuthStatus } from "@/auth";
 import { supabase } from "@/integrations/supabase/client";
 
 // Lazy load pages for better performance
@@ -11,16 +11,13 @@ import React from "react";
 
 // Protected auth route wrapper - redirects to dashboard if already logged in AND completed onboarding
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
-  const user = useAuthStore((state) => state.user);
-  const isInitialized = useAuthStore((state) => state.isInitialized);
+  // ✅ v3.0.0: Use new auth hooks
+  const user = useUser();
+  const { isInitialized } = useAuthStatus();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = React.useState<boolean | null>(null);
 
-  // Don't redirect until auth is initialized
-  if (!isInitialized) {
-    return <>{children}</>;
-  }
-
-  // Check if user has completed onboarding
+  // IMPORTANT: Check if user has completed onboarding (BEFORE any early returns!)
+  // Hooks must always be called in the same order - move this BEFORE the loading check
   React.useEffect(() => {
     const checkOnboarding = async () => {
       if (!user) {
@@ -46,6 +43,18 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
     checkOnboarding();
   }, [user]);
 
+  // Show loading spinner while auth is initializing (prevents flash of sign-in page)
+  if (!isInitialized) {
+    return (
+      <div className="h-screen w-full bg-[var(--content-bg)] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-[var(--content-button-primary-bg)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-[var(--content-muted-text)]">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   // If user is logged in AND has completed onboarding, redirect to dashboard
   if (user && hasCompletedOnboarding) {
     return <Navigate to="/dashboard" replace />;
@@ -56,7 +65,8 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
 
 // Public pages
 const Landing = lazy(() => import("@/pages/LandingEnhanced"));
-const DemoContact = lazy(() => import("@/pages/DemoContact"));
+const Demo = lazy(() => import("@/pages/Demo"));
+const ContactUs = lazy(() => import("@/pages/ContactUs"));
 
 // Authentication pages
 const Auth = lazy(() => import("@/pages/Auth"));
@@ -69,9 +79,7 @@ const AccountInactive = lazy(() => import("@/pages/AccountInactive"));
 // Main application pages - import eagerly to prevent navigation flicker
 import Dashboard from "@/pages/Dashboard";
 import Analytics from "@/pages/Analytics";
-import Team from "@/pages/Team";
 import Settings from "@/pages/Settings";
-const Subscription = lazy(() => import("@/pages/Subscription"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 // Quote-related pages (grouped under quotes namespace)
@@ -80,9 +88,9 @@ const NewQuote = lazy(() => import("@/pages/NewQuote"));
 const QuoteEdit = lazy(() => import("@/pages/QuoteEdit"));
 const QuoteEditIncomplete = lazy(() => import("@/pages/QuoteEditIncomplete"));
 
-// Form Builder pages
-const Forms = lazy(() => import("@/pages/Forms"));
-const FormBuilderV2 = lazy(() => import("@/pages/FormBuilderV2"));
+// Form Builder pages - DISABLED until form builder is complete
+// const Forms = lazy(() => import("@/pages/Forms"));
+// const FormBuilderV2 = lazy(() => import("@/pages/FormBuilderV2"));
 
 // Board page
 const Board = lazy(() => import("@/pages/Board"));
@@ -114,7 +122,10 @@ export const AppRouter = () => (
           <Route path="/" element={<Landing />} />
 
           {/* Demo contact page (public) */}
-          <Route path="/demo-contact" element={<DemoContact />} />
+          <Route path="/demo" element={<Demo />} />
+
+          {/* Contact us page (public) */}
+          <Route path="/contact-us" element={<ContactUs />} />
 
           {/* Authentication routes - redirect to dashboard if already logged in */}
           <Route path="/sign-in" element={<AuthRoute><Auth /></AuthRoute>} />
@@ -129,9 +140,6 @@ export const AppRouter = () => (
           <Route path="/auth" element={<Navigate to="/sign-in" replace />} />
           <Route path="/login" element={<Navigate to="/sign-in" replace />} />
           <Route path="/signup" element={<Navigate to="/create-account" replace />} />
-          
-          {/* Subscription/billing page */}
-          <Route path="/subscription" element={<Subscription />} />
 
           {/* Main application routes (protected by MainLayout) */}
           <Route path="/dashboard" element={<Dashboard />} />
@@ -175,9 +183,15 @@ export const AppRouter = () => (
           {/* Future: Quote templates management */}
           <Route path="/quotes/templates" element={<Navigate to="/settings" replace />} />
 
-          {/* Form Builder routes */}
-          <Route path="/forms" element={<Forms />} />
-          <Route path="/forms/builder/:id" element={<FormBuilderV2 />} />
+          {/* Form Builder routes - DISABLED until form builder is complete */}
+          {/* <Route path="/forms" element={<Forms />} /> */}
+          {/* <Route path="/forms/builder/:id" element={<FormBuilderV2 />} /> */}
+          <Route path="/forms" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/forms/*" element={<Navigate to="/dashboard" replace />} />
+
+          {/* Templates routes - DISABLED until template system is complete */}
+          <Route path="/templates" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/templates/*" element={<Navigate to="/dashboard" replace />} />
 
           {/* Legacy route redirects for backward compatibility */}
           <Route path="/newquote" element={<Navigate to="/quotes/new" replace />} />

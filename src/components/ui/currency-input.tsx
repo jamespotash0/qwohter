@@ -4,23 +4,25 @@ import { cn } from '@/lib/utils';
 interface CurrencyInputProps {
   value: number;
   onChange: (value: number) => void;
+  onFocus?: () => void;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
   name?: string;
   id?: string;
-  showZeroAsEmpty?: boolean; // New prop to control whether 0 shows as empty
+  touched?: boolean;  // Whether this field has been touched by the user
 }
 
 export const CurrencyInput: React.FC<CurrencyInputProps> = ({
   value,
   onChange,
-  placeholder = "$0.00",
+  onFocus,
+  placeholder = "Enter dollar amount",
   className,
   disabled = false,
   name,
   id,
-  showZeroAsEmpty = false,
+  touched = false,
 }) => {
   const [displayValue, setDisplayValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -52,27 +54,48 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
   // Initialize display value
   useEffect(() => {
     if (!isFocused) {
-      // Show empty string if value is 0 and showZeroAsEmpty is true
-      if (value === 0 && showZeroAsEmpty) {
+      // Show empty string when value is 0 AND field hasn't been touched (show placeholder)
+      // If touched, show the formatted $0.00 (user explicitly entered 0)
+      if (value === 0 && !touched) {
         setDisplayValue('');
       } else {
         setDisplayValue(formatCurrency(value));
       }
     }
-  }, [value, isFocused, showZeroAsEmpty]);
+  }, [value, isFocused, touched]);
 
   const handleFocus = () => {
     setIsFocused(true);
-    // Convert to raw number string for editing
-    const rawValue = value.toString();
-    setDisplayValue(rawValue);
+    // Show empty string if value is 0 AND not touched (never filled), otherwise show raw number for editing
+    if (value === 0 && !touched) {
+      setDisplayValue('');
+    } else {
+      const rawValue = value.toString();
+      setDisplayValue(rawValue);
+    }
+    // Call the onFocus prop if provided
+    if (onFocus) {
+      onFocus();
+    }
   };
 
   const handleBlur = () => {
     setIsFocused(false);
-    const numericValue = parseCurrency(displayValue);
-    onChange(numericValue);
-    setDisplayValue(formatCurrency(numericValue));
+    // Only call onChange if user actually entered something
+    // If displayValue is empty and value is already 0, don't call onChange (user just clicked in/out)
+    if (displayValue.trim() !== '') {
+      const numericValue = parseCurrency(displayValue);
+      onChange(numericValue);
+      setDisplayValue(formatCurrency(numericValue));
+    } else if (value !== 0) {
+      // User cleared the field - set to 0
+      onChange(0);
+      setDisplayValue('');
+    } else {
+      // displayValue is empty and value is 0 - user just clicked in/out without typing
+      // Don't call onChange, just reset display
+      setDisplayValue('');
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,12 +118,13 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     // Allow: backspace, delete, tab, escape, enter
     if ([8, 9, 27, 13, 46].indexOf(e.keyCode) !== -1 ||
-        // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+Z
-        (e.keyCode === 65 && e.ctrlKey === true) ||
-        (e.keyCode === 67 && e.ctrlKey === true) ||
-        (e.keyCode === 86 && e.ctrlKey === true) ||
-        (e.keyCode === 88 && e.ctrlKey === true) ||
-        (e.keyCode === 90 && e.ctrlKey === true) ||
+        // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+Z (Windows/Linux)
+        // Allow: Cmd+A, Cmd+C, Cmd+V, Cmd+X, Cmd+Z (Mac)
+        (e.keyCode === 65 && (e.ctrlKey === true || e.metaKey === true)) ||
+        (e.keyCode === 67 && (e.ctrlKey === true || e.metaKey === true)) ||
+        (e.keyCode === 86 && (e.ctrlKey === true || e.metaKey === true)) ||
+        (e.keyCode === 88 && (e.ctrlKey === true || e.metaKey === true)) ||
+        (e.keyCode === 90 && (e.ctrlKey === true || e.metaKey === true)) ||
         // Allow: home, end, left, right, down, up
         (e.keyCode >= 35 && e.keyCode <= 40)) {
       return;

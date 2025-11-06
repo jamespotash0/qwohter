@@ -7,25 +7,82 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
+//@ts-ignore
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
+    //@ts-ignore
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
       apiVersion: '2023-10-16',
     });
-
+    //@ts-ignore
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    //@ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    //@ts-ignore
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+
+    // Verify authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - missing auth token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const { organizationId, returnUrl } = await req.json();
 
-    // Get the subscription for this organization
+    if (!organizationId || !returnUrl) {
+      return new Response(
+        JSON.stringify({ error: 'Missing organizationId or returnUrl' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify user has access to this organization
+    const { data: membership } = await supabase
+      .from('memberships')
+      .select('role')
+      .eq('organization_id', organizationId)
+      .eq('user_id', user.id)
+      .eq('status', 'Active')
+      .single();
+
+    if (!membership) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden - not a member of this organization' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if user has owner permissions
+    if (membership.role !== 'Owner') {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden - only owners can access billing portal' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get organization's Stripe customer ID
     const { data: subscription } = await supabase
       .from('subscriptions')
       .select('stripe_customer_id')
@@ -34,15 +91,12 @@ serve(async (req) => {
 
     if (!subscription?.stripe_customer_id) {
       return new Response(
-        JSON.stringify({ error: 'No Stripe customer found for this organization' }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 404,
-        }
+        JSON.stringify({ error: 'No active subscription found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Create Stripe Customer Portal Session
+    // Create Stripe Customer Portal session
     const session = await stripe.billingPortal.sessions.create({
       customer: subscription.stripe_customer_id,
       return_url: returnUrl,
@@ -51,26 +105,19 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ url: session.url }),
       {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       }
     );
   } catch (error) {
     console.error('Error creating portal session:', error);
-
     return new Response(
       JSON.stringify({
         error: error.message || 'Failed to create portal session'
       }),
       {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
-        status: 400,
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }

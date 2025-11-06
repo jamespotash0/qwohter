@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthStore } from '@/stores/auth/authStore';
+import { useUser } from '@/auth';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -41,8 +41,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const [userRole, setUserRole] = useState<'Owner' | 'Admin' | 'Member' | null>(null);
 
-  // Use auth store - MainLayout already handles authentication
-  const user = useAuthStore((state) => state.user);
+  // ✅ v3.0.0: Use new auth hook
+  const user = useUser();
 
   useEffect(() => {
     // Fetch user role from membership if user exists

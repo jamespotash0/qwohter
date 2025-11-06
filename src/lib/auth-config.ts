@@ -5,19 +5,22 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { useAuthStore } from '@/stores/auth/authStore';
 
 /**
- * Initialize auth configuration with session monitoring
- * This will automatically handle JWT token expiry and refresh
+ * DEPRECATED: Initialize auth configuration with session monitoring
+ *
+ * This function is no longer needed as AuthProvider in src/auth/AuthProvider.tsx
+ * handles all authentication initialization automatically.
+ *
+ * Keeping this commented out for reference during migration period.
  */
-export const initializeAuth = async () => {
-  // Initialize the auth store - it handles all auth state changes internally
-  await useAuthStore.getState().initialize();
-
-  // Note: Auth state change listener is already set up in authStore.ts
-  // No need for duplicate listeners here
-};
+// export const initializeAuth = async () => {
+//   // Initialize the auth store - it handles all auth state changes internally
+//   await useAuthStore.getState().initialize();
+//
+//   // Note: Auth state change listener is already set up in authStore.ts
+//   // No need for duplicate listeners here
+// };
 
 /**
  * Check if user session is still valid and refresh if needed

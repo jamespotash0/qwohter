@@ -66,10 +66,10 @@ export const validateWallDimensions = (wall: any) => {
     errors.push('Height inches must be between 0 and 11 (e.g., "0", "3/4", "3 3/4", or "3-3/4")');
   }
   
-  // Panel count validation
+  // Panel count validation (0 allowed for unispan support wall systems)
   const panelCount = parseInt(wall.panelCount || '0');
-  if (isNaN(panelCount) || panelCount < 1 || panelCount > 200) {
-    errors.push('Panel count must be between 1 and 200');
+  if (isNaN(panelCount) || panelCount < 0 || panelCount > 200) {
+    errors.push('Panel count must be between 0 and 200');
   }
   
   // Wall System Type
@@ -101,7 +101,11 @@ export const validateOperableWallRequiredFields = (wall: any) => {
   }
   
   // Check for panel finish dependency
-  if (wall.panelFinishCategory && (!wall.panelFinishSpecificItem || wall.panelFinishSpecificItem === '')) {
+  // Only require specific item if the category has specific items available
+  const categoriesWithoutSpecificItems = ["Uncovered", "C.O.M. Material", "Field Painting by Others", "Full-Height Marker (Tack) Board"];
+  if (wall.panelFinishCategory &&
+      !categoriesWithoutSpecificItems.includes(wall.panelFinishCategory) &&
+      (!wall.panelFinishSpecificItem || wall.panelFinishSpecificItem === '')) {
     errors.push('Panel finish specific item is required when finish category is selected');
   }
   

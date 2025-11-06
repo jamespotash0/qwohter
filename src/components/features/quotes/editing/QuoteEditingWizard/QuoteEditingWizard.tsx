@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 
-import { useQuotesStore } from "@/stores/quotes/quotesStore";
+import { useUpdateQuote } from "@/stores/quotes/quotesStore";
 import { QuoteEditingWizardProps } from './types/editingTypes';
 import { useEditingState } from './hooks/useEditingState';
 import { useEditingValidation } from './hooks/useEditingValidation';
@@ -12,12 +12,17 @@ import { EditingHeader } from './components/EditingHeader';
 import { EditingStepNavigation } from './components/EditingStepNavigation';
 import { StepContent } from '@/components/features/quotes/creation/QuoteCreatorWizard/components/StepContent';
 
-const QuoteEditingWizard = ({ 
+const QuoteEditingWizard = ({
   existingQuote,
-  onBackToDashboard, 
+  onBackToDashboard,
   onQuoteNameChange
 }: QuoteEditingWizardProps) => {
-  const updateQuote = useQuotesStore((state) => state.updateQuote);
+  const { mutateAsync: updateQuoteMutation } = useUpdateQuote();
+
+  // Wrapper for backward compatibility
+  const updateQuote = async (id: string, updates: any) => {
+    return await updateQuoteMutation({ id, updates });
+  };
   const [activeStep, setActiveStep] = useState(0);
   const [editingQuoteName, setEditingQuoteName] = useState(false);
 
@@ -128,9 +133,8 @@ const QuoteEditingWizard = ({
         quote_source: contactInfo.quoteSource,
         status: quoteStatus
       });
-      
+
       resetChangeTracking();
-      toast.success("Quote updated successfully!");
       onBackToDashboard();
     } catch (error) {
       toast.error("Failed to update quote");

@@ -262,12 +262,58 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
     onClose();
   }, [onClose]);
 
+  /**
+   * Edge Case Fix #9: Paste event handler to preserve semantic markup
+   *
+   * When users paste content:
+   * - From within the editor: Preserves semantic markup (data-type, data-conditional, etc.)
+   * - From external sources (Word, Google Docs): Strips formatting to plain text
+   *
+   * This prevents external formatting from stripping our data attributes
+   */
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    e.preventDefault();
+
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) return;
+
+    // Try to get HTML first (in case pasting from within our own editor)
+    let htmlData = clipboardData.getData('text/html');
+
+    if (htmlData) {
+      // Parse HTML to check if it contains our semantic markup
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlData, 'text/html');
+      const hasSemanticMarkup = doc.querySelector('[data-type]') !== null;
+
+      if (hasSemanticMarkup) {
+        // Preserve HTML with semantic markup (internal paste)
+        console.log('[QuickEditModal] Pasting content with semantic markup preserved');
+        document.execCommand('insertHTML', false, htmlData);
+      } else {
+        // Strip formatting from external HTML (Word, Google Docs, etc.)
+        console.log('[QuickEditModal] Pasting plain text from external source');
+        const plainText = clipboardData.getData('text/plain');
+        document.execCommand('insertText', false, plainText);
+      }
+    } else {
+      // No HTML data, just paste plain text
+      const plainText = clipboardData.getData('text/plain');
+      document.execCommand('insertText', false, plainText);
+    }
+
+    // Update content state
+    if (richEditorRef.current) {
+      setRichEditingContent(richEditorRef.current.innerHTML);
+    }
+  }, []);
+
   // Handle key events to fix Enter key behavior
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // Handle Enter key to force line breaks instead of div creation
     if (e.key === 'Enter') {
       e.preventDefault();
-      
+
       // Insert a line break at cursor position
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
@@ -275,13 +321,13 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
         const br = document.createElement('br');
         range.deleteContents();
         range.insertNode(br);
-        
+
         // Move cursor after the br element
         range.setStartAfter(br);
         range.setEndAfter(br);
         selection.removeAllRanges();
         selection.addRange(range);
-        
+
         // Update the content state
         if (richEditorRef.current) {
           setRichEditingContent(richEditorRef.current.innerHTML);
@@ -289,7 +335,7 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
       }
       return;
     }
-    
+
     // Handle Escape key to close modal
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -503,6 +549,7 @@ export const QuickEditModal: React.FC<QuickEditModalProps> = ({
                 }}
                   onInput={handleRichTextInput}
                   onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
                   suppressContentEditableWarning={true}
                 />
                 

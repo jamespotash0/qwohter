@@ -7,13 +7,74 @@ Essential guidance for Claude Code when working with QWOHTER.
 ```bash
 # Development
 npm run dev                    # Start dev server
-npm run build                  # Production build
+npm run build                  # Production build (auto-increments version)
 npm run lint && npm run build  # Validate before commits
 
 # Testing
 npm run test                   # Unit tests
 npm run test:coverage          # Coverage report
 ```
+
+## Version Management
+
+**⚠️ IMPORTANT: Version is automatically managed - DO NOT manually edit `public/version.json`**
+
+### How Versioning Works:
+1. **Automatic Increment**: `scripts/generate-version.js` runs before every build
+2. **Format**: `v1.0.{buildNumber}` where buildNumber auto-increments
+3. **Build Time**: Timestamp is automatically added
+4. **Vercel Integration**: When you push to Vercel, it automatically builds and increments the version
+
+### Version File in Git:
+Currently `public/version.json` IS tracked in Git. Here's how it works:
+
+```bash
+# Your workflow:
+git push origin main
+
+# Vercel receives your code with version.json (v1.0.5)
+# → Runs prebuild script
+# → Reads v1.0.5, increments to v1.0.6
+# → Builds and deploys v1.0.6
+
+# Your local version.json stays at v1.0.5
+# Vercel deployed version is v1.0.6
+```
+
+**Result:** Your local file falls behind the deployed version. This is normal!
+
+**Alternative (Recommended for cleaner workflow):**
+Add to `.gitignore` to stop tracking it:
+```bash
+echo "public/version.json" >> .gitignore
+git rm --cached public/version.json
+git commit -m "chore: ignore auto-generated version.json"
+```
+
+### Version File Location:
+- `public/version.json` - Generated automatically during build
+- `scripts/generate-version.js` - Version generation script
+- Users are notified when a new version is deployed
+
+### When to Manually Increment Major/Minor Versions:
+Only edit `scripts/generate-version.js` if you need to change the major/minor version:
+```javascript
+const version = `v2.0.${buildNumber}`;  // Change v1.0 to v2.0 for major updates
+```
+
+### Deployment Process:
+```bash
+git add .
+git commit -m "feat: description of changes"
+git push origin main
+# Vercel automatically:
+# 1. Clones your repo
+# 2. Runs prebuild script (reads current version, increments it)
+# 3. Builds the app with new version
+# 4. Deploys
+# 5. Users see update notification on next page load
+```
+
 ### Coding Practices to Follow
 
 <File_length_and_structure>

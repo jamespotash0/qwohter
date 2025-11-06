@@ -40,6 +40,7 @@ export const useWizardState = (existingQuote?: Record<string, unknown>) => {
     phone: (quoteDetails?.phone as string) || "",
     fax: (quoteDetails?.fax as string) || "",
     website: (quoteDetails?.website as string) || "",
+    organizationName: (quoteDetails?.organizationName as string) || "",
     quoteSource: (existingQuoteData?.quote_source as string) || ""
   });
 

@@ -25,7 +25,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { Quote } from '@/stores/quotes/quotesStore';
-import { Organization } from '@/hooks/useOrganizations';
+import { Organization } from '@/services/organizationService';
 import { groupQuotesByVersion } from '@/utils/quoteVersionGrouping';
 
 ChartJS.register(
@@ -227,7 +227,7 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
     quotesWithDates.forEach(q => {
       if (q.status === 'Won' && q.wall_details?.walls) {
         // Get all wall system types from walls object
-        Object.values(q.wall_details.walls).forEach(wall => {
+        Object.values(q.wall_details.walls).forEach((wall: any) => {
           const wallType = wall.wallSystemType || 'Unknown';
           revenueByWallSystem[wallType] = (revenueByWallSystem[wallType] || 0) + q.parsedPrice;
         });
@@ -239,7 +239,7 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
     quotesWithDates.forEach(q => {
       if (q.wall_details?.walls) {
         // Get all wall system types from walls object
-        Object.values(q.wall_details.walls).forEach(wall => {
+        Object.values(q.wall_details.walls).forEach((wall: any) => {
           const wallType = wall.wallSystemType || 'Unknown';
           quotesByWallSystem[wallType] = (quotesByWallSystem[wallType] || 0) + 1;
         });
@@ -289,7 +289,7 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
     const revenueByUser: Record<string, number> = {};
     quotesWithDates.forEach(q => {
       if (q.status === 'Won') {
-        const userName = q.creator_name || 'Unknown';
+        const userName = q.created_by_name || 'Unknown';
         revenueByUser[userName] = (revenueByUser[userName] || 0) + q.parsedPrice;
       }
     });
