@@ -44,7 +44,6 @@ const menuItems = [
     icon: SquaresFour,
     path: "/forms",
     roles: ['Owner', 'Admin', 'Member'],
-    disabled: true, // DISABLED: Enable when form builder is complete
   },
   {
     title: "Templates",

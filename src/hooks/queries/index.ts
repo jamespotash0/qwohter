@@ -79,6 +79,20 @@ export {
   useMoveBoardItem,
 } from './useBoard';
 
+// Forms
+export {
+  useForms,
+  useForm,
+  useDefaultForm,
+  useCreateForm,
+  useUpdateForm,
+  useDeleteForm,
+  useCopyForm,
+  useSetDefaultForm,
+  useUnsetDefaultForm,
+} from './useForms';
+
 // Types
 export type { UserProfile, Session } from './useAuth';
 export type { DashboardStats, QuoteActivity } from './useDashboard';
+export type { FormDefinition } from './useForms';

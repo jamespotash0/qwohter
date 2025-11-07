@@ -88,9 +88,9 @@ const NewQuote = lazy(() => import("@/pages/NewQuote"));
 const QuoteEdit = lazy(() => import("@/pages/QuoteEdit"));
 const QuoteEditIncomplete = lazy(() => import("@/pages/QuoteEditIncomplete"));
 
-// Form Builder pages - DISABLED until form builder is complete
-// const Forms = lazy(() => import("@/pages/Forms"));
-// const FormBuilderV2 = lazy(() => import("@/pages/FormBuilderV2"));
+// Form Builder pages
+const Forms = lazy(() => import("@/pages/Forms"));
+const FormBuilderV3 = lazy(() => import("@/pages/FormBuilderV3"));
 
 // Board page
 const Board = lazy(() => import("@/pages/Board"));
@@ -115,9 +115,8 @@ const PageLoader = () => (
 export const AppRouter = () => (
   <ErrorBoundary>
     <BrowserRouter>
-      <MainLayout>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
           {/* Landing page (public) */}
           <Route path="/" element={<Landing />} />
 
@@ -141,69 +140,74 @@ export const AppRouter = () => (
           <Route path="/login" element={<Navigate to="/sign-in" replace />} />
           <Route path="/signup" element={<Navigate to="/create-account" replace />} />
 
-          {/* Main application routes (protected by MainLayout) */}
-          <Route path="/dashboard" element={<Dashboard />} />
+          {/* Form Builder V3 - Full screen without sidebar */}
+          <Route path="/forms/builder-v3/:id" element={<FormBuilderV3 />} />
 
-          {/* Board workflow */}
-          <Route path="/board" element={<Board />} />
+          {/* Main application routes (protected by MainLayout with sidebar) */}
+          <Route path="/*" element={
+            <MainLayout>
+              <Routes>
+                <Route path="/dashboard" element={<Dashboard />} />
 
-          {/* Analytics and reporting */}
-          <Route path="/analytics" element={<Analytics />} />
+                {/* Board workflow */}
+                <Route path="/board" element={<Board />} />
 
-          {/* Application settings */}
-          <Route path="/settings" element={<Settings />} />
+                {/* Analytics and reporting */}
+                <Route path="/analytics" element={<Analytics />} />
 
-          {/* Team redirect - now part of settings */}
-          <Route path="/team" element={<Navigate to="/settings?tab=team" replace />} />
+                {/* Application settings */}
+                <Route path="/settings" element={<Settings />} />
 
-          {/* Quote management routes (nested structure) */}
-          <Route path="/quotes" element={<QuotesList />} />
+                {/* Team redirect - now part of settings */}
+                <Route path="/team" element={<Navigate to="/settings?tab=team" replace />} />
 
-          {/* Quote creation workflow */}
-          <Route path="/quotes/new" element={
-            <QuoteErrorBoundary>
-              <NewQuote />
-            </QuoteErrorBoundary>
+                {/* Quote management routes (nested structure) */}
+                <Route path="/quotes" element={<QuotesList />} />
+
+                {/* Quote creation workflow */}
+                <Route path="/quotes/new" element={
+                  <QuoteErrorBoundary>
+                    <NewQuote />
+                  </QuoteErrorBoundary>
+                } />
+
+                {/* Quote editing - cleaner route */}
+                <Route path="/editor/:proposalNumber" element={
+                  <QuoteErrorBoundary>
+                    <QuoteEdit />
+                  </QuoteErrorBoundary>
+                } />
+
+                {/* Incomplete quote editing with dedicated wizard */}
+                <Route path="/quotes/edit-incomplete/:proposalNumber" element={
+                  <QuoteErrorBoundary>
+                    <QuoteEditIncomplete />
+                  </QuoteErrorBoundary>
+                } />
+
+                {/* Future: Quote templates management */}
+                <Route path="/quotes/templates" element={<Navigate to="/settings" replace />} />
+
+                {/* Form Builder routes */}
+                <Route path="/forms" element={<Forms />} />
+
+                {/* Templates routes - DISABLED until template system is complete */}
+                <Route path="/templates" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/templates/*" element={<Navigate to="/dashboard" replace />} />
+
+                {/* Legacy route redirects for backward compatibility */}
+                <Route path="/newquote" element={<Navigate to="/quotes/new" replace />} />
+                <Route path="/quoteedit/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
+                <Route path="/quotes/edit/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
+                <Route path="/quotes/view/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
+
+                {/* 404 page */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </MainLayout>
           } />
-
-          {/* Quote editing - cleaner route */}
-          <Route path="/editor/:proposalNumber" element={
-            <QuoteErrorBoundary>
-              <QuoteEdit />
-            </QuoteErrorBoundary>
-          } />
-
-          {/* Incomplete quote editing with dedicated wizard */}
-          <Route path="/quotes/edit-incomplete/:proposalNumber" element={
-            <QuoteErrorBoundary>
-              <QuoteEditIncomplete />
-            </QuoteErrorBoundary>
-          } />
-
-          {/* Future: Quote templates management */}
-          <Route path="/quotes/templates" element={<Navigate to="/settings" replace />} />
-
-          {/* Form Builder routes - DISABLED until form builder is complete */}
-          {/* <Route path="/forms" element={<Forms />} /> */}
-          {/* <Route path="/forms/builder/:id" element={<FormBuilderV2 />} /> */}
-          <Route path="/forms" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/forms/*" element={<Navigate to="/dashboard" replace />} />
-
-          {/* Templates routes - DISABLED until template system is complete */}
-          <Route path="/templates" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/templates/*" element={<Navigate to="/dashboard" replace />} />
-
-          {/* Legacy route redirects for backward compatibility */}
-          <Route path="/newquote" element={<Navigate to="/quotes/new" replace />} />
-          <Route path="/quoteedit/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
-          <Route path="/quotes/edit/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
-          <Route path="/quotes/view/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
-          
-          {/* 404 page */}
-          <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
-      </MainLayout>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   </ErrorBoundary>
 );

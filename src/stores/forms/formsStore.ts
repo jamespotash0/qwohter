@@ -1,17 +1,25 @@
 /**
- * Forms Store
- * State management for form definitions and form builder
+ * @deprecated This store has been migrated to React Query
+ * Use hooks from @/hooks/queries instead
+ *
+ * Migration:
+ * - import { useForms, useForm, useCreateForm, useUpdateForm, useDeleteForm } from '@/hooks/queries'
+ * - const { data: forms = [] } = useForms(organizationId)
+ * - const { data: form } = useForm(formId)
+ * - const { mutate: createForm } = useCreateForm()
+ * - const { mutate: updateForm } = useUpdateForm()
+ * - const { mutate: deleteForm } = useDeleteForm()
+ * - const { mutate: copyForm } = useCopyForm()
+ *
+ * Types and React Query hooks are exported for backward compatibility
  */
-
-import { create } from 'zustand';
-import { supabase } from '@/integrations/supabase/client';
 
 // Field definition for form builder
 export interface FormField {
   id: string;
   label: string;
-  type?: string; // For FormBuilderV2 compatibility
-  field_type: 'input' | 'textarea' | 'dropdown' | 'checkbox' | 'date' | 'product_selector' | 'calculated';
+  type?: string; // Legacy field type
+  field_type: 'input' | 'textarea' | 'dropdown' | 'checkbox' | 'radio' | 'date' | 'product_selector' | 'calculated';
   input_type?: 'text' | 'number' | 'email' | 'tel' | 'url';
   required: boolean;
   placeholder?: string;
@@ -26,6 +34,14 @@ export interface FormField {
   minLength?: number;
   maxLength?: number;
   cssClass?: string;
+  // Data source mapping for auto-population from organization/user data
+  dataSource?: {
+    type: 'organization' | 'user' | 'organization_members';
+    field: string; // e.g., 'phone_number', 'full_name', 'email'
+    allowOverride?: boolean; // Whether users can change the auto-populated value
+  };
+  // System field protection - cannot be deleted or edited
+  isSystemField?: boolean; // Marks this as a protected system field that cannot be removed
 }
 
 // Tab definition
@@ -61,31 +77,36 @@ export const DEFAULT_COMPANY_INFO_TAB: FormTab = {
   is_default: true,
   fields: [
     {
-      id: 'organization_name',
-      label: 'Organization Name',
-      field_type: 'input',
-      input_type: 'text',
-      required: true,
-      placeholder: 'Enter organization name',
-      order: 0,
-    },
-    {
       id: 'contact_name',
       label: 'Contact Name',
-      field_type: 'input',
-      input_type: 'text',
+      field_type: 'dropdown',
       required: true,
-      placeholder: 'Enter contact name',
-      order: 1,
+      placeholder: 'Select contact',
+      options: [], // Will be populated from organization members
+      order: 0,
+      dataSource: {
+        type: 'organization_members',
+        field: 'full_name',
+        allowOverride: true,
+      },
+      description: 'Select from organization members. System field - cannot be deleted.',
+      isSystemField: true,
     },
     {
       id: 'contact_email',
       label: 'Contact Email',
-      field_type: 'input',
-      input_type: 'email',
+      field_type: 'dropdown',
       required: true,
-      placeholder: 'contact@example.com',
-      order: 2,
+      placeholder: 'Select email',
+      options: [], // Will be populated from organization members
+      order: 1,
+      dataSource: {
+        type: 'organization_members',
+        field: 'email',
+        allowOverride: true,
+      },
+      description: 'Select from organization members. System field - cannot be deleted.',
+      isSystemField: true,
     },
     {
       id: 'phone_number',
@@ -94,7 +115,14 @@ export const DEFAULT_COMPANY_INFO_TAB: FormTab = {
       input_type: 'tel',
       required: false,
       placeholder: '(555) 555-5555',
-      order: 3,
+      order: 2,
+      dataSource: {
+        type: 'organization',
+        field: 'phone_number',
+        allowOverride: true,
+      },
+      description: 'Auto-populated from organization settings. System field - cannot be deleted.',
+      isSystemField: true,
     },
     {
       id: 'fax_number',
@@ -103,7 +131,14 @@ export const DEFAULT_COMPANY_INFO_TAB: FormTab = {
       input_type: 'tel',
       required: false,
       placeholder: '(555) 555-5556',
-      order: 4,
+      order: 3,
+      dataSource: {
+        type: 'organization',
+        field: 'fax_number',
+        allowOverride: true,
+      },
+      description: 'Auto-populated from organization settings. System field - cannot be deleted.',
+      isSystemField: true,
     },
     {
       id: 'website',
@@ -112,7 +147,14 @@ export const DEFAULT_COMPANY_INFO_TAB: FormTab = {
       input_type: 'url',
       required: false,
       placeholder: 'https://example.com',
-      order: 5,
+      order: 4,
+      dataSource: {
+        type: 'organization',
+        field: 'website',
+        allowOverride: true,
+      },
+      description: 'Auto-populated from organization settings. System field - cannot be deleted.',
+      isSystemField: true,
     },
     {
       id: 'company_address',
@@ -120,7 +162,14 @@ export const DEFAULT_COMPANY_INFO_TAB: FormTab = {
       field_type: 'textarea',
       required: false,
       placeholder: 'Enter full address',
-      order: 6,
+      order: 5,
+      dataSource: {
+        type: 'organization',
+        field: 'company_address',
+        allowOverride: true,
+      },
+      description: 'Auto-populated from organization settings. System field - cannot be deleted.',
+      isSystemField: true,
     },
   ],
 };
@@ -150,248 +199,60 @@ export const DEFAULT_PROJECT_DETAILS_TAB: FormTab = {
       order: 1,
     },
     {
-      id: 'client_location',
-      label: 'Client Location',
+      id: 'project_name',
+      label: 'Project Name',
       field_type: 'input',
       input_type: 'text',
-      required: false,
-      placeholder: 'City, State',
+      required: true,
+      placeholder: 'Enter project name',
       order: 2,
     },
     {
-      id: 'job_location',
-      label: 'Job Location',
-      field_type: 'textarea',
+      id: 'project_location',
+      label: 'Project Location',
+      field_type: 'input',
+      input_type: 'text',
       required: false,
-      placeholder: 'Enter job site address',
+      placeholder: 'Enter project location',
       order: 3,
     },
     {
-      id: 'proposal_number',
-      label: 'Proposal Number',
-      field_type: 'input',
-      input_type: 'text',
-      required: true,
-      placeholder: 'Auto-generated or custom',
+      id: 'project_description',
+      label: 'Project Description',
+      field_type: 'textarea',
+      required: false,
+      placeholder: 'Describe the project',
       order: 4,
     },
     {
-      id: 'current_date',
-      label: 'Date',
+      id: 'estimated_start_date',
+      label: 'Estimated Start Date',
       field_type: 'date',
-      required: true,
-      default_value: new Date().toISOString().split('T')[0],
+      required: false,
       order: 5,
     },
     {
-      id: 'quote_source',
-      label: 'Quote Source',
-      field_type: 'dropdown',
+      id: 'estimated_completion_date',
+      label: 'Estimated Completion Date',
+      field_type: 'date',
       required: false,
-      options: ['Website', 'Email', 'Phone', 'Referral', 'Trade Show', 'Other'],
-      placeholder: 'Select source',
       order: 6,
     },
   ],
 };
 
-interface FormsStoreState {
-  // State
-  forms: FormDefinition[];
-  currentForm: FormDefinition | null;
-  isLoading: boolean;
-  error: string | null;
+// Re-export React Query hooks for backward compatibility
+export {
+  useForms,
+  useForm,
+  useDefaultForm,
+  useCreateForm,
+  useUpdateForm,
+  useDeleteForm,
+  useCopyForm,
+  useSetDefaultForm,
+  useUnsetDefaultForm,
+} from '@/hooks/queries/useForms';
 
-  // Actions
-  fetchForms: (organizationId: string) => Promise<void>;
-  fetchFormById: (formId: string) => Promise<FormDefinition | null>;
-  createForm: (form: Omit<FormDefinition, 'id' | 'created_at' | 'updated_at'>) => Promise<FormDefinition | null>;
-  updateForm: (formId: string, updates: Partial<FormDefinition>) => Promise<boolean>;
-  deleteForm: (formId: string) => Promise<boolean>;
-  copyForm: (formId: string, newName: string) => Promise<FormDefinition | null>;
-  setCurrentForm: (form: FormDefinition | null) => void;
-  clearError: () => void;
-}
-
-export const useFormsStore = create<FormsStoreState>((set, get) => ({
-  // Initial state
-  forms: [],
-  currentForm: null,
-  isLoading: false,
-  error: null,
-
-  // Fetch all forms for an organization
-  fetchForms: async (organizationId: string) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { data, error } = await supabase
-        .from('form_definitions')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .eq('is_active', true)
-        .order('updated_at', { ascending: false });
-
-      if (error) throw error;
-
-      set({ forms: data || [], isLoading: false });
-    } catch (error: any) {
-      console.error('Error fetching forms:', error);
-      set({ error: error.message, isLoading: false });
-    }
-  },
-
-  // Fetch single form by ID
-  fetchFormById: async (formId: string) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { data, error } = await supabase
-        .from('form_definitions')
-        .select('*')
-        .eq('id', formId)
-        .single();
-
-      if (error) throw error;
-
-      set({ currentForm: data, isLoading: false });
-      return data;
-    } catch (error: any) {
-      console.error('Error fetching form:', error);
-      set({ error: error.message, isLoading: false });
-      return null;
-    }
-  },
-
-  // Create new form
-  createForm: async (form) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { data, error } = await supabase
-        .from('form_definitions')
-        .insert([form])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Add to forms list
-      set((state) => ({
-        forms: [data, ...state.forms],
-        currentForm: data,
-        isLoading: false,
-      }));
-
-      return data;
-    } catch (error: any) {
-      console.error('Error creating form:', error);
-      set({ error: error.message, isLoading: false });
-      return null;
-    }
-  },
-
-  // Update form
-  updateForm: async (formId, updates) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { data, error } = await supabase
-        .from('form_definitions')
-        .update(updates)
-        .eq('id', formId)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Update in forms list
-      set((state) => ({
-        forms: state.forms.map((f) => (f.id === formId ? data : f)),
-        currentForm: state.currentForm?.id === formId ? data : state.currentForm,
-        isLoading: false,
-      }));
-
-      return true;
-    } catch (error: any) {
-      console.error('Error updating form:', error);
-      set({ error: error.message, isLoading: false });
-      return false;
-    }
-  },
-
-  // Delete form (soft delete by setting is_active to false)
-  deleteForm: async (formId) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { error } = await supabase
-        .from('form_definitions')
-        .update({ is_active: false })
-        .eq('id', formId);
-
-      if (error) throw error;
-
-      // Remove from forms list
-      set((state) => ({
-        forms: state.forms.filter((f) => f.id !== formId),
-        currentForm: state.currentForm?.id === formId ? null : state.currentForm,
-        isLoading: false,
-      }));
-
-      return true;
-    } catch (error: any) {
-      console.error('Error deleting form:', error);
-      set({ error: error.message, isLoading: false });
-      return false;
-    }
-  },
-
-  // Copy form
-  copyForm: async (formId, newName) => {
-    set({ isLoading: true, error: null });
-    try {
-      // Fetch original form
-      const { data: original, error: fetchError } = await supabase
-        .from('form_definitions')
-        .select('*')
-        .eq('id', formId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Create copy (exclude id, timestamps, and is_default)
-      const { id, created_at, updated_at, is_default, ...formData } = original;
-      const copy = {
-        ...formData,
-        name: newName,
-        is_default: false, // Don't copy default status
-      };
-
-      const { data: newForm, error: createError } = await supabase
-        .from('form_definitions')
-        .insert([copy])
-        .select()
-        .single();
-
-      if (createError) throw createError;
-
-      // Add to forms list
-      set((state) => ({
-        forms: [newForm, ...state.forms],
-        isLoading: false,
-      }));
-
-      return newForm;
-    } catch (error: any) {
-      console.error('Error copying form:', error);
-      set({ error: error.message, isLoading: false });
-      return null;
-    }
-  },
-
-  // Set current form
-  setCurrentForm: (form) => {
-    set({ currentForm: form });
-  },
-
-  // Clear error
-  clearError: () => {
-    set({ error: null });
-  },
-}));
+// Legacy alias for backward compatibility
+export { useForms as useFormsStore } from '@/hooks/queries/useForms';
