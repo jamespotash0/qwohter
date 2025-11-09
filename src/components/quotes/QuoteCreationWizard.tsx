@@ -5,10 +5,9 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useFormsStore, type FormDefinition } from '@/stores/forms/formsStore';
-import { useQuotesStore } from '@/stores/quotes/quotesStore';
-import { useOrganizationStore } from '@/stores/organization/organizationStore';
-import { useAuthStore } from '@/stores/auth/authStore';
+import { type Form } from '@/stores/forms/formsStore';
+import { useCurrentOrganization, useForms, useCreateQuote } from '@/hooks/queries';
+import { useUser } from '@/auth';
 import {
   Dialog,
   DialogContent,
@@ -31,17 +30,17 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowLeft,
-  ArrowRight,
+  // ArrowRight,
   Check,
   FileText,
   Loader2,
   X,
-  Calendar,
-  Hash,
+  // Calendar,
+  // Hash,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+// import { format } from 'date-fns';
 
 interface QuoteCreationWizardProps {
   open: boolean;
@@ -50,26 +49,27 @@ interface QuoteCreationWizardProps {
 
 export function QuoteCreationWizard({ open, onOpenChange }: QuoteCreationWizardProps) {
   const navigate = useNavigate();
-  const { currentOrganization } = useOrganizationStore();
-  const { user } = useAuthStore();
-  const { forms, fetchForms } = useFormsStore();
-  const { createQuote, generateProposalNumber } = useQuotesStore();
+  const user = useUser();
+  const { organization: currentOrganization } = useCurrentOrganization(user?.id || '');
+  const { data: forms = [] } = useForms(currentOrganization?.id, open);
+  const createQuoteMutation = useCreateQuote();
 
   const [step, setStep] = useState<'select-form' | 'fill-form' | 'review'>('select-form');
-  const [selectedForm, setSelectedForm] = useState<FormDefinition | null>(null);
+  const [selectedForm, setSelectedForm] = useState<Form | null>(null);
   const [projectName, setProjectName] = useState('');
   const [proposalNumber, setProposalNumber] = useState('');
   const [quoteStatus, setQuoteStatus] = useState<'Draft' | 'Incomplete'>('Draft');
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [activeTabId, setActiveTabId] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
 
+  // TODO: Replace with proposal number generation from proposalsService
   useEffect(() => {
     if (open && currentOrganization?.id) {
-      fetchForms(currentOrganization.id);
-      generateProposalNumber(currentOrganization.id).then(setProposalNumber);
+      // Generate proposal number - this should call proposalsService.generateNextProposalNumber
+      // For now, using a placeholder
+      setProposalNumber(`Q${Date.now()}`);
     }
-  }, [open, currentOrganization?.id, fetchForms, generateProposalNumber]);
+  }, [open, currentOrganization?.id]);
 
   useEffect(() => {
     if (selectedForm && selectedForm.tabs.length > 0) {
@@ -77,7 +77,7 @@ export function QuoteCreationWizard({ open, onOpenChange }: QuoteCreationWizardP
     }
   }, [selectedForm]);
 
-  const handleSelectForm = (form: FormDefinition) => {
+  const handleSelectForm = (form: Form) => {
     setSelectedForm(form);
     setStep('fill-form');
   };
@@ -97,32 +97,21 @@ export function QuoteCreationWizard({ open, onOpenChange }: QuoteCreationWizardP
       return;
     }
 
-    setIsSaving(true);
-
-    try {
-      const quote = await createQuote({
-        organization_id: currentOrganization.id,
-        created_by: user.id,
-        proposal_number: proposalNumber,
-        project_name: projectName,
-        status: quoteStatus,
-        form_definition_id: selectedForm.id,
-        form_response_data: formData,
-        product_items: [],
-        computed_totals: {},
-      });
-
-      if (quote) {
+    createQuoteMutation.mutate({
+      project_name: projectName,
+      status: quoteStatus,
+      wall_details: formData,
+    }, {
+      onSuccess: (quote) => {
         toast.success('Quote created successfully');
         onOpenChange(false);
         navigate(`/quotes/${quote.id}`);
+      },
+      onError: (error) => {
+        toast.error('Failed to create quote');
+        console.error('Error creating quote:', error);
       }
-    } catch (error) {
-      toast.error('Failed to create quote');
-      console.error('Error creating quote:', error);
-    } finally {
-      setIsSaving(false);
-    }
+    });
   };
 
   const handleClose = () => {
@@ -416,10 +405,10 @@ export function QuoteCreationWizard({ open, onOpenChange }: QuoteCreationWizardP
             {step === 'fill-form' && (
               <Button
                 onClick={handleSaveQuote}
-                disabled={isSaving || !projectName.trim()}
+                disabled={createQuoteMutation.isPending || !projectName.trim()}
                 className="bg-gradient-to-r from-primary to-primary/80"
               >
-                {isSaving ? (
+                {createQuoteMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Saving...

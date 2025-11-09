@@ -79,13 +79,16 @@ export interface FormTab {
   fields: FormField[];
 }
 
-export interface FormDefinition {
+export interface Form {
   id: string;
   name: string;
   description?: string;
   category?: string;
   tags?: string[];
   tabs: FormTab[];
+  organizationId?: string;
+  formType?: string;
+  startingProposalNumber?: string;
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string;

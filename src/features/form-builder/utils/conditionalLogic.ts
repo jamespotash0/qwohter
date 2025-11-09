@@ -1,9 +1,9 @@
-import { ConditionalLogic, FormDefinition, FormData } from '../types';
+import { ConditionalLogic, Form, FormData } from '../types';
 
 export function evaluateConditionalLogic(
   conditions: ConditionalLogic[],
   formData: FormData,
-  form: FormDefinition
+  form: Form
 ): boolean {
   // All conditions must be true (AND logic)
   return conditions.every(condition => {

@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { FormDefinition, FormData } from '../types';
+import { Form, FormData } from '../types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DynamicField } from './DynamicField';
 import { evaluateConditionalLogic } from '../utils/conditionalLogic';
 
 interface DynamicFormRendererProps {
-  form: FormDefinition;
+  form: Form;
   initialData?: FormData;
   onSubmit?: (data: FormData) => void;
   readonly?: boolean;

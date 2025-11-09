@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageContent } from '@/components/common/layout';
-import { type FormDefinition } from '@/stores/forms/formsStore';
-import { useCurrentOrganization, useForms, useDeleteForm, useCopyForm, useUpdateForm } from '@/hooks/queries';
+import { type Form } from '@/stores/forms/formsStore';
+import { useCurrentOrganization, useForms, useDeleteForm, useCopyForm, useUpdateForm, useCreateForm } from '@/hooks/queries';
 import { useUser } from '@/auth';
 import {
   Plus,
@@ -26,6 +26,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { CreateCustomFormDialog } from '@/features/form-builder/components/CreateCustomFormDialog';
+import { DEFAULT_COMPANY_INFO_TAB, DEFAULT_PROJECT_DETAILS_TAB } from '@/stores/forms/formsStore';
 
 type ViewMode = 'grid' | 'list';
 
@@ -37,7 +39,9 @@ export default function Forms() {
   const deleteFormMutation = useDeleteForm();
   const copyFormMutation = useCopyForm();
   const updateFormMutation = useUpdateForm();
+  const createFormMutation = useCreateForm();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const handleDelete = async (id: string, name: string) => {
     deleteFormMutation.mutate(id);
@@ -64,6 +68,40 @@ export default function Forms() {
       id: formId,
       updates: { name: newName }
     });
+  };
+
+  const handleCreateForm = async (data: {
+    name: string;
+    description: string;
+    formType: string;
+    startingProposalNumber: string;
+  }) => {
+    if (!currentOrganization?.id || !user?.id) {
+      toast.error('Missing organization or user information');
+      return;
+    }
+
+    try {
+      // Create form with default tabs and the dialog data
+      createFormMutation.mutate({
+        name: data.name,
+        description: data.description || undefined,
+        organization_id: currentOrganization.id,
+        created_by: user.id,
+        is_active: true,
+        form_type: data.formType,
+        starting_proposal_number: data.startingProposalNumber,
+        tabs: [DEFAULT_COMPANY_INFO_TAB, DEFAULT_PROJECT_DETAILS_TAB],
+      }, {
+        onSuccess: (newForm) => {
+          setShowCreateDialog(false);
+          // Navigate to form builder with the new form
+          navigate(`/forms/builder-v3/${newForm.id}`);
+        }
+      });
+    } catch (error) {
+      console.error('Failed to create form:', error);
+    }
   };
 
   const filteredForms = forms;
@@ -99,7 +137,7 @@ export default function Forms() {
             </div>
           )}
           <Button
-            onClick={() => navigate('/forms/builder-v3/new')}
+            onClick={() => setShowCreateDialog(true)}
             className="flex items-center gap-2 bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white shadow-sm"
           >
             <Plus className="w-4 h-4" weight="bold" />
@@ -108,6 +146,13 @@ export default function Forms() {
         </div>
       }
     >
+      {/* Create Custom Form Dialog */}
+      <CreateCustomFormDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onSubmit={handleCreateForm}
+        isLoading={createFormMutation.isPending}
+      />
 
       {/* Forms Display */}
       {isLoading ? (
@@ -120,7 +165,7 @@ export default function Forms() {
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No forms yet</h3>
           <p className="text-gray-600 mb-6">Get started by creating your first custom form</p>
           <Button
-            onClick={() => navigate('/forms/builder-v3/new')}
+            onClick={() => setShowCreateDialog(true)}
             className="flex items-center gap-2 mx-auto bg-blue-600 hover:bg-blue-700 text-white"
           >
             <Plus className="w-4 h-4" weight="bold" />
@@ -161,7 +206,7 @@ export default function Forms() {
 }
 
 interface FormCardProps {
-  form: FormDefinition;
+  form: Form;
   onEdit: () => void;
   onDuplicate: (e?: React.MouseEvent) => void;
   onDelete: () => void;

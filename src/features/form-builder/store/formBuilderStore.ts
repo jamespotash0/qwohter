@@ -1,11 +1,11 @@
 import { create } from 'zustand';
-import { FormDefinition, FormTab, FormField, FormBuilderState } from '../types';
+import { Form, FormTab, FormField, FormBuilderState } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 
 interface FormBuilderStore {
   // Forms data
-  forms: FormDefinition[];
-  currentForm: FormDefinition | null;
+  forms: Form[];
+  currentForm: Form | null;
   isLoading: boolean;
   error: string | null;
 
@@ -15,13 +15,13 @@ interface FormBuilderStore {
   // Actions
   fetchForms: () => Promise<void>;
   fetchFormById: (id: string) => Promise<void>;
-  createForm: (form: Omit<FormDefinition, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
-  updateForm: (id: string, updates: Partial<FormDefinition>) => Promise<void>;
+  createForm: (form: Omit<Form, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
+  updateForm: (id: string, updates: Partial<Form>) => Promise<void>;
   deleteForm: (id: string) => Promise<void>;
   duplicateForm: (id: string) => Promise<string>;
 
   // Form building actions
-  setCurrentForm: (form: FormDefinition | null) => void;
+  setCurrentForm: (form: Form | null) => void;
   addTab: (tab: Omit<FormTab, 'id' | 'fields'>) => void;
   updateTab: (tabId: string, updates: Partial<FormTab>) => void;
   deleteTab: (tabId: string) => void;

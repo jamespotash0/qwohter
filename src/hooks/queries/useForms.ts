@@ -17,7 +17,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import type { FormDefinition } from '@/services/formsService';
+import type { Form } from '@/services/formsService';
 import {
   fetchForms,
   fetchFormById,
@@ -31,7 +31,7 @@ import {
 } from '@/services/formsService';
 
 // Re-export types for convenience
-export type { FormDefinition, FormTab, FormField } from '@/services/formsService';
+export type { Form, FormTab, FormField } from '@/services/formsService';
 
 /**
  * Query Keys Factory for Forms
@@ -146,7 +146,7 @@ export function useCreateForm() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (formData: Omit<FormDefinition, 'id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (formData: Omit<Form, 'id' | 'created_at' | 'updated_at'>) => {
       return createForm(formData);
     },
 
@@ -175,7 +175,7 @@ export function useUpdateForm() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<FormDefinition> }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Form> }) => {
       return updateForm(id, updates);
     },
 
@@ -185,7 +185,7 @@ export function useUpdateForm() {
       await queryClient.cancelQueries({ queryKey: formsQueryKeys.detail(id) });
 
       // Snapshot previous value
-      const previousForm = queryClient.getQueryData<FormDefinition>(formsQueryKeys.detail(id));
+      const previousForm = queryClient.getQueryData<Form>(formsQueryKeys.detail(id));
 
       // Optimistically update
       if (previousForm) {
@@ -237,14 +237,14 @@ export function useDeleteForm() {
 
     onMutate: async (formId) => {
       // Get the form to find its organization_id
-      const form = queryClient.getQueryData<FormDefinition>(formsQueryKeys.detail(formId));
+      const form = queryClient.getQueryData<Form>(formsQueryKeys.detail(formId));
 
       if (form) {
         // Cancel queries
         await queryClient.cancelQueries({ queryKey: formsQueryKeys.list(form.organization_id) });
 
         // Snapshot
-        const previousForms = queryClient.getQueryData<FormDefinition[]>(
+        const previousForms = queryClient.getQueryData<Form[]>(
           formsQueryKeys.list(form.organization_id)
         );
 

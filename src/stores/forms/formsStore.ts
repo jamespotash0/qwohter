@@ -64,7 +64,7 @@ export interface FormTab {
 }
 
 // Form definition
-export interface FormDefinition {
+export interface Form {
   id: string;
   organization_id: string;
   name: string;
@@ -77,6 +77,8 @@ export interface FormDefinition {
   updated_at: string;
   is_active: boolean;
   is_default?: boolean; // Marks this as the default form for quote creation
+  form_type?: string; // Type of form this represents (can be custom or preset like 'quote', 'service_request', etc.)
+  starting_proposal_number?: string; // Starting proposal number that auto-increments (e.g., "Q1200", "ER-2025-001")
 }
 
 // Default tabs

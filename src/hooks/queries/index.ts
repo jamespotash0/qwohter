@@ -95,4 +95,4 @@ export {
 // Types
 export type { UserProfile, Session } from './useAuth';
 export type { DashboardStats, QuoteActivity } from './useDashboard';
-export type { FormDefinition } from './useForms';
+export type { Form } from './useForms';

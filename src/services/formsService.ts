@@ -1,21 +1,21 @@
 /**
  * Forms Service
- * Handles all form definition operations with the database
+ * Handles all form operations with the database
  *
  * This service follows the architecture pattern from quotesService
  * with proper separation of concerns and error handling
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import type { FormDefinition, FormTab } from '@/stores/forms/formsStore';
+import type { Form, FormTab, FormField } from '@/features/form-builder/types';
 
 // Export types for use in other files
-export type { FormDefinition, FormTab, FormField } from '@/stores/forms/formsStore';
+export type { Form, FormTab, FormField } from '@/features/form-builder/types';
 
 /**
  * Fetch all forms for an organization
  */
-export async function fetchForms(organizationId: string): Promise<FormDefinition[]> {
+export async function fetchForms(organizationId: string): Promise<Form[]> {
   if (!organizationId) {
     throw new Error('Organization ID is required');
   }
@@ -38,7 +38,7 @@ export async function fetchForms(organizationId: string): Promise<FormDefinition
 /**
  * Fetch a single form by ID
  */
-export async function fetchFormById(formId: string): Promise<FormDefinition> {
+export async function fetchFormById(formId: string): Promise<Form> {
   if (!formId) {
     throw new Error('Form ID is required');
   }
@@ -65,8 +65,8 @@ export async function fetchFormById(formId: string): Promise<FormDefinition> {
  * Create a new form
  */
 export async function createForm(
-  form: Omit<FormDefinition, 'id' | 'created_at' | 'updated_at'>
-): Promise<FormDefinition> {
+  form: Omit<Form, 'id' | 'created_at' | 'updated_at'>
+): Promise<Form> {
   // Validate required fields
   if (!form.organization_id) {
     throw new Error('Organization ID is required');
@@ -101,8 +101,8 @@ export async function createForm(
  */
 export async function updateForm(
   formId: string,
-  updates: Partial<FormDefinition>
-): Promise<FormDefinition> {
+  updates: Partial<Form>
+): Promise<Form> {
   if (!formId) {
     throw new Error('Form ID is required');
   }
@@ -151,7 +151,7 @@ export async function deleteForm(formId: string): Promise<void> {
 /**
  * Copy/duplicate a form
  */
-export async function copyForm(formId: string, newName: string): Promise<FormDefinition> {
+export async function copyForm(formId: string, newName: string): Promise<Form> {
   if (!formId) {
     throw new Error('Form ID is required');
   }
@@ -177,7 +177,7 @@ export async function copyForm(formId: string, newName: string): Promise<FormDef
 /**
  * Get the default form for an organization
  */
-export async function getDefaultForm(organizationId: string): Promise<FormDefinition | null> {
+export async function getDefaultForm(organizationId: string): Promise<Form | null> {
   if (!organizationId) {
     throw new Error('Organization ID is required');
   }
@@ -209,7 +209,7 @@ export async function getDefaultForm(organizationId: string): Promise<FormDefini
 export async function setDefaultForm(
   formId: string,
   organizationId: string
-): Promise<FormDefinition> {
+): Promise<Form> {
   if (!formId) {
     throw new Error('Form ID is required');
   }
@@ -237,7 +237,7 @@ export async function setDefaultForm(
 /**
  * Unset a form as default
  */
-export async function unsetDefaultForm(formId: string): Promise<FormDefinition> {
+export async function unsetDefaultForm(formId: string): Promise<Form> {
   if (!formId) {
     throw new Error('Form ID is required');
   }

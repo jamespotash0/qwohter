@@ -1,8 +1,8 @@
-import { FormDefinition } from '../types';
+import { Form } from '../types';
 import { DynamicFormRenderer } from '../renderer/DynamicFormRenderer';
 
 interface FormPreviewProps {
-  form: FormDefinition;
+  form: Form;
 }
 
 export function FormPreview({ form }: FormPreviewProps) {
