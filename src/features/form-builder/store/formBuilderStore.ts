@@ -61,7 +61,7 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
       if (!user) throw new Error('Not authenticated');
 
       const { data, error } = await supabase
-        .from('form_definitions')
+        .from('forms')
         .select('*')
         .eq('created_by', user.id)
         .order('created_at', { ascending: false });
@@ -83,7 +83,7 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { data, error } = await supabase
-        .from('form_definitions')
+        .from('forms')
         .select('*')
         .eq('id', id)
         .single();
@@ -119,7 +119,7 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
       };
 
       const { data, error } = await supabase
-        .from('form_definitions')
+        .from('forms')
         .insert(dbForm)
         .select()
         .single();
@@ -157,7 +157,7 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
       if (updates.isActive !== undefined) dbUpdates.is_active = updates.isActive;
 
       const { error } = await supabase
-        .from('form_definitions')
+        .from('forms')
         .update(dbUpdates)
         .eq('id', id);
 
@@ -180,7 +180,7 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const { error } = await supabase
-        .from('form_definitions')
+        .from('forms')
         .delete()
         .eq('id', id);
 

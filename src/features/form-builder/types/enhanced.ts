@@ -9,6 +9,9 @@ import { type FormField as BaseFormField, type FormTab } from '@/stores/forms/fo
  * Enhanced Field with Layout and Visual Properties
  */
 export interface EnhancedFormField extends BaseFormField {
+  // Number formatting for math and number input fields
+  number_format?: 'decimal' | 'currency' | 'percent' | 'integer';
+
   // Grid layout properties
   layout?: {
     x: number;        // Grid column position
@@ -39,9 +42,30 @@ export interface EnhancedFormField extends BaseFormField {
   // Dependencies (for arrows)
   dependencies?: Array<{
     fieldId: string;
-    condition: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains';
+    condition:
+      | 'equals'
+      | 'not_equals'
+      | 'greater_than'
+      | 'less_than'
+      | 'greater_than_or_equal'
+      | 'less_than_or_equal'
+      | 'contains'
+      | 'not_contains'
+      | 'starts_with'
+      | 'ends_with'
+      | 'is_empty'
+      | 'is_not_empty'
+      | 'is_checked'
+      | 'is_unchecked';
     value: any;
-    action: 'show' | 'hide' | 'enable' | 'disable' | 'calculate';
+    action:
+      | 'show'
+      | 'hide'
+      | 'enable'
+      | 'disable'
+      | 'require'
+      | 'optional'
+      | 'calculate';
   }>;
 
   // Custom component support
@@ -56,6 +80,12 @@ export interface EnhancedFormField extends BaseFormField {
     field: string; // e.g., 'phone_number', 'full_name', 'email'
     allowOverride?: boolean; // Whether users can change the auto-populated value
   };
+
+  // Template variables support for database value interpolation
+  supportsTemplateVariables?: boolean; // Whether this field supports {{templateVar}} syntax
+
+  // Skip validation when default value is present
+  skipValidationForDefault?: boolean; // If true, validation is skipped when default_value is set
 }
 
 /**

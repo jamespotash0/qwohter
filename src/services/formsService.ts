@@ -21,7 +21,7 @@ export async function fetchForms(organizationId: string): Promise<FormDefinition
   }
 
   const { data, error } = await supabase
-    .from('form_definitions')
+    .from('forms')
     .select('*')
     .eq('organization_id', organizationId)
     .eq('is_active', true)
@@ -44,7 +44,7 @@ export async function fetchFormById(formId: string): Promise<FormDefinition> {
   }
 
   const { data, error } = await supabase
-    .from('form_definitions')
+    .from('forms')
     .select('*')
     .eq('id', formId)
     .single();
@@ -79,7 +79,7 @@ export async function createForm(
   }
 
   const { data, error } = await (supabase
-    .from('form_definitions') as any)
+    .from('forms') as any)
     .insert([form])
     .select()
     .single();
@@ -111,7 +111,7 @@ export async function updateForm(
   const { id, created_at, created_by, ...allowedUpdates } = updates as any;
 
   const { data, error } = await (supabase
-    .from('form_definitions') as any)
+    .from('forms') as any)
     .update({ ...allowedUpdates, updated_at: new Date().toISOString() })
     .eq('id', formId)
     .select()
@@ -138,7 +138,7 @@ export async function deleteForm(formId: string): Promise<void> {
   }
 
   const { error } = await (supabase
-    .from('form_definitions') as any)
+    .from('forms') as any)
     .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq('id', formId);
 
@@ -183,7 +183,7 @@ export async function getDefaultForm(organizationId: string): Promise<FormDefini
   }
 
   const { data, error } = await supabase
-    .from('form_definitions')
+    .from('forms')
     .select('*')
     .eq('organization_id', organizationId)
     .eq('is_active', true)
@@ -219,7 +219,7 @@ export async function setDefaultForm(
 
   // First, unset all other forms as default in this organization
   const { error: unsetError } = await (supabase
-    .from('form_definitions') as any)
+    .from('forms') as any)
     .update({ is_default: false, updated_at: new Date().toISOString() })
     .eq('organization_id', organizationId)
     .eq('is_default', true)

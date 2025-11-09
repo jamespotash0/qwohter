@@ -20,6 +20,8 @@ import {
   TextAlignLeft,
   Calculator,
   Package,
+  MapPin,
+  Bank,
 } from '@phosphor-icons/react';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -37,11 +39,11 @@ const FIELD_SECTIONS = [
         icon: TextT,
         category: 'text',
         defaultProps: {
-          label: 'Text Field',
+          label: '',
           field_type: 'input',
           input_type: 'text',
           required: false,
-          placeholder: 'Enter text...',
+          placeholder: 'Enter text',
           layout: { x: 0, y: 0, w: 6, h: 2 },
         },
       },
@@ -51,10 +53,10 @@ const FIELD_SECTIONS = [
         icon: TextAlignLeft,
         category: 'text',
         defaultProps: {
-          label: 'Description',
+          label: '',
           field_type: 'textarea',
           required: false,
-          placeholder: 'Enter detailed text...',
+          placeholder: 'Enter detailed text',
           layout: { x: 0, y: 0, w: 12, h: 4 },
         },
       },
@@ -64,11 +66,11 @@ const FIELD_SECTIONS = [
         icon: Envelope,
         category: 'text',
         defaultProps: {
-          label: 'Email',
+          label: '',
           field_type: 'input',
           input_type: 'email',
           required: false,
-          placeholder: 'email@example.com',
+          placeholder: 'Enter a valid email',
           layout: { x: 0, y: 0, w: 6, h: 2 },
         },
       },
@@ -78,11 +80,11 @@ const FIELD_SECTIONS = [
         icon: Phone,
         category: 'text',
         defaultProps: {
-          label: 'Phone Number',
+          label: '',
           field_type: 'input',
           input_type: 'tel',
           required: false,
-          placeholder: '(555) 555-5555',
+          placeholder: 'Enter a phone number',
           layout: { x: 0, y: 0, w: 6, h: 2 },
         },
       },
@@ -92,11 +94,11 @@ const FIELD_SECTIONS = [
         icon: LinkIcon,
         category: 'text',
         defaultProps: {
-          label: 'Website',
+          label: '',
           field_type: 'input',
           input_type: 'url',
           required: false,
-          placeholder: 'https://example.com',
+          placeholder: 'Enter a valid URL',
           layout: { x: 0, y: 0, w: 8, h: 2 },
         },
       },
@@ -106,12 +108,41 @@ const FIELD_SECTIONS = [
         icon: NumberSquareZero,
         category: 'text',
         defaultProps: {
-          label: 'Number',
+          label: '',
           field_type: 'input',
           input_type: 'number',
           required: false,
-          placeholder: '0',
+          placeholder: 'Enter a number',
           layout: { x: 0, y: 0, w: 4, h: 2 },
+        },
+      },
+      {
+        type: 'currency',
+        label: 'Currency',
+        icon: NumberSquareZero,
+        category: 'text',
+        defaultProps: {
+          label: '',
+          field_type: 'input',
+          input_type: 'number',
+          number_format: 'currency',
+          required: false,
+          placeholder: '$0.00',
+          layout: { x: 0, y: 0, w: 4, h: 2 },
+        },
+      },
+      {
+        type: 'address',
+        label: 'Address',
+        icon: MapPin,
+        category: 'text',
+        defaultProps: {
+          label: '',
+          field_type: 'input',
+          input_type: 'address',
+          required: false,
+          placeholder: 'Enter address',
+          layout: { x: 0, y: 0, w: 12, h: 2 },
         },
       },
     ],
@@ -125,7 +156,7 @@ const FIELD_SECTIONS = [
         icon: Calendar,
         category: 'date',
         defaultProps: {
-          label: 'Date',
+          label: '',
           field_type: 'date',
           required: false,
           layout: { x: 0, y: 0, w: 4, h: 2 },
@@ -142,7 +173,7 @@ const FIELD_SECTIONS = [
         icon: CaretCircleDown,
         category: 'selection',
         defaultProps: {
-          label: 'Select Option',
+          label: '',
           field_type: 'dropdown',
           required: false,
           options: ['Option 1', 'Option 2', 'Option 3'],
@@ -155,7 +186,7 @@ const FIELD_SECTIONS = [
         icon: CheckSquare,
         category: 'selection',
         defaultProps: {
-          label: 'Select all that apply',
+          label: '',
           field_type: 'checkbox',
           required: false,
           layout: { x: 0, y: 0, w: 6, h: 1 },
@@ -167,7 +198,7 @@ const FIELD_SECTIONS = [
         icon: RadioButton,
         category: 'selection',
         defaultProps: {
-          label: 'Choose one option',
+          label: '',
           field_type: 'radio',
           required: false,
           options: ['Yes', 'No'],
@@ -180,9 +211,10 @@ const FIELD_SECTIONS = [
         icon: ToggleLeft,
         category: 'selection',
         defaultProps: {
-          label: 'Toggle',
+          label: '',
           field_type: 'checkbox',
           required: false,
+          uiVariant: 'toggle',
           layout: { x: 0, y: 0, w: 6, h: 1 },
         },
       },
@@ -192,13 +224,13 @@ const FIELD_SECTIONS = [
     title: 'Advanced Elements',
     fields: [
       {
-        type: 'calculated',
-        label: 'Calculated Field',
+        type: 'math',
+        label: 'Math Field',
         icon: Calculator,
         category: 'advanced',
         defaultProps: {
-          label: 'Total',
-          field_type: 'calculated',
+          label: '',
+          field_type: 'math',
           required: false,
           formula: '=0',
           layout: { x: 0, y: 0, w: 4, h: 2 },
@@ -210,7 +242,7 @@ const FIELD_SECTIONS = [
         icon: Package,
         category: 'advanced',
         defaultProps: {
-          label: 'Custom Field',
+          label: '',
           field_type: 'input' as any,
           required: false,
           customComponent: { name: '' },
@@ -244,11 +276,15 @@ function DraggableFieldItem({ item }: DraggableFieldItemProps) {
         'bg-white dark:bg-gray-800',
         'cursor-grab active:cursor-grabbing',
         'hover:border-blue-500 hover:shadow-md',
-        'transition-all duration-200',
+        'transition-all duration-200 select-none',
         isDragging && 'opacity-50 scale-95'
       )}
       whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+      onClick={(e) => {
+        // Prevent click behavior - drag only
+        e.preventDefault();
+        e.stopPropagation();
+      }}
     >
       <div className="flex items-center justify-center w-8 h-8 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
         <Icon className="w-4 h-4" />

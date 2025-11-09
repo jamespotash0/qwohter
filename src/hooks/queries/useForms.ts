@@ -80,7 +80,7 @@ export function useForms(organizationId?: string, enabled: boolean = true) {
         {
           event: '*',
           schema: 'public',
-          table: 'form_definitions',
+          table: 'forms',
           filter: `organization_id=eq.${organizationId}`,
         },
         (payload) => {

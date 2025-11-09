@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter, useDroppable } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, closestCenter, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, useSortable, arrayMove, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
@@ -39,6 +39,7 @@ interface DroppablePageContentProps {
   onDeleteField: (fieldId: string) => void;
   onUpdateField: (updates: Partial<EnhancedFormField>) => void;
   tabName: string;
+  dragPreview: { w: number; h: number } | null;
 }
 
 function DroppablePageContent({
@@ -50,10 +51,20 @@ function DroppablePageContent({
   onDeleteField,
   onUpdateField,
   tabName,
+  dragPreview,
 }: DroppablePageContentProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: `canvas-${tabIndex}`,
   });
+
+  // Calculate where the preview should appear (at the bottom)
+  let previewY = 0;
+  if (dragPreview && isOver) {
+    pageFields.forEach(field => {
+      const fieldBottom = (field.layout?.y || 0) + (field.layout?.h || 2);
+      if (fieldBottom > previewY) previewY = fieldBottom;
+    });
+  }
 
   return (
     <div
@@ -62,7 +73,7 @@ function DroppablePageContent({
         isOver ? 'bg-blue-50 dark:bg-blue-900/10' : ''
       }`}
     >
-      {pageFields.length === 0 ? (
+      {pageFields.length === 0 && !dragPreview ? (
         <div className="flex items-center justify-center h-96 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg">
           <div className="text-center text-gray-500 dark:text-gray-400">
             <p className="text-sm font-medium">No fields yet</p>
@@ -75,7 +86,7 @@ function DroppablePageContent({
         </div>
       ) : (
         <SortableContext items={pageFields.map(f => `field-${f.id}`)}>
-          <div className="grid grid-cols-12 gap-4 min-h-[500px]" style={{ gridAutoRows: '50px' }}>
+          <div className="grid grid-cols-12 gap-4 min-h-[500px] relative" style={{ gridAutoRows: '50px' }}>
             {pageFields.map((field) => (
               <SortableFieldItem
                 key={field.id}
@@ -86,6 +97,26 @@ function DroppablePageContent({
                 onUpdateLayout={(updates) => onUpdateField(updates)}
               />
             ))}
+
+            {/* Drag Preview - Shows where the field will be placed */}
+            {dragPreview && isOver && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="border-2 border-dashed border-blue-500 bg-blue-100/50 dark:bg-blue-900/30 rounded-lg"
+                style={{
+                  gridColumn: `span ${Math.min(dragPreview.w, 12)}`,
+                  gridRow: `span ${dragPreview.h}`,
+                  gridRowStart: previewY + 1,
+                }}
+              >
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                    Drop here
+                  </p>
+                </div>
+              </motion.div>
+            )}
           </div>
         </SortableContext>
       )}
@@ -127,6 +158,7 @@ export default function FormBuilderV3() {
   // UI state
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [dragPreview, setDragPreview] = useState<{ w: number; h: number } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -143,6 +175,15 @@ export default function FormBuilderV3() {
 
   const currentFields = tabs[currentTab]?.fields || [];
   const selectedField = currentFields.find((f) => f.id === selectedFieldId) || null;
+
+  // Configure drag sensors to require minimum drag distance (prevents accidental clicks from adding fields)
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px of movement before drag activates
+      },
+    })
+  );
 
   // Canvas reset view handler - focuses on first page
   const handleResetView = useCallback(() => {
@@ -208,6 +249,17 @@ export default function FormBuilderV3() {
   // Drag and drop handlers
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(event.active.id as string);
+
+    // Set drag preview dimensions for palette items
+    if (event.active.id.toString().startsWith('palette-')) {
+      const paletteItem = event.active.data.current as FieldPaletteItem;
+      const layout = paletteItem.defaultProps?.layout || { w: 6, h: 2 };
+      setDragPreview({ w: layout.w, h: layout.h });
+    }
+  }, []);
+
+  const handleDragOver = useCallback((event: DragOverEvent) => {
+    // This ensures the drag preview updates as you move over droppable areas
   }, []);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
@@ -215,6 +267,7 @@ export default function FormBuilderV3() {
 
     if (!over) {
       setActiveId(null);
+      setDragPreview(null);
       return;
     }
 
@@ -261,7 +314,7 @@ export default function FormBuilderV3() {
         updatedTabs[currentTab] = {
           ...updatedTabs[currentTab],
           fields: reorderedFields,
-        };
+        } as EnhancedFormTab;
         setTabs(updatedTabs);
       }
       setActiveId(null);
@@ -278,11 +331,22 @@ export default function FormBuilderV3() {
       if (isValidDropTarget) {
         const paletteItem = active.data.current as FieldPaletteItem;
 
-        // Create new field from palette item
+        // Calculate the next available Y position (bottom of current fields)
+        let maxY = 0;
+        currentFields.forEach(field => {
+          const fieldBottom = (field.layout?.y || 0) + (field.layout?.h || 2);
+          if (fieldBottom > maxY) maxY = fieldBottom;
+        });
+
+        // Create new field from palette item, positioned at the bottom
         const newField: EnhancedFormField = {
           ...paletteItem.defaultProps,
           id: `field_${Date.now()}`,
           order: currentFields.length,
+          layout: {
+            ...paletteItem.defaultProps.layout,
+            y: maxY, // Position at the bottom
+          },
         } as EnhancedFormField;
 
         // Add to current tab
@@ -292,10 +356,14 @@ export default function FormBuilderV3() {
           fields: [...currentFields, newField],
         };
         setTabs(updatedTabs);
+
+        // Select the newly added field
+        setSelectedFieldId(newField.id);
       }
     }
 
     setActiveId(null);
+    setDragPreview(null);
   }, [currentFields, currentTab, tabs]);
 
   // Field update handler
@@ -338,7 +406,7 @@ export default function FormBuilderV3() {
       updatedTabs[currentTab] = {
         ...updatedTabs[currentTab],
         fields: currentFields.filter((f) => f.id !== fieldId),
-      };
+      } as EnhancedFormTab;
       setTabs(updatedTabs);
       setSelectedFieldId(null);
     },
@@ -426,7 +494,7 @@ export default function FormBuilderV3() {
     updatedTabs[index] = {
       ...updatedTabs[index],
       name: newName,
-    };
+    } as EnhancedFormTab;
     setTabs(updatedTabs);
   }, [tabs]);
 
@@ -537,7 +605,9 @@ export default function FormBuilderV3() {
 
   return (
     <DndContext
+      sensors={sensors}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
       collisionDetection={closestCenter}
     >
@@ -765,6 +835,7 @@ export default function FormBuilderV3() {
                             onDeleteField={handleDeleteField}
                             onUpdateField={handleUpdateField}
                             tabName={tab.name}
+                            dragPreview={currentTab === tabIndex ? dragPreview : null}
                           />
                         </div>
 
@@ -1255,7 +1326,27 @@ function SortableFieldItem({ field, isSelected, onSelect, onDelete, onUpdateLayo
 
       {/* Field Preview */}
       <div className="mt-2">
-        {field.field_type === 'input' && (
+        {field.field_type === 'input' && field.input_type === 'address' && (
+          <div className="h-9 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm flex items-center gap-2">
+            <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 256 256">
+              <path d="M128,64a40,40,0,1,0,40,40A40,40,0,0,0,128,64Zm0,64a24,24,0,1,1,24-24A24,24,0,0,1,128,128Zm0-112a88.1,88.1,0,0,0-88,88c0,31.4,14.51,64.68,42,96.25a254.19,254.19,0,0,0,41.45,38.3,8,8,0,0,0,9.18,0A254.19,254.19,0,0,0,174,200.25c27.45-31.57,42-64.85,42-96.25A88.1,88.1,0,0,0,128,16Zm0,206c-16.53-13-72-60.75-72-118a72,72,0,0,1,144,0C200,161.23,144.53,209,128,222Z"></path>
+            </svg>
+            <span className={field.default_value ? 'text-gray-700 dark:text-gray-200 font-medium' : 'text-gray-400'}>
+              {field.default_value || field.placeholder || 'Search address with Mapbox...'}
+            </span>
+          </div>
+        )}
+        {field.field_type === 'input' && field.input_type === 'number' && field.number_format === 'currency' && (
+          <div className="h-9 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm flex items-center gap-2">
+            <svg className="w-4 h-4 text-green-600 dark:text-green-500" fill="currentColor" viewBox="0 0 256 256">
+              <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm48-88a48,48,0,0,1-48,48h-8v16a8,8,0,0,1-16,0V176H88a8,8,0,0,1,0-16h40a32,32,0,0,0,0-64H112a16,16,0,0,1,0-32h16V48a8,8,0,0,1,16,0V64h8a8,8,0,0,1,0,16h-8a32,32,0,0,0,0,64h16A48.05,48.05,0,0,1,176,128Z"></path>
+            </svg>
+            <span className={field.default_value ? 'text-gray-700 dark:text-gray-200 font-medium' : 'text-gray-400'}>
+              {field.default_value || field.placeholder || '$0.00'}
+            </span>
+          </div>
+        )}
+        {field.field_type === 'input' && field.input_type !== 'address' && !(field.input_type === 'number' && field.number_format === 'currency') && (
           <div className={`h-9 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm ${
             field.default_value ? 'text-gray-700 dark:text-gray-200 font-medium' : 'text-gray-400'
           }`}>
@@ -1279,7 +1370,15 @@ function SortableFieldItem({ field, isSelected, onSelect, onDelete, onUpdateLayo
             <span className="ml-2">▼</span>
           </div>
         )}
-        {field.field_type === 'checkbox' && (
+        {field.field_type === 'checkbox' && field.uiVariant === 'toggle' && (
+          <div className="flex items-center gap-3">
+            <div className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-300 dark:bg-gray-600 transition-colors">
+              <span className="inline-block h-4 w-4 transform rounded-full bg-white dark:bg-gray-200 transition-transform translate-x-1" />
+            </div>
+            <span className="text-sm text-gray-600 dark:text-gray-400">Off / On</span>
+          </div>
+        )}
+        {field.field_type === 'checkbox' && field.uiVariant !== 'toggle' && (
           <div className="space-y-2">
             {field.options && field.options.length > 0 ? (
               field.options.map((option, index) => (
@@ -1318,7 +1417,7 @@ function SortableFieldItem({ field, isSelected, onSelect, onDelete, onUpdateLayo
             MM/DD/YYYY
           </div>
         )}
-        {field.field_type === 'calculated' && (
+        {field.field_type === 'math' && (
           <div className="h-9 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm font-mono text-gray-500">
             {field.formula || '=0'}
           </div>

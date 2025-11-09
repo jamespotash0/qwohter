@@ -19,8 +19,9 @@ export interface FormField {
   id: string;
   label: string;
   type?: string; // Legacy field type
-  field_type: 'input' | 'textarea' | 'dropdown' | 'checkbox' | 'radio' | 'date' | 'product_selector' | 'calculated';
-  input_type?: 'text' | 'number' | 'email' | 'tel' | 'url';
+  field_type: 'input' | 'textarea' | 'dropdown' | 'checkbox' | 'radio' | 'date' | 'product_selector' | 'math';
+  input_type?: 'text' | 'number' | 'email' | 'tel' | 'url' | 'address';
+  number_format?: 'decimal' | 'currency' | 'percent' | 'integer'; // Format for number inputs
   required: boolean;
   placeholder?: string;
   default_value?: any;
@@ -30,10 +31,15 @@ export interface FormField {
   order: number;
   description?: string;
   helpText?: string;
+  errorMessage?: string; // Custom error message to display when validation fails
   size?: 'normal' | 'half' | 'full';
-  minLength?: number;
-  maxLength?: number;
+  minLength?: number; // For text: min chars, for number: min value
+  maxLength?: number; // For text: max chars, for number: max value
+  contains?: string; // Text that must be contained in the value (for text validation)
+  pattern?: string; // Custom regex pattern for validation
   cssClass?: string;
+  // UI variant for rendering (e.g., toggle switch vs standard checkbox)
+  uiVariant?: 'default' | 'toggle';
   // Data source mapping for auto-population from organization/user data
   dataSource?: {
     type: 'organization' | 'user' | 'organization_members';
@@ -42,6 +48,10 @@ export interface FormField {
   };
   // System field protection - cannot be deleted or edited
   isSystemField?: boolean; // Marks this as a protected system field that cannot be removed
+  // Template variables support for database value interpolation
+  supportsTemplateVariables?: boolean; // Whether this field supports {{templateVar}} syntax
+  // Skip validation when default value is present
+  skipValidationForDefault?: boolean; // If true, validation is skipped when default_value is set
 }
 
 // Tab definition
@@ -114,7 +124,7 @@ export const DEFAULT_COMPANY_INFO_TAB: FormTab = {
       field_type: 'input',
       input_type: 'tel',
       required: false,
-      placeholder: '(555) 555-5555',
+      placeholder: 'Enter a phone number',
       order: 2,
       dataSource: {
         type: 'organization',
@@ -130,7 +140,7 @@ export const DEFAULT_COMPANY_INFO_TAB: FormTab = {
       field_type: 'input',
       input_type: 'tel',
       required: false,
-      placeholder: '(555) 555-5556',
+      placeholder: 'Enter a fax number',
       order: 3,
       dataSource: {
         type: 'organization',
