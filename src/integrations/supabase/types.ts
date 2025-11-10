@@ -215,7 +215,7 @@ export interface Database {
           user_id: string;
           organization_id: string;
           role: 'Owner' | 'Admin' | 'Member';
-          status: 'Pending' | 'Active' | 'Suspended';
+          status: 'Pending' | 'Active' | 'Suspended'; //membership_status
           invited_by: string | null;
           joined_at: string | null;
           created_at: string;
@@ -226,7 +226,7 @@ export interface Database {
           user_id: string;
           organization_id: string;
           role?: 'Owner' | 'Admin' | 'Member';
-          status?: 'Pending' | 'Active' | 'Suspended';
+          status?: 'Pending' | 'Active' | 'Suspended'; //membership_status
           invited_by?: string | null;
           joined_at?: string | null;
           created_at?: string;
@@ -237,7 +237,7 @@ export interface Database {
           user_id?: string;
           organization_id?: string;
           role?: 'Owner' | 'Admin' | 'Member';
-          status?: 'Pending' | 'Active' | 'Suspended';
+          status?: 'Pending' | 'Active' | 'Suspended'; //membership_status
           invited_by?: string | null;
           joined_at?: string | null;
           created_at?: string;
@@ -469,7 +469,7 @@ export interface Database {
           description: string | null;
           due_date: string;
           priority: 'High' | 'Medium' | 'Low';
-          status: 'Pending' | 'Completed' | 'Cancelled';
+          reminder_status: 'Pending' | 'Completed' | 'Cancelled'; //reminder_status formerly status
           assigned_to: string | null;
           created_by: string;
           created_at: string;
@@ -484,7 +484,7 @@ export interface Database {
           description?: string | null;
           due_date: string;
           priority?: 'High' | 'Medium' | 'Low';
-          status?: 'Pending' | 'Completed' | 'Cancelled';
+          reminder_status?: 'Pending' | 'Completed' | 'Cancelled'; //reminder_status formerly status
           assigned_to?: string | null;
           created_by: string;
           created_at?: string;
@@ -499,7 +499,7 @@ export interface Database {
           description?: string | null;
           due_date?: string;
           priority?: 'High' | 'Medium' | 'Low';
-          status?: 'Pending' | 'Completed' | 'Cancelled';
+          reminder_status?: 'Pending' | 'Completed' | 'Cancelled'; //reminder_status formerly status
           assigned_to?: string | null;
           created_by?: string;
           created_at?: string;
