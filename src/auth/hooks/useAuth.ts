@@ -1,16 +1,10 @@
 /**
- * Auth Hooks - Industry Standard
- *
- * REPLACES:
- * - useUser() from stores/auth/authStore.ts
- * - useProfile() from stores/auth/authStore.ts
- * - useIsAuthenticated() from stores/auth/authStore.ts
- * - useAuthLoading() from stores/auth/authStore.ts
- * - useAuthError() from stores/auth/authStore.ts
- * - useAuthActions() from stores/auth/authStore.ts
+ * Auth Hooks - Industry Standard (v3.0.0)
  *
  * Clean API for components to access auth state.
  * ALL data comes from React Query (single source of truth).
+ *
+ * Replaces old Zustand-based auth store with React Context + React Query pattern.
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

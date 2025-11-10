@@ -240,7 +240,7 @@ expect(localStorage.getItem('auth_flow_state')).toBeDefined();
 
 ## 🔗 Related Files
 
-- `/src/stores/auth/authStore.ts` - Global auth state
+- `/src/auth/` - Auth v3.0.0 system (React Context + React Query)
 - `/src/utils/authFlowHelpers.ts` - Auth flow business logic
 - `/src/services/onboardingStateService.ts` - Onboarding persistence
 - `/src/components/auth/` - Auth form components
