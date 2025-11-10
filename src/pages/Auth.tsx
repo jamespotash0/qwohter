@@ -159,9 +159,9 @@ const Auth = () => {
         // Check if user has completed onboarding via memberships
         const { data: membership } = await supabase
           .from('memberships')
-          .select('id, status')
+          .select('id, status') //membership_status
           .eq('user_id', session.user.id)
-          .eq('status', 'Active')
+          .eq('status', 'Active') //membership_status
           .maybeSingle();
 
         // Check if profile has full_name

@@ -111,7 +111,7 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
             .from('memberships')
             .select('organization_id')
             .eq('user_id', authUser.id)
-            .eq('status', 'Active')
+            .eq('status', 'Active') //membership_status
             .single();
 
           orgId = (membershipData as any)?.organization_id || '';

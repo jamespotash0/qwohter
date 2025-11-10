@@ -29,7 +29,7 @@ async function calculateSubscriptionQuantity(organizationId: string): Promise<nu
     .from('memberships')
     .select('id', { count: 'exact', head: true })
     .eq('organization_id', organizationId)
-    .eq('status', 'Active');
+    .eq('status', 'Active'); //membership_status
 
   if (error) {
     console.error('Error counting active users:', error);
@@ -88,7 +88,7 @@ export default async function handler(req: any, res: any) {
     // ============================================================================
     const { data: membership, error: membershipError } = await supabase
       .from('memberships')
-      .select('role, status')
+      .select('role, status') //membership_status
       .eq('user_id', user.id)
       .eq('organization_id', organizationId)
       .single();
@@ -97,7 +97,7 @@ export default async function handler(req: any, res: any) {
       return res.status(403).json({ error: 'Forbidden: Not a member of this organization' });
     }
 
-    if (membership.status !== 'Active') {
+    if (membership.status !== 'Active') { //membership_status
       return res.status(403).json({ error: 'Forbidden: Membership not active' });
     }
 

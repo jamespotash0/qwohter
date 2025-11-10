@@ -307,7 +307,7 @@ export const calculateSubscriptionQuantity = async (organizationId: string) => {
     .from('memberships')
     .select('id', { count: 'exact', head: true })
     .eq('organization_id', organizationId)
-    .eq('status', 'Active');
+    .eq('status', 'Active'); //membership_status
 
   if (error) {
     console.error('Error counting active users:', error);

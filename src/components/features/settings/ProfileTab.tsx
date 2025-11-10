@@ -158,7 +158,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
       // Soft delete: Inactivate all memberships instead of deleting the user
       const { error: membershipError } = await supabase
         .from('memberships')
-        .update({ status: 'Inactive' })
+        .update({ status: 'Inactive' }) //membership_status
         .eq('user_id', user.id);
 
       if (membershipError) throw membershipError;

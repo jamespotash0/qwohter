@@ -208,9 +208,9 @@ export const onboardingStateHelpers = {
     try {
       const { data, error } = await supabase
         .from('memberships')
-        .select('id, status')
+        .select('id, status') //membership_status
         .eq('user_id', userId)
-        .eq('status', 'Active')
+        .eq('status', 'Active') //membership_status
         .single();
 
       if (error) {
@@ -258,7 +258,7 @@ export const onboardingStateHelpers = {
       // Profile exists, check memberships with status and role
       const { data: membership, error: membershipError } = await supabase
         .from('memberships')
-        .select('id, status, role, organization_id')
+        .select('id, status, role, organization_id') //membership_status
         .eq('user_id', userId)
         .maybeSingle();
 
@@ -272,17 +272,17 @@ export const onboardingStateHelpers = {
       }
 
       // Check membership status
-      if (membership.status === 'Pending') {
+      if (membership.status === 'Pending') { //membership_status
         return 'pending-approval'; // Special state for pending approval
       }
 
       // If Active membership and Member role, onboarding is complete
-      if (membership.status === 'Active' && membership.role === 'Member') {
+      if (membership.status === 'Active' && membership.role === 'Member') { //membership_status
         return null; // Members don't need company-info
       }
 
       // If Active membership and Owner/Admin role, check if company info is needed
-      if (membership.status === 'Active' && (membership.role === 'Owner' || membership.role === 'Admin')) {
+      if (membership.status === 'Active' && (membership.role === 'Owner' || membership.role === 'Admin')) { //membership_status
         // Check if organization has company info
         const { data: org } = await supabase
           .from('organizations')

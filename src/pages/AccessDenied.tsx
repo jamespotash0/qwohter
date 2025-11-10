@@ -48,7 +48,7 @@ const AccessDenied: React.FC = () => {
             )
           `)
           .eq('user_id', user.id)
-          .eq('status', 'Active')
+          .eq('status', 'Active') //membership_status
           .single();
 
         if (!error && data) {

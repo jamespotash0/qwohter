@@ -33,7 +33,7 @@ export interface OrganizationMember {
   user_id: string;
   organization_id: string;
   role: 'Owner' | 'Admin' | 'Member';
-  status: 'Pending' | 'Active' | 'Suspended' | 'Inactive';
+  status: 'Pending' | 'Active' | 'Suspended' | 'Inactive'; //membership_status
   joined_at: string;
   email?: string;
   full_name?: string;
@@ -44,7 +44,7 @@ export interface OrganizationMember {
 export interface UserMembership {
   organization_id: string;
   role: 'Owner' | 'Admin' | 'Member';
-  status: 'Pending' | 'Active' | 'Suspended' | 'Inactive';
+  status: 'Pending' | 'Active' | 'Suspended' | 'Inactive'; //membership_status
   joined_at: string;
   organization: Organization;
 }
@@ -80,7 +80,7 @@ export interface UpdateOrganizationData {
 export async function fetchOrganizationByUserId(userId: string): Promise<UserMembership | null> {
   const { data: membership, error } = await supabase
     .from('memberships')
-    .select('organization_id, role, status, joined_at, organization:organizations(*)')
+    .select('organization_id, role, status, joined_at, organization:organizations(*)') //membership_status
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -133,14 +133,14 @@ export async function fetchOrganizationMembers(organizationId: string): Promise<
   // Fetch memberships
   const { data: membersData, error: membersError } = await supabase
     .from('memberships')
-    .select('id, user_id, organization_id, role, status, joined_at, join_type, department')
+    .select('id, user_id, organization_id, role, status, joined_at, join_type, department') //membership_status
     .eq('organization_id', organizationId)
     .returns<{
       id: string;
       user_id: string;
       organization_id: string;
       role: string;
-      status: string;
+      status: string; //membership_status
       joined_at: string;
       join_type?: string;
       department?: string;
@@ -173,7 +173,7 @@ export async function fetchOrganizationMembers(organizationId: string): Promise<
         user_id: membership.user_id,
         organization_id: membership.organization_id || '',
         role: (membership.role as 'Admin' | 'Member' | 'Owner') || 'Member',
-        status: (membership.status as 'Pending' | 'Active' | 'Suspended' | 'Inactive') || 'Active',
+        status: (membership.status as 'Pending' | 'Active' | 'Suspended' | 'Inactive') || 'Active', //membership_status
         joined_at: membership.joined_at || new Date().toISOString(),
         email: profile?.email || undefined,
         full_name: profile?.full_name || undefined,

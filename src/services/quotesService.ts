@@ -85,7 +85,7 @@ export async function fetchQuotes(
   // Check if user has any memberships first
   const { data: userMemberships } = await supabase
     .from('memberships')
-    .select('organization_id, role, status')
+    .select('organization_id, role, status') //membership_status
     .eq('user_id', userId);
 
   let quotesData: any[] = [];

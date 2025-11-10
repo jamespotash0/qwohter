@@ -43,7 +43,7 @@ export interface UpdateReminderParams {
 }
 
 export interface CompleteReminderParams {
-  reminder_status: 'Completed' | 'Dismissed'; //reminder_status formerly status
+  status: 'Completed' | 'Dismissed'; // Maps to reminder_status in DB
   completed_by: string;
 }
 
@@ -202,10 +202,10 @@ export const reminderService = {
       const { data, error } = await supabase
         .from('reminders')
         .update({
-          reminder_status: params.status, //reminder_status formerly status
+          reminder_status: params.status, // params.status maps to DB reminder_status column
           completed_at: new Date().toISOString(),
           completed_by: params.completed_by,
-        })
+        } as any) // Type assertion needed until Supabase types are regenerated post-migration
         .eq('id', id)
         .select()
         .single();

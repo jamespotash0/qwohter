@@ -349,7 +349,7 @@ class InitializationService {
     try {
       const { data, error } = await supabase
         .from('memberships')
-        .select('status, role')
+        .select('status, role') //membership_status
         .eq('user_id', userId)
         .eq('organization_id', organizationId)
         .single();
@@ -358,10 +358,10 @@ class InitializationService {
         return { success: false, error: error.message };
       }
 
-      if (data.status !== 'Active') {
+      if (data.status !== 'Active') { //membership_status
         return {
           success: false,
-          error: `Membership is ${data.status}. Please contact your administrator.`,
+          error: `Membership is ${data.status}. Please contact your administrator.`, //membership_status
         };
       }
 

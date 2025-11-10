@@ -236,7 +236,7 @@ export class LogoUploadService {
         .from('memberships')
         .select('organization_id')
         .eq('user_id', user.id)
-        .eq('status', 'Active')
+        .eq('status', 'Active') //membership_status
         .single();
 
       if (membershipError || !membershipData) {
