@@ -1,4 +1,4 @@
-import { Quote } from '@/stores/quotes/quotesStore';
+import { Proposal } from '@/stores/proposals/proposalsStore';
 
 /**
  * Adds section header repetition logic to HTML content
@@ -66,18 +66,18 @@ function addSectionHeaderRepetition(html: string): string {
   return html;
 }
 
-export const generateQuotePDF = async (
-  quote: Quote, 
+export const generateProposalPDF = async (
+  proposal: Proposal, 
   markAsDownloaded: (id: string) => Promise<any>
 ) => {
-  
-  if (!quote.quote_details?.quoteName && !quote.project_name) {
-    console.error('❌ Quote name is missing');
-    throw new Error('Quote name is required for PDF generation');
+
+  if (!proposal.quote_details?.proposalName && !proposal.proposal_name) {
+    console.error('❌ Proposal name is missing');
+    throw new Error('Proposal name is required for PDF generation');
   }
 
   try {
-    const quoteName = quote.project_name || quote.proposal_number || 'quote';
+    const proposalName = proposal.proposal_name || proposal.proposal_number || 'proposal';
     
     // Create a new window with just the quote content for clean PDF generation
     const printWindow = window.open('', '_blank', 'width=800,height=600');
@@ -123,7 +123,7 @@ export const generateQuotePDF = async (
       <html>
         <head>
           <meta charset="utf-8">
-          <title>${quoteName}</title>
+          <title>${proposalName}</title>
           <style>
             /* Import all existing styles from the live preview */
             ${allStyles}
@@ -477,7 +477,7 @@ export const generateQuotePDF = async (
     
     
     // Mark as downloaded (will increment version for next download)
-    await markAsDownloaded(quote.id);
+    await markAsDownloaded(proposal.id);
     
   } catch (error) {
     console.error('❌ Browser PDF generation failed:', error);

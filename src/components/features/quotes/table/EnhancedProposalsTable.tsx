@@ -1,0 +1,1376 @@
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+  ColumnDef,
+  SortingState,
+  ColumnFiltersState,
+  VisibilityState,
+  PaginationState,
+  ColumnResizeMode,
+  ExpandedState,
+  // getExpandedRowModel,
+} from '@tanstack/react-table';
+import {
+  ChevronDown,
+  ChevronUp,
+  ArrowUpDown,
+  MoreHorizontal,
+  Edit3,
+  Trash2,
+  Copy,
+  Calendar,
+  User,
+  Building,
+  DollarSign,
+  Tag,
+  Search,
+  SlidersHorizontal,
+  Eye,
+  Download,
+  RotateCcw,
+  Plus,
+  FileSpreadsheet,
+  X,
+  HelpCircle,
+  FileText,
+  Archive,
+  ArchiveRestore,
+  Bell,
+  ChevronRight,
+  Layers
+} from 'lucide-react';
+
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { Proposal } from "@/stores/proposals/proposalsStore";
+// import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
+import useEnhancedSearch from '@/hooks/useEnhancedSearch';
+import { PaginationControls } from './components/PaginationControls';
+import { formatDateEST, formatDateTimeEST } from '@/utils/dateUtils';
+import { groupProposalsByVersion, getBaseProposalNumber } from '@/utils/proposalVersionGrouping';
+import type { ProposalVersionGroup } from '@/utils/proposalVersionGrouping';
+
+
+interface EnhancedProposalsTableProps {
+  proposals: Proposal[];
+  onEditProposal: (proposal: Proposal) => void;
+  onDeleteProposal: (id: string) => void;
+  onStatusChange: (id: string, status: string) => void;
+  onSetReminder?: (id: string) => void;
+  onProposalSourceChange: (id: string, source: string) => void;
+  onCreateVersion?: (id: string) => void;
+  onCreateProposal?: () => void;
+  onArchiveProposal?: (id: string) => void;
+  onUnarchiveProposal?: (id: string) => void;
+  isArchiveView?: boolean;
+  showArchived?: boolean;
+  archivedCount?: number;
+  onToggleArchive?: () => void;
+  onBulkDelete?: (ids: string[]) => void;
+  onBulkStatusChange?: (ids: string[], status: string) => void;
+  onBulkArchive?: (ids: string[]) => void;
+  onBulkUnarchive?: (ids: string[]) => void;
+  onExportCSV?: (filteredData: Proposal[]) => void;
+  onExportPDF?: (filteredData: Proposal[]) => void;
+  onMainVersionsChange?: (mainVersions: Proposal[]) => void;
+  onSetMainVersion?: (proposalId: string, baseProposalNumber: string) => void;
+}
+
+const statusColors = {
+  Incomplete: "bg-purple-100 text-purple-800",
+  Draft: "bg-gray-100 text-gray-800",
+  Pending: "bg-yellow-100 text-yellow-800",
+  Submitted: "bg-yellow-100 text-yellow-800",
+  Accepted: "bg-emerald-100 text-emerald-800",
+  Rejected: "bg-red-100 text-red-800",
+};
+
+const getProposalSourceOptions = () => [
+  { value: "Manual Entry", label: "Manual Entry" },
+  { value: "Website Lead", label: "Website Lead" },
+  { value: "Contractor Referral", label: "Contractor Referral" },
+  { value: "Manufacturer Referral", label: "Manufacturer Referral" },
+  { value: "Architect Referral", label: "Architect Referral" },
+  { value: "Phone Inquiry", label: "Phone Inquiry" },
+  { value: "Email Inquiry", label: "Email Inquiry" },
+  { value: "Trade Show", label: "Trade Show" },
+  { value: "Repeat Customer", label: "Repeat Customer" }
+];
+
+// // Helper function to format quote source for display (handles custom values)
+// const formatProposalSource = (value: string | null | undefined): string => {
+//   if (!value) return "Not specified";
+
+//   const option = getProposalSourceOptions().find(opt => opt.value === value);
+//   if (option) return option.label;
+
+//   // Return custom values exactly as entered (no transformation)
+//   return value;
+// };
+
+const columnLabels: Record<string, string> = {
+  proposal_number: "Proposal #",
+  proposal_name: "Project Name",
+  client_name: "Client",
+  total: "Total Amount",
+  status: "Status",
+  proposal_source: "Proposal Source",
+  created_by: "Creator",
+  created_at: "Date Created",
+  updated_at: "Last Updated",
+  actions: "Actions"
+};
+
+const getAvailableStatusOptions = (currentStatus: string) => {
+  const allStatuses = [
+    { value: "Incomplete", label: "Incomplete" },
+    { value: "Draft", label: "Draft" },
+    { value: "Submitted", label: "Submitted" },
+    { value: "Accepted", label: "Accepted" },
+    { value: "Rejected", label: "Rejected" },
+    { value: "Paid", label: "Paid" }
+  ];
+
+  if (currentStatus === "Incomplete") return allStatuses;
+  if (currentStatus === "Draft") return allStatuses.filter(s => s.value !== "Incomplete");
+
+  const completedStatuses = ["Submitted", "Accepted", "Rejected"];
+  if (completedStatuses.includes(currentStatus)) {
+    return allStatuses.filter(s => s.value !== "Incomplete" && s.value !== "Draft");
+  }
+  return allStatuses;
+};
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(amount);
+};
+
+const formatLastUpdated = (time: string) => {
+  return formatDateTimeEST(time);
+};
+
+
+
+export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
+  proposals,
+  onEditProposal,
+  onDeleteProposal,
+  onStatusChange,
+  onCreateVersion,
+  onSetReminder,
+  onCreateProposal,
+  onArchiveProposal,
+  onUnarchiveProposal,
+  isArchiveView = false,
+  showArchived = false,
+  archivedCount = 0,
+  onToggleArchive,
+  onBulkDelete,
+  onBulkStatusChange,
+  // onBulkArchive,
+  // onBulkUnarchive,
+  onExportCSV,
+  onExportPDF,
+  onMainVersionsChange,
+  onSetMainVersion
+}) => {
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = useState({});
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [forceUpdate, setForceUpdate] = useState(0);
+  const [dataDensity, setDataDensity] = useState<'compact' | 'comfortable' | 'spacious'>('comfortable');
+  const [columnVisibilityOpen, setColumnVisibilityOpen] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [expanded, setExpanded] = useState<ExpandedState>({});
+  const [versionSelection, setVersionSelection] = useState<Record<string, boolean>>({});
+
+  // Track which version is "main" for each base number (stored in local state only)
+  const [mainVersions, setMainVersions] = useState<Record<string, string>>({});
+
+  // Group proposals by version
+  const proposalGroups = useMemo(() => groupProposalsByVersion(proposals), [proposals]);
+
+  // Create display data: show the main version based on is_main_version flag
+  const displayProposals = useMemo(() => {
+    return proposalGroups.map(group => {
+      // Priority: is_main_version from database > user selection > group.mainVersion
+      const dbMainVersion = group.versions.find(v => v.is_main_version === true);
+      if (dbMainVersion) return dbMainVersion;
+
+      const userSelectedMainId = mainVersions[group.baseNumber];
+      if (userSelectedMainId) {
+        const userSelectedVersion = group.versions.find(v => v.id === userSelectedMainId);
+        if (userSelectedVersion) return userSelectedVersion;
+      }
+      return group.mainVersion;
+    });
+  }, [proposalGroups, mainVersions]);
+
+  // Track previous displayQuotes to avoid infinite loops
+  const prevDisplayQuotesIds = useRef<string>('');
+
+  // Notify parent component when displayProposals actually changes (for metrics calculation)
+  useEffect(() => {
+    const currentIds = displayProposals.map(q => q.id).join(',');
+    if (onMainVersionsChange && currentIds !== prevDisplayQuotesIds.current) {
+      prevDisplayQuotesIds.current = currentIds;
+      onMainVersionsChange(displayProposals);
+    }
+  }, [displayProposals, onMainVersionsChange]);
+
+  // Map to find version group for each proposal
+  const proposalToGroupMap = useMemo(() => {
+    const map = new Map<string, ProposalVersionGroup>();
+    proposalGroups.forEach(group => {
+      group.versions.forEach(version => {
+        map.set(version.id, group);
+      });
+    });
+    return map;
+  }, [proposalGroups]);
+
+  // Enhanced search functionality
+  const { search, getSearchExamples } = useEnhancedSearch(proposals);
+  const searchExamples = getSearchExamples();
+
+  // Custom filter function using enhanced search
+  const enhancedFilter = React.useCallback((row: any, _columnId: string, filterValue: string) => {
+    if (!filterValue) return true;
+
+    const searchResults = search(filterValue);
+    const resultIds = new Set(searchResults.map(result => result.item.id));
+
+    return resultIds.has(row.original.id);
+  }, [search]);
+
+  // Store original column sizes for reset functionality
+  const originalColumnSizes = useMemo(() => ({
+    select: 50,
+    proposal_number: 150,
+    proposal_name: 300,
+    client_name: 200,
+    total: 150,
+    status: 150,
+    quote_source: 180,
+    created_by: 150,
+    created_at: 120,
+    actions: 80,
+  }), []);
+
+  // Reset column sizes to original
+  const resetColumnSizes = () => {
+    table.getAllColumns().forEach(column => {
+      const originalSize = originalColumnSizes[column.id as keyof typeof originalColumnSizes];
+      if (originalSize) {
+        column.resetSize();
+      }
+    });
+  };
+
+  // Reset column visibility to show all columns
+  const resetColumnVisibility = () => {
+    table.getAllColumns().forEach(column => {
+      if (column.getCanHide()) {
+        column.toggleVisibility(true);
+      }
+    });
+    setColumnVisibility({});
+  };
+
+  // Update follow-up times every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setForceUpdate(prev => prev + 1);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const columnHelper = createColumnHelper<Proposal>();
+
+  const columns = useMemo<ColumnDef<Proposal, any>[]>(() => [
+    // Selection column
+    columnHelper.display({
+      id: 'select',
+      header: ({ table }) => {
+        const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+          const checked = e.target.checked;
+
+          // Select all main rows
+          table.toggleAllPageRowsSelected(checked);
+
+          // Also select all version rows
+          if (checked) {
+            const newVersionSelection: Record<string, boolean> = {};
+            proposalGroups.forEach(group => {
+              if (group.hasMultipleVersions) {
+                group.versions.forEach(version => {
+                  newVersionSelection[version.id] = true;
+                });
+              }
+            });
+            setVersionSelection(newVersionSelection);
+          } else {
+            setVersionSelection({});
+          }
+        };
+
+        return (
+          <input
+            type="checkbox"
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            checked={table.getIsAllPageRowsSelected()}
+            onChange={handleSelectAll}
+          />
+        );
+      },
+      cell: ({ row }) => {
+        const proposal = row.original;
+        const versionGroup = proposalToGroupMap.get(proposal.id);
+
+        // Checkbox is checked if the main row is selected
+        const isChecked = row.getIsSelected();
+
+        const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+          e.stopPropagation();
+
+          const checked = e.target.checked;
+
+          // Toggle the main row (this counts as 1 main selection)
+          row.toggleSelected(checked);
+
+          // Also toggle ALL version rows in versionSelection
+          // These will be counted separately as "versions" in the display
+          if (versionGroup && versionGroup.hasMultipleVersions) {
+            const newVersionSelection = { ...versionSelection };
+            versionGroup.versions.forEach(version => {
+              // Select all versions for visual consistency
+              newVersionSelection[version.id] = checked;
+            });
+            setVersionSelection(newVersionSelection);
+          }
+        }, [row, versionGroup, versionSelection]);
+
+        return (
+          <div className="flex items-center justify-center">
+            <input
+              type="checkbox"
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              checked={isChecked}
+              onChange={handleChange}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        );
+      },
+      size: 50,
+      enableSorting: false,
+      enableResizing: false,
+    }),
+    columnHelper.accessor('proposal_number', {
+      id: 'proposal_number',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <Tag className="w-4 h-4" />
+          Proposal #
+        </div>
+      ),
+      cell: ({ getValue, row }) => {
+        const proposal = row.original;
+        const versionGroup = proposalToGroupMap.get(proposal.id);
+        const proposalNumber = getValue();
+        const baseNumber = getBaseProposalNumber(proposalNumber);
+        const isExpanded = expanded[baseNumber];
+        const hasMultipleVersions = versionGroup && versionGroup.hasMultipleVersions;
+
+        // Show full proposal number (with version suffix) if it's the main version of the group
+        // or if it's a standalone proposal
+        const displayNumber = proposalNumber;
+
+        return (
+          <div className="flex items-center gap-2">
+            <div className="font-mono text-sm font-medium">
+              {displayNumber}
+            </div>
+            {hasMultipleVersions && (
+              <button
+                onClick={() => setExpanded(prev => ({
+                  ...prev as object,
+                  [baseNumber]: !prev[baseNumber]
+                }))}
+                className="hover:bg-gray-100 rounded p-1 transition-colors"
+              >
+                <Badge variant="secondary" className="flex items-center gap-1 text-xs cursor-pointer">
+                  {isExpanded ? (
+                    <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                  <Layers className="h-3 w-3" />
+                </Badge>
+              </button>
+            )}
+          </div>
+        );
+      },
+      size: 200,
+      enableSorting: true,
+    }),
+    columnHelper.accessor((row) => `${row.proposal_name || row.quote_details?.proposal_name || "Untitled Project"}`, {
+      id: 'proposal_name',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <Building className="w-4 h-4" />
+          Project Name
+        </div>
+      ),
+      cell: ({ row }) => {
+        const proposalName = row.original.proposal_name || row.original.quote_details?.proposal_name || "Untitled Project";
+        const projectLocation = row.original.job_details?.job_location || "";
+        return (
+          <div className="space-y-1">
+            <div className="font-medium text-sm">{proposalName}</div>
+            {projectLocation && (
+              <div className="text-xs text-gray-500">{projectLocation}</div>
+            )}
+          </div>
+        );
+      },
+      size: 400,
+      enableSorting: false,
+    }),
+    columnHelper.accessor((row) => row.job_details?.client_company || row.job_details?.client_name || "Untitled Client", {
+      id: 'client_name',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <User className="w-4 h-4" />
+          Client Name
+        </div>
+      ),
+      cell: ({ row }) => {
+        const proposal = row.original;
+        const versionGroup = proposalToGroupMap.get(proposal.id);
+
+        if (versionGroup && versionGroup.hasMultipleVersions) {
+          // Always show "Various" (italicized) for parent rows with multiple versions
+          return <div className="text-sm text-gray-500 italic">Various</div>;
+        }
+
+        const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client";
+        return <div className="font-medium text-sm">{clientName}</div>;
+      },
+      size: 200,
+      enableSorting: false,
+    }),
+    columnHelper.accessor((row) => row.price_details?.final_selling_price || 0, {
+      id: 'total',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <DollarSign className="w-4 h-4" />
+          Total
+        </div>
+      ),
+      cell: ({ row }) => {
+        const proposal = row.original;
+        const versionGroup = proposalToGroupMap.get(proposal.id);
+
+        if (versionGroup && versionGroup.hasMultipleVersions) {
+          return (
+            <div className="text-sm italic text-gray-500">
+              Range
+            </div>
+          );
+        }
+
+        const total = quote.price_details?.final_selling_price;
+        if (!total || total === 0) {
+          return <div className="text-sm text-gray-400">-</div>;
+        }
+        return <div className="font-semibold text-sm">{formatCurrency(total)}</div>;
+      },
+      size: 150,
+      enableSorting: true,
+    }),
+    columnHelper.accessor('proposal_status', {
+      id: 'status',
+      header: 'Status',
+      cell: ({ row, getValue }) => {
+        const proposal = row.original;
+        const versionGroup = proposalToGroupMap.get(proposal.id);
+
+        if (versionGroup && versionGroup.hasMultipleVersions) {
+          return <div className="text-sm italic text-gray-500">Various</div>;
+        }
+
+        const currentStatus = getValue();
+
+        return (
+          <Select
+            value={currentStatus || "Incomplete"}
+            onValueChange={(value) => onStatusChange(row.original.id, value)}
+          >
+            <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[currentStatus as keyof typeof statusColors]}`}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {getAvailableStatusOptions(currentStatus || "Incomplete").map((status) => (
+                <SelectItem key={status.value} value={status.value}>
+                  {status.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
+      },
+      size: 150,
+      filterFn: 'equals',
+      enableSorting: false,
+    }),
+    columnHelper.accessor('created_by_name', {
+      id: 'created_by',
+      header: 'Created By',
+      cell: ({ row }) => {
+        const proposal = row.original;
+        const versionGroup = proposalToGroupMap.get(proposal.id);
+
+        if (versionGroup && versionGroup.hasMultipleVersions) {
+          return <div className="text-sm italic text-gray-500">Various</div>;
+        }
+
+        return <div className="text-sm text-gray-600">{proposal.created_by_name || 'Unknown'}</div>;
+      },
+      size: 200,
+      enableSorting: false,
+    }),
+    columnHelper.accessor('created_at', {
+      id: 'created_at',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4" />
+          Created At
+        </div>
+      ),
+      cell: ({ row, getValue }) => {
+        const proposal = row.original;
+        const versionGroup = proposalToGroupMap.get(proposal.id);
+
+        if (versionGroup && versionGroup.hasMultipleVersions) {
+          return <div className="text-sm italic text-gray-500">Various</div>;
+        }
+
+        return (
+          <div className="text-sm text-gray-600">
+            {formatDateEST(getValue())}
+          </div>
+        );
+      },
+      size: 200,
+      enableSorting: true,
+    }),
+    columnHelper.accessor('updated_at', {
+      id: 'updated_at',
+      header: () => (
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4" />
+          Last Updated
+        </div>
+      ),
+      cell: ({ row, getValue }) => {
+        const proposal = row.original;
+        const versionGroup = proposalToGroupMap.get(proposal.id);
+
+        if (versionGroup && versionGroup.hasMultipleVersions) {
+          return <div className="text-sm italic text-gray-500">Various</div>;
+        }
+
+        return <div className="text-sm text-gray-600">{formatLastUpdated(getValue())}</div>;
+      },
+      size: 200,
+      enableSorting: true,
+    }),
+    columnHelper.display({
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
+            <DropdownMenuItem onClick={() => onEditProposal(row.original)}>
+              <Edit3 className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            {onCreateVersion && (
+              <DropdownMenuItem onClick={() => onCreateVersion(row.original.id)}>
+                <Copy className="mr-2 h-4 w-4" />
+                Create Version
+              </DropdownMenuItem>
+            )}
+            {onSetReminder && (
+              <DropdownMenuItem onClick={() => onSetReminder(row.original.id)}>
+                <Bell className="mr-2 h-4 w-4" />
+                Set Reminder
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            {isArchiveView && onUnarchiveProposal ? (
+              <DropdownMenuItem onClick={() => onUnarchiveProposal(row.original.id)}>
+                <ArchiveRestore className="mr-2 h-4 w-4" />
+                Unarchive
+              </DropdownMenuItem>
+            ) : onArchiveProposal && (
+              <DropdownMenuItem onClick={() => onArchiveProposal(row.original.id)}>
+                <Archive className="mr-2 h-4 w-4" />
+                Archive
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => onDeleteProposal(row.original.id)}
+              className="text-red-600 focus:text-red-600"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+      size: 80,
+      enableSorting: false,
+    }),
+  ], [onEditProposal, onDeleteProposal, onStatusChange, onCreateVersion, onSetReminder, onArchiveProposal, onUnarchiveProposal, isArchiveView, forceUpdate]);
+
+  const table = useReactTable({
+    data: displayProposals,
+    columns,
+    filterFns: {
+      enhanced: enhancedFilter,
+    },
+    state: {
+      sorting,
+      columnFilters,
+      globalFilter,
+      columnVisibility,
+      rowSelection,
+      pagination,
+    },
+    enableRowSelection: true,
+    enableColumnResizing: true,
+    columnResizeMode: 'onChange' as ColumnResizeMode,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
+    onColumnVisibilityChange: setColumnVisibility,
+    onRowSelectionChange: setRowSelection,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    globalFilterFn: enhancedFilter,
+  });
+
+  return (
+    <div className="space-y-0">
+      {/* Table with integrated header */}
+      <div style={{ borderRadius: 'var(--radius-quotes-table)' }} className="border border-gray-200 bg-white dark:bg-[var(--content-card-bg)] dark:border-[var(--content-card-border)] shadow-sm overflow-hidden">
+        {/* Combined Search and Toolbar */}
+        <div className="flex items-center py-4 px-4 bg-white border-b border-gray-200 min-h-[72px]">
+          {/* Search Input - Very wide, takes most space */}
+          <div className="relative flex-1 mr-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <input
+              type="text"
+              placeholder="Search proposals... (try: client:ABC Corp, status:Draft)"
+              value={globalFilter ?? ''}
+              onChange={(e) => setGlobalFilter(e.target.value)}
+              className="w-full pl-10 pr-20 py-2 text-sm border border-gray-300 dark:border-[var(--input-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--sidebar-icon-active)] dark:focus:ring-[var(--sidebar-icon-active)] focus:border-[var(--sidebar-icon-active)] dark:bg-[var(--input-bg)] dark:text-[var(--input-text)]"
+            />
+
+            <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
+              {globalFilter && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setGlobalFilter('')}
+                  className="w-8 h-6 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)] rounded-full"
+                  title="Clear search"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+
+              {!globalFilter && (
+                <Popover open={showHelp} onOpenChange={setShowHelp}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-8 h-6 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)] rounded-full"
+                      title="Search help"
+                    >
+                      <HelpCircle className="w-3 h-3" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-80">
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="font-medium text-sm mb-2">Search Tips</h4>
+                        <div className="text-xs text-gray-600 space-y-1">
+                          <p>• Regular search: Just type anything</p>
+                          <p>• Field-specific: Use "field:value" format</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-medium text-sm mb-2">Field-Specific Examples</h4>
+                        <div className="space-y-1">
+                          {searchExamples.map((example, index) => (
+                            <button
+                              key={index}
+                              onClick={() => {
+                                setGlobalFilter(example);
+                                setShowHelp(false);
+                              }}
+                              className="block w-full text-left"
+                            >
+                              <Badge
+                                variant="outline"
+                                className="text-xs hover:bg-blue-50 cursor-pointer w-full justify-start"
+                              >
+                                {example}
+                              </Badge>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-gray-500">
+                        <p><strong>Available fields:</strong></p>
+                        <p>proposal, client, location, status, creator, project</p>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
+          </div>
+
+          {/* Toolbar Controls - Hide buttons when rows are selected */}
+          {(() => {
+            const selectedMainRows = table.getFilteredSelectedRowModel().rows.length;
+            const selectedVersionIds = Object.keys(versionSelection).filter(id => versionSelection[id]);
+            const hasSelections = selectedMainRows > 0 || selectedVersionIds.length > 0;
+
+            return !hasSelections && (
+              <div className="flex items-center space-x-2 h-10">
+                {/* Archive Toggle Button */}
+                {onToggleArchive && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onToggleArchive}
+                className={`w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)] ${
+                  showArchived ? 'bg-blue-50 text-blue-700 hover:bg-blue-100' : ''
+                }`}
+                title={showArchived ? 'Show Active Proposals' : `View Archives (${archivedCount})`}
+              >
+                {showArchived ? (
+                  <ArchiveRestore className="w-4 h-4" />
+                ) : (
+                  <Archive className="w-4 h-4" />
+                )}
+              </Button>
+            )}
+
+            {/* Data Density */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)]"
+                  title={`Table Density: ${dataDensity.charAt(0).toUpperCase() + dataDensity.slice(1)}`}
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem
+                  onClick={() => setDataDensity('compact')}
+                  className={dataDensity === 'compact' ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
+                >
+                  <div className="flex items-center">
+                    <div className={`w-2 h-1 rounded mr-2 ${dataDensity === 'compact' ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
+                    <span className={dataDensity === 'compact' ? 'font-semibold' : ''}>Compact</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setDataDensity('comfortable')}
+                  className={dataDensity === 'comfortable' ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
+                >
+                  <div className="flex items-center">
+                    <div className={`w-2 h-2 rounded mr-2 ${dataDensity === 'comfortable' ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
+                    <span className={dataDensity === 'comfortable' ? 'font-semibold' : ''}>Comfortable</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setDataDensity('spacious')}
+                  className={dataDensity === 'spacious' ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
+                >
+                  <div className="flex items-center">
+                    <div className={`w-2 h-3 rounded mr-2 ${dataDensity === 'spacious' ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
+                    <span className={dataDensity === 'spacious' ? 'font-semibold' : ''}>Spacious</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Column Visibility */}
+            <DropdownMenu open={columnVisibilityOpen} onOpenChange={setColumnVisibilityOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)]"
+                  title="Show/Hide Columns"
+                >
+                  <Eye className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56" onPointerDownOutside={() => setColumnVisibilityOpen(false)}>
+                <div className="p-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="text-xs text-gray-500 mb-2 font-medium">Show/Hide Columns</div>
+                  {table.getAllColumns()
+                    .filter(column => column.getCanHide())
+                    .map(column => (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        className="capitalize text-sm py-2"
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        {columnLabels[column.id] ?? column.id.replace('_', ' ')}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Export */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)]"
+                  title="Export Data"
+                >
+                  <Download className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => {
+                  if (onExportCSV) {
+                    onExportCSV(table.getFilteredRowModel().rows.map(row => row.original));
+                  }
+                }}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Export as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  if (onExportPDF) {
+                    onExportPDF(table.getFilteredRowModel().rows.map(row => row.original));
+                  }
+                }}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export as PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Reset Controls */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)]"
+                  title="Reset Table"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={resetColumnSizes}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Reset Column Sizes
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={resetColumnVisibility}>
+                  <Eye className="w-4 h-4 mr-2" />
+                  Show All Columns
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Create Proposal Button - Just a plus icon */}
+            {onCreateProposal && (
+              <Button
+                onClick={onCreateProposal}
+                variant="outline"
+                size="sm"
+                className="w-10 h-10 p-0 bg-[var(--sidebar-icon-active)] hover:bg-[var(--sidebar-icon-hover)] text-white hover:text-white border-[var(--sidebar-icon-active)] hover:border-[var(--sidebar-icon-hover)] dark:bg-[var(--sidebar-icon-active)] dark:hover:bg-[var(--brand-orange-700)]"
+                title="Create New Proposal"
+              >
+                <Plus className="w-5 h-5 text-white" />
+              </Button>
+            )}
+              </div>
+            );
+          })()}
+
+          {/* Bulk Actions - Show when rows are selected */}
+          {(() => {
+            const selectedMainRows = table.getFilteredSelectedRowModel().rows.length;
+            const selectedMainIds = table.getFilteredSelectedRowModel().rows.map(row => row.original.id);
+            const selectedVersionIds = Object.keys(versionSelection).filter(id => versionSelection[id]);
+
+            // Remove main row IDs from version IDs to avoid double counting
+            const versionOnlyIds = selectedVersionIds.filter(id => !selectedMainIds.includes(id));
+
+            const totalSelected = selectedMainRows + versionOnlyIds.length;
+            const allSelectedIds = [
+              ...selectedMainIds,
+              ...selectedVersionIds
+            ];
+
+            return totalSelected > 0 && (
+              <div className="flex items-center space-x-4 h-10">
+                <div className="text-sm font-medium text-[var(--content-header-text)] dark:text-[var(--content-header-text)]">
+                  {totalSelected} proposal{totalSelected > 1 ? 's' : ''} selected
+                  {versionOnlyIds.length > 0 && (
+                    <span className="text-xs text-gray-500 ml-2">
+                      ({selectedMainRows} main + {versionOnlyIds.length} version{versionOnlyIds.length > 1 ? 's' : ''})
+                    </span>
+                  )}
+                </div>
+
+                {/* Change Status */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-[var(--sidebar-nav-bg-hover)] px-3">
+                      Change Status
+                      <ChevronDown className="w-3 h-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => {
+                      if (onBulkStatusChange) {
+                        onBulkStatusChange(allSelectedIds, 'Draft');
+                        setVersionSelection({});
+                        table.resetRowSelection();
+                      }
+                    }}>
+                      Set to Draft
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      if (onBulkStatusChange) {
+                        onBulkStatusChange(allSelectedIds, 'Pending');
+                        setVersionSelection({});
+                        table.resetRowSelection();
+                      }
+                    }}>
+                      Set to Pending
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      if (onBulkStatusChange) {
+                        onBulkStatusChange(allSelectedIds, 'Submitted');
+                        setVersionSelection({});
+                        table.resetRowSelection();
+                      }
+                    }}>
+                      Set to Submitted
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      if (onBulkStatusChange) {
+                        onBulkStatusChange(allSelectedIds, 'Accepted');
+                        setVersionSelection({});
+                        table.resetRowSelection();
+                      }
+                    }}>
+                      Set to Accepted
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      if (onBulkStatusChange) {
+                        onBulkStatusChange(allSelectedIds, 'Rejected');
+                        setVersionSelection({});
+                        table.resetRowSelection();
+                      }
+                    }}>
+                      Set to Rejected
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* More Actions */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-[var(--sidebar-nav-bg-hover)] px-3">
+                      More Actions
+                      <ChevronDown className="w-3 h-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => {
+                      if (onExportCSV) {
+                        const allSelected = [
+                          ...table.getFilteredSelectedRowModel().rows.map(row => row.original),
+                          ...proposals.filter(q => selectedVersionIds.includes(q.id))
+                        ];
+                        onExportCSV(allSelected);
+                      }
+                    }}>
+                      <FileSpreadsheet className="w-4 h-4 mr-2" />
+                      Export Selected (CSV)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      if (onExportPDF) {
+                        const allSelected = [
+                          ...table.getFilteredSelectedRowModel().rows.map(row => row.original),
+                          ...proposals.filter(q => selectedVersionIds.includes(q.id))
+                        ];
+                        onExportPDF(allSelected);
+                      }
+                    }}>
+                      <FileText className="w-4 h-4 mr-2" />
+                      Export Selected (PDF)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      allSelectedIds.forEach(id => {
+                        if (onCreateVersion) {
+                          onCreateVersion(id);
+                        }
+                      });
+                      setVersionSelection({});
+                      table.resetRowSelection();
+                    }}>
+                      <Copy className="w-4 h-4 mr-2" />
+                      Duplicate Selected
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (onBulkDelete) {
+                          onBulkDelete(allSelectedIds);
+                          setVersionSelection({});
+                          table.resetRowSelection();
+                        }
+                      }}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete Selected
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            );
+          })()}
+        </div>
+
+        <div className="relative">
+          {/* Scrollable Table Area */}
+          <div className="overflow-x-auto overflow-y-auto max-h-[600px] scroll-smooth [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+            <table
+              className="border-collapse font-table"
+              style={{
+                width: Math.max(table.getTotalSize(), 1900),
+                minWidth: '1900px',
+                fontFamily: 'var(--font-table)',
+                tableLayout: 'fixed'
+              }}
+            >
+              <thead className="bg-gray-50/80 border-b border-gray-200 sticky top-0 z-10">
+                {table.getHeaderGroups().map(headerGroup => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      const isActionsColumn = header.id === 'actions';
+                      const rowHeight = dataDensity === 'compact' ? 'h-10' : dataDensity === 'comfortable' ? 'h-12' : 'h-16';
+                      
+                      return (
+                        <th
+                          key={header.id}
+                          className={`relative px-4 py-3 text-left text-sm font-semibold text-gray-900 border-r border-gray-200 last:border-r-0 ${
+                            isActionsColumn ? 'sticky right-0 bg-gray-50 border-l border-gray-200 z-20' : ''
+                          } ${rowHeight}`}
+                          style={{ width: header.getSize() }}
+                        >
+                          {header.isPlaceholder ? null : (
+                            <div
+                              className={`flex items-center space-x-2 ${
+                                header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-gray-100 rounded p-1 -m-1' : ''
+                              }`}
+                              onClick={header.column.getToggleSortingHandler()}
+                            >
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                              {header.column.getCanSort() && (
+                                <div className="flex flex-col">
+                                  {header.column.getIsSorted() === 'asc' ? (
+                                    <ChevronUp className="w-4 h-4 text-blue-600" />
+                                  ) : header.column.getIsSorted() === 'desc' ? (
+                                    <ChevronDown className="w-4 h-4 text-blue-600" />
+                                  ) : (
+                                    <ArrowUpDown className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* Column Resizer */}
+                          {header.column.getCanResize() && (
+                            <div
+                              onMouseDown={header.getResizeHandler()}
+                              onTouchStart={header.getResizeHandler()}
+                              className={`absolute right-0 top-0 h-full w-1 bg-transparent hover:bg-blue-500 cursor-col-resize select-none touch-none ${
+                                header.column.getIsResizing() ? 'bg-blue-500' : ''
+                              }`}
+                              style={{
+                                transform: 'translateX(50%)',
+                              }}
+                            />
+                          )}
+                        </th>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {table.getRowModel().rows.map(row => {
+                  const rowHeight = dataDensity === 'compact' ? 'h-10' : dataDensity === 'comfortable' ? 'h-14' : 'h-18';
+                  const paddingY = dataDensity === 'compact' ? 'py-1' : dataDensity === 'comfortable' ? 'py-2' : 'py-4';
+                  const proposal = row.original;
+                  const versionGroup = proposalToGroupMap.get(proposal.id);
+                  const baseNumber = getBaseProposalNumber(proposal.proposal_number);
+                  const isExpanded = expanded[baseNumber];
+
+                  return (
+                    <React.Fragment key={row.id}>
+                      {/* Main Row */}
+                      <tr
+                        className={`group transition-colors border-b border-gray-100 dark:border-[var(--content-table-border)] last:border-b-0 ${rowHeight} hover:bg-gray-50/50 dark:hover:bg-[var(--content-table-row-hover)]`}
+                      >
+                        {row.getVisibleCells().map((cell) => {
+                          const isActionsColumn = cell.column.id === 'actions';
+                          return (
+                            <td
+                              key={cell.id}
+                              className={`px-4 ${paddingY} text-sm border-r border-gray-100 dark:border-[var(--content-table-border)] last:border-r-0 ${
+                                isActionsColumn
+                                  ? 'sticky right-0 bg-white dark:bg-[var(--content-table-bg)] group-hover:bg-gray-50 dark:group-hover:bg-[var(--content-table-row-hover)] border-l border-gray-200 dark:border-[var(--content-table-border)] z-10'
+                                  : ''
+                              }`}
+                              style={{ width: cell.column.getSize() }}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </td>
+                          );
+                        })}
+                      </tr>
+
+                      {/* Expanded Version Rows */}
+                      {isExpanded && versionGroup && versionGroup.hasMultipleVersions && (
+                        versionGroup.versions.map((version, _) => (
+                          <tr
+                            key={`${row.id}-version-${version.id}`}
+                            className="bg-white border-l-4 border-l-blue-200 hover:bg-gray-50"
+                          >
+                            {/* Selection */}
+                            <td className="px-4 py-2">
+                              <input
+                                type="checkbox"
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                checked={versionSelection[version.id] || false}
+                                onChange={(e) => {
+                                  setVersionSelection(prev => ({
+                                    ...prev,
+                                    [version.id]: e.target.checked
+                                  }));
+                                }}
+                              />
+                            </td>
+
+                            {/* Proposal Number */}
+                            <td className="px-4 py-2 text-sm">
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-400">└─</span>
+                                <span className="font-mono text-xs text-gray-600">
+                                  {version.proposal_number}
+                                </span>
+                                {version.is_main_version === true ? (
+                                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                                    Main
+                                  </Badge>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 px-2 text-xs text-gray-500 hover:text-blue-700 hover:bg-blue-50"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      // Update database
+                                      if (onSetMainVersion) {
+                                        onSetMainVersion(version.id, versionGroup.baseNumber);
+                                      }
+                                      // Update local state for immediate UI feedback
+                                      setMainVersions(prev => ({
+                                        ...prev,
+                                        [versionGroup.baseNumber]: version.id
+                                      }));
+                                    }}
+                                  >
+                                    Set as Main
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Project Name + Address */}
+                            <td className="px-4 py-2">
+                              <div className="space-y-1">
+                                <div className="font-medium text-sm">{version.proposal_name || "Untitled"}</div>
+                                {version.job_details?.job_location && (
+                                  <div className="text-xs text-gray-500">{version.job_details.job_location}</div>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Client */}
+                            <td className="px-4 py-2 text-sm text-gray-600">
+                              {version.job_details?.client_company || version.job_details?.client_name || "—"}
+                            </td>
+
+                            {/* Total */}
+                            <td className="px-4 py-2 text-sm text-gray-600">
+                              {formatCurrency(version.price_details?.final_selling_price || 0)}
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-4 py-2">
+                              <Select
+                                value={version.proposal_status || "Incomplete"}
+                                onValueChange={(value) => onStatusChange(version.id, value)}
+                              >
+                                <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[version.proposal_status as keyof typeof statusColors]}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getAvailableStatusOptions(version.proposal_status || "Incomplete").map((status) => (
+                                    <SelectItem key={status.value} value={status.value}>
+                                      {status.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                            {/* Created By */}
+                            <td className="px-4 py-2 text-xs text-gray-500">
+                              {version.created_by_name || "Unknown"}
+                            </td>
+
+                            {/* Created At */}
+                            <td className="px-4 py-2 text-xs text-gray-500">
+                              {formatDateEST(version.created_at)}
+                            </td>
+
+                            {/* Updated At */}
+                            <td className="px-4 py-2 text-xs text-gray-500">
+                              {formatLastUpdated(version.updated_at)}
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-4 py-2 sticky right-0 bg-white border-l border-gray-200">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
+                                  <DropdownMenuItem onClick={() => onEditProposal(version)}>
+                                    <Edit3 className="mr-2 h-4 w-4" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  {isArchiveView && onUnarchiveProposal ? (
+                                    <DropdownMenuItem onClick={() => onUnarchiveProposal(version.id)}>
+                                      <ArchiveRestore className="mr-2 h-4 w-4" />
+                                      Unarchive
+                                    </DropdownMenuItem>
+                                  ) : onArchiveProposal && (
+                                    <DropdownMenuItem onClick={() => onArchiveProposal(version.id)}>
+                                      <Archive className="mr-2 h-4 w-4" />
+                                      Archive
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => onDeleteProposal(version.id)}
+                                    className="text-red-600 focus:text-red-600"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Empty State - positioned in main viewing area */}
+        {table.getFilteredRowModel().rows.length === 0 && (
+          <div className="text-center py-16 px-6">
+            <div className="flex flex-col items-center space-y-3">
+              <Search className="w-12 h-12 text-gray-300" />
+              <div className="text-xl font-medium text-gray-600">No proposals found</div>
+              <div className="text-gray-500">Try adjusting your search or filters to find what you're looking for</div>
+            </div>
+          </div>
+        )}
+
+        {/* Pagination */}
+        <PaginationControls table={table} />
+      </div>
+    </div>
+  );
+};

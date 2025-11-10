@@ -1,157 +1,56 @@
 /**
  * Proposals Service
  *
- * Centralized service for all proposals-related API calls.
- * Integrates with the database function for auto-incrementing proposal numbers.
+ * Centralized service for all proposal-related API calls.
+ * Used by React Query hooks for data fetching.
  */
 
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import * as authService from '@/auth/services/authService';
-
 // ============================================================================
 // Types
 // ============================================================================
 
-export type Proposal = Database['public']['Tables']['proposals']['Row'];
+export type Proposal = Database['public']['Tables']['proposals']['Row'] & {
+  created_by_name?: string; // Joined from profiles table in queries
+  // Analytics fields (denormalized from other fields and maintained by triggers)
+  total_value?: number | null; // From price_details.final_selling_price
+  subtotal?: number | null; // From price_details.subtotal
+  margin_percentage?: number | null; // Calculated margin
+};
+
+export interface ProposalFilters {
+  status?: string;
+  search?: string;
+  archived?: boolean;
+}
 
 export interface CreateProposalData {
-  form_id: string; // Which form template was used
-  proposal_data?: Record<string, any>; // Form submission data (JSONB)
-  status?: string;
+  proposal_name?: string;
+  form_response_data?: Record<string, any>;
+  proposal_status?: string;
+  proposal_source?: string;
 }
 
 export interface UpdateProposalData {
-  proposal_data?: Record<string, any>;
-  status?: string;
+  proposal_name?: string;
+  form_response_data?: Record<string, any>;
+  proposal_status?: string;
+  date_last_downloaded?: string;
+  document_version?: number;
+  archived?: boolean;
+  total_value?: number;
+  subtotal?: number;
   submitted_at?: string;
-  approved_at?: string;
+  accepted_at?: string;
   rejected_at?: string;
+  closed_at?: string;
+  margin_percentage?: number;
+  is_main_version?: boolean;
+  proposal_source?: string;
 }
 
-export interface ProposalVersionInfo {
-  mainNumber: string;
-  version: number;
-  fullNumber: string;
-}
-
-// ============================================================================
-// Proposal Number Generation
-// ============================================================================
-
-/**
- * Generate the next proposal number for a form
- *
- * This calls the database function `generate_next_proposal_number()` which:
- * - Parses the form's starting_proposal_number (e.g., "SR-1005", "Q1200")
- * - Finds the highest number used for proposals from this form
- * - Increments by 1 and returns the next number with proper zero-padding
- *
- * Example:
- * - Form has starting_proposal_number: "SR-1005"
- * - No proposals created yet → returns "SR-1005"
- * - After 1st proposal → returns "SR-1006"
- * - After 2nd proposal → returns "SR-1007"
- *
- * @param formId - UUID of the form template
- * @param startingNumber - Starting proposal number from the form (e.g., "Q1200", "SR-1005")
- * @returns The next proposal number to use
- */
-export async function generateNextProposalNumber(
-  formId: string,
-  startingNumber: string
-): Promise<string> {
-  if (!formId) {
-    throw new Error('Form ID is required');
-  }
-  if (!startingNumber) {
-    throw new Error('Starting proposal number is required');
-  }
-
-  const { data, error } = await supabase.rpc('generate_next_proposal_number', {
-    p_form_id: formId,
-    p_starting_number: startingNumber,
-  });
-
-  if (error) {
-    console.error('Error generating proposal number:', error);
-    throw new Error(`Failed to generate proposal number: ${error.message}`);
-  }
-
-  if (!data) {
-    throw new Error('No proposal number returned from database function');
-  }
-
-  return data;
-}
-
-/**
- * Generate a version number for a proposal revision
- *
- * This calls the database function `generate_proposal_version()` which:
- * - Extracts the main number from the parent (strips any .X suffix)
- * - Finds the highest version number for this proposal
- * - Returns the next version number with proper suffix
- *
- * Example:
- * - Parent: "SR-1005" → Returns "SR-1005.2" (first revision)
- * - Parent: "SR-1005.2" → Returns "SR-1005.3" (second revision)
- * - Parent: "Q1200" → Returns "Q1200.2"
- *
- * @param parentProposalNumber - The proposal number to create a version of
- * @param organizationId - Organization ID for scoping the version lookup
- * @returns The next version number to use
- */
-export async function generateProposalVersion(
-  parentProposalNumber: string,
-  organizationId: string
-): Promise<string> {
-  if (!parentProposalNumber) {
-    throw new Error('Parent proposal number is required');
-  }
-  if (!organizationId) {
-    throw new Error('Organization ID is required');
-  }
-
-  const { data, error } = await (supabase.rpc as any)('generate_proposal_version', {
-    p_parent_proposal_number: parentProposalNumber,
-    p_organization_id: organizationId,
-  });
-
-  if (error) {
-    console.error('Error generating proposal version:', error);
-    throw new Error(`Failed to generate proposal version: ${error.message}`);
-  }
-
-  if (!data) {
-    throw new Error('No proposal version returned from database function');
-  }
-
-  return data as string;
-}
-
-/**
- * Parse a proposal number to extract version info
- */
-export function parseProposalNumber(proposalNumber: string): ProposalVersionInfo {
-  // Check if there's a version suffix (e.g., "SR-1005.2")
-  const versionMatch = proposalNumber.match(/^(.+)\.(\d+)$/);
-
-  if (versionMatch && versionMatch[1] && versionMatch[2]) {
-    return {
-      mainNumber: versionMatch[1],
-      version: parseInt(versionMatch[2], 10),
-      fullNumber: proposalNumber,
-    };
-  }
-
-  // No version suffix, this is version 1 (original)
-  return {
-    mainNumber: proposalNumber,
-    version: 1,
-    fullNumber: proposalNumber,
-  };
-}
 
 // ============================================================================
 // Proposal Operations
@@ -161,36 +60,82 @@ export function parseProposalNumber(proposalNumber: string): ProposalVersionInfo
  * Fetch proposals for an organization
  */
 export async function fetchProposals(
-  organizationId: string,
-  filters?: { status?: string; form_id?: string }
+  userId: string,
+  filters?: ProposalFilters
 ): Promise<Proposal[]> {
+  // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
   const session = await authService.getSession();
+
   if (!session?.user) {
     throw new Error('Not authenticated');
   }
 
-  let query = supabase
-    .from('proposals')
-    .select('*')
-    .eq('organization_id', organizationId)
-    .order('created_at', { ascending: false });
+  // Check if user has any memberships first
+  const { data: userMemberships } = await supabase
+    .from('memberships')
+    .select('organization_id, role, status')
+    .eq('user_id', userId);
 
-  // Apply filters
-  if (filters?.status) {
-    query = query.eq('status', filters.status);
+  let proposalsData: any[] = [];
+
+  if (!userMemberships || userMemberships.length === 0) {
+    // User has no memberships, query personal proposals
+    let query = supabase
+      .from('proposals')
+      .select(`
+        id, created_by, created_by_name, organization_id, proposal_number, proposal_name,
+        quote_details, job_details, delivery_details, labor_details,
+        wall_details, price_details, proposal_status, date_last_downloaded,
+        document_version, created_at, updated_at, customization,
+        quote_source, archived, is_main_version,
+        total_value, subtotal,
+        submitted_at, accepted_at, rejected_at, closed_at, margin_percentage
+      `)
+      .eq('created_by', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    // Apply filters
+    if (filters?.archived !== undefined) {
+      query = query.eq('archived', filters.archived);
+    }
+    if (filters?.status) {
+      query = query.eq('proposal_status', filters.status);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    proposalsData = data || [];
+  } else {
+    // User has memberships, let RLS policies handle the query
+    let query = supabase
+      .from('proposals')
+      .select(`
+        id, created_by, created_by_name, organization_id, proposal_number, proposal_name,
+        quote_details, job_details, delivery_details, labor_details,
+        wall_details, price_details, proposal_status, date_last_downloaded,
+        document_version, created_at, updated_at, customization,
+        quote_source, archived, is_main_version,
+        total_value, subtotal,
+        submitted_at, accepted_at, rejected_at, closed_at, margin_percentage
+      `)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    // Apply filters
+    if (filters?.archived !== undefined) {
+      query = query.eq('archived', filters.archived);
+    }
+    if (filters?.status) {
+      query = query.eq('proposal_status', filters.status);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    proposalsData = data || [];
   }
-  if (filters?.form_id) {
-    query = query.eq('form_id', filters.form_id);
-  }
 
-  const { data, error } = await query;
-
-  if (error) {
-    console.error('Error fetching proposals:', error);
-    throw new Error(`Failed to fetch proposals: ${error.message}`);
-  }
-
-  return data || [];
+  return proposalsData as Proposal[];
 }
 
 /**
@@ -203,33 +148,17 @@ export async function fetchProposalById(proposalId: string): Promise<Proposal> {
     .eq('id', proposalId)
     .single();
 
-  if (error) {
-    console.error('Error fetching proposal:', error);
-    throw new Error(`Failed to fetch proposal: ${error.message}`);
-  }
-
-  if (!data) {
-    throw new Error('Proposal not found');
-  }
-
-  return data;
+  if (error) throw error;
+  return data as Proposal;
 }
 
 /**
  * Create a new proposal
- *
- * This function:
- * 1. Fetches the form to get its starting_proposal_number and proposal_type
- * 2. Generates the next proposal number using the database function
- * 3. Creates the proposal with the generated number
  */
-export async function createProposal(
-  proposalData: CreateProposalData
-): Promise<Proposal> {
+export async function createProposal(proposalData: CreateProposalData): Promise<Proposal> {
+  // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
   const session = await authService.getSession();
-  if (!session?.user) {
-    throw new Error('Not authenticated');
-  }
+  if (!session?.user) throw new Error('Not authenticated');
 
   // Get user's organization
   const { data: membershipData, error: membershipError } = await supabase
@@ -238,50 +167,27 @@ export async function createProposal(
     .eq('user_id', session.user.id)
     .single();
 
-  if (membershipError) {
-    console.error('Error fetching membership:', membershipError);
-    throw new Error(`Membership error: ${membershipError.message}`);
-  }
-
+  if (membershipError) throw membershipError;
   if (!membershipData?.organization_id) {
     throw new Error('User not assigned to an organization');
   }
 
-  // Fetch the form to get starting_proposal_number and form_type
-  const { data: formData, error: formError } = await supabase
-    .from('forms')
-    .select('starting_proposal_number, form_type')
-    .eq('id', proposalData.form_id)
+  // Get user's name from profile to set created_by_name
+  // Fallback to email if full_name is not set
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', session.user.id)
     .single();
 
-  if (formError) {
-    console.error('Error fetching form:', formError);
-    throw new Error(`Failed to fetch form: ${formError.message}`);
-  }
+  const createdByName = profileData?.full_name || session.user.email || 'Unknown';
 
-  if (!formData) {
-    throw new Error('Form not found');
-  }
-
-  if (!formData.starting_proposal_number) {
-    throw new Error('Form does not have a starting proposal number configured');
-  }
-
-  // Generate the next proposal number
-  const proposalNumber = await generateNextProposalNumber(
-    proposalData.form_id,
-    formData.starting_proposal_number
-  );
-
-  // Create the proposal with the generated number
+  // Create proposal with created_by_name explicitly set
   const insertData = {
+    ...proposalData,
     organization_id: membershipData.organization_id,
     created_by: session.user.id,
-    form_id: proposalData.form_id,
-    proposal_number: proposalNumber,
-    proposal_type: formData.form_type || 'quote', // Inherit from form
-    proposal_data: proposalData.proposal_data || {},
-    status: proposalData.status || 'draft',
+    created_by_name: createdByName,
   };
 
   const { data, error } = await supabase
@@ -290,17 +196,14 @@ export async function createProposal(
     .select()
     .single();
 
-  if (error) {
-    console.error('Error creating proposal:', error);
-    throw new Error(`Failed to create proposal: ${error.message}`);
-  }
-
-  if (!data) {
-    throw new Error('Failed to create proposal: No data returned');
-  }
-
-  return data;
+  if (error) throw error;
+  return data as Proposal;
 }
+
+// /**
+//  * @deprecated Use createProposal instead - kept for backward compatibility
+//  */
+// export const createProposal
 
 /**
  * Update a proposal
@@ -311,21 +214,13 @@ export async function updateProposal(
 ): Promise<Proposal> {
   const { data, error } = await supabase
     .from('proposals')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update(updates)
     .eq('id', proposalId)
     .select()
     .single();
 
-  if (error) {
-    console.error('Error updating proposal:', error);
-    throw new Error(`Failed to update proposal: ${error.message}`);
-  }
-
-  if (!data) {
-    throw new Error('Failed to update proposal: No data returned');
-  }
-
-  return data;
+  if (error) throw error;
+  return data as Proposal;
 }
 
 /**
@@ -337,10 +232,30 @@ export async function deleteProposal(proposalId: string): Promise<void> {
     .delete()
     .eq('id', proposalId);
 
-  if (error) {
-    console.error('Error deleting proposal:', error);
-    throw new Error(`Failed to delete proposal: ${error.message}`);
-  }
+  if (error) throw error;
+}
+
+/**
+ * Archive a proposal
+ */
+export async function archiveProposal(proposalId: string): Promise<Proposal> {
+  return updateProposal(proposalId, { archived: true });
+}
+
+/**
+ * Unarchive a proposal
+ */
+export async function unarchiveProposal(proposalId: string): Promise<Proposal> {
+  return updateProposal(proposalId, { archived: false });
+}
+
+/**
+ * Mark proposal as downloaded
+ */
+export async function markProposalAsDownloaded(proposalId: string): Promise<Proposal> {
+  return updateProposal(proposalId, {
+    date_last_downloaded: new Date().toISOString(),
+  });
 }
 
 /**
@@ -350,19 +265,23 @@ export async function updateProposalStatus(
   proposalId: string,
   status: string
 ): Promise<Proposal> {
-  const updates: UpdateProposalData = { status };
+  const updates: UpdateProposalData = { proposal_status: status };
 
   // Add timestamp for status transitions
   const now = new Date().toISOString();
   switch (status) {
-    case 'submitted':
+    case 'Submitted':
       updates.submitted_at = now;
       break;
-    case 'approved':
-      updates.approved_at = now;
+    case 'Accepted':
+    case 'Won': // Support legacy 'Won' for backward compatibility
+      updates.accepted_at = now;
       break;
-    case 'rejected':
+    case 'Rejected':
       updates.rejected_at = now;
+      break;
+    case 'Closed':
+      updates.closed_at = now;
       break;
   }
 
@@ -370,112 +289,157 @@ export async function updateProposalStatus(
 }
 
 /**
- * Create a new version (revision) of an existing proposal
- *
- * This function:
- * 1. Fetches the parent proposal
- * 2. Generates the next version number (e.g., SR-1005 → SR-1005.2)
- * 3. Creates a new proposal with the versioned number
- * 4. Links it to the parent via parent_proposal_id
- *
- * Example usage:
- * - Client receives proposal SR-1005 and requests changes
- * - Call createProposalVersion(parentId) → creates SR-1005.2
- * - Make more changes → SR-1005.3, SR-1005.4, etc.
- *
- * @param parentProposalId - UUID of the proposal to create a version of
- * @param proposalData - Optional updated data for the new version (defaults to copy of parent)
- * @returns The newly created proposal version
+ * Create proposal version (duplicate proposal with new proposal number)
  */
 export async function createProposalVersion(
-  parentProposalId: string,
-  proposalData?: Partial<CreateProposalData>
+  existingProposalId: string,
+  newProposalNumber: string,
+  versionNumber: number
 ): Promise<Proposal> {
+  // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
   const session = await authService.getSession();
-  if (!session?.user) {
-    throw new Error('Not authenticated');
-  }
+  if (!session?.user) throw new Error('Not authenticated');
 
-  // Fetch the parent proposal
-  const parentProposal = await fetchProposalById(parentProposalId);
+  // Fetch existing proposal (RLS ensures user has access)
+  const existingProposal = await fetchProposalById(existingProposalId);
 
-  if (!parentProposal.organization_id) {
-    throw new Error('Parent proposal has no organization');
-  }
+  // Fetch organization details to ensure organization name is available
+  const { data: orgData } = await supabase
+    .from('organizations')
+    .select('name')
+    .eq('id', existingProposal.organization_id)
+    .maybeSingle();
 
-  if (!parentProposal.proposal_number) {
-    throw new Error('Parent proposal has no proposal number');
-  }
+  // Get user's name from profile to set created_by_name
+  const { data: profileData } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', session.user.id)
+    .maybeSingle();
 
-  // Generate the next version number (e.g., SR-1005 → SR-1005.2)
-  const versionedNumber = await generateProposalVersion(
-    parentProposal.proposal_number,
-    parentProposal.organization_id
-  );
+  const createdByName = (profileData as any)?.full_name || session.user.email || 'Unknown';
 
-  // Create the new version
-  const insertData = {
-    organization_id: parentProposal.organization_id,
-    created_by: session.user.id,
-    form_id: parentProposal.form_id,
-    proposal_number: versionedNumber, // Contains version in the number itself (e.g., "SR-1005.2")
-    proposal_type: parentProposal.proposal_type,
-    proposal_data: proposalData?.proposal_data || parentProposal.proposal_data || {},
-    status: proposalData?.status || 'draft',
-    parent_proposal_id: parentProposalId,
+  // Ensure proposal_details has organization name
+  const proposalDetails = {
+    ...(existingProposal.proposal_details as any || {}),
+    organizationName: (existingProposal.proposal_details as any)?.organizationName || (orgData as any)?.name || 'Organization Name Not Available'
   };
 
+  // Create new version with proper user context and organization name
+  // RLS policies automatically ensure user has access to this organization
   const { data, error } = await supabase
     .from('proposals')
-    .insert(insertData as any)
+    .insert({
+      ...existingProposal,
+      id: undefined,
+      proposal_number: newProposalNumber,
+      document_version: versionNumber,
+      is_main_version: false,
+      created_by: session.user.id,
+      created_by_name: createdByName,
+      organization_id: existingProposal.organization_id,
+      proposal_details: proposalDetails,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as any)
     .select()
     .single();
 
   if (error) {
     console.error('Error creating proposal version:', error);
-    throw new Error(`Failed to create proposal version: ${error.message}`);
+    throw new Error(error.message || 'Failed to create proposal version');
   }
 
-  if (!data) {
-    throw new Error('Failed to create proposal version: No data returned');
-  }
-
-  return data;
+  return data as Proposal;
 }
 
 /**
- * Get all versions of a proposal
- *
- * Returns all proposals in the version chain (original + all revisions)
- * Sorted by version number ascending
- *
- * @param proposalId - UUID of any proposal in the version chain
- * @returns Array of all versions
+ * Set main version for a proposal group
  */
-export async function getProposalVersions(proposalId: string): Promise<Proposal[]> {
-  // First, fetch the proposal to get its proposal_number
-  const proposal = await fetchProposalById(proposalId);
-
-  if (!proposal.proposal_number || !proposal.organization_id) {
-    throw new Error('Proposal has no proposal number or organization');
-  }
-
-  // Extract the main number (without version suffix)
-  const versionInfo = parseProposalNumber(proposal.proposal_number);
-
-  // Fetch all proposals with the same main number
-  // Order by created_at to get versions in chronological order
-  const { data, error } = await supabase
+export async function setMainVersion(
+  proposalId: string,
+  baseProposalNumber: string
+): Promise<void> {
+  // Get all proposals with the same base proposal number
+  const { data: proposals, error: fetchError } = await supabase
     .from('proposals')
-    .select('*')
-    .eq('organization_id', proposal.organization_id)
-    .like('proposal_number', `${versionInfo.mainNumber}%`)
-    .order('created_at', { ascending: true });
+    .select('id')
+    .like('proposal_number', `${baseProposalNumber}%`);
 
-  if (error) {
-    console.error('Error fetching proposal versions:', error);
-    throw new Error(`Failed to fetch proposal versions: ${error.message}`);
-  }
+  if (fetchError) throw fetchError;
 
-  return data || [];
+  // Update all proposals in the group
+  const updates = (proposals || []).map((proposal) =>
+    updateProposal(proposal.id, {
+      is_main_version: proposal.id === proposalId,
+    })
+  );
+
+  await Promise.all(updates);
+}
+
+/**
+ * Save proposal customization settings
+ */
+export async function saveProposalCustomization(
+  proposalId: string,
+  customization: any
+): Promise<Proposal> {
+  return updateProposal(proposalId, { customization });
+}
+
+/**
+ * Update wall system in proposal
+ */
+export async function updateWallSystem(
+  proposalId: string,
+  wallName: string,
+  wallData: any
+): Promise<Proposal> {
+  // Fetch current proposal
+  const currentProposal = await fetchProposalById(proposalId);
+
+  // Update wall details
+  const updatedWallDetails = {
+    ...currentProposal.wall_details,
+    walls: {
+      ...(currentProposal.wall_details as any).walls,
+      [wallName]: wallData,
+    },
+  };
+
+  return updateProposal(proposalId, { wall_details: updatedWallDetails });
+}
+
+/**
+ * Remove wall system from proposal
+ */
+export async function removeWallSystem(
+  proposalId: string,
+  wallName: string
+): Promise<Proposal> {
+  // Fetch current proposal
+  const currentProposal = await fetchProposalById(proposalId);
+
+  // Remove wall from details
+  const walls = { ...(currentProposal.wall_details as any).walls };
+  delete walls[wallName];
+
+  const updatedWallDetails = {
+    ...currentProposal.wall_details,
+    walls,
+  };
+
+  return updateProposal(proposalId, { wall_details: updatedWallDetails });
+}
+
+/**
+ * Add wall system to proposal
+ */
+export async function addWallSystem(
+  proposalId: string,
+  wallName: string,
+  wallData: any
+): Promise<Proposal> {
+  return updateWallSystem(proposalId, wallName, wallData);
 }

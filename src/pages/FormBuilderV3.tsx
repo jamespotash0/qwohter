@@ -144,6 +144,7 @@ export default function FormBuilderV3() {
   // Form state
   const [formName, setFormName] = useState(existingForm?.name || 'Untitled Form');
   const [formDescription, setFormDescription] = useState(existingForm?.description || '');
+  const [formType, setFormType] = useState(existingForm?.form_type || 'Custom');
   const [currentTab, setCurrentTab] = useState(0);
   const [tabs, setTabs] = useState<EnhancedFormTab[]>(() => {
     if (existingForm?.tabs) {
@@ -154,6 +155,18 @@ export default function FormBuilderV3() {
       { ...DEFAULT_PROJECT_DETAILS_TAB, layoutMode: 'grid' as const } as EnhancedFormTab,
     ];
   });
+
+  // Sync state when existing form loads from database
+  useEffect(() => {
+    if (existingForm) {
+      setFormName(existingForm.name);
+      setFormDescription(existingForm.description || '');
+      setFormType(existingForm.form_type || 'Custom');
+      if (existingForm.tabs) {
+        setTabs(existingForm.tabs as EnhancedFormTab[]);
+      }
+    }
+  }, [existingForm]);
 
   // UI state
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
@@ -427,7 +440,7 @@ export default function FormBuilderV3() {
         organization_id: organizationId,
         name: formName,
         description: formDescription,
-        category: 'custom',
+        form_type: formType, // Type of document this form generates
         tabs: tabs as any[],
         created_by: user.id,
         is_active: true,
@@ -440,14 +453,19 @@ export default function FormBuilderV3() {
           id: formId,
           updates: formData,
         });
+        // toast.success('Form saved successfully');
+        // Navigate back to forms list after save
+        navigate('/forms');
       } else {
         // Create new form
         const newForm = await createFormMutation.mutateAsync(formData);
+        // toast.success('Form created successfully');
         // Navigate to the new form's edit page
         navigate(`/forms/builder-v3/${newForm.id}`, { replace: true });
       }
     } catch (error) {
       console.error('Failed to save form:', error);
+      toast.error('Failed to save form: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsSaving(false);
     }

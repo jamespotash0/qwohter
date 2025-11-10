@@ -12,15 +12,15 @@ export interface Reminder {
   due_date: string;
   quote_id?: string;
   reminder_type: ReminderType;
-  status: ReminderStatus;
+  reminder_status: ReminderStatus;
   is_shared: boolean;
   completed_at?: string;
   completed_by?: string;
   created_at: string;
   updated_at: string;
   // Joined data
-  quote_number?: string;
-  project_name?: string;
+  proposal_number?: string;
+  proposal_name?: string;
   creator_name?: string;
 }
 
@@ -43,7 +43,7 @@ export interface UpdateReminderParams {
 }
 
 export interface CompleteReminderParams {
-  status: 'Completed' | 'Dismissed';
+  reminder_status: 'Completed' | 'Dismissed';
   completed_by: string;
 }
 
@@ -62,7 +62,7 @@ export const reminderService = {
           *,
           quotes:quote_id (
             proposal_number,
-            project_name
+            proposal_name
           ),
           created_by_profile:created_by (
             full_name
@@ -75,7 +75,7 @@ export const reminderService = {
         .order('due_date', { ascending: true });
 
       if (!params.includeCompleted) {
-        query = query.eq('status', 'Pending');
+        query = query.eq('reminder_status', 'Pending');
       }
 
       const { data, error } = await query;
@@ -88,8 +88,8 @@ export const reminderService = {
       // Map joined data to flat structure
       const reminders = data.map((reminder: any) => ({
         ...reminder,
-        quote_number: reminder.quotes?.proposal_number,
-        project_name: reminder.quotes?.project_name,
+        proposal_number: reminder.quotes?.proposal_number,
+        proposal_name: reminder.quotes?.proposal_name,
         creator_name: reminder.created_by_profile?.full_name || 'Unknown User',
         // Remove nested objects
         quotes: undefined,
@@ -262,7 +262,7 @@ export const reminderService = {
           *,
           quotes:quote_id (
             proposal_number,
-            project_name
+            proposal_name
           ),
           created_by_profile:created_by (
             full_name
@@ -285,7 +285,7 @@ export const reminderService = {
       const reminders = data.map((reminder: any) => ({
         ...reminder,
         quote_number: reminder.quotes?.proposal_number,
-        project_name: reminder.quotes?.project_name,
+        project_name: reminder.quotes?.proposal_name,
         creator_name: reminder.created_by_profile?.full_name || 'Unknown User',
         // Remove nested objects
         quotes: undefined,

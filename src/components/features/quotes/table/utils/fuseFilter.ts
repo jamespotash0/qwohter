@@ -1,12 +1,12 @@
 import { FilterFn } from '@tanstack/react-table';
 import useEnhancedSearch from '@/hooks/useEnhancedSearch';
-import { Quote } from '@/stores/quotes/quotesStore';
+import { Proposal } from '@/stores/proposals/proposalsStore';
 
 // Create a custom filter function that uses Fuse.js
-export const createFuseFilter = (quotes: Quote[]): FilterFn<Quote> => {
-  const { search } = useEnhancedSearch(quotes);
+export const createFuseFilter = (proposals: Proposal[]): FilterFn<Proposal> => {
+  const { search } = useEnhancedSearch(proposals);
 
-  const fuseFilter: FilterFn<Quote> = (row, _columnId, filterValue) => {
+  const fuseFilter: FilterFn<Proposal> = (row, _columnId, filterValue) => {
     if (!filterValue || filterValue === '') {
       return true;
     }
@@ -14,7 +14,7 @@ export const createFuseFilter = (quotes: Quote[]): FilterFn<Quote> => {
     // Get search results
     const searchResults = search(filterValue);
 
-    // Check if the current row's quote is in the search results
+    // Check if the current row's proposal is in the search results
     return searchResults.some(result => result.item.id === row.original.id);
   };
 
@@ -22,12 +22,12 @@ export const createFuseFilter = (quotes: Quote[]): FilterFn<Quote> => {
 };
 
 // Alternative approach: Return filtered data directly
-export const searchQuotes = (quotes: Quote[], searchTerm: string): Quote[] => {
+export const searchProposals = (proposals: Proposal[], searchTerm: string): Proposal[] => {
   if (!searchTerm.trim()) {
-    return quotes;
+    return proposals;
   }
 
-  const { search } = useEnhancedSearch(quotes);
+  const { search } = useEnhancedSearch(proposals);
   const results = search(searchTerm);
 
   return results.map(result => result.item);

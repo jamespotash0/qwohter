@@ -85,20 +85,20 @@ export const queryClient = new QueryClient({
  * Pattern: ['resource', 'operation', ...params]
  *
  * Example:
- * - ['quotes', 'list', organizationId]
- * - ['quotes', 'detail', quoteId]
+ * - ['proposals', 'list', organizationId]
+ * - ['proposals', 'detail', proposalId]
  * - ['organization', 'detail', organizationId]
  * - ['organization', 'members', organizationId]
  */
 export const queryKeys = {
-  // Quotes
-  quotes: {
-    all: ['quotes'] as const,
-    lists: () => [...queryKeys.quotes.all, 'list'] as const,
+  // Proposals
+  proposals: {
+    all: ['proposals'] as const,
+    lists: () => [...queryKeys.proposals.all, 'list'] as const,
     list: (userId: string, filters?: any) =>
-      [...queryKeys.quotes.lists(), userId, filters] as const,
-    details: () => [...queryKeys.quotes.all, 'detail'] as const,
-    detail: (id: string) => [...queryKeys.quotes.details(), id] as const,
+      [...queryKeys.proposals.lists(), userId, filters] as const,
+    details: () => [...queryKeys.proposals.all, 'detail'] as const,
+    detail: (id: string) => [...queryKeys.proposals.details(), id] as const,
   },
 
   // Organization
@@ -162,30 +162,30 @@ export const queryKeys = {
  */
 export const invalidateQueries = {
   /**
-   * Invalidate all quotes queries
-   * Use after: create, update, delete quote
+   * Invalidate all proposals queries
+   * Use after: create, update, delete proposal
    */
-  allQuotes: () => {
-    return queryClient.invalidateQueries({ queryKey: queryKeys.quotes.all });
+  allProposals: () => {
+    return queryClient.invalidateQueries({ queryKey: queryKeys.proposals.all });
   },
 
   /**
-   * Invalidate quotes list for specific organization
-   * Use after: quote status change, archive, etc.
+   * Invalidate proposals list for specific organization
+   * Use after: proposal status change, archive, etc.
    */
-  quotesList: (organizationId: string) => {
+  proposalsList: (organizationId: string) => {
     return queryClient.invalidateQueries({
-      queryKey: queryKeys.quotes.list(organizationId)
+      queryKey: queryKeys.proposals.list(organizationId)
     });
   },
 
   /**
-   * Invalidate specific quote detail
-   * Use after: update quote details
+   * Invalidate specific proposal detail
+   * Use after: update proposal details
    */
-  quoteDetail: (quoteId: string) => {
+  proposalDetail: (proposalId: string) => {
     return queryClient.invalidateQueries({
-      queryKey: queryKeys.quotes.detail(quoteId)
+      queryKey: queryKeys.proposals.detail(proposalId)
     });
   },
 
@@ -242,12 +242,12 @@ export const invalidateQueries = {
  */
 export const prefetchQueries = {
   /**
-   * Prefetch quotes list
-   * Use: On dashboard mount, before navigating to quotes page
+   * Prefetch proposals list
+   * Use: On dashboard mount, before navigating to proposals page
    */
-  quotesList: async (organizationId: string, fetchFn: () => Promise<any>) => {
+  proposalsList: async (organizationId: string, fetchFn: () => Promise<any>) => {
     await queryClient.prefetchQuery({
-      queryKey: queryKeys.quotes.list(organizationId),
+      queryKey: queryKeys.proposals.list(organizationId),
       queryFn: fetchFn,
       staleTime: 30 * 1000, // Consider fresh for 30 seconds
     });
@@ -276,8 +276,8 @@ export const optimisticUpdates = {
    * Optimistically update quote status
    * Automatically rolls back on error
    */
-  updateQuoteStatus: (quoteId: string, newStatus: string) => {
-    const queryKey = queryKeys.quotes.detail(quoteId);
+  updateProposalStatus: (proposalId: string, newStatus: string) => {
+    const queryKey = queryKeys.proposals.detail(proposalId);
 
     // Cancel outgoing refetches
     queryClient.cancelQueries({ queryKey });
@@ -298,15 +298,15 @@ export const optimisticUpdates = {
   /**
    * Optimistically add new quote to list
    */
-  addQuote: (organizationId: string, newQuote: any) => {
-    const queryKey = queryKeys.quotes.list(organizationId);
+  addProposal: (organizationId: string, newProposal: any) => {
+    const queryKey = queryKeys.proposals.list(organizationId);
 
     queryClient.cancelQueries({ queryKey });
     const previousData = queryClient.getQueryData(queryKey);
 
     queryClient.setQueryData(queryKey, (old: any) => {
-      if (!old) return [newQuote];
-      return [newQuote, ...old];
+      if (!old) return [newProposal];
+      return [newProposal, ...old];
     });
 
     return () => queryClient.setQueryData(queryKey, previousData);
@@ -315,15 +315,15 @@ export const optimisticUpdates = {
   /**
    * Optimistically remove quote from list
    */
-  removeQuote: (organizationId: string, quoteId: string) => {
-    const queryKey = queryKeys.quotes.list(organizationId);
+  removeProposal: (organizationId: string, proposalId: string) => {
+    const queryKey = queryKeys.proposals.list(organizationId);
 
     queryClient.cancelQueries({ queryKey });
     const previousData = queryClient.getQueryData(queryKey);
 
     queryClient.setQueryData(queryKey, (old: any) => {
       if (!old) return old;
-      return old.filter((q: any) => q.id !== quoteId);
+      return old.filter((q: any) => q.id !== proposalId);
     });
 
     return () => queryClient.setQueryData(queryKey, previousData);
@@ -368,7 +368,7 @@ persistQueryClient({
         return false;
       }
 
-      // Persist everything else (quotes, organizations, members, subscription status)
+      // Persist everything else (proposals, organizations, members, subscription status)
       return query.state.status === 'success'; // Only persist successful queries
     },
   },

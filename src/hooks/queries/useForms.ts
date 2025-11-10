@@ -61,12 +61,21 @@ export function useForms(organizationId?: string, enabled: boolean = true) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: formsQueryKeys.list(organizationId || ''),
-    queryFn: () => fetchForms(organizationId!),
+    queryKey: formsQueryKeys.list(organizationId || '__pending__'),
+    queryFn: async ({ signal }) => {
+      if (!organizationId) {
+        throw new Error('Organization ID is required');
+      }
+      return fetchForms(organizationId);
+    },
     enabled: !!organizationId && enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes - forms don't change that frequently
     gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: true,
+    // Don't retry on errors - let them fail immediately
+    retry: false,
+    // Suppress error throwing for cancelled queries (harmless warning when orgId changes)
+    throwOnError: false,
   });
 
   // Realtime subscription for automatic updates
@@ -83,9 +92,8 @@ export function useForms(organizationId?: string, enabled: boolean = true) {
           table: 'forms',
           filter: `organization_id=eq.${organizationId}`,
         },
-        (payload) => {
-          console.log('Form change detected:', payload);
-          // Invalidate and refetch forms list
+        () => {
+          // Invalidate and refetch forms list when changes occur
           queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(organizationId) });
         }
       )
@@ -151,8 +159,6 @@ export function useCreateForm() {
     },
 
     onSuccess: (newForm) => {
-      toast.success('Form created successfully');
-
       // Invalidate forms list for this organization
       queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(newForm.organization_id) });
 

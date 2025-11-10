@@ -6,7 +6,7 @@ import {
   Target,
   TrendingUp,
 } from "lucide-react";
-import { useQuotes } from "@/hooks/queries/useQuotes";
+import { useProposals } from "@/hooks/queries";
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useUser } from "@/auth";
 
@@ -17,7 +17,7 @@ import {
   generateAnalyticsSummary,
   formatCurrency,
   calculateWinRate,
-  filterMainVersionQuotes,
+  filterMainVersionProposals,
   calculateAveragesOverTime,
   calculateTotalsOverTime,
   calculateWonRejectedOverTime,
@@ -80,42 +80,42 @@ const Analytics = () => {
   // Get user from new auth system
   const user = useUser();
 
-  // Fetch quotes using React Query (includes automatic realtime subscriptions)
-  const { data: quotes = [], isLoading: quotesLoading } = useQuotes(user?.id);
+  // Fetch proposals using React Query (includes automatic realtime subscriptions)
+  const { data: proposals = [], isLoading: proposalsLoading } = useProposals(user?.id);
 
   // Get current organization from React Query
   const { organization: currentOrganization } = useCurrentOrganization(user?.id || '');
 
   // Filter to main versions only to prevent double-counting across versions
-  const mainVersionQuotes = useMemo(() => {
-    return filterMainVersionQuotes(quotes);
-  }, [quotes]);
+  const mainVersionProposals = useMemo(() => {
+    return filterMainVersionProposals(proposals);
+  }, [proposals]);
 
   // Generate comprehensive analytics using new calculation utilities
   const analytics = useMemo(() => {
-    const result = generateAnalyticsSummary(mainVersionQuotes, timePeriod);
+    const result = generateAnalyticsSummary(mainVersionProposals, timePeriod);
     return result;
-  }, [mainVersionQuotes, timePeriod]);
+  }, [mainVersionProposals, timePeriod]);
 
   // Individual chart data with their own time periods
   const averagesData = useMemo(() => {
-    const data = calculateAveragesOverTime(mainVersionQuotes, averagesTimePeriod, 12, averagesPeriodOffset);
+    const data = calculateAveragesOverTime(mainVersionProposals, averagesTimePeriod, 12, averagesPeriodOffset);
     return averagesCumulative ? makeAveragesCumulative(data) : data;
-  }, [mainVersionQuotes, averagesTimePeriod, averagesPeriodOffset, averagesCumulative]);
+  }, [mainVersionProposals, averagesTimePeriod, averagesPeriodOffset, averagesCumulative]);
 
   const totalsData = useMemo(() => {
-    const data = calculateTotalsOverTime(mainVersionQuotes, totalsTimePeriod, 12, totalsPeriodOffset);
+    const data = calculateTotalsOverTime(mainVersionProposals, totalsTimePeriod, 12, totalsPeriodOffset);
     return totalsCumulative ? makeTotalsCumulative(data) : data;
-  }, [mainVersionQuotes, totalsTimePeriod, totalsPeriodOffset, totalsCumulative]);
+  }, [mainVersionProposals, totalsTimePeriod, totalsPeriodOffset, totalsCumulative]);
 
   const wonRejectedData = useMemo(() => {
-    const data = calculateWonRejectedOverTime(mainVersionQuotes, wonRejectedTimePeriod, 12, wonRejectedPeriodOffset);
+    const data = calculateWonRejectedOverTime(mainVersionProposals, wonRejectedTimePeriod, 12, wonRejectedPeriodOffset);
     return wonRejectedCumulative ? makeWonRejectedCumulative(data) : data;
-  }, [mainVersionQuotes, wonRejectedTimePeriod, wonRejectedPeriodOffset, wonRejectedCumulative]);
+  }, [mainVersionProposals, wonRejectedTimePeriod, wonRejectedPeriodOffset, wonRejectedCumulative]);
 
   const teamData = useMemo(() => {
-    return calculateUserMetrics(mainVersionQuotes);
-  }, [mainVersionQuotes]);
+    return calculateUserMetrics(mainVersionProposals);
+  }, [mainVersionProposals]);
 
   // Chart color scheme
   const COLORS = {
@@ -145,7 +145,7 @@ const Analytics = () => {
       showPageHeader={true}
     >
       {/* Loading State */}
-      {quotesLoading ? (
+      {proposalsLoading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-12 h-12 border-4 border-[#EE6C4D] border-t-transparent rounded-full animate-spin mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Loading analytics data...</p>
@@ -156,7 +156,7 @@ const Analytics = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <KPICard
               title="Total Revenue (All Time)"
-              value={formatCurrency(mainVersionQuotes.filter(q => q.status === 'Won').reduce((sum, q) => sum + (q.total_value || 0), 0))}
+              value={formatCurrency(mainVersionProposals.filter(q => q.proposal_status === 'Accepted').reduce((sum, q) => sum + (q.total_value || 0), 0))}
               subtitle="Lifetime earnings"
               icon={DollarSign}
               iconColor="orange"
@@ -177,21 +177,21 @@ const Analytics = () => {
 
             <KPICard
               title="Quote Win Rate"
-              value={`${calculateWinRate(mainVersionQuotes).toFixed(1)}%`}
+              value={`${calculateWinRate(mainVersionProposals).toFixed(1)}%`}
               subtitle="Won / Decided (Won+Rejected)"
               icon={Target}
               iconColor="blue"
             />
 
             <KPICard
-              title="Total Quotes This Week"
+              title="Total Proposals This Week"
               value={(() => {
                 const now = new Date();
                 const startOfThisWeek = new Date(now);
                 startOfThisWeek.setDate(now.getDate() - now.getDay());
                 startOfThisWeek.setHours(0, 0, 0, 0);
 
-                const thisWeekCount = mainVersionQuotes.filter(q => {
+                const thisWeekCount = mainVersionProposals.filter(q => {
                   const createdDate = new Date(q.created_at);
                   return createdDate >= startOfThisWeek;
                 }).length;
@@ -210,12 +210,12 @@ const Analytics = () => {
                 const startOfLastWeek = new Date(startOfThisWeek);
                 startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
 
-                const thisWeekCount = mainVersionQuotes.filter(q => {
+                const thisWeekCount = mainVersionProposals.filter(q => {
                   const createdDate = new Date(q.created_at);
                   return createdDate >= startOfThisWeek;
                 }).length;
 
-                const lastWeekCount = mainVersionQuotes.filter(q => {
+                const lastWeekCount = mainVersionProposals.filter(q => {
                   const createdDate = new Date(q.created_at);
                   return createdDate >= startOfLastWeek && createdDate < startOfThisWeek;
                 }).length;
@@ -240,12 +240,12 @@ const Analytics = () => {
           </div>
 
           {/* Charts Section */}
-          {quotes.length > 0 ? (
+          {proposals.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Row 1: Average and Total Metrics Over Time */}
-              {/* Average Quote Metrics Over Time */}
+              {/* Average Proposal Metrics Over Time */}
               <EnhancedChartCard
-                title="Average Quote Metrics Over Time"
+                title="Average Proposal Metrics Over Time"
                 subtitle="Track profit, revenue, and value trends"
                 showTimePeriodToggle={true}
                 showCumulativeToggle={true}
@@ -582,7 +582,7 @@ const Analytics = () => {
                         borderRadius: '8px',
                       }}
                     />
-                    <Bar dataKey="quoteCount" name="Quotes" radius={[4, 4, 0, 0]}>
+                    <Bar dataKey="proposalCount" name="Proposals" radius={[4, 4, 0, 0]}>
                       {analytics.productMetrics.map((entry, index) => {
                         const productColors: Record<string, string> = {
                           'Operable Wall': COLORS.blue,
@@ -623,7 +623,7 @@ const Analytics = () => {
                         borderRadius: '8px',
                       }}
                       formatter={(value: number, name: string) => {
-                        if (name === 'Quotes') return [value, 'Quote Count'];
+                        if (name === 'Proposals') return [value, 'Quote Count'];
                         return [value, name];
                       }}
                       labelFormatter={(label, payload) => {
@@ -634,7 +634,7 @@ const Analytics = () => {
                         return label;
                       }}
                     />
-                    <Bar dataKey="quoteCount" name="Quotes" radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="proposalCount" name="Proposals" radius={[0, 4, 4, 0]}>
                       {analytics.productModelMetrics.map((_, index) => {
                         const modelColors = [
                           COLORS.blue,
@@ -659,7 +659,7 @@ const Analytics = () => {
               {/* Row 3: Won/Rejected and Team Member Charts */}
               {/* Won vs Rejected Over Time */}
               <EnhancedChartCard
-                title="Won vs Rejected Quotes"
+                title="Won vs Rejected Proposals"
                 subtitle="Track outcomes over time"
                 showTimePeriodToggle={true}
                 showCumulativeToggle={true}
@@ -776,10 +776,10 @@ const Analytics = () => {
                 </ResponsiveContainer>
               </EnhancedChartCard>
 
-              {/* Quotes by People */}
+              {/* Proposals by People */}
               <EnhancedChartCard
-                title="Quotes by Team Member"
-                subtitle="Quote volume per person"
+                title="Proposals by Team Member"
+                subtitle="Proposal volume per person"
                 onExport={() => handleExport('by-people')}
                 onExpand={() => handleEnlarge('by-people')}
               >
@@ -810,7 +810,7 @@ const Analytics = () => {
                       formatter={(value: number, name: string) => [value, name]}
                     />
                     <Legend />
-                    <Bar dataKey="quoteCount" fill={COLORS.blue} name="Total Quotes" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="proposalCount" fill={COLORS.blue} name="Total Proposals" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -833,7 +833,7 @@ const Analytics = () => {
                             { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
                             { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
                             { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
-                            { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
+                            { name: 'Accepted', value: analytics.statusBreakdown.accepted, color: '#10B981' },
                             { name: 'Rejected', value: analytics.statusBreakdown.rejected, color: '#EF4444' },
                           ].filter(item => item.value > 0)}
                           cx="50%"
@@ -847,7 +847,7 @@ const Analytics = () => {
                             { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
                             { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
                             { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
-                            { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
+                            { name: 'Accepted', value: analytics.statusBreakdown.accepted, color: '#10B981' },
                             { name: 'Rejected', value: analytics.statusBreakdown.rejected, color: '#EF4444' },
                           ].filter(item => item.value > 0).map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
@@ -869,7 +869,7 @@ const Analytics = () => {
                             const total = analytics.statusBreakdown.incomplete +
                                          analytics.statusBreakdown.draft +
                                          analytics.statusBreakdown.submitted +
-                                         analytics.statusBreakdown.won +
+                                         analytics.statusBreakdown.accepted +
                                          analytics.statusBreakdown.rejected;
                             const itemValue = entry.payload?.value || 0;
                             const percent = total > 0 ? ((itemValue / total) * 100).toFixed(1) : '0.0';
@@ -896,7 +896,7 @@ const Analytics = () => {
                         <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                           <tr>
                             <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Source</th>
-                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Quotes</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Proposals</th>
                             <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Revenue</th>
                             <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Conv. Rate</th>
                           </tr>
@@ -905,7 +905,7 @@ const Analytics = () => {
                           {analytics.sourceMetrics.map((source, idx) => (
                             <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                               <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{source.source}</td>
-                              <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{source.quoteCount}</td>
+                              <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{source.proposalCount}</td>
                               <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{formatCurrency(source.revenue)}</td>
                               <td className="px-4 py-3 text-right">
                                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -934,8 +934,8 @@ const Analytics = () => {
           ) : (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 mb-4">No quotes data available</p>
-              <p className="text-sm text-gray-500">Create some quotes to see analytics</p>
+              <p className="text-gray-600 mb-4">No proposals data available</p>
+              <p className="text-sm text-gray-500">Create some proposals to see analytics</p>
             </div>
           )}
         </>

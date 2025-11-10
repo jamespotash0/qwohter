@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 import Fuse from 'fuse.js';
 import type { FuseResultMatch, IFuseOptions } from 'fuse.js';
-import { Quote } from '@/stores/quotes/quotesStore';
+import { Proposal } from '@/stores/proposals/proposalsStore';
 
 export interface SearchResult {
-  item: Quote;
+  item: Proposal;
   score?: number;
   matches?: readonly FuseResultMatch[];
 }
@@ -19,9 +19,9 @@ const FIELD_PATTERNS = {
   project: /^(project|name):\s*(.+)/i,
 };
 
-const useEnhancedSearch = (quotes: Quote[]) => {
+const useEnhancedSearch = (proposals: Proposal[]) => {
   // Configure Fuse.js with weighted fields
-  const fuseOptions: IFuseOptions<Quote> = {
+  const fuseOptions: IFuseOptions<Proposal> = {
     keys: [
       { name: 'proposal_number', weight: 0.3 },
       { name: 'project_name', weight: 0.25 },
@@ -30,7 +30,7 @@ const useEnhancedSearch = (quotes: Quote[]) => {
       { name: 'job_details.job_location', weight: 0.1 },
       { name: 'status', weight: 0.05 },
       { name: 'creator_name', weight: 0.05 },
-      { name: 'quote_source', weight: 0.03 },
+      // { name: 'proposal_source', weight: 0.03 },
     ],
     threshold: 0.4, // 0 = exact match, 1 = match anything
     distance: 100,
@@ -41,11 +41,11 @@ const useEnhancedSearch = (quotes: Quote[]) => {
   };
 
   // Create Fuse instance
-  const fuse = useMemo(() => new Fuse(quotes, fuseOptions), [quotes]);
+  const fuse = useMemo(() => new Fuse(proposals, fuseOptions), [proposals]);
 
   const search = (searchTerm: string): SearchResult[] => {
     if (!searchTerm.trim()) {
-      return quotes.map(quote => ({ item: quote }));
+      return proposals.map(proposal => ({ item: proposal }));
     }
 
     // Check for field-specific search patterns
@@ -83,14 +83,14 @@ const useEnhancedSearch = (quotes: Quote[]) => {
       case 'client':
         // Search both client company and name
         // Create temporary Fuse instances for specific field search
-        const companyFuse = new Fuse(quotes, { ...fuseOptions, keys: ['job_details.client_company'] });
-        const nameFuse = new Fuse(quotes, { ...fuseOptions, keys: ['job_details.client_name'] });
+        const companyFuse = new Fuse(proposals, { ...fuseOptions, keys: ['job_details.client_company'] });
+        const nameFuse = new Fuse(proposals, { ...fuseOptions, keys: ['job_details.client_name'] });
 
         const clientResults = [
           ...companyFuse.search(term),
           ...nameFuse.search(term)
         ];
-        // Remove duplicates based on quote ID
+        // Remove duplicates based on proposal ID
         const uniqueClientResults = clientResults.filter((result, index, self) =>
           index === self.findIndex(r => r.item.id === result.item.id)
         );
@@ -115,7 +115,7 @@ const useEnhancedSearch = (quotes: Quote[]) => {
         return [];
     }
 
-    const fieldFuse = new Fuse(quotes, { ...fuseOptions, keys: [searchKey] });
+    const fieldFuse = new Fuse(proposals, { ...fuseOptions, keys: [searchKey] });
     const results = fieldFuse.search(term);
     return results.map(result => ({
       item: result.item,
@@ -134,25 +134,25 @@ const useEnhancedSearch = (quotes: Quote[]) => {
     if (searchTerm.length >= 2) {
       const lowerTerm = searchTerm.toLowerCase();
 
-      quotes.forEach(quote => {
+      proposals.forEach(proposal => {
         // Company names
-        if (quote.job_details?.client_company?.toLowerCase().includes(lowerTerm)) {
-          suggestions.add(quote.job_details.client_company);
+        if (proposal.job_details?.client_company?.toLowerCase().includes(lowerTerm)) {
+          suggestions.add(proposal.job_details.client_company);
         }
 
         // Project names
-        if (quote.project_name?.toLowerCase().includes(lowerTerm)) {
-          suggestions.add(quote.project_name);
+        if (proposal.proposal_name?.toLowerCase().includes(lowerTerm)) {
+          suggestions.add(proposal.proposal_name);
         }
 
         // Locations
-        if (quote.job_details?.job_location?.toLowerCase().includes(lowerTerm)) {
-          suggestions.add(quote.job_details.job_location);
+        if (proposal.job_details?.job_location?.toLowerCase().includes(lowerTerm)) {
+          suggestions.add(proposal.job_details.job_location);
         }
 
         // Proposal numbers
-        if (quote.proposal_number?.toLowerCase().includes(lowerTerm)) {
-          suggestions.add(quote.proposal_number);
+        if (proposal.proposal_number?.toLowerCase().includes(lowerTerm)) {
+          suggestions.add(proposal.proposal_number);
         }
       });
     }

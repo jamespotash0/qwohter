@@ -83,7 +83,7 @@ export interface Form {
   id: string;
   name: string;
   description?: string;
-  category?: string;
+  form_type: string;
   tags?: string[];
   tabs: FormTab[];
   organizationId?: string;

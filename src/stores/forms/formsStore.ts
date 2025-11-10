@@ -17,6 +17,7 @@
 // Field definition for form builder
 export interface FormField {
   id: string;
+  name?: string; // Variable name for template (optional for backward compatibility)
   label: string;
   type?: string; // Legacy field type
   field_type: 'input' | 'textarea' | 'dropdown' | 'checkbox' | 'radio' | 'date' | 'product_selector' | 'math';
@@ -58,6 +59,7 @@ export interface FormField {
 export interface FormTab {
   id: string;
   name: string;
+  description?: string;
   order: number;
   fields: FormField[];
   is_default?: boolean; // For Company Info and Project Details tabs
@@ -69,7 +71,6 @@ export interface Form {
   organization_id: string;
   name: string;
   description?: string;
-  category?: string;
   tags?: string[];
   tabs: FormTab[];
   created_by: string;

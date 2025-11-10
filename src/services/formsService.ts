@@ -7,10 +7,10 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import type { Form, FormTab, FormField } from '@/features/form-builder/types';
+import type { Form, FormTab, FormField } from '@/stores/forms/formsStore';
 
 // Export types for use in other files
-export type { Form, FormTab, FormField } from '@/features/form-builder/types';
+export type { Form, FormTab, FormField } from '@/stores/forms/formsStore';
 
 /**
  * Fetch all forms for an organization

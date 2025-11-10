@@ -13,7 +13,7 @@ import type { Database } from '@/integrations/supabase/types';
 // ============================================================================
 
 export type Project = Database['public']['Tables']['projects']['Row'] & {
-  quote?: Database['public']['Tables']['quotes']['Row'] | null;
+  quote?: Database['public']['Tables']['proposals']['Row'] | null;
 };
 
 export type WorkflowColumn = Database['public']['Tables']['project_workflow_columns']['Row'];
@@ -60,7 +60,7 @@ export async function fetchBoardItems(organizationId: string): Promise<Project[]
     .from('projects')
     .select(`
       *,
-      quotes!inner (
+      proposals!inner (
         id,
         proposal_number,
         project_name,
@@ -72,8 +72,8 @@ export async function fetchBoardItems(organizationId: string): Promise<Project[]
       )
     `)
     .eq('organization_id', organizationId)
-    .eq('quotes.is_main_version', true)
-    .eq('quotes.status', 'Won')
+    .eq('proposals.is_main_version', true)
+    .in('proposals.proposal_status', ['Accepted', 'Won'])
     .order('board_order', { ascending: true });
 
   if (error) throw error;
@@ -88,7 +88,7 @@ export async function fetchBoardItemById(itemId: string): Promise<Project> {
     .from('projects')
     .select(`
       *,
-      quotes!inner (
+      proposals!inner (
         id,
         proposal_number,
         project_name,
@@ -121,7 +121,7 @@ export async function createBoardItem(
     } as any)
     .select(`
       *,
-      quotes!inner (
+      proposals!inner (
         id,
         proposal_number,
         project_name,
@@ -156,7 +156,7 @@ export async function updateBoardItem(
     .eq('id', itemId)
     .select(`
       *,
-      quotes!inner (
+      proposals!inner (
         id,
         proposal_number,
         project_name,

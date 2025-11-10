@@ -6,7 +6,7 @@ import { useUser, useAuthStatus, useSignOut } from '@/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { SubscriptionPaywall } from '@/components/common/SubscriptionPaywall';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
-// import { useQuotesStore } from '@/stores/quotes/quotesStore';
+// import { useQuotesStore } from '@/stores/proposals/proposalsStore';
 // import { useBoardStore } from '@/stores/board/boardStore';
 // import { useRemindersStore } from '@/stores/reminders/remindersStore';
 // import { useAppStore } from '@/stores/app/appStore';
@@ -60,8 +60,7 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   ].includes(location.pathname) && !location.pathname.startsWith('/editor/');
 
   // Check if we're on a full-screen wizard page (no padding/max-width)
-  const isFullScreenPage = ['/quotes/new'].includes(location.pathname) ||
-    location.pathname.startsWith('/quotes/edit-incomplete/');
+  const isFullScreenPage = ['/proposals/new'].includes(location.pathname);
 
   // Check if we're on the Board page (show bottom border with padding)
   const isBoardPage = location.pathname === '/board';

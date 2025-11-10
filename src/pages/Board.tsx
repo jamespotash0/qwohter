@@ -795,7 +795,7 @@ export default function Board() {
                       }}
                     >
                       {columnProjects.map((project) => {
-                        const quote = project.quotes;
+                        const quote = project.proposals;
                         const clientName = quote?.job_details?.client_name || 'No Client';
                         const clientCompany = quote?.job_details?.client_company || '';
                         const clientAddress = quote?.job_details?.client_address || '';
@@ -852,7 +852,7 @@ export default function Board() {
                             {/* Card Header */}
                             <div className="flex-1 min-w-0 pr-6 mb-2">
                               <h4 className="font-medium text-gray-900 text-sm line-clamp-1 mb-1">
-                                {quote?.project_name || 'Untitled Project'}
+                                {quote?.proposal_name || 'Untitled Project'}
                               </h4>
                               <p className="text-xs text-gray-600 truncate">
                                 {clientName}
@@ -1072,7 +1072,7 @@ export default function Board() {
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold">
-              {selectedProject?.quotes?.project_name || 'Project Details'}
+              {selectedProject?.proposals?.proposal_name || 'Project Details'}
             </DialogTitle>
           </DialogHeader>
 
@@ -1082,7 +1082,7 @@ export default function Board() {
               <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <p className="text-sm text-gray-600">Proposal Number</p>
-                  <p className="font-medium">{selectedProject.quotes?.proposal_number || 'N/A'}</p>
+                  <p className="font-medium">{selectedProject.proposals?.proposal_number || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Status</p>
@@ -1117,32 +1117,32 @@ export default function Board() {
               </div>
 
               {/* Client & Job Details */}
-              {selectedProject.quotes?.job_details && (
+              {selectedProject.proposals?.job_details && (
                 <div>
                   <h3 className="font-semibold mb-3">Client & Job Details</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-600">Client Name</p>
-                      <p className="font-medium">{selectedProject.quotes.job_details.client_name || 'N/A'}</p>
+                      <p className="font-medium">{selectedProject.proposals.job_details.client_name || 'N/A'}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Company</p>
-                      <p className="font-medium">{selectedProject.quotes.job_details.client_company || 'N/A'}</p>
+                      <p className="font-medium">{selectedProject.proposals.job_details.client_company || 'N/A'}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Location</p>
-                      <p className="font-medium">{selectedProject.quotes.job_details.job_location || 'N/A'}</p>
+                      <p className="font-medium">{selectedProject.proposals.job_details.job_location || 'N/A'}</p>
                     </div>
-                    {selectedProject.quotes.job_details.client_address && (
+                    {selectedProject.proposals.job_details.client_address && (
                       <div>
                         <p className="text-sm text-gray-600">Address</p>
-                        <p className="font-medium">{selectedProject.quotes.job_details.client_address}</p>
+                        <p className="font-medium">{selectedProject.proposals.job_details.client_address}</p>
                       </div>
                     )}
-                    {selectedProject.quotes.job_details.date && (
+                    {selectedProject.proposals.job_details.date && (
                       <div>
                         <p className="text-sm text-gray-600">Date</p>
-                        <p className="font-medium">{selectedProject.quotes.job_details.date}</p>
+                        <p className="font-medium">{selectedProject.proposals.job_details.date}</p>
                       </div>
                     )}
                   </div>
@@ -1150,29 +1150,29 @@ export default function Board() {
               )}
 
               {/* Price Details */}
-              {selectedProject.quotes?.price_details && (
+              {selectedProject.proposals?.price_details && (
                 <div>
                   <h3 className="font-semibold mb-3">Pricing</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Subtotal</span>
-                      <span className="font-medium">{formatCurrency(selectedProject.quotes.price_details.subtotal)}</span>
+                      <span className="font-medium">{formatCurrency(selectedProject.proposals.price_details.subtotal)}</span>
                     </div>
-                    {selectedProject.quotes.price_details.tax && (
+                    {selectedProject.proposals.price_details.tax && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Tax</span>
-                        <span className="font-medium">{formatCurrency(selectedProject.quotes.price_details.tax)}</span>
+                        <span className="font-medium">{formatCurrency(selectedProject.proposals.price_details.tax)}</span>
                       </div>
                     )}
-                    {selectedProject.quotes.price_details.discount && (
+                    {selectedProject.proposals.price_details.discount && (
                       <div className="flex justify-between text-green-600">
                         <span>Discount</span>
-                        <span className="font-medium">-{formatCurrency(selectedProject.quotes.price_details.discount)}</span>
+                        <span className="font-medium">-{formatCurrency(selectedProject.proposals.price_details.discount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-lg font-bold pt-2 border-t">
                       <span>Total</span>
-                      <span>{formatCurrency(selectedProject.quotes.price_details.grand_total)}</span>
+                      <span>{formatCurrency(selectedProject.proposals.price_details.grand_total)}</span>
                     </div>
                   </div>
                 </div>

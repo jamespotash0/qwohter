@@ -1,11 +1,11 @@
-import { FormField } from '../types';
+import { type FormField } from '@/stores/forms/formsStore';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Slider } from '@/components/ui/slider';
+// import { Slider } from '@/components/ui/slider';
 import {
   Select,
   SelectContent,
@@ -23,22 +23,30 @@ interface DynamicFieldProps {
 
 export function DynamicField({ field, value, onChange, readonly = false }: DynamicFieldProps) {
   const renderField = () => {
-    switch (field.type) {
-      case 'text':
-      case 'email':
-      case 'url':
-      case 'phone':
+    // Use field_type from formsStore
+    switch (field.field_type) {
+      case 'input':
+        // formsStore 'input' field uses input_type to determine the actual HTML input type
+        const inputType = field.input_type || 'text';
+        const isNumberInput = inputType === 'number' || field.number_format;
+
         return (
           <Input
-            type={field.type === 'email' ? 'email' : field.type === 'url' ? 'url' : 'text'}
+            type={inputType}
             value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => {
+              if (isNumberInput) {
+                onChange(e.target.value ? parseFloat(e.target.value) : '');
+              } else {
+                onChange(e.target.value);
+              }
+            }}
             placeholder={field.placeholder}
             disabled={readonly}
-            required={field.validation?.required}
-            minLength={field.validation?.minLength}
-            maxLength={field.validation?.maxLength}
-            pattern={field.validation?.pattern}
+            required={field.required}
+            minLength={field.minLength}
+            maxLength={field.maxLength}
+            pattern={field.pattern}
           />
         );
 
@@ -49,44 +57,11 @@ export function DynamicField({ field, value, onChange, readonly = false }: Dynam
             onChange={(e) => onChange(e.target.value)}
             placeholder={field.placeholder}
             disabled={readonly}
-            required={field.validation?.required}
-            minLength={field.validation?.minLength}
-            maxLength={field.validation?.maxLength}
+            required={field.required}
+            minLength={field.minLength}
+            maxLength={field.maxLength}
             rows={4}
           />
-        );
-
-      case 'number':
-        return (
-          <Input
-            type="number"
-            value={value || ''}
-            onChange={(e) => onChange(parseFloat(e.target.value))}
-            placeholder={field.placeholder}
-            disabled={readonly}
-            required={field.validation?.required}
-            min={field.validation?.min}
-            max={field.validation?.max}
-          />
-        );
-
-      case 'currency':
-        return (
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-            <Input
-              type="number"
-              step="0.01"
-              value={value || ''}
-              onChange={(e) => onChange(parseFloat(e.target.value))}
-              placeholder={field.placeholder}
-              disabled={readonly}
-              required={field.validation?.required}
-              min={field.validation?.min}
-              max={field.validation?.max}
-              className="pl-8"
-            />
-          </div>
         );
 
       case 'date':
@@ -96,29 +71,7 @@ export function DynamicField({ field, value, onChange, readonly = false }: Dynam
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
             disabled={readonly}
-            required={field.validation?.required}
-          />
-        );
-
-      case 'time':
-        return (
-          <Input
-            type="time"
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={readonly}
-            required={field.validation?.required}
-          />
-        );
-
-      case 'datetime':
-        return (
-          <Input
-            type="datetime-local"
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={readonly}
-            required={field.validation?.required}
+            required={field.required}
           />
         );
 
@@ -129,57 +82,43 @@ export function DynamicField({ field, value, onChange, readonly = false }: Dynam
               <SelectValue placeholder={field.placeholder || 'Select an option'} />
             </SelectTrigger>
             <SelectContent>
-              {field.options?.map(option => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
+              {field.options?.map((option: any, index: number) => (
+                <SelectItem key={option.value || index} value={String(option.value || option)}>
+                  {option.label || option}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         );
 
-      case 'multi-select':
-        const selectedValues = value || [];
-        return (
-          <div className="space-y-2 border rounded-lg p-3">
-            {field.options?.map(option => (
-              <div key={option.value} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`${field.id}-${option.value}`}
-                  checked={selectedValues.includes(option.value)}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      onChange([...selectedValues, option.value]);
-                    } else {
-                      onChange(selectedValues.filter((v: string) => v !== option.value));
-                    }
-                  }}
-                  disabled={readonly}
-                />
-                <label
-                  htmlFor={`${field.id}-${option.value}`}
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  {option.label}
-                </label>
-              </div>
-            ))}
-          </div>
-        );
-
       case 'radio':
         return (
           <RadioGroup value={value || ''} onValueChange={onChange} disabled={readonly}>
-            {field.options?.map(option => (
-              <div key={option.value} className="flex items-center space-x-2">
-                <RadioGroupItem value={option.value} id={`${field.id}-${option.value}`} />
-                <Label htmlFor={`${field.id}-${option.value}`}>{option.label}</Label>
+            {field.options?.map((option: any, index: number) => (
+              <div key={option.value || index} className="flex items-center space-x-2">
+                <RadioGroupItem value={String(option.value || option)} id={`${field.id}-${option.value || index}`} />
+                <Label htmlFor={`${field.id}-${option.value || index}`}>{option.label || option}</Label>
               </div>
             ))}
           </RadioGroup>
         );
 
       case 'checkbox':
+        // formsStore checkbox can be used as a toggle switch
+        if (field.uiVariant === 'toggle') {
+          return (
+            <div className="flex items-center justify-between">
+              <Label htmlFor={field.id}>{field.label}</Label>
+              <Switch
+                id={field.id}
+                checked={value || false}
+                onCheckedChange={onChange}
+                disabled={readonly}
+              />
+            </div>
+          );
+        }
+
         return (
           <div className="flex items-center space-x-2">
             <Checkbox
@@ -197,93 +136,23 @@ export function DynamicField({ field, value, onChange, readonly = false }: Dynam
           </div>
         );
 
-      case 'switch':
+      case 'product_selector':
+        // Placeholder for product selector - needs custom implementation
         return (
-          <div className="flex items-center justify-between">
-            <Label htmlFor={field.id}>{field.label}</Label>
-            <Switch
-              id={field.id}
-              checked={value || false}
-              onCheckedChange={onChange}
-              disabled={readonly}
-            />
+          <div className="border rounded-lg p-4 bg-gray-50">
+            <p className="text-sm text-gray-600">Product Selector (Not yet implemented)</p>
           </div>
         );
 
-      case 'slider':
-        return (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label>{field.label}</Label>
-              <span className="text-sm font-medium">{value || field.validation?.min || 0}</span>
-            </div>
-            <Slider
-              value={[value || field.validation?.min || 0]}
-              onValueChange={(vals) => onChange(vals[0])}
-              min={field.validation?.min}
-              max={field.validation?.max}
-              step={1}
-              disabled={readonly}
-            />
-          </div>
-        );
-
-      case 'rating':
-        return (
-          <div className="flex gap-1">
-            {[1, 2, 3, 4, 5].map(star => (
-              <button
-                key={star}
-                type="button"
-                onClick={() => onChange(star)}
-                disabled={readonly}
-                className={`text-2xl transition-colors ${
-                  star <= (value || 0) ? 'text-yellow-400' : 'text-gray-300'
-                } hover:text-yellow-400 disabled:cursor-not-allowed`}
-              >
-                ★
-              </button>
-            ))}
-          </div>
-        );
-
-      case 'color':
-        return (
-          <div className="flex gap-2">
-            <Input
-              type="color"
-              value={value || '#000000'}
-              onChange={(e) => onChange(e.target.value)}
-              disabled={readonly}
-              className="w-20 h-10 p-1"
-            />
-            <Input
-              type="text"
-              value={value || ''}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder="#000000"
-              disabled={readonly}
-              className="flex-1 font-mono"
-            />
-          </div>
-        );
-
-      case 'file':
+      case 'math':
+        // Math fields are calculated and readonly
         return (
           <Input
-            type="file"
-            onChange={(e) => onChange(e.target.files?.[0])}
-            disabled={readonly}
-            required={field.validation?.required}
+            type="text"
+            value={value || field.calculation || ''}
+            disabled={true}
+            className="bg-gray-50"
           />
-        );
-
-      case 'cascading_product':
-        // This will be implemented with product data integration
-        return (
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center text-sm text-gray-500">
-            Cascading Product Field (Coming Soon)
-          </div>
         );
 
       default:
@@ -297,8 +166,8 @@ export function DynamicField({ field, value, onChange, readonly = false }: Dynam
     }
   };
 
-  // Special handling for checkbox and switch (label is rendered differently)
-  if (['checkbox', 'switch', 'slider'].includes(field.type)) {
+  // Special handling for checkbox (label is rendered differently)
+  if (field.field_type === 'checkbox' && field.uiVariant !== 'toggle') {
     return (
       <div className="space-y-2">
         {renderField()}
@@ -313,11 +182,14 @@ export function DynamicField({ field, value, onChange, readonly = false }: Dynam
     <div className="space-y-2">
       <Label htmlFor={field.id}>
         {field.label}
-        {field.validation?.required && <span className="text-red-500 ml-1">*</span>}
+        {field.required && <span className="text-red-500 ml-1">*</span>}
       </Label>
       {renderField()}
       {field.helpText && (
         <p className="text-xs text-gray-500">{field.helpText}</p>
+      )}
+      {field.description && (
+        <p className="text-xs text-gray-500">{field.description}</p>
       )}
     </div>
   );

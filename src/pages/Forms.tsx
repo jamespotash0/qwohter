@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageContent } from '@/components/common/layout';
-import { type Form } from '@/stores/forms/formsStore';
-import { useCurrentOrganization, useForms, useDeleteForm, useCopyForm, useUpdateForm, useCreateForm } from '@/hooks/queries';
+import { useCurrentOrganization, useForms, useDeleteForm, useCopyForm, useUpdateForm, useCreateForm, type Form } from '@/hooks/queries';
 import { useUser } from '@/auth';
 import {
   Plus,
@@ -26,8 +25,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { CreateCustomFormDialog } from '@/features/form-builder/components/CreateCustomFormDialog';
-import { DEFAULT_COMPANY_INFO_TAB, DEFAULT_PROJECT_DETAILS_TAB } from '@/stores/forms/formsStore';
+import { CreateFormDialog } from '@/features/form-builder/components/CreateFormDialog';
 
 type ViewMode = 'grid' | 'list';
 
@@ -35,7 +33,10 @@ export default function Forms() {
   const navigate = useNavigate();
   const user = useUser();
   const { organization: currentOrganization } = useCurrentOrganization(user?.id || '', !!user?.id);
-  const { data: forms = [], isLoading } = useForms(currentOrganization?.id);
+  const { data: forms = [], isLoading } = useForms(
+    currentOrganization?.id,
+    !!currentOrganization?.id // Only enable when we have an org ID
+  );
   const deleteFormMutation = useDeleteForm();
   const copyFormMutation = useCopyForm();
   const updateFormMutation = useUpdateForm();
@@ -82,7 +83,7 @@ export default function Forms() {
     }
 
     try {
-      // Create form with default tabs and the dialog data
+      // Create form with blank canvas (no default tabs)
       createFormMutation.mutate({
         name: data.name,
         description: data.description || undefined,
@@ -91,7 +92,7 @@ export default function Forms() {
         is_active: true,
         form_type: data.formType,
         starting_proposal_number: data.startingProposalNumber,
-        tabs: [DEFAULT_COMPANY_INFO_TAB, DEFAULT_PROJECT_DETAILS_TAB],
+        tabs: [],
       }, {
         onSuccess: (newForm) => {
           setShowCreateDialog(false);
@@ -146,8 +147,8 @@ export default function Forms() {
         </div>
       }
     >
-      {/* Create Custom Form Dialog */}
-      <CreateCustomFormDialog
+      {/* Create Form Dialog */}
+      <CreateFormDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
         onSubmit={handleCreateForm}

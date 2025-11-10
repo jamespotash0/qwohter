@@ -1,9 +1,9 @@
 import React from 'react';
 import { Table, flexRender } from '@tanstack/react-table';
-import { Quote } from "@/stores/quotes/quotesStore";
+import { Proposal } from "@/stores/proposals/proposalsStore";
 
 interface TableBodyProps {
-  table: Table<Quote>;
+  table: Table<Proposal>;
   dataDensity: 'compact' | 'comfortable' | 'spacious';
 }
 

@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { Form, FormData } from '../types';
+import { type Form } from '@/services/formsService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DynamicField } from './DynamicField';
-import { evaluateConditionalLogic } from '../utils/conditionalLogic';
+
+export interface FormData {
+  [key: string]: any;
+}
 
 interface DynamicFormRendererProps {
   form: Form;
@@ -53,20 +56,24 @@ export function DynamicFormRenderer({
                 {tab.fields
                   .sort((a, b) => a.order - b.order)
                   .filter(field => {
-                    // Check conditional logic
-                    if (field.showIf && field.showIf.length > 0) {
-                      return evaluateConditionalLogic(field.showIf, formData, form);
+                    // Check conditional logic (depends_on in formsStore)
+                    if (field.depends_on && field.depends_on.length > 0) {
+                      // Simple dependency check - field is shown if dependency value matches
+                      return field.depends_on.every(dep => formData[dep.field_id] === dep.value);
                     }
                     return true;
                   })
                   .map(field => {
-                    const colSpan = field.width === 'full' ? 12 : field.width === 'half' ? 6 : 4;
+                    // Map formsStore 'size' to column span
+                    const colSpan = field.size === 'full' ? 12 : field.size === 'half' ? 6 : 12;
+                    // Use field.name if available (for template variables), fallback to id
+                    const fieldKey = field.name || field.id;
                     return (
                       <div key={field.id} className={`col-span-${colSpan}`}>
                         <DynamicField
                           field={field}
-                          value={formData[field.name]}
-                          onChange={(value) => handleFieldChange(field.name, value)}
+                          value={formData[fieldKey]}
+                          onChange={(value) => handleFieldChange(fieldKey, value)}
                           readonly={readonly}
                         />
                       </div>
@@ -86,19 +93,24 @@ export function DynamicFormRenderer({
             {form.tabs[0]?.fields
               .sort((a, b) => a.order - b.order)
               .filter(field => {
-                if (field.showIf && field.showIf.length > 0) {
-                  return evaluateConditionalLogic(field.showIf, formData, form);
+                // Check conditional logic (depends_on in formsStore)
+                if (field.depends_on && field.depends_on.length > 0) {
+                  // Simple dependency check - field is shown if dependency value matches
+                  return field.depends_on.every(dep => formData[dep.field_id] === dep.value);
                 }
                 return true;
               })
               .map(field => {
-                const colSpan = field.width === 'full' ? 12 : field.width === 'half' ? 6 : 4;
+                // Map formsStore 'size' to column span
+                const colSpan = field.size === 'full' ? 12 : field.size === 'half' ? 6 : 12;
+                // Use field.name if available (for template variables), fallback to id
+                const fieldKey = field.name || field.id;
                 return (
                   <div key={field.id} className={`col-span-${colSpan}`}>
                     <DynamicField
                       field={field}
-                      value={formData[field.name]}
-                      onChange={(value) => handleFieldChange(field.name, value)}
+                      value={formData[fieldKey]}
+                      onChange={(value) => handleFieldChange(fieldKey, value)}
                       readonly={readonly}
                     />
                   </div>
