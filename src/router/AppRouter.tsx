@@ -143,6 +143,13 @@ export const AppRouter = () => (
           {/* Form Builder V3 - Full screen without sidebar */}
           <Route path="/forms/builder-v3/:id" element={<FormBuilderV3 />} />
 
+          {/* Quote creation workflow - Full screen without sidebar */}
+          <Route path="/quotes/new" element={
+            <QuoteErrorBoundary>
+              <NewQuote />
+            </QuoteErrorBoundary>
+          } />
+
           {/* Main application routes (protected by MainLayout with sidebar) */}
           <Route path="/*" element={
             <MainLayout>
@@ -163,13 +170,6 @@ export const AppRouter = () => (
 
                 {/* Quote management routes (nested structure) */}
                 <Route path="/quotes" element={<QuotesList />} />
-
-                {/* Quote creation workflow */}
-                <Route path="/quotes/new" element={
-                  <QuoteErrorBoundary>
-                    <NewQuote />
-                  </QuoteErrorBoundary>
-                } />
 
                 {/* Quote editing - cleaner route */}
                 <Route path="/editor/:proposalNumber" element={

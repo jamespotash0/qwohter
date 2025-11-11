@@ -12,10 +12,12 @@ import { motion } from 'framer-motion';
 import GridLayout, { Layout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { ArrowLeft, Eye, FloppyDisk, Plus, Info, X, PencilSimple, DotsSixVertical, ArrowsOutCardinal, Trash } from '@phosphor-icons/react';
+import { ArrowLeft, Eye, FloppyDisk, Plus, Info, X, PencilSimple, DotsSixVertical, ArrowsOutCardinal, Trash, Gear } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -24,6 +26,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   ResizableHandle,
   ResizablePanel,
@@ -353,6 +360,7 @@ export default function FormBuilderV3() {
   // Form state
   const [formName, setFormName] = useState(existingForm?.name || 'Untitled Form');
   const [formType, setFormType] = useState(existingForm?.form_type || 'Custom');
+  const [allowSaveIncomplete, setAllowSaveIncomplete] = useState(existingForm?.allow_save_incomplete ?? true);
   const [currentTab, setCurrentTab] = useState(0);
   const [tabs, setTabs] = useState<EnhancedFormTab[]>(() => {
     if (existingForm?.tabs) {
@@ -394,6 +402,7 @@ export default function FormBuilderV3() {
       setFormName(existingForm.name);
       // setFormDescription(existingForm.description || '');
       setFormType(existingForm.form_type || 'Custom');
+      setAllowSaveIncomplete(existingForm.allow_save_incomplete ?? true);
       if (existingForm.tabs) {
         // Migrate tabs to new 48-column system if needed
         const migratedTabs = (existingForm.tabs as EnhancedFormTab[]).map(tab => ({
@@ -661,6 +670,7 @@ export default function FormBuilderV3() {
         created_by: user.id,
         is_active: true,
         is_default: false,
+        allow_save_incomplete: allowSaveIncomplete,
       };
 
       if (formId && formId !== 'new') {
@@ -802,6 +812,39 @@ export default function FormBuilderV3() {
                 <PencilSimple className="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
             )}
+
+            {/* Form Settings */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Gear className="w-4 h-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80" align="start">
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="font-semibold text-sm mb-2">Form Settings</h4>
+                    <p className="text-xs text-gray-500">Configure form behavior and options</p>
+                  </div>
+                  <Separator />
+                  <div className="flex items-center justify-between space-x-2">
+                    <div className="flex-1">
+                      <Label htmlFor="allow-save-incomplete" className="text-sm font-medium">
+                        Allow Save as Incomplete
+                      </Label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Users can save the form without completing required fields
+                      </p>
+                    </div>
+                    <Switch
+                      id="allow-save-incomplete"
+                      checked={allowSaveIncomplete}
+                      onCheckedChange={setAllowSaveIncomplete}
+                    />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="flex items-center gap-2">

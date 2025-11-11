@@ -35,7 +35,7 @@ const CreateProposalDialog = ({
 }: CreateProposalDialogProps) => {
   const [proposalName, setProposalName] = useState("");
   const [selectedFormId, setSelectedFormId] = useState<string>("");
-  const [selectedTemplate, setSelectedTemplate] = useState<string>("generic_wall");
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
 
   // Fetch user, organization and forms
   const user = useUser();
@@ -43,18 +43,18 @@ const CreateProposalDialog = ({
   const { data: forms = [], isLoading: formsLoading } = useForms(organizationId || "");
 
   const handleCreate = () => {
-    if (proposalName.trim() && selectedFormId) {
+    if (proposalName.trim() && selectedFormId && selectedTemplate) {
       onCreateQuote(proposalName.trim(), selectedFormId, selectedTemplate);
       // Reset form
       setProposalName("");
       setSelectedFormId("");
-      setSelectedTemplate("generic_wall");
+      setSelectedTemplate("");
       onOpenChange(false);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && proposalName.trim() && selectedFormId) {
+    if (e.key === 'Enter' && proposalName.trim() && selectedFormId && selectedTemplate) {
       handleCreate();
     }
   };
@@ -122,8 +122,10 @@ const CreateProposalDialog = ({
               PDF Template
             </Label>
             <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-              <SelectTrigger id="template" className="h-12 rounded-xl bg-white border-slate-200 focus:border-blue-400 focus:ring-blue-400/20 data-[placeholder]:text-slate-400">
-                <SelectValue placeholder="Select a PDF template" />
+              <SelectTrigger id="template" className={`h-12 rounded-xl bg-white focus:border-blue-400 focus:ring-blue-400/20 data-[placeholder]:text-slate-400 ${
+                !selectedTemplate ? 'border-red-300 border-2' : 'border-slate-200'
+              }`}>
+                <SelectValue placeholder="Select a PDF template *" />
               </SelectTrigger>
               <SelectContent className="bg-white">
                 {PDF_TEMPLATES.map((template) => (
@@ -145,7 +147,7 @@ const CreateProposalDialog = ({
             </Button>
             <Button
               onClick={handleCreate}
-              disabled={!proposalName.trim() || !selectedFormId}
+              disabled={!proposalName.trim() || !selectedFormId || !selectedTemplate}
               className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 px-6 py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Create Proposal

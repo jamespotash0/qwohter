@@ -80,6 +80,7 @@ export interface Form {
   is_default?: boolean; // Marks this as the default form for quote creation
   form_type?: string; // Type of form this represents (can be custom or preset like 'quote', 'service_request', etc.)
   starting_proposal_number?: string; // Starting proposal number that auto-increments (e.g., "Q1200", "ER-2025-001")
+  allow_save_incomplete?: boolean; // Whether users can save this form as incomplete (bypassing validation)
 }
 
 // Default tabs
