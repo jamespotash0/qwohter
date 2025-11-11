@@ -342,7 +342,7 @@ export class SectionGenerators {
     // Check if any wall uses COM (Customer's Own Material)
     const walls = data.wall_details?.walls || {};
     const hasCOMMaterial = Object.values(walls).some(wall =>
-      wall.panelFinishCategory === 'C.O.M. Material'
+      isOperableWall(wall) && wall.panelFinishCategory === 'C.O.M. Material'
     );
 
     // Wrap all dynamic values with semantic markup
