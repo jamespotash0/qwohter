@@ -130,20 +130,22 @@ export async function updateForm(
 }
 
 /**
- * Delete a form (soft delete by setting is_active to false)
+ * Delete a form (hard delete by setting is_active to false)
  */
 export async function deleteForm(formId: string): Promise<void> {
   if (!formId) {
     throw new Error('Form ID is required');
   }
 
+
   const { error } = await (supabase
     .from('forms') as any)
-    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .delete()
     .eq('id', formId);
 
+
   if (error) {
-    console.error('Error deleting form:', error);
+    console.error('[deleteForm] Error deleting form:', error);
     throw new Error(`Failed to delete form: ${error.message}`);
   }
 }

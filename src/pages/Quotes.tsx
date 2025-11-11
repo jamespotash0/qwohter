@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageContent, ContentCard } from "@/components/common/layout";
-import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
+import CreateProposalDialog from "@/components/features/quotes/creation/CreateProposalDialog";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/auth";
 import { useQuotes, useUpdateQuote, useUpdateQuoteStatus, useArchiveQuote, useUnarchiveQuote, useDeleteQuote, useSetMainVersion, useCreateQuoteVersion } from "@/hooks/queries";
@@ -262,9 +262,9 @@ const Quotes = () => {
     }
   };
 
-  const handleCreateQuote = (quoteName: string) => {
+  const handleCreateQuote = (proposalName: string, formId: string, template: string) => {
     setShowNewQuoteDialog(false);
-    navigate(`/quotes/new?name=${encodeURIComponent(quoteName)}`);
+    navigate(`/quotes/new?name=${encodeURIComponent(proposalName)}&formId=${encodeURIComponent(formId)}&template=${encodeURIComponent(template)}`);
   };
 
   const handleCreateVersion = async (quoteId: string) => {
@@ -661,8 +661,8 @@ const Quotes = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Create Quote Dialog */}
-      <CreateQuoteDialog
+      {/* Create Proposal Dialog */}
+      <CreateProposalDialog
         open={showNewQuoteDialog}
         onOpenChange={setShowNewQuoteDialog}
         onCreateQuote={handleCreateQuote}

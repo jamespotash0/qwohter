@@ -242,33 +242,64 @@ export function useDeleteForm() {
     },
 
     onMutate: async (formId) => {
-      // Get the form to find its organization_id
-      const form = queryClient.getQueryData<Form>(formsQueryKeys.detail(formId));
+      console.log('[useDeleteForm] onMutate - Starting deletion for:', formId);
 
-      if (form) {
+      // Find the form in any forms list cache to get organization_id
+      let form: Form | undefined;
+      let organizationId: string | undefined;
+
+      // Search through all cached forms lists to find the form
+      const queriesData = queryClient.getQueriesData<Form[]>({ queryKey: formsQueryKeys.lists() });
+      console.log('[useDeleteForm] Found cached queries:', queriesData.length);
+
+      for (const [queryKey, forms] of queriesData) {
+        if (forms) {
+          const foundForm = forms.find(f => f.id === formId);
+          if (foundForm) {
+            form = foundForm;
+            organizationId = foundForm.organization_id;
+            console.log('[useDeleteForm] Found form in cache, orgId:', organizationId);
+            break;
+          }
+        }
+      }
+
+      // Fallback: try to get from detail cache if not found in lists
+      if (!form) {
+        form = queryClient.getQueryData<Form>(formsQueryKeys.detail(formId));
+        organizationId = form?.organization_id;
+        console.log('[useDeleteForm] Fallback to detail cache, orgId:', organizationId);
+      }
+
+      if (organizationId) {
         // Cancel queries
-        await queryClient.cancelQueries({ queryKey: formsQueryKeys.list(form.organization_id) });
+        await queryClient.cancelQueries({ queryKey: formsQueryKeys.list(organizationId) });
 
         // Snapshot
         const previousForms = queryClient.getQueryData<Form[]>(
-          formsQueryKeys.list(form.organization_id)
+          formsQueryKeys.list(organizationId)
         );
+        console.log('[useDeleteForm] Previous forms count:', previousForms?.length);
 
         // Optimistically remove from list
         if (previousForms) {
+          const newForms = previousForms.filter(f => f.id !== formId);
+          console.log('[useDeleteForm] Optimistically updating cache, new count:', newForms.length);
           queryClient.setQueryData(
-            formsQueryKeys.list(form.organization_id),
-            previousForms.filter(f => f.id !== formId)
+            formsQueryKeys.list(organizationId),
+            newForms
           );
         }
 
-        return { previousForms, organizationId: form.organization_id };
+        return { previousForms, organizationId };
       }
 
+      console.warn('[useDeleteForm] No organizationId found!');
       return { previousForms: undefined, organizationId: undefined };
     },
 
     onSuccess: (formId, variables, context) => {
+      console.log('[useDeleteForm] onSuccess - Form deleted successfully:', formId);
       toast.success('Form deleted successfully');
 
       // Remove from cache
@@ -276,7 +307,10 @@ export function useDeleteForm() {
 
       // Force invalidate the list to ensure UI updates
       if (context?.organizationId) {
+        console.log('[useDeleteForm] Invalidating queries for org:', context.organizationId);
         queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(context.organizationId) });
+      } else {
+        console.warn('[useDeleteForm] No organizationId in context, cannot invalidate!');
       }
     },
 
@@ -292,8 +326,10 @@ export function useDeleteForm() {
     },
 
     onSettled: (formId, error, variables, context) => {
+      console.log('[useDeleteForm] onSettled - Refetching for consistency');
       // Refetch to ensure consistency
       if (context?.organizationId) {
+        console.log('[useDeleteForm] Final invalidation for org:', context.organizationId);
         queryClient.invalidateQueries({ queryKey: formsQueryKeys.list(context.organizationId) });
       }
     },

@@ -40,7 +40,7 @@ import { AddReminderModal } from "@/components/features/reminders/AddReminderMod
 import { reminderService, type Reminder } from "@/services/reminderService";
 import { formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
 import { toast } from "sonner";
-import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
+import CreateQuoteDialog from "@/components/features/quotes/creation/CreateProposalDialog";
 import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
 
 /**
