@@ -339,6 +339,12 @@ export class SectionGenerators {
     const paymentUponDrawings = data.price_details?.payment_upon_drawings || '33';
     const paymentUponTrackInstallation = data.price_details?.payment_upon_track_installation || '33';
 
+    // Check if any wall uses COM (Customer's Own Material)
+    const walls = data.wall_details?.walls || {};
+    const hasCOMMaterial = Object.values(walls).some(wall =>
+      wall.panelFinishCategory === 'C.O.M. Material'
+    );
+
     // Wrap all dynamic values with semantic markup
     const laborTypeMarked = laborType ? TemplateMarkers.dynamic({
       path: 'labor_details.laborType',
@@ -378,10 +384,10 @@ export class SectionGenerators {
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">5. The <strong>customer is responsible for obtaining any necessary permits or associated fees</strong>.</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">6. Final pricing is <strong>subject to site inspection and verification</strong> of all dimensions and conditions by our installation team.</div>
         <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">7. Any additional requirements or unforeseen conditions may be subject to <strong>revised pricing or additional charges</strong>.</div>
-        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">8. Panel colors and finishes are available<strong> as per the manufacturer's current standard offerings</strong>.</div>
-        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">9. A <strong>10-year factory warranty</strong> is provided on all operable wall systems.</div>
+        ${!hasCOMMaterial ? '<div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">8. Panel colors and finishes are available<strong> as per the manufacturer\'s current standard offerings</strong>.</div>' : ''}
+        <div class="term-item" style="break-inside: avoid; margin-bottom: 4px;">${hasCOMMaterial ? '8' : '9'}. A <strong>10-year factory warranty</strong> is provided on all operable wall systems.</div>
         <div class="term-item payment-terms-item" style="break-inside: avoid; margin-bottom: 4px;">
-          10. <strong> Payment Terms:</strong>
+          ${hasCOMMaterial ? '9' : '10'}. <strong> Payment Terms:</strong>
           <div style="padding-left: 2rem; margin-top: 4px;">
             <div>– <strong>${paymentUponDrawingsMarked}%</strong> due upon approval of shop drawings</div>
             <div>– <strong>${paymentUponTrackInstallationMarked}%</strong> due upon track installation</div>
