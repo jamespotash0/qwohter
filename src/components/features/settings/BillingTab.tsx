@@ -839,7 +839,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                       <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                         {plan.display_name}
                       </h3>
-                      <button
+                      {/* <button
                         onClick={() => {
                           const currentInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
                             ? (subscription.billing_interval?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly')
@@ -870,7 +870,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                             })()
                           }}
                         />
-                      </button>
+                      </button> */}
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {plan.description}
