@@ -28,9 +28,9 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
       try {
         const { data: membership } = await supabase
           .from('memberships')
-          .select('id, status') //membership_status
+          .select('id, status')
           .eq('user_id', user.id)
-          .eq('status', 'Active') //membership_status
+          .eq('status', 'Active')
           .maybeSingle();
 
         setHasCompletedOnboarding(!!membership);
@@ -82,15 +82,15 @@ import Analytics from "@/pages/Analytics";
 import Settings from "@/pages/Settings";
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
-// Proposals page (formerly quotes)
-const ProposalsList = lazy(() => import("@/pages/Proposals"));
+// Quote-related pages (grouped under quotes namespace)
+const QuotesList = lazy(() => import("@/pages/Quotes"));
+const NewQuote = lazy(() => import("@/pages/NewQuote"));
+const QuoteEdit = lazy(() => import("@/pages/QuoteEdit"));
+const QuoteEditIncomplete = lazy(() => import("@/pages/QuoteEditIncomplete"));
 
 // Form Builder pages
 const Forms = lazy(() => import("@/pages/Forms"));
 const FormBuilderV3 = lazy(() => import("@/pages/FormBuilderV3"));
-
-// Proposal pages
-const ProposalCreation = lazy(() => import("@/pages/ProposalCreation"));
 
 // Board page
 const Board = lazy(() => import("@/pages/Board"));
@@ -161,8 +161,29 @@ export const AppRouter = () => (
                 {/* Team redirect - now part of settings */}
                 <Route path="/team" element={<Navigate to="/settings?tab=team" replace />} />
 
-                {/* Quotes/Proposals management routes */}
-                <Route path="/quotes" element={<ProposalsList />} />
+                {/* Quote management routes (nested structure) */}
+                <Route path="/quotes" element={<QuotesList />} />
+
+                {/* Quote creation workflow */}
+                <Route path="/quotes/new" element={
+                  <QuoteErrorBoundary>
+                    <NewQuote />
+                  </QuoteErrorBoundary>
+                } />
+
+                {/* Quote editing - cleaner route */}
+                <Route path="/editor/:proposalNumber" element={
+                  <QuoteErrorBoundary>
+                    <QuoteEdit />
+                  </QuoteErrorBoundary>
+                } />
+
+                {/* Incomplete quote editing with dedicated wizard */}
+                <Route path="/quotes/edit-incomplete/:proposalNumber" element={
+                  <QuoteErrorBoundary>
+                    <QuoteEditIncomplete />
+                  </QuoteErrorBoundary>
+                } />
 
                 {/* Future: Quote templates management */}
                 <Route path="/quotes/templates" element={<Navigate to="/settings" replace />} />
@@ -170,23 +191,15 @@ export const AppRouter = () => (
                 {/* Form Builder routes */}
                 <Route path="/forms" element={<Forms />} />
 
-                {/* Proposal routes */}
-                <Route path="/proposals" element={<Navigate to="/quotes" replace />} />
-                <Route path="/proposals/new" element={<ProposalCreation />} />
-                <Route path="/proposals/:id" element={<Navigate to="/quotes" replace />} />
-
                 {/* Templates routes - DISABLED until template system is complete */}
                 <Route path="/templates" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/templates/*" element={<Navigate to="/dashboard" replace />} />
 
                 {/* Legacy route redirects for backward compatibility */}
-                <Route path="/newquote" element={<Navigate to="/proposals/new" replace />} />
-                <Route path="/quoteedit/:proposalNumber" element={<Navigate to="/proposals/:proposalNumber" replace />} />
-                <Route path="/quotes/edit/:proposalNumber" element={<Navigate to="/proposals/:proposalNumber" replace />} />
-                <Route path="/quotes/view/:proposalNumber" element={<Navigate to="/proposals/:proposalNumber" replace />} />
-                <Route path="/quotes/new" element={<Navigate to="/proposals/new" replace />} />
-                <Route path="/editor/:proposalNumber" element={<Navigate to="/proposals/:proposalNumber" replace />} />
-                <Route path="/quotes/edit-incomplete/:proposalNumber" element={<Navigate to="/proposals/:proposalNumber" replace />} />
+                <Route path="/newquote" element={<Navigate to="/quotes/new" replace />} />
+                <Route path="/quoteedit/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
+                <Route path="/quotes/edit/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
+                <Route path="/quotes/view/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
 
                 {/* 404 page */}
                 <Route path="*" element={<NotFound />} />
