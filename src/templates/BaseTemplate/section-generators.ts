@@ -180,7 +180,7 @@ export class SectionGenerators {
     const date = this.helpers.formatDate(data.job_details?.date || '');
     const proposalNumber = data.proposal_number || 'N/A';
     const jobLocation = data.job_details?.job_location || '';
-    const proposalName = data.proposal_name;
+    const projectName = data.project_name;
 
     // Wrap all dynamic values with semantic markup
     const dateMarked = date ? TemplateMarkers.dynamic({
@@ -195,9 +195,9 @@ export class SectionGenerators {
       format: 'text'
     }) : '';
 
-    const proposalNameMarked = proposalName ? TemplateMarkers.dynamic({
-      path: 'proposal_name',
-      value: proposalName,
+    const projectNameMarked = projectName ? TemplateMarkers.dynamic({
+      path: 'project_name',
+      value: projectName,
       format: 'text'
     }) : '';
 
@@ -235,7 +235,7 @@ export class SectionGenerators {
             Project Name:
           </td>
           <td style="padding: 4px 4px 8px 4px; border-bottom: 0.5px solid black;">
-            ${proposalNameMarked}
+            ${projectNameMarked}
           </td>
         </tr>
         <tr>

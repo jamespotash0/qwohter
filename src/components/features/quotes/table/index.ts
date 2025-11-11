@@ -1,3 +1,3 @@
-export { EnhancedProposalsTable } from './EnhancedProposalsTable';
-export { ProposalFilters } from './ProposalFilters';
-export { ProposalPagination } from './ProposalPagination';
+export { EnhancedQuotesTable } from './EnhancedQuotesTable';
+export { QuoteFilters } from './QuoteFilters';
+export { QuotePagination } from './QuotePagination';

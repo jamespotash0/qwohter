@@ -20,8 +20,8 @@ export type { DateRangePickerProps, DateRange } from './DateRangePicker';
 export { RevenueChart } from './charts/RevenueChart';
 export type { RevenueChartProps } from './charts/RevenueChart';
 
-export { ProposalsBarChart } from './charts/ProposalsBarChart';
-export type { ProposalsBarChartProps } from './charts/ProposalsBarChart';
+export { QuotesBarChart } from './charts/QuotesBarChart';
+export type { QuotesBarChartProps } from './charts/QuotesBarChart';
 
 export { SourcePieChart } from './charts/SourcePieChart';
 export type { SourcePieChartProps } from './charts/SourcePieChart';

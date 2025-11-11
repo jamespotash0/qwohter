@@ -12,19 +12,19 @@ import { queryKeys } from '@/lib/queryClient';
  * Dashboard stats type
  */
 export interface DashboardStats {
-  totalProposals: number;
-  submittedProposals: number;
-  acceptedProposals: number;
+  totalQuotes: number;
+  submittedQuotes: number;
+  wonQuotes: number;
   totalValue: number;
   winRate: number;
 }
 
 /**
- * Proposal activity type
+ * Quote activity type
  */
-export interface ProposalActivity {
+export interface QuoteActivity {
   id: string;
-  proposal_id: string;
+  quote_id: string;
   action_type: string;
   performed_by: string;
   performed_by_name?: string;
@@ -36,23 +36,23 @@ export interface ProposalActivity {
  * Fetch dashboard stats
  */
 async function fetchDashboardStats(organizationId: string): Promise<DashboardStats> {
-  const { data: proposals, error } = await supabase
-    .from('proposals')
-    .select('proposal_status, total_value')
+  const { data: quotes, error } = await supabase
+    .from('quotes')
+    .select('status, total_value')
     .eq('organization_id', organizationId);
 
   if (error) throw error;
 
-  const totalProposals = proposals?.length || 0;
-  const submittedProposals = proposals?.filter(q => q.proposal_status === 'Submitted').length || 0;
-  const acceptedProposals = proposals?.filter(q => q.proposal_status === 'Accepted').length || 0;
-  const totalValue = proposals?.reduce((sum, q) => sum + (q.total_value || 0), 0) || 0;
-  const winRate = submittedProposals > 0 ? (acceptedProposals / submittedProposals) * 100 : 0;
+  const totalQuotes = quotes?.length || 0;
+  const submittedQuotes = quotes?.filter(q => q.status === 'Submitted').length || 0;
+  const wonQuotes = quotes?.filter(q => q.status === 'Won').length || 0;
+  const totalValue = quotes?.reduce((sum, q) => sum + (q.total_value || 0), 0) || 0;
+  const winRate = submittedQuotes > 0 ? (wonQuotes / submittedQuotes) * 100 : 0;
 
   return {
-    totalProposals,
-    submittedProposals,
-    acceptedProposals,
+    totalQuotes,
+    submittedQuotes,
+    wonQuotes,
     totalValue,
     winRate,
   };
@@ -64,12 +64,12 @@ async function fetchDashboardStats(organizationId: string): Promise<DashboardSta
 async function fetchRecentActivities(
   organizationId: string,
   limit: number = 10
-): Promise<ProposalActivity[]> {
+): Promise<QuoteActivity[]> {
   const { data, error } = await supabase
-    .from('proposal_activities')
+    .from('quote_activities')
     .select(`
       id,
-      proposal_id,
+      quote_id,
       action_type,
       performed_by,
       created_at,
@@ -86,7 +86,7 @@ async function fetchRecentActivities(
 
   return (data || []).map(activity => ({
     id: activity.id,
-    proposal_id: activity.proposal_id,
+    quote_id: activity.quote_id,
     action_type: activity.action_type,
     performed_by: activity.performed_by,
     performed_by_name: (activity.profiles as any)?.full_name,
@@ -98,7 +98,7 @@ async function fetchRecentActivities(
 /**
  * Hook: Use Dashboard Stats
  *
- * Fetches aggregated proposal statistics
+ * Fetches aggregated quote statistics
  */
 export function useDashboardStats(organizationId: string, enabled: boolean = true) {
   return useQuery({
@@ -112,7 +112,7 @@ export function useDashboardStats(organizationId: string, enabled: boolean = tru
 /**
  * Hook: Use Recent Activities
  *
- * Fetches recent proposal activities for dashboard
+ * Fetches recent quote activities for dashboard
  */
 export function useRecentActivities(
   organizationId: string,

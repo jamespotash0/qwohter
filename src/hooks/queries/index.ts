@@ -2,22 +2,22 @@
  * Central export for all React Query hooks
  *
  * Import all hooks from here for consistency:
- * import { useProposals, useOrganization, useSubscriptionStatus } from '@/hooks/queries';
+ * import { useQuotes, useOrganization, useSubscriptionStatus } from '@/hooks/queries';
  */
 
-// Proposals (now uses proposals infrastructure)
+// Quotes
 export {
-  useProposals,
-  useProposal,
-  useCreateProposal,
-  useUpdateProposal,
-  useDeleteProposal,
-  useUpdateProposalStatus,
-  useArchiveProposal,
-  useUnarchiveProposal,
+  useQuotes,
+  useQuote,
+  useCreateQuote,
+  useUpdateQuote,
+  useDeleteQuote,
+  useUpdateQuoteStatus,
+  useArchiveQuote,
+  useUnarchiveQuote,
   useSetMainVersion,
-  useCreateProposalVersion,
-} from './useProposals';
+  useCreateQuoteVersion,
+} from './useQuotes';
 
 // Organization
 export {
@@ -94,5 +94,5 @@ export {
 
 // Types
 export type { UserProfile, Session } from './useAuth';
-export type { DashboardStats, ProposalActivity } from './useDashboard';
+export type { DashboardStats, QuoteActivity } from './useDashboard';
 export type { Form } from './useForms';

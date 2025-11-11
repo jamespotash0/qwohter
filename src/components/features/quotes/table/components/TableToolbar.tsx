@@ -7,10 +7,10 @@ import {
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
-import { Proposal } from "@/stores/proposals/proposalsStore";
+import { Quote } from "@/stores/quotes/quotesStore";
 
 interface TableToolbarProps {
-  table: Table<Proposal>;
+  table: Table<Quote>;
   dataDensity: 'compact' | 'comfortable' | 'spacious';
   setDataDensity: (density: 'compact' | 'comfortable' | 'spacious') => void;
   columnVisibilityOpen: boolean;
@@ -18,12 +18,12 @@ interface TableToolbarProps {
   columnLabels: Record<string, string>;
   resetColumnSizes: () => void;
   resetColumnVisibility: () => void;
-  onCreateProposal?: () => void;
+  onCreateQuote?: () => void;
   onBulkDelete?: (ids: string[]) => void;
   onBulkStatusChange?: (ids: string[], status: string) => void;
   onCreateVersion?: (id: string) => void;
-  onExportCSV?: (proposals: Proposal[]) => void;
-  onExportPDF?: (proposals: Proposal[]) => void;
+  onExportCSV?: (quotes: Quote[]) => void;
+  onExportPDF?: (quotes: Quote[]) => void;
   setRowSelection: (selection: any) => void;
 }
 
@@ -36,7 +36,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
   columnLabels,
   resetColumnSizes,
   resetColumnVisibility,
-  onCreateProposal,
+  onCreateQuote,
   onBulkDelete,
   onBulkStatusChange,
   onCreateVersion,
@@ -100,12 +100,12 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
                     if (onBulkStatusChange) {
-                      onBulkStatusChange(selectedRows.map(row => row.original.id), 'Accepted');
+                      onBulkStatusChange(selectedRows.map(row => row.original.id), 'Won');
                     }
                   }}>
                     <div className="flex items-center">
                       <div className="w-2 h-2 bg-blue-600 rounded mr-2"></div>
-                      Set to Accepted
+                      Set to Won
                     </div>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
@@ -349,14 +349,14 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Create Proposal Button - Just a plus icon */}
-        {onCreateProposal && (
+        {/* Create Quote Button - Just a plus icon */}
+        {onCreateQuote && (
           <Button
-            onClick={onCreateProposal}
+            onClick={onCreateQuote}
             variant="outline"
             size="sm"
             className="w-10 h-10 p-0 bg-[var(--brand-secondary)] hover:bg-[var(--brand-secondary-dark)] text-white border-[var(--brand-secondary)] hover:border-[var(--brand-secondary-dark)]"
-            title="Create New Proposal"
+            title="Create New Quote"
           >
             <Plus className="w-5 h-5" />
           </Button>

@@ -5,25 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import useEnhancedSearch from '@/hooks/useEnhancedSearch';
-import { Proposal } from '@/stores/proposals/proposalsStore';
+import { Quote } from '@/stores/quotes/quotesStore';
 
 interface EnhancedSearchInputProps {
-  proposals: Proposal[];
+  quotes: Quote[];
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
 }
 
 export const EnhancedSearchInput: React.FC<EnhancedSearchInputProps> = ({
-  proposals,
+  quotes,
   value,
   onChange,
-  placeholder = "Search proposals... (try: client:ABC Corp)"
+  placeholder = "Search quotes... (try: client:ABC Corp)"
 }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { getSearchSuggestions, getSearchExamples } = useEnhancedSearch(proposals);
+  const { getSearchSuggestions, getSearchExamples } = useEnhancedSearch(quotes);
 
   const suggestions = getSearchSuggestions(value, 5);
   const searchExamples = getSearchExamples();

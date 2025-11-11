@@ -15,7 +15,7 @@ import {
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, DollarSign, Calendar, BarChart3 } from 'lucide-react';
-import { Proposal } from '@/stores/proposals/proposalsStore';
+import { Quote } from '@/stores/quotes/quotesStore';
 import { useTheme } from '@/contexts/ThemeContext';
 
 // Theme-aware chart colors helper
@@ -46,14 +46,14 @@ ChartJS.register(
 );
 
 interface AnalyticsChartsProps {
-  proposals: Proposal[];
+  quotes: Quote[];
 }
 
-export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ proposals }) => {
+export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ quotes }) => {
   const { theme } = useTheme();
   const colors = getChartColors(theme === 'dark');
   const chartData = useMemo(() => {
-    // Process proposals for analytics
+    // Process quotes for analytics
     const last6Months = Array.from({ length: 6 }, (_, i) => {
       const date = new Date();
       date.setMonth(date.getMonth() - (5 - i));
@@ -66,26 +66,26 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ proposals }) =
     });
 
     const monthlyData = last6Months.map(({ month, monthIndex, year }) => {
-      const monthProposals = proposals.filter(q => {
-        const proposalDate = new Date(q.created_at);
-        return proposalDate.getMonth() === monthIndex && proposalDate.getFullYear() === year;
+      const monthQuotes = quotes.filter(q => {
+        const quoteDate = new Date(q.created_at);
+        return quoteDate.getMonth() === monthIndex && quoteDate.getFullYear() === year;
       });
 
-      const totalValue = monthProposals.reduce((sum, q) => {
+      const totalValue = monthQuotes.reduce((sum, q) => {
         const price = q.price_details?.final_selling_price || 0;
         return sum + (typeof price === 'string' ? parseFloat(price) || 0 : price);
       }, 0);
 
       return {
         month,
-        count: monthProposals.length,
+        count: monthQuotes.length,
         value: totalValue
       };
     });
 
     // Status distribution
-    const statusCounts = proposals.reduce((acc, proposal) => {
-      const status = proposal.proposal_status || 'Draft';
+    const statusCounts = quotes.reduce((acc, quote) => {
+      const status = quote.status || 'Draft';
       acc[status] = (acc[status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -101,24 +101,24 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ proposals }) =
     });
 
     const weeklyData = last7Days.map(({ day, date }) => {
-      const dayProposals = proposals.filter(q =>
+      const dayQuotes = quotes.filter(q => 
         new Date(q.created_at).toDateString() === date
       );
       return {
         day,
-        count: dayProposals.length
+        count: dayQuotes.length
       };
     });
 
     return { monthlyData, statusCounts, weeklyData };
-  }, [proposals]);
+  }, [quotes]);
 
   // Line Chart - Monthly Quotes
-  const monthlyProposalsData = {
+  const monthlyQuotesData = {
     labels: chartData.monthlyData.map(d => d.month),
     datasets: [
       {
-        label: 'Proposals Created',
+        label: 'Quotes Created',
         data: chartData.monthlyData.map(d => d.count),
         borderColor: 'rgb(99, 102, 241)',
         backgroundColor: 'rgba(99, 102, 241, 0.1)',
@@ -134,12 +134,12 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ proposals }) =
     ],
   };
 
-  // Bar Chart - Proposal Values
+  // Bar Chart - Quote Values
   const monthlyValueData = {
     labels: chartData.monthlyData.map(d => d.month),
     datasets: [
       {
-        label: 'Proposal Value ($)',
+        label: 'Quote Value ($)',
         data: chartData.monthlyData.map(d => d.value),
         backgroundColor: 'rgba(34, 197, 94, 0.8)',
         borderColor: 'rgb(34, 197, 94)',
@@ -175,12 +175,12 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ proposals }) =
     ],
   };
 
-  // Weekly Proposal Activity Bar Chart
+  // Weekly Quote Activity Bar Chart
   const weeklyActivityData = {
     labels: chartData.weeklyData.map(d => d.day),
     datasets: [
       {
-        label: 'Daily Proposal Activity',
+        label: 'Daily Quote Activity',
         data: chartData.weeklyData.map(d => d.count),
         backgroundColor: 'rgba(168, 85, 247, 0.8)',
         borderColor: 'rgb(168, 85, 247)',
@@ -268,27 +268,27 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ proposals }) =
 //Dashboard Shown
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Monthly Proposals Trend */}
+      {/* Monthly Quotes Trend */}
       <Card className="card-elevated hover:shadow-medium transition-all duration-300">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-primary" />
-            Monthly Proposals Trends
+            Monthly Quote Trends
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-64">
-            <Line data={monthlyProposalsData} options={chartOptions} />
+            <Line data={monthlyQuotesData} options={chartOptions} />
           </div>
         </CardContent>
       </Card>
 
-      {/* Proposal Status Distribution */}
+      {/* Quote Status Distribution */}
       <Card className="card-elevated hover:shadow-medium transition-all duration-300">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-primary" />
-            Proposal Status Distribution
+            Quote Status Distribution
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -303,7 +303,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ proposals }) =
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-green-600" />
-            Monthly Proposal Values
+            Monthly Quote Values
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -326,12 +326,12 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ proposals }) =
         </CardContent>
       </Card>
 
-      {/* Weekly Proposal Activity */}
+      {/* Weekly Quote Activity */}
       <Card className="card-elevated hover:shadow-medium transition-all duration-300">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="w-5 h-5 text-purple-600" />
-            Weekly Proposal Activity
+            Weekly Quote Activity
           </CardTitle>
         </CardHeader>
         <CardContent>

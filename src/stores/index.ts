@@ -74,6 +74,6 @@ export {
 
 // Re-export for type compatibility only
 // Actual implementations are archived in .archived/
-export type { Proposal } from './proposals/proposalsStore';
+export type { Quote } from './quotes/quotesStore';
 export type { Project, WorkflowColumn } from './board/boardStore';
 export type { Reminder } from './reminders/remindersStore';

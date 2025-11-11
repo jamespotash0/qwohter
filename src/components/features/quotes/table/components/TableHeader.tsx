@@ -1,10 +1,10 @@
 import React from 'react';
 import { Table, flexRender } from '@tanstack/react-table';
 import { ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
-import { Proposal } from "@/stores/proposals/proposalsStore";
+import { Quote } from "@/stores/quotes/quotesStore";
 
 interface TableHeaderProps {
-  table: Table<Proposal>;
+  table: Table<Quote>;
   dataDensity: 'compact' | 'comfortable' | 'spacious';
 }
 

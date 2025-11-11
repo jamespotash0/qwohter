@@ -4,21 +4,21 @@ import { Filter, RotateCcw } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Proposal } from "@/stores/proposals/proposalsStore";
+import { Quote } from "@/stores/quotes/quotesStore";
 import { EnhancedSearchInput } from './EnhancedSearchInput';
 
 interface TableFiltersProps {
-  table: Table<Proposal>;
+  table: Table<Quote>;
   globalFilter: string;
   setGlobalFilter: (value: string) => void;
-  proposals: Proposal[];
+  quotes: Quote[];
 }
 
 export const TableFilters: React.FC<TableFiltersProps> = ({
   table,
   globalFilter,
   setGlobalFilter,
-  proposals,
+  quotes,
 }) => {
   const resetFilters = () => {
     setGlobalFilter('');
@@ -32,10 +32,10 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
       {/* Search Input - Takes most space */}
       <div className="flex-1">
         <EnhancedSearchInput
-          proposals={proposals}
+          quotes={quotes}
           value={globalFilter ?? ''}
           onChange={setGlobalFilter}
-          placeholder="Search proposals... (try: client:ABC Corp, status:Draft)"
+          placeholder="Search quotes... (try: client:ABC Corp, status:Draft)"
         />
       </div>
     </div>

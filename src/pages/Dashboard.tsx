@@ -33,14 +33,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
-import { useProposals } from "@/hooks/queries";
+import { useQuotes } from "@/hooks/queries/useQuotes";
 import { useUser, useProfile } from "@/auth";
-import { proposalActivityService, type ProposalActivity } from "@/services/proposalActivityService";
+import { quoteActivityService, type QuoteActivity } from "@/services/quoteActivityService";
 import { AddReminderModal } from "@/components/features/reminders/AddReminderModal";
 import { reminderService, type Reminder } from "@/services/reminderService";
 import { formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
 import { toast } from "sonner";
-import { groupProposalsByVersion } from "@/utils/proposalVersionGrouping";
+import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
+import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
 
 /**
  * Dashboard - Executive Overview
@@ -54,18 +55,19 @@ const Dashboard = () => {
   const user = useUser();
   const { data: profile } = useProfile(user?.id);
 
-  // React Query hooks for organization and proposals
+  // React Query hooks for organization and quotes
   const { organization: currentOrganization, isLoading: orgLoading } = useCurrentOrganization(user?.id);
   const organizationId = currentOrganization?.id || null;
-  const { data: proposals = [], isLoading: proposalsLoading } = useProposals(user?.id);
+  const { data: quotes = [], isLoading: quotesLoading } = useQuotes(user?.id);
 
   console.log('[Dashboard] Using organization:', { id: organizationId, name: currentOrganization?.name });
 
-  const [recentActivities, setRecentActivities] = useState<ProposalActivity[]>([]);
+  const [recentActivities, setRecentActivities] = useState<QuoteActivity[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [showAddReminderModal, setShowAddReminderModal] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
   const [cachedProfile, setCachedProfile] = useState<any>(() => {
     // Read from localStorage cache (same as sidebar)
     try {
@@ -87,7 +89,7 @@ const Dashboard = () => {
   // Always prefer cached data to prevent flashing
   const effectiveProfile = cachedProfile || (profile?.id ? profile : null);
 
-  // React Query automatically fetches proposals - no manual fetching needed!
+  // React Query automatically fetches quotes - no manual fetching needed!
 
   // Fetch recent activities from database and subscribe to real-time updates
   useEffect(() => {
@@ -100,7 +102,7 @@ const Dashboard = () => {
 
       console.log('[Dashboard] Fetching activities for org:', organizationId);
       setActivitiesLoading(true);
-      const { data, error } = await proposalActivityService.getRecentActivities({
+      const { data, error } = await quoteActivityService.getRecentActivities({
         organizationId,
         limit: 100
       });
@@ -115,18 +117,18 @@ const Dashboard = () => {
 
     fetchRecentActivities();
 
-    // Subscribe to real-time proposal_activities updates
+    // Subscribe to real-time quote_activities updates
     if (!user || !organizationId) return;
 
 
     const channel = supabase
-      .channel('proposal-activities-changes')
+      .channel('quote-activities-changes')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'proposal_activities',
+          table: 'quote_activities',
           filter: `organization_id=eq.${organizationId}`
         },
         (payload) => {
@@ -134,14 +136,14 @@ const Dashboard = () => {
           if (payload.new) {
             setRecentActivities((prev) => {
               // Add new activity to the beginning, keep only latest 100
-              const newActivity = payload.new as ProposalActivity;
+              const newActivity = payload.new as QuoteActivity;
               const updated = [newActivity, ...prev];
               return updated.slice(0, 100);
             });
           }
         }
       )
-      .subscribe((reminder_status) => {
+      .subscribe((status) => {
       });
 
     // Cleanup: unsubscribe on unmount
@@ -174,7 +176,7 @@ const Dashboard = () => {
         const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
         const filteredReminders = data.filter(reminder => {
-          if (reminder.reminder_status === 'Completed') {
+          if (reminder.status === 'Completed') {
             // Use updated_at as the completion date
             const completedDate = new Date(reminder.updated_at);
             return completedDate > threeDaysAgo;
@@ -216,7 +218,7 @@ const Dashboard = () => {
             const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
             const filteredReminders = data.filter(reminder => {
-              if (reminder.reminder_status === 'Completed') {
+              if (reminder.status === 'Completed') {
                 const completedDate = new Date(reminder.updated_at);
                 return completedDate > threeDaysAgo;
               }
@@ -227,7 +229,7 @@ const Dashboard = () => {
           }
         }
       )
-      .subscribe((reminder_status) => {
+      .subscribe((status) => {
       });
 
     // Cleanup: unsubscribe on unmount
@@ -237,14 +239,14 @@ const Dashboard = () => {
   }, [user, organizationId]);
 
   // Reminder action handlers
-  const handleCompleteReminder = async (reminderId: string, proposalId?: string, proposalNumber?: string, projectName?: string) => {
+  const handleCompleteReminder = async (reminderId: string, quoteId?: string, quoteNumber?: string, projectName?: string) => {
     if (!user?.id || !organizationId) return;
 
     // Get the reminder details before completing
     const reminder = reminders.find(r => r.id === reminderId);
 
     const { error } = await reminderService.completeReminder(reminderId, {
-      reminder_status: 'Completed',
+      status: 'Completed',
       completed_by: user.id,
     });
 
@@ -255,11 +257,11 @@ const Dashboard = () => {
 
     toast.success('Reminder marked as completed');
 
-    // Log activity (always, even without proposal)
-    await proposalActivityService.logActivity({
-      proposalId: proposalId || null,
-      proposalNumber: proposalNumber || 'N/A',
-      proposalName: proposalName || reminder?.title || 'General Reminder',
+    // Log activity (always, even without quote)
+    await quoteActivityService.logActivity({
+      quoteId: quoteId || null,
+      quoteNumber: quoteNumber || 'N/A',
+      projectName: projectName || reminder?.title || 'General Reminder',
       userId: user.id,
       userName: effectiveProfile?.full_name || 'Unknown User',
       activityType: 'Reminder_Set',
@@ -282,7 +284,7 @@ const Dashboard = () => {
       const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
       const filteredReminders = data.filter(reminder => {
-        if (reminder.reminder_status === 'Completed') {
+        if (reminder.status === 'Completed') {
           const completedDate = new Date(reminder.updated_at);
           return completedDate > threeDaysAgo;
         }
@@ -293,7 +295,7 @@ const Dashboard = () => {
     }
   };
 
-  const handleDeleteReminder = async (reminderId: string, proposalId?: string, proposalNumber?: string, projectName?: string) => {
+  const handleDeleteReminder = async (reminderId: string, quoteId?: string, quoteNumber?: string, projectName?: string) => {
     if (!user?.id || !organizationId) return;
 
     // Get the reminder details before deleting
@@ -308,11 +310,11 @@ const Dashboard = () => {
 
     toast.success('Reminder deleted');
 
-    // Log activity (always, even without proposal)
-    await proposalActivityService.logActivity({
-      proposalId: proposalId || null,
-      proposalNumber: proposalNumber || 'N/A',
-      proposalName: projectName || reminder?.title || 'General Reminder',
+    // Log activity (always, even without quote)
+    await quoteActivityService.logActivity({
+      quoteId: quoteId || null,
+      quoteNumber: quoteNumber || 'N/A',
+      projectName: projectName || reminder?.title || 'General Reminder',
       userId: user.id,
       userName: effectiveProfile?.full_name || 'Unknown User',
       activityType: 'Reminder_Set',
@@ -353,68 +355,68 @@ const Dashboard = () => {
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-    // Group proposals by version to avoid counting duplicates
-    const proposalGroups = groupProposalsByVersion(proposals);
+    // Group quotes by version to avoid counting duplicates
+    const quoteGroups = groupQuotesByVersion(quotes);
 
-    // Track when proposal groups were marked as Accepted using won_at timestamp
-    // Use the accepted version if exists, otherwise use latest version
-    const acceptedProposalGroupsThisMonth = proposalGroups.filter(group => {
-      const acceptedVersion = group.versions.find(v => v.proposal_status === 'Accepted' && v.accepted_at);
-      if (!acceptedVersion) return false;
-      const acceptedDate = new Date(acceptedVersion.accepted_at!);
-      return acceptedDate >= thisMonth;
+    // Track when quote groups were marked as Won using won_at timestamp
+    // Use the won version if exists, otherwise use latest version
+    const wonQuoteGroupsThisMonth = quoteGroups.filter(group => {
+      const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
+      if (!wonVersion) return false;
+      const wonDate = new Date(wonVersion.won_at!);
+      return wonDate >= thisMonth;
     });
 
-    const acceptedProposalGroupsLastMonth = proposalGroups.filter(group => {
-      const acceptedVersion = group.versions.find(v => v.proposal_status === 'Accepted' && v.accepted_at);
-      if (!acceptedVersion) return false;
-      const acceptedDate = new Date(acceptedVersion.accepted_at!);
-      return acceptedDate >= lastMonth && acceptedDate <= lastMonthEnd;
+    const wonQuoteGroupsLastMonth = quoteGroups.filter(group => {
+      const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
+      if (!wonVersion) return false;
+      const wonDate = new Date(wonVersion.won_at!);
+      return wonDate >= lastMonth && wonDate <= lastMonthEnd;
     });
 
-    const totalRevenue = acceptedProposalGroupsThisMonth.reduce((sum, group) => {
-      const acceptedVersion = group.versions.find(v => v.proposal_status === 'Accepted');
-      return sum + (acceptedVersion?.price_details?.final_selling_price || 0);
+    const totalRevenue = wonQuoteGroupsThisMonth.reduce((sum, group) => {
+      const wonVersion = group.versions.find(v => v.status === 'Won');
+      return sum + (wonVersion?.price_details?.final_selling_price || 0);
     }, 0);
 
-    const lastMonthRevenue = acceptedProposalGroupsLastMonth.reduce((sum, group) => {
-      const acceptedVersion = group.versions.find(v => v.proposal_status === 'Accepted');
-      return sum + (acceptedVersion?.price_details?.final_selling_price || 0);
+    const lastMonthRevenue = wonQuoteGroupsLastMonth.reduce((sum, group) => {
+      const wonVersion = group.versions.find(v => v.status === 'Won');
+      return sum + (wonVersion?.price_details?.final_selling_price || 0);
     }, 0);
 
-    const activeProposals = proposalGroups.filter(group =>
-      group.versions.some(v => ['Submitted'].includes(v.proposal_status || ''))
+    const activeQuotes = quoteGroups.filter(group =>
+      group.versions.some(v => ['Pending', 'Submitted'].includes(v.status || ''))
     ).length;
 
-    // Current overall win rate (all time) - count groups not individual proposals
-    const acceptedProposals = proposalGroups.filter(g => g.versions.some(v => v.proposal_status === 'Accepted')).length;
-    const rejectedProposals = proposalGroups.filter(g =>
-      g.versions.some(v => v.proposal_status === 'Rejected') && !g.versions.some(v => v.proposal_status === 'Accepted')
+    // Current overall win rate (all time) - count groups not individual quotes
+    const wonQuotes = quoteGroups.filter(g => g.versions.some(v => v.status === 'Won')).length;
+    const rejectedQuotes = quoteGroups.filter(g =>
+      g.versions.some(v => v.status === 'Rejected') && !g.versions.some(v => v.status === 'Won')
     ).length;
-    const totalDecidedProposals = acceptedProposals + rejectedProposals;
-    const winRate = totalDecidedProposals > 0 ? ((acceptedProposals / totalDecidedProposals) * 100).toFixed(1) : '0';
+    const totalDecidedQuotes = wonQuotes + rejectedQuotes;
+    const winRate = totalDecidedQuotes > 0 ? ((wonQuotes / totalDecidedQuotes) * 100).toFixed(1) : '0';
 
     // This month's win rate
-    const acceptedThisMonth = acceptedProposalGroupsThisMonth.length;
-    const rejectedThisMonth = proposalGroups.filter(group => {
-      const rejectedVersion = group.versions.find(v => v.proposal_status === 'Rejected' && v.rejected_at);
+    const wonThisMonth = wonQuoteGroupsThisMonth.length;
+    const rejectedThisMonth = quoteGroups.filter(group => {
+      const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
       if (!rejectedVersion || !rejectedVersion.rejected_at) return false;
       const rejectedDate = new Date(rejectedVersion.rejected_at);
-      return rejectedDate >= thisMonth && !group.versions.some(v => v.proposal_status === 'Accepted');
+      return rejectedDate >= thisMonth && !group.versions.some(v => v.status === 'Won');
     }).length;
-    const decidedThisMonth = acceptedThisMonth + rejectedThisMonth;
-    const winRateThisMonth = decidedThisMonth > 0 ? ((acceptedThisMonth / decidedThisMonth) * 100).toFixed(1) : '0';
+    const decidedThisMonth = wonThisMonth + rejectedThisMonth;
+    const winRateThisMonth = decidedThisMonth > 0 ? ((wonThisMonth / decidedThisMonth) * 100).toFixed(1) : '0';
 
     // Last month's win rate
-    const acceptedLastMonth = acceptedProposalGroupsLastMonth.length;
-    const rejectedLastMonth = proposalGroups.filter(group => {
-      const rejectedVersion = group.versions.find(v => v.proposal_status === 'Rejected' && v.rejected_at);
+    const wonLastMonth = wonQuoteGroupsLastMonth.length;
+    const rejectedLastMonth = quoteGroups.filter(group => {
+      const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
       if (!rejectedVersion || !rejectedVersion.rejected_at) return false;
       const rejectedDate = new Date(rejectedVersion.rejected_at);
-      return rejectedDate >= lastMonth && rejectedDate <= lastMonthEnd && !group.versions.some(v => v.proposal_status === 'Accepted');
+      return rejectedDate >= lastMonth && rejectedDate <= lastMonthEnd && !group.versions.some(v => v.status === 'Won');
     }).length;
-    const decidedLastMonth = acceptedLastMonth + rejectedLastMonth;
-    const winRateLastMonth = decidedLastMonth > 0 ? ((acceptedLastMonth / decidedLastMonth) * 100).toFixed(1) : '0';
+    const decidedLastMonth = wonLastMonth + rejectedLastMonth;
+    const winRateLastMonth = decidedLastMonth > 0 ? ((wonLastMonth / decidedLastMonth) * 100).toFixed(1) : '0';
 
     // Calculate overdue reminders (not completed/dismissed and past due date)
     const today = new Date();
@@ -427,23 +429,23 @@ const Dashboard = () => {
     return {
       totalRevenue,
       lastMonthRevenue,
-      activeProposals,
+      activeQuotes,
       winRate,
       winRateThisMonth,
       winRateLastMonth,
-      acceptedProposals,
-      rejectedProposals,
+      wonQuotes,
+      rejectedQuotes,
       overdueReminders
     };
-  }, [proposals, reminders]);
+  }, [quotes, reminders]);
 
 
   // Format activities from database for display
   const recentActivity = useMemo(() => {
     return recentActivities.map(activity => {
-      const projectName = activity.proposal_name || 'Untitled';
+      const projectName = activity.project_name || 'Untitled';
       const userName = activity.user_name || 'Unknown';
-      const proposalNumber = activity.proposal_number;
+      const quoteNumber = activity.quote_number;
 
       let message = '';
       let eventText = '';
@@ -451,27 +453,27 @@ const Dashboard = () => {
 
       if (activity.activity_type === 'Created') {
         const status = activity.activity_details?.status || 'Draft';
-        message = `${userName} created a new ${status} Proposal called ${projectName} (#${proposalNumber})`;
+        message = `${userName} created a new ${status} Quote called ${projectName} (#${quoteNumber})`;
         eventText = 'Created';
         type = 'Created';
       } else if (activity.activity_type === 'Status_Changed') {
         const newStatus = activity.activity_details?.new_status || 'Unknown';
-        message = `${userName} marked ${projectName} (#${proposalNumber}) as ${newStatus}`;
+        message = `${userName} marked ${projectName} (#${quoteNumber}) as ${newStatus}`;
         eventText = newStatus;
 
         // Map status to type for icon coloring
-        if (newStatus === 'Accepted') type = 'Accepted';
+        if (newStatus === 'Won') type = 'Won';
         else if (newStatus === 'Rejected') type = 'Lost';
         else if (newStatus === 'Submitted') type = 'Submitted';
         else if (newStatus === 'Pending') type = 'Pending';
         else if (newStatus === 'Completed') type = 'Completed';
         else if (newStatus === 'Incomplete') type = 'Incomplete';
       } else if (activity.activity_type === 'Archived') {
-        message = `${userName} Archived ${projectName} (#${proposalNumber})`;
+        message = `${userName} Archived ${projectName} (#${quoteNumber})`;
         eventText = 'Archived';
         type = 'Archived';
       } else if (activity.activity_type === 'Unarchived') {
-        message = `${userName} Unarchived ${projectName} (#${proposalNumber})`;
+        message = `${userName} Unarchived ${projectName} (#${quoteNumber})`;
         eventText = 'Unarchived';
         type = 'Unarchived';
       } else if (activity.activity_type === 'Updated') {
@@ -483,11 +485,11 @@ const Dashboard = () => {
         const fieldList = formattedFields.length > 0
           ? ` ${formattedFields.join(', ')}`
           : '';
-        message = `${userName} updated ${projectName} ${proposalNumber}${fieldList}`;
+        message = `${userName} updated ${projectName} ${quoteNumber}${fieldList}`;
         eventText = 'Updated';
         type = 'Updated';
       } else if (activity.activity_type === 'Deleted') {
-        message = `${userName} deleted ${projectName} (#${proposalNumber})`;
+        message = `${userName} deleted ${projectName} (#${quoteNumber})`;
         eventText = 'Deleted';
         type = 'Deleted';
       } else if (activity.activity_type === 'Reminder_Set') {
@@ -517,7 +519,7 @@ const Dashboard = () => {
           }
         }
 
-        message = `${userName} set reminder for ${projectName} (#${proposalNumber})${timeDescription ? ` - ${timeDescription}` : ''}`;
+        message = `${userName} set reminder for ${projectName} (#${quoteNumber})${timeDescription ? ` - ${timeDescription}` : ''}`;
         eventText = 'Reminder Set';
         type = 'Reminder';
       }
@@ -687,7 +689,7 @@ const Dashboard = () => {
 
       {/* Key Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {proposalsLoading ? (
+        {quotesLoading ? (
           <>
             {/* Loading Skeletons for Metrics */}
             {[...Array(4)].map((_, i) => (
@@ -737,7 +739,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Active Proposals */}
+            {/* Active Quotes */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
@@ -745,8 +747,8 @@ const Dashboard = () => {
                     <FileText weight="duotone" className="w-6 h-6 text-blue-600 dark:text-blue-300" />
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Active Proposals</h3>
-                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.activeProposals}</p>
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Active Quotes</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.activeQuotes}</p>
                   </div>
                 </div>
               </CardContent>
@@ -805,7 +807,7 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-            {proposalsLoading ? (
+            {quotesLoading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => (
                   <Skeleton key={i} className="w-full h-12" />
@@ -814,7 +816,7 @@ const Dashboard = () => {
             ) : (
               <div className="space-y-3">
                 <Button
-                  onClick={() => navigate('/proposals/new')}
+                  onClick={() => setShowNewQuoteDialog(true)}
                   className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white"
                 >
                   <Plus className="w-5 h-5" />
@@ -924,7 +926,7 @@ const Dashboard = () => {
                               {/* Quote Reference (no spacing) */}
                               {reminder.quote_number && (
                                 <p className={`text-xs ${isCompleted ? 'text-gray-500' : 'text-gray-600'}`}>
-                                  #{reminder.quote_number}{reminder.proposal_name ? ` - ${reminder.proposal_name}` : ''}
+                                  #{reminder.quote_number}{reminder.project_name ? ` - ${reminder.project_name}` : ''}
                                 </p>
                               )}
 
@@ -982,7 +984,7 @@ const Dashboard = () => {
                                           reminder.id,
                                           reminder.quote_id,
                                           reminder.quote_number,
-                                          reminder.proposal_name || undefined
+                                          reminder.project_name || undefined
                                         )}
                                       >
                                         <CheckCircle className="w-4 h-4 mr-2" />
@@ -993,9 +995,9 @@ const Dashboard = () => {
                                   <DropdownMenuItem
                                     onClick={() => handleDeleteReminder(
                                       reminder.id,
-                                      reminder.proposal_id,
-                                      reminder.proposal_number,
-                                      reminder.proposal_name || undefined
+                                      reminder.quote_id,
+                                      reminder.quote_number,
+                                      reminder.project_name || undefined
                                     )}
                                     className="text-red-600"
                                   >
@@ -1058,7 +1060,7 @@ const Dashboard = () => {
                       switch (activity.type) {
                         case 'Created':
                           return <Plus className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
-                        case 'Accepted':
+                        case 'Won':
                           return <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />;
                         case 'Lost':
                           return <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />;
@@ -1158,6 +1160,15 @@ const Dashboard = () => {
         }}
       />
 
+      {/* Create Quote Dialog */}
+      <CreateQuoteDialog
+        open={showNewQuoteDialog}
+        onOpenChange={setShowNewQuoteDialog}
+        onCreateQuote={(quoteName) => {
+          setShowNewQuoteDialog(false);
+          navigate(`/quotes/new?name=${encodeURIComponent(quoteName)}`);
+        }}
+      />
     </PageContent>
   );
 };

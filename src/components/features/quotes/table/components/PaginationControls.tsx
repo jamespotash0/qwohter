@@ -3,10 +3,10 @@ import { Table } from '@tanstack/react-table';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Proposal } from "@/stores/proposals/proposalsStore";
+import { Quote } from "@/stores/quotes/quotesStore";
 
 interface PaginationControlsProps {
-  table: Table<Proposal>;
+  table: Table<Quote>;
 }
 
 export const PaginationControls: React.FC<PaginationControlsProps> = ({
