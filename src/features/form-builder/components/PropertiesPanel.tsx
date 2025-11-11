@@ -110,6 +110,343 @@ export function PropertiesPanel({
     );
   }
 
+  // Custom properties panel for text_content fields
+  if (selectedField.type === 'text_content') {
+    return (
+      <motion.div
+        className={cn('flex flex-col h-full w-full max-w-full bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800', className)}
+        initial={{ x: 20, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: 20, opacity: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+      >
+        {/* Header */}
+        <div className="border-b border-gray-200 dark:border-gray-800 px-3 py-3 bg-white dark:bg-gray-800">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Text Properties</h3>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-7 w-7 hover:bg-gray-100 dark:hover:bg-gray-700"
+              title="Close properties panel"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-4">
+            {/* Font Size */}
+            <div className="space-y-2">
+              <Label htmlFor="font-size">Font Size</Label>
+              <Select
+                value={selectedField.styling?.fontSize || '16px'}
+                onValueChange={(value) => onUpdate({
+                  styling: { ...selectedField.styling, fontSize: value }
+                })}
+              >
+                <SelectTrigger id="font-size">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="12px">12px (Extra Small)</SelectItem>
+                  <SelectItem value="14px">14px (Small)</SelectItem>
+                  <SelectItem value="16px">16px (Medium)</SelectItem>
+                  <SelectItem value="18px">18px (Large)</SelectItem>
+                  <SelectItem value="20px">20px (Extra Large)</SelectItem>
+                  <SelectItem value="24px">24px (2X Large)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Font Family */}
+            <div className="space-y-2">
+              <Label htmlFor="font-family">Font Family</Label>
+              <Select
+                value={selectedField.styling?.fontFamily || 'system-ui'}
+                onValueChange={(value) => onUpdate({
+                  styling: { ...selectedField.styling, fontFamily: value }
+                })}
+              >
+                <SelectTrigger id="font-family">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="system-ui">System Default</SelectItem>
+                  <SelectItem value="Arial, sans-serif">Arial</SelectItem>
+                  <SelectItem value="'Times New Roman', serif">Times New Roman</SelectItem>
+                  <SelectItem value="'Courier New', monospace">Courier New</SelectItem>
+                  <SelectItem value="Georgia, serif">Georgia</SelectItem>
+                  <SelectItem value="Verdana, sans-serif">Verdana</SelectItem>
+                  <SelectItem value="'Trebuchet MS', sans-serif">Trebuchet MS</SelectItem>
+                  <SelectItem value="'Comic Sans MS', cursive">Comic Sans MS</SelectItem>
+                  <SelectItem value="Impact, sans-serif">Impact</SelectItem>
+                  <SelectItem value="'Lucida Console', monospace">Lucida Console</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Font Weight */}
+            <div className="space-y-2">
+              <Label htmlFor="font-weight">Font Weight</Label>
+              <Select
+                value={selectedField.styling?.fontWeight || 'normal'}
+                onValueChange={(value) => onUpdate({
+                  styling: { ...selectedField.styling, fontWeight: value }
+                })}
+              >
+                <SelectTrigger id="font-weight">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="semibold">Semi Bold</SelectItem>
+                  <SelectItem value="bold">Bold</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Font Style */}
+            <div className="flex items-center justify-between">
+              <Label htmlFor="italic">Italic</Label>
+              <Switch
+                id="italic"
+                checked={selectedField.styling?.fontStyle === 'italic'}
+                onCheckedChange={(checked) => onUpdate({
+                  styling: { ...selectedField.styling, fontStyle: checked ? 'italic' : 'normal' }
+                })}
+              />
+            </div>
+
+            <Separator />
+
+            {/* Text Alignment */}
+            <div className="space-y-2">
+              <Label htmlFor="text-align">Text Alignment</Label>
+              <Select
+                value={selectedField.styling?.textAlign || 'left'}
+                onValueChange={(value) => onUpdate({
+                  styling: { ...selectedField.styling, textAlign: value }
+                })}
+              >
+                <SelectTrigger id="text-align">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="left">Left</SelectItem>
+                  <SelectItem value="center">Center</SelectItem>
+                  <SelectItem value="right">Right</SelectItem>
+                  <SelectItem value="justify">Justify</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Line Height */}
+            <div className="space-y-2">
+              <Label htmlFor="line-height">Line Height</Label>
+              <Select
+                value={selectedField.styling?.lineHeight || '1.5'}
+                onValueChange={(value) => onUpdate({
+                  styling: { ...selectedField.styling, lineHeight: value }
+                })}
+              >
+                <SelectTrigger id="line-height">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Tight (1.0)</SelectItem>
+                  <SelectItem value="1.25">Snug (1.25)</SelectItem>
+                  <SelectItem value="1.5">Normal (1.5)</SelectItem>
+                  <SelectItem value="1.75">Relaxed (1.75)</SelectItem>
+                  <SelectItem value="2">Loose (2.0)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Letter Spacing */}
+            <div className="space-y-2">
+              <Label htmlFor="letter-spacing">Letter Spacing</Label>
+              <Select
+                value={selectedField.styling?.letterSpacing || 'normal'}
+                onValueChange={(value) => onUpdate({
+                  styling: { ...selectedField.styling, letterSpacing: value }
+                })}
+              >
+                <SelectTrigger id="letter-spacing">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="-0.05em">Tighter</SelectItem>
+                  <SelectItem value="-0.025em">Tight</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="0.025em">Wide</SelectItem>
+                  <SelectItem value="0.05em">Wider</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Separator />
+
+            {/* Text Color */}
+            <div className="space-y-2">
+              <Label htmlFor="text-color">Text Color</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  id="text-color"
+                  value={selectedField.styling?.textColor || '#374151'}
+                  onChange={(e) => onUpdate({
+                    styling: { ...selectedField.styling, textColor: e.target.value }
+                  })}
+                  className="w-12 h-10 rounded cursor-pointer border border-gray-300 dark:border-gray-600"
+                />
+                <Input
+                  value={selectedField.styling?.textColor || '#374151'}
+                  onChange={(e) => onUpdate({
+                    styling: { ...selectedField.styling, textColor: e.target.value }
+                  })}
+                  placeholder="#374151"
+                  className="flex-1"
+                />
+              </div>
+            </div>
+
+            {/* Highlight Color */}
+            <div className="space-y-2">
+              <Label htmlFor="highlight-color">Highlight Color</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  id="highlight-color"
+                  value={selectedField.styling?.highlightColor || '#ffffff'}
+                  onChange={(e) => onUpdate({
+                    styling: { ...selectedField.styling, highlightColor: e.target.value }
+                  })}
+                  className="w-12 h-10 rounded cursor-pointer border border-gray-300 dark:border-gray-600"
+                />
+                <Input
+                  value={selectedField.styling?.highlightColor || '#ffffff'}
+                  onChange={(e) => onUpdate({
+                    styling: { ...selectedField.styling, highlightColor: e.target.value }
+                  })}
+                  placeholder="#ffffff"
+                  className="flex-1"
+                />
+              </div>
+            </div>
+           
+          </div>
+        </ScrollArea>
+      </motion.div>
+    );
+  }
+
+  // Custom properties panel for section fields
+  if (selectedField.type === 'section') {
+    return (
+      <motion.div
+        className={cn('flex flex-col h-full w-full max-w-full bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800', className)}
+        initial={{ x: 20, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: 20, opacity: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+      >
+        {/* Header */}
+        <div className="border-b border-gray-200 dark:border-gray-800 px-3 py-3 bg-white dark:bg-gray-800">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Section Properties</h3>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-7 w-7 hover:bg-gray-100 dark:hover:bg-gray-700"
+              title="Close properties panel"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-4">
+            {/* Section Title */}
+            <div className="space-y-2">
+              <Label htmlFor="section-title">Section Title</Label>
+              <Input
+                id="section-title"
+                value={selectedField.label || ''}
+                onChange={(e) => onUpdate({ label: e.target.value })}
+                placeholder="Enter section title"
+              />
+            </div>
+
+            {/* Section Description */}
+            <div className="space-y-2">
+              <Label htmlFor="section-description">Description</Label>
+              <Textarea
+                id="section-description"
+                value={selectedField.description || ''}
+                onChange={(e) => onUpdate({ description: e.target.value })}
+                placeholder="Add a description for this section..."
+                rows={3}
+              />
+            </div>
+
+            <Separator />
+
+            {/* Title Size */}
+            <div className="space-y-2">
+              <Label htmlFor="title-size">Title Size</Label>
+              <Select
+                value={selectedField.styling?.titleSize || 'lg'}
+                onValueChange={(value) => onUpdate({
+                  styling: { ...selectedField.styling, titleSize: value }
+                })}
+              >
+                <SelectTrigger id="title-size">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sm">Small</SelectItem>
+                  <SelectItem value="md">Medium</SelectItem>
+                  <SelectItem value="lg">Large</SelectItem>
+                  <SelectItem value="xl">Extra Large</SelectItem>
+                  <SelectItem value="2xl">2X Large</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Description Size */}
+            <div className="space-y-2">
+              <Label htmlFor="description-size">Description Size</Label>
+              <Select
+                value={selectedField.styling?.descriptionSize || 'sm'}
+                onValueChange={(value) => onUpdate({
+                  styling: { ...selectedField.styling, descriptionSize: value }
+                })}
+              >
+                <SelectTrigger id="description-size">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="xs">Extra Small</SelectItem>
+                  <SelectItem value="sm">Small</SelectItem>
+                  <SelectItem value="md">Medium</SelectItem>
+                  <SelectItem value="lg">Large</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Delete Button */}
+          </div>
+        </ScrollArea>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       className={cn('flex flex-col h-full w-full max-w-full bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800', className)}
@@ -120,20 +457,32 @@ export function PropertiesPanel({
     >
       {/* Header */}
       <motion.div
-        className="flex flex-col border-b border-gray-200 dark:border-gray-800"
+        className="border-b border-gray-200 dark:border-gray-800"
         initial={{ y: -10, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.3, delay: 0.1 }}
       >
-        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800">
-          {selectedField.isSystemField && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded text-xs text-gray-600 dark:text-gray-400">
-              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+        {/* Top Bar with Close Button and System Field Badge */}
+        <div className="flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-800">
+          {selectedField.isSystemField ? (
+            <div className="flex items-center gap-2 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs text-gray-600 dark:text-gray-400">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
               </svg>
               <span>Protected</span>
             </div>
+          ) : (
+            <div></div>
           )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-7 w-7 hover:bg-gray-100 dark:hover:bg-gray-700"
+            title="Close properties panel"
+          >
+            <X className="w-4 h-4" />
+          </Button>
         </div>
 
         {/* Tabs */}
@@ -616,13 +965,23 @@ function BasicPropertiesSection({
       {field.field_type !== 'checkbox' && field.field_type !== 'radio' && (
         <div className="space-y-2">
           <Label htmlFor="placeholder" className="text-xs">Placeholder</Label>
-          <Input
-            id="placeholder"
-            value={field.placeholder || ''}
-            onChange={(e) => onUpdate({ placeholder: e.target.value })}
-            placeholder="e.g., Enter text here..."
-            className="h-8 text-sm"
-          />
+          {field.field_type === 'textarea' || field.type === 'text_content' ? (
+            <Textarea
+              id="placeholder"
+              value={field.placeholder || ''}
+              onChange={(e) => onUpdate({ placeholder: e.target.value })}
+              placeholder="e.g., Add descriptive text..."
+              className="min-h-[80px] text-sm"
+            />
+          ) : (
+            <Input
+              id="placeholder"
+              value={field.placeholder || ''}
+              onChange={(e) => onUpdate({ placeholder: e.target.value })}
+              placeholder="e.g., Enter text here..."
+              className="h-8 text-sm"
+            />
+          )}
         </div>
       )}
 
@@ -695,7 +1054,7 @@ function BasicPropertiesSection({
               placeholder="e.g., (555) 123-4567 or +1-555-123-4567"
               maxLength={18}
             />
-          ) : field.field_type === 'textarea' ? (
+          ) : field.field_type === 'textarea' || field.type === 'text_content' ? (
             <Textarea
               id="default-value"
               value={field.default_value || ''}
@@ -728,8 +1087,8 @@ function BasicPropertiesSection({
           <TemplateVariablePicker
             onInsert={(variable) => {
               const currentValue = field.default_value || '';
-              // For textarea, append; for input, replace
-              const newValue = field.field_type === 'textarea'
+              // For textarea and text_content, append; for input, replace
+              const newValue = field.field_type === 'textarea' || field.type === 'text_content'
                 ? currentValue + (currentValue ? ' ' : '') + variable
                 : variable;
               onUpdate({ default_value: newValue });
@@ -1064,35 +1423,36 @@ function LayoutSection({
 }) {
   const layout = field.layout || { x: 0, y: 0, w: 6, h: 2 };
 
+  // Calculate approximate dimensions
+  // Grid: 12 columns, rowHeight 50px, column width ~115px (1376px / 12)
+  const approximateHeight = layout.h * 50;
+  const gridUnitsWidth = layout.w;
+
   return (
     <>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-2">
-          <Label htmlFor="width" className="text-xs">Width (cols)</Label>
-          <Input
-            id="width"
-            type="number"
-            min="1"
-            max="12"
-            value={layout.w}
-            onChange={(e) =>
-              onUpdate({ layout: { ...layout, w: parseInt(e.target.value) || 1 } })
-            }
-            className="h-8 text-sm"
-          />
+      {/* Dimension Display */}
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-blue-900 dark:text-blue-100">Actual Size</span>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="height" className="text-xs">Height (rows)</Label>
-          <Input
-            id="height"
-            type="number"
-            min="1"
-            value={layout.h}
-            onChange={(e) =>
-              onUpdate({ layout: { ...layout, h: parseInt(e.target.value) || 1 } })
-            }
-            className="h-8 text-sm"
-          />
+        <div className="grid grid-cols-2 gap-3 text-xs">
+          <div>
+            <span className="text-blue-600 dark:text-blue-400 font-medium">Width:</span>
+            <div className="text-blue-900 dark:text-blue-100 font-mono mt-0.5">
+              {gridUnitsWidth} units
+              <span className="text-blue-500 dark:text-blue-400 text-[10px] ml-1">({gridUnitsWidth}/12 cols)</span>
+            </div>
+          </div>
+          <div>
+            <span className="text-blue-600 dark:text-blue-400 font-medium">Height:</span>
+            <div className="text-blue-900 dark:text-blue-100 font-mono mt-0.5">
+              ~{approximateHeight}px
+              <span className="text-blue-500 dark:text-blue-400 text-[10px] ml-1">({layout.h} rows)</span>
+            </div>
+          </div>
+        </div>
+        <div className="mt-2 text-[10px] text-blue-600 dark:text-blue-400">
+          Drag resize handles to adjust size
         </div>
       </div>
 
@@ -1166,36 +1526,66 @@ function StylingSection({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-2">
-          <Label htmlFor="border-width" className="text-xs">Border Width</Label>
-          <Input
-            id="border-width"
-            type="number"
-            min="0"
-            max="10"
-            value={styling.borderWidth || 1}
-            onChange={(e) =>
-              onUpdate({ styling: { ...styling, borderWidth: parseInt(e.target.value) || 0 } })
+      <div className="space-y-2">
+        <Label htmlFor="border-radius" className="text-xs">Border Radius</Label>
+        <Input
+          id="border-radius"
+          type="text"
+          inputMode="numeric"
+          value={styling.borderRadius !== undefined ? String(styling.borderRadius) : ''}
+          onChange={(e) => {
+            const value = e.target.value;
+            // Allow empty or digits only
+            if (value === '' || /^\d+$/.test(value)) {
+              if (value === '') {
+                // Allow empty during editing
+                onUpdate({ styling: { ...styling, borderRadius: undefined } });
+              } else {
+                const numValue = parseInt(value);
+                if (numValue >= 0) {
+                  onUpdate({ styling: { ...styling, borderRadius: numValue } });
+                }
+              }
             }
-            className="h-8 text-sm"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="border-radius" className="text-xs">Border Radius</Label>
-          <Input
-            id="border-radius"
-            type="number"
-            min="0"
-            max="50"
-            value={styling.borderRadius || 4}
-            onChange={(e) =>
-              onUpdate({ styling: { ...styling, borderRadius: parseInt(e.target.value) || 0 } })
+          }}
+          onBlur={(e) => {
+            // On blur, ensure we have a valid value (default to 4 if empty)
+            if (e.target.value === '' || styling.borderRadius === undefined) {
+              onUpdate({ styling: { ...styling, borderRadius: 4 } });
             }
-            className="h-8 text-sm"
-          />
-        </div>
+          }}
+          className="h-8 text-sm"
+          placeholder="4"
+        />
       </div>
+
+      {/* Input Height - Only show for non-textarea fields */}
+      {field.field_type !== 'textarea' && field.type !== 'section' && field.type !== 'text_content' && (
+        <div className="space-y-2">
+          <Label htmlFor="input-height" className="text-xs">Input Height (px)</Label>
+          <Select
+            value={String(styling.inputHeight || 36)}
+            onValueChange={(value) => {
+              onUpdate({ styling: { ...styling, inputHeight: parseInt(value) } });
+            }}
+          >
+            <SelectTrigger id="input-height" className="h-8 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="28">28px (Extra Small)</SelectItem>
+              <SelectItem value="32">32px (Small)</SelectItem>
+              <SelectItem value="36">36px (Default)</SelectItem>
+              <SelectItem value="40">40px (Medium)</SelectItem>
+              <SelectItem value="44">44px (Large)</SelectItem>
+              <SelectItem value="48">48px (Extra Large)</SelectItem>
+              <SelectItem value="54">54px (XXL)</SelectItem>
+              <SelectItem value="60">60px (Huge)</SelectItem>
+              <SelectItem value="72">72px (Massive)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="shadow" className="text-xs">Shadow</Label>

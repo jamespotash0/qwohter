@@ -31,8 +31,22 @@ export interface EnhancedFormField extends BaseFormField {
     borderColor?: string;
     borderWidth?: number;
     borderRadius?: number;
+    inputHeight?: number;
     padding?: number;
     shadow?: 'none' | 'sm' | 'md' | 'lg' | 'xl';
+    // Section-specific styling
+    titleSize?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
+    descriptionSize?: 'xs' | 'sm' | 'md' | 'lg';
+    // Text content styling
+    fontSize?: string;
+    fontFamily?: string;
+    fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold';
+    fontStyle?: 'normal' | 'italic';
+    textAlign?: 'left' | 'center' | 'right' | 'justify';
+    lineHeight?: string;
+    letterSpacing?: string;
+    textColor?: string;
+    highlightColor?: string;
   };
 
   // Mathematical calculations
