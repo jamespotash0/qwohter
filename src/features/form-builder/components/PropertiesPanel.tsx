@@ -24,6 +24,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -72,6 +73,7 @@ export function PropertiesPanel({
   allFields = [],
   className,
 }: PropertiesPanelProps) {
+  const [activeTab, setActiveTab] = useState<'properties' | 'settings'>('properties');
   const [expandedSections, setExpandedSections] = useState<SectionType[]>([
     'basic',
     'validation',
@@ -109,115 +111,127 @@ export function PropertiesPanel({
   }
 
   return (
-    <div className={cn('flex flex-col h-full w-full max-w-full bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800', className)}>
+    <motion.div
+      className={cn('flex flex-col h-full w-full max-w-full bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800', className)}
+      initial={{ x: 20, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: 20, opacity: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Field Properties
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            {selectedField.label || 'Untitled Field'}
-          </p>
-        </div>
-        <div className="flex items-center gap-1">
-          {onDelete && !selectedField.isSystemField && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onDelete}
-              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30"
-              title="Delete field"
-            >
-              <Trash className="w-4 h-4" />
-            </Button>
-          )}
+      <motion.div
+        className="flex flex-col border-b border-gray-200 dark:border-gray-800"
+        initial={{ y: -10, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.3, delay: 0.1 }}
+      >
+        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800">
           {selectedField.isSystemField && (
-            <div className="flex items-center gap-2 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs text-gray-600 dark:text-gray-400">
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded text-xs text-gray-600 dark:text-gray-400">
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
               </svg>
               <span>Protected</span>
             </div>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="h-8 w-8"
-            title="Close properties"
-          >
-            <X className="w-4 h-4" />
-          </Button>
         </div>
-      </div>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'properties' | 'settings')} className="w-full">
+          <TabsList className="w-full h-10 rounded-none bg-transparent border-0 p-0 relative">
+            <TabsTrigger
+              value="properties"
+              className="flex-1 rounded-none relative pb-3 data-[state=active]:bg-transparent data-[state=active]:text-gray-900 dark:data-[state=active]:text-gray-100 text-gray-600 dark:text-gray-400 font-medium transition-colors duration-200 after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:h-0.5 after:bg-blue-600 after:transition-all after:duration-300 after:ease-out data-[state=active]:after:w-[70px] after:w-0"
+            >
+              Properties
+            </TabsTrigger>
+            <TabsTrigger
+              value="settings"
+              className="flex-1 rounded-none relative pb-3 data-[state=active]:bg-transparent data-[state=active]:text-gray-900 dark:data-[state=active]:text-gray-100 text-gray-600 dark:text-gray-400 font-medium transition-colors duration-200 after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:h-0.5 after:bg-blue-600 after:transition-all after:duration-300 after:ease-out data-[state=active]:after:w-[55px] after:w-0"
+            >
+              Settings
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </motion.div>
 
       <ScrollArea className="flex-1 overflow-x-hidden">
-        <div className="p-4 space-y-4 w-full max-w-full">
-          {/* Basic Properties Section */}
-          <Section
-            title="Basic Properties"
-            icon={Code}
-            expanded={isSectionExpanded('basic')}
-            onToggle={() => toggleSection('basic')}
-          >
-            <BasicPropertiesSection field={selectedField} onUpdate={onUpdate} />
-          </Section>
+        <div className="p-3 space-y-3 w-full max-w-full">
+          {/* Properties Tab Content */}
+          {activeTab === 'properties' && (
+            <>
+              {/* Basic Properties Section */}
+              <Section
+                title="Basic Properties"
+                icon={Code}
+                expanded={isSectionExpanded('basic')}
+                onToggle={() => toggleSection('basic')}
+              >
+                <BasicPropertiesSection field={selectedField} onUpdate={onUpdate} />
+              </Section>
 
-          {/* Validation Section */}
-          <Section
-            title="Validation"
-            icon={Check}
-            expanded={isSectionExpanded('validation')}
-            onToggle={() => toggleSection('validation')}
-          >
-            <ValidationSection field={selectedField} onUpdate={onUpdate} />
-          </Section>
+              {/* Validation Section */}
+              <Section
+                title="Validation"
+                icon={Check}
+                expanded={isSectionExpanded('validation')}
+                onToggle={() => toggleSection('validation')}
+              >
+                <ValidationSection field={selectedField} onUpdate={onUpdate} />
+              </Section>
 
-          {/* Calculation Section */}
-          {selectedField.field_type === 'math' && (
-            <Section
-              title="Math Formula"
-              icon={Function}
-              expanded={isSectionExpanded('calculation')}
-              onToggle={() => toggleSection('calculation')}
-            >
-              <CalculationSection field={selectedField} onUpdate={onUpdate} allFields={allFields} />
-            </Section>
+              {/* Calculation Section */}
+              {selectedField.field_type === 'math' && (
+                <Section
+                  title="Math Formula"
+                  icon={Function}
+                  expanded={isSectionExpanded('calculation')}
+                  onToggle={() => toggleSection('calculation')}
+                >
+                  <CalculationSection field={selectedField} onUpdate={onUpdate} allFields={allFields} />
+                </Section>
+              )}
+
+              {/* Dependency Section */}
+              <Section
+                title="Dependencies"
+                icon={ArrowsDownUp}
+                expanded={isSectionExpanded('dependency')}
+                onToggle={() => toggleSection('dependency')}
+              >
+                <DependencySection field={selectedField} onUpdate={onUpdate} allFields={allFields} />
+              </Section>
+            </>
           )}
+        
 
-          {/* Dependency Section */}
-          <Section
-            title="Dependencies"
-            icon={ArrowsDownUp}
-            expanded={isSectionExpanded('dependency')}
-            onToggle={() => toggleSection('dependency')}
-          >
-            <DependencySection field={selectedField} onUpdate={onUpdate} allFields={allFields} />
-          </Section>
+          {/* Settings Tab Content */}
+          {activeTab === 'settings' && (
+            <>
+              {/* Layout Section */}
+              <Section
+                title="Layout & Position"
+                icon={ArrowsDownUp}
+                expanded={isSectionExpanded('layout')}
+                onToggle={() => toggleSection('layout')}
+              >
+                <LayoutSection field={selectedField} onUpdate={onUpdate} />
+              </Section>
 
-          {/* Layout Section */}
-          <Section
-            title="Layout & Position"
-            icon={ArrowsDownUp}
-            expanded={isSectionExpanded('layout')}
-            onToggle={() => toggleSection('layout')}
-          >
-            <LayoutSection field={selectedField} onUpdate={onUpdate} />
-          </Section>
-
-          {/* Styling Section */}
-          <Section
-            title="Styling"
-            icon={Palette}
-            expanded={isSectionExpanded('styling')}
-            onToggle={() => toggleSection('styling')}
-          >
-            <StylingSection field={selectedField} onUpdate={onUpdate} />
-          </Section>
+              {/* Styling Section */}
+              <Section
+                title="Styling"
+                icon={Palette}
+                expanded={isSectionExpanded('styling')}
+                onToggle={() => toggleSection('styling')}
+              >
+                <StylingSection field={selectedField} onUpdate={onUpdate} />
+              </Section>
+            </>
+          )}
         </div>
       </ScrollArea>
-    </div>
+    </motion.div>
   );
 }
 
@@ -232,41 +246,74 @@ interface SectionProps {
 
 function Section({ title, icon: Icon, expanded, onToggle, children }: SectionProps) {
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 overflow-hidden w-full max-w-full">
-      <button
+    <motion.div
+      className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 overflow-hidden w-full max-w-full"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+    >
+      <motion.button
         onClick={onToggle}
         className="w-full flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        whileHover={{ backgroundColor: "rgba(0, 0, 0, 0.02)" }}
+        whileTap={{ scale: 0.99 }}
       >
         <div className="flex items-center gap-2">
-          <Icon className="w-4 h-4 text-primary" />
+          <motion.div
+            animate={{
+              scale: expanded ? 1.1 : 1,
+              color: expanded ? "rgb(59, 130, 246)" : "rgb(107, 114, 128)"
+            }}
+            transition={{ duration: 0.2 }}
+          >
+            <Icon className="w-4 h-4" />
+          </motion.div>
           <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
             {title}
           </span>
         </div>
         <motion.div
           animate={{ rotate: expanded ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
         >
           <CaretDown className="w-4 h-4 text-gray-500" />
         </motion.div>
-      </button>
+      </motion.button>
 
       <AnimatePresence initial={false}>
         {expanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            animate={{
+              height: 'auto',
+              opacity: 1,
+              transition: {
+                height: { duration: 0.3, ease: "easeInOut" },
+                opacity: { duration: 0.2, delay: 0.1 }
+              }
+            }}
+            exit={{
+              height: 0,
+              opacity: 0,
+              transition: {
+                height: { duration: 0.3, ease: "easeInOut" },
+                opacity: { duration: 0.15 }
+              }
+            }}
             className="w-full max-w-full overflow-hidden"
           >
-            <div className="p-3 pt-0 space-y-3 w-full max-w-full">
+            <motion.div
+              className="p-3 pt-0 space-y-3 w-full max-w-full"
+              initial={{ y: -10 }}
+              animate={{ y: 0 }}
+              transition={{ duration: 0.2, delay: 0.1 }}
+            >
               {children}
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
 

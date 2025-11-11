@@ -97,9 +97,9 @@ export interface EnhancedFormTab extends Omit<FormTab, 'fields'> {
 }
 
 /**
- * Field Palette Item
+ * Form Components Item
  */
-export interface FieldPaletteItem {
+export interface FormComponentsItem {
   type: string;
   label: string;
   icon: React.ComponentType<any>;
@@ -121,7 +121,7 @@ export interface FormBuilderUIState {
   activeTabId: string;
   canvasMode: CanvasMode;
   showPropertiesPanel: boolean;
-  showFieldPalette: boolean;
+  showFormComponents: boolean;
   gridSize: number; // Grid cell size in pixels
   snapToGrid: boolean;
 }

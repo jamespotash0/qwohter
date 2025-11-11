@@ -9,7 +9,10 @@ import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, c
 import { SortableContext, useSortable, arrayMove, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Eye, FloppyDisk, Plus, Info, X, PencilSimple, MagnifyingGlassMinus, MagnifyingGlassPlus, Hand, Cursor, ArrowRight, DotsSixVertical, ArrowsOutCardinal } from '@phosphor-icons/react';
+import GridLayout, { Layout } from 'react-grid-layout';
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
+import { ArrowLeft, Eye, FloppyDisk, Plus, Info, X, PencilSimple, MagnifyingGlassMinus, MagnifyingGlassPlus, Hand, Cursor, ArrowRight, DotsSixVertical, ArrowsOutCardinal, CaretUp, CaretDown, CaretLeft as CaretLeftIcon, CaretRight as CaretRightIcon, Trash } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,13 +23,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from '@/components/ui/resizable';
+import { Tabs, TabsList } from '@/components/ui/tabs';
 import { useUser } from '@/auth';
 import { useForm, useCreateForm, useUpdateForm } from '@/hooks/queries';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
-import { FieldPalette } from '@/features/form-builder/components/FieldPalette';
+import { FormComponents } from '@/features/form-builder/components/FormComponents';
 import { DotGridCanvas } from '@/features/form-builder/components/DotGridCanvas';
 import { PropertiesPanel } from '@/features/form-builder/components/PropertiesPanel';
-import type { EnhancedFormField, EnhancedFormTab, FieldPaletteItem } from '@/features/form-builder/types/enhanced';
+import type { EnhancedFormField, EnhancedFormTab, FormComponentsItem } from '@/features/form-builder/types/enhanced';
 import { DEFAULT_COMPANY_INFO_TAB, DEFAULT_PROJECT_DETAILS_TAB } from '@/stores/forms/formsStore';
 
 // Droppable Page Content Component
@@ -66,6 +75,74 @@ function DroppablePageContent({
     });
   }
 
+  // Convert field layouts to react-grid-layout format
+  const gridLayouts: Layout[] = pageFields.map(field => ({
+    i: field.id,
+    x: field.layout?.x || 0,
+    y: field.layout?.y || 0,
+    w: field.layout?.w || 6,
+    h: field.layout?.h || 2,
+    minW: 2,
+    minH: 1,
+    maxW: 12,
+    static: field.isSystemField || false, // System fields can't be moved
+  }));
+
+  // Handle layout changes from react-grid-layout
+  const handleLayoutChange = useCallback((newLayout: Layout[]) => {
+    newLayout.forEach(layoutItem => {
+      const field = pageFields.find(f => f.id === layoutItem.i);
+      if (field && (
+        field.layout?.x !== layoutItem.x ||
+        field.layout?.y !== layoutItem.y ||
+        field.layout?.w !== layoutItem.w ||
+        field.layout?.h !== layoutItem.h
+      )) {
+        onUpdateField({
+          id: field.id,
+          layout: {
+            x: layoutItem.x,
+            y: layoutItem.y,
+            w: layoutItem.w,
+            h: layoutItem.h,
+          },
+        });
+      }
+    });
+  }, [pageFields, onUpdateField]);
+
+  // Handle manual resize with arrow buttons
+  const handleResize = useCallback((fieldId: string, direction: 'up' | 'down' | 'left' | 'right') => {
+    const field = pageFields.find(f => f.id === fieldId);
+    if (!field || !field.layout) return;
+
+    const newLayout = { ...field.layout };
+
+    switch (direction) {
+      case 'up':
+        // Increase height
+        newLayout.h = Math.min((newLayout.h || 2) + 1, 10); // Max height of 10
+        break;
+      case 'down':
+        // Decrease height
+        newLayout.h = Math.max((newLayout.h || 2) - 1, 1); // Min height of 1
+        break;
+      case 'left':
+        // Decrease width
+        newLayout.w = Math.max((newLayout.w || 6) - 1, 2); // Min width of 2
+        break;
+      case 'right':
+        // Increase width
+        newLayout.w = Math.min((newLayout.w || 6) + 1, 12); // Max width of 12
+        break;
+    }
+
+    onUpdateField({
+      id: fieldId,
+      layout: newLayout,
+    });
+  }, [pageFields, onUpdateField]);
+
   return (
     <div
       ref={setNodeRef}
@@ -85,40 +162,68 @@ function DroppablePageContent({
           </div>
         </div>
       ) : (
-        <SortableContext items={pageFields.map(f => `field-${f.id}`)}>
-          <div className="grid grid-cols-12 gap-4 min-h-[500px] relative" style={{ gridAutoRows: '50px' }}>
-            {pageFields.map((field) => (
-              <SortableFieldItem
-                key={field.id}
+        <GridLayout
+          className="layout"
+          layout={gridLayouts}
+          cols={12}
+          rowHeight={50}
+          width={1200}
+          onLayoutChange={handleLayoutChange}
+          isDraggable={currentTab === tabIndex}
+          isResizable={currentTab === tabIndex}
+          compactType="vertical"
+          preventCollision={false}
+          margin={[16, 16]}
+          containerPadding={[0, 0]}
+          useCSSTransforms={true}
+          resizeHandles={['se', 's', 'e']}
+        >
+          {pageFields.map((field) => (
+            <div
+              key={field.id}
+              data-grid={{
+                i: field.id,
+                x: field.layout?.x || 0,
+                y: field.layout?.y || 0,
+                w: field.layout?.w || 6,
+                h: field.layout?.h || 2,
+                minW: 2,
+                minH: 1,
+                maxW: 12,
+                static: field.isSystemField || false,
+              }}
+            >
+              <GridFieldItem
                 field={field}
                 isSelected={selectedFieldId === field.id && currentTab === tabIndex}
                 onSelect={() => onSelectField(field.id)}
                 onDelete={() => onDeleteField(field.id)}
-                onUpdateLayout={(updates) => onUpdateField(updates)}
+                onResize={(direction) => handleResize(field.id, direction)}
               />
-            ))}
+            </div>
+          ))}
+        </GridLayout>
+      )}
 
-            {/* Drag Preview - Shows where the field will be placed */}
-            {dragPreview && isOver && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="border-2 border-dashed border-blue-500 bg-blue-100/50 dark:bg-blue-900/30 rounded-lg"
-                style={{
-                  gridColumn: `span ${Math.min(dragPreview.w, 12)}`,
-                  gridRow: `span ${dragPreview.h}`,
-                  gridRowStart: previewY + 1,
-                }}
-              >
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                    Drop here
-                  </p>
-                </div>
-              </motion.div>
-            )}
+      {/* Drag Preview - Shows where the field will be placed */}
+      {dragPreview && isOver && pageFields.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="absolute border-2 border-dashed border-blue-500 bg-blue-100/50 dark:bg-blue-900/30 rounded-lg pointer-events-none"
+          style={{
+            left: '24px',
+            top: `${(previewY * 50) + (previewY * 16) + 24}px`,
+            width: `${(dragPreview.w / 12) * 1200 - 16}px`,
+            height: `${dragPreview.h * 50 + (dragPreview.h - 1) * 16}px`,
+          }}
+        >
+          <div className="flex items-center justify-center h-full">
+            <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+              Drop here
+            </p>
           </div>
-        </SortableContext>
+        </motion.div>
       )}
     </div>
   );
@@ -128,6 +233,21 @@ export default function FormBuilderV3() {
   const { id: formId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const user = useUser();
+
+  // Add custom styles for react-grid-layout - hide resize handles
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      /* Hide default resize handles */
+      .react-grid-item > .react-resizable-handle {
+        display: none;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
 
   // Get organization ID for form creation/updates
   const { organizationId } = useCurrentOrganization(user?.id || '', !!user?.id);
@@ -143,7 +263,6 @@ export default function FormBuilderV3() {
 
   // Form state
   const [formName, setFormName] = useState(existingForm?.name || 'Untitled Form');
-  const [formDescription, setFormDescription] = useState(existingForm?.description || '');
   const [formType, setFormType] = useState(existingForm?.form_type || 'Custom');
   const [currentTab, setCurrentTab] = useState(0);
   const [tabs, setTabs] = useState<EnhancedFormTab[]>(() => {
@@ -160,7 +279,7 @@ export default function FormBuilderV3() {
   useEffect(() => {
     if (existingForm) {
       setFormName(existingForm.name);
-      setFormDescription(existingForm.description || '');
+      // setFormDescription(existingForm.description || '');
       setFormType(existingForm.form_type || 'Custom');
       if (existingForm.tabs) {
         setTabs(existingForm.tabs as EnhancedFormTab[]);
@@ -174,7 +293,6 @@ export default function FormBuilderV3() {
   const [dragPreview, setDragPreview] = useState<{ w: number; h: number } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
-  const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editingTabIndex, setEditingTabIndex] = useState<number | null>(null);
   const [editingTabName, setEditingTabName] = useState('');
 
@@ -265,7 +383,7 @@ export default function FormBuilderV3() {
 
     // Set drag preview dimensions for palette items
     if (event.active.id.toString().startsWith('palette-')) {
-      const paletteItem = event.active.data.current as FieldPaletteItem;
+      const paletteItem = event.active.data.current as FormComponentsItem;
       const layout = paletteItem.defaultProps?.layout || { w: 6, h: 2 };
       setDragPreview({ w: layout.w, h: layout.h });
     }
@@ -342,7 +460,7 @@ export default function FormBuilderV3() {
         over.id.toString() === `canvas-${currentTab}`;
 
       if (isValidDropTarget) {
-        const paletteItem = active.data.current as FieldPaletteItem;
+        const paletteItem = active.data.current as FormComponentsItem;
 
         // Calculate the next available Y position (bottom of current fields)
         let maxY = 0;
@@ -355,6 +473,7 @@ export default function FormBuilderV3() {
         const newField: EnhancedFormField = {
           ...paletteItem.defaultProps,
           id: `field_${Date.now()}`,
+          type: paletteItem.type, // Preserve the type (e.g., 'section', 'text_content')
           order: currentFields.length,
           layout: {
             ...paletteItem.defaultProps.layout,
@@ -367,7 +486,7 @@ export default function FormBuilderV3() {
         updatedTabs[currentTab] = {
           ...updatedTabs[currentTab],
           fields: [...currentFields, newField],
-        };
+        } as EnhancedFormTab;
         setTabs(updatedTabs);
 
         // Select the newly added field
@@ -439,7 +558,6 @@ export default function FormBuilderV3() {
       const formData = {
         organization_id: organizationId,
         name: formName,
-        description: formDescription,
         form_type: formType, // Type of document this form generates
         tabs: tabs as any[],
         created_by: user.id,
@@ -473,7 +591,6 @@ export default function FormBuilderV3() {
     organizationId,
     user,
     formName,
-    formDescription,
     tabs,
     formId,
     createFormMutation,
@@ -631,7 +748,7 @@ export default function FormBuilderV3() {
     >
       <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-950">
         {/* Top Toolbar */}
-        <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+        <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -643,67 +760,36 @@ export default function FormBuilderV3() {
             </Button>
             <Separator orientation="vertical" className="h-6" />
 
-            {/* Editable Form Name and Description */}
-            <div className="flex flex-col gap-0.5">
-              {isEditingName ? (
-                <Input
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  onBlur={() => setIsEditingName(false)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      setIsEditingName(false);
-                      setIsEditingDescription(true);
-                    }
-                    if (e.key === 'Escape') {
-                      setFormName(existingForm?.name || 'Untitled Form');
-                      setIsEditingName(false);
-                    }
-                  }}
-                  className="h-8 w-80 font-semibold border border-blue-500 focus-visible:ring-1"
-                  placeholder="Form Name"
-                  autoFocus
-                />
-              ) : (
-                <button
-                  onClick={() => setIsEditingName(true)}
-                  className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group text-left"
-                >
-                  <span className="font-semibold text-gray-900 dark:text-gray-100">
-                    {formName}
-                  </span>
-                  <PencilSimple className="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </button>
-              )}
-
-              {isEditingDescription ? (
-                <Input
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  onBlur={() => setIsEditingDescription(false)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') setIsEditingDescription(false);
-                    if (e.key === 'Escape') {
-                      setFormDescription(existingForm?.description || '');
-                      setIsEditingDescription(false);
-                    }
-                  }}
-                  className="h-7 w-80 text-sm border border-blue-500 focus-visible:ring-1"
-                  placeholder="Add a description..."
-                  autoFocus
-                />
-              ) : (
-                <button
-                  onClick={() => setIsEditingDescription(true)}
-                  className="flex items-center gap-2 px-2 py-0.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group text-left"
-                >
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {formDescription || 'Add a description...'}
-                  </span>
-                  <PencilSimple className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </button>
-              )}
-            </div>
+            {/* Editable Form Name */}
+            {isEditingName ? (
+              <Input
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                onBlur={() => setIsEditingName(false)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setIsEditingName(false);
+                  }
+                  if (e.key === 'Escape') {
+                    setFormName(existingForm?.name || 'Untitled Form');
+                    setIsEditingName(false);
+                  }
+                }}
+                className="h-8 w-80 font-semibold border border-blue-500 focus-visible:ring-1"
+                placeholder="Form Name"
+                autoFocus
+              />
+            ) : (
+              <button
+                onClick={() => setIsEditingName(true)}
+                className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group text-left"
+              >
+                <span className="font-semibold text-gray-900 dark:text-gray-100">
+                  {formName}
+                </span>
+                <PencilSimple className="w-3.5 h-3.5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -753,51 +839,62 @@ export default function FormBuilderV3() {
           </div>
         </div>
 
-        {/* Tab Bar with Drag-to-Reorder */}
-        <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 overflow-x-auto">
-          <SortableContext items={tabs.map(tab => `tab-${tab.id}`)} strategy={horizontalListSortingStrategy}>
-            {tabs.map((tab, index) => (
-              <SortableTab
-                key={tab.id}
-                tab={tab}
-                index={index}
-                isActive={currentTab === index}
-                isEditing={editingTabIndex === index}
-                editingName={editingTabName}
-                onSelect={() => {
-                  setCurrentTab(index);
-                  handleFocusOnPage(index);
-                }}
-                onStartEdit={(name) => handleStartEditingTab(index, name)}
-                onFinishEdit={handleFinishEditingTab}
-                onCancelEdit={handleCancelEditingTab}
-                onChangeName={setEditingTabName}
-                onDelete={() => handleDeleteTab(index)}
-              />
-            ))}
-          </SortableContext>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAddTab}
-            className="h-9 ml-2"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Add Tab
-          </Button>
-        </div>
-
-        {/* Main Content - Three Panels */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left Sidebar - Field Palette */}
-          <div className="w-[280px] flex-shrink-0">
-            <FieldPalette />
+        {/* Tab Bar with Drag-to-Reorder - shadcn/ui Tabs */}
+        <Tabs value={`tab-${currentTab}`} className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex items-center gap-2 px-4 py-2 overflow-x-auto">
+            <SortableContext items={tabs.map(tab => `tab-${tab.id}`)} strategy={horizontalListSortingStrategy}>
+              <TabsList className="h-auto p-0 bg-transparent gap-2">
+                {tabs.map((tab, index) => (
+                  <SortableTab
+                    key={tab.id}
+                    tab={tab}
+                    index={index}
+                    isActive={currentTab === index}
+                    isEditing={editingTabIndex === index}
+                    editingName={editingTabName}
+                    onSelect={() => {
+                      setCurrentTab(index);
+                      handleFocusOnPage(index);
+                    }}
+                    onStartEdit={(name) => handleStartEditingTab(index, name)}
+                    onFinishEdit={handleFinishEditingTab}
+                    onCancelEdit={handleCancelEditingTab}
+                    onChangeName={setEditingTabName}
+                    onDelete={() => handleDeleteTab(index)}
+                  />
+                ))}
+              </TabsList>
+            </SortableContext>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAddTab}
+              className="h-9 ml-2"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Add Page
+            </Button>
           </div>
+        </Tabs>
+
+        {/* Main Content - Three Resizable Panels */}
+        <ResizablePanelGroup direction="horizontal" className="flex-1 overflow-hidden">
+          {/* Left Sidebar - Form Components */}
+          <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+            <FormComponents
+              tabs={tabs}
+              currentTab={currentTab}
+              onSelectTab={(index) => setCurrentTab(index)}
+            />
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
 
           {/* Center Canvas with Pan/Zoom */}
-          <div
-            ref={canvasRef}
-            className="flex-1 overflow-hidden relative bg-gray-50 dark:bg-gray-900"
+          <ResizablePanel defaultSize={selectedFieldId ? 55 : 80} minSize={40}>
+            <div
+              ref={canvasRef}
+              className="w-full h-full overflow-hidden relative bg-gray-50 dark:bg-gray-900"
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
@@ -907,21 +1004,25 @@ export default function FormBuilderV3() {
                 </button>
               </div>
             </div>
-          </div>
+            </div>
+          </ResizablePanel>
 
           {/* Right Sidebar - Properties Panel (only show when field selected) */}
           {selectedFieldId && (
-            <div className="w-[350px] flex-shrink-0">
-              <PropertiesPanel
-                selectedField={selectedField}
-                onUpdate={handleUpdateField}
-                onClose={() => setSelectedFieldId(null)}
-                onDelete={() => handleDeleteField(selectedFieldId)}
-                allFields={currentFields}
-              />
-            </div>
+            <>
+              <ResizableHandle withHandle />
+              <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
+                <PropertiesPanel
+                  selectedField={selectedField}
+                  onUpdate={handleUpdateField}
+                  onClose={() => setSelectedFieldId(null)}
+                  onDelete={() => handleDeleteField(selectedFieldId)}
+                  allFields={currentFields}
+                />
+              </ResizablePanel>
+            </>
           )}
-        </div>
+        </ResizablePanelGroup>
       </div>
 
       {/* Drag Overlay */}
@@ -1116,12 +1217,294 @@ function SortableTab({
                   `}
                   title="Delete tab"
                 >
-                  <X className="w-3.5 h-3.5" weight="bold" />
+                  <Trash className="w-3.5 h-3.5" weight="bold" />
                 </button>
               )}
             </div>
           </div>
         </div>
+      )}
+    </motion.div>
+  );
+}
+
+// Grid Field Item Component (used with react-grid-layout)
+interface GridFieldItemProps {
+  field: EnhancedFormField;
+  isSelected: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+  onResize?: (direction: 'up' | 'down' | 'left' | 'right') => void;
+}
+
+function GridFieldItem({ field, isSelected, onSelect, onDelete, onResize }: GridFieldItemProps) {
+  return (
+    <motion.div
+      className={`
+        h-full w-full relative rounded-lg p-4 transition-all
+        ${
+          isSelected
+            ? 'bg-primary/5 shadow-md ring-2 ring-primary ring-inset'
+            : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+        }
+        ${field.isSystemField ? 'cursor-default' : 'cursor-move'}
+      `}
+      style={{
+        backgroundColor: field.styling?.backgroundColor,
+      }}
+      onClick={onSelect}
+    >
+      {/* Lock Icon - Show for system fields */}
+      {field.isSystemField && (
+        <div
+          className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gray-500 text-white px-2 py-1 rounded-md shadow-lg z-10"
+          title="System field - cannot be deleted or moved"
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+          </svg>
+        </div>
+      )}
+
+      {/* Delete Button for section and text_content - Show in top right */}
+      {(field.type === 'section' || field.type === 'text_content') && isSelected && !field.isSystemField && (
+        <div className="absolute top-2 right-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30"
+            title="Delete field"
+          >
+            <Trash className="w-3.5 h-3.5" weight="bold" />
+          </Button>
+        </div>
+      )}
+
+      {/* Resize Arrows - Show when selected (only for non-system fields) */}
+      {isSelected && !field.isSystemField && onResize && (
+        <>
+          {/* Top Arrow */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onResize('up');
+            }}
+            className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-md transition-colors z-10"
+            title="Increase height"
+          >
+            <CaretUp className="w-4 h-4" weight="bold" />
+          </button>
+
+          {/* Bottom Arrow */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onResize('down');
+            }}
+            className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-md transition-colors z-10"
+            title="Decrease height"
+          >
+            <CaretDown className="w-4 h-4" weight="bold" />
+          </button>
+
+          {/* Left Arrow */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onResize('left');
+            }}
+            className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-md transition-colors z-10"
+            title="Decrease width"
+          >
+            <CaretLeftIcon className="w-4 h-4" weight="bold" />
+          </button>
+
+          {/* Right Arrow */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onResize('right');
+            }}
+            className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-md transition-colors z-10"
+            title="Increase width"
+          >
+            <CaretRightIcon className="w-4 h-4" weight="bold" />
+          </button>
+        </>
+      )}
+
+      {/* Field Label - Hide for section and text_content as they render their own */}
+      {field.type !== 'section' && field.type !== 'text_content' && (
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex-1">
+            <div className="flex items-center gap-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                {field.label}
+                {field.required && <span className="text-red-500 ml-1">*</span>}
+              </label>
+              {field.description && (
+                <TooltipProvider>
+                  <Tooltip delayDuration={200}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Info className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" weight="fill" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" align="start" className="max-w-xs">
+                      <p className="text-xs">{field.description}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+          </div>
+          {/* Delete Button - Show when selected (only for non-system fields) */}
+          {isSelected && !field.isSystemField && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="h-6 w-6 -mt-1 text-red-600 hover:text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30"
+              title="Delete field"
+            >
+              <Trash className="w-3.5 h-3.5" weight="bold" />
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Field Preview */}
+      <div className="mt-2">
+        {/* Section - Display as heading with divider */}
+        {field.type === 'section' && (
+          <div className="border-b-2 border-gray-300 dark:border-gray-600 pb-2">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+              {field.label || 'Section Title'}
+            </h3>
+          </div>
+        )}
+
+        {/* Text Content - Display as static text */}
+        {field.type === 'text_content' && (
+          <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+            <p className={!field.placeholder && !field.default_value ? 'text-gray-400 italic' : ''}>
+              {field.default_value || field.placeholder || 'Add descriptive text...'}
+            </p>
+          </div>
+        )}
+
+        {field.field_type === 'input' && field.input_type === 'address' && (
+          <div className="h-9 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm flex items-center gap-2">
+            <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 256 256">
+              <path d="M128,64a40,40,0,1,0,40,40A40,40,0,0,0,128,64Zm0,64a24,24,0,1,1,24-24A24,24,0,0,1,128,128Zm0-112a88.1,88.1,0,0,0-88,88c0,31.4,14.51,64.68,42,96.25a254.19,254.19,0,0,0,41.45,38.3,8,8,0,0,0,9.18,0A254.19,254.19,0,0,0,174,200.25c27.45-31.57,42-64.85,42-96.25A88.1,88.1,0,0,0,128,16Zm0,206c-16.53-13-72-60.75-72-118a72,72,0,0,1,144,0C200,161.23,144.53,209,128,222Z"></path>
+            </svg>
+            <span className={field.default_value ? 'text-gray-700 dark:text-gray-200 font-medium' : 'text-gray-400'}>
+              {field.default_value || field.placeholder || 'Search address with Mapbox...'}
+            </span>
+          </div>
+        )}
+        {field.field_type === 'input' && field.input_type === 'number' && field.number_format === 'currency' && (
+          <div className="h-9 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm flex items-center gap-2">
+            <svg className="w-4 h-4 text-green-600 dark:text-green-500" fill="currentColor" viewBox="0 0 256 256">
+              <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm48-88a48,48,0,0,1-48,48h-8v16a8,8,0,0,1-16,0V176H88a8,8,0,0,1,0-16h40a32,32,0,0,0,0-64H112a16,16,0,0,1,0-32h16V48a8,8,0,0,1,16,0V64h8a8,8,0,0,1,0,16h-8a32,32,0,0,0,0,64h16A48.05,48.05,0,0,1,176,128Z"></path>
+            </svg>
+            <span className={field.default_value ? 'text-gray-700 dark:text-gray-200 font-medium' : 'text-gray-400'}>
+              {field.default_value || field.placeholder || '$0.00'}
+            </span>
+          </div>
+        )}
+        {field.field_type === 'input' && field.input_type !== 'address' && !(field.input_type === 'number' && field.number_format === 'currency') && (
+          <div className={`h-9 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm ${
+            field.default_value ? 'text-gray-700 dark:text-gray-200 font-medium' : 'text-gray-400'
+          }`}>
+            {field.default_value || field.placeholder || 'Enter value...'}
+          </div>
+        )}
+        {field.field_type === 'textarea' && (
+          <div className={`h-9 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm ${
+            field.default_value ? 'text-gray-700 dark:text-gray-200 font-medium' : 'text-gray-400'
+          }`}>
+            {field.default_value || field.placeholder || 'Enter text...'}
+          </div>
+        )}
+        {field.field_type === 'dropdown' && (
+          <div className={`h-9 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm flex items-center justify-between ${
+            field.default_value ? 'text-gray-700 dark:text-gray-200 font-medium' : 'text-gray-400'
+          }`}>
+            <span className="truncate">
+              {field.default_value || field.placeholder || 'Select option'}
+            </span>
+            <span className="ml-2">▼</span>
+          </div>
+        )}
+        {field.field_type === 'checkbox' && field.uiVariant === 'toggle' && (
+          <div className="flex items-center gap-3">
+            <div className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-300 dark:bg-gray-600 transition-colors">
+              <span className="inline-block h-4 w-4 transform rounded-full bg-white dark:bg-gray-200 transition-transform translate-x-1" />
+            </div>
+            <span className="text-sm text-gray-600 dark:text-gray-400">Off / On</span>
+          </div>
+        )}
+        {field.field_type === 'checkbox' && field.uiVariant !== 'toggle' && (
+          <div className="space-y-2">
+            {field.options && field.options.length > 0 ? (
+              field.options.map((option, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 rounded flex-shrink-0" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">{option || `Option ${index + 1}`}</span>
+                </div>
+              ))
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 rounded flex-shrink-0" />
+                <span className="text-sm text-gray-400 italic">No options configured</span>
+              </div>
+            )}
+          </div>
+        )}
+        {field.field_type === 'radio' && (
+          <div className="space-y-2">
+            {field.options && field.options.length > 0 ? (
+              field.options.map((option, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 rounded-full flex-shrink-0" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">{option || `Option ${index + 1}`}</span>
+                </div>
+              ))
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 rounded-full flex-shrink-0" />
+                <span className="text-sm text-gray-400 italic">No options configured</span>
+              </div>
+            )}
+          </div>
+        )}
+        {field.field_type === 'date' && (
+          <div className="h-9 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm text-gray-400">
+            MM/DD/YYYY
+          </div>
+        )}
+        {field.field_type === 'math' && (
+          <div className="h-9 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm font-mono text-gray-500">
+            {field.formula || '=0'}
+          </div>
+        )}
+      </div>
+
+      {/* Help Text */}
+      {field.helpText && (
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{field.helpText}</p>
       )}
     </motion.div>
   );
@@ -1337,7 +1720,7 @@ function SortableFieldItem({ field, isSelected, onSelect, onDelete, onUpdateLayo
             className="h-6 w-6 -mt-1 text-red-600 hover:text-red-700 hover:bg-red-100 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30"
             title="Delete field"
           >
-            <X className="w-3.5 h-3.5" weight="bold" />
+            <Trash className="w-3.5 h-3.5" weight="bold" />
           </Button>
         )}
       </div>

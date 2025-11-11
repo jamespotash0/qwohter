@@ -6,7 +6,7 @@
 - ✅ Installed dependencies (@dnd-kit, react-grid-layout, reactflow, framer-motion, hot-formula-parser)
 - ✅ Created enhanced type definitions (`enhanced.ts`)
 - ✅ Created DotGridCanvas component with beautiful dot grid background
-- ✅ Created FieldPalette component (Left Sidebar) with drag-drop support
+- ✅ Created FormComponents component (Left Sidebar) with drag-drop support
 
 ### **Next Steps:**
 
@@ -47,8 +47,8 @@ Location: `src/pages/FormBuilderV3.tsx`
 ┌────────────────────────────────────────────────────────────┐
 │  Top Toolbar: [← Back] [Form Name] [Preview] [Save]       │
 ├─────────┬──────────────────────────────────┬───────────────┤
-│ Field   │     Canvas (Dot Grid)            │  Properties   │
-│ Palette │                                   │    Panel      │
+│  Form   │     Canvas (Dot Grid)            │  Properties   │
+│ Compnts │                                   │    Panel      │
 │ (280px) │        react-grid-layout         │   (350px)     │
 │         │     + @dnd-kit/core              │               │
 │         │     + reactflow (arrows)         │               │
@@ -196,7 +196,7 @@ src/features/form-builder/
 │
 ├── components/
 │   ├── DotGridCanvas.tsx     ✅ (created)
-│   ├── FieldPalette.tsx      ✅ (created)
+│   ├── FormComponents.tsx    ✅ (created)
 │   ├── PropertiesPanel.tsx   🔄 (next)
 │   ├── GridLayoutCanvas.tsx  ⏳ (pending)
 │   ├── DependencyArrows.tsx  ⏳ (pending)

@@ -21,7 +21,7 @@ export interface FormField {
   label: string;
   type?: string; // Legacy field type
   field_type: 'input' | 'textarea' | 'dropdown' | 'checkbox' | 'radio' | 'date' | 'product_selector' | 'math';
-  input_type?: 'text' | 'number' | 'email' | 'tel' | 'url' | 'address';
+  input_type?: 'text' | 'number' | 'email' | 'tel' | 'url' | 'address' | 'password';
   number_format?: 'decimal' | 'currency' | 'percent' | 'integer'; // Format for number inputs
   required: boolean;
   placeholder?: string;
