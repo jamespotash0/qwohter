@@ -6,10 +6,6 @@ import { useUser, useAuthStatus, useSignOut } from '@/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { SubscriptionPaywall } from '@/components/common/SubscriptionPaywall';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
-// import { useQuotesStore } from '@/stores/proposals/proposalsStore';
-// import { useBoardStore } from '@/stores/board/boardStore';
-// import { useRemindersStore } from '@/stores/reminders/remindersStore';
-// import { useAppStore } from '@/stores/app/appStore';
 import { versionCheckService } from '@/services/versionCheckService';
 import { toast } from 'sonner';
 
@@ -79,7 +75,7 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
       try {
         const { data: membership, error } = await supabase
           .from('memberships')
-          .select('status, role')
+          .select('status, role') //membership_status
           .eq('user_id', user.id)
           .maybeSingle();
 
@@ -88,14 +84,14 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
           setMembershipStatus(null);
         } else if (membership) {
           // Check for various membership statuses
-          if (membership.status === 'Inactive') {
+          if (membership.status === 'Inactive') { //membership_status
             setMembershipStatus('Inactive');
-          } else if (membership.status === 'Pending' && membership.role !== 'Owner') {
+          } else if (membership.status === 'Pending' && membership.role !== 'Owner') { //membership_status
             // Only check pending status for non-Owners
             // Owners (who created the org) should always have Active status
             setMembershipStatus('Pending');
           } else {
-            setMembershipStatus(membership.status);
+            setMembershipStatus(membership.status); //membership_status
           }
         } else {
           // No membership found - user might not be in an org

@@ -12,7 +12,7 @@ export interface Reminder {
   due_date: string;
   quote_id?: string;
   reminder_type: ReminderType;
-  reminder_status: ReminderStatus;
+  reminder_status: ReminderStatus; //reminder_status formerly status
   is_shared: boolean;
   completed_at?: string;
   completed_by?: string;
@@ -43,7 +43,7 @@ export interface UpdateReminderParams {
 }
 
 export interface CompleteReminderParams {
-  reminder_status: 'Completed' | 'Dismissed';
+  status: 'Completed' | 'Dismissed'; // Maps to reminder_status in DB
   completed_by: string;
 }
 
@@ -75,7 +75,7 @@ export const reminderService = {
         .order('due_date', { ascending: true });
 
       if (!params.includeCompleted) {
-        query = query.eq('reminder_status', 'Pending');
+        query = query.eq('reminder_status', 'Pending'); //reminder_status formerly status
       }
 
       const { data, error } = await query;
@@ -202,10 +202,10 @@ export const reminderService = {
       const { data, error } = await supabase
         .from('reminders')
         .update({
-          status: params.status,
+          reminder_status: params.status, // params.status maps to DB reminder_status column
           completed_at: new Date().toISOString(),
           completed_by: params.completed_by,
-        })
+        } as any) // Type assertion needed until Supabase types are regenerated post-migration
         .eq('id', id)
         .select()
         .single();
@@ -272,7 +272,7 @@ export const reminderService = {
           )
         `)
         .eq('organization_id', params.organizationId)
-        .eq('status', 'Pending')
+        .eq('reminder_status', 'Pending') //reminder_status formerly status
         .lte('due_date', futureDate.toISOString())
         .order('due_date', { ascending: true });
 

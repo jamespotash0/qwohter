@@ -176,7 +176,7 @@ const Dashboard = () => {
         const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
         const filteredReminders = data.filter(reminder => {
-          if (reminder.status === 'Completed') {
+          if (reminder.reminder_status === 'Completed') { //reminder_status formerly status
             // Use updated_at as the completion date
             const completedDate = new Date(reminder.updated_at);
             return completedDate > threeDaysAgo;
@@ -218,7 +218,7 @@ const Dashboard = () => {
             const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
             const filteredReminders = data.filter(reminder => {
-              if (reminder.status === 'Completed') {
+              if (reminder.reminder_status === 'Completed') { //reminder_status formerly status
                 const completedDate = new Date(reminder.updated_at);
                 return completedDate > threeDaysAgo;
               }
@@ -246,7 +246,7 @@ const Dashboard = () => {
     const reminder = reminders.find(r => r.id === reminderId);
 
     const { error } = await reminderService.completeReminder(reminderId, {
-      status: 'Completed',
+      reminder_status: 'Completed', //reminder_status formerly status
       completed_by: user.id,
     });
 
@@ -284,7 +284,7 @@ const Dashboard = () => {
       const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
       const filteredReminders = data.filter(reminder => {
-        if (reminder.status === 'Completed') {
+        if (reminder.reminder_status === 'Completed') { //reminder_status formerly status
           const completedDate = new Date(reminder.updated_at);
           return completedDate > threeDaysAgo;
         }
@@ -337,7 +337,7 @@ const Dashboard = () => {
       const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
       const filteredReminders = data.filter(reminder => {
-        if (reminder.status === 'Completed') {
+        if (reminder.status === 'Completed') { //reminder_status
           const completedDate = new Date(reminder.updated_at);
           return completedDate > threeDaysAgo;
         }
@@ -421,7 +421,7 @@ const Dashboard = () => {
     // Calculate overdue reminders (not completed/dismissed and past due date)
     const today = new Date();
     const overdueReminders = reminders.filter(r => {
-      if (r.status === 'Completed' || r.status === 'Dismissed') return false;
+      if (r.reminder_status === 'Completed' || r.reminder_status === 'Dismissed') return false; //reminder_status formerly status
       const dueDate = new Date(r.due_date);
       return dueDate < today;
     }).length;
@@ -899,8 +899,8 @@ const Dashboard = () => {
                             return 'text-gray-600 bg-gray-50';
                         }
                       };
-
-                      const isCompleted = reminder.status === 'Completed';
+ 
+                      const isCompleted = reminder.reminder_status === 'Completed'; //reminder_status formerly status
 
                       return (
                         <div
@@ -1146,7 +1146,7 @@ const Dashboard = () => {
               const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
               const filteredReminders = data.filter(reminder => {
-                if (reminder.status === 'Completed') {
+                if (reminder.reminder_status === 'Completed') { //reminder_status formerly status
                   const completedDate = new Date(reminder.updated_at);
                   return completedDate > threeDaysAgo;
                 }

@@ -455,9 +455,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         return;
       }
 
-      // For Individual plan, quantity is always 1
-      // For Team plan, use the actual user count
-      const quantity = plan.name === 'Individual' ? 1 : userCount;
+      // ONLY Team plan now - always use user count
+      const quantity = userCount;
 
       // Create checkout session and redirect to Stripe
       const { error } = await stripeService.createCheckoutSession({
@@ -741,7 +740,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         <div>
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Plan & Billing</h2>
-            <Button
+            {/* <Button
               variant="outline"
               size="sm"
               className="h-9"
@@ -749,7 +748,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
             >
               <ArrowLeftRight className="w-4 h-4 mr-2" />
               Compare plans
-            </Button>
+            </Button> */}
           </div>
           <div className="h-px bg-gray-200 dark:bg-gray-700 mb-4"></div>
         </div>
@@ -840,7 +839,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                       <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                         {plan.display_name}
                       </h3>
-                      <button
+                      {/* <button
                         onClick={() => {
                           const currentInterval = isCurrent && subscription?.billing_interval && !planIntervals[plan.id]
                             ? (subscription.billing_interval?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly')
@@ -871,7 +870,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                             })()
                           }}
                         />
-                      </button>
+                      </button> */}
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {plan.description}

@@ -220,12 +220,12 @@ export function useCurrentOrganization(userId: string, enabled: boolean = true) 
     organization: membership?.organization || null,
     organizationId: membership?.organization_id || null,
     role: membership?.role || null,
-    status: membership?.status || null,
+    status: membership?.status || null, //membership_status
     joinedAt: membership?.joined_at || null,
     isLoading: membershipLoading,
     error: membershipError,
     hasOrganization: !!membership?.organization,
-    isActive: membership?.status === 'Active',
+    isActive: membership?.status === 'Active', //membership_status
   };
 }
 
@@ -245,7 +245,7 @@ export function useOrganizationContext(userId: string, enabled: boolean = true) 
     organization,
     organizationId,
     role,
-    status,
+    status, //membership_status
     isLoading: orgLoading,
   } = useCurrentOrganization(userId, enabled);
 
@@ -275,7 +275,7 @@ export function useOrganizationContext(userId: string, enabled: boolean = true) 
     organization,
     organizationId,
     role,
-    status,
+    status, //membership_status
 
     // Members
     members: members || [],
@@ -307,7 +307,7 @@ export function useOrganizationContext(userId: string, enabled: boolean = true) 
 
     // Helpers
     hasOrganization: !!organization,
-    isActive: status === 'Active',
+    isActive: status === 'Active', //membership_status
     isOwner: role === 'Owner',
     isAdmin: role === 'Admin' || role === 'Owner',
     canManageMembers: role === 'Admin' || role === 'Owner',
@@ -378,7 +378,7 @@ export function useInviteMember(organizationId: string) {
           user_id: profile.id,
           organization_id: organizationId,
           role,
-          status: 'Pending',
+          status: 'Pending', //membership_status
           invited_by: user.id,
         } as any)
         .select()
@@ -470,13 +470,13 @@ export function useUpdateMemberStatus(organizationId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ membershipId, status }: { membershipId: string; status: 'Pending' | 'Active' | 'Suspended' }) => {
+    mutationFn: async ({ membershipId, status }: { membershipId: string; status: 'Pending' | 'Active' | 'Suspended' }) => { //membership_status
       const { data, error } = await supabase
         .from('memberships')
         .update({
-          status,
+          status, //membership_status
           updated_at: new Date().toISOString(),
-          joined_at: status === 'Active' ? new Date().toISOString() : undefined,
+          joined_at: status === 'Active' ? new Date().toISOString() : undefined, //membership_status
         })
         .eq('id', membershipId)
         .select()
@@ -485,8 +485,8 @@ export function useUpdateMemberStatus(organizationId: string) {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, { status }) => {
-      toast.success(`Status updated to ${status}`);
+    onSuccess: (_, { status }) => { //membership_status
+      toast.success(`Status updated to ${status}`); //membership_status
       queryClient.invalidateQueries({
         queryKey: queryKeys.organization.members(organizationId),
       });
@@ -507,7 +507,7 @@ export function useApproveMember(organizationId: string) {
 
   return {
     ...rest,
-    mutate: (membershipId: string) => mutate({ membershipId, status: 'Active' }),
+    mutate: (membershipId: string) => mutate({ membershipId, status: 'Active' }), //membership_status
   };
 }
 
@@ -521,6 +521,6 @@ export function useSuspendMember(organizationId: string) {
 
   return {
     ...rest,
-    mutate: (membershipId: string) => mutate({ membershipId, status: 'Suspended' }),
+    mutate: (membershipId: string) => mutate({ membershipId, status: 'Suspended' }), //membership_status
   };
 }

@@ -498,7 +498,7 @@ export const authFlowHelpers = {
             user_id: userId,
             organization_id: orgData.id,
             role: 'Member',
-            status: 'Pending',
+            status: 'Pending', //membership_status
             join_type: 'Requested' // User requested to join via org code
           } as any);
 

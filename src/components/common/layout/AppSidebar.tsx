@@ -162,7 +162,7 @@ export function AppSidebar({
             )
           `)
           .eq('user_id', user.id)
-          .eq('status', 'Active');
+          .eq('status', 'Active'); //membership_status
 
         if (error) throw error;
 
@@ -239,7 +239,7 @@ export function AppSidebar({
         `)
         .eq('user_id', user?.id)
         .eq('organization_id', orgId)
-        .eq('status', 'Active')
+        .eq('status', 'Active') //membership_status
         .single();
 
       if (error) throw error;

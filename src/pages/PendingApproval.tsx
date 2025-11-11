@@ -17,7 +17,7 @@ import { onboardingStateHelpers } from '@/services/onboardingStateService';
 
 interface MembershipData {
   role: string;
-  status: string;
+  status: string; //membership_status
   organization_id: string;
   created_at: string;
   user_id: string;
@@ -63,7 +63,7 @@ const PendingApproval: React.FC = () => {
           )
         `)
         .eq('user_id', user.id)
-        .single();
+        .single(); //membership_status
 
       if (error) {
         console.error('Error checking membership:', error);
@@ -102,7 +102,7 @@ const PendingApproval: React.FC = () => {
   }, []);
 
   // Redirect if membership is now active
-  if (membershipData?.status === 'Active') {
+  if (membershipData?.status === 'Active') { //membership_status
     return <Navigate to="/dashboard" replace />;
   }
 

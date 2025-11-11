@@ -163,8 +163,8 @@ export const teamManagementHelpers = {
    */
   calculateTeamStats: (members: any[]) => {
     // Use case-insensitive status helpers
-    const activeMembersCount = members.filter(m => isMembershipActive(m.status)).length;
-    const pendingMembersCount = members.filter(m => isMembershipPending(m.status)).length;
+    const activeMembersCount = members.filter(m => isMembershipActive(m.status)).length; //membership_status
+    const pendingMembersCount = members.filter(m => isMembershipPending(m.status)).length; //membership_status
     const totalMembersCount = members.length;
     
     const roleDistribution = members.reduce((acc, member) => {

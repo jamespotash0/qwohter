@@ -63,7 +63,7 @@ serve(async (req) => {
       .select('role')
       .eq('organization_id', organizationId)
       .eq('user_id', user.id)
-      .eq('status', 'Active')
+      .eq('status', 'Active') //membership_status
       .single();
 
     if (!membership) {

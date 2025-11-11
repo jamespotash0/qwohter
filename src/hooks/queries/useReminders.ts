@@ -208,7 +208,7 @@ export function useCompleteReminder(organizationId: string) {
           reminder.id === id
             ? {
                 ...reminder,
-                status: params.status,
+                reminder_status: params.status, //reminder_status formerly status
                 completed_at: new Date().toISOString(),
                 completed_by: params.completed_by,
                 updated_at: new Date().toISOString(),

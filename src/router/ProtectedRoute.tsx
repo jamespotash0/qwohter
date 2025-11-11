@@ -57,7 +57,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
           .from('memberships')
           .select('role')
           .eq('user_id', user.id)
-          .eq('status', 'Active')
+          .eq('status', 'Active') //membership_status
           .single();
 
         setUserRole((memberships as any)?.role || null);

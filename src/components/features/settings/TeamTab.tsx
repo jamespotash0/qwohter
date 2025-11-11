@@ -110,7 +110,7 @@ export function TeamTab() {
     if (!currentOrganization) return;
 
     try {
-      await updateStatusMutation({ membershipId: memberId, status: 'Active' });
+      await updateStatusMutation({ membershipId: memberId, status: 'Active' }); //membership_status
       toast({
         title: "Member reactivated",
         description: `${memberName} has been reactivated.`,
@@ -364,7 +364,7 @@ export function TeamTab() {
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          {member.status === 'Pending' ? (
+                          {member.status === 'Pending' ? ( //membership_status
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-sm font-medium text-gray-900 dark:text-white">
                                 {member.full_name || member.email}
@@ -390,7 +390,7 @@ export function TeamTab() {
                     </td>
                     <td className="px-4 py-4">
                       <div className="w-44">
-                        {member.status === 'Active' ? (
+                        {member.status === 'Active' ? ( //membership_status
                           currentUserRole === 'Member' ? (
                             <span className="text-sm text-gray-700 dark:text-gray-300">
                               {member.department || <span className="text-gray-400">—</span>}
@@ -428,15 +428,15 @@ export function TeamTab() {
                     </td>
                     <td className="px-4 py-4">
                       <div className="w-16">
-                        {member.status === 'Active' ? (
+                        {member.status === 'Active' ? ( //membership_status
                           <span className="text-sm font-medium text-green-600 dark:text-green-400">
                             Active
                           </span>
-                        ) : member.status === 'Inactive' ? (
+                        ) : member.status === 'Inactive' ? ( //membership_status
                           <span className="text-sm font-medium text-red-600 dark:text-red-400">
                             Inactive
                           </span>
-                        ) : member.status === 'Pending' ? (
+                        ) : member.status === 'Pending' ? ( //membership_status
                           <span className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
                             Pending
                           </span>
@@ -449,7 +449,7 @@ export function TeamTab() {
                     </td>
                     <td className="px-4 py-4">
                       <div className="w-20">
-                        {member.status === 'Active' ? (
+                        {member.status === 'Active' ? ( //membership_status
                           member.role === 'Owner' || currentUserRole === 'Member' ? (
                             <span className="text-sm text-gray-700 dark:text-gray-300">
                               {member.role}
@@ -485,7 +485,7 @@ export function TeamTab() {
                       </span>
                     </td>
                     <td className="px-4 py-4 text-right">
-                      {member.status === 'Pending' ? (
+                      {member.status === 'Pending' ? ( //membership_status
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             size="sm"
@@ -503,7 +503,7 @@ export function TeamTab() {
                             Reject
                           </Button>
                         </div>
-                      ) : member.status === 'Inactive' ? (
+                      ) : member.status === 'Inactive' ? ( //membership_status
                         <Button
                           size="sm"
                           onClick={() => handleReactivateMember(member.user_id, member.full_name || member.email)}

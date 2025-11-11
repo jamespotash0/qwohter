@@ -1,7 +1,5 @@
 /**
- * AuthProvider - Industry Standard Implementation
- *
- * REPLACES: Zustand authStore (stores/auth/authStore.ts)
+ * AuthProvider - Industry Standard Implementation (v3.0.0)
  *
  * Architecture:
  * - React Context for global auth state
@@ -16,6 +14,7 @@
  * - Zero race conditions (mutex-based serialization)
  * - Automatic deduplication
  * - Clean hooks API
+ * - Replaces old Zustand-based auth store
  */
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
