@@ -43,10 +43,9 @@ import { useUser } from '@/auth';
 import { useForm, useCreateForm, useUpdateForm } from '@/hooks/queries';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
 import { FormComponents } from '@/features/form-builder/components/FormComponents';
-import { DotGridCanvas } from '@/features/form-builder/components/DotGridCanvas';
+// import { DotGridCanvas } from '@/features/form-builder/components/DotGridCanvas';
 import { PropertiesPanel } from '@/features/form-builder/components/PropertiesPanel';
 import type { EnhancedFormField, EnhancedFormTab, FormComponentsItem } from '@/features/form-builder/types/enhanced';
-import { DEFAULT_COMPANY_INFO_TAB, DEFAULT_PROJECT_DETAILS_TAB } from '@/stores/forms/formsStore';
 
 // Droppable Page Content Component
 interface DroppablePageContentProps {
@@ -367,10 +366,8 @@ export default function FormBuilderV3() {
     if (existingForm?.tabs) {
       return existingForm.tabs as EnhancedFormTab[];
     }
-    return [
-      { ...DEFAULT_COMPANY_INFO_TAB, layoutMode: 'grid' as const } as EnhancedFormTab,
-      { ...DEFAULT_PROJECT_DETAILS_TAB, layoutMode: 'grid' as const } as EnhancedFormTab,
-    ];
+    // Start with empty tabs - user will add their own
+    return [];
   });
 
   // Migrate field layouts from 12-column to 48-column system if needed
@@ -451,7 +448,7 @@ export default function FormBuilderV3() {
     }
   }, []);
 
-  const handleDragOver = useCallback((event: DragOverEvent) => {
+  const handleDragOver = useCallback((_: DragOverEvent) => {
     // This ensures the drag preview updates as you move over droppable areas
   }, []);
 
@@ -669,7 +666,7 @@ export default function FormBuilderV3() {
         form_type: formType, // Type of document this form generates
         tabs: tabs as any[],
         created_by: user.id,
-        is_active: true,
+        is_archived: false,
         is_default: false,
         allow_save_incomplete: allowSaveIncomplete,
       };
@@ -1041,7 +1038,7 @@ interface SortableTabProps {
 
 function SortableTab({
   tab,
-  index,
+  // index,
   isActive,
   isEditing,
   editingName,
@@ -1689,25 +1686,25 @@ function SortableFieldItem({ field, isSelected, onSelect, onDelete, onUpdateLayo
   }, []);
 
   useEffect(() => {
-    if (isResizingWidth) {
-      window.addEventListener('mousemove', handleWidthResizeMove);
-      window.addEventListener('mouseup', handleWidthResizeEnd);
-      return () => {
-        window.removeEventListener('mousemove', handleWidthResizeMove);
-        window.removeEventListener('mouseup', handleWidthResizeEnd);
-      };
-    }
+    if (!isResizingWidth) return;
+
+    window.addEventListener('mousemove', handleWidthResizeMove);
+    window.addEventListener('mouseup', handleWidthResizeEnd);
+    return () => {
+      window.removeEventListener('mousemove', handleWidthResizeMove);
+      window.removeEventListener('mouseup', handleWidthResizeEnd);
+    };
   }, [isResizingWidth, handleWidthResizeMove, handleWidthResizeEnd]);
 
   useEffect(() => {
-    if (isResizingHeight) {
-      window.addEventListener('mousemove', handleHeightResizeMove);
-      window.addEventListener('mouseup', handleHeightResizeEnd);
-      return () => {
-        window.removeEventListener('mousemove', handleHeightResizeMove);
-        window.removeEventListener('mouseup', handleHeightResizeEnd);
-      };
-    }
+    if (!isResizingHeight) return;
+
+    window.addEventListener('mousemove', handleHeightResizeMove);
+    window.addEventListener('mouseup', handleHeightResizeEnd);
+    return () => {
+      window.removeEventListener('mousemove', handleHeightResizeMove);
+      window.removeEventListener('mouseup', handleHeightResizeEnd);
+    };
   }, [isResizingHeight, handleHeightResizeMove, handleHeightResizeEnd]);
 
   return (

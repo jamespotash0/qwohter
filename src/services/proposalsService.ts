@@ -17,12 +17,12 @@ export type Proposal = Database['public']['Tables']['proposals']['Row'];
 
 export interface CreateProposalData {
   form_id: string; // Which form template was used
-  proposal_data?: Record<string, any>; // Form submission data (JSONB)
+  form_data?: Record<string, any>; // Form submission data (JSONB)
   status?: string;
 }
 
 export interface UpdateProposalData {
-  proposal_data?: Record<string, any>;
+  form_data?: Record<string, any>;
   status?: string;
   submitted_at?: string;
   approved_at?: string;
@@ -71,7 +71,7 @@ export async function generateNextProposalNumber(
   const { data, error } = await supabase.rpc('generate_next_proposal_number', {
     p_form_id: formId,
     p_starting_number: startingNumber,
-  });
+  } as any);
 
   if (error) {
     console.error('Error generating proposal number:', error);
@@ -236,7 +236,7 @@ export async function createProposal(
     .from('memberships')
     .select('organization_id')
     .eq('user_id', session.user.id)
-    .single();
+    .single<{ organization_id: string }>();
 
   if (membershipError) {
     console.error('Error fetching membership:', membershipError);
@@ -247,12 +247,12 @@ export async function createProposal(
     throw new Error('User not assigned to an organization');
   }
 
-  // Fetch the form to get starting_proposal_number and form_type
+  // Fetch the form to get starting_proposal_number
   const { data: formData, error: formError } = await supabase
     .from('forms')
-    .select('starting_proposal_number, form_type')
+    .select('starting_proposal_number')
     .eq('id', proposalData.form_id)
-    .single();
+    .single<{ starting_proposal_number: string }>();
 
   if (formError) {
     console.error('Error fetching form:', formError);
@@ -279,8 +279,7 @@ export async function createProposal(
     created_by: session.user.id,
     form_id: proposalData.form_id,
     proposal_number: proposalNumber,
-    proposal_type: formData.form_type || 'quote', // Inherit from form
-    proposal_data: proposalData.proposal_data || {},
+    form_data: proposalData.form_data || {},
     status: proposalData.status || 'draft',
   };
 
@@ -419,9 +418,8 @@ export async function createProposalVersion(
     created_by: session.user.id,
     form_id: parentProposal.form_id,
     proposal_number: versionedNumber, // Contains version in the number itself (e.g., "SR-1005.2")
-    proposal_type: parentProposal.proposal_type,
-    proposal_data: proposalData?.proposal_data || parentProposal.proposal_data || {},
-    status: proposalData?.status || 'draft',
+    form_data: proposalData?.form_data || parentProposal.form_data || {},
+    proposal_status: proposalData?.status || 'Draft',
     parent_proposal_id: parentProposalId,
   };
 

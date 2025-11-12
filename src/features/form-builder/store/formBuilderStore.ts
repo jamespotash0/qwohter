@@ -60,18 +60,18 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase
-        .from('forms')
+      const { data, error } = await (supabase
+        .from('forms') as any)
         .select('*')
         .eq('created_by', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const forms = (data || []).map(form => ({
-        ...form as object,
+      const forms = (data || []).map((form: any) => ({
+        ...form,
         tabs: (form.tabs as FormTab[]) || []
-      }));
+      })) as Form[];
 
       set({ forms, isLoading: false });
     } catch (error: any) {
@@ -82,8 +82,8 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
   fetchFormById: async (id: string) => {
     set({ isLoading: true, error: null });
     try {
-      const { data, error } = await supabase
-        .from('forms')
+      const { data, error } = await (supabase
+        .from('forms') as any)
         .select('*')
         .eq('id', id)
         .single();
@@ -91,9 +91,9 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
       if (error) throw error;
 
       const form = {
-        ...data as any,
+        ...data,
         tabs: (data.tabs as FormTab[]) || []
-      };
+      } as Form;
 
       set({ currentForm: form, isLoading: false });
     } catch (error: any) {
@@ -107,19 +107,33 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Map camelCase to snake_case for database
+      // Get user's organization
+      const { data: membership } = await (supabase
+        .from('memberships') as any)
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!membership?.organization_id) {
+        throw new Error('User not assigned to an organization');
+      }
+
+      // Map to database schema - include all required fields
       const dbForm = {
+        organization_id: membership.organization_id as string,
         name: form.name,
         description: form.description,
-        category: form.category,
-        tags: form.tags,
+        form_type: form.form_type || 'Custom',
         tabs: form.tabs,
         created_by: user.id,
-        is_active: form.isActive ?? true
+        is_archived: false,
+        is_default: false,
+        starting_proposal_number: form.startingProposalNumber || 'DOC-1000',
+        allow_save_incomplete: true
       };
 
-      const { data, error } = await supabase
-        .from('forms')
+      const { data, error } = await (supabase
+        .from('forms') as any)
         .insert(dbForm)
         .select()
         .single();
@@ -127,15 +141,15 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
       if (error) throw error;
 
       const newForm = {
-        ...data as object,
+        ...data,
         tabs: (data.tabs as FormTab[]) || []
-      };
+      } as Form;
 
       set(state => ({
         forms: [newForm, ...state.forms],
         currentForm: newForm,
         isLoading: false
-      } as any));
+      }));
 
       return data.id;
     } catch (error: any) {
@@ -147,17 +161,15 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
   updateForm: async (id, updates) => {
     set({ isLoading: true, error: null });
     try {
-      // Map camelCase to snake_case for database
+      // Map to database schema
       const dbUpdates: any = {};
       if (updates.name !== undefined) dbUpdates.name = updates.name;
       if (updates.description !== undefined) dbUpdates.description = updates.description;
-      if (updates.category !== undefined) dbUpdates.category = updates.category;
-      if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
       if (updates.tabs !== undefined) dbUpdates.tabs = updates.tabs;
-      if (updates.isActive !== undefined) dbUpdates.is_active = updates.isActive;
+      if (updates.form_type !== undefined) dbUpdates.form_type = updates.form_type;
 
-      const { error } = await supabase
-        .from('forms')
+      const { error } = await (supabase
+        .from('forms') as any)
         .update(dbUpdates)
         .eq('id', id);
 
@@ -179,8 +191,8 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
   deleteForm: async (id) => {
     set({ isLoading: true, error: null });
     try {
-      const { error } = await supabase
-        .from('forms')
+      const { error } = await (supabase
+        .from('forms') as any)
         .delete()
         .eq('id', id);
 

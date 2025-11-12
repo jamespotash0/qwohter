@@ -507,6 +507,121 @@ export interface Database {
           completed_at?: string | null;
         };
       };
+      forms: {
+        Row: {
+          id: string;
+          organization_id: string;
+          name: string;
+          description: string | null;
+          form_type: string;
+          tabs: any; // JSONB
+          metadata: any | null; // JSONB
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+          is_archived: boolean;
+          is_default: boolean;
+          starting_proposal_number: string;
+          allow_save_incomplete: boolean;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          name: string;
+          description?: string | null;
+          form_type: string;
+          tabs?: any;
+          metadata?: any | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+          is_archived?: boolean;
+          is_default?: boolean;
+          starting_proposal_number: string;
+          allow_save_incomplete?: boolean;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          name?: string;
+          description?: string | null;
+          form_type?: string;
+          tabs?: any;
+          metadata?: any | null;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+          is_archived?: boolean;
+          is_default?: boolean;
+          starting_proposal_number?: string;
+          allow_save_incomplete?: boolean;
+        };
+      };
+      proposals: {
+        Row: {
+          id: string;
+          organization_id: string;
+          created_by: string;
+          proposal_number: string;
+          proposal_name: string | null;
+          proposal_status: string;
+          form_id: string;
+          form_data: any; // JSONB
+          product_items: any | null; // JSONB
+          computed_totals: any | null; // JSONB
+          customization: any | null; // JSONB
+          submitted_at: string | null;
+          accepted_at: string | null;
+          rejected_at: string | null;
+          paid_at: string | null;
+          created_at: string;
+          updated_at: string;
+          archived: boolean;
+          parent_proposal_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          created_by: string;
+          proposal_number: string;
+          proposal_name?: string | null;
+          proposal_status?: string;
+          form_id: string;
+          form_data?: any;
+          product_items?: any | null;
+          computed_totals?: any | null;
+          customization?: any | null;
+          submitted_at?: string | null;
+          accepted_at?: string | null;
+          rejected_at?: string | null;
+          paid_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          archived?: boolean;
+          parent_proposal_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          created_by?: string;
+          proposal_number?: string;
+          proposal_name?: string | null;
+          proposal_status?: string;
+          form_id?: string;
+          form_data?: any;
+          product_items?: any | null;
+          computed_totals?: any | null;
+          customization?: any | null;
+          submitted_at?: string | null;
+          accepted_at?: string | null;
+          rejected_at?: string | null;
+          paid_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          archived?: boolean;
+          parent_proposal_id?: string | null;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

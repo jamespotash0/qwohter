@@ -24,7 +24,7 @@ export async function fetchForms(organizationId: string): Promise<Form[]> {
     .from('forms')
     .select('*')
     .eq('organization_id', organizationId)
-    .eq('is_active', true)
+    .eq('is_archived', false)
     .order('updated_at', { ascending: false });
 
   if (error) {
@@ -188,7 +188,7 @@ export async function getDefaultForm(organizationId: string): Promise<Form | nul
     .from('forms')
     .select('*')
     .eq('organization_id', organizationId)
-    .eq('is_active', true)
+    .eq('is_archived', false)
     .eq('is_default', true)
     .single();
 

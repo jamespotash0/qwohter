@@ -95,7 +95,7 @@ export default function Forms() {
         description: data.description || undefined,
         organization_id: currentOrganization.id,
         created_by: user.id,
-        is_active: true,
+        is_archived: false,
         form_type: data.formType,
         starting_proposal_number: data.startingProposalNumber,
         tabs: [],

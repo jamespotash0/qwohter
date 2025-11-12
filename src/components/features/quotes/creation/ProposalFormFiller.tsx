@@ -102,7 +102,7 @@ export function ProposalFormFiller({
       // Create proposal using proposalsService
       const proposal = await createProposal({
         form_id: formId,
-        proposal_data: proposalDataWithMetadata,
+        form_data: proposalDataWithMetadata,
         status: status,
       });
 
@@ -134,7 +134,7 @@ export function ProposalFormFiller({
 
       const proposal = await createProposal({
         form_id: formId,
-        proposal_data: proposalDataWithMetadata,
+        form_data: proposalDataWithMetadata,
         status: "draft",
       });
 
