@@ -291,7 +291,14 @@ function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, 
 
   return (
     <div className="relative w-full max-w-sm">
-      {/* Document Card with Folded Corner */}
+      {/* Default Star Badge - positioned outside card to avoid overflow clipping */}
+      {isDefault && (
+        <div className="absolute -top-2 -left-2 z-20">
+          <div className="w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center shadow-lg">
+            <Star className="w-5 h-5 text-white" weight="fill" />
+          </div>
+        </div>
+      )}
       <div className="bg-white rounded-sm shadow-md hover:shadow-xl transition-all duration-300 group relative overflow-hidden border border-gray-300"
         style={{
           background: 'linear-gradient(to bottom, #ffffff 0%, #fafafa 100%)',
@@ -301,16 +308,6 @@ function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, 
         <div className="absolute top-0 right-0 w-0 h-0 border-l-[30px] border-l-transparent border-t-[30px] border-t-gray-300 opacity-80 group-hover:border-t-[var(--sidebar-icon-active)] transition-colors duration-300">
           <div className="absolute -top-[30px] -right-[1px] w-0 h-0 border-l-[29px] border-l-transparent border-t-[29px] border-t-white"></div>
         </div>
-
-        {/* Default Star Badge */}
-        {isDefault && (
-          <div className="absolute top-2 left-2 z-10">
-            <div className="bg-amber-500 text-white px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
-              <Star className="w-3 h-3" weight="fill" />
-              <span className="text-[10px] font-semibold uppercase tracking-wide">Default</span>
-            </div>
-          </div>
-        )}
 
         {/* Dropdown Menu */}
         <div className="absolute top-2 right-2 z-10">
@@ -355,17 +352,12 @@ function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, 
         {/* Content - Clickable to Edit */}
         <div onClick={onEdit} className="cursor-pointer">
           {/* Document Header with Icon */}
-          <div className="px-5 pt-6 pb-3 border-b-2 border-gray-200/60">
+          <div className="px-5 pt-4 pb-3 border-b-2 border-gray-200/60">
             <div className="flex items-start gap-3">
-              {/* Large Document Icon */}
-              <div className="p-2.5 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow-sm flex-shrink-0">
-                <FileText className="w-6 h-6 text-blue-600" weight="duotone" />
-              </div>
-
               {/* Name and Description */}
               <div className="flex-1 min-w-0 pt-0.5">
                 {/* Editable Name */}
-                <div className="mb-1.5">
+                <div className="mb-0.5">
                   {isEditingName ? (
                     <Input
                       value={editedName}
