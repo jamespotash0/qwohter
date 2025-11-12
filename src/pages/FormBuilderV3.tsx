@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -827,6 +828,36 @@ export default function FormBuilderV3() {
                     <p className="text-xs text-gray-500">Configure form behavior and options</p>
                   </div>
                   <Separator />
+
+                  {/* Form Type Selector */}
+                  <div className="space-y-2">
+                    <Label htmlFor="form-type" className="text-sm font-medium">
+                      Form Type
+                    </Label>
+                    <Select value={formType} onValueChange={setFormType}>
+                      <SelectTrigger id="form-type" className="h-9">
+                        <SelectValue placeholder="Select form type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Quote">Quote</SelectItem>
+                        <SelectItem value="Proposal">Proposal</SelectItem>
+                        <SelectItem value="Service Request">Service Request</SelectItem>
+                        <SelectItem value="Invoice">Invoice</SelectItem>
+                        <SelectItem value="Estimate">Estimate</SelectItem>
+                        <SelectItem value="Work Order">Work Order</SelectItem>
+                        <SelectItem value="Bid">Bid</SelectItem>
+                        <SelectItem value="Contract">Contract</SelectItem>
+                        <SelectItem value="Custom">Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500">
+                      Type of document this form generates
+                    </p>
+                  </div>
+
+                  <Separator />
+
+                  {/* Allow Save as Incomplete */}
                   <div className="flex items-center justify-between space-x-2">
                     <div className="flex-1">
                       <Label htmlFor="allow-save-incomplete" className="text-sm font-medium">

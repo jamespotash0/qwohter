@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageContent } from '@/components/common/layout';
-import { useCurrentOrganization, useForms, useDeleteForm, useCopyForm, useUpdateForm, useCreateForm, type Form } from '@/hooks/queries';
+import { useCurrentOrganization, useForms, useDeleteForm, useCopyForm, useUpdateForm, useCreateForm, useOrganizationMembers, type Form } from '@/hooks/queries';
 import { useUser } from '@/auth';
 import {
   Plus,
@@ -13,7 +13,9 @@ import {
   SquaresFour,
   ListBullets,
   Star,
-  Stack
+  Stack,
+  User,
+  CalendarBlank
 } from '@phosphor-icons/react';
 import {
   DropdownMenu,
@@ -36,6 +38,10 @@ export default function Forms() {
   const { data: forms = [], isLoading } = useForms(
     currentOrganization?.id,
     !!currentOrganization?.id // Only enable when we have an org ID
+  );
+  const { data: members = [] } = useOrganizationMembers(
+    currentOrganization?.id || '',
+    !!currentOrganization?.id
   );
   const deleteFormMutation = useDeleteForm();
   const copyFormMutation = useCopyForm();
@@ -179,6 +185,7 @@ export default function Forms() {
             <FormCard
               key={form.id}
               form={form}
+              members={members}
               onEdit={() => navigate(`/forms/builder-v3/${form.id}`)}
               onDuplicate={(e) => handleDuplicate(form.id, form.name, e)}
               onDelete={() => handleDelete(form.id, form.name)}
@@ -193,6 +200,7 @@ export default function Forms() {
             <FormRow
               key={form.id}
               form={form}
+              members={members}
               onEdit={() => navigate(`/forms/builder-v3/${form.id}`)}
               onDuplicate={(e) => handleDuplicate(form.id, form.name, e)}
               onDelete={() => handleDelete(form.id, form.name)}
@@ -208,6 +216,7 @@ export default function Forms() {
 
 interface FormCardProps {
   form: Form;
+  members: any[];
   onEdit: () => void;
   onDuplicate: (e?: React.MouseEvent) => void;
   onDelete: () => void;
@@ -215,7 +224,7 @@ interface FormCardProps {
   onUpdateName: (name: string) => void;
 }
 
-function FormCard({ form, onEdit, onDuplicate, onDelete, onSetDefault, onUpdateName }: FormCardProps) {
+function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, onUpdateName }: FormCardProps) {
   const totalFields = form.tabs.reduce((acc, tab) => acc + tab.fields.length, 0);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(form.name);
@@ -223,6 +232,22 @@ function FormCard({ form, onEdit, onDuplicate, onDelete, onSetDefault, onUpdateN
   const [editedDescription, setEditedDescription] = useState(form.description || '');
   const isDefault = (form as any).is_default;
   const updateFormMutation = useUpdateForm();
+
+  // Get creator name from members
+  const creator = members.find(m => m.user_id === form.created_by);
+  const creatorName = creator?.full_name || 'Unknown';
+
+  // Format creation date
+  const createdDate = new Date(form.created_at).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
+  // Format form type for display
+  const formTypeDisplay = form.form_type
+    ? form.form_type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+    : 'Custom';
 
   const handleNameSave = () => {
     if (editedName.trim() && editedName !== form.name) {
@@ -427,7 +452,8 @@ function FormCard({ form, onEdit, onDuplicate, onDelete, onSetDefault, onUpdateN
           </div>
 
           {/* Stats Footer */}
-          <div className="px-5 py-3 bg-gradient-to-t from-gray-100/80 to-transparent border-t border-gray-200/60">
+          <div className="px-5 py-3 bg-gradient-to-t from-gray-100/80 to-transparent border-t border-gray-200/60 space-y-2">
+            {/* Row 1: Tabs and Fields */}
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1.5 text-gray-700">
@@ -442,27 +468,22 @@ function FormCard({ form, onEdit, onDuplicate, onDelete, onSetDefault, onUpdateN
                 </div>
               </div>
 
-              {/* Tags */}
-              {form.tags && form.tags.length > 0 && (
-                <div className="flex items-center gap-1">
-                  {form.tags.slice(0, 2).map((tag, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                  {form.tags.length > 2 && (
-                    <span
-                      className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-200 text-gray-700 cursor-help"
-                      title={form.tags.slice(2).join(', ')}
-                    >
-                      +{form.tags.length - 2}
-                    </span>
-                  )}
-                </div>
-              )}
+              {/* Form Type Badge */}
+              <div className="px-2.5 py-1 rounded-md text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                {formTypeDisplay}
+              </div>
+            </div>
+
+            {/* Row 2: Creator and Date */}
+            <div className="flex items-center justify-between text-xs text-gray-600">
+              <div className="flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-gray-500" weight="duotone" />
+                <span className="truncate max-w-[120px]" title={creatorName}>{creatorName}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <CalendarBlank className="w-3.5 h-3.5 text-gray-500" weight="duotone" />
+                <span>{createdDate}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -471,11 +492,27 @@ function FormCard({ form, onEdit, onDuplicate, onDelete, onSetDefault, onUpdateN
   );
 }
 
-function FormRow({ form, onEdit, onDuplicate, onDelete, onSetDefault, onUpdateName }: FormCardProps) {
+function FormRow({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, onUpdateName }: FormCardProps) {
   const totalFields = form.tabs.reduce((acc, tab) => acc + tab.fields.length, 0);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(form.name);
   const isDefault = (form as any).is_default;
+
+  // Get creator name from members
+  const creator = members.find(m => m.user_id === form.created_by);
+  const creatorName = creator?.full_name || 'Unknown';
+
+  // Format creation date
+  const createdDate = new Date(form.created_at).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
+  // Format form type for display
+  const formTypeDisplay = form.form_type
+    ? form.form_type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+    : 'Custom';
 
   const handleNameSave = () => {
     if (editedName.trim() && editedName !== form.name) {
@@ -546,9 +583,26 @@ function FormRow({ form, onEdit, onDuplicate, onDelete, onSetDefault, onUpdateNa
         </div>
 
         <div className="flex items-center gap-6">
+          {/* Form Type Badge */}
+          <div className="px-3 py-1.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+            {formTypeDisplay}
+          </div>
+
           <div className="flex items-center gap-4 text-sm text-gray-600">
             <span><span className="font-medium text-gray-900">{form.tabs.length}</span> tabs</span>
             <span><span className="font-medium text-gray-900">{totalFields}</span> fields</span>
+          </div>
+
+          {/* Creator and Date */}
+          <div className="flex items-center gap-4 text-xs text-gray-600">
+            <div className="flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-gray-500" weight="duotone" />
+              <span className="truncate max-w-[150px]" title={creatorName}>{creatorName}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CalendarBlank className="w-3.5 h-3.5 text-gray-500" weight="duotone" />
+              <span>{createdDate}</span>
+            </div>
           </div>
 
           <DropdownMenu>
