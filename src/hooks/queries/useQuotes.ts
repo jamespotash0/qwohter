@@ -17,7 +17,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, invalidateQueries, optimisticUpdates } from '@/lib/queryClient';
 import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 import { toast } from 'sonner';
-import type { Quote } from '@/stores/quotes/quotesStore';
+import type { Quote } from '@/services/quotesService';
 import {
   fetchQuotes,
   fetchQuoteById,

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 
-import { useUpdateQuote } from "@/stores/quotes/quotesStore";
+import { useUpdateQuote } from "@/hooks/queries/useQuotes";
 import { QuoteEditingWizardProps } from './types/editingTypes';
 import { useEditingState } from './hooks/useEditingState';
 import { useEditingValidation } from './hooks/useEditingValidation';

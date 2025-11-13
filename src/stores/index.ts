@@ -74,6 +74,16 @@ export {
 
 // Re-export for type compatibility only
 // Actual implementations are archived in .archived/
-export type { Quote } from './quotes/quotesStore';
-export type { Project, WorkflowColumn } from './board/boardStore';
-export type { Reminder } from './reminders/remindersStore';
+export type { Quote, QuoteFilters, CreateQuoteData, UpdateQuoteData } from '@/services/quotesService';
+export type { Organization, OrganizationMember, UserMembership, InviteToken } from '@/services/organizationService';
+export type { Project, WorkflowColumn, ProjectPriority } from '@/services/boardService';
+export type { Reminder } from '@/services/reminderService';
+
+// Re-export React Query hooks for backward compatibility
+export {
+  useQuotes,
+  useQuote,
+  useCreateQuote,
+  useUpdateQuote,
+  useDeleteQuote,
+} from '@/hooks/queries/useQuotes';

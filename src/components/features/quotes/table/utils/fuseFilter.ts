@@ -1,6 +1,6 @@
 import { FilterFn } from '@tanstack/react-table';
 import useEnhancedSearch from '@/hooks/useEnhancedSearch';
-import { Quote } from '@/stores/quotes/quotesStore';
+import type { Quote } from '@/services/quotesService';
 
 // Create a custom filter function that uses Fuse.js
 export const createFuseFilter = (quotes: Quote[]): FilterFn<Quote> => {

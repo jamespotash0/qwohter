@@ -1,7 +1,7 @@
 import React from 'react';
 import { Table, flexRender } from '@tanstack/react-table';
 import { ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
-import { Quote } from "@/stores/quotes/quotesStore";
+import type { Quote } from "@/services/quotesService";
 
 interface TableHeaderProps {
   table: Table<Quote>;

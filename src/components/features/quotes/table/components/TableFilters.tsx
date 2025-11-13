@@ -4,7 +4,7 @@ import { Filter, RotateCcw } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Quote } from "@/stores/quotes/quotesStore";
+import type { Quote } from "@/services/quotesService";
 import { EnhancedSearchInput } from './EnhancedSearchInput';
 
 interface TableFiltersProps {

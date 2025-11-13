@@ -17,7 +17,7 @@ import { SmartQuoteHelper, QuoteSection, SmartQuoteData } from '@/templates/Smar
 import { MixedContentEngine, MixedContentSection } from '@/utils/mixedContentEngine';
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
 import { defaultSectionVisibility, SectionVisibilityConfig } from '@/templates/BaseTemplate/types';
-import { Quote } from '@/stores/quotes/quotesStore';
+import type { Quote } from '@/services/quotesService';
 import { useCurrentOrganization } from '@/hooks/queries';
 import { useUser } from '@/auth';
 import { QuoteDataPanelCore as QuoteDataPanel } from './UnifiedQuoteEditor/QuoteDataPanel/QuoteDataPanelCore';
