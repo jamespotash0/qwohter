@@ -26,7 +26,6 @@ export {
   useResendOtp,
   useResetPassword,
   useUpdatePassword,
-  useAuthActions, // Deprecated - use individual hooks
 } from './hooks/useAuth';
 
 // Services (for advanced usage)

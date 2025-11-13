@@ -73,7 +73,7 @@ export {
  */
 
 // Re-export for type compatibility only
-// Actual implementations are archived in .archived/
+// Actual implementations have been removed (migrated to React Query)
 export type { Quote, QuoteFilters, CreateQuoteData, UpdateQuoteData } from '@/services/quotesService';
 export type { Organization, OrganizationMember, UserMembership, InviteToken } from '@/services/organizationService';
 export type { Project, WorkflowColumn, ProjectPriority } from '@/services/boardService';

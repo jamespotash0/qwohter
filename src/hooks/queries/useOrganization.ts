@@ -319,20 +319,6 @@ export function useOrganizationContext(userId: string, enabled: boolean = true) 
 }
 
 // ============================================================================
-// Legacy Compatibility Exports
-// ============================================================================
-
-/**
- * Legacy: useOrganization
- *
- * @deprecated Use useOrganizationById instead for clarity
- * Kept for backward compatibility
- */
-export function useOrganization(organizationId: string, enabled: boolean = true) {
-  return useOrganizationById(organizationId, enabled);
-}
-
-// ============================================================================
 // Membership Mutation Hooks
 // ============================================================================
 

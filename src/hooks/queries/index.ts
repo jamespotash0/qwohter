@@ -40,9 +40,6 @@ export {
   // Convenience Hooks
   useCurrentOrganization,
   useOrganizationContext,
-
-  // Legacy
-  useOrganization,
 } from './useOrganization';
 
 // Dashboard

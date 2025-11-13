@@ -13,7 +13,7 @@ import * as authService from '../services/authService';
 import * as profileService from '../services/profileService';
 import { useAuthContext } from '../AuthProvider';
 import type { User } from '@supabase/supabase-js';
-import type { UserProfile, UpdateProfileData } from '../services/profileService';
+import type { UpdateProfileData } from '../services/profileService';
 
 /**
  * Get current user from session
@@ -212,8 +212,6 @@ export function useSignUp() {
  * ```
  */
 export function useSignOut() {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: authService.signOut,
     onSuccess: (result) => {
@@ -345,27 +343,4 @@ export function useUpdatePassword() {
       }
     },
   });
-}
-
-/**
- * Get all auth actions (for backward compatibility)
- *
- * @deprecated Use individual hooks instead
- */
-export function useAuthActions() {
-  const { mutate: signIn, isPending: isSigningIn } = useSignIn();
-  const { mutate: signUp, isPending: isSigningUp } = useSignUp();
-  const { mutate: signOut, isPending: isSigningOut } = useSignOut();
-  const { mutate: updateProfile, isPending: isUpdatingProfile } = useUpdateProfile();
-
-  return {
-    signIn,
-    signUp,
-    signOut,
-    updateProfile,
-    isSigningIn,
-    isSigningUp,
-    isSigningOut,
-    isUpdatingProfile,
-  };
 }
