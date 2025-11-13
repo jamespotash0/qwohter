@@ -273,6 +273,8 @@ export function useUpdateQuoteStatus() {
       toast.success('Quote status updated successfully');
       // Invalidate all quotes lists to refresh the table
       invalidateQueries.allQuotes();
+      // Also invalidate board queries in case a project was created (Won status)
+      invalidateQueries.allBoard();
     },
 
     onError: (error, variables, context) => {

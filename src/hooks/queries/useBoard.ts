@@ -70,6 +70,28 @@ export function useWorkflowColumns(organizationId: string, enabled: boolean = tr
 }
 
 /**
+ * Hook: Create Project (Board Item)
+ *
+ * Creates a new project with cache invalidation
+ */
+export function useCreateProject(organizationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (projectData: CreateBoardItemData) => {
+      return createBoardItem(organizationId, projectData);
+    },
+    onSuccess: () => {
+      toast.success('Project created successfully');
+      queryClient.invalidateQueries({ queryKey: queryKeys.board.tasks(organizationId) });
+    },
+    onError: (error) => {
+      toast.error('Failed to create project');
+    },
+  });
+}
+
+/**
  * Hook: Update Project (Board Item)
  *
  * Updates a project with optimistic updates

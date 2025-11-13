@@ -796,11 +796,11 @@ export default function Board() {
                     >
                       {columnProjects.map((project) => {
                         const quote = project.quote;
-                        const clientName = quote?.quote_details?.contactName || 'No Client';
-                        const clientCompany = quote?.quote_details?.contactCompany || '';
-                        const clientAddress = quote?.quote_details?.contactAddress || '';
+                        const clientName = quote?.job_details?.client_name || '';
+                        const clientCompany = quote?.job_details?.client_company || '';
+                        const clientAddress = quote?.job_details?.client_address || '';
                         // const jobLocation = quote?.job_details?.job_location || '';
-                        const total = quote?.price_details?.grand_total;
+                        const total = quote?.price_details?.final_selling_price;
                         // const avatarColor = getAvatarColor(project.id);
 
                         return (
@@ -938,13 +938,6 @@ export default function Board() {
                                     </PopoverContent>
                                   </Popover>
                                 )}
-
-                                {total && (
-                                  <div className="flex items-center gap-1">
-                                    <CurrencyDollarIcon className="w-3 h-3" />
-                                    <span>{formatCurrency(total)}</span>
-                                  </div>
-                                )}
                               </div>
 
                               {/* Right Side - Icon Buttons (only when NOT set) */}
@@ -989,7 +982,7 @@ export default function Board() {
                                       <Input
                                         type="date"
                                         value={project.completion_date || ''}
-                                        onChange={(e) => updateProject(project.id, { completion_date: e.target.value })}
+                                        onChange={(e) => updateProject({ id: project.id, updates: { completion_date: e.target.value } })}
                                         className="text-sm"
                                         autoFocus
                                       />
@@ -1127,20 +1120,20 @@ export default function Board() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Company</p>
-                      <p className="font-medium">{selectedProject.quote.quote_details.contactCompany || 'N/A'}</p>
+                      <p className="font-medium">{selectedProject.quote.job_details.client_company || 'N/A'}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Phone</p>
-                      <p className="font-medium">{selectedProject.quote.quote_details.contactPhone || 'N/A'}</p>
+                      <p className="font-medium">{selectedProject.quote.quote_details.phone || 'N/A'}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Email</p>
                       <p className="font-medium">{selectedProject.quote.quote_details.contactEmail || 'N/A'}</p>
                     </div>
-                    {selectedProject.quote.quote_details.contactAddress && (
+                    {selectedProject.quote.quote_details.address && (
                       <div className="col-span-2">
                         <p className="text-sm text-gray-600">Address</p>
-                        <p className="font-medium">{selectedProject.quote.quote_details.contactAddress}</p>
+                        <p className="font-medium">{selectedProject.quote.quote_details.address}</p>
                       </div>
                     )}
                   </div>

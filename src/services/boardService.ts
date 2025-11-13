@@ -79,7 +79,15 @@ export async function fetchBoardItems(organizationId: string): Promise<Project[]
     .order('board_order', { ascending: true });
 
   if (error) throw error;
-  return (data || []) as Project[];
+
+  // Transform the data: Supabase returns 'quotes' as array, we need 'quote' as single object
+  const transformedData = (data || []).map((item: any) => ({
+    ...item,
+    quote: Array.isArray(item.quotes) ? item.quotes[0] : item.quotes,
+    quotes: undefined, // Remove the original quotes array
+  }));
+
+  return transformedData as Project[];
 }
 
 /**
@@ -105,7 +113,16 @@ export async function fetchBoardItemById(itemId: string): Promise<Project> {
     .single();
 
   if (error) throw error;
-  return data as Project;
+  if (!data) throw new Error('Project not found');
+
+  // Transform the data: Supabase returns 'quotes' as array, we need 'quote' as single object
+  const transformedData = {
+    ...data as any,
+    quote: Array.isArray((data as any).quotes) ? (data as any).quotes[0] : (data as any).quotes,
+    quotes: undefined,
+  };
+
+  return transformedData as Project;
 }
 
 /**

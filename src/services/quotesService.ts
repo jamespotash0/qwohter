@@ -59,7 +59,6 @@ export interface UpdateQuoteData {
   submitted_at?: string;
   won_at?: string;
   rejected_at?: string;
-  closed_at?: string;
   margin_percentage?: number;
   is_main_version?: boolean;
   quote_source?: string;
@@ -102,7 +101,7 @@ export async function fetchQuotes(
         document_version, created_at, updated_at, customization,
         quote_source, archived, is_main_version,
         total_value, subtotal,
-        submitted_at, won_at, rejected_at, closed_at, margin_percentage
+        submitted_at, won_at, rejected_at, margin_percentage
       `)
       .eq('created_by', userId)
       .order('created_at', { ascending: false })
@@ -130,7 +129,7 @@ export async function fetchQuotes(
         document_version, created_at, updated_at, customization,
         quote_source, archived, is_main_version,
         total_value, subtotal,
-        submitted_at, won_at, rejected_at, closed_at, margin_percentage
+        submitted_at, won_at, rejected_at, margin_percentage
       `)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -398,12 +397,62 @@ export async function updateQuoteStatus(
     case 'Rejected':
       updates.rejected_at = now;
       break;
-    case 'Closed':
-      updates.closed_at = now;
-      break;
   }
 
-  return updateQuote(quoteId, updates);
+  const updatedQuote = await updateQuote(quoteId, updates);
+
+  // If status is "Won", automatically create a project for the board
+  // ONLY for main version quotes (don't create projects for quote versions)
+  if (status === 'Won' && updatedQuote.is_main_version === true) {
+    // Check if project already exists for this quote
+    const { data: existingProject } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('quote_id', quoteId)
+      .maybeSingle();
+
+    // Only create if no project exists
+    if (!existingProject) {
+      // Get default workflow column for the organization
+      const { data: defaultColumn } = await supabase
+        .from('project_workflow_columns')
+        .select('name')
+        .eq('organization_id', updatedQuote.organization_id)
+        .eq('is_default', true)
+        .maybeSingle();
+
+      const workflowStatus = (defaultColumn as any)?.name || 'To Do'; // Fallback to 'To Do' if no default
+
+      // Get next board_order (highest + 1)
+      const { data: maxOrderProject } = await supabase
+        .from('projects')
+        .select('board_order')
+        .eq('organization_id', updatedQuote.organization_id)
+        .order('board_order', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const nextOrder = ((maxOrderProject as any)?.board_order || 0) + 1;
+
+      // Create project with default workflow status
+      const { error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          quote_id: quoteId,
+          organization_id: updatedQuote.organization_id,
+          workflow_status: workflowStatus,
+          board_order: nextOrder,
+          priority: 'Medium',
+        } as any);
+
+      if (projectError) {
+        console.error('Failed to create project for won quote:', projectError);
+        // Don't throw - quote was still updated successfully
+      }
+    }
+  }
+
+  return updatedQuote;
 }
 
 /**
@@ -481,19 +530,66 @@ export async function setMainVersion(
   // Get all quotes with the same base proposal number
   const { data: quotes, error: fetchError } = await supabase
     .from('quotes')
-    .select('id')
+    .select('id, status')
     .like('proposal_number', `${baseProposalNumber}%`);
 
   if (fetchError) throw fetchError;
 
+  // Type for quotes array
+  type QuoteVersion = { id: string; status: string };
+  const typedQuotes = (quotes || []) as QuoteVersion[];
+
+  // Get the new main version's status
+  const newMainQuote = typedQuotes.find(q => q.id === quoteId);
+  const newMainStatus = newMainQuote?.status;
+
+  // Check if there's an existing project for any quote in this version group
+  const { data: existingProject } = await supabase
+    .from('projects')
+    .select('id, quote_id')
+    .in('quote_id', typedQuotes.map(q => q.id))
+    .maybeSingle();
+
+  // Type for project
+  type ProjectLink = { id: string; quote_id: string };
+  const typedProject = existingProject as ProjectLink | null;
+
   // Update all quotes in the group
-  const updates = (quotes || []).map((quote) =>
+  const updates = typedQuotes.map((quote) =>
     updateQuote(quote.id, {
       is_main_version: quote.id === quoteId,
     })
   );
 
   await Promise.all(updates);
+
+  // Handle project link updates
+  if (typedProject) {
+    if (newMainStatus === 'Won') {
+      // New main version is Won: Update project to link to new main version
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({ quote_id: quoteId })
+        .eq('id', typedProject.id);
+
+      if (updateError) {
+        console.error('Failed to update project link:', updateError);
+        throw new Error('Failed to update project link to new main version');
+      }
+    } else {
+      // New main version is NOT Won: Delete the project
+      // (It no longer meets the constraint: main version + Won status)
+      const { error: deleteError } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', typedProject.id);
+
+      if (deleteError) {
+        console.error('Failed to delete project:', deleteError);
+        throw new Error('Failed to delete project for non-Won main version');
+      }
+    }
+  }
 }
 
 /**

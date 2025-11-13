@@ -68,6 +68,7 @@ export {
 export {
   useProjects,
   useWorkflowColumns,
+  useCreateProject,
   useUpdateProject,
   useDeleteProject,
   useCreateWorkflowColumn,
