@@ -8,6 +8,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import * as authService from '@/auth/services/authService';
+import * as Sentry from '@sentry/react';
 // ============================================================================
 // Types
 // ============================================================================
@@ -166,80 +167,191 @@ export async function fetchQuoteById(quoteId: string): Promise<Quote> {
 
 /**
  * Create a new quote
+ *
+ * Why instrumented: Critical user flow - quote creation is core business logic.
+ * If this fails, users can't do their primary job.
+ *
+ * What we track:
+ * - Performance: How long does quote creation take?
+ * - Errors: Database errors, auth failures, missing org
+ * - Context: User ID, org ID (not sensitive quote data)
  */
 export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
-  // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
-  const session = await authService.getSession();
-  if (!session?.user) throw new Error('Not authenticated');
+  return await Sentry.startSpan(
+    {
+      name: 'createQuote',
+      op: 'db.query',
+      attributes: {
+        'quote.project_name': quoteData.project_name || 'Untitled',
+      },
+    },
+    async (span) => {
+      try {
+        // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
+        const session = await authService.getSession();
+        if (!session?.user) throw new Error('Not authenticated');
 
-  // Get user's organization
-  const { data: membershipData, error: membershipError } = await supabase
-    .from('memberships')
-    .select('organization_id')
-    .eq('user_id', session.user.id)
-    .single();
+        // Get user's organization
+        const { data: membershipData, error: membershipError } = await supabase
+          .from('memberships')
+          .select('organization_id')
+          .eq('user_id', session.user.id)
+          .single();
 
-  if (membershipError) throw membershipError;
-  if (!membershipData?.organization_id) {
-    throw new Error('User not assigned to an organization');
-  }
+        if (membershipError) {
+          span.setStatus({ code: 2, message: 'Membership query failed' });
+          throw membershipError;
+        }
+        if (!membershipData?.organization_id) {
+          span.setStatus({ code: 2, message: 'No organization found' });
+          throw new Error('User not assigned to an organization');
+        }
 
-  // Get user's name from profile to set created_by_name
-  // Fallback to email if full_name is not set
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('full_name')
-    .eq('id', session.user.id)
-    .single();
+        span.setAttribute('organization.id', membershipData.organization_id);
 
-  const createdByName = profileData?.full_name || session.user.email || 'Unknown';
+        // Get user's name from profile to set created_by_name
+        // Fallback to email if full_name is not set
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', session.user.id)
+          .single();
 
-  // Create quote with created_by_name explicitly set
-  const insertData = {
-    ...quoteData,
-    organization_id: membershipData.organization_id,
-    created_by: session.user.id,
-    created_by_name: createdByName,
-  };
+        const createdByName = profileData?.full_name || session.user.email || 'Unknown';
 
-  const { data, error } = await supabase
-    .from('quotes')
-    .insert(insertData as any)
-    .select()
-    .single();
+        // Create quote with created_by_name explicitly set
+        const insertData = {
+          ...quoteData,
+          organization_id: membershipData.organization_id,
+          created_by: session.user.id,
+          created_by_name: createdByName,
+        };
 
-  if (error) throw error;
-  return data as Quote;
+        const { data, error } = await supabase
+          .from('quotes')
+          .insert(insertData as any)
+          .select()
+          .single();
+
+        if (error) {
+          span.setStatus({ code: 2, message: error.message });
+          throw error;
+        }
+
+        span.setStatus({ code: 1 }); // Success
+        span.setAttribute('quote.id', data.id);
+        return data as Quote;
+      } catch (error) {
+        // Capture exception with context
+        Sentry.captureException(error, {
+          tags: {
+            operation: 'createQuote',
+            project_name: quoteData.project_name,
+          },
+        });
+        throw error;
+      }
+    }
+  );
 }
 
 /**
  * Update a quote
+ *
+ * Why instrumented: Critical user flow - users constantly edit quotes.
+ * Performance here directly impacts user experience.
+ *
+ * What we track:
+ * - Performance: Is autosave fast enough?
+ * - Errors: RLS failures, database errors
+ * - Context: Quote ID (not sensitive quote content)
  */
 export async function updateQuote(
   quoteId: string,
   updates: UpdateQuoteData
 ): Promise<Quote> {
-  const { data, error } = await supabase
-    .from('quotes')
-    .update(updates)
-    .eq('id', quoteId)
-    .select()
-    .single();
+  return await Sentry.startSpan(
+    {
+      name: 'updateQuote',
+      op: 'db.query',
+      attributes: {
+        'quote.id': quoteId,
+        'update.fields': Object.keys(updates).join(', '),
+      },
+    },
+    async (span) => {
+      try {
+        const { data, error } = await supabase
+          .from('quotes')
+          .update(updates)
+          .eq('id', quoteId)
+          .select()
+          .single();
 
-  if (error) throw error;
-  return data as Quote;
+        if (error) {
+          span.setStatus({ code: 2, message: error.message });
+          Sentry.captureException(error, {
+            tags: {
+              operation: 'updateQuote',
+              quote_id: quoteId,
+            },
+          });
+          throw error;
+        }
+
+        span.setStatus({ code: 1 }); // Success
+        return data as Quote;
+      } catch (error) {
+        throw error;
+      }
+    }
+  );
 }
 
 /**
  * Delete a quote
+ *
+ * Why instrumented: Destructive operation - if this fails or succeeds incorrectly,
+ * users could lose data. We need to know immediately.
+ *
+ * What we track:
+ * - Errors: RLS failures (trying to delete someone else's quote)
+ * - Context: Quote ID for debugging
  */
 export async function deleteQuote(quoteId: string): Promise<void> {
-  const { error } = await supabase
-    .from('quotes')
-    .delete()
-    .eq('id', quoteId);
+  return await Sentry.startSpan(
+    {
+      name: 'deleteQuote',
+      op: 'db.query',
+      attributes: {
+        'quote.id': quoteId,
+      },
+    },
+    async (span) => {
+      try {
+        const { error } = await supabase
+          .from('quotes')
+          .delete()
+          .eq('id', quoteId);
 
-  if (error) throw error;
+        if (error) {
+          span.setStatus({ code: 2, message: error.message });
+          Sentry.captureException(error, {
+            tags: {
+              operation: 'deleteQuote',
+              quote_id: quoteId,
+            },
+            level: 'warning', // Deletion failures are important
+          });
+          throw error;
+        }
+
+        span.setStatus({ code: 1 }); // Success
+      } catch (error) {
+        throw error;
+      }
+    }
+  );
 }
 
 /**

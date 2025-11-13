@@ -7,6 +7,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { LogoData } from '@/lib/types/settings/companySettings';
+import * as Sentry from '@sentry/react';
 
 // ============================================================================
 // Types
@@ -106,20 +107,58 @@ export async function fetchOrganizationById(organizationId: string): Promise<Org
 
 /**
  * Update organization
+ *
+ * Why instrumented: Organization settings affect all users in the org.
+ * If logo upload or company info updates fail, it impacts branding on all quotes.
+ *
+ * What we track:
+ * - Update success/failure rate
+ * - Which fields are updated (logo vs company info)
+ * - Permission errors
  */
 export async function updateOrganization(
   organizationId: string,
   updates: UpdateOrganizationData
 ): Promise<Organization> {
-  const { data, error } = await supabase
-    .from('organizations')
-    .update(updates)
-    .eq('id', organizationId)
-    .select()
-    .single();
+  return await Sentry.startSpan(
+    {
+      name: 'updateOrganization',
+      op: 'db.query',
+      attributes: {
+        'organization.id': organizationId,
+        'update.has_logo': !!updates.logo_data,
+        'update.has_name': !!updates.name,
+        'update.fields': Object.keys(updates).join(', '),
+      },
+    },
+    async (span) => {
+      try {
+        const { data, error } = await supabase
+          .from('organizations')
+          .update(updates)
+          .eq('id', organizationId)
+          .select()
+          .single();
 
-  if (error) throw error;
-  return data as Organization;
+        if (error) {
+          span.setStatus({ code: 2, message: error.message });
+          Sentry.captureException(error, {
+            tags: {
+              operation: 'updateOrganization',
+              organization_id: organizationId,
+            },
+            level: 'error',
+          });
+          throw error;
+        }
+
+        span.setStatus({ code: 1 }); // Success
+        return data as Organization;
+      } catch (error) {
+        throw error;
+      }
+    }
+  );
 }
 
 // ============================================================================
@@ -219,7 +258,7 @@ export async function checkSubscriptionStatus(organizationId: string): Promise<S
     .from('subscriptions')
     .select('stripe_subscription_status, current_period_end')
     .eq('organization_id', organizationId)
-    .single();
+    .single<{ stripe_subscription_status: string | null; current_period_end: string | null }>();
 
   if (error) {
     return {
