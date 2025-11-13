@@ -796,9 +796,9 @@ export default function Board() {
                     >
                       {columnProjects.map((project) => {
                         const quote = project.quote;
-                        const clientName = quote?.job_details?.client_name || 'No Client';
-                        const clientCompany = quote?.job_details?.client_company || '';
-                        const clientAddress = quote?.job_details?.client_address || '';
+                        const clientName = quote?.quote_details?.contactName || 'No Client';
+                        const clientCompany = quote?.quote_details?.contactCompany || '';
+                        const clientAddress = quote?.quote_details?.contactAddress || '';
                         // const jobLocation = quote?.job_details?.job_location || '';
                         const total = quote?.price_details?.grand_total;
                         // const avatarColor = getAvatarColor(project.id);
@@ -1117,32 +1117,30 @@ export default function Board() {
               </div>
 
               {/* Client & Job Details */}
-              {selectedProject.quote?.job_details && (
+              {selectedProject.quote?.quote_details && (
                 <div>
                   <h3 className="font-semibold mb-3">Client & Job Details</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-600">Client Name</p>
-                      <p className="font-medium">{selectedProject.quote.job_details.client_name || 'N/A'}</p>
+                      <p className="font-medium">{selectedProject.quote.quote_details.contactName || 'N/A'}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Company</p>
-                      <p className="font-medium">{selectedProject.quote.job_details.client_company || 'N/A'}</p>
+                      <p className="font-medium">{selectedProject.quote.quote_details.contactCompany || 'N/A'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Location</p>
-                      <p className="font-medium">{selectedProject.quote.job_details.job_location || 'N/A'}</p>
+                      <p className="text-sm text-gray-600">Phone</p>
+                      <p className="font-medium">{selectedProject.quote.quote_details.contactPhone || 'N/A'}</p>
                     </div>
-                    {selectedProject.quote.job_details.client_address && (
-                      <div>
+                    <div>
+                      <p className="text-sm text-gray-600">Email</p>
+                      <p className="font-medium">{selectedProject.quote.quote_details.contactEmail || 'N/A'}</p>
+                    </div>
+                    {selectedProject.quote.quote_details.contactAddress && (
+                      <div className="col-span-2">
                         <p className="text-sm text-gray-600">Address</p>
-                        <p className="font-medium">{selectedProject.quote.job_details.client_address}</p>
-                      </div>
-                    )}
-                    {selectedProject.quote.job_details.date && (
-                      <div>
-                        <p className="text-sm text-gray-600">Date</p>
-                        <p className="font-medium">{selectedProject.quote.job_details.date}</p>
+                        <p className="font-medium">{selectedProject.quote.quote_details.contactAddress}</p>
                       </div>
                     )}
                   </div>

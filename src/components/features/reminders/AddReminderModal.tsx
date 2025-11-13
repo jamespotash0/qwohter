@@ -221,7 +221,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
         });
       }
 
-      toast.success(`Reminder ${editingReminder ? 'updated' : 'created'} successfully`);
+      // toast.success(`Reminder ${editingReminder ? 'updated' : 'created'} successfully`);
 
       // Reset form
       setAlertName('');
