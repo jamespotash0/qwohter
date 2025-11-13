@@ -174,6 +174,7 @@ export const reminderService = {
               due_date: params.due_date,
               quote_id: params.quote_id,
               reminder_type: params.reminder_type,
+              reminder_status: 'Pending', // Default status for new reminders
               organization_id: params.organization_id,
               created_by: user.id,
               is_shared: params.is_shared ?? false, // Default to personal (false)
