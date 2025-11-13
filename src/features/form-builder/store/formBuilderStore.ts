@@ -1,26 +1,32 @@
+/**
+ * Form Builder UI Store (UI State Only)
+ *
+ * This store manages ONLY local UI state and form editing operations.
+ * Server operations (fetch, create, update, delete) use React Query hooks
+ * from @/hooks/queries/useForms.ts
+ *
+ * Purpose:
+ * - Local form editing state (tabs, fields) before saving
+ * - UI state (selected tab, field editor visibility, etc.)
+ *
+ * NOT for:
+ * - Fetching forms from server (use useForms hook)
+ * - Creating forms (use useCreateForm hook)
+ * - Updating forms (use useUpdateForm hook)
+ * - Deleting forms (use useDeleteForm hook)
+ */
+
 import { create } from 'zustand';
 import { Form, FormTab, FormField, FormBuilderState } from '../types';
-import { supabase } from '@/integrations/supabase/client';
 
-interface FormBuilderStore {
-  // Forms data
-  forms: Form[];
+interface FormBuilderUIStore {
+  // Local form editing state (before save)
   currentForm: Form | null;
-  isLoading: boolean;
-  error: string | null;
 
   // UI state
   uiState: FormBuilderState;
 
-  // Actions
-  fetchForms: () => Promise<void>;
-  fetchFormById: (id: string) => Promise<void>;
-  createForm: (form: Omit<Form, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
-  updateForm: (id: string, updates: Partial<Form>) => Promise<void>;
-  deleteForm: (id: string) => Promise<void>;
-  duplicateForm: (id: string) => Promise<string>;
-
-  // Form building actions
+  // Local form editing actions (don't save to server)
   setCurrentForm: (form: Form | null) => void;
   addTab: (tab: Omit<FormTab, 'id' | 'fields'>) => void;
   updateTab: (tabId: string, updates: Partial<FormTab>) => void;
@@ -40,11 +46,8 @@ interface FormBuilderStore {
   setPreviewMode: (preview: boolean) => void;
 }
 
-export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
-  forms: [],
+export const useFormBuilderStore = create<FormBuilderUIStore>((set, get) => ({
   currentForm: null,
-  isLoading: false,
-  error: null,
 
   uiState: {
     selectedTab: null,
@@ -54,179 +57,9 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
     previewMode: false,
   },
 
-  fetchForms: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { data, error } = await (supabase
-        .from('forms') as any)
-        .select('*')
-        .eq('created_by', user.id)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      const forms = (data || []).map((form: any) => ({
-        ...form,
-        tabs: (form.tabs as FormTab[]) || []
-      })) as Form[];
-
-      set({ forms, isLoading: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-    }
-  },
-
-  fetchFormById: async (id: string) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { data, error } = await (supabase
-        .from('forms') as any)
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-
-      const form = {
-        ...data,
-        tabs: (data.tabs as FormTab[]) || []
-      } as Form;
-
-      set({ currentForm: form, isLoading: false });
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-    }
-  },
-
-  createForm: async (form) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      // Get user's organization
-      const { data: membership } = await (supabase
-        .from('memberships') as any)
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!membership?.organization_id) {
-        throw new Error('User not assigned to an organization');
-      }
-
-      // Map to database schema - include all required fields
-      const dbForm = {
-        organization_id: membership.organization_id as string,
-        name: form.name,
-        description: form.description,
-        form_type: form.form_type || 'Custom',
-        tabs: form.tabs,
-        created_by: user.id,
-        is_archived: false,
-        is_default: false,
-        starting_proposal_number: form.startingProposalNumber || 'DOC-1000',
-        allow_save_incomplete: true
-      };
-
-      const { data, error } = await (supabase
-        .from('forms') as any)
-        .insert(dbForm)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const newForm = {
-        ...data,
-        tabs: (data.tabs as FormTab[]) || []
-      } as Form;
-
-      set(state => ({
-        forms: [newForm, ...state.forms],
-        currentForm: newForm,
-        isLoading: false
-      }));
-
-      return data.id;
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-      throw error;
-    }
-  },
-
-  updateForm: async (id, updates) => {
-    set({ isLoading: true, error: null });
-    try {
-      // Map to database schema
-      const dbUpdates: any = {};
-      if (updates.name !== undefined) dbUpdates.name = updates.name;
-      if (updates.description !== undefined) dbUpdates.description = updates.description;
-      if (updates.tabs !== undefined) dbUpdates.tabs = updates.tabs;
-      if (updates.form_type !== undefined) dbUpdates.form_type = updates.form_type;
-
-      const { error } = await (supabase
-        .from('forms') as any)
-        .update(dbUpdates)
-        .eq('id', id);
-
-      if (error) throw error;
-
-      set(state => ({
-        forms: state.forms.map(f => f.id === id ? { ...f, ...updates } : f),
-        currentForm: state.currentForm?.id === id
-          ? { ...state.currentForm, ...updates }
-          : state.currentForm,
-        isLoading: false
-      }));
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-      throw error;
-    }
-  },
-
-  deleteForm: async (id) => {
-    set({ isLoading: true, error: null });
-    try {
-      const { error } = await (supabase
-        .from('forms') as any)
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      set(state => ({
-        forms: state.forms.filter(f => f.id !== id),
-        currentForm: state.currentForm?.id === id ? null : state.currentForm,
-        isLoading: false
-      }));
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-    }
-  },
-
-  duplicateForm: async (id) => {
-    set({ isLoading: true, error: null });
-    try {
-      const original = get().forms.find(f => f.id === id);
-      if (!original) throw new Error('Form not found');
-
-      const duplicate = {
-        ...original,
-        name: `${original.name} (Copy)`,
-      };
-
-      const newId = await get().createForm(duplicate);
-      set({ isLoading: false });
-      return newId;
-    } catch (error: any) {
-      set({ error: error.message, isLoading: false });
-      throw error;
-    }
-  },
+  // ===========================================================================
+  // LOCAL FORM EDITING ACTIONS (modify local state, don't save to server)
+  // ===========================================================================
 
   setCurrentForm: (form) => set({ currentForm: form }),
 
@@ -237,12 +70,12 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
     const newTab: FormTab = {
       id: crypto.randomUUID(),
       ...tab,
-      fields: []
+      fields: [],
     };
 
     const updatedForm = {
       ...currentForm,
-      tabs: [...currentForm.tabs, newTab]
+      tabs: [...currentForm.tabs, newTab],
     };
 
     set({ currentForm: updatedForm });
@@ -254,9 +87,9 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
 
     const updatedForm = {
       ...currentForm,
-      tabs: currentForm.tabs.map(tab =>
+      tabs: currentForm.tabs.map((tab) =>
         tab.id === tabId ? { ...tab, ...updates } : tab
-      )
+      ),
     };
 
     set({ currentForm: updatedForm });
@@ -268,7 +101,7 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
 
     const updatedForm = {
       ...currentForm,
-      tabs: currentForm.tabs.filter(tab => tab.id !== tabId)
+      tabs: currentForm.tabs.filter((tab) => tab.id !== tabId),
     };
 
     set({ currentForm: updatedForm });
@@ -287,16 +120,16 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
 
     const newField: FormField = {
       id: crypto.randomUUID(),
-      ...field
+      ...field,
     };
 
     const updatedForm = {
       ...currentForm,
-      tabs: currentForm.tabs.map(tab =>
+      tabs: currentForm.tabs.map((tab) =>
         tab.id === tabId
           ? { ...tab, fields: [...tab.fields, newField] }
           : tab
-      )
+      ),
     };
 
     set({ currentForm: updatedForm });
@@ -308,16 +141,16 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
 
     const updatedForm = {
       ...currentForm,
-      tabs: currentForm.tabs.map(tab =>
+      tabs: currentForm.tabs.map((tab) =>
         tab.id === tabId
           ? {
               ...tab,
-              fields: tab.fields.map(field =>
+              fields: tab.fields.map((field) =>
                 field.id === fieldId ? { ...field, ...updates } : field
-              )
+              ),
             }
           : tab
-      )
+      ),
     };
 
     set({ currentForm: updatedForm });
@@ -329,11 +162,11 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
 
     const updatedForm = {
       ...currentForm,
-      tabs: currentForm.tabs.map(tab =>
+      tabs: currentForm.tabs.map((tab) =>
         tab.id === tabId
-          ? { ...tab, fields: tab.fields.filter(f => f.id !== fieldId) }
+          ? { ...tab, fields: tab.fields.filter((f) => f.id !== fieldId) }
           : tab
-      )
+      ),
     };
 
     set({ currentForm: updatedForm });
@@ -345,9 +178,9 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
 
     const updatedForm = {
       ...currentForm,
-      tabs: currentForm.tabs.map(tab =>
+      tabs: currentForm.tabs.map((tab) =>
         tab.id === tabId ? { ...tab, fields } : tab
-      )
+      ),
     };
 
     set({ currentForm: updatedForm });
@@ -357,10 +190,10 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
     const currentForm = get().currentForm;
     if (!currentForm) return;
 
-    const tab = currentForm.tabs.find(t => t.id === tabId);
+    const tab = currentForm.tabs.find((t) => t.id === tabId);
     if (!tab) return;
 
-    const field = tab.fields.find(f => f.id === fieldId);
+    const field = tab.fields.find((f) => f.id === fieldId);
     if (!field) return;
 
     const duplicatedField: FormField = {
@@ -368,34 +201,40 @@ export const useFormBuilderStore = create<FormBuilderStore>((set, get) => ({
       id: crypto.randomUUID(),
       name: `${field.name}_copy`,
       label: `${field.label} (Copy)`,
-      order: field.order + 1
+      order: field.order + 1,
     };
 
     const updatedForm = {
       ...currentForm,
-      tabs: currentForm.tabs.map(t =>
-        t.id === tabId
-          ? { ...t, fields: [...t.fields, duplicatedField] }
-          : t
-      )
+      tabs: currentForm.tabs.map((t) =>
+        t.id === tabId ? { ...t, fields: [...t.fields, duplicatedField] } : t
+      ),
     };
 
     set({ currentForm: updatedForm });
   },
 
-  setSelectedTab: (tabId) => set(state => ({
-    uiState: { ...state.uiState, selectedTab: tabId }
-  })),
+  // ===========================================================================
+  // UI STATE ACTIONS
+  // ===========================================================================
 
-  setSelectedField: (fieldId) => set(state => ({
-    uiState: { ...state.uiState, selectedField: fieldId }
-  })),
+  setSelectedTab: (tabId) =>
+    set((state) => ({
+      uiState: { ...state.uiState, selectedTab: tabId },
+    })),
 
-  setShowFieldEditor: (show) => set(state => ({
-    uiState: { ...state.uiState, showFieldEditor: show }
-  })),
+  setSelectedField: (fieldId) =>
+    set((state) => ({
+      uiState: { ...state.uiState, selectedField: fieldId },
+    })),
 
-  setPreviewMode: (preview) => set(state => ({
-    uiState: { ...state.uiState, previewMode: preview }
-  })),
+  setShowFieldEditor: (show) =>
+    set((state) => ({
+      uiState: { ...state.uiState, showFieldEditor: show },
+    })),
+
+  setPreviewMode: (preview) =>
+    set((state) => ({
+      uiState: { ...state.uiState, previewMode: preview },
+    })),
 }));
