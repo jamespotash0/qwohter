@@ -233,6 +233,24 @@ export const invalidateQueries = {
       }),
     ]);
   },
+
+  /**
+   * Invalidate all board data
+   * Use after: project creation, quote status change to Won
+   */
+  allBoard: () => {
+    return queryClient.invalidateQueries({ queryKey: queryKeys.board.all });
+  },
+
+  /**
+   * Invalidate board tasks for specific organization
+   * Use after: project updates, workflow changes
+   */
+  boardTasks: (organizationId: string) => {
+    return queryClient.invalidateQueries({
+      queryKey: queryKeys.board.tasks(organizationId)
+    });
+  },
 };
 
 /**

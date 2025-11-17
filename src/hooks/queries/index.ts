@@ -40,9 +40,6 @@ export {
   // Convenience Hooks
   useCurrentOrganization,
   useOrganizationContext,
-
-  // Legacy
-  useOrganization,
 } from './useOrganization';
 
 // Dashboard
@@ -71,6 +68,7 @@ export {
 export {
   useProjects,
   useWorkflowColumns,
+  useCreateProject,
   useUpdateProject,
   useDeleteProject,
   useCreateWorkflowColumn,

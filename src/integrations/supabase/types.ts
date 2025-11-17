@@ -30,7 +30,6 @@ export interface Database {
           won_at?: string;
           submitted_at?: string;
           rejected_at?: string;
-          closed_at?: string;
         };
         Insert: {
           id?: string;
@@ -56,7 +55,6 @@ export interface Database {
           won_at?: string;
           submitted_at?: string;
           rejected_at?: string;
-          closed_at?: string;
         };
         Update: {
           id?: string;
@@ -82,7 +80,6 @@ export interface Database {
           won_at?: string;
           submitted_at?: string;
           rejected_at?: string;
-          closed_at?: string;
         };
       };
       profiles: {
@@ -398,7 +395,7 @@ export interface Database {
           id: string;
           quote_id: string;
           workflow_status: string;
-          board_order: number;
+          board_order: number | null;
           priority: 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | null;
           completion_date: string | null;
           organization_id: string;
@@ -409,7 +406,7 @@ export interface Database {
           id?: string;
           quote_id: string;
           workflow_status: string;
-          board_order?: number;
+          board_order?: number | null;
           priority?: 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | null;
           completion_date?: string | null;
           organization_id: string;
@@ -420,7 +417,7 @@ export interface Database {
           id?: string;
           quote_id?: string;
           workflow_status?: string;
-          board_order?: number;
+          board_order?: number | null;
           priority?: 'Highest' | 'High' | 'Medium' | 'Low' | 'Lowest' | null;
           completion_date?: string | null;
           organization_id?: string;

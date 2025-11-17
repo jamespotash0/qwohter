@@ -8,7 +8,7 @@
  * - Quote source performance
  */
 
-import { Quote } from '@/stores/quotes/quotesStore';
+import type { Quote } from '@/services/quotesService';
 import { startOfWeek, startOfMonth, startOfYear, endOfWeek, endOfMonth, endOfYear, addDays, getDay, format, subWeeks, subMonths, subYears, getDaysInMonth } from 'date-fns';
 
 export type TimePeriod = 'weekly' | 'monthly' | 'yearly';

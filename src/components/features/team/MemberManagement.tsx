@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { /*useOrganizations,*/ OrganizationMember, Organization } from "@/hooks/useOrganizations";
+import type { OrganizationMember, Organization } from "@/services/organizationService";
 // import { useToast } from "@/hooks/use-toast";
 
 interface MemberManagementProps {
@@ -60,8 +60,8 @@ export const MemberManagement = ({
   const [isInviting, setIsInviting] = useState(false);
   // const { toast } = useToast();
 
-  // const activeMembers = members.filter(m => m.status === 'active');
-  // const pendingMembers = members.filter(m => m.status === 'pending');
+  // const activeMembers = members.filter(m => m.status === 'Active');
+  // const pendingMembers = members.filter(m => m.status === 'Pending');
 
   const handleInviteMember = async () => {
     if (!inviteEmail.trim()) return;

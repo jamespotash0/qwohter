@@ -24,7 +24,7 @@ import {
   Maximize2,
   TrendingUp
 } from 'lucide-react';
-import { Quote } from '@/stores/quotes/quotesStore';
+import type { Quote } from '@/services/quotesService';
 import { Organization } from '@/services/organizationService';
 import { groupQuotesByVersion } from '@/utils/quoteVersionGrouping';
 

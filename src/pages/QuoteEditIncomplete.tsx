@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuotes } from "@/stores/quotes/quotesStore";
+import { useQuotes } from "@/hooks/queries/useQuotes";
 import { useUser } from "@/auth";
 import QuoteEditingWizard from "@/components/features/quotes/editing/QuoteEditingWizard/QuoteEditingWizard";
 

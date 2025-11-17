@@ -5,7 +5,7 @@ import CreateProposalDialog from "@/components/features/quotes/creation/CreatePr
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/auth";
 import { useQuotes, useUpdateQuote, useUpdateQuoteStatus, useArchiveQuote, useUnarchiveQuote, useDeleteQuote, useSetMainVersion, useCreateQuoteVersion } from "@/hooks/queries";
-import type { Quote } from "@/stores/quotes/quotesStore";
+import type { Quote } from "@/services/quotesService";
 import { EnhancedQuotesTable } from "@/components/features/quotes/table/EnhancedQuotesTable";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";

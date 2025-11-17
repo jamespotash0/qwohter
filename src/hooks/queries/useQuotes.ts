@@ -17,7 +17,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys, invalidateQueries, optimisticUpdates } from '@/lib/queryClient';
 import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 import { toast } from 'sonner';
-import type { Quote } from '@/stores/quotes/quotesStore';
+import type { Quote } from '@/services/quotesService';
 import {
   fetchQuotes,
   fetchQuoteById,
@@ -273,6 +273,8 @@ export function useUpdateQuoteStatus() {
       toast.success('Quote status updated successfully');
       // Invalidate all quotes lists to refresh the table
       invalidateQueries.allQuotes();
+      // Also invalidate board queries in case a project was created (Won status)
+      invalidateQueries.allBoard();
     },
 
     onError: (error, variables, context) => {

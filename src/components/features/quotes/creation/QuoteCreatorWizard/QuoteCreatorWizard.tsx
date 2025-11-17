@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
-import { useCreateQuote, useUpdateQuote } from "@/stores/quotes/quotesStore";
+import { useCreateQuote, useUpdateQuote } from "@/hooks/queries/useQuotes";
 import { useCurrentOrganization } from "@/hooks/queries";
 import { useUser } from "@/auth";
 import { QuoteCreatorWizardProps } from './types/wizardTypes';

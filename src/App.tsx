@@ -8,6 +8,8 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/auth/AuthProvider";
 import { useEffect } from "react";
 import { queryClient } from "@/lib/queryClient";
+import { Analytics } from "@vercel/analytics/react";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 
 /**
  * Main App component - Industry Standard Architecture
@@ -87,19 +89,23 @@ const App = () => {
   }, []);
 
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <AppRouter />
-          </TooltipProvider>
-          {/* React Query DevTools - only in development */}
-          <ReactQueryDevtools initialIsOpen={false} position="bottom" />
-        </AuthProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <AppRouter />
+            </TooltipProvider>
+            {/* React Query DevTools - only in development */}
+            <ReactQueryDevtools initialIsOpen={false} position="bottom" />
+          </AuthProvider>
+        </QueryClientProvider>
+        {/* Vercel Analytics - tracks page views and Web Vitals */}
+        <Analytics />
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 };
 

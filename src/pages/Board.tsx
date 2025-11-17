@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { PageContent } from '@/components/common/layout';
-import { Project, ProjectPriority } from '@/stores/board/boardStore';
+import { Project, ProjectPriority } from '@/services/boardService';
 import {
   useProjects,
   useWorkflowColumns,
@@ -116,7 +116,7 @@ export default function Board() {
     e.dataTransfer.effectAllowed = 'move';
 
     // Set board_order to null when picking up the card
-    updateProject({ id: projectId, updates: { board_order: null as any } });
+    updateProject({ id: projectId, updates: { board_order: null } });
   };
 
   const handleDragOver = (e: React.DragEvent, columnName: string) => {
@@ -466,7 +466,7 @@ export default function Board() {
     }).format(amount);
   };
 
-  const getPriorityColor = (priority?: ProjectPriority) => {
+  const getPriorityColor = (priority?: ProjectPriority | null) => {
     switch (priority) {
       case 'Highest':
         return 'bg-red-100 text-red-700 border-red-300';
@@ -795,12 +795,12 @@ export default function Board() {
                       }}
                     >
                       {columnProjects.map((project) => {
-                        const quote = project.quotes;
-                        const clientName = quote?.job_details?.client_name || 'No Client';
+                        const quote = project.quote;
+                        const clientName = quote?.job_details?.client_name || '';
                         const clientCompany = quote?.job_details?.client_company || '';
                         const clientAddress = quote?.job_details?.client_address || '';
                         // const jobLocation = quote?.job_details?.job_location || '';
-                        const total = quote?.price_details?.grand_total;
+                        const total = quote?.price_details?.final_selling_price;
                         // const avatarColor = getAvatarColor(project.id);
 
                         return (
@@ -901,7 +901,7 @@ export default function Board() {
                                           </button>
                                         ))}
                                         <button
-                                          onClick={() => updateProject({ id: project.id, updates: { priority: undefined } })}
+                                          onClick={() => updateProject({ id: project.id, updates: { priority: null } })}
                                           className="w-full text-left px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                         >
                                           Clear Priority
@@ -929,7 +929,7 @@ export default function Board() {
                                           className="text-sm"
                                         />
                                         <button
-                                          onClick={() => updateProject({ id: project.id, updates: { completion_date: undefined } })}
+                                          onClick={() => updateProject({ id: project.id, updates: { completion_date: null } })}
                                           className="w-full px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                         >
                                           Clear Date
@@ -937,13 +937,6 @@ export default function Board() {
                                       </div>
                                     </PopoverContent>
                                   </Popover>
-                                )}
-
-                                {total && (
-                                  <div className="flex items-center gap-1">
-                                    <CurrencyDollarIcon className="w-3 h-3" />
-                                    <span>{formatCurrency(total)}</span>
-                                  </div>
                                 )}
                               </div>
 
@@ -968,7 +961,7 @@ export default function Board() {
                                           </button>
                                         ))}
                                         <button
-                                          onClick={() => updateProject({ id: project.id, updates: { priority: undefined } })}
+                                          onClick={() => updateProject({ id: project.id, updates: { priority: null } })}
                                           className="w-full text-left px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                         >
                                           Clear Priority
@@ -989,7 +982,7 @@ export default function Board() {
                                       <Input
                                         type="date"
                                         value={project.completion_date || ''}
-                                        onChange={(e) => updateProject(project.id, { completion_date: e.target.value })}
+                                        onChange={(e) => updateProject({ id: project.id, updates: { completion_date: e.target.value } })}
                                         className="text-sm"
                                         autoFocus
                                       />
@@ -1072,7 +1065,7 @@ export default function Board() {
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold">
-              {selectedProject?.quotes?.project_name || 'Project Details'}
+              {selectedProject?.quote?.project_name || 'Project Details'}
             </DialogTitle>
           </DialogHeader>
 
@@ -1082,7 +1075,7 @@ export default function Board() {
               <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <p className="text-sm text-gray-600">Proposal Number</p>
-                  <p className="font-medium">{selectedProject.quotes?.proposal_number || 'N/A'}</p>
+                  <p className="font-medium">{selectedProject.quote?.proposal_number || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Status</p>
@@ -1092,7 +1085,7 @@ export default function Board() {
                   <p className="text-sm text-gray-600 mb-1">Priority</p>
                   <select
                     value={selectedProject.priority || ''}
-                    onChange={(e) => updateProject({ id: selectedProject.id, updates: { priority: e.target.value as ProjectPriority || undefined } })}
+                    onChange={(e) => updateProject({ id: selectedProject.id, updates: { priority: (e.target.value as ProjectPriority) || null } })}
                     className={`w-full text-sm px-2 py-1 rounded border ${getPriorityColor(selectedProject.priority)} font-medium capitalize`}
                   >
                     <option value="">None</option>
@@ -1117,32 +1110,30 @@ export default function Board() {
               </div>
 
               {/* Client & Job Details */}
-              {selectedProject.quotes?.job_details && (
+              {selectedProject.quote?.quote_details && (
                 <div>
                   <h3 className="font-semibold mb-3">Client & Job Details</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-600">Client Name</p>
-                      <p className="font-medium">{selectedProject.quotes.job_details.client_name || 'N/A'}</p>
+                      <p className="font-medium">{selectedProject.quote.quote_details.contactName || 'N/A'}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Company</p>
-                      <p className="font-medium">{selectedProject.quotes.job_details.client_company || 'N/A'}</p>
+                      <p className="font-medium">{selectedProject.quote.job_details.client_company || 'N/A'}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Location</p>
-                      <p className="font-medium">{selectedProject.quotes.job_details.job_location || 'N/A'}</p>
+                      <p className="text-sm text-gray-600">Phone</p>
+                      <p className="font-medium">{selectedProject.quote.quote_details.phone || 'N/A'}</p>
                     </div>
-                    {selectedProject.quotes.job_details.client_address && (
-                      <div>
+                    <div>
+                      <p className="text-sm text-gray-600">Email</p>
+                      <p className="font-medium">{selectedProject.quote.quote_details.contactEmail || 'N/A'}</p>
+                    </div>
+                    {selectedProject.quote.quote_details.address && (
+                      <div className="col-span-2">
                         <p className="text-sm text-gray-600">Address</p>
-                        <p className="font-medium">{selectedProject.quotes.job_details.client_address}</p>
-                      </div>
-                    )}
-                    {selectedProject.quotes.job_details.date && (
-                      <div>
-                        <p className="text-sm text-gray-600">Date</p>
-                        <p className="font-medium">{selectedProject.quotes.job_details.date}</p>
+                        <p className="font-medium">{selectedProject.quote.quote_details.address}</p>
                       </div>
                     )}
                   </div>
@@ -1150,29 +1141,29 @@ export default function Board() {
               )}
 
               {/* Price Details */}
-              {selectedProject.quotes?.price_details && (
+              {selectedProject.quote?.price_details && (
                 <div>
                   <h3 className="font-semibold mb-3">Pricing</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Subtotal</span>
-                      <span className="font-medium">{formatCurrency(selectedProject.quotes.price_details.subtotal)}</span>
+                      <span className="font-medium">{formatCurrency(selectedProject.quote.price_details.subtotal)}</span>
                     </div>
-                    {selectedProject.quotes.price_details.tax && (
+                    {selectedProject.quote.price_details.tax && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Tax</span>
-                        <span className="font-medium">{formatCurrency(selectedProject.quotes.price_details.tax)}</span>
+                        <span className="font-medium">{formatCurrency(selectedProject.quote.price_details.tax)}</span>
                       </div>
                     )}
-                    {selectedProject.quotes.price_details.discount && (
+                    {selectedProject.quote.price_details.discount && (
                       <div className="flex justify-between text-green-600">
                         <span>Discount</span>
-                        <span className="font-medium">-{formatCurrency(selectedProject.quotes.price_details.discount)}</span>
+                        <span className="font-medium">-{formatCurrency(selectedProject.quote.price_details.discount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-lg font-bold pt-2 border-t">
                       <span>Total</span>
-                      <span>{formatCurrency(selectedProject.quotes.price_details.grand_total)}</span>
+                      <span>{formatCurrency(selectedProject.quote.price_details.grand_total)}</span>
                     </div>
                   </div>
                 </div>

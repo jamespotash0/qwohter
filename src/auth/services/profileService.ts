@@ -7,6 +7,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import * as Sentry from '@sentry/react';
 
 export interface UserProfile {
   id: string;
@@ -50,29 +51,61 @@ export async function fetchUserProfile(userId: string): Promise<UserProfile | nu
 
 /**
  * Update user profile
+ *
+ * Why instrumented: Users expect profile updates to work instantly.
+ * If name/avatar updates fail, users lose trust in the app.
+ *
+ * What we track:
+ * - Update success/failure rate
+ * - Which fields are updated (name vs avatar)
+ * - Permission errors
  */
 export async function updateUserProfile(
   userId: string,
   updates: UpdateProfileData
 ): Promise<UserProfile> {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', userId)
-      .select()
-      .single();
+  return await Sentry.startSpan(
+    {
+      name: 'updateUserProfile',
+      op: 'db.query',
+      attributes: {
+        'user.id': userId,
+        'update.has_name': !!updates.full_name,
+        'update.has_avatar': !!updates.avatar_url,
+      },
+    },
+    async (span) => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .update({
+            ...updates,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', userId)
+          .select()
+          .single();
 
-    if (error) throw error;
+        if (error) {
+          span.setStatus({ code: 2, message: error.message });
+          Sentry.captureException(error, {
+            tags: {
+              operation: 'updateUserProfile',
+              user_id: userId,
+            },
+            level: 'error',
+          });
+          throw error;
+        }
 
-    return data as UserProfile;
-  } catch (error) {
-    console.error('Failed to update profile:', error);
-    throw error;
-  }
+        span.setStatus({ code: 1 }); // Success
+        return data as UserProfile;
+      } catch (error) {
+        console.error('Failed to update profile:', error);
+        throw error;
+      }
+    }
+  );
 }
 
 /**

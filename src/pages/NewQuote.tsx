@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import QuoteCreatorWizard from "@/components/features/quotes/creation/QuoteCreatorWizard";
+import { useQuotes } from "@/hooks/queries/useQuotes";
 import { ProposalFormFiller } from "@/components/features/quotes/creation/ProposalFormFiller";
-import { useQuotes } from "@/stores/quotes/quotesStore";
 import { useUser, useSignOut } from "@/auth";
 
 const NewQuote = () => {

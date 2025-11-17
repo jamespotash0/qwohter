@@ -8,6 +8,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import * as authService from '@/auth/services/authService';
+import * as Sentry from '@sentry/react';
 // ============================================================================
 // Types
 // ============================================================================
@@ -58,7 +59,6 @@ export interface UpdateQuoteData {
   submitted_at?: string;
   won_at?: string;
   rejected_at?: string;
-  closed_at?: string;
   margin_percentage?: number;
   is_main_version?: boolean;
   quote_source?: string;
@@ -101,7 +101,7 @@ export async function fetchQuotes(
         document_version, created_at, updated_at, customization,
         quote_source, archived, is_main_version,
         total_value, subtotal,
-        submitted_at, won_at, rejected_at, closed_at, margin_percentage
+        submitted_at, won_at, rejected_at, margin_percentage
       `)
       .eq('created_by', userId)
       .order('created_at', { ascending: false })
@@ -129,7 +129,7 @@ export async function fetchQuotes(
         document_version, created_at, updated_at, customization,
         quote_source, archived, is_main_version,
         total_value, subtotal,
-        submitted_at, won_at, rejected_at, closed_at, margin_percentage
+        submitted_at, won_at, rejected_at, margin_percentage
       `)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -166,80 +166,191 @@ export async function fetchQuoteById(quoteId: string): Promise<Quote> {
 
 /**
  * Create a new quote
+ *
+ * Why instrumented: Critical user flow - quote creation is core business logic.
+ * If this fails, users can't do their primary job.
+ *
+ * What we track:
+ * - Performance: How long does quote creation take?
+ * - Errors: Database errors, auth failures, missing org
+ * - Context: User ID, org ID (not sensitive quote data)
  */
 export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
-  // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
-  const session = await authService.getSession();
-  if (!session?.user) throw new Error('Not authenticated');
+  return await Sentry.startSpan(
+    {
+      name: 'createQuote',
+      op: 'db.query',
+      attributes: {
+        'quote.project_name': quoteData.project_name || 'Untitled',
+      },
+    },
+    async (span) => {
+      try {
+        // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
+        const session = await authService.getSession();
+        if (!session?.user) throw new Error('Not authenticated');
 
-  // Get user's organization
-  const { data: membershipData, error: membershipError } = await supabase
-    .from('memberships')
-    .select('organization_id')
-    .eq('user_id', session.user.id)
-    .single();
+        // Get user's organization
+        const { data: membershipData, error: membershipError } = await supabase
+          .from('memberships')
+          .select('organization_id')
+          .eq('user_id', session.user.id)
+          .single();
 
-  if (membershipError) throw membershipError;
-  if (!membershipData?.organization_id) {
-    throw new Error('User not assigned to an organization');
-  }
+        if (membershipError) {
+          span.setStatus({ code: 2, message: 'Membership query failed' });
+          throw membershipError;
+        }
+        if (!membershipData?.organization_id) {
+          span.setStatus({ code: 2, message: 'No organization found' });
+          throw new Error('User not assigned to an organization');
+        }
 
-  // Get user's name from profile to set created_by_name
-  // Fallback to email if full_name is not set
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('full_name')
-    .eq('id', session.user.id)
-    .single();
+        span.setAttribute('organization.id', membershipData.organization_id);
 
-  const createdByName = profileData?.full_name || session.user.email || 'Unknown';
+        // Get user's name from profile to set created_by_name
+        // Fallback to email if full_name is not set
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', session.user.id)
+          .single();
 
-  // Create quote with created_by_name explicitly set
-  const insertData = {
-    ...quoteData,
-    organization_id: membershipData.organization_id,
-    created_by: session.user.id,
-    created_by_name: createdByName,
-  };
+        const createdByName = profileData?.full_name || session.user.email || 'Unknown';
 
-  const { data, error } = await supabase
-    .from('quotes')
-    .insert(insertData as any)
-    .select()
-    .single();
+        // Create quote with created_by_name explicitly set
+        const insertData = {
+          ...quoteData,
+          organization_id: membershipData.organization_id,
+          created_by: session.user.id,
+          created_by_name: createdByName,
+        };
 
-  if (error) throw error;
-  return data as Quote;
+        const { data, error } = await supabase
+          .from('quotes')
+          .insert(insertData as any)
+          .select()
+          .single();
+
+        if (error) {
+          span.setStatus({ code: 2, message: error.message });
+          throw error;
+        }
+
+        span.setStatus({ code: 1 }); // Success
+        span.setAttribute('quote.id', data.id);
+        return data as Quote;
+      } catch (error) {
+        // Capture exception with context
+        Sentry.captureException(error, {
+          tags: {
+            operation: 'createQuote',
+            project_name: quoteData.project_name,
+          },
+        });
+        throw error;
+      }
+    }
+  );
 }
 
 /**
  * Update a quote
+ *
+ * Why instrumented: Critical user flow - users constantly edit quotes.
+ * Performance here directly impacts user experience.
+ *
+ * What we track:
+ * - Performance: Is autosave fast enough?
+ * - Errors: RLS failures, database errors
+ * - Context: Quote ID (not sensitive quote content)
  */
 export async function updateQuote(
   quoteId: string,
   updates: UpdateQuoteData
 ): Promise<Quote> {
-  const { data, error } = await supabase
-    .from('quotes')
-    .update(updates)
-    .eq('id', quoteId)
-    .select()
-    .single();
+  return await Sentry.startSpan(
+    {
+      name: 'updateQuote',
+      op: 'db.query',
+      attributes: {
+        'quote.id': quoteId,
+        'update.fields': Object.keys(updates).join(', '),
+      },
+    },
+    async (span) => {
+      try {
+        const { data, error } = await supabase
+          .from('quotes')
+          .update(updates)
+          .eq('id', quoteId)
+          .select()
+          .single();
 
-  if (error) throw error;
-  return data as Quote;
+        if (error) {
+          span.setStatus({ code: 2, message: error.message });
+          Sentry.captureException(error, {
+            tags: {
+              operation: 'updateQuote',
+              quote_id: quoteId,
+            },
+          });
+          throw error;
+        }
+
+        span.setStatus({ code: 1 }); // Success
+        return data as Quote;
+      } catch (error) {
+        throw error;
+      }
+    }
+  );
 }
 
 /**
  * Delete a quote
+ *
+ * Why instrumented: Destructive operation - if this fails or succeeds incorrectly,
+ * users could lose data. We need to know immediately.
+ *
+ * What we track:
+ * - Errors: RLS failures (trying to delete someone else's quote)
+ * - Context: Quote ID for debugging
  */
 export async function deleteQuote(quoteId: string): Promise<void> {
-  const { error } = await supabase
-    .from('quotes')
-    .delete()
-    .eq('id', quoteId);
+  return await Sentry.startSpan(
+    {
+      name: 'deleteQuote',
+      op: 'db.query',
+      attributes: {
+        'quote.id': quoteId,
+      },
+    },
+    async (span) => {
+      try {
+        const { error } = await supabase
+          .from('quotes')
+          .delete()
+          .eq('id', quoteId);
 
-  if (error) throw error;
+        if (error) {
+          span.setStatus({ code: 2, message: error.message });
+          Sentry.captureException(error, {
+            tags: {
+              operation: 'deleteQuote',
+              quote_id: quoteId,
+            },
+            level: 'warning', // Deletion failures are important
+          });
+          throw error;
+        }
+
+        span.setStatus({ code: 1 }); // Success
+      } catch (error) {
+        throw error;
+      }
+    }
+  );
 }
 
 /**
@@ -286,12 +397,62 @@ export async function updateQuoteStatus(
     case 'Rejected':
       updates.rejected_at = now;
       break;
-    case 'Closed':
-      updates.closed_at = now;
-      break;
   }
 
-  return updateQuote(quoteId, updates);
+  const updatedQuote = await updateQuote(quoteId, updates);
+
+  // If status is "Won", automatically create a project for the board
+  // ONLY for main version quotes (don't create projects for quote versions)
+  if (status === 'Won' && updatedQuote.is_main_version === true) {
+    // Check if project already exists for this quote
+    const { data: existingProject } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('quote_id', quoteId)
+      .maybeSingle();
+
+    // Only create if no project exists
+    if (!existingProject) {
+      // Get default workflow column for the organization
+      const { data: defaultColumn } = await supabase
+        .from('project_workflow_columns')
+        .select('name')
+        .eq('organization_id', updatedQuote.organization_id)
+        .eq('is_default', true)
+        .maybeSingle();
+
+      const workflowStatus = (defaultColumn as any)?.name || 'To Do'; // Fallback to 'To Do' if no default
+
+      // Get next board_order (highest + 1)
+      const { data: maxOrderProject } = await supabase
+        .from('projects')
+        .select('board_order')
+        .eq('organization_id', updatedQuote.organization_id)
+        .order('board_order', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const nextOrder = ((maxOrderProject as any)?.board_order || 0) + 1;
+
+      // Create project with default workflow status
+      const { error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          quote_id: quoteId,
+          organization_id: updatedQuote.organization_id,
+          workflow_status: workflowStatus,
+          board_order: nextOrder,
+          priority: 'Medium',
+        } as any);
+
+      if (projectError) {
+        console.error('Failed to create project for won quote:', projectError);
+        // Don't throw - quote was still updated successfully
+      }
+    }
+  }
+
+  return updatedQuote;
 }
 
 /**
@@ -369,19 +530,66 @@ export async function setMainVersion(
   // Get all quotes with the same base proposal number
   const { data: quotes, error: fetchError } = await supabase
     .from('quotes')
-    .select('id')
+    .select('id, status')
     .like('proposal_number', `${baseProposalNumber}%`);
 
   if (fetchError) throw fetchError;
 
+  // Type for quotes array
+  type QuoteVersion = { id: string; status: string };
+  const typedQuotes = (quotes || []) as QuoteVersion[];
+
+  // Get the new main version's status
+  const newMainQuote = typedQuotes.find(q => q.id === quoteId);
+  const newMainStatus = newMainQuote?.status;
+
+  // Check if there's an existing project for any quote in this version group
+  const { data: existingProject } = await supabase
+    .from('projects')
+    .select('id, quote_id')
+    .in('quote_id', typedQuotes.map(q => q.id))
+    .maybeSingle();
+
+  // Type for project
+  type ProjectLink = { id: string; quote_id: string };
+  const typedProject = existingProject as ProjectLink | null;
+
   // Update all quotes in the group
-  const updates = (quotes || []).map((quote) =>
+  const updates = typedQuotes.map((quote) =>
     updateQuote(quote.id, {
       is_main_version: quote.id === quoteId,
     })
   );
 
   await Promise.all(updates);
+
+  // Handle project link updates
+  if (typedProject) {
+    if (newMainStatus === 'Won') {
+      // New main version is Won: Update project to link to new main version
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({ quote_id: quoteId })
+        .eq('id', typedProject.id);
+
+      if (updateError) {
+        console.error('Failed to update project link:', updateError);
+        throw new Error('Failed to update project link to new main version');
+      }
+    } else {
+      // New main version is NOT Won: Delete the project
+      // (It no longer meets the constraint: main version + Won status)
+      const { error: deleteError } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', typedProject.id);
+
+      if (deleteError) {
+        console.error('Failed to delete project:', deleteError);
+        throw new Error('Failed to delete project for non-Won main version');
+      }
+    }
+  }
 }
 
 /**

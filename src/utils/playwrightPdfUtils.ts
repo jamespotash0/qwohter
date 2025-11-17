@@ -1,4 +1,4 @@
-import { Quote } from '@/stores/quotes/quotesStore';
+import type { Quote } from '@/services/quotesService';
 
 /**
  * Adds section header repetition logic to HTML content

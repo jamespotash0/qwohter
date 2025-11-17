@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryClient';
 import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 import { toast } from 'sonner';
-import type { Project, WorkflowColumn } from '@/stores/board/boardStore';
+import type { Project, WorkflowColumn } from '@/services/boardService';
 import {
   fetchBoardItems,
   fetchWorkflowColumns,
@@ -66,6 +66,28 @@ export function useWorkflowColumns(organizationId: string, enabled: boolean = tr
     enabled: !!organizationId && enabled,
     staleTime: 5 * 60 * 1000, // 5 minutes - columns don't change often
     gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+}
+
+/**
+ * Hook: Create Project (Board Item)
+ *
+ * Creates a new project with cache invalidation
+ */
+export function useCreateProject(organizationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (projectData: CreateBoardItemData) => {
+      return createBoardItem(organizationId, projectData);
+    },
+    onSuccess: () => {
+      toast.success('Project created successfully');
+      queryClient.invalidateQueries({ queryKey: queryKeys.board.tasks(organizationId) });
+    },
+    onError: (error) => {
+      toast.error('Failed to create project');
+    },
   });
 }
 

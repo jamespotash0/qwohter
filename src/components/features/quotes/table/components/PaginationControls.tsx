@@ -3,7 +3,7 @@ import { Table } from '@tanstack/react-table';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Quote } from "@/stores/quotes/quotesStore";
+import type { Quote } from "@/services/quotesService";
 
 interface PaginationControlsProps {
   table: Table<Quote>;
