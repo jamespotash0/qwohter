@@ -23,6 +23,29 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+    <!-- Theme initialization script - Prevents FOUC (Flash of Unstyled Content) -->
+    <script>
+      (function() {
+        // This runs BEFORE React renders to prevent black backgrounds on inputs
+        const savedTheme = localStorage.getItem('theme');
+        let effectiveTheme = 'light';
+
+        if (savedTheme === 'dark') {
+          effectiveTheme = 'dark';
+        } else if (savedTheme === 'system' || !savedTheme) {
+          // Check system preference
+          if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            effectiveTheme = 'dark';
+          }
+        }
+
+        // Apply theme class immediately to prevent FOUC
+        if (effectiveTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
 
   <body>
