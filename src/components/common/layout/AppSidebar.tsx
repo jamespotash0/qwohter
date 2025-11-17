@@ -50,7 +50,6 @@ const menuItems = [
     icon: Article,
     path: "/templates",
     roles: ['Owner', 'Admin', 'Member'],
-    disabled: true, // DISABLED: Enable when template system is complete
   },
   {
     title: "Analytics",

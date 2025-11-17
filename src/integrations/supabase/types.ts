@@ -510,7 +510,7 @@ export interface Database {
       forms: {
         Row: {
           id: string;
-          organization_id: string;
+          organization_id: string | null; // NULL for system templates
           name: string;
           description: string | null;
           form_type: string;
@@ -523,10 +523,13 @@ export interface Database {
           is_default: boolean;
           starting_proposal_number: string;
           allow_save_incomplete: boolean;
+          // Template library fields
+          is_template: boolean;
+          copied_from_form_id: string | null;
         };
         Insert: {
           id?: string;
-          organization_id: string;
+          organization_id?: string | null; // NULL for system templates
           name: string;
           description?: string | null;
           form_type: string;
@@ -539,10 +542,13 @@ export interface Database {
           is_default?: boolean;
           starting_proposal_number: string;
           allow_save_incomplete?: boolean;
+          // Template library fields
+          is_template?: boolean;
+          copied_from_form_id?: string | null;
         };
         Update: {
           id?: string;
-          organization_id?: string;
+          organization_id?: string | null;
           name?: string;
           description?: string | null;
           form_type?: string;
@@ -555,6 +561,9 @@ export interface Database {
           is_default?: boolean;
           starting_proposal_number?: string;
           allow_save_incomplete?: boolean;
+          // Template library fields
+          is_template?: boolean;
+          copied_from_form_id?: string | null;
         };
       };
       proposals: {

@@ -91,6 +91,7 @@ const QuoteEditIncomplete = lazy(() => import("@/pages/QuoteEditIncomplete"));
 // Form Builder pages
 const Forms = lazy(() => import("@/pages/Forms"));
 const FormBuilderV3 = lazy(() => import("@/pages/FormBuilderV3"));
+const TemplatesPage = lazy(() => import("@/pages/TemplatesPage"));
 
 // Board page
 const Board = lazy(() => import("@/pages/Board"));
@@ -190,10 +191,11 @@ export const AppRouter = () => (
 
                 {/* Form Builder routes */}
                 <Route path="/forms" element={<Forms />} />
+                <Route path="/forms/library" element={<Forms />} />
 
-                {/* Templates routes - DISABLED until template system is complete */}
-                <Route path="/templates" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/templates/*" element={<Navigate to="/dashboard" replace />} />
+                {/* Template routes */}
+                <Route path="/templates" element={<TemplatesPage />} />
+                <Route path="/templates/library" element={<TemplatesPage />} />
 
                 {/* Legacy route redirects for backward compatibility */}
                 <Route path="/newquote" element={<Navigate to="/quotes/new" replace />} />
