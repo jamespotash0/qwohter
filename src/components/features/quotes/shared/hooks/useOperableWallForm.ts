@@ -89,13 +89,27 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     panelFinishCategory: ['panelFinishSpecificItem']
   };
 
-  // Cascading reset function
+  // Cascading reset function with smart validation
   const cascadeFieldReset = useCallback((field: string, currentValue: string) => {
     const fieldsToReset = FIELD_DEPENDENCIES[field] || [];
     const resetUpdates: Record<string, string> = {};
 
     fieldsToReset.forEach(fieldToReset => {
-      resetUpdates[fieldToReset] = '';
+      // Smart reset for STC Rating - only reset if current value is no longer valid
+      if (fieldToReset === 'stcRating' && field === 'panelSkin') {
+        const currentSTCRating = selectedSTCRating;
+        if (currentSTCRating) {
+          const availableSTCRatings = getSTCRatingOptions(selectedModel, currentValue);
+          // Only reset if the current STC rating is not available for the new panel skin
+          if (!availableSTCRatings.includes(currentSTCRating)) {
+            resetUpdates[fieldToReset] = '';
+          }
+          // If still valid, don't reset - keep the user's selection
+        }
+      } else {
+        // For all other fields, reset as before
+        resetUpdates[fieldToReset] = '';
+      }
     });
 
     // Apply the main field change and resets
@@ -106,7 +120,7 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     if (fieldsToReset.includes('series')) setSelectedSeries('');
     if (fieldsToReset.includes('model')) setSelectedModel('');
     if (fieldsToReset.includes('panelSkin')) setSelectedPanelSkin('');
-    if (fieldsToReset.includes('stcRating')) setSelectedSTCRating('');
+    if (resetUpdates['stcRating'] !== undefined) setSelectedSTCRating(resetUpdates['stcRating']);
     if (fieldsToReset.includes('verticalSeals')) setSelectedVerticalSeals('');
     if (fieldsToReset.includes('bottomSeals')) setSelectedBottomSeals('');
     if (fieldsToReset.includes('topSeals')) setSelectedTopSeals('');
@@ -116,7 +130,7 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
     if (fieldsToReset.includes('passDoorQuantity')) setSelectedPassDoorQuantity('');
     if (fieldsToReset.includes('panelFinishCategory')) setSelectedPanelFinishCategory('');
     if (fieldsToReset.includes('panelFinishSpecificItem')) setSelectedPanelFinishSpecificItem('');
-  }, [wallName, onChange]);
+  }, [wallName, onChange, selectedModel, selectedSTCRating]);
 
   // Main field change handler
   const handleFieldChange = useCallback((field: string, value: string) => {
@@ -269,7 +283,7 @@ export const useOperableWallForm = ({ wall, wallName, onChange }: UseOperableWal
 
   const getAvailableSTCRatings = useCallback(() => {
     return getSTCRatingOptions(selectedModel, selectedPanelSkin);
-  }, [selectedPanelSkin]);
+  }, [selectedModel, selectedPanelSkin]);
 
   const getAvailablePanelThickness = useCallback(() => {
     const thickness = getPanelThicknessByModel(selectedModel);

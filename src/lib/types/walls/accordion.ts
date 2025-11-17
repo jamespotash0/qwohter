@@ -9,7 +9,7 @@ export interface AccordionWallSpecification {
   heightInches: number | string;
   quantity: number | string;
   panelCount: number | string;
-  
+
   panelConfiguration: string;
   series: string;
   model: string;
@@ -23,10 +23,10 @@ export interface AccordionWallSpecification {
   trackSystemOption: string;
   trackMounting: string;
   finalClosureSystem: string;
-  
+
   // Accordion partitions can have pocket doors
   pocketDoors?: PocketDoorConfig;
-  
+
   // Structure support for mounting
   structureSupport?: string;
 }
