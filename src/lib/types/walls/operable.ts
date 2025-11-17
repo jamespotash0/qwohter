@@ -81,12 +81,18 @@ export interface OperableWallSpecification extends BaseWallSpecification {
     if (["2010GL", "2020GL", "2030GL"].includes(model)) return ["38"];
     if (["3010GL", "3020GL", "3030GL"].includes(model)) return ["43", "48"];
     if (["2010", "2020", "2030", "2050e"].includes(model)) {
-      if (panelSkin.includes("Acoustical Substrate")) return ["42", "45", "49", "50"];
+      // Wood Veneer and High-Pressure Laminate use Acoustical Substrate Construction
+      if (panelSkin.includes("Acoustical Substrate") || panelSkin.includes("Wood Veneer") || panelSkin.includes("High-Pressure Laminate")) {
+        return ["42", "45", "49", "50"];
+      }
       if (panelSkin.includes("Steel")) return ["49", "51"];
     }
     if (["3010", "3020", "3030", "3050e"].includes(model)) {
       if (panelSkin.includes("Steel")) return ["46", "50", "52", "56"];
-      if (panelSkin.includes("Acoustical Substrate")) return ["43", "46", "48", "50"];
+      // Wood Veneer and High-Pressure Laminate use Acoustical Substrate Construction
+      if (panelSkin.includes("Acoustical Substrate") || panelSkin.includes("Wood Veneer") || panelSkin.includes("High-Pressure Laminate")) {
+        return ["43", "46", "48", "50"];
+      }
     }
     return [];
   };
