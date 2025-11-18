@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -37,44 +37,92 @@ const problemItems = [
   },
 ];
 
+const solutionItems = [
+  {
+    number: "1",
+    title: "Create accurate quotes faster:",
+    description:
+      "Automated calculations, built-in product libraries, and intelligent templates reduce quote creation time by up to 70%.",
+    image: "https://c.animaapp.com/mi3nizw3ab7ONs/img/image-16.png",
+    alignment: "left",
+  },
+  {
+    number: "2",
+    title: "Eliminate errors with smart validation:",
+    description:
+      "Real-time validation, pricing rule engines, and automatic updates ensure every quote is accurate and professional.",
+    image: "https://c.animaapp.com/mi3nizw3ab7ONs/img/image-17.png",
+    alignment: "right",
+  },
+  {
+    number: "3",
+    title: "Professional, branded documents:",
+    description:
+      "Customizable templates and automated formatting deliver consistent, polished quotes that strengthen your brand.",
+    image: "https://c.animaapp.com/mi3nizw3ab7ONs/img/image-18.png",
+    alignment: "left",
+  },
+  {
+    number: "4",
+    title: "Scale with confidence:",
+    description:
+      "Track every quote, analyze team performance, and gain pipeline visibility—all from a centralized platform built to grow with your business.",
+    image: "https://c.animaapp.com/mi3nizw3ab7ONs/img/image-19.png",
+    alignment: "right",
+  },
+];
+
 export const ProblemSolutionSection = (): JSX.Element => {
+  const [activeTab, setActiveTab] = useState<string>("problem");
+
+  const currentItems = activeTab === "problem" ? problemItems : solutionItems;
+
   return (
     <section className="w-full px-5 py-[75px] relative">
       <div className="max-w-[1520px] mx-auto">
         <div className="flex flex-col items-center gap-12">
           <Tabs
-            defaultValue="problem"
+            value={activeTab}
+            onValueChange={setActiveTab}
             className="w-auto translate-y-[-1rem] animate-fade-in opacity-0 [--animation-delay:0ms]"
           >
             <TabsList className="bg-[#f7f2e9] rounded-[30px] p-2.5 h-auto">
               <TabsTrigger
                 value="problem"
-                className="bg-[#ee6c4d] data-[state=active]:bg-[#ee6c4d] data-[state=inactive]:bg-[#fbf8f1] rounded-3xl px-[30px] py-2.5 [font-family:'Urbanist',Helvetica] font-semibold text-base text-center tracking-[0] leading-6 text-white data-[state=inactive]:text-neutral-900 transition-colors"
+                className="data-[state=active]:bg-[#ee6c4d] data-[state=inactive]:bg-[#fbf8f1] hover:bg-[#ee6c4d] rounded-3xl px-[30px] py-2.5 [font-family:'Urbanist',Helvetica] font-semibold text-base text-center tracking-[0] leading-6 data-[state=active]:text-white data-[state=inactive]:text-neutral-900 hover:text-white transition-colors"
               >
                 Problem Statement
               </TabsTrigger>
               <TabsTrigger
                 value="solution"
-                className="bg-[#fbf8f1] data-[state=active]:bg-[#ee6c4d] data-[state=inactive]:bg-[#fbf8f1] rounded-3xl px-[30px] py-2.5 [font-family:'Urbanist',Helvetica] font-semibold text-base text-center tracking-[0] leading-6 data-[state=active]:text-white text-neutral-900 transition-colors"
+                className="data-[state=active]:bg-[#ee6c4d] data-[state=inactive]:bg-[#fbf8f1] hover:bg-[#ee6c4d] rounded-3xl px-[30px] py-2.5 [font-family:'Urbanist',Helvetica] font-semibold text-base text-center tracking-[0] leading-6 data-[state=active]:text-white data-[state=inactive]:text-neutral-900 hover:text-white transition-colors"
               >
                 Solution Statement
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
-          <div className="flex flex-col items-center gap-2.5 max-w-[700px] translate-y-[-1rem] animate-fade-in opacity-0 [--animation-delay:200ms]">
+          <div
+            key={activeTab}
+            className="flex flex-col items-center gap-2.5 max-w-[700px] animate-[slideIn_0.5s_ease-in-out]"
+          >
             <h2 className="w-full bg-[linear-gradient(180deg,rgba(23,23,23,1)_0%,rgba(119,119,119,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] [font-family:'Urbanist',Helvetica] font-semibold text-transparent text-[42px] text-center tracking-[0] leading-[50px]">
-              Problem Statement
+              {activeTab === "problem" ? "Problem Statement" : "Solution Statement"}
             </h2>
 
             <p className="w-full [font-family:'Urbanist',Helvetica] font-normal text-[#343432] text-xl text-center tracking-[0] leading-[30px]">
-              Many small businesses rely on Google Docs, spreadsheets, or other
-              manual tools to create quotes and proposals. This process is:
+              {activeTab === "problem"
+                ? "Many small businesses rely on Google Docs, spreadsheets, or other manual tools to create quotes and proposals. This process is:"
+                : "Qwohter streamlines the quoting process with powerful automation, customization, and collaboration tools. Our platform helps you:"
+              }
             </p>
           </div>
 
-          <div className="flex flex-col gap-[150px] w-full mt-12">
-            {problemItems.map((item, index) => (
+          <div
+            key={`${activeTab}-content`}
+            className="flex flex-col gap-[150px] w-full mt-12 animate-[slideIn_0.5s_ease-in-out]"
+          >
+            {currentItems.map((item, index) => (
               <div
                 key={index}
                 className={`grid grid-cols-1 lg:grid-cols-2 gap-8 items-center translate-y-[-1rem] animate-fade-in opacity-0 ${

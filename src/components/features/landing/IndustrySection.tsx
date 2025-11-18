@@ -19,21 +19,29 @@ export const IndustrySection = (): JSX.Element => {
     const scrollContainer = scrollRef.current;
     if (!scrollContainer) return;
 
+    // Calculate width of one set of cards (7 cards × 380px per card)
+    const cardWidth = 350;
+    const gap = 30;
+    const cardWithGap = cardWidth + gap;
+    const singleSetWidth = industriesData.length * cardWithGap;
+
+    // Set initial scroll position to allow scrolling in both directions
+    // Start at the beginning of the first set
+    scrollContainer.scrollLeft = 1;
+
     const handleScroll = () => {
-      const maxScroll = scrollContainer.scrollWidth / 2;
+      const scrollLeft = scrollContainer.scrollLeft;
 
-      // If scrolled to the end, reset to beginning
-      if (scrollContainer.scrollLeft >= maxScroll) {
-        scrollContainer.scrollLeft = 0;
-      }
-
-      // If scrolled before the beginning (shouldn't happen but just in case), reset to end
-      if (scrollContainer.scrollLeft <= 0) {
-        scrollContainer.scrollLeft = maxScroll - scrollContainer.clientWidth;
+      // Reset when we've scrolled past one complete set
+      // This creates seamless infinite scroll since we have duplicate cards
+      if (scrollLeft >= singleSetWidth) {
+        scrollContainer.scrollLeft = scrollLeft - singleSetWidth;
+      } else if (scrollLeft <= 0) {
+        scrollContainer.scrollLeft = singleSetWidth;
       }
     };
 
-    scrollContainer.addEventListener('scroll', handleScroll);
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       scrollContainer.removeEventListener('scroll', handleScroll);
