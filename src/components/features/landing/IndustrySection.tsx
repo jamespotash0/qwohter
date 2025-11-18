@@ -2,11 +2,13 @@ import React, { useRef, useState, useEffect } from "react";
 import { ArrowInsideCircleLeft, ArrowInsideCircleRight } from "@/components/common/icons";
 
 const industriesData = [
-  { title: 'Wall Systems', image: '/images/industries/wall-systems.jpg' },
-  { title: 'Construction', image: '/images/industries/construction.jpg' },
-  { title: 'Interior Design', image: '/images/industries/interior-design.jpg' },
-  { title: 'Commercial Flooring', image: '/images/industries/commercial-flooring.jpg' },
-  { title: 'Electrical Services', image: '/images/industries/electrical-services.jpg' }
+  { title: 'Office Furniture', image: 'https://c.animaapp.com/mi3nizw3ab7ONs/img/image.png' },
+  { title: 'Wall Systems', image: 'https://c.animaapp.com/mi3nizw3ab7ONs/img/image-1.png' },
+  { title: 'Construction', image: 'https://c.animaapp.com/mi3nizw3ab7ONs/img/image-2.png' },
+  { title: 'Interior Design', image: 'https://c.animaapp.com/mi3nizw3ab7ONs/img/image-3.png' },
+  { title: 'Commercial Flooring', image: 'https://c.animaapp.com/mi3nizw3ab7ONs/img/image-4.png' },
+  { title: 'Electrical Services', image: 'https://c.animaapp.com/mi3nizw3ab7ONs/img/image-5.png' },
+  { title: 'HVAC Systems', image: 'https://c.animaapp.com/mi3nizw3ab7ONs/img/image-6.png' }
 ];
 
 export const IndustrySection = (): JSX.Element => {
@@ -85,20 +87,40 @@ export const IndustrySection = (): JSX.Element => {
           className="flex gap-[30px] overflow-x-scroll scrollbar-hide"
         >
           {industriesData.map((industry, index) => (
-            <div key={index} className="bg-gray-100 rounded-3xl overflow-hidden w-[350px] h-[500px] flex-shrink-0 relative">
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-              <div className="absolute bottom-0 left-0 right-0 p-6">
-                <h3 className="text-white font-semibold text-base">{industry.title}</h3>
-              </div>
+            <div key={index} className="bg-[#f7f2e9] rounded-[30px] w-[350px] flex-shrink-0 p-[30px] flex flex-col gap-[30px]">
+              <h3
+                className="text-[22px] text-neutral-900 tracking-[0] leading-8"
+                style={{
+                  fontFamily: 'Urbanist, sans-serif',
+                  fontWeight: 700,
+                }}
+              >
+                {industry.title}
+              </h3>
+              <img
+                className="w-[290px] h-[378px] object-cover rounded-lg"
+                alt={industry.title}
+                src={industry.image}
+              />
             </div>
           ))}
           {/* Duplicate cards for continuous scroll */}
           {industriesData.map((industry, index) => (
-            <div key={`duplicate-${index}`} className="bg-gray-100 rounded-3xl overflow-hidden w-[350px] h-[500px] flex-shrink-0 relative">
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-              <div className="absolute bottom-0 left-0 right-0 p-6">
-                <h3 className="text-white font-semibold text-base">{industry.title}</h3>
-              </div>
+            <div key={`duplicate-${index}`} className="bg-[#f7f2e9] rounded-[30px] w-[350px] flex-shrink-0 p-[30px] flex flex-col gap-[30px]">
+              <h3
+                className="text-[22px] text-neutral-900 tracking-[0] leading-8"
+                style={{
+                  fontFamily: 'Urbanist, sans-serif',
+                  fontWeight: 700,
+                }}
+              >
+                {industry.title}
+              </h3>
+              <img
+                className="w-[290px] h-[378px] object-cover rounded-lg"
+                alt={industry.title}
+                src={industry.image}
+              />
             </div>
           ))}
         </div>
