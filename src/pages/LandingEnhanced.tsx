@@ -3,28 +3,23 @@
  * High-quality micro-interactions and stunning visual effects
  */
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Zap } from 'lucide-react';
-import {
-  useStaggerFadeIn,
-  useMagneticHover,
-  useRevealText,
-  useFloat,
-} from '@/hooks/useAnimations';
 import { animeOnScroll, fadeInUp, elasticBounce, rippleEffect } from '@/utils/animations';
+import { PlatformStatsSection } from '@/components/features/landing/PlatformStatsSection';
+import { TestimonialsSection } from '@/components/features/landing/TestimonialsSection';
+import { ProblemSolutionSection } from '@/components/features/landing/ProblemSolutionSection';
+import { PricingPlanSection } from '@/components/features/landing/PricingPlanSection';
+import { DebugGrid } from '@/components/common/DebugGrid';
 
 const LandingEnhanced = () => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [navTextColor, setNavTextColor] = useState('text-white');
+  const [activeSection, setActiveSection] = useState('home');
 
   // Animation refs
-  const heroTextRef = useRevealText(200);
-  const heroCTARef = useMagneticHover(0.4);
-  const heroPreviewRef = useFloat();
-  const statsContainerRef = useStaggerFadeIn('.stat-card', 150);
   const featuresRef = useRef<HTMLElement>(null);
   const useCasesRef = useRef<HTMLElement>(null);
   const pricingRef = useRef<HTMLElement>(null);
@@ -55,6 +50,29 @@ const LandingEnhanced = () => {
           // Dark sections (hero, stats, industries, footer)
           setNavTextColor('text-white');
         }
+      }
+
+      // Detect active section for navigation highlighting
+      const sections = [
+        { id: 'home', element: document.querySelector('section:first-of-type') },
+        { id: 'features', element: document.getElementById('features') },
+        { id: 'usecases', element: document.getElementById('usecases') },
+        { id: 'pricing', element: document.getElementById('pricing') }
+      ];
+
+      // Find which section is currently in view
+      const current = sections.find(section => {
+        if (!section.element) return false;
+        const rect = section.element.getBoundingClientRect();
+        // Section is considered active if it's in the top half of the viewport
+        return rect.top <= 150 && rect.bottom > 150;
+      });
+
+      if (current) {
+        setActiveSection(current.id);
+      } else if (window.scrollY < 100) {
+        // At the top of the page, set to home
+        setActiveSection('home');
       }
     };
     window.addEventListener('scroll', handleScroll);
@@ -114,18 +132,13 @@ const LandingEnhanced = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--landing-bg-light)] overflow-x-hidden">
-      {/* Header Navigation with Animation */}
-      <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-          isScrolled
-            ? 'bg-[var(--landing-bg-dark)]/75 backdrop-blur-md border-b border-[var(--landing-primary)]/20 shadow-sm'
-            : 'bg-transparent'
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo with subtle animation */}
+    <div className="min-h-screen bg-[#FFFEFA] overflow-x-hidden">
+      <DebugGrid />
+      {/* Header Navigation - Modern Design */}
+      <header className="w-full py-4 bg-[var(--landing-bg-dark)] sticky top-0 z-50 px-[20px]">
+        <div className="w-full px-3 sm:px-6 md:px-8 lg:px-[180px]">
+          <div className="flex items-center justify-between">
+            {/* Logo */}
             <div
               className="flex items-center cursor-pointer group"
               onClick={() => {
@@ -134,48 +147,72 @@ const LandingEnhanced = () => {
               }}
             >
               <img
-                src={navTextColor === 'text-white' ? '/logos/New_Landing_Page_Logo_LightonDarkBackground.svg' : '/logos/New_Landing_Page_Logo_DarkonLightBackground.svg'}
+                src="/logos/New_Landing_Page_Logo_LightonDarkBackground.svg"
                 alt="Qwohter Logo"
-                className="h-8 w-auto transition-transform duration-300 group-hover:scale-110"
+                className="h-8 w-auto transition-transform duration-300 group-hover:scale-105"
               />
             </div>
 
-            {/* Center Navigation with hover animations */}
-            <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center space-x-12">
-              {['Features', 'Use Cases', 'Pricing'].map((item) => (
-                <a
-                  key={item}
-                  href={`#${item.toLowerCase().replace(' ', '')}`}
-                  className={`${navTextColor} hover:text-[var(--landing-primary)] font-medium cursor-pointer transition-all duration-300 relative group`}
-                >
-                  {item}
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--landing-primary)] transition-all duration-300 group-hover:w-full" />
-                </a>
-              ))}
-              <span
-                onClick={() => navigate('/contact-us')}
-                className={`${navTextColor} hover:text-[var(--landing-primary)] font-medium cursor-pointer transition-all duration-300 relative group`}
-              >
-                Contact Us
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--landing-primary)] transition-all duration-300 group-hover:w-full" />
-              </span>
-            </div>
+            {/* Center Navigation Pill */}
+            <nav className="hidden md:flex items-center bg-white/25 backdrop-blur-sm rounded-full px-2 py-2 h-[48px]">
+              {[
+                { name: 'Home', href: '#', section: 'home' },
+                { name: 'Features', href: '#features', section: 'features' },
+                { name: 'Use Cases', href: '#usecases', section: 'usecases' },
+                { name: 'Pricing', href: '#pricing', section: 'pricing' },
+                { name: 'Contact Us', href: '/contact-us', section: 'contact' }
+              ].map((item, index) => {
+                const isActive = activeSection === item.section;
+                return (
+                  <a
+                    key={item.name}
+                    href={item.href}
+                    onClick={(e) => {
+                      if (item.href === '/contact-us') {
+                        e.preventDefault();
+                        navigate('/contact-us');
+                      } else if (item.href === '#') {
+                        e.preventDefault();
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }
+                    }}
+                    className={`px-6 py-2.5 rounded-full font-medium transition-all duration-300 flex items-center ${
+                      isActive ? 'text-[#ee6c4d]' : 'text-white hover:text-white/60'
+                    }`}
+                    style={{
+                      fontFamily: 'Urbanist, sans-serif',
+                      fontSize: '16px',
+                    }}
+                  >
+                    {item.name}
+                  </a>
+                );
+              })}
+            </nav>
 
-            {/* Right Actions */}
-            <div className="flex items-center space-x-8">
-              <span
-                onClick={handleSignIn}
-                className={`${navTextColor} hover:text-[var(--landing-primary)] font-medium cursor-pointer transition-all duration-300 relative group`}
+            {/* Sign In and Get a Demo Buttons */}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/login')}
+                className="text-[#ee6c4d] hover:text-[#ee6c4d]/80 font-medium transition-all duration-300"
+                style={{
+                  fontFamily: 'Urbanist, sans-serif',
+                  fontSize: '16px',
+                }}
               >
                 Sign In
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[var(--landing-primary)] transition-all duration-300 group-hover:w-full" />
-              </span>
+              </button>
+
               <Button
                 onClick={(e) => {
                   handleRipple(e);
                   handleGetDemo();
                 }}
-                className="bg-[var(--landing-primary)] hover:bg-[#d95a3d] text-white px-6 py-2.5 rounded-full hover:shadow-lg hover:scale-105 transition-all duration-300 font-medium relative overflow-hidden"
+                className="bg-[#f7f2e9] hover:bg-[#ebe5d9] text-gray-900 px-6 py-2 rounded-full font-semibold transition-all duration-300 h-[48px]"
+                style={{
+                  fontFamily: 'Urbanist, sans-serif',
+                  fontSize: '16px',
+                }}
               >
                 Get a Demo
               </Button>
@@ -184,576 +221,485 @@ const LandingEnhanced = () => {
         </div>
       </header>
 
-      {/* Hero Section with Advanced Animations */}
-      <section className="relative bg-[var(--landing-bg-dark)] px-8 pt-40 pb-44 flex items-center overflow-hidden">
+      {/* Hero Section - Anima Design */}
+      <section className="w-full flex flex-col gap-[120px] bg-[var(--landing-bg-dark)] px-[20px] pt-[75px] pb-5 relative overflow-hidden">
         {/* Animated background shapes */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-20 left-10 w-72 h-72 bg-[var(--landing-primary-light)] rounded-full blur-3xl animate-pulse" />
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-[var(--landing-primary-light)] rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
         </div>
 
-        <div className="max-w-7xl mx-auto w-full relative z-10 mt-16">
-          <div className="grid lg:grid-cols-[1fr_1.5fr] gap-12 items-center">
-            {/* Hero Text with Word Reveal Animation */}
-            <div className="max-w-xl">
-              {/* Removed AI-Powered tag per user request */}
+        <div className="w-full max-w-[1520px] mx-auto flex flex-col items-center gap-[30px] translate-y-[-1rem] animate-fade-in-delay opacity-0 relative z-10 pt-[95px]" style={{ '--animation-delay': '200ms' } as React.CSSProperties}>
+          <div className="flex flex-col w-full items-center gap-5">
+            {/* Hero Title with Gradient */}
+            <h1
+              className="bg-[linear-gradient(180deg,#FFFFFF_0%,#EBC3BF_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] text-[60px] text-center tracking-[1.2px] leading-[70px] whitespace-nowrap translate-y-[-1rem] animate-fade-in-delay opacity-0"
+              style={{
+                fontFamily: 'Urbanist, sans-serif',
+                fontWeight: 500,
+                '--animation-delay': '400ms'
+              } as React.CSSProperties}
+            >
+              The platform that simplifies quoting
+            </h1>
 
-              <h1 ref={heroTextRef} className="text-6xl font-bold text-[var(--landing-text-on-dark)] leading-[1.15] mb-6">
-                The platform that <span className="text-[var(--landing-primary)]">simplifies quoting</span>
-              </h1>
-
-              <p className="text-lg text-[var(--landing-text-muted-dark)] mb-8 leading-relaxed opacity-0 animate-fade-in" style={{ animationDelay: '0.5s' }}>
-                Move away from scattered docs and spreadsheets—automatically design, generate, track, and manage quotes with ease, all from a single platform.
-              </p>
-
-              <div className="flex gap-4 items-center opacity-0 animate-fade-in mb-8" style={{ animationDelay: '0.8s' }}>
-                <Button
-                  ref={heroCTARef}
-                  onClick={(e) => {
-                    handleRipple(e);
-                    handleGetDemo();
-                  }}
-                  className="bg-[var(--landing-primary)] hover:bg-[#d95a3d] text-white px-12 py-6 rounded-full hover:shadow-2xl hover:scale-105 transition-all duration-300 font-semibold text-lg relative overflow-hidden group"
-                  style={{ boxShadow: 'rgba(238, 108, 77, 0.3) 0px 10px 40px' }}
-                >
-                  <span className="relative z-10">Get a Demo</span>
-                  <div className="absolute inset-0 bg-[#d95a3d] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </Button>
-              </div>
-
-              {/* Trust Indicators */}
-              <div className="flex flex-col gap-4 opacity-0 animate-fade-in" style={{ animationDelay: '1s' }}>
-                <div className="flex items-center gap-2">
-                  <div className="flex -space-x-2">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div key={i} className="w-8 h-8 rounded-full bg-[var(--landing-primary)] border-2 border-[var(--landing-bg-dark)]" style={{ opacity: 1 - (i * 0.15) }} />
-                    ))}
-                  </div>
-                  <span className="text-sm text-[var(--landing-text-muted-dark)] ml-2">Trusted by wall and office furniture dealers</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <span key={i} className="text-[var(--landing-primary)] text-base">★</span>
-                  ))}
-                  <span className="text-sm text-[var(--landing-text-muted-dark)] ml-2">4.9/5 rating</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Hero Preview with Float Animation */}
-            <div ref={heroPreviewRef} className="relative opacity-0 animate-fade-in ml-auto perspective-1000 px-10" style={{ animationDelay: '0.3s', width: '105%' }}>
-              <div
-                className="relative rounded-3xl shadow-2xl border border-gray-200 bg-white preserve-3d transition-transform duration-700 hover:scale-105 pl-1 pr-0 py-1"
-                style={{ transform: 'rotateY(-8deg) rotateX(3deg)' }}
-              >
-                <img
-                  src="/images/landing/hero-main-dashboard.svg"
-                  alt="Main Dashboard Preview"
-                  className="w-full h-auto block rounded-3xl"
-                />
-              </div>
-            </div>
+            {/* Hero Description */}
+            <p
+              className="w-full max-w-[800px] text-white text-[20px] text-center tracking-[0] leading-[30px] translate-y-[-1rem] animate-fade-in-delay opacity-0"
+              style={{
+                fontFamily: 'Urbanist, sans-serif',
+                fontWeight: 400,
+                '--animation-delay': '600ms'
+              } as React.CSSProperties}
+            >
+              Move away from scattered docs and spreadsheets—automatically design,
+              generate, track, and manage quotes with ease, all from a single
+              platform.
+            </p>
           </div>
+
+          {/* CTA Button */}
+          <Button
+            onClick={(e) => {
+              handleRipple(e);
+              handleGetDemo();
+            }}
+            className="h-auto inline-flex gap-[5px] bg-[#ee6c4d] items-center justify-center px-[30px] py-2.5 rounded-3xl hover:bg-[#ee6c4d]/90 transition-colors translate-y-[-1rem] animate-fade-in-delay opacity-0"
+            style={{ '--animation-delay': '800ms' } as React.CSSProperties}
+          >
+            <span
+              className="text-white text-base tracking-[0] leading-6 whitespace-nowrap"
+              style={{
+                fontFamily: 'Urbanist, sans-serif',
+                fontWeight: 600,
+              }}
+            >
+              Get a Demo
+            </span>
+          </Button>
+        </div>
+
+        {/* Hero Image */}
+        <img
+          className="w-full max-w-[1520px] mx-auto h-auto translate-y-[-1rem] animate-fade-in-delay opacity-0 relative z-10"
+          alt="Dashboard Preview"
+          src="/images/landing/hero-main-dashboard.svg"
+          style={{ '--animation-delay': '1000ms' } as React.CSSProperties}
+        />
+      </section>
+
+      {/* 2035 Tagline Section */}
+      <section className="py-[75px] bg-[#FFFEFA] px-[20px]">
+        <div className="max-w-[994px] h-[160px] mx-auto flex items-center justify-center text-center">
+          <h2
+            className="text-[42px] leading-[52px] text-[#171717]"
+            style={{
+              fontFamily: 'Urbanist, sans-serif',
+              fontWeight: 400,
+            }}
+          >
+            In 2035, price sheets and email chains will not be impressive. <span className="text-[#171717]/30">Your quote accuracy, speed to respond, and manufacturer alignment will be.</span>
+          </h2>
         </div>
       </section>
 
-      {/* Stats Banner with Scrolling Animation */}
-      <section className="py-8 bg-[var(--landing-bg-dark)] relative overflow-hidden">
-        <div className="relative flex overflow-hidden">
-          {/* First set of stats - scrolling */}
-          <div className="flex animate-marquee whitespace-nowrap">
-            {[
-              { value: '40%', label: 'Faster Quote Turnaround' },
-              { value: '90%', label: 'Fewer Errors in Quotes' },
-              { value: '35%', label: 'More Deals Won' },
-              { value: '60%', label: 'Time Saved with Custom Forms' },
-              { value: '100%', label: 'Brand Consistency' },
-              { value: '50%', label: 'Faster Form Creation' },
-              { value: '40%', label: 'Faster Quote Turnaround' },
-              { value: '90%', label: 'Fewer Errors in Quotes' },
-              { value: '35%', label: 'More Deals Won' },
-              { value: '60%', label: 'Time Saved with Custom Forms' },
-              { value: '100%', label: 'Brand Consistency' },
-              { value: '50%', label: 'Faster Form Creation' },
-            ].map((stat, index) => (
-              <div
-                key={index}
-                className="mx-12 inline-flex items-center gap-4"
-              >
-                <span className="text-4xl font-bold text-[var(--landing-primary)]">{stat.value}</span>
-                <span className="text-base text-[var(--landing-text-muted-dark)] font-medium">{stat.label}</span>
-                <span className="text-[var(--landing-primary)] text-2xl">•</span>
-              </div>
-            ))}
-          </div>
-          {/* Duplicate set for seamless loop */}
-          <div className="flex animate-marquee2 whitespace-nowrap absolute top-0">
-            {[
-              { value: '40%', label: 'Faster Quote Turnaround' },
-              { value: '90%', label: 'Fewer Errors in Quotes' },
-              { value: '35%', label: 'More Deals Won' },
-              { value: '60%', label: 'Time Saved with Custom Forms' },
-              { value: '100%', label: 'Brand Consistency' },
-              { value: '50%', label: 'Faster Form Creation' },
-              { value: '40%', label: 'Faster Quote Turnaround' },
-              { value: '90%', label: 'Fewer Errors in Quotes' },
-              { value: '35%', label: 'More Deals Won' },
-              { value: '60%', label: 'Time Saved with Custom Forms' },
-              { value: '100%', label: 'Brand Consistency' },
-              { value: '50%', label: 'Faster Form Creation' },
-            ].map((stat, index) => (
-              <div
-                key={index}
-                className="mx-12 inline-flex items-center gap-4"
-              >
-                <span className="text-4xl font-bold text-[var(--landing-primary)]">{stat.value}</span>
-                <span className="text-base text-[var(--landing-text-muted-dark)] font-medium">{stat.label}</span>
-                <span className="text-[var(--landing-primary)] text-2xl">•</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section id="features" ref={featuresRef} className="px-8 py-16 bg-[var(--landing-bg-light)]">
-        <div className="max-w-7xl mx-auto space-y-20">
-          {/* Design Feature */}
-          <div className="feature-card grid lg:grid-cols-2 gap-20 items-center opacity-0">
-            <div>
-              <h3 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
-                Design beautiful quotes that <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">win deals</span>
-              </h3>
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Build smart forms to capture the right information, then turn that data into stunning, branded quote templates. Drag, drop, and customize both the form and the final quote layout with instant live preview.
-              </p>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3 group">
-                  <div className="w-6 h-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                  <span className="text-gray-700 group-hover:text-purple-600 transition-colors duration-300">Form builder to define fields and structure</span>
-                </div>
-                <div className="flex items-center space-x-3 group">
-                  <div className="w-6 h-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                  <span className="text-gray-700 group-hover:text-purple-600 transition-colors duration-300">Drag-and-drop quote template designer</span>
-                </div>
-                <div className="flex items-center space-x-3 group">
-                  <div className="w-6 h-6 bg-gradient-to-br from-purple-600 to-purple-700 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                  <span className="text-gray-700 group-hover:text-purple-600 transition-colors duration-300">Instant live preview and branding</span>
-                </div>
-              </div>
-            </div>
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl blur-2xl opacity-20 group-hover:opacity-30 transition-opacity duration-500" />
-
-              {/* Stacked images showing both design views */}
-              <div className="relative">
-                {/* First image - alternates between back and front */}
-                <div className="absolute left-0 top-0 w-[85%] bg-white/80 backdrop-blur-xl rounded-3xl p-1 shadow-2xl border border-gray-100 animate-layer-swap-1">
-                  <img
-                    src="/images/landing/design_image1.png"
-                    alt="Template Design Editor - View 1"
-                    className="w-full h-auto rounded-2xl"
-                  />
-                </div>
-
-                {/* Second image - alternates between front and back */}
-                <div className="relative bg-white/80 backdrop-blur-xl rounded-3xl p-1 shadow-2xl border border-gray-100 hover:shadow-3xl w-[85%] animate-layer-swap-2">
-                  <img
-                    src="/images/landing/design_image.png"
-                    alt="Template Design Editor - View 2"
-                    className="w-full h-auto rounded-2xl"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Generate Feature */}
-          <div className="feature-card grid lg:grid-cols-2 gap-20 items-center opacity-0">
-            <div className="order-2 lg:order-1 overflow-hidden rounded-3xl shadow-2xl border border-gray-100">
+      {/* Features Section - Anima Design */}
+      <section id="features" ref={featuresRef} className="w-full flex justify-center mt-[75px] bg-[#FFFEFA] px-[20px]">
+        <div className="flex flex-col items-start gap-[60px] max-w-[1520px] w-full px-4 sm:px-6 lg:px-8">
+          {/* Feature 1: Design (Image Left) */}
+          <div className="feature-card flex flex-row items-center gap-[100px] w-full opacity-0 translate-y-[-1rem] animate-fade-in-delay" style={{ '--animation-delay': '0ms' } as React.CSSProperties}>
+            <div className="relative flex-shrink-0">
               <img
-                src="/images/landing/generate_quotes_image.png"
-                alt="Quote Generation Interface"
-                className="w-full h-full object-cover"
+                className="w-[650px] h-[550px] object-contain"
+                alt="Design beautiful quotes"
+                src="/images/landing/design_image.png"
               />
             </div>
-            <div className="order-1 lg:order-2">
-              <h3 className="text-5xl font-bold text-[var(--landing-text-on-light)] mb-6 leading-tight">
-                Generate quotes in <span className="text-[var(--landing-primary)]">seconds, not hours</span>
-              </h3>
-              <p className="text-xl text-[var(--landing-text-muted-light)] mb-8 leading-relaxed">
-                Our intelligent quote engine automatically calculates pricing, applies discounts, and formats everything perfectly. Just fill in the details and go.
-              </p>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3 group">
-                  <div className="w-6 h-6 bg-[var(--landing-primary)] rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-white text-xs">✓</span>
+
+            <div className="flex flex-col items-start gap-[30px] flex-1 min-w-0">
+              <div className="flex flex-col items-start gap-5 w-full">
+                <h2
+                  className="bg-[linear-gradient(180deg,rgba(23,23,23,1)_0%,rgba(119,119,119,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] text-[42px] tracking-[0.84px] leading-[50px]"
+                  style={{
+                    fontFamily: 'Urbanist, sans-serif',
+                    fontWeight: 600,
+                  }}
+                >
+                  Design beautiful quotes that win deals
+                </h2>
+
+                <p
+                  className="text-[#343432] text-base tracking-[0] leading-6"
+                  style={{
+                    fontFamily: 'Urbanist, sans-serif',
+                    fontWeight: 400,
+                  }}
+                >
+                  Build smart forms to capture the right information, then turn that data into stunning, branded quote templates. Drag, drop, and customize both the form and the final quote layout with instant live preview.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-start gap-[15px] w-full">
+                {["Form builder to define fields and structure", "Drag-and-drop quote template designer", "Instant live preview and branding"].map((point, index) => (
+                  <div key={index} className="flex items-center gap-2.5 w-full">
+                    <svg className="w-6 h-6 text-[#ee6c4d] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                    </svg>
+                    <p
+                      className="flex-1 text-[#343432] text-xl tracking-[0] leading-[30px]"
+                      style={{
+                        fontFamily: 'Urbanist, sans-serif',
+                        fontWeight: 400,
+                      }}
+                    >
+                      {point}
+                    </p>
                   </div>
-                  <span className="text-[var(--landing-text-on-light)] group-hover:text-[var(--landing-primary)] transition-colors duration-300">Automatic pricing calculations</span>
-                </div>
-                <div className="flex items-center space-x-3 group">
-                  <div className="w-6 h-6 bg-[var(--landing-primary)] rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                  <span className="text-[var(--landing-text-on-light)] group-hover:text-[var(--landing-primary)] transition-colors duration-300">Dynamic discount application</span>
-                </div>
-                <div className="flex items-center space-x-3 group">
-                  <div className="w-6 h-6 bg-[var(--landing-primary)] rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                  <span className="text-[var(--landing-text-on-light)] group-hover:text-[var(--landing-primary)] transition-colors duration-300">Professional PDF output</span>
-                </div>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* Analytics Feature */}
-          <div className="feature-card grid lg:grid-cols-2 gap-20 items-center opacity-0">
-            <div>
-              <h3 className="text-5xl font-bold text-gray-900 mb-6 leading-tight">
-                Track performance and <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-emerald-600">optimize your sales</span>
-              </h3>
-              <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Get deep insights into your quoting and project process with comprehensive analytics. Track conversion rates, identify bottlenecks, and optimize your sales strategy with real-time data.
-              </p>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3 group">
-                  <div className="w-6 h-6 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-white text-xs">✓</span>
+          {/* Feature 2: Generate (Image Right) */}
+          <div className="feature-card flex flex-row-reverse items-center gap-[100px] w-full opacity-0 translate-y-[-1rem] animate-fade-in-delay" style={{ '--animation-delay': '200ms' } as React.CSSProperties}>
+            <div className="relative flex-shrink-0">
+              <img
+                className="w-[650px] h-[550px] object-contain"
+                alt="Generate quotes in seconds"
+                src="/images/landing/generate_quotes_image.png"
+              />
+            </div>
+
+            <div className="flex flex-col items-start gap-[30px] flex-1 min-w-0">
+              <div className="flex flex-col items-start gap-5 w-full">
+                <h2
+                  className="bg-[linear-gradient(180deg,rgba(23,23,23,1)_0%,rgba(119,119,119,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] text-[42px] tracking-[0.84px] leading-[50px]"
+                  style={{
+                    fontFamily: 'Urbanist, sans-serif',
+                    fontWeight: 600,
+                  }}
+                >
+                  Generate quotes in seconds, not hours
+                </h2>
+
+                <p
+                  className="text-[#343432] text-base tracking-[0] leading-6"
+                  style={{
+                    fontFamily: 'Urbanist, sans-serif',
+                    fontWeight: 400,
+                  }}
+                >
+                  Our intelligent quote engine automatically calculates pricing, applies discounts, and formats everything perfectly. Just fill in the details and go.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-start gap-[15px] w-full">
+                {["Automatic pricing calculations", "Dynamic discount application", "Professional PDF output"].map((point, index) => (
+                  <div key={index} className="flex items-center gap-2.5 w-full">
+                    <svg className="w-6 h-6 text-[#ee6c4d] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                    </svg>
+                    <p
+                      className="flex-1 text-[#343432] text-xl tracking-[0] leading-[30px]"
+                      style={{
+                        fontFamily: 'Urbanist, sans-serif',
+                        fontWeight: 400,
+                      }}
+                    >
+                      {point}
+                    </p>
                   </div>
-                  <span className="text-gray-700 group-hover:text-green-600 transition-colors duration-300">Real-time conversion tracking</span>
-                </div>
-                <div className="flex items-center space-x-3 group">
-                  <div className="w-6 h-6 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                  <span className="text-gray-700 group-hover:text-green-600 transition-colors duration-300">Performance analytics dashboard</span>
-                </div>
-                <div className="flex items-center space-x-3 group">
-                  <div className="w-6 h-6 bg-gradient-to-br from-green-600 to-green-700 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                    <span className="text-white text-xs">✓</span>
-                  </div>
-                  <span className="text-gray-700 group-hover:text-green-600 transition-colors duration-300">Sales pipeline insights</span>
-                </div>
+                ))}
               </div>
             </div>
-            <div className="relative group overflow-visible">
-              <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-emerald-600 rounded-3xl blur-2xl opacity-20 group-hover:opacity-30 transition-opacity duration-500" />
+          </div>
 
-              {/* Layered analytics images - added padding to prevent cutoff */}
-              <div className="relative px-12 py-8">
-                {/* Base SVG - project tracking image */}
-                <div className="relative w-full">
-                  <img
-                    src="/images/landing/project_tracking_image.svg"
-                    alt="Project Tracking Dashboard"
-                    className="w-full h-auto rounded-3xl"
-                  />
-                </div>
+          {/* Feature 3: Track (Image Left with Overlay) */}
+          <div className="feature-card flex flex-row items-center gap-[100px] w-full opacity-0 translate-y-[-1rem] animate-fade-in-delay" style={{ '--animation-delay': '400ms' } as React.CSSProperties}>
+            <div className="relative flex-shrink-0">
+              <img
+                className="w-[650px] h-[550px] object-contain"
+                alt="Track performance"
+                src="/images/landing/project_tracking_image.svg"
+              />
+              {/* Analytics overlay image if available */}
+              {/* <img
+                className="absolute top-[-20px] left-[-20px] w-[452px] h-[228px]"
+                alt="Analytics overlay"
+                src="/images/landing/analytics-overlay.png"
+              /> */}
+            </div>
 
-                {/* analytics_image1 - positioned top right, overlaying */}
-                <div className="absolute top-[-1rem] right-[-2rem] w-[45%] bg-white/90 backdrop-blur-xl rounded-2xl p-2 shadow-2xl border border-gray-100 hover:scale-105 transition-transform duration-300">
-                  <img
-                    src="/images/landing/analytics_image1.png"
-                    alt="Revenue Analytics"
-                    className="w-full h-auto rounded-xl"
-                  />
-                </div>
+            <div className="flex flex-col items-start gap-[30px] flex-1 min-w-0">
+              <div className="flex flex-col items-start gap-5 w-full">
+                <h2
+                  className="bg-[linear-gradient(180deg,rgba(23,23,23,1)_0%,rgba(119,119,119,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] text-[42px] tracking-[0.84px] leading-[50px]"
+                  style={{
+                    fontFamily: 'Urbanist, sans-serif',
+                    fontWeight: 600,
+                  }}
+                >
+                  Track performance and optimize your sales
+                </h2>
 
-                {/* analytics_image2 - positioned bottom right, overlaying */}
-                <div className="absolute bottom-[-0.5rem] right-[1rem] w-[38%] bg-white/90 backdrop-blur-xl rounded-2xl p-2 shadow-2xl border border-gray-100 hover:scale-105 transition-transform duration-300">
-                  <img
-                    src="/images/landing/analytics_image2.png"
-                    alt="Key Metrics"
-                    className="w-full h-auto rounded-xl"
-                  />
-                </div>
+                <p
+                  className="text-[#343432] text-base tracking-[0] leading-6"
+                  style={{
+                    fontFamily: 'Urbanist, sans-serif',
+                    fontWeight: 400,
+                  }}
+                >
+                  Get deep insights into your quoting and project process with comprehensive analytics. Track conversion rates, identify bottlenecks, and optimize your sales strategy with real-time data.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-start gap-[15px] w-full">
+                {["Real-time conversion tracking", "Performance analytics dashboard", "Sales pipeline insights"].map((point, index) => (
+                  <div key={index} className="flex items-center gap-2.5 w-full">
+                    <svg className="w-6 h-6 text-[#ee6c4d] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                    </svg>
+                    <p
+                      className="flex-1 text-[#343432] text-xl tracking-[0] leading-[30px]"
+                      style={{
+                        fontFamily: 'Urbanist, sans-serif',
+                        fontWeight: 400,
+                      }}
+                    >
+                      {point}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Industries We Support - Animated Carousel */}
-      <section className="py-20 bg-[var(--landing-bg-dark)] relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-8 mb-12">
-          <div className="text-center">
-            <h2 className="text-4xl font-bold text-[var(--landing-text-on-dark)] mb-4">
-              Trusted Across <span className="text-[var(--landing-primary)]">Industries</span>
+      {/* Results Section */}
+      <PlatformStatsSection />
+
+      {/* Testimonials Section with Gradient */}
+      <TestimonialsSection />
+
+      {/* Industries We Support with Image Cards */}
+      <section id="usecases" className="py-[75px] bg-[#FFFEFA] px-[20px]">
+        <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2
+              className="text-4xl text-gray-900 mb-4"
+              style={{
+                fontFamily: 'Urbanist, sans-serif',
+                fontWeight: 700,
+              }}
+            >
+              Trusted Across Industries
             </h2>
-            <p className="text-lg text-[var(--landing-text-muted-dark)] max-w-2xl mx-auto">
+            <p
+              className="text-base text-gray-600 max-w-2xl mx-auto"
+              style={{
+                fontFamily: 'Urbanist, sans-serif',
+                fontWeight: 400,
+              }}
+            >
               From furniture dealers to construction firms, businesses trust Qwohter for professional quoting
             </p>
           </div>
-        </div>
 
-        {/* Infinite scrolling industry badges */}
-        <div className="relative">
-          <div className="flex overflow-hidden">
-            <div className="flex animate-marquee-slow whitespace-nowrap">
-              {[
-                'Office Furniture',
-                'Wall Systems',
-                'Construction',
-                'Manufacturing',
-                'Interior Design',
-                'Commercial Flooring',
-                'Electrical Services',
-                'HVAC Systems',
-                'Office Furniture',
-                'Wall Systems',
-                'Construction',
-                'Manufacturing',
-                'Interior Design',
-                'Commercial Flooring',
-                'Electrical Services',
-                'HVAC Systems',
-              ].map((industry, index) => (
-                <div
-                  key={index}
-                  className="mx-6 px-8 py-4 bg-[var(--landing-bg-light)]/10 backdrop-blur-sm rounded-full border border-[var(--landing-primary)]/30 hover:border-[var(--landing-primary)] hover:bg-[var(--landing-primary)]/10 transition-all duration-300"
-                >
-                  <span className="text-lg font-medium text-[var(--landing-text-on-dark)]">{industry}</span>
+          {/* Industry Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+            {[
+              { title: 'Wall Systems', image: '/images/industries/wall-systems.jpg' },
+              { title: 'Construction', image: '/images/industries/construction.jpg' },
+              { title: 'Interior Design', image: '/images/industries/interior-design.jpg' },
+              { title: 'Commercial Flooring', image: '/images/industries/commercial-flooring.jpg' },
+              { title: 'Electrical Services', image: '/images/industries/electrical-services.jpg' }
+            ].map((industry, index) => (
+              <div key={index} className="bg-gray-100 rounded-3xl overflow-hidden aspect-[3/4] relative group cursor-pointer hover:scale-105 transition-transform duration-300">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                <div className="absolute bottom-0 left-0 right-0 p-6">
+                  <h3 className="text-white font-semibold text-base">{industry.title}</h3>
                 </div>
-              ))}
-            </div>
-            <div className="flex animate-marquee-slow2 whitespace-nowrap absolute top-0">
-              {[
-                'Office Furniture',
-                'Wall Systems',
-                'Construction',
-                'Manufacturing',
-                'Interior Design',
-                'Commercial Flooring',
-                'Electrical Services',
-                'HVAC Systems',
-                'Office Furniture',
-                'Wall Systems',
-                'Construction',
-                'Manufacturing',
-                'Interior Design',
-                'Commercial Flooring',
-                'Electrical Services',
-                'HVAC Systems',
-              ].map((industry, index) => (
-                <div
-                  key={index}
-                  className="mx-6 px-8 py-4 bg-[var(--landing-bg-light)]/10 backdrop-blur-sm rounded-full border border-[var(--landing-primary)]/30 hover:border-[var(--landing-primary)] hover:bg-[var(--landing-primary)]/10 transition-all duration-300"
-                >
-                  <span className="text-lg font-medium text-[var(--landing-text-on-dark)]">{industry}</span>
-                </div>
-              ))}
-            </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Carousel Navigation */}
+          <div className="flex justify-center gap-3">
+            <button className="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:border-[var(--landing-primary)] hover:bg-[var(--landing-primary)] hover:text-white transition-all duration-300">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button className="w-10 h-10 rounded-full bg-[var(--landing-primary)] text-white flex items-center justify-center hover:bg-[#d95a3d] transition-all duration-300">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           </div>
         </div>
       </section>
+
+      {/* Problem/Solution Toggle Section */}
+      <ProblemSolutionSection />
 
       {/* Pricing Section */}
-      <section id="pricing" ref={pricingRef} className="px-8 py-16 bg-[var(--landing-bg-light)]">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-5xl font-bold text-[var(--landing-text-on-light)] mb-6">
-              Simple, <span className="text-[var(--landing-primary)]">transparent pricing</span>
-            </h2>
-            <p className="text-xl text-[var(--landing-text-muted-light)] max-w-3xl mx-auto">
-              One straightforward price. No hidden fees, no surprises. Pay only for what you use.
-            </p>
+      <div id="pricing" ref={pricingRef}>
+        <PricingPlanSection />
+      </div>
+
+      {/* Footer - Anima Design */}
+      <footer className="w-full bg-[#FFFEFA] px-[20px] pb-[20px]">
+        <div className="w-full relative mt-[75px] bg-neutral-900 rounded-[30px] overflow-hidden translate-y-[-1rem] animate-fade-in-delay opacity-0" style={{ '--animation-delay': '200ms' } as React.CSSProperties}>
+          {/* Gradient blur effects */}
+          {/* First blur group - bottom right */}
+          <div className="top-[265px] left-[235px] opacity-80 absolute w-[2093px] h-[1469px] pointer-events-none">
+            <div className="top-[267px] left-[97px] w-[1898px] h-[935px] bg-[#ee6c4d] rounded-[949.15px/467.37px] blur-[105px] absolute rotate-[-17.73deg] opacity-50" />
+            <div className="top-[418px] left-[235px] w-[1587px] h-[732px] bg-[#ee4dbd] rounded-[793.66px/365.97px] blur-[105px] absolute rotate-[-17.73deg] opacity-50" />
+            <div className="top-[410px] left-[215px] w-[1483px] h-[730px] bg-[#f7f2e9] rounded-[741.72px/365.23px] blur-[105px] absolute rotate-[-17.73deg] opacity-50" />
           </div>
 
-          {/* Pricing Card and Features Side by Side */}
-          <div className="flex justify-center items-stretch gap-0 max-w-6xl mx-auto">
-            {/* Left - Pricing Card (White) */}
-            <div className="pricing-card bg-white rounded-l-3xl shadow-2xl border border-gray-200 opacity-0 p-12 flex flex-col" style={{ width: '50%' }}>
-              <div>
-                <h3 className="text-4xl font-bold text-[var(--landing-text-on-light)] mb-6">
-                  $20<span className="text-lg font-normal text-gray-500">/user/month</span>
-                </h3>
-                <p className="text-base text-[var(--landing-text-muted-light)] mb-8 leading-relaxed">
-                  Simple per-user pricing that scales with your team. No commitment, no credit card required for your 14-day free trial.
-                </p>
-
-                {/* Plan Features */}
-                <div className="space-y-4 mb-10">
-                  <div className="flex items-start space-x-3">
-                    <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                    </svg>
-                    <span className="text-[var(--landing-text-on-light)] text-base">Unlimited quotes</span>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                    </svg>
-                    <span className="text-[var(--landing-text-on-light)] text-base">Custom form creation</span>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                    </svg>
-                    <span className="text-[var(--landing-text-on-light)] text-base">Template designer</span>
-                  </div>
-                  <div className="flex items-start space-x-3">
-                    <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                    </svg>
-                    <span className="text-[var(--landing-text-on-light)] text-base">Advanced analytics</span>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={(e) => {
-                    handleRipple(e);
-                    navigate('/create-account');
-                  }}
-                  className="w-full bg-[var(--landing-primary)] hover:bg-[#d95a3d] text-white px-8 py-4 text-base font-medium hover:scale-[1.02] transition-all duration-300 mb-6 relative overflow-hidden rounded-lg"
-                >
-                  Start your 14-day free trial
-                </Button>
-
-                <div className="flex items-center justify-center gap-6 text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>No credit card required</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    <span>Cancel anytime</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right - Features List (Light Gray Background) */}
-            <div className="bg-gray-50 rounded-r-3xl shadow-2xl border border-l-0 border-gray-200 p-12 flex flex-col opacity-0 animate-fade-in" style={{ animationDelay: '0.2s', width: '50%' }}>
-              <h4 className="text-2xl font-bold text-[var(--landing-text-on-light)] mb-8">Included in every account:</h4>
-              <div className="space-y-4 mb-8">
-                <div className="flex items-start space-x-3">
-                  <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                  </svg>
-                  <span className="text-[var(--landing-text-on-light)] text-base font-medium">Real-time collaboration & sync</span>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                  </svg>
-                  <span className="text-[var(--landing-text-on-light)] text-base font-medium">Secure encrypted data storage</span>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                  </svg>
-                  <span className="text-[var(--landing-text-on-light)] text-base font-medium">Role-based access control</span>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                  </svg>
-                  <span className="text-[var(--landing-text-on-light)] text-base font-medium">PDF export & CSV downloads</span>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <svg className="w-5 h-5 text-[var(--landing-primary)] mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                  </svg>
-                  <span className="text-[var(--landing-text-on-light)] text-base font-medium">Auto-save & version control</span>
-                </div>
-              </div>
-
-              <p className="text-xs text-gray-500 mt-auto leading-relaxed">
-                Pricing is in USD and renews automatically unless cancelled. You can add or remove users at any time. Scale up or down as your team grows.
-              </p>
-            </div>
+          {/* Second blur group - top left */}
+          <div className="top-[-906px] left-[-1312px] opacity-80 absolute w-[2093px] h-[1469px] pointer-events-none">
+            <div className="top-[267px] left-[97px] w-[1898px] h-[935px] bg-[#ee6c4d] rounded-[949.15px/467.37px] blur-[200px] absolute rotate-[-17.73deg] opacity-50" />
+            <div className="top-[418px] left-[235px] w-[1587px] h-[732px] bg-[#ee4dbd] rounded-[793.66px/365.97px] blur-[200px] absolute rotate-[-17.73deg] opacity-50" />
+            <div className="top-[434px] left-[161px] w-[1483px] h-[730px] bg-[#f7f2e9] rounded-[741.72px/365.23px] blur-[200px] absolute rotate-[-17.73deg] opacity-50" />
           </div>
-        </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="bg-[var(--landing-bg-dark)] text-[var(--landing-text-on-dark)] py-16 px-6 opacity-0 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
-            <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center mb-6 group">
+          {/* Responsive content wrapper */}
+          <div className="relative z-10 w-full mx-auto px-3 sm:px-6 md:px-8 lg:px-[180px] py-8 sm:py-12 md:py-[60px] lg:py-[80px] flex flex-col gap-6 sm:gap-8 md:gap-[30px] lg:gap-[40px]">
+            {/* Logo and Description */}
+            <div className="flex flex-col sm:flex-row items-start justify-between gap-6 sm:gap-8">
+              <div className="inline-flex flex-col items-start gap-2 relative flex-[0_0_auto]">
                 <img
-                  src="/logos/New_Landing_Page_Logo_LightonDarkBackground.svg"
+                  className="relative w-[140px] h-[30px]"
                   alt="Qwohter Logo"
-                  className="h-8 w-auto"
+                  src="/logos/New_Landing_Page_Logo_LightonDarkBackground.svg"
                 />
+
+                <p
+                  className="relative max-w-[500px] text-white text-base tracking-[0] leading-6"
+                  style={{
+                    fontFamily: 'Urbanist, sans-serif',
+                    fontWeight: 300,
+                  }}
+                >
+                  The most intuitive quoting platform for modern businesses. Generate,
+                  design, and track your quotes with ease.
+                </p>
               </div>
-              <p className="text-[var(--landing-text-muted-dark)] mb-8 max-w-md leading-relaxed">
-                The most intuitive quoting platform for modern businesses.
-                Generate, design, and track your quotes with ease.
+
+              <Button
+                variant="outline"
+                className="inline-flex gap-2 bg-neutral-900 border border-solid border-[#f7f2e9] items-center justify-center px-6 py-2 h-auto rounded-3xl hover:bg-neutral-800 transition-colors"
+              >
+                <span
+                  className="text-[#f7f2e9] text-base text-center tracking-[0] leading-6 whitespace-nowrap"
+                  style={{
+                    fontFamily: 'Urbanist, sans-serif',
+                    fontWeight: 600,
+                  }}
+                >
+                  English
+                </span>
+
+                <svg className="w-4 h-4 text-[#f7f2e9]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </Button>
+            </div>
+
+            {/* Divider Line 1 */}
+            <div className="w-full h-px bg-white/20" />
+
+            {/* Navigation and Social Links */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-8">
+              <nav className="inline-flex flex-wrap items-center justify-start gap-4 sm:gap-6">
+                {['Home', 'Features', 'Use Cases', 'Pricing', 'Contact Us'].map((link, index) => (
+                  <a
+                    key={index}
+                    href={`#${link.toLowerCase().replace(' ', '')}`}
+                    className="relative w-fit text-white text-base tracking-[0] leading-6 whitespace-nowrap hover:text-[#f7f2e9] transition-colors"
+                    style={{
+                      fontFamily: 'Urbanist, sans-serif',
+                      fontWeight: 300,
+                    }}
+                    onClick={(e) => {
+                      if (link === 'Contact Us') {
+                        e.preventDefault();
+                        navigate('/contact-us');
+                      }
+                    }}
+                  >
+                    {link}
+                  </a>
+                ))}
+              </nav>
+
+              <a
+                href="https://www.linkedin.com/company/qwohter"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 relative flex-[0_0_auto] hover:opacity-80 transition-opacity"
+              >
+                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                </svg>
+
+                <span
+                  className="relative w-fit text-white text-base tracking-[0] leading-6 whitespace-nowrap"
+                  style={{
+                    fontFamily: 'Urbanist, sans-serif',
+                    fontWeight: 300,
+                  }}
+                >
+                  LinkedIn
+                </span>
+              </a>
+            </div>
+
+            {/* Divider Line 2 */}
+            <div className="w-full h-px bg-white/20" />
+
+            {/* Copyright and Legal Links */}
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-6">
+              <p
+                className="relative text-white text-base tracking-[0] leading-6"
+                style={{
+                  fontFamily: 'Urbanist, sans-serif',
+                  fontWeight: 300,
+                }}
+              >
+                © 2025 Qwohter Inc. All rights reserved.
               </p>
-              <div className="flex space-x-4">
-                {/* <Button variant="outline" size="sm" className="border-[var(--landing-text-muted-dark)] text-[var(--landing-text-on-dark)] hover:bg-[var(--landing-primary)] hover:border-[var(--landing-primary)] hover:text-white transition-all duration-300">
-                  Twitter
-                </Button> */}
-                <a href="https://www.linkedin.com/company/qwohter" target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" size="sm" className="border-[var(--landing-text-muted-dark)] text-[var(--landing-text-on-dark)] hover:bg-[var(--landing-primary)] hover:border-[var(--landing-primary)] hover:text-white transition-all duration-300">
-                    LinkedIn
-                  </Button>
-                </a>
-              </div>
-            </div>
 
-            <div>
-              <h3 className="font-semibold mb-6 text-lg text-[var(--landing-text-on-dark)]">Product</h3>
-              <ul className="space-y-3 text-[var(--landing-text-muted-dark)]">
-                <li><a href="#features" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Features</a></li>
-                <li><a href="#pricing" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Pricing</a></li>
-                {/* <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Integrations</a></li> */}
-                {/* <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">API</a></li> */}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-semibold mb-6 text-lg text-[var(--landing-text-on-dark)]">Company</h3>
-              <ul className="space-y-3 text-[var(--landing-text-muted-dark)]">
-                {/* <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">About</a></li> */}
-                {/* <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Blog</a></li> */}
-                {/* <li><a href="#" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Careers</a></li> */}
-                <li><a href="/contact-us" className="hover:text-[var(--landing-primary)] transition-colors duration-300 hover:translate-x-1 inline-block">Contact</a></li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-[var(--landing-text-muted-dark)]/30 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-[var(--landing-text-muted-dark)] text-xs">
-              © 2025 Qwohter Inc. All rights reserved.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-[var(--landing-text-muted-dark)]">
-              <a href="/contact-us#faq" className="hover:text-[var(--landing-primary)] transition-colors duration-300">
-                FAQ
-              </a>
-              <a href="/privacy-policy" className="hover:text-[var(--landing-primary)] transition-colors duration-300">
-                Privacy notice
-              </a>
-              <a href="/legal" className="hover:text-[var(--landing-primary)] transition-colors duration-300">
-                Legal
-              </a>
-              <a href="/cookie-settings" className="hover:text-[var(--landing-primary)] transition-colors duration-300">
-                Cookie settings
-              </a>
-              <a href="/accessibility" className="hover:text-[var(--landing-primary)] transition-colors duration-300">
-                Accessibility Statement
-              </a>
-              <a href="/do-not-sell" className="hover:text-[var(--landing-primary)] transition-colors duration-300">
-                Do Not Sell My Personal Information
-              </a>
-              <select className="text-[var(--landing-text-muted-dark)] bg-transparent border border-[var(--landing-text-muted-dark)]/50 rounded px-2 py-1 text-xs hover:border-[var(--landing-primary)] transition-colors cursor-pointer">
-                <option className="bg-[var(--landing-bg-dark)]">English</option>
-                <option className="bg-[var(--landing-bg-dark)]">Español</option>
-                <option className="bg-[var(--landing-bg-dark)]">Français</option>
-              </select>
+              <nav className="inline-flex items-center justify-start relative flex-[0_0_auto] gap-3 flex-wrap">
+                {['FAQ', 'Privacy notice', 'Legal', 'Cookie settings', 'Accessibility Statement', 'Do Not Sell My Personal Information'].map((link, index, array) => (
+                  <React.Fragment key={index}>
+                    <a
+                      href={`/${link.toLowerCase().replace(/ /g, '-')}`}
+                      className="relative w-fit text-white text-base tracking-[0] leading-6 whitespace-nowrap hover:text-[#f7f2e9] transition-colors"
+                      style={{
+                        fontFamily: 'Urbanist, sans-serif',
+                        fontWeight: 300,
+                      }}
+                    >
+                      {link}
+                    </a>
+                    {index < array.length - 1 && (
+                      <span
+                        className="relative w-fit text-white text-base tracking-[0] leading-6 whitespace-nowrap"
+                        style={{
+                          fontFamily: 'Urbanist, sans-serif',
+                          fontWeight: 300,
+                        }}
+                      >
+                        •
+                      </span>
+                    )}
+                  </React.Fragment>
+                ))}
+              </nav>
             </div>
           </div>
         </div>
@@ -774,6 +720,22 @@ const LandingEnhanced = () => {
 
         .animate-fade-in {
           animation: fade-in 0.8s ease-out forwards;
+        }
+
+        @keyframes fade-in-delay {
+          from {
+            opacity: 0;
+            transform: translateY(-1rem);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-fade-in-delay {
+          animation: fade-in-delay 0.8s ease-out forwards;
+          animation-delay: var(--animation-delay, 0ms);
         }
 
         @keyframes layer-swap-1 {
