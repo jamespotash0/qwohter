@@ -220,16 +220,74 @@ export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
         const createdByName = profileData?.full_name || session.user.email || 'Unknown';
 
         // Fetch organization name to ensure it's always available
-        const { data: orgData } = await supabase
+        const { data: orgData, error: orgError } = await supabase
           .from('organizations')
           .select('name')
           .eq('id', membershipData.organization_id as string)
           .single();
 
-        // Ensure quote_details has organization name (fallback if not provided by frontend)
+        // Track organization name source for debugging
+        let orgNameSource = 'unknown';
+        let finalOrgName = 'Organization Name Not Available';
+
+        if (orgError) {
+          // Log detailed error context
+          console.error('[createQuote] Failed to fetch organization name:', {
+            error: orgError,
+            errorCode: orgError.code,
+            errorMessage: orgError.message,
+            errorDetails: orgError.details,
+            organizationId: membershipData.organization_id,
+            userId: session.user.id,
+            userEmail: session.user.email
+          });
+
+          // Track in Sentry
+          Sentry.captureException(orgError, {
+            tags: {
+              operation: 'createQuote',
+              subOperation: 'fetchOrganizationName',
+              organizationId: membershipData.organization_id,
+            },
+            extra: {
+              userId: session.user.id,
+              errorCode: orgError.code,
+              errorDetails: orgError.details,
+            },
+            level: 'warning',
+          });
+
+          span.setAttribute('org.fetch_error', true);
+          span.setAttribute('org.error_code', orgError.code || 'unknown');
+        }
+
+        // Determine organization name with fallback priority
+        if ((quoteData.quote_details as any)?.organizationName) {
+          finalOrgName = (quoteData.quote_details as any).organizationName;
+          orgNameSource = 'frontend';
+        } else if (orgData?.name) {
+          finalOrgName = orgData.name;
+          orgNameSource = 'database';
+        } else {
+          orgNameSource = 'fallback';
+          // Log when we have to use fallback
+          console.warn('[createQuote] Using fallback organization name:', {
+            organizationId: membershipData.organization_id,
+            userId: session.user.id,
+            frontendProvided: !!(quoteData.quote_details as any)?.organizationName,
+            databaseFetched: !!orgData?.name,
+            hadError: !!orgError
+          });
+        }
+
+        // Track source in Sentry
+        span.setAttribute('org.name_source', orgNameSource);
+        span.setAttribute('org.name', finalOrgName);
+
+        // Ensure quote_details has organization name
         const quoteDetails = {
           ...(quoteData.quote_details || {}),
-          organizationName: (quoteData.quote_details as any)?.organizationName || (orgData as any)?.name || 'Organization Name Not Available'
+          organizationName: finalOrgName
         };
 
         // Create quote with created_by_name and organizationName explicitly set
