@@ -852,6 +852,10 @@ export async function createQuoteVersion(
       proposal_number: newProposalNumber,
       document_version: versionNumber,
       is_main_version: false,
+      status: 'Draft', // Versions always start as Draft
+      submitted_at: null, // Clear status timestamps
+      won_at: null,
+      rejected_at: null,
       created_by: session.user.id,
       created_by_name: createdByName,
       organization_id: existingQuote.organization_id,
