@@ -54,7 +54,7 @@ export const TestimonialsSection = (): JSX.Element => {
 
   return (
     <section className="w-full pt-[60px] pb-[75px] px-[20px]">
-      <div className="w-full bg-[url(https://c.animaapp.com/mi3nizw3ab7ONs/img/bg.png)] bg-[100%_100%] rounded-[30px]">
+      <div className="w-full bg-[url(https://c.animaapp.com/mi3nizw3ab7ONs/img/bg.png)] bg-cover bg-center bg-no-repeat rounded-[30px]">
         <div className="w-full max-w-[1520px] mx-auto px-4 sm:px-8 lg:px-[180px] py-[75px] sm:py-[100px] lg:py-[150px] flex flex-col items-center gap-[30px] sm:gap-[40px] lg:gap-[50px]">
           <header className="flex flex-col items-center gap-2.5 max-w-[700px] translate-y-[-1rem] animate-fade-in opacity-0">
             <h2 className="w-full bg-[linear-gradient(180deg,rgba(23,23,23,1)_0%,rgba(119,119,119,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] [font-family:'Urbanist',Helvetica] font-semibold text-transparent text-[42px] text-center tracking-[0] leading-[50px]">

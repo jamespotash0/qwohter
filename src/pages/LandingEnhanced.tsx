@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { animeOnScroll, fadeInUp, elasticBounce, rippleEffect } from '@/utils/animations';
 import { PlatformStatsSection } from '@/components/features/landing/PlatformStatsSection';
 import { TestimonialsSection } from '@/components/features/landing/TestimonialsSection';
+import { IndustrySection } from '@/components/features/landing/IndustrySection';
 import { ProblemSolutionSection } from '@/components/features/landing/ProblemSolutionSection';
 import { PricingPlanSection } from '@/components/features/landing/PricingPlanSection';
 import { DebugGrid } from '@/components/common/DebugGrid';
@@ -483,62 +484,7 @@ const LandingEnhanced = () => {
       <TestimonialsSection />
 
       {/* Industries We Support with Image Cards */}
-      <section id="usecases" className="py-[75px] bg-[#FFFEFA] px-[20px]">
-        <div className="max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2
-              className="text-4xl text-gray-900 mb-4"
-              style={{
-                fontFamily: 'Urbanist, sans-serif',
-                fontWeight: 700,
-              }}
-            >
-              Trusted Across Industries
-            </h2>
-            <p
-              className="text-base text-gray-600 max-w-2xl mx-auto"
-              style={{
-                fontFamily: 'Urbanist, sans-serif',
-                fontWeight: 400,
-              }}
-            >
-              From furniture dealers to construction firms, businesses trust Qwohter for professional quoting
-            </p>
-          </div>
-
-          {/* Industry Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-            {[
-              { title: 'Wall Systems', image: '/images/industries/wall-systems.jpg' },
-              { title: 'Construction', image: '/images/industries/construction.jpg' },
-              { title: 'Interior Design', image: '/images/industries/interior-design.jpg' },
-              { title: 'Commercial Flooring', image: '/images/industries/commercial-flooring.jpg' },
-              { title: 'Electrical Services', image: '/images/industries/electrical-services.jpg' }
-            ].map((industry, index) => (
-              <div key={index} className="bg-gray-100 rounded-3xl overflow-hidden aspect-[3/4] relative group cursor-pointer hover:scale-105 transition-transform duration-300">
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <h3 className="text-white font-semibold text-base">{industry.title}</h3>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Carousel Navigation */}
-          <div className="flex justify-center gap-3">
-            <button className="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:border-[var(--landing-primary)] hover:bg-[var(--landing-primary)] hover:text-white transition-all duration-300">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <button className="w-10 h-10 rounded-full bg-[var(--landing-primary)] text-white flex items-center justify-center hover:bg-[#d95a3d] transition-all duration-300">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </section>
+      <IndustrySection />
 
       {/* Problem/Solution Toggle Section */}
       <ProblemSolutionSection />
