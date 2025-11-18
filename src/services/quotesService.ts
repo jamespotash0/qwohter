@@ -735,7 +735,7 @@ export async function sendQuoteToProjectBoard(quoteId: string): Promise<{ succes
 
     const nextOrder = ((maxOrderProject as any)?.board_order || 0) + 1;
 
-    // Create project
+    // Create project (priority defaults to NULL - user can set it manually)
     const { data: newProject, error: projectError } = await supabase
       .from('projects')
       .insert({
@@ -743,7 +743,7 @@ export async function sendQuoteToProjectBoard(quoteId: string): Promise<{ succes
         organization_id: quote.organization_id,
         workflow_status: workflowStatus,
         board_order: nextOrder,
-        priority: 'Medium',
+        priority: null,
       } as any)
       .select()
       .single();

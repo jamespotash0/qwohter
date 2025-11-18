@@ -456,10 +456,18 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   };
 
   // Confirm status change after user approval
-  const confirmStatusChange = () => {
+  const confirmStatusChange = async () => {
     if (pendingStatusChange) {
-      onStatusChange(pendingStatusChange.quoteId, pendingStatusChange.newStatus);
+      const { quoteId, newStatus } = pendingStatusChange;
+
+      // Update the status
+      onStatusChange(quoteId, newStatus);
       setPendingStatusChange(null);
+
+      // Auto-remove from project board if changing to Rejected
+      if (newStatus === 'Rejected' && quotesOnBoard[quoteId]) {
+        await handleRemoveFromBoard(quoteId);
+      }
     }
   };
 
