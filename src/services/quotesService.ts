@@ -219,9 +219,23 @@ export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
 
         const createdByName = profileData?.full_name || session.user.email || 'Unknown';
 
-        // Create quote with created_by_name explicitly set
+        // Fetch organization name to ensure it's always available
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', membershipData.organization_id as string)
+          .single();
+
+        // Ensure quote_details has organization name (fallback if not provided by frontend)
+        const quoteDetails = {
+          ...(quoteData.quote_details || {}),
+          organizationName: (quoteData.quote_details as any)?.organizationName || (orgData as any)?.name || 'Organization Name Not Available'
+        };
+
+        // Create quote with created_by_name and organizationName explicitly set
         const insertData = {
           ...quoteData,
+          quote_details: quoteDetails,
           organization_id: membershipData.organization_id,
           created_by: session.user.id,
           created_by_name: createdByName,
