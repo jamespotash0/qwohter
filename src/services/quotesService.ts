@@ -58,8 +58,8 @@ export interface UpdateQuoteData {
   total_value?: number;
   subtotal?: number;
   submitted_at?: string;
-  won_at?: string;
-  rejected_at?: string;
+  won_at?: string | null;
+  rejected_at?: string | null;
   margin_percentage?: number;
   is_main_version?: boolean;
   quote_source?: string;
@@ -603,7 +603,7 @@ export async function updateQuoteStatus(
 
   const updates: UpdateQuoteData = { status };
 
-  // Add timestamp for status transitions
+  // Add timestamp for status transitions and clear conflicting timestamps
   const now = new Date().toISOString();
   switch (status) {
     case 'Submitted':
@@ -611,9 +611,17 @@ export async function updateQuoteStatus(
       break;
     case 'Won':
       updates.won_at = now;
+      // Clear rejected_at if switching from Rejected to Won
+      if (oldStatus === 'Rejected') {
+        updates.rejected_at = null;
+      }
       break;
     case 'Rejected':
       updates.rejected_at = now;
+      // Clear won_at if switching from Won to Rejected
+      if (oldStatus === 'Won') {
+        updates.won_at = null;
+      }
       break;
   }
 

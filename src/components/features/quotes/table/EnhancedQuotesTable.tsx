@@ -55,6 +55,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 // import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 import useEnhancedSearch from '@/hooks/useEnhancedSearch';
@@ -214,6 +224,13 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
 
   // Toast for notifications
   const { toast } = useToast();
+
+  // Track pending status changes for confirmation
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    quoteId: string;
+    currentStatus: string;
+    newStatus: string;
+  } | null>(null);
 
   // Group quotes by version
   const quoteGroups = useMemo(() => groupQuotesByVersion(quotes), [quotes]);
@@ -378,6 +395,34 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         variant: 'destructive',
       });
     }
+  };
+
+  // Handle status change with confirmation for Won<->Rejected transitions
+  const handleStatusChange = (quoteId: string, currentStatus: string, newStatus: string) => {
+    // Check if we're switching between Won and Rejected
+    const isWonToRejected = currentStatus === 'Won' && newStatus === 'Rejected';
+    const isRejectedToWon = currentStatus === 'Rejected' && newStatus === 'Won';
+
+    if (isWonToRejected || isRejectedToWon) {
+      // Show confirmation dialog
+      setPendingStatusChange({ quoteId, currentStatus, newStatus });
+    } else {
+      // Proceed directly without confirmation
+      onStatusChange(quoteId, newStatus);
+    }
+  };
+
+  // Confirm status change after user approval
+  const confirmStatusChange = () => {
+    if (pendingStatusChange) {
+      onStatusChange(pendingStatusChange.quoteId, pendingStatusChange.newStatus);
+      setPendingStatusChange(null);
+    }
+  };
+
+  // Cancel status change
+  const cancelStatusChange = () => {
+    setPendingStatusChange(null);
   };
 
   // Reset column visibility to show all columns
@@ -616,7 +661,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         return (
           <Select
             value={currentStatus || "Incomplete"}
-            onValueChange={(value) => onStatusChange(row.original.id, value)}
+            onValueChange={(value) => handleStatusChange(row.original.id, currentStatus || "Incomplete", value)}
           >
             <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[currentStatus as keyof typeof statusColors]}`}>
               <SelectValue />
@@ -1438,7 +1483,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                             <td className="px-4 py-2">
                               <Select
                                 value={version.status || "Incomplete"}
-                                onValueChange={(value) => onStatusChange(version.id, value)}
+                                onValueChange={(value) => handleStatusChange(version.id, version.status || "Incomplete", value)}
                               >
                                 <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[version.status as keyof typeof statusColors]}`}>
                                   <SelectValue />
@@ -1581,6 +1626,44 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         {/* Pagination */}
         <PaginationControls table={table} />
       </div>
+
+      {/* Status Change Confirmation Dialog */}
+      <AlertDialog open={!!pendingStatusChange} onOpenChange={(open) => !open && cancelStatusChange()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Status Change</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              {pendingStatusChange?.currentStatus === 'Won' && pendingStatusChange?.newStatus === 'Rejected' && (
+                <div className="text-base">
+                  Changing from <strong className="text-green-600">Won</strong> to <strong className="text-red-600">Rejected</strong> will:
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li><strong>Remove the Won timestamp</strong></li>
+                    <li><strong>Update analytics accordingly</strong></li>
+                  </ul>
+                </div>
+              )}
+              {pendingStatusChange?.currentStatus === 'Rejected' && pendingStatusChange?.newStatus === 'Won' && (
+                <div className="text-base">
+                  Changing from <strong className="text-red-600">Rejected</strong> to <strong className="text-green-600">Won</strong> will:
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li><strong>Remove the Rejected timestamp</strong></li>
+                    <li><strong>Update analytics accordingly</strong></li>
+                  </ul>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelStatusChange}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmStatusChange}
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              Proceed
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
