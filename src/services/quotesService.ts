@@ -297,6 +297,7 @@ export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
           organization_id: membershipData.organization_id,
           created_by: session.user.id,
           created_by_name: createdByName,
+          is_main_version: true, // ✅ FIX: New quotes are always main versions
         };
 
         const { data, error } = await supabase
