@@ -20,34 +20,39 @@ const LandingPage = () => {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('home');
 
+  // Create refs for each section
+  const heroRef = React.useRef<HTMLDivElement>(null);
+  const featuresRef = React.useRef<HTMLDivElement>(null);
+  const usecasesRef = React.useRef<HTMLDivElement>(null);
+  const pricingRef = React.useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const handleScroll = () => {
-      // Detect active section for navigation highlighting
-      const sections = [
-        { id: 'home', element: document.querySelector('section:first-of-type') },
-        { id: 'features', element: document.getElementById('features') },
-        { id: 'usecases', element: document.getElementById('usecases') },
-        { id: 'pricing', element: document.getElementById('pricing') }
-      ];
-
-      // Find which section is currently in view
-      const current = sections.find(section => {
-        if (!section.element) return false;
-        const rect = section.element.getBoundingClientRect();
-        // Section is considered active if it's in the top half of the viewport
-        return rect.top <= 150 && rect.bottom > 150;
-      });
-
-      if (current) {
-        setActiveSection(current.id);
-      } else if (window.scrollY < 100) {
-        // At the top of the page, set to home
-        setActiveSection('home');
-      }
+    const observerOptions = {
+      root: null,
+      rootMargin: '-20% 0px -70% 0px',
+      threshold: 0
     };
-    window.addEventListener('scroll', handleScroll);
-    handleScroll(); // Run on mount
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    const observerCallback = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const sectionId = entry.target.getAttribute('data-section');
+          if (sectionId) {
+            setActiveSection(sectionId);
+          }
+        }
+      });
+    };
+
+    const observer = new IntersectionObserver(observerCallback, observerOptions);
+
+    // Observe all section refs
+    if (heroRef.current) observer.observe(heroRef.current);
+    if (featuresRef.current) observer.observe(featuresRef.current);
+    if (usecasesRef.current) observer.observe(usecasesRef.current);
+    if (pricingRef.current) observer.observe(pricingRef.current);
+
+    return () => observer.disconnect();
   }, []);
 
   // Handle hash navigation (e.g., /#features, /#usecases, /#pricing)
@@ -77,11 +82,13 @@ const LandingPage = () => {
       <DebugGrid />
 
       {/* Hero Section */}
-      <HeroSection
-        activeSection={activeSection}
-        onGetDemo={handleGetDemo}
-        onRipple={handleRipple}
-      />
+      <div ref={heroRef} data-section="home">
+        <HeroSection
+          activeSection={activeSection}
+          onGetDemo={handleGetDemo}
+          onRipple={handleRipple}
+        />
+      </div>
 
       {/* 2035 Tagline Section */}
       <section className="pt-[150px] pb-[75px] bg-[#FFFEFA] px-[20px]">
@@ -99,7 +106,9 @@ const LandingPage = () => {
       </section>
 
       {/* Features Section */}
-      <FeatureSection />
+      <div ref={featuresRef} data-section="features" id="features">
+        <FeatureSection />
+      </div>
 
       {/* Results Section */}
       <PlatformStatsSection />
@@ -108,13 +117,17 @@ const LandingPage = () => {
       <TestimonialsSection />
 
       {/* Industries We Support with Image Cards */}
-      <IndustrySection />
+      <div ref={usecasesRef} data-section="usecases" id="usecases">
+        <IndustrySection />
+      </div>
 
       {/* Problem/Solution Toggle Section */}
       <ProblemSolutionSection />
 
       {/* Pricing Section */}
-      <PricingPlanSection />
+      <div ref={pricingRef} data-section="pricing" id="pricing">
+        <PricingPlanSection />
+      </div>
 
       {/* Footer - Anima Design */}
       <footer className="w-full bg-[#FFFEFA] px-[20px] pb-[20px]">

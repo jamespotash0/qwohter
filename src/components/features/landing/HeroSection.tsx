@@ -22,7 +22,7 @@ export const HeroSection = ({ activeSection, onGetDemo, onRipple }: HeroSectionP
         </div>
 
         {/* Header Navigation */}
-        <header className="w-full max-w-[1520px] mx-auto flex items-center justify-between h-12 bg-transparent translate-y-[-1rem] animate-fade-in opacity-0 [--animation-delay:0ms] relative z-10">
+        <header className="w-full max-w-[1520px] mx-auto flex items-center justify-between h-[50px] bg-transparent mt-[10px] animate-fade-in opacity-0 [--animation-delay:0ms] relative z-10">
           {/* Logo */}
           <div className="flex items-center">
             <img
@@ -33,7 +33,7 @@ export const HeroSection = ({ activeSection, onGetDemo, onRipple }: HeroSectionP
           </div>
 
           {/* Center Navigation Pill */}
-          <nav className="hidden md:flex items-center bg-white/25 backdrop-blur-sm rounded-full px-[30px] py-2.5 gap-[30px]">
+          <nav className="hidden md:flex items-center bg-white/25 backdrop-blur-sm rounded-full px-[30px] py-2.5 w-[510px] justify-between">
             {[
               { name: 'Home', href: '#', section: 'home' },
               { name: 'Features', href: '#features', section: 'features' },
