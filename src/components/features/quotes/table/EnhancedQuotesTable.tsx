@@ -934,7 +934,11 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 )
               )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => window.open(`/editor/${quote.id}/download`, '_blank')}>
+              <DropdownMenuItem onClick={() => {
+                // Open editor in new tab - user can download PDF from there
+                const url = `/editor/${quote.proposal_number}`;
+                window.open(url, '_blank');
+              }}>
                 <Download className="mr-2 h-4 w-4" />
                 Download PDF
               </DropdownMenuItem>
@@ -1709,7 +1713,11 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                                     )
                                   )}
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => window.open(`/editor/${version.id}/download`, '_blank')}>
+                                  <DropdownMenuItem onClick={() => {
+                                    // Open editor in new tab - user can download PDF from there
+                                    const url = `/editor/${version.proposal_number}`;
+                                    window.open(url, '_blank');
+                                  }}>
                                     <Download className="mr-2 h-4 w-4" />
                                     Download PDF
                                   </DropdownMenuItem>
