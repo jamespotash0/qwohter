@@ -78,7 +78,7 @@ export const ProblemSolutionSection = (): JSX.Element => {
   const currentItems = activeTab === "problem" ? problemItems : solutionItems;
 
   return (
-    <section className="w-full pt-[75px] pb-[30px] relative">
+    <section className="w-full pt-[75px] pb-[30px] bg-[#FFFEFA] relative">
       <div className="w-full max-w-[1920px] mx-auto px-4 md:px-8 lg:px-12 xl:px-16 2xl:px-24 [@media(min-width:1700px)]:px-32 [@media(min-width:1850px)]:px-[200px]">
         <div className="flex flex-col items-center gap-[30px]">
           <Tabs

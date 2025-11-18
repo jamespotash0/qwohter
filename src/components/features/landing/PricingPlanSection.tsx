@@ -28,7 +28,7 @@ export const PricingPlanSection = (): JSX.Element => {
   const navigate = useNavigate();
 
   return (
-    <section className="w-full py-[75px]">
+    <section id="pricing" className="w-full py-[75px]">
       <div className="w-full bg-[#f7f2e9]">
         <div className="w-full px-[20px]">
           <div className="w-full px-[180px] py-[150px] flex flex-col items-start gap-[50px]">

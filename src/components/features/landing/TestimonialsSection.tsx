@@ -53,7 +53,7 @@ export const TestimonialsSection = (): JSX.Element => {
   const navigate = useNavigate();
 
   return (
-    <section className="w-full pt-[60px] pb-[75px] px-[20px]">
+    <section className="w-full pt-[60px] pb-[75px] px-[20px] bg-[#FFFEFA]">
       <div className="w-full bg-[url(https://c.animaapp.com/mi3nizw3ab7ONs/img/bg.png)] bg-cover bg-center bg-no-repeat rounded-[30px]">
         <div className="w-full max-w-[1520px] mx-auto px-4 sm:px-8 lg:px-[180px] py-[75px] sm:py-[100px] lg:py-[150px] flex flex-col items-center gap-[30px] sm:gap-[40px] lg:gap-[50px]">
           <header className="flex flex-col items-center gap-2.5 max-w-[700px] translate-y-[-1rem] animate-fade-in opacity-0">

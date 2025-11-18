@@ -3,56 +3,24 @@
  * High-quality micro-interactions and stunning visual effects
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { animeOnScroll, fadeInUp, elasticBounce, rippleEffect } from '@/utils/animations';
+import { rippleEffect } from '@/utils/animations';
 import { PlatformStatsSection } from '@/components/features/landing/PlatformStatsSection';
 import { TestimonialsSection } from '@/components/features/landing/TestimonialsSection';
 import { IndustrySection } from '@/components/features/landing/IndustrySection';
 import { ProblemSolutionSection } from '@/components/features/landing/ProblemSolutionSection';
 import { PricingPlanSection } from '@/components/features/landing/PricingPlanSection';
+import { HeroSection } from '@/components/features/landing/HeroSection';
 import { DebugGrid } from '@/components/common/DebugGrid';
 
 const LandingEnhanced = () => {
   const navigate = useNavigate();
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [navTextColor, setNavTextColor] = useState('text-white');
   const [activeSection, setActiveSection] = useState('home');
-
-  // Animation refs
-  const featuresRef = useRef<HTMLElement>(null);
-  const useCasesRef = useRef<HTMLElement>(null);
-  const pricingRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-
-      // Detect which section navbar is over
-      const scrollPosition = window.scrollY + 80; // navbar height offset
-
-      // Get all sections
-      const features = document.querySelector('section:nth-of-type(3)');
-      const pricing = document.querySelector('section:nth-of-type(5)');
-
-      // Check which section we're in
-      if (features && pricing) {
-        const featuresTop = features.getBoundingClientRect().top + window.scrollY;
-        const featuresBottom = featuresTop + features.clientHeight;
-        const pricingTop = pricing.getBoundingClientRect().top + window.scrollY;
-        const pricingBottom = pricingTop + pricing.clientHeight;
-
-        // Light sections (features, pricing)
-        if ((scrollPosition >= featuresTop && scrollPosition < featuresBottom) ||
-            (scrollPosition >= pricingTop && scrollPosition < pricingBottom)) {
-          setNavTextColor('text-[var(--landing-text-on-light)]');
-        } else {
-          // Dark sections (hero, stats, industries, footer)
-          setNavTextColor('text-white');
-        }
-      }
-
       // Detect active section for navigation highlighting
       const sections = [
         { id: 'home', element: document.querySelector('section:first-of-type') },
@@ -95,37 +63,8 @@ const LandingEnhanced = () => {
     }
   }, []);
 
-  // Scroll-triggered animations
-  useEffect(() => {
-    if (featuresRef.current) {
-      const featureCards = featuresRef.current.querySelectorAll('.feature-card');
-      animeOnScroll(featureCards, (target) => {
-        fadeInUp(target as HTMLElement, 0);
-      }, 0.2);
-    }
-
-    if (useCasesRef.current) {
-      const useCaseCards = useCasesRef.current.querySelectorAll('.usecase-card');
-      animeOnScroll(useCaseCards, (target) => {
-        elasticBounce(target as HTMLElement);
-      }, 0.15);
-    }
-
-    if (pricingRef.current) {
-      const pricingCards = pricingRef.current.querySelectorAll('.pricing-card');
-      animeOnScroll(pricingCards, (target) => {
-        fadeInUp(target as HTMLElement, 0);
-      }, 0.2);
-    }
-  }, []);
-
   const handleGetDemo = () => {
     navigate('/demo');
-  };
-
-
-  const handleSignIn = () => {
-    navigate('/sign-in');
   };
 
   const handleRipple = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -135,162 +74,16 @@ const LandingEnhanced = () => {
   return (
     <div className="min-h-screen bg-[#FFFEFA] overflow-x-hidden">
       <DebugGrid />
-      {/* Header Navigation - Modern Design */}
-      <header className="w-full py-4 bg-[var(--landing-bg-dark)] sticky top-0 z-50 px-[20px]">
-        <div className="w-full px-3 sm:px-6 md:px-8 lg:px-[180px]">
-          <div className="flex items-center justify-between">
-            {/* Logo */}
-            <div
-              className="flex items-center cursor-pointer group"
-              onClick={() => {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                window.history.pushState('', '', '/');
-              }}
-            >
-              <img
-                src="/logos/New_Landing_Page_Logo_LightonDarkBackground.svg"
-                alt="Qwohter Logo"
-                className="h-8 w-auto transition-transform duration-300 group-hover:scale-105"
-              />
-            </div>
 
-            {/* Center Navigation Pill */}
-            <nav className="hidden md:flex items-center bg-white/25 backdrop-blur-sm rounded-full px-2 py-2 h-[48px]">
-              {[
-                { name: 'Home', href: '#', section: 'home' },
-                { name: 'Features', href: '#features', section: 'features' },
-                { name: 'Use Cases', href: '#usecases', section: 'usecases' },
-                { name: 'Pricing', href: '#pricing', section: 'pricing' },
-                { name: 'Contact Us', href: '/contact-us', section: 'contact' }
-              ].map((item, index) => {
-                const isActive = activeSection === item.section;
-                return (
-                  <a
-                    key={item.name}
-                    href={item.href}
-                    onClick={(e) => {
-                      if (item.href === '/contact-us') {
-                        e.preventDefault();
-                        navigate('/contact-us');
-                      } else if (item.href === '#') {
-                        e.preventDefault();
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }
-                    }}
-                    className={`px-6 py-2.5 rounded-full font-medium transition-all duration-300 flex items-center ${
-                      isActive ? 'text-[#ee6c4d]' : 'text-white hover:text-white/60'
-                    }`}
-                    style={{
-                      fontFamily: 'Urbanist, sans-serif',
-                      fontSize: '16px',
-                    }}
-                  >
-                    {item.name}
-                  </a>
-                );
-              })}
-            </nav>
-
-            {/* Sign In and Get a Demo Buttons */}
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/login')}
-                className="text-[#ee6c4d] hover:text-[#ee6c4d]/80 font-medium transition-all duration-300"
-                style={{
-                  fontFamily: 'Urbanist, sans-serif',
-                  fontSize: '16px',
-                }}
-              >
-                Sign In
-              </button>
-
-              <Button
-                onClick={(e) => {
-                  handleRipple(e);
-                  handleGetDemo();
-                }}
-                className="bg-[#f7f2e9] hover:bg-[#ebe5d9] text-gray-900 px-6 py-2 rounded-full font-semibold transition-all duration-300 h-[48px]"
-                style={{
-                  fontFamily: 'Urbanist, sans-serif',
-                  fontSize: '16px',
-                }}
-              >
-                Get a Demo
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Hero Section - Anima Design */}
-      <section className="w-full flex flex-col gap-[120px] bg-[var(--landing-bg-dark)] px-[20px] pt-[75px] pb-5 relative overflow-hidden">
-        {/* Animated background shapes */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-[var(--landing-primary-light)] rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-[var(--landing-primary-light)] rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        </div>
-
-        <div className="w-full max-w-[1520px] mx-auto flex flex-col items-center gap-[30px] translate-y-[-1rem] animate-fade-in-delay opacity-0 relative z-10 pt-[95px]" style={{ '--animation-delay': '200ms' } as React.CSSProperties}>
-          <div className="flex flex-col w-full items-center gap-5">
-            {/* Hero Title with Gradient */}
-            <h1
-              className="bg-[linear-gradient(180deg,#FFFFFF_0%,#EBC3BF_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] text-[60px] text-center tracking-[1.2px] leading-[70px] whitespace-nowrap translate-y-[-1rem] animate-fade-in-delay opacity-0"
-              style={{
-                fontFamily: 'Urbanist, sans-serif',
-                fontWeight: 500,
-                '--animation-delay': '400ms'
-              } as React.CSSProperties}
-            >
-              The platform that simplifies quoting
-            </h1>
-
-            {/* Hero Description */}
-            <p
-              className="w-full max-w-[800px] text-white text-[20px] text-center tracking-[0] leading-[30px] translate-y-[-1rem] animate-fade-in-delay opacity-0"
-              style={{
-                fontFamily: 'Urbanist, sans-serif',
-                fontWeight: 400,
-                '--animation-delay': '600ms'
-              } as React.CSSProperties}
-            >
-              Move away from scattered docs and spreadsheets—automatically design,
-              generate, track, and manage quotes with ease, all from a single
-              platform.
-            </p>
-          </div>
-
-          {/* CTA Button */}
-          <Button
-            onClick={(e) => {
-              handleRipple(e);
-              handleGetDemo();
-            }}
-            className="h-auto inline-flex gap-[5px] bg-[#ee6c4d] items-center justify-center px-[30px] py-2.5 rounded-3xl hover:bg-[#ee6c4d]/90 transition-colors translate-y-[-1rem] animate-fade-in-delay opacity-0"
-            style={{ '--animation-delay': '800ms' } as React.CSSProperties}
-          >
-            <span
-              className="text-white text-base tracking-[0] leading-6 whitespace-nowrap"
-              style={{
-                fontFamily: 'Urbanist, sans-serif',
-                fontWeight: 600,
-              }}
-            >
-              Get a Demo
-            </span>
-          </Button>
-        </div>
-
-        {/* Hero Image */}
-        <img
-          className="w-full max-w-[1520px] mx-auto h-auto translate-y-[-1rem] animate-fade-in-delay opacity-0 relative z-10"
-          alt="Dashboard Preview"
-          src="/images/landing/hero-main-dashboard.svg"
-          style={{ '--animation-delay': '1000ms' } as React.CSSProperties}
-        />
-      </section>
+      {/* Hero Section */}
+      <HeroSection
+        activeSection={activeSection}
+        onGetDemo={handleGetDemo}
+        onRipple={handleRipple}
+      />
 
       {/* 2035 Tagline Section */}
-      <section className="py-[75px] bg-[#FFFEFA] px-[20px]">
+      <section className="pt-[150px] pb-[75px] bg-[#FFFEFA] px-[20px]">
         <div className="max-w-[994px] h-[160px] mx-auto flex items-center justify-center text-center">
           <h2
             className="text-[42px] leading-[52px] text-[#171717]"
@@ -305,7 +98,7 @@ const LandingEnhanced = () => {
       </section>
 
       {/* Features Section - Anima Design */}
-      <section id="features" ref={featuresRef} className="w-full flex justify-center mt-[75px] bg-[#FFFEFA] px-[20px]">
+      <section id="features" className="w-full flex justify-center mt-[75px] bg-[#FFFEFA] px-[20px]">
         <div className="flex flex-col items-start gap-[60px] max-w-[1520px] w-full px-4 sm:px-6 lg:px-8">
           {/* Feature 1: Design (Image Left) */}
           <div className="feature-card flex flex-row items-center gap-[100px] w-full opacity-0 translate-y-[-1rem] animate-fade-in-delay" style={{ '--animation-delay': '0ms' } as React.CSSProperties}>
@@ -490,9 +283,7 @@ const LandingEnhanced = () => {
       <ProblemSolutionSection />
 
       {/* Pricing Section */}
-      <div id="pricing" ref={pricingRef}>
-        <PricingPlanSection />
-      </div>
+      <PricingPlanSection />
 
       {/* Footer - Anima Design */}
       <footer className="w-full bg-[#FFFEFA] px-[20px] pb-[20px]">
