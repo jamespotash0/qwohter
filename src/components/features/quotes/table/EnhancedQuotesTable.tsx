@@ -54,6 +54,8 @@ import { sendQuoteToProjectBoard, removeQuoteFromProjectBoard } from '@/services
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidateQueries } from '@/lib/queryClient';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   AlertDialog,
@@ -219,11 +221,11 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   // Track which version is "main" for each base number (stored in local state only)
   const [mainVersions, setMainVersions] = useState<Record<string, string>>({});
 
-  // Track which quotes are on the project board
-  const [quotesOnBoard, setQuotesOnBoard] = useState<Record<string, boolean>>({});
-
   // Toast for notifications
   const { toast } = useToast();
+
+  // Query client for cache invalidation
+  const queryClient = useQueryClient();
 
   // Track pending status changes for confirmation
   const [pendingStatusChange, setPendingStatusChange] = useState<{
@@ -269,33 +271,6 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       onMainVersionsChange(displayQuotes);
     }
   }, [displayQuotes, onMainVersionsChange]);
-
-  // Check which quotes are on the project board
-  useEffect(() => {
-    const checkProjectStatus = async () => {
-      const quoteIds = displayQuotes.map(q => q.id);
-      if (quoteIds.length === 0) return;
-
-      try {
-        const { data } = await supabase
-          .from('projects')
-          .select('quote_id')
-          .in('quote_id', quoteIds);
-
-        if (data) {
-          const boardStatus: Record<string, boolean> = {};
-          data.forEach(project => {
-            boardStatus[project.quote_id] = true;
-          });
-          setQuotesOnBoard(boardStatus);
-        }
-      } catch (error) {
-        console.error('Error checking project status:', error);
-      }
-    };
-
-    checkProjectStatus();
-  }, [displayQuotes]);
 
   // Map to find version group for each quote
   const quoteToGroupMap = useMemo(() => {
@@ -349,15 +324,21 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   // Handle sending quote to project board
   const handleSendToBoard = async (quoteId: string) => {
     try {
+      console.log('Attempting to send quote to board:', quoteId);
       const result = await sendQuoteToProjectBoard(quoteId);
+      console.log('Send result:', result);
 
       if (result.success) {
-        setQuotesOnBoard(prev => ({ ...prev, [quoteId]: true }));
+        // Invalidate queries to refetch with updated is_on_board status
+        invalidateQueries.allQuotes();
+        invalidateQueries.allBoard();
+
         toast({
           title: 'Sent to Project Board',
           description: 'Quote has been added to the project board',
         });
       } else {
+        console.error('Failed to send to board:', result.error);
         toast({
           title: 'Error',
           description: result.error || 'Failed to send quote to project board',
@@ -365,6 +346,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         });
       }
     } catch (error) {
+      console.error('Exception sending to board:', error);
       toast({
         title: 'Error',
         description: 'An unexpected error occurred',
@@ -376,19 +358,21 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   // Handle removing quote from project board
   const handleRemoveFromBoard = async (quoteId: string) => {
     try {
+      console.log('Attempting to remove quote from board:', quoteId);
       const result = await removeQuoteFromProjectBoard(quoteId);
+      console.log('Remove result:', result);
 
       if (result.success) {
-        setQuotesOnBoard(prev => {
-          const newState = { ...prev };
-          delete newState[quoteId];
-          return newState;
-        });
+        // Invalidate queries to refetch with updated is_on_board status
+        invalidateQueries.allQuotes();
+        invalidateQueries.allBoard();
+
         toast({
           title: 'Removed from Project Board',
           description: 'Quote has been removed from the project board',
         });
       } else {
+        console.error('Failed to remove from board:', result.error);
         toast({
           title: 'Error',
           description: result.error || 'Failed to remove quote from project board',
@@ -396,6 +380,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         });
       }
     } catch (error) {
+      console.error('Exception removing from board:', error);
       toast({
         title: 'Error',
         description: 'An unexpected error occurred',
@@ -464,10 +449,10 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       onStatusChange(quoteId, newStatus);
       setPendingStatusChange(null);
 
-      // Auto-remove from project board if changing to Rejected
-      if (newStatus === 'Rejected' && quotesOnBoard[quoteId]) {
-        await handleRemoveFromBoard(quoteId);
-      }
+      // Note: No need to manually remove from board - the database trigger
+      // 'sync_project_on_quote_status_change' automatically deletes projects
+      // when status changes FROM Won to anything else, and then
+      // 'sync_quote_on_board_after_project_changes' updates is_on_board to false
     }
   };
 
@@ -920,8 +905,8 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                   Set Reminder
                 </DropdownMenuItem>
               )}
-              {quote.status === 'Won' && (
-                quotesOnBoard[quote.id] ? (
+              {quote.status === 'Won' && quote.is_main_version && (
+                quote.is_on_board ? (
                   <DropdownMenuItem onClick={() => handleRemoveFromBoard(quote.id)}>
                     <X className="mr-2 h-4 w-4" />
                     Remove from Board
@@ -1699,8 +1684,8 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                                       Set Reminder
                                     </DropdownMenuItem>
                                   )}
-                                  {version.status === 'Won' && (
-                                    quotesOnBoard[version.id] ? (
+                                  {version.status === 'Won' && version.is_main_version && (
+                                    version.is_on_board ? (
                                       <DropdownMenuItem onClick={() => handleRemoveFromBoard(version.id)}>
                                         <X className="mr-2 h-4 w-4" />
                                         Remove from Board

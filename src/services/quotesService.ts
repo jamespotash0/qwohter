@@ -21,6 +21,8 @@ export type Quote = Database['public']['Tables']['quotes']['Row'] & {
   total_value?: number | null; // From price_details.final_selling_price
   subtotal?: number | null; // From price_details.subtotal
   margin_percentage?: number | null; // Calculated margin
+  // Project board status (added by migration 20251118000002_add_is_on_board_to_quotes.sql)
+  is_on_board?: boolean | null; // Tracks if quote is on project board, synced via trigger
 };
 
 export interface QuoteFilters {
@@ -100,7 +102,7 @@ export async function fetchQuotes(
         quote_details, job_details, delivery_details, labor_details,
         wall_details, price_details, status, date_last_downloaded,
         document_version, created_at, updated_at, customization,
-        quote_source, archived, is_main_version,
+        quote_source, archived, is_main_version, is_on_board,
         total_value, subtotal,
         submitted_at, won_at, rejected_at, margin_percentage
       `)
@@ -128,7 +130,7 @@ export async function fetchQuotes(
         quote_details, job_details, delivery_details, labor_details,
         wall_details, price_details, status, date_last_downloaded,
         document_version, created_at, updated_at, customization,
-        quote_source, archived, is_main_version,
+        quote_source, archived, is_main_version, is_on_board,
         total_value, subtotal,
         submitted_at, won_at, rejected_at, margin_percentage
       `)
@@ -765,42 +767,54 @@ export async function sendQuoteToProjectBoard(quoteId: string): Promise<{ succes
  */
 export async function removeQuoteFromProjectBoard(quoteId: string): Promise<{ success: boolean; error?: string }> {
   try {
+    console.log('[removeQuoteFromProjectBoard] 🗑️ Starting removal for quote:', quoteId);
+
     // Get current session
     const session = await authService.getSession();
     if (!session?.user) {
+      console.error('[removeQuoteFromProjectBoard] ❌ Not authenticated');
       return { success: false, error: 'Not authenticated' };
     }
+    console.log('[removeQuoteFromProjectBoard] ✅ User authenticated:', session.user.id);
 
     // Find the project
+    console.log('[removeQuoteFromProjectBoard] 🔍 Looking for project with quote_id:', quoteId);
     const { data: project, error: fetchError } = await supabase
       .from('projects')
-      .select('id')
+      .select('id, quote_id, workflow_status')
       .eq('quote_id', quoteId)
       .maybeSingle();
 
     if (fetchError) {
-      console.error('Error fetching project:', fetchError);
+      console.error('[removeQuoteFromProjectBoard] ❌ Error fetching project:', fetchError);
       return { success: false, error: 'Error finding project' };
     }
 
     if (!project) {
+      console.warn('[removeQuoteFromProjectBoard] ⚠️ No project found for quote:', quoteId);
       return { success: false, error: 'No project found for this quote' };
     }
 
+    console.log('[removeQuoteFromProjectBoard] ✅ Found project:', project);
+
     // Delete the project
-    const { error: deleteError } = await supabase
+    console.log('[removeQuoteFromProjectBoard] 🗑️ Deleting project with id:', project.id);
+    const { data: deletedData, error: deleteError } = await supabase
       .from('projects')
       .delete()
-      .eq('id', project.id);
+      .eq('id', project.id)
+      .select(); // Return the deleted row to confirm deletion
 
     if (deleteError) {
-      console.error('Failed to delete project:', deleteError);
+      console.error('[removeQuoteFromProjectBoard] ❌ Failed to delete project:', deleteError);
       return { success: false, error: 'Failed to remove project from board' };
     }
 
+    console.log('[removeQuoteFromProjectBoard] ✅ Successfully deleted project. Deleted rows:', deletedData?.length || 0, deletedData);
+
     return { success: true };
   } catch (error) {
-    console.error('Error in removeQuoteFromProjectBoard:', error);
+    console.error('[removeQuoteFromProjectBoard] ❌ Exception:', error);
     return { success: false, error: 'An unexpected error occurred' };
   }
 }
