@@ -386,8 +386,19 @@ persistQueryClient({
         return false;
       }
 
+      // Only persist successful queries (not pending, error, or loading)
+      // This prevents race conditions where queries get cancelled mid-dehydration
+      if (query.state.status !== 'success') {
+        return false;
+      }
+
+      // Don't persist queries with no data (empty results)
+      if (query.state.data === undefined) {
+        return false;
+      }
+
       // Persist everything else (quotes, organizations, members, subscription status)
-      return query.state.status === 'success'; // Only persist successful queries
+      return true;
     },
   },
 });
