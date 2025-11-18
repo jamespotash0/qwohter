@@ -64,7 +64,13 @@ const Quotes = () => {
   };
 
   const updateQuoteSource = async (id: string, newSource: string) => {
-    await updateQuoteMutation({ id, updates: { quote_source: newSource } });
+    try {
+      await updateQuoteMutation({ id, updates: { quote_source: newSource } });
+      // Toast for successful quote source update (mutation is silent by default)
+      // Note: No toast here - user sees the dropdown change which is feedback enough
+    } catch (error) {
+      // Errors are logged in the mutation hook
+    }
   };
 
   const handleDeleteQuote = async (id: string) => {

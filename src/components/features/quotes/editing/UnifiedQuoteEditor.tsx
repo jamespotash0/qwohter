@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import {
   Save,
   Download,
@@ -63,8 +62,6 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   onRemoveWallSystem,
   className = ''
 }) => {
-  const { toast } = useToast();
-
   // React Query handles realtime updates automatically, use the prop
   const activeQuote = quote;
   
@@ -364,18 +361,14 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         
       } catch (error) {
         console.error('Error initializing editor:', error);
-        toast({
-          title: "Initialization Error",
-          description: "Failed to load quote editor. Please try again.",
-          variant: "destructive",
-        });
+        // Toast removed - errors only shown on main pages
       } finally {
         setIsLoading(false);
       }
     };
 
     initializeEditor();
-  }, [quote, syncEngine, toast, sectionVisibility]);
+  }, [quote, syncEngine, sectionVisibility]);
 
   // Real-time preview updates when data changes
   useEffect(() => {
@@ -569,34 +562,20 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
 
     } catch (error) {
       console.error('Save error:', error);
-      toast({
-        title: "Save Failed",
-        description: "Failed to save quote. Please try again.",
-        variant: "destructive",
-      });
+      // Toast removed - errors only shown on main pages
     }
-  }, [state, onSave, toast]);
+  }, [state, onSave]);
 
   // Unified download action
   const handleDownload = useCallback(async () => {
     try {
       // Pass both HTML and Smart PDF state to the download handler
       onDownload?.(state.previewHTML, showSmartPDFPreview);
-      
-      toast({
-        title: "Download Started",
-        description: "Your quote PDF (2 pages) is being generated.",
-      });
-      
     } catch (error) {
       console.error('Download error:', error);
-      toast({
-        title: "Download Failed",
-        description: "Failed to download quote. Please try again.",
-        variant: "destructive",
-      });
+      // Toast removed - errors only shown on main pages
     }
-  }, [state.previewHTML, showSmartPDFPreview, onDownload, toast]);
+  }, [state.previewHTML, showSmartPDFPreview, onDownload]);
 
 
   // Reset to last saved state from database
@@ -639,14 +618,10 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       isDirty: false, // Not dirty since we're reverting to saved state
       lastSaved: quote?.updated_at ? new Date(quote.updated_at) : prev.lastSaved
     }));
-    
+
     setSelectedSection(null);
-    
-    toast({
-      title: "Quote Reset",
-      description: "All changes have been reverted to the last saved state from the database.",
-    });
-  }, [quote, syncEngine, toast, sectionVisibility]);
+    // Toast removed - notifications only shown on main pages
+  }, [quote, syncEngine, sectionVisibility]);
 
   // Close modal
   const handleCloseModal = useCallback(() => {
@@ -717,24 +692,17 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
 
       onSave?.(unifiedData);
 
-      // Hide banner and show success message
+      // Hide banner after successful upgrade
       setShowMigrationBanner(false);
-      toast({
-        title: "Template Upgraded",
-        description: "Your quote now has live-preview editing enabled. Changes to form data will update immediately.",
-      });
+      // Toast removed - notifications only shown on main pages
 
     } catch (error) {
       console.error('Upgrade error:', error);
-      toast({
-        title: "Upgrade Failed",
-        description: "Failed to upgrade template. Please try again.",
-        variant: "destructive",
-      });
+      // Toast removed - errors only shown on main pages
     } finally {
       setIsUpgrading(false);
     }
-  }, [quote, syncEngine, sectionVisibility, onSave, toast]);
+  }, [quote, syncEngine, sectionVisibility, onSave]);
 
   // Handle dismissing migration banner
   const handleDismissMigration = useCallback(() => {
