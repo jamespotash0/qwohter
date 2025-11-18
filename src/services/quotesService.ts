@@ -642,58 +642,159 @@ export async function updateQuoteStatus(
     });
   }
 
-  // If status is "Won", automatically create a project for the board
-  // ONLY for main version quotes (don't create projects for quote versions)
-  if (status === 'Won' && updatedQuote.is_main_version === true) {
-    // Check if project already exists for this quote
+  return updatedQuote;
+}
+
+/**
+ * Manually send a Won quote to the project board
+ * - Automatically promotes quote to main version
+ * - Creates project with default workflow status
+ */
+export async function sendQuoteToProjectBoard(quoteId: string): Promise<{ success: boolean; error?: string; projectId?: string }> {
+  try {
+    // Get current session
+    const session = await authService.getSession();
+    if (!session?.user) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    // Get the quote
+    const { data: quote, error: fetchError } = await supabase
+      .from('quotes')
+      .select('*')
+      .eq('id', quoteId)
+      .single();
+
+    if (fetchError || !quote) {
+      return { success: false, error: 'Quote not found' };
+    }
+
+    // Check if quote is Won
+    if (quote.status !== 'Won') {
+      return { success: false, error: 'Only Won quotes can be sent to the project board' };
+    }
+
+    // Check if project already exists
     const { data: existingProject } = await supabase
       .from('projects')
       .select('id')
       .eq('quote_id', quoteId)
       .maybeSingle();
 
-    // Only create if no project exists
-    if (!existingProject) {
-      // Get default workflow column for the organization
-      const { data: defaultColumn } = await supabase
-        .from('project_workflow_columns')
-        .select('name')
-        .eq('organization_id', updatedQuote.organization_id)
-        .eq('is_default', true)
-        .maybeSingle();
+    if (existingProject) {
+      return { success: false, error: 'Quote already has a project on the board' };
+    }
 
-      const workflowStatus = (defaultColumn as any)?.name || 'To Do'; // Fallback to 'To Do' if no default
+    // Auto-promote to main version if not already
+    if (quote.is_main_version !== true) {
+      // Set this quote as main version
+      await updateQuote(quoteId, { is_main_version: true });
 
-      // Get next board_order (highest + 1)
-      const { data: maxOrderProject } = await supabase
-        .from('projects')
-        .select('board_order')
-        .eq('organization_id', updatedQuote.organization_id)
-        .order('board_order', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Demote other versions with the same proposal number
+      const baseProposalNumber = quote.proposal_number.split('-v')[0];
+      const { data: relatedQuotes } = await supabase
+        .from('quotes')
+        .select('id')
+        .eq('organization_id', quote.organization_id)
+        .neq('id', quoteId)
+        .like('proposal_number', `${baseProposalNumber}%`);
 
-      const nextOrder = ((maxOrderProject as any)?.board_order || 0) + 1;
-
-      // Create project with default workflow status
-      const { error: projectError } = await supabase
-        .from('projects')
-        .insert({
-          quote_id: quoteId,
-          organization_id: updatedQuote.organization_id,
-          workflow_status: workflowStatus,
-          board_order: nextOrder,
-          priority: 'Medium',
-        } as any);
-
-      if (projectError) {
-        console.error('Failed to create project for won quote:', projectError);
-        // Don't throw - quote was still updated successfully
+      if (relatedQuotes && relatedQuotes.length > 0) {
+        for (const relatedQuote of relatedQuotes) {
+          await updateQuote(relatedQuote.id, { is_main_version: false });
+        }
       }
     }
-  }
 
-  return updatedQuote;
+    // Get default workflow column
+    const { data: defaultColumn } = await supabase
+      .from('project_workflow_columns')
+      .select('name')
+      .eq('organization_id', quote.organization_id)
+      .eq('is_default', true)
+      .maybeSingle();
+
+    const workflowStatus = (defaultColumn as any)?.name || 'To Do';
+
+    // Get next board_order
+    const { data: maxOrderProject } = await supabase
+      .from('projects')
+      .select('board_order')
+      .eq('organization_id', quote.organization_id)
+      .order('board_order', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const nextOrder = ((maxOrderProject as any)?.board_order || 0) + 1;
+
+    // Create project
+    const { data: newProject, error: projectError } = await supabase
+      .from('projects')
+      .insert({
+        quote_id: quoteId,
+        organization_id: quote.organization_id,
+        workflow_status: workflowStatus,
+        board_order: nextOrder,
+        priority: 'Medium',
+      } as any)
+      .select()
+      .single();
+
+    if (projectError) {
+      console.error('Failed to create project:', projectError);
+      return { success: false, error: 'Failed to create project on board' };
+    }
+
+    return { success: true, projectId: newProject.id };
+  } catch (error) {
+    console.error('Error in sendQuoteToProjectBoard:', error);
+    return { success: false, error: 'An unexpected error occurred' };
+  }
+}
+
+/**
+ * Remove a quote from the project board (delete the project)
+ */
+export async function removeQuoteFromProjectBoard(quoteId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Get current session
+    const session = await authService.getSession();
+    if (!session?.user) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    // Find the project
+    const { data: project, error: fetchError } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('quote_id', quoteId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('Error fetching project:', fetchError);
+      return { success: false, error: 'Error finding project' };
+    }
+
+    if (!project) {
+      return { success: false, error: 'No project found for this quote' };
+    }
+
+    // Delete the project
+    const { error: deleteError } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', project.id);
+
+    if (deleteError) {
+      console.error('Failed to delete project:', deleteError);
+      return { success: false, error: 'Failed to remove project from board' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error in removeQuoteFromProjectBoard:', error);
+    return { success: false, error: 'An unexpected error occurred' };
+  }
 }
 
 /**

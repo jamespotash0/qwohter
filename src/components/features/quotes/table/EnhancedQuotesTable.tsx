@@ -43,13 +43,17 @@ import {
   ArchiveRestore,
   Bell,
   ChevronRight,
-  Layers
+  Layers,
+  Kanban
 } from 'lucide-react';
 
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Quote } from '@/services/quotesService';
+import { sendQuoteToProjectBoard, removeQuoteFromProjectBoard } from '@/services/quotesService';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 // import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
@@ -205,6 +209,12 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   // Track which version is "main" for each base number (stored in local state only)
   const [mainVersions, setMainVersions] = useState<Record<string, string>>({});
 
+  // Track which quotes are on the project board
+  const [quotesOnBoard, setQuotesOnBoard] = useState<Record<string, boolean>>({});
+
+  // Toast for notifications
+  const { toast } = useToast();
+
   // Group quotes by version
   const quoteGroups = useMemo(() => groupQuotesByVersion(quotes), [quotes]);
 
@@ -235,6 +245,33 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       onMainVersionsChange(displayQuotes);
     }
   }, [displayQuotes, onMainVersionsChange]);
+
+  // Check which quotes are on the project board
+  useEffect(() => {
+    const checkProjectStatus = async () => {
+      const quoteIds = displayQuotes.map(q => q.id);
+      if (quoteIds.length === 0) return;
+
+      try {
+        const { data } = await supabase
+          .from('projects')
+          .select('quote_id')
+          .in('quote_id', quoteIds);
+
+        if (data) {
+          const boardStatus: Record<string, boolean> = {};
+          data.forEach(project => {
+            boardStatus[project.quote_id] = true;
+          });
+          setQuotesOnBoard(boardStatus);
+        }
+      } catch (error) {
+        console.error('Error checking project status:', error);
+      }
+    };
+
+    checkProjectStatus();
+  }, [displayQuotes]);
 
   // Map to find version group for each quote
   const quoteToGroupMap = useMemo(() => {
@@ -283,6 +320,64 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         column.resetSize();
       }
     });
+  };
+
+  // Handle sending quote to project board
+  const handleSendToBoard = async (quoteId: string) => {
+    try {
+      const result = await sendQuoteToProjectBoard(quoteId);
+
+      if (result.success) {
+        setQuotesOnBoard(prev => ({ ...prev, [quoteId]: true }));
+        toast({
+          title: 'Sent to Project Board',
+          description: 'Quote has been added to the project board',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to send quote to project board',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Handle removing quote from project board
+  const handleRemoveFromBoard = async (quoteId: string) => {
+    try {
+      const result = await removeQuoteFromProjectBoard(quoteId);
+
+      if (result.success) {
+        setQuotesOnBoard(prev => {
+          const newState = { ...prev };
+          delete newState[quoteId];
+          return newState;
+        });
+        toast({
+          title: 'Removed from Project Board',
+          description: 'Quote has been removed from the project board',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to remove quote from project board',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Reset column visibility to show all columns
@@ -680,6 +775,19 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 <Bell className="mr-2 h-4 w-4" />
                 Set Reminder
               </DropdownMenuItem>
+            )}
+            {row.original.status === 'Won' && (
+              quotesOnBoard[row.original.id] ? (
+                <DropdownMenuItem onClick={() => handleRemoveFromBoard(row.original.id)}>
+                  <X className="mr-2 h-4 w-4" />
+                  Remove from Board
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={() => handleSendToBoard(row.original.id)}>
+                  <Kanban className="mr-2 h-4 w-4" />
+                  Send to Project Board
+                </DropdownMenuItem>
+              )
             )}
             <DropdownMenuSeparator />
             {isArchiveView && onUnarchiveQuote ? (
