@@ -177,16 +177,16 @@ export class SectionGenerators {
   }
 
   generateJobInfoTable(data: QuoteData): string {
-    const date = this.helpers.formatDate(data.job_details?.date || '');
     const proposalNumber = data.proposal_number || 'N/A';
     const jobLocation = data.job_details?.job_location || '';
     const projectName = data.project_name;
 
     // Wrap all dynamic values with semantic markup
-    const dateMarked = date ? TemplateMarkers.dynamic({
+    // Pass RAW date value - TemplateMarkers will format it
+    const dateMarked = data.job_details?.date ? TemplateMarkers.dynamic({
       path: 'job_details.date',
-      value: date,
-      format: 'text'
+      value: data.job_details.date,  // Pass raw value from database
+      format: 'date'
     }) : '';
 
     const proposalNumberMarked = proposalNumber ? TemplateMarkers.dynamic({
