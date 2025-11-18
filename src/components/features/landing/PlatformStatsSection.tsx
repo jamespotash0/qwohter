@@ -99,11 +99,11 @@ export const PlatformStatsSection = (): JSX.Element => {
       </header>
 
       <div className="w-full overflow-hidden">
-        <div ref={scrollRef} className="flex items-start gap-[30px] pb-4 overflow-x-scroll scrollbar-hide select-none" style={{ userSelect: 'none' }}>
+        <div ref={scrollRef} className="flex items-start gap-[30px] pb-4 overflow-x-scroll scrollbar-hide select-none [overscroll-behavior-x:contain] [overscroll-behavior-y:none]" style={{ userSelect: 'none' }}>
           {metricsData.map((metric, index) => (
             <Card
               key={index}
-              className="flex-shrink-0 w-[360px] bg-white rounded-[30px] border border-solid border-[#f7f2e9] translate-y-[-1rem] animate-fade-in opacity-0"
+              className="flex-shrink-0 w-[360px] bg-white rounded-[30px] border border-solid border-[#f7f2e9] translate-y-[-1rem] animate-fade-in opacity-0 select-none"
               style={
                 {
                   "--animation-delay": `${400 + index * 100}ms`,
@@ -111,7 +111,7 @@ export const PlatformStatsSection = (): JSX.Element => {
               }
             >
               <CardContent className="flex flex-col items-start gap-5 p-[30px]">
-                <Badge className="bg-[#ee6c4d1a] inline-flex items-center justify-center gap-[30px] px-2.5 py-0.5 rounded-3xl border border-solid border-[#ee6c4d1a] hover:bg-[#ee6c4d1a]">
+                <Badge className="bg-[#ee6c4d1a] inline-flex items-center justify-center gap-[30px] px-2.5 py-0.5 rounded-3xl border border-solid border-[#ee6c4d1a]">
                   <span className="[font-family:'Urbanist',Helvetica] font-semibold text-[#ee6c4d] text-base tracking-[0] leading-6 whitespace-nowrap">
                     {metric.label}
                   </span>
@@ -131,7 +131,7 @@ export const PlatformStatsSection = (): JSX.Element => {
           {metricsData.map((metric, index) => (
             <Card
               key={`duplicate-${index}`}
-              className="flex-shrink-0 w-[360px] bg-white rounded-[30px] border border-solid border-[#f7f2e9] translate-y-[-1rem] animate-fade-in opacity-0"
+              className="flex-shrink-0 w-[360px] bg-white rounded-[30px] border border-solid border-[#f7f2e9] translate-y-[-1rem] animate-fade-in opacity-0 select-none"
               style={
                 {
                   "--animation-delay": `${400 + index * 100}ms`,
@@ -139,7 +139,7 @@ export const PlatformStatsSection = (): JSX.Element => {
               }
             >
               <CardContent className="flex flex-col items-start gap-5 p-[30px]">
-                <Badge className="bg-[#ee6c4d1a] inline-flex items-center justify-center gap-[30px] px-2.5 py-0.5 rounded-3xl border border-solid border-[#ee6c4d1a] hover:bg-[#ee6c4d1a]">
+                <Badge className="bg-[#ee6c4d1a] inline-flex items-center justify-center gap-[30px] px-2.5 py-0.5 rounded-3xl border border-solid border-[#ee6c4d1a]">
                   <span className="[font-family:'Urbanist',Helvetica] font-semibold text-[#ee6c4d] text-base tracking-[0] leading-6 whitespace-nowrap">
                     {metric.label}
                   </span>

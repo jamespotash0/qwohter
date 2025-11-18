@@ -48,14 +48,14 @@ export const IndustrySection = (): JSX.Element => {
     };
   }, []);
 
-  const scrollLeft = () => {
+  const handleScrollLeft = () => {
     if (scrollRef.current) {
       scrollRef.current.scrollBy({ left: -380, behavior: 'smooth' }); // 350px card + 30px gap
       setActiveButton('left');
     }
   };
 
-  const scrollRight = () => {
+  const handleScrollRight = () => {
     if (scrollRef.current) {
       scrollRef.current.scrollBy({ left: 380, behavior: 'smooth' }); // 350px card + 30px gap
       setActiveButton('right');
@@ -136,10 +136,10 @@ export const IndustrySection = (): JSX.Element => {
 
       {/* Carousel Navigation - centered */}
       <div className="flex justify-center gap-3">
-        <button onClick={scrollLeft} className="cursor-pointer transition-opacity hover:opacity-80">
+        <button onClick={handleScrollLeft} className="cursor-pointer transition-opacity hover:opacity-80">
           <ArrowInsideCircleLeft filled={activeButton === 'left'} />
         </button>
-        <button onClick={scrollRight} className="cursor-pointer transition-opacity hover:opacity-80">
+        <button onClick={handleScrollRight} className="cursor-pointer transition-opacity hover:opacity-80">
           <ArrowInsideCircleRight filled={activeButton === 'right'} />
         </button>
       </div>
