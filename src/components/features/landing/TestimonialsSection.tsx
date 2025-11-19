@@ -58,7 +58,7 @@ export const TestimonialsSection = (): JSX.Element => {
         <div className="w-full max-w-[1520px] mx-auto px-4 sm:px-8 lg:px-[180px] py-[75px] sm:py-[100px] lg:py-[150px] flex flex-col items-center gap-[30px] sm:gap-[40px] lg:gap-[50px]">
           <header className="flex flex-col items-center gap-2.5 max-w-[700px] translate-y-[-1rem] animate-fade-in opacity-0">
             <h2 className="w-full bg-[linear-gradient(180deg,rgba(23,23,23,1)_0%,rgba(119,119,119,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] [font-family:'Urbanist',Helvetica] font-semibold text-transparent text-[42px] text-center tracking-[0] leading-[50px]">
-              Built for Complexity. Loved by the Teams Who Sell It.
+              Built for Complexity. Loved by the Teams Who Use It.
             </h2>
 
             <p className="[font-family:'Urbanist',Helvetica] font-normal text-[#343432] text-xl text-center tracking-[0] leading-[30px]">
