@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
-import { CheckCircle, ChevronDown, Mail, HelpCircle, X } from 'lucide-react';
+import { CheckCircle, Plus, Minus, Mail, HelpCircle, X } from 'lucide-react';
 import { useMagneticHover } from '@/hooks/useAnimations';
 import { sendContactUsEmail } from '@/services/emailService';
 import { toast } from 'sonner';
@@ -16,7 +16,7 @@ const ContactUs = () => {
   const navigate = useNavigate();
   const [isScrolled, setIsScrolled] = useState(false);
   const [navTextColor, setNavTextColor] = useState('text-[var(--landing-text-on-light)]');
-  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [openFaqQuestions, setOpenFaqQuestions] = useState<Set<string>>(new Set());
 
   const submitButtonRef = useMagneticHover(0.3);
 
@@ -183,7 +183,7 @@ const ContactUs = () => {
     answer: 'Create quotes using our editor or start from a template. When ready, download a branded PDF with one click, email the quote to clients directly from Qwohter, or share a secure link for online viewing and approval.'
   },
   {
-    question: 'Can multiple team members work on quotes together?',
+    question: 'Can multiple team members work on quotes?',
     answer: 'Yes. Invite unlimited team members, assign roles, collaborate in real-time, and track changes. Use approval workflows to require sign-off before a quote is sent. An audit trail shows who made which edits.'
   },
   {
@@ -219,18 +219,22 @@ const ContactUs = () => {
     answer: 'We provide email support for all users with typical response times under 24 hours. Our Help Center includes guides, tutorials, and best practices to help you get the most from Qwohter.'
   },
   {
-    question: 'Can I customize quotes with my branding?',
-    answer: 'Absolutely. Upload your company logo, set brand colors and fonts, and add business info. Branding is automatically applied to quotes and you can create multiple templates for different project types or clients.'
-  },
-  {
     question: 'What makes Qwohter different from other platforms?',
     answer: 'Qwohter combines the flexibility of spreadsheets with the structure of a purpose-built quoting tool. It supports complex cascading form data — so fields and pricing automatically adapt based on previous selections — making even the most detailed quotes fast and error-free. You can customize your own quote forms, apply your branding, collaborate with your team, and track real performance metrics — all in one place without the clutter of traditional CRMs or estimating software.'
   }
 ];
 
 
-  const toggleFaq = (index: number) => {
-    setOpenFaqIndex(openFaqIndex === index ? null : index);
+  const toggleFaq = (question: string) => {
+    setOpenFaqQuestions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(question)) {
+        newSet.delete(question);
+      } else {
+        newSet.add(question);
+      }
+      return newSet;
+    });
   };
 
   return (
@@ -241,15 +245,17 @@ const ContactUs = () => {
       <ContactNavigation activeSection="contact" />
 
       {/* Hero Section with Background */}
-      <section className="relative w-full h-[900px]">
+      <section className="relative w-full min-h-[900px] overflow-hidden">
         <img
           src="/images/contact-hero-bg.svg"
           alt="Contact Hero Background"
           className="absolute inset-0 w-full h-full object-cover"
         />
 
-        {/* Form Header */}
-        <div className="absolute top-[245px] left-[200px] z-10 w-[645px]">
+        {/* Content Container with max-width constraint */}
+        <div className="relative h-full max-w-[1920px] mx-auto px-[10.4vw] flex items-start justify-between pt-[245px] gap-[100px]">
+          {/* Left Content Container */}
+          <div className="z-10 w-full max-w-[645px] xl:w-[645px] flex-shrink-0">
         <svg width="105" height="32" viewBox="0 0 105 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-5">
           <path d="M0 16C0 7.16344 7.16344 0 16 0H89C97.8366 0 105 7.16344 105 16C105 24.8366 97.8366 32 89 32H16C7.16344 32 0 24.8366 0 16Z" fill="white" fill-opacity="0.5"/>
           <path d="M16 0.5H89C97.5604 0.5 104.5 7.43959 104.5 16C104.5 24.5604 97.5604 31.5 89 31.5H16C7.43959 31.5 0.5 24.5604 0.5 16C0.5 7.43959 7.43959 0.5 16 0.5Z" stroke="white" stroke-opacity="0.1"/>
@@ -272,7 +278,7 @@ const ContactUs = () => {
             </svg>
             <div>
               <p className="text-base text-[#343432]" style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 400 }}>
-                Design <span className="font-semibold text-[#EE6C4D]">that deals with beautiful</span> and full of ideas
+                Design <span className="font-semibold text-[#EE6C4D]">beautiful quotes</span> that win deals
               </p>
             </div>
           </div>
@@ -285,7 +291,7 @@ const ContactUs = () => {
             </svg>
             <div>
               <p className="text-base text-[#343432]" style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 400 }}>
-                <span className="font-semibold text-[#EE6C4D]">Designing beautiful</span> and full of ideas
+                Generate <span className="font-semibold text-[#EE6C4D]">quotes in minutes</span> not hours
               </p>
             </div>
           </div>
@@ -298,7 +304,7 @@ const ContactUs = () => {
             </svg>
             <div>
               <p className="text-base text-[#343432]" style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 400 }}>
-                Beautiful <span className="font-semibold text-[#EE6C4D]">and full of ideas</span>
+                Track performance & <span className="font-semibold text-[#EE6C4D]">optimize your sales</span>
               </p>
             </div>
           </div>
@@ -315,8 +321,8 @@ const ContactUs = () => {
       </div>
 
       {/* Contact Form Section */}
-      <div className="absolute top-[220px] left-[1000px] z-10">
-        <Card className="w-[90vw] sm:w-[500px] md:w-[600px] lg:w-[710px] h-auto lg:h-[560px] bg-white/65 backdrop-blur-[25px] pt-[50px] px-10 pb-10 border border-white rounded-[30px]">
+      <div className="z-10 w-full max-w-[710px] flex-shrink-0">
+        <Card className="w-full h-auto xl:h-[560px] bg-white/65 backdrop-blur-[25px] pt-[50px] px-10 pb-10 border border-white rounded-[30px]">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -405,7 +411,7 @@ const ContactUs = () => {
                 value={formData.message}
                 onChange={handleInputChange}
                 placeholder="Tell us how we can help you..."
-                className={`w-full h-[185px] placeholder:text-gray-400 bg-white/75 text-gray-900 border-[#C9C9C9] rounded-[10px] ${errors.message ? 'border-red-500' : ''}`}
+                className={`w-full h-[185px] placeholder:text-gray-400 bg-white/75 text-gray-900 border-[#C9C9C9] rounded-[10px] resize-none ${errors.message ? 'border-red-500' : ''}`}
               />
               {errors.message && (
                 <p className="text-red-400 text-xs mt-1">{errors.message}</p>
@@ -447,41 +453,52 @@ const ContactUs = () => {
           )}
         </Card>
       </div>
-      </section>
+    </div>
+  </section>
 
       {/* FAQ Section */}
-      <div id="faq" className="max-w-5xl mx-auto px-6 py-18" style={{ marginTop: '1020px' }}>
+      <div id="faq" className="pt-[120px] pb-18">
         <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h2>
+          <h2 className="text-[42px] leading-[50px] bg-[linear-gradient(180deg,#171717_0%,#777777_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] mb-4" style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 600, letterSpacing: '0.02em' }}>
+            Frequently Asked Questions
+          </h2>
           <p className="text-gray-600">Find answers to common questions about Qwohter</p>
         </div>
 
-        <div className="space-y-4">
-          {faqs.map((faq, index) => (
-            <Card
-              key={index}
-              className="border border-gray-200 hover:border-[var(--landing-primary)]/30 transition-all duration-300"
-            >
-              <button
-                onClick={() => toggleFaq(index)}
-                className="w-full px-6 py-5 flex items-center justify-between text-left transition-all duration-200"
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-[50px] gap-y-5 pl-[200px] pr-[200px] items-start">
+          {faqs.map((faq) => {
+            const isOpen = openFaqQuestions.has(faq.question);
+            return (
+              <Card
+                key={faq.question}
+                className="border border-[#C9C9C9] hover:border-[var(--landing-primary)]/30 transition-all duration-300 rounded-[20px] bg-white"
               >
-                <span className="font-semibold text-gray-900 pr-8">{faq.question}</span>
-                <ChevronDown
-                  className={`w-5 h-5 text-[var(--landing-primary)] flex-shrink-0 transition-transform duration-300 ${
-                    openFaqIndex === index ? 'rotate-180' : ''
+                <button
+                  onClick={() => toggleFaq(faq.question)}
+                  className="w-full px-6 py-5 flex items-center justify-between text-left transition-all duration-200"
+                >
+                  <span className="text-gray-900 pr-8" style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 600, fontSize: '20px', lineHeight: '32px' }}>{faq.question}</span>
+                  {isOpen ? (
+                    <Minus className="w-5 h-5 text-[var(--landing-primary)] flex-shrink-0 transition-all duration-300" />
+                  ) : (
+                    <Plus className="w-5 h-5 text-[var(--landing-primary)] flex-shrink-0 transition-all duration-300" />
+                  )}
+                </button>
+                <div
+                  className={`overflow-hidden transition-all duration-300 ${
+                    isOpen ? 'max-h-96' : 'max-h-0'
                   }`}
-                />
-              </button>
-              <div
-                className={`overflow-hidden transition-all duration-300 ${
-                  openFaqIndex === index ? 'max-h-96' : 'max-h-0'
-                }`}
-              >
-                <p className="px-6 pb-5 text-gray-600 leading-relaxed">{faq.answer}</p>
-              </div>
-            </Card>
-          ))}
+                >
+                  {isOpen && (
+                    <>
+                      <div className="border-t border-black/25 mx-6"></div>
+                      <p className="px-6 pt-5 pb-5 text-[#171717]" style={{ fontFamily: 'Urbanist, sans-serif', fontWeight: 400, fontSize: '16px', lineHeight: '30px' }}>{faq.answer}</p>
+                    </>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
         </div>
       </div>
 
