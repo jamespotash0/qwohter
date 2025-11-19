@@ -232,48 +232,52 @@ export const FeatureSection = (): JSX.Element => {
         >
           <div className="relative w-full lg:flex-shrink-0 lg:w-[600px] flex justify-center items-start">
             {/* Background gradient card */}
-            <div className="relative w-[600px] h-[500px] rounded-[30px] overflow-hidden bg-white shadow-lg">
-              {/* Gradient blobs */}
-              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 600 500" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
-                <g opacity="0.8">
-                  <g filter="url(#filter0_f_feature3)">
-                    <ellipse cx="-319.795" cy="452.772" rx="949.148" ry="467.374" transform="rotate(-14.918 -319.795 452.772)" fill="#EE6C4D"/>
+            <div className="relative w-[600px] h-[500px]">
+              {/* Gradient background with rounded corners and overflow hidden */}
+              <div className="absolute inset-0 rounded-[30px] overflow-hidden bg-white shadow-lg">
+                {/* Gradient blobs */}
+                <svg className="absolute inset-0 w-full h-full" viewBox="0 0 600 500" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+                  <g opacity="0.8">
+                    <g filter="url(#filter0_f_feature3)">
+                      <ellipse cx="-319.795" cy="452.772" rx="949.148" ry="467.374" transform="rotate(-14.918 -319.795 452.772)" fill="#EE6C4D"/>
+                    </g>
+                    <g filter="url(#filter1_f_feature3)">
+                      <ellipse cx="-339.479" cy="501.457" rx="793.663" ry="365.97" transform="rotate(-14.918 -339.479 501.457)" fill="#EE4DBE"/>
+                    </g>
+                    <g filter="url(#filter2_f_feature3)">
+                      <ellipse cx="-411.254" cy="488.87" rx="741.721" ry="365.234" transform="rotate(-14.918 -411.254 488.87)" fill="#FFFDFA"/>
+                    </g>
                   </g>
-                  <g filter="url(#filter1_f_feature3)">
-                    <ellipse cx="-339.479" cy="501.457" rx="793.663" ry="365.97" transform="rotate(-14.918 -339.479 501.457)" fill="#EE4DBE"/>
-                  </g>
-                  <g filter="url(#filter2_f_feature3)">
-                    <ellipse cx="-411.254" cy="488.87" rx="741.721" ry="365.234" transform="rotate(-14.918 -411.254 488.87)" fill="#FFFDFA"/>
-                  </g>
-                </g>
-                <defs>
-                  <filter id="filter0_f_feature3" x="-1454.91" y="-270.812" width="2270.24" height="1447.17" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
-                    <feFlood floodOpacity="0" result="BackgroundImageFix"/>
-                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
-                    <feGaussianBlur stdDeviation="105" result="effect1_foregroundBlur_feature3"/>
-                  </filter>
-                  <filter id="filter1_f_feature3" x="-1322.24" y="-117.028" width="1965.51" height="1236.97" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
-                    <feFlood floodOpacity="0" result="BackgroundImageFix"/>
-                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
-                    <feGaussianBlur stdDeviation="105" result="effect1_foregroundBlur_feature3"/>
-                  </filter>
-                  <filter id="filter2_f_feature3" x="-1344.2" y="-122.475" width="1865.89" height="1222.69" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
-                    <feFlood floodOpacity="0" result="BackgroundImageFix"/>
-                    <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
-                    <feGaussianBlur stdDeviation="105" result="effect1_foregroundBlur_feature3"/>
-                  </filter>
-                </defs>
-              </svg>
+                  <defs>
+                    <filter id="filter0_f_feature3" x="-1454.91" y="-270.812" width="2270.24" height="1447.17" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                      <feFlood floodOpacity="0" result="BackgroundImageFix"/>
+                      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                      <feGaussianBlur stdDeviation="105" result="effect1_foregroundBlur_feature3"/>
+                    </filter>
+                    <filter id="filter1_f_feature3" x="-1322.24" y="-117.028" width="1965.51" height="1236.97" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                      <feFlood floodOpacity="0" result="BackgroundImageFix"/>
+                      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                      <feGaussianBlur stdDeviation="105" result="effect1_foregroundBlur_feature3"/>
+                    </filter>
+                    <filter id="filter2_f_feature3" x="-1344.2" y="-122.475" width="1865.89" height="1222.69" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+                      <feFlood floodOpacity="0" result="BackgroundImageFix"/>
+                      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                      <feGaussianBlur stdDeviation="105" result="effect1_foregroundBlur_feature3"/>
+                    </filter>
+                  </defs>
+                </svg>
 
-              {/* Feature image positioned with offset - diagonal rounded corners (top-left, bottom-right) */}
-              <div className="absolute top-10 left-10 right-0 bottom-0">
-                <img
-                  className="w-30 h-30 rounded-tl-[30px] rounded-br-[30px]"
-                  alt="Track performance"
-                  src="/images/landing/tracking_image.svg"
-                />
+                {/* Feature image positioned with offset - diagonal rounded corners (top-left, bottom-right) */}
+                <div className="absolute top-10 left-10 right-0 bottom-0">
+                  <img
+                    className="w-30 h-30 rounded-tl-[30px] rounded-br-[30px]"
+                    alt="Track performance"
+                    src="/images/landing/tracking_image.svg"
+                  />
+                </div>
               </div>
-              {/* Analytics card overlay - positioned in top-left corner */}
+
+              {/* Analytics card overlay - positioned outside top-left corner */}
               <div className="absolute top-[-30px] left-[-30px] z-10">
                 <img
                   className="w-30 h-30 rounded-[20px]"
