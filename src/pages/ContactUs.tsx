@@ -134,6 +134,7 @@ const ContactUs = () => {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
+        phone: formData.phone,
         message: formData.message,
       });
 
