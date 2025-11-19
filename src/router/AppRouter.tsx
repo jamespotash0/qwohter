@@ -64,7 +64,7 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 // Public pages
-const Landing = lazy(() => import("@/pages/LandingEnhanced"));
+const Landing = lazy(() => import("@/pages/LandingPage"));
 const Demo = lazy(() => import("@/pages/Demo"));
 const ContactUs = lazy(() => import("@/pages/ContactUs"));
 
