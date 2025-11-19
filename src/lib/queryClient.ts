@@ -20,15 +20,34 @@
  * - In-flight request management
  */
 
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query';
 import { persistQueryClient } from '@tanstack/react-query-persist-client';
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
+import { handleErrorWithRecovery } from '@/utils/staleClientRecovery';
 
 /**
  * Create a singleton QueryClient instance
  * Used throughout the app for all data fetching
  */
 export const queryClient = new QueryClient({
+  // React Query v5: Global error handlers moved to QueryCache and MutationCache
+  queryCache: new QueryCache({
+    onError: (error, query) => {
+      // Global error handler with automatic stale client recovery
+      // This catches issues like "No Organization Available" when old JS runs after deployments
+      // Only logs stale client errors to Sentry (prevents duplicate logging)
+      handleErrorWithRecovery(error, queryClient);
+    },
+  }),
+
+  mutationCache: new MutationCache({
+    onError: (error, _variables, _context, mutation) => {
+      // Global mutation error handler
+      // Only logs stale client errors to Sentry (prevents duplicate logging)
+      handleErrorWithRecovery(error, queryClient);
+    },
+  }),
+
   defaultOptions: {
     queries: {
       // Stale-while-revalidate: Show cached data immediately, refetch in background
@@ -370,7 +389,7 @@ persistQueryClient({
   queryClient,
   persister,
   maxAge: 5 * 60 * 1000, // 5 minutes - balance between speed and freshness
-  buster: 'v2.0.0-hybrid', // Clear cache on version change (update this when breaking changes)
+  buster: 'v3.0.0-stale-client-fix', // Clear cache on version change (update this when breaking changes)
   dehydrateOptions: {
     // Control what gets persisted
     shouldDehydrateQuery: (query) => {
@@ -386,8 +405,19 @@ persistQueryClient({
         return false;
       }
 
+      // Only persist successful queries (not pending, error, or loading)
+      // This prevents race conditions where queries get cancelled mid-dehydration
+      if (query.state.status !== 'success') {
+        return false;
+      }
+
+      // Don't persist queries with no data (empty results)
+      if (query.state.data === undefined) {
+        return false;
+      }
+
       // Persist everything else (quotes, organizations, members, subscription status)
-      return query.state.status === 'success'; // Only persist successful queries
+      return true;
     },
   },
 });

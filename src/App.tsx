@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { queryClient } from "@/lib/queryClient";
 import { Analytics } from "@vercel/analytics/react";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { useVersionCheck } from "@/hooks/useVersionCheck";
 
 /**
  * Main App component - Industry Standard Architecture
@@ -27,6 +28,13 @@ import { ErrorBoundary } from "@/components/common/ErrorBoundary";
  * - Clean hooks API (useUser, useSession, useProfile)
  */
 const App = () => {
+  // Automatic version checking to prevent stale client issues
+  // Checks every 5 minutes for new deployments
+  useVersionCheck({
+    checkInterval: 5 * 60 * 1000, // 5 minutes
+    autoReloadDelay: 30, // 30 seconds
+  });
+
   useEffect(() => {
     // One-time cleanup of old manual localStorage cache keys
     // This can be removed after all users have migrated to v3.0.0

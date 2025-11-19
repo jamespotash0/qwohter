@@ -212,6 +212,15 @@ export async function signOut(): Promise<{ error: Error | null }> {
 
 /**
  * Get current session
+ *
+ * Note: Supabase automatically refreshes sessions via onAuthStateChange listener.
+ * Token refresh happens automatically ~60s before expiry.
+ * This method returns the current session snapshot from Supabase client.
+ *
+ * Industry Standard Pattern:
+ * - AuthProvider listens to onAuthStateChange
+ * - Supabase fires TOKEN_REFRESHED event automatically
+ * - All components get fresh session from React Query cache
  */
 export async function getSession(): Promise<Session | null> {
   try {
