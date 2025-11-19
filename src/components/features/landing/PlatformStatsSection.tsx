@@ -43,9 +43,9 @@ export const PlatformStatsSection = (): JSX.Element => {
     const scrollContainer = scrollRef.current;
     if (!scrollContainer) return;
 
-    let scrollPosition = 0;
     const scrollSpeed = 0.5; // pixels per frame
     let animationFrameId: number;
+    let isScrolling = true;
 
     // Prevent manual scrolling
     const preventScroll = (e: Event) => {
@@ -53,17 +53,24 @@ export const PlatformStatsSection = (): JSX.Element => {
     };
 
     const autoScroll = () => {
-      if (!scrollContainer) return;
+      if (!scrollContainer || !isScrolling) return;
 
-      scrollPosition += scrollSpeed;
+      // Get current scroll position
+      const currentScroll = scrollContainer.scrollLeft;
 
-      // Reset scroll when reaching the end (accounting for duplicated content)
-      const maxScroll = scrollContainer.scrollWidth / 2;
-      if (scrollPosition >= maxScroll) {
-        scrollPosition = 0;
+      // Calculate the width of one set of cards (original cards, not duplicates)
+      const singleSetWidth = scrollContainer.scrollWidth / 2;
+
+      // Scroll forward
+      const newPosition = currentScroll + scrollSpeed;
+
+      // If we've scrolled past the first set, seamlessly reset to the beginning
+      if (newPosition >= singleSetWidth) {
+        scrollContainer.scrollLeft = newPosition - singleSetWidth;
+      } else {
+        scrollContainer.scrollLeft = newPosition;
       }
 
-      scrollContainer.scrollLeft = scrollPosition;
       animationFrameId = requestAnimationFrame(autoScroll);
     };
 
@@ -73,10 +80,12 @@ export const PlatformStatsSection = (): JSX.Element => {
 
     // Start auto-scroll after a delay
     const timeoutId = setTimeout(() => {
+      isScrolling = true;
       animationFrameId = requestAnimationFrame(autoScroll);
     }, 2000);
 
     return () => {
+      isScrolling = false;
       clearTimeout(timeoutId);
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
@@ -103,7 +112,7 @@ export const PlatformStatsSection = (): JSX.Element => {
           {metricsData.map((metric, index) => (
             <Card
               key={index}
-              className="flex-shrink-0 w-[360px] bg-white rounded-[30px] border border-solid border-[#f7f2e9] translate-y-[-1rem] animate-fade-in opacity-0 select-none"
+              className="flex-shrink-0 w-[360px] bg-white rounded-[30px] border border-solid border-[#f7f2e9] translate-y-[-1rem] animate-fade-in opacity-0 select-none pointer-events-none"
               style={
                 {
                   "--animation-delay": `${400 + index * 100}ms`,
@@ -111,7 +120,7 @@ export const PlatformStatsSection = (): JSX.Element => {
               }
             >
               <CardContent className="flex flex-col items-start gap-5 p-[30px]">
-                <Badge className="bg-[#ee6c4d1a] inline-flex items-center justify-center gap-[30px] px-2.5 py-0.5 rounded-3xl border border-solid border-[#ee6c4d1a]">
+                <Badge className="bg-[#ee6c4d1a] inline-flex items-center justify-center gap-[30px] px-2.5 py-0.5 rounded-3xl border border-solid border-[#ee6c4d1a] hover:bg-[#ee6c4d1a]">
                   <span className="[font-family:'Urbanist',Helvetica] font-semibold text-[#ee6c4d] text-base tracking-[0] leading-6 whitespace-nowrap">
                     {metric.label}
                   </span>
@@ -131,7 +140,7 @@ export const PlatformStatsSection = (): JSX.Element => {
           {metricsData.map((metric, index) => (
             <Card
               key={`duplicate-${index}`}
-              className="flex-shrink-0 w-[360px] bg-white rounded-[30px] border border-solid border-[#f7f2e9] translate-y-[-1rem] animate-fade-in opacity-0 select-none"
+              className="flex-shrink-0 w-[360px] bg-white rounded-[30px] border border-solid border-[#f7f2e9] translate-y-[-1rem] animate-fade-in opacity-0 select-none pointer-events-none"
               style={
                 {
                   "--animation-delay": `${400 + index * 100}ms`,
@@ -139,7 +148,7 @@ export const PlatformStatsSection = (): JSX.Element => {
               }
             >
               <CardContent className="flex flex-col items-start gap-5 p-[30px]">
-                <Badge className="bg-[#ee6c4d1a] inline-flex items-center justify-center gap-[30px] px-2.5 py-0.5 rounded-3xl border border-solid border-[#ee6c4d1a]">
+                <Badge className="bg-[#ee6c4d1a] inline-flex items-center justify-center gap-[30px] px-2.5 py-0.5 rounded-3xl border border-solid border-[#ee6c4d1a] hover:bg-[#ee6c4d1a]">
                   <span className="[font-family:'Urbanist',Helvetica] font-semibold text-[#ee6c4d] text-base tracking-[0] leading-6 whitespace-nowrap">
                     {metric.label}
                   </span>

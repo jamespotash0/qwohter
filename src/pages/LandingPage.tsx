@@ -10,7 +10,7 @@ import { rippleEffect } from '@/utils/animations';
 import { PlatformStatsSection } from '@/components/features/landing/PlatformStatsSection';
 import { TestimonialsSection } from '@/components/features/landing/TestimonialsSection';
 import { IndustrySection } from '@/components/features/landing/IndustrySection';
-import { ProblemSolutionSection } from '@/components/features/landing/ProblemSolutionSection';
+// import { ProblemSolutionSection } from '@/components/features/landing/ProblemSolutionSection';
 import { PricingPlanSection } from '@/components/features/landing/PricingPlanSection';
 import { HeroSection } from '@/components/features/landing/HeroSection';
 import { FeatureSection } from '@/components/features/landing/FeatureSection';
@@ -100,7 +100,7 @@ const LandingPage = () => {
               fontWeight: 400,
             }}
           >
-            In 2035, price sheets and email chains will not be impressive. <span className="text-[#171717]/30">Your quote accuracy, speed to respond, and manufacturer alignment will be.</span>
+            See your projects and quotes in one place with full visibility. <span className="text-[#171717]/30">Turn actionable insights into faster, more efficient selling.</span>
           </h2>
         </div>
       </section>
@@ -122,7 +122,7 @@ const LandingPage = () => {
       </div>
 
       {/* Problem/Solution Toggle Section */}
-      <ProblemSolutionSection />
+      {/* <ProblemSolutionSection /> */}
 
       {/* Pricing Section */}
       <div ref={pricingRef} data-section="pricing" id="pricing">

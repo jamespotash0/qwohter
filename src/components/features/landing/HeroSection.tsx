@@ -10,9 +10,190 @@ interface HeroSectionProps {
 
 export const HeroSection = ({ activeSection, onGetDemo, onRipple }: HeroSectionProps): JSX.Element => {
   const navigate = useNavigate();
+  const [indicatorStyle, setIndicatorStyle] = React.useState({ left: 0, width: 0 });
+  const [isScrolled, setIsScrolled] = React.useState(false);
+  const navRefs = React.useRef<{ [key: string]: HTMLAnchorElement | null }>({});
+
+  const navItems = [
+    { name: 'Home', href: '#', section: 'home' },
+    { name: 'Features', href: '#features', section: 'features' },
+    { name: 'Use Cases', href: '#usecases', section: 'usecases' },
+    { name: 'Pricing', href: '#pricing', section: 'pricing' },
+    { name: 'Contact Us', href: '/contact-us', section: 'contact' }
+  ];
+
+  // Update indicator position when active section changes
+  React.useEffect(() => {
+    const activeRef = navRefs.current[activeSection];
+    if (activeRef) {
+      const navContainer = activeRef.parentElement;
+      if (navContainer) {
+        const containerRect = navContainer.getBoundingClientRect();
+        const activeRect = activeRef.getBoundingClientRect();
+        setIndicatorStyle({
+          left: activeRect.left - containerRect.left,
+          width: activeRect.width
+        });
+      }
+    }
+  }, [activeSection]);
+
+  // Detect scroll to merge navigation
+  React.useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 100);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
     <section className="w-full bg-[#FFFEFA] px-[20px] pt-[20px] pb-[20px]">
+      {/* Sticky Header Navigation */}
+      <header className="fixed top-0 left-0 right-0 z-50 pt-[50px] animate-fade-in opacity-0 [--animation-delay:0ms] transition-all duration-300">
+        {isScrolled ? (
+          /* Scrolled State: Everything merged into one pill */
+          <nav className="mx-auto max-w-[600px] h-[48px] rounded-full flex items-center pl-4 pr-2 shadow-lg bg-gradient-to-r from-[#272727] to-[#393939] transition-all duration-500">
+            {/* Logo */}
+            <div className="flex items-center transition-all duration-300 mr-8">
+              <img
+                src="/logos/Main_Sidebar_Logo_Dark.svg"
+                alt="Qwohter Logo"
+                className="w-[30px] h-[30px]"
+              />
+            </div>
+
+            {/* Navigation Items - Centered */}
+            <div className="flex items-center gap-4">
+              {navItems.map((item) => {
+                const isActive = activeSection === item.section;
+                return (
+                  <a
+                    key={item.name}
+                    href={item.href}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (item.href === '/contact-us') {
+                        navigate('/contact-us');
+                      } else if (item.href === '#') {
+                        window.history.pushState(null, '', '/');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      } else {
+                        window.history.pushState(null, '', item.href);
+                        const targetId = item.href.substring(1);
+                        const targetElement = document.getElementById(targetId);
+                        if (targetElement) {
+                          targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }
+                    }}
+                    className={`font-normal [font-family:'Urbanist',Helvetica] text-base tracking-[0] leading-6 whitespace-nowrap transition-all hover:text-[#ee6c4d] ${
+                      isActive ? 'text-[#ee6c4d]' : 'text-white'
+                    }`}
+                  >
+                    {item.name}
+                  </a>
+                );
+              })}
+            </div>
+
+            {/* Get a Demo */}
+            <div className="flex items-center ml-6">
+              <Button
+                onClick={(e) => {
+                  onRipple(e);
+                  onGetDemo();
+                }}
+                className="py-0 h-[40px] px-[15px] inline-flex gap-[5px] bg-[#f7f2e9] border border-solid border-neutral-900 items-center justify-center rounded-3xl hover:bg-[#ebe5d9] hover:border-[#ee6c4d] transition-all duration-200"
+              >
+                <span className="[font-family:'Urbanist',Helvetica] font-semibold text-neutral-900 text-base tracking-[0] leading-6 whitespace-nowrap">
+                  Get a Demo
+                </span>
+              </Button>
+            </div>
+          </nav>
+        ) : (
+          /* Not Scrolled State: Grid layout with separate pill */
+          <div className="mx-auto h-[50px] grid grid-cols-[auto_500px_auto] items-center bg-transparent px-[180px] transition-all duration-500">
+            {/* Logo */}
+            <div className="flex items-center justify-start transition-all duration-300">
+              <img
+                src="/logos/New_Landing_Page_Logo_LightonDarkBackground.svg"
+                alt="Qwohter Logo"
+                className="w-[232px] h-[30px]"
+              />
+            </div>
+
+            {/* Center Navigation Pill */}
+            <nav className="hidden md:flex items-center relative rounded-full px-[15px] py-2.5 bg-[#FFFFFF]/25 backdrop-blur-sm justify-evenly transition-all duration-500">
+              {/* Animated indicator bar */}
+              <div
+                className="absolute bottom-0 h-[2px] bg-[#ee6c4d] transition-all duration-300 ease-out"
+                style={{
+                  left: `${indicatorStyle.left}px`,
+                  width: `${indicatorStyle.width}px`
+                }}
+              />
+              {navItems.map((item) => {
+                const isActive = activeSection === item.section;
+                return (
+                  <a
+                    key={item.name}
+                    ref={(el) => navRefs.current[item.section] = el}
+                    href={item.href}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (item.href === '/contact-us') {
+                        navigate('/contact-us');
+                      } else if (item.href === '#') {
+                        window.history.pushState(null, '', '/');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      } else {
+                        window.history.pushState(null, '', item.href);
+                        const targetId = item.href.substring(1);
+                        const targetElement = document.getElementById(targetId);
+                        if (targetElement) {
+                          targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }
+                    }}
+                    className={`font-normal [font-family:'Urbanist',Helvetica] text-base tracking-[0] leading-6 whitespace-nowrap transition-all hover:text-[#ee6c4d] ${
+                      isActive ? 'text-[#ee6c4d]' : 'text-white'
+                    }`}
+                  >
+                    {item.name}
+                  </a>
+                );
+              })}
+            </nav>
+
+            {/* Sign In and Get a Demo Buttons */}
+            <div className="flex items-center gap-5 justify-end transition-all duration-300">
+              <button
+                onClick={() => navigate('/sign-in')}
+                className="[font-family:'Urbanist',Helvetica] font-semibold text-[#ee6c4d] text-base tracking-[0] leading-6 whitespace-nowrap relative group transition-all"
+              >
+                Sign In
+                <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-[#ee6c4d] transition-all duration-300 group-hover:w-full"></span>
+              </button>
+
+              <Button
+                onClick={(e) => {
+                  onRipple(e);
+                  onGetDemo();
+                }}
+                className="py-0 h-[48px] px-[30px] inline-flex gap-[5px] bg-[#f7f2e9] border border-solid border-neutral-900 items-center justify-center rounded-3xl hover:bg-[#ebe5d9] hover:border-[#ee6c4d] transition-all duration-200"
+              >
+                <span className="[font-family:'Urbanist',Helvetica] font-semibold text-neutral-900 text-base tracking-[0] leading-6 whitespace-nowrap">
+                  Get a Demo
+                </span>
+              </Button>
+            </div>
+          </div>
+        )}
+      </header>
+
       <div className="w-full flex flex-col bg-[linear-gradient(180deg,#171717_0%,#272727_16.647%,#393939_33.767%,#484847_48.235%,#5D5D5B_62.943%,#7A7A78_74.759%,#FFFEFA_100%)] rounded-[30px] px-5 pt-5 pb-0 relative overflow-hidden">
         {/* Gradient blur effects - bottom only */}
         <div className="absolute bottom-[-200px] left-1/2 -translate-x-1/2 w-[2093px] h-[1000px] opacity-60 pointer-events-none">
@@ -21,72 +202,8 @@ export const HeroSection = ({ activeSection, onGetDemo, onRipple }: HeroSectionP
           <div className="absolute top-[407px] left-[215px] w-[1483px] h-[730px] bg-[#F7F2E9] rounded-[741.72px/365.23px] blur-[105px] opacity-50 rotate-[-17.73deg]" />
         </div>
 
-        {/* Header Navigation */}
-        <header className="w-full max-w-[1520px] mx-auto flex items-center justify-between h-[50px] bg-transparent mt-[10px] animate-fade-in opacity-0 [--animation-delay:0ms] relative z-10">
-          {/* Logo */}
-          <div className="flex items-center">
-            <img
-              src="/logos/New_Landing_Page_Logo_LightonDarkBackground.svg"
-              alt="Qwohter Logo"
-              className="w-[232px] h-[30px]"
-            />
-          </div>
-
-          {/* Center Navigation Pill */}
-          <nav className="hidden md:flex items-center bg-white/25 backdrop-blur-sm rounded-full px-[30px] py-2.5 w-[510px] justify-between">
-            {[
-              { name: 'Home', href: '#', section: 'home' },
-              { name: 'Features', href: '#features', section: 'features' },
-              { name: 'Use Cases', href: '#usecases', section: 'usecases' },
-              { name: 'Pricing', href: '#pricing', section: 'pricing' },
-              { name: 'Contact Us', href: '/contact-us', section: 'contact' }
-            ].map((item) => {
-              const isActive = activeSection === item.section;
-              return (
-                <a
-                  key={item.name}
-                  href={item.href}
-                  onClick={(e) => {
-                    if (item.href === '/contact-us') {
-                      e.preventDefault();
-                      navigate('/contact-us');
-                    } else if (item.href === '#') {
-                      e.preventDefault();
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                  }}
-                  className={`font-normal ${
-                    isActive ? 'text-[#ee6c4d]' : 'text-white'
-                  } [font-family:'Urbanist',Helvetica] text-base tracking-[0] leading-6 whitespace-nowrap transition-colors hover:text-[#ee6c4d]`}
-                >
-                  {item.name}
-                </a>
-              );
-            })}
-          </nav>
-
-          {/* Sign In and Get a Demo Buttons */}
-          <div className="inline-flex items-center gap-5">
-            <button
-              onClick={() => navigate('/sign-in')}
-              className="[font-family:'Urbanist',Helvetica] font-semibold text-[#ee6c4d] text-base tracking-[0] leading-6 whitespace-nowrap hover:underline hover:decoration-2 hover:underline-offset-4 transition-all"
-            >
-              Sign In
-            </button>
-
-            <Button
-              onClick={(e) => {
-                onRipple(e);
-                onGetDemo();
-              }}
-              className="h-[48px] py-0 inline-flex gap-[5px] bg-[#f7f2e9] border border-solid border-neutral-900 items-center justify-center px-[30px] rounded-3xl hover:bg-[#ebe5d9] hover:border-[#ee6c4d] transition-all duration-200"
-            >
-              <span className="[font-family:'Urbanist',Helvetica] font-semibold text-neutral-900 text-base tracking-[0] leading-6 whitespace-nowrap">
-                Get a Demo
-              </span>
-            </Button>
-          </div>
-        </header>
+        {/* Spacer for fixed header */}
+        <div className="h-[60px]"></div>
 
         {/* Hero Content - 150px spacing from navbar bottom */}
         <div className="w-full max-w-[1520px] mx-auto flex flex-col items-center gap-[30px] translate-y-[-1rem] animate-fade-in-delay opacity-0 relative z-10 pt-[150px]" style={{ '--animation-delay': '200ms' } as React.CSSProperties}>
@@ -100,7 +217,7 @@ export const HeroSection = ({ activeSection, onGetDemo, onRipple }: HeroSectionP
 
             {/* Hero Title with Gradient */}
             <h1
-              className="bg-[linear-gradient(180deg,#FFFFFF_0%,#EBC3BF_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] text-[54px] text-center tracking-[1.2px] leading-[64px] whitespace-nowrap translate-y-[-1rem] animate-fade-in-delay opacity-0"
+              className="bg-[linear-gradient(180deg,#FFFFFF_0%,#EBC3BF_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] text-[60px] text-center tracking-[1.2px] leading-[70px] whitespace-nowrap translate-y-[-1rem] animate-fade-in-delay opacity-0"
               style={{
                 fontFamily: 'Urbanist, sans-serif',
                 fontWeight: 500,
