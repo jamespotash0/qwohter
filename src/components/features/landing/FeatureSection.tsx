@@ -173,7 +173,7 @@ export const FeatureSection = (): JSX.Element => {
               {/* Feature image positioned with offset - diagonal rounded corners (top-right, bottom-left) */}
               <div className="absolute top-20 left-0 right-20 bottom-0">
                 <img
-                  className="w-[600px] h-[441px] object-cover rounded-tr-[30px] rounded-bl-[30px]"
+                  className="w-[520px] h-[441px] object-cover rounded-tr-[30px] rounded-bl-[30px]"
                   alt="Generate quotes in seconds"
                   src="/images/landing/generate_quotes_image.png"
                 />
@@ -266,11 +266,19 @@ export const FeatureSection = (): JSX.Element => {
               </svg>
 
               {/* Feature image positioned with offset - diagonal rounded corners (top-left, bottom-right) */}
-              <div className="absolute top-8 left-10 right-0 bottom-0">
+              <div className="absolute top-10 left-10 right-0 bottom-0">
                 <img
-                  className="w-[600px] h-[500px] object-cover rounded-tl-[30px] rounded-br-[30px]"
+                  className="w-30 h-30 rounded-tl-[30px] rounded-br-[30px]"
                   alt="Track performance"
                   src="/images/landing/tracking_image.svg"
+                />
+              </div>
+              {/* Analytics card overlay - positioned in top-left corner */}
+              <div className="absolute top-[-30px] left-[-30px] z-10">
+                <img
+                  className="w-30 h-30 rounded-[20px]"
+                  alt="Analytics card"
+                  src="/images/landing/analytics_image1.svg"
                 />
               </div>
             </div>
