@@ -14,7 +14,7 @@ const Demo = () => {
       {/* Hero Section with Background */}
       <section className="relative w-full overflow-hidden">
         <img
-          src="/images/contact-hero-bg.svg"
+          src="/images/landing/contact-hero-bg.svg"
           alt="Demo Hero Background"
           className="absolute inset-0 w-full h-full object-cover"
         />

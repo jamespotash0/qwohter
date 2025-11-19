@@ -92,10 +92,10 @@ const LandingPage = () => {
       </div>
 
       {/* 2035 Tagline Section */}
-      <section className="pt-[150px] pb-[75px] bg-[#FFFEFA] px-[20px]">
-        <div className="max-w-[994px] h-[160px] mx-auto flex items-center justify-center text-center">
+      <section className="pt-[120px] pb-[150px] bg-[#FFFEFA] px-[20px]">
+        <div className="max-w-[994px] mx-auto flex items-center justify-center text-center">
           <h2
-            className="text-[42px] leading-[52px] text-[#171717]"
+            className="text-[42px] leading-[62px] text-[#171717]"
             style={{
               fontFamily: 'Urbanist, sans-serif',
               fontWeight: 400,

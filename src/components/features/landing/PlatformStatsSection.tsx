@@ -96,7 +96,7 @@ export const PlatformStatsSection = (): JSX.Element => {
   }, []);
 
   return (
-    <section className="w-full flex flex-col items-center gap-[50px] pt-[115px] pb-[75px] px-5 bg-[#FFFEFA] translate-y-[-1rem] animate-fade-in opacity-0 [--animation-delay:200ms]">
+    <section className="w-full flex flex-col items-center gap-[50px] pt-[125px] pb-[75px] px-5 bg-[#FFFEFA] translate-y-[-1rem] animate-fade-in opacity-0 [--animation-delay:200ms]">
       <header className="flex flex-col items-center gap-2.5 max-w-4xl">
         <h2 className="bg-[linear-gradient(180deg,rgba(23,23,23,1)_0%,rgba(119,119,119,1)_100%)] [-webkit-background-clip:text] bg-clip-text [-webkit-text-fill-color:transparent] [text-fill-color:transparent] [font-family:'Urbanist',Helvetica] font-semibold text-transparent text-[42px] text-center tracking-[0] leading-[50px]">
           Results you&apos;ll feel — and your business will measure

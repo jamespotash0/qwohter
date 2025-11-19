@@ -247,7 +247,7 @@ const ContactUs = () => {
       {/* Hero Section with Background */}
       <section className="relative w-full min-h-[900px] overflow-hidden">
         <img
-          src="/images/contact-hero-bg.svg"
+          src="/images/landing/contact-hero-bg.svg"
           alt="Contact Hero Background"
           className="absolute inset-0 w-full h-full object-cover"
         />
