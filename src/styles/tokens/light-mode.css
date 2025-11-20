@@ -122,16 +122,16 @@
     --btn-primary-disabled-text: #9CA3AF;         /* Primary disabled text */
 
     /* Secondary Button */
-    --btn-secondary-bg: transparent;              /* Secondary background */
+    --btn-secondary-bg: #F9FAFB;                  /* Light gray background (was transparent) */
     --btn-secondary-text: #3A86FF;                /* Secondary text */
     --btn-secondary-border: #3A86FF;              /* Secondary border */
     --btn-secondary-hover-bg: #3A86FF;            /* Secondary hover bg */
     --btn-secondary-hover-text: #FFFFFF;          /* Secondary hover text */
 
     /* Ghost Button */
-    --btn-ghost-bg: transparent;                  /* Ghost background */
+    --btn-ghost-bg: #F9FAFB;                      /* Light gray background (was transparent) */
     --btn-ghost-text: #374151;                    /* Ghost text */
-    --btn-ghost-hover-bg: #F3F4F6;                /* Ghost hover background */
+    --btn-ghost-hover-bg: #E5E7EB;                /* Slightly darker gray on hover */
     --btn-ghost-hover-text: #1F2937;              /* Ghost hover text */
 
     /* Danger Button */
@@ -153,8 +153,8 @@
     --input-border: #D1D5DB;                      /* Input border */
     --input-text: #1F2937;                        /* Input text */
     --input-placeholder-text: #9CA3AF;            /* Placeholder text */
-    --input-focus-border: #3A86FF;                /* Focus border */
-    --input-focus-ring: #EBF4FF;                  /* Focus ring */
+    --input-focus-border: var(--landing-primary); /* Focus border - coral */
+    --input-focus-ring: var(--landing-primary-light); /* Focus ring - coral 40% */
     --input-error-border: #EF4444;                /* Error border */
     --input-error-ring: #FEE2E2;                  /* Error ring */
     --input-disabled-bg: #F3F4F6;                 /* Disabled background */
@@ -168,6 +168,16 @@
     --form-help-text: #6B7280;                    /* Help/description text */
     --form-error-text: #991B1B;                   /* Error message text */
     --form-success-text: #065F46;                 /* Success message text */
+
+    /* ========================================
+       🔗 LINK SYSTEM
+       ======================================== */
+
+    /* Interactive Links */
+    --link-text: var(--landing-primary);          /* Link text - coral #EE6C4D */
+    --link-hover: var(--landing-primary-hover);   /* Link hover - darker coral #D85B3E */
+    --link-visited: var(--landing-primary);       /* Visited link */
+    --link-active: var(--landing-primary-hover);  /* Active link */
 
     /* ========================================
        📊 TABLE SYSTEM

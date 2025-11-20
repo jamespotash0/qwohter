@@ -9,7 +9,7 @@
 
 /* Dynamic values - blue dashed underline */
 [data-type="dynamic"] {
-  border-bottom: 1px dashed #3b82f6;
+  border-bottom: 1px dashed var(--marker-dynamic-color);
   cursor: help;
   position: relative;
   padding-bottom: 1px;
@@ -17,7 +17,7 @@
 
 /* Conditional text - orange dashed underline */
 [data-type="conditional"] {
-  border-bottom: 1px dashed #f97316;
+  border-bottom: 1px dashed var(--marker-conditional-color);
   cursor: help;
   position: relative;
   padding-bottom: 1px;
@@ -29,13 +29,14 @@
 }
 
 /* Hover effect for marked elements */
-[data-type]:hover {
-  background-color: rgba(59, 130, 246, 0.05);
+[data-type="dynamic"]:hover {
+  background-color: color-mix(in srgb, var(--marker-dynamic-color) calc(var(--marker-hover-opacity) * 100%), transparent);
   border-radius: 2px;
 }
 
 [data-type="conditional"]:hover {
-  background-color: rgba(249, 115, 22, 0.05);
+  background-color: color-mix(in srgb, var(--marker-conditional-color) calc(var(--marker-hover-opacity) * 100%), transparent);
+  border-radius: 2px;
 }
 
 /* Tooltip on hover (optional - shows data binding info) */
@@ -45,8 +46,8 @@
   bottom: 100%;
   left: 50%;
   transform: translateX(-50%);
-  background-color: rgba(0, 0, 0, 0.9);
-  color: white;
+  background-color: var(--marker-tooltip-bg);
+  color: var(--marker-tooltip-text);
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 11px;
@@ -68,7 +69,7 @@
   display: inline-block;
   margin-right: 2px;
   font-size: 10px;
-  color: #f97316;
+  color: var(--marker-conditional-color);
   vertical-align: super;
 }
 
@@ -111,26 +112,8 @@
   text-decoration-thickness: 1px;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  [data-type="dynamic"] {
-    border-bottom-color: #60a5fa;
-  }
-
-  [data-type="conditional"] {
-    border-bottom-color: #fb923c;
-  }
-
-  [data-type]:hover {
-    background-color: rgba(59, 130, 246, 0.1);
-  }
-
-  [data-type="conditional"]:hover {
-    background-color: rgba(249, 115, 22, 0.1);
-  }
-
-  [data-type]::after {
-    background-color: rgba(255, 255, 255, 0.95);
-    color: black;
-  }
-}
+/*
+ * Dark mode support is now handled automatically via CSS variables
+ * defined in dark-mode.css using the .dark class selector.
+ * No media query needed - theme switching is controlled by JavaScript.
+ */
