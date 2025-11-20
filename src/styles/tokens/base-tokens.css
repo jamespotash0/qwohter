@@ -190,5 +190,17 @@
     --transition-base: 200ms ease;
     --transition-slow: 300ms ease;
     --transition-slower: 500ms ease;
+
+    /* ========================================
+       🏷️ TEMPLATE MARKERS
+       Visual indicators for dynamic/conditional content
+       ======================================== */
+
+    /* Base colors - will be overridden by theme modes */
+    --marker-dynamic-color: var(--status-info-500);          /* Blue for dynamic values */
+    --marker-conditional-color: var(--brand-orange-400);     /* Orange for conditional text */
+    --marker-hover-opacity: 0.05;                            /* Background opacity on hover */
+    --marker-tooltip-bg: rgba(0, 0, 0, 0.9);                 /* Tooltip background */
+    --marker-tooltip-text: #FFFFFF;                          /* Tooltip text color */
   }
 }

@@ -153,8 +153,8 @@
     --input-border: #6B7280;                      /* Input border */
     --input-text: #F3F4F6;                        /* Input text */
     --input-placeholder-text: #9CA3AF;            /* Placeholder text */
-    --input-focus-border: #60A5FA;                /* Focus border */
-    --input-focus-ring: rgba(96, 165, 250, 0.2);  /* Focus ring */
+    --input-focus-border: var(--landing-primary); /* Focus border - coral */
+    --input-focus-ring: rgba(238, 108, 77, 0.2);  /* Focus ring - coral 20% */
     --input-error-border: #EF4444;                /* Error border */
     --input-error-ring: rgba(239, 68, 68, 0.2);   /* Error ring */
     --input-disabled-bg: #1F2937;                 /* Disabled background */
@@ -168,6 +168,16 @@
     --form-help-text: #9CA3AF;                    /* Help/description text */
     --form-error-text: #FCA5A5;                   /* Error message text */
     --form-success-text: #6EE7B7;                 /* Success message text */
+
+    /* ========================================
+       🔗 LINK SYSTEM
+       ======================================== */
+
+    /* Interactive Links */
+    --link-text: var(--landing-primary);          /* Link text - coral */
+    --link-hover: var(--landing-primary-hover);   /* Link hover - darker coral */
+    --link-visited: var(--landing-primary);       /* Visited link */
+    --link-active: var(--landing-primary-hover);  /* Active link */
 
     /* ========================================
        📊 TABLE SYSTEM
@@ -261,5 +271,16 @@
     --gradient-primary: linear-gradient(135deg, hsl(218, 100%, 70%), hsl(218, 85%, 80%));
     --gradient-accent: linear-gradient(135deg, hsl(46, 100%, 60%), hsl(46, 85%, 70%));
     --gradient-subtle: linear-gradient(180deg, hsl(20, 12%, 8%), hsl(20, 10%, 12%));
+
+    /* ========================================
+       🏷️ TEMPLATE MARKERS - DARK MODE
+       ======================================== */
+
+    /* Brighter colors for better visibility on dark backgrounds */
+    --marker-dynamic-color: var(--status-info-400);          /* Lighter blue (#60A5FA) */
+    --marker-conditional-color: var(--brand-orange-400);     /* Lighter orange (#FB923C) */
+    --marker-hover-opacity: 0.1;                             /* Stronger hover background */
+    --marker-tooltip-bg: rgba(255, 255, 255, 0.95);          /* Light tooltip background */
+    --marker-tooltip-text: #000000;                          /* Dark text on light background */
   }
 }

@@ -107,7 +107,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 onChange={(e) => onFirstNameChange?.(sanitizeInput.string(e.target.value))}
                 placeholder="First name"
                 required
-                className="bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
+                className="bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-coral focus:ring-coral/20"
                 autoComplete="given-name"
               />
             </div>
@@ -122,7 +122,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 onChange={(e) => onLastNameChange?.(sanitizeInput.string(e.target.value))}
                 placeholder="Last name"
                 required
-                className="bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
+                className="bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-coral focus:ring-coral/20"
                 autoComplete="family-name"
               />
             </div>
@@ -148,7 +148,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             onBlur={() => setTouched(prev => ({ ...prev, email: true }))}
             placeholder="Enter your email"
             required
-            className={`bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500 ${
+            className={`bg-near-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-coral focus:ring-coral/20 ${
               touched.email && emailError ? 'border-red-500 focus:border-red-500' : ''
             }`}
             autoComplete="email"
@@ -189,7 +189,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               onBlur={() => setTouched(prev => ({ ...prev, password: true }))}
               placeholder={isSignUp ? "Create a password (8+ characters)" : "Enter your password"}
               required
-              className={`bg-white border-gray-300 h-12 pr-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500 ${
+              className={`bg-white border-gray-300 h-12 pr-12 placeholder:text-gray-400 focus:border-coral focus:ring-coral/20 ${
                 touched.password && passwordError ? 'border-red-500 focus:border-red-500' : ''
               }`}
               autoComplete={isSignUp ? "new-password" : "current-password"}
@@ -244,7 +244,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 onBlur={() => setTouched(prev => ({ ...prev, confirmPassword: true }))}
                 placeholder="Confirm your password"
                 required
-                className={`bg-white border-gray-300 h-12 pr-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500 ${
+                className={`bg-white border-gray-300 h-12 pr-12 placeholder:text-gray-400 focus:border-coral focus:ring-coral/20 ${
                   touched.confirmPassword && confirmPasswordError ? 'border-red-500 focus:border-red-500' : ''
                 }`}
                 autoComplete="new-password"
@@ -275,7 +275,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               id="acceptTerms"
               checked={acceptTerms}
               onCheckedChange={(checked) => setAcceptTerms(Boolean(checked))}
-              className="size-4 !rounded-[4px] border border-gray-300 data-[state=checked]:bg-slate-600 data-[state=checked]:border-slate-600 mt-0.5"
+              className="size-4 !rounded-[4px] border border-gray-300 data-[state=checked]:bg-dark-gray data-[state=checked]:border-dark-gray mt-0.5"
             />
             <Label htmlFor="acceptTerms" className="text-[11px] text-gray-600 cursor-pointer leading-tight">
               By clicking here you accept our{" "}
@@ -283,7 +283,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 href="/terms-of-service"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-orange-500 hover:text-orange-600 underline"
+                className="text-coral hover:text-coral-dark underline"
               >
                 Terms of Service
               </a>{" "}
@@ -292,7 +292,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 href="/privacy-policy"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-orange-500 hover:text-orange-600 underline"
+                className="text-coral hover:text-coral-dark underline"
               >
                 Privacy Policy
               </a>
@@ -307,7 +307,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 id="remember-me"
                 checked={rememberMe}
                 onCheckedChange={handleRememberMeChange}
-                className="border-gray-300 data-[state=checked]:bg-slate-600 data-[state=checked]:border-slate-600"
+                className="border-gray-300 data-[state=checked]:bg-dark-gray data-[state=checked]:border-dark-gray"
               />
               <Label htmlFor="remember-me" className="text-sm text-gray-600 cursor-pointer">
                 Remember me
@@ -316,7 +316,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
             <button
               type="button"
               onClick={() => navigate("/forgot-password")}
-              className="text-sm text-orange-500 hover:text-orange-600 transition-colors"
+              className="text-sm text-coral hover:text-coral-dark transition-colors"
             >
               Forgot password?
             </button>
@@ -325,7 +325,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
 
         <Button
           type="submit"
-          className="w-full bg-slate-600 hover:bg-slate-700 text-white font-semibold h-12 transition-colors"
+          className="w-full bg-coral-dark hover:bg-coral text-white font-semibold h-12 transition-colors"
           disabled={
             loading ||
             (isSignUp && (
@@ -359,7 +359,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
           <button
             type="button"
             onClick={onToggleMode}
-            className="text-orange-500 hover:text-orange-600 font-medium transition-colors"
+            className="text-coral hover:text-coral-dark font-medium transition-colors"
           >
             {isSignUp ? "Sign in" : "Create one"}
           </button>

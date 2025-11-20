@@ -19,7 +19,7 @@
 /* Page Container Styles */
 .page-container {
   width: 100%;
-  background: #f5f5f5;
+  background: var(--page-bg-secondary);
   padding: 20px;
   box-sizing: border-box;
 }
@@ -63,22 +63,27 @@ table {
   break-before: always;
 }
 
-/* Unified page content container */
+/* Unified page content container
+ *
+ * NOTE: Document pages always use light backgrounds for printing/PDFs
+ * Dark mode affects the surrounding container, but document pages stay white
+ * for professional appearance and print compatibility.
+ */
 .split-page-content {
   width: var(--page-width);
   height: var(--page-height);
   max-width: 100%;
-  background: white;
+  background: #FFFFFF;  /* Always white for documents - overrides theme */
   margin: 0 auto 20px auto;
   padding: var(--page-margin-top) var(--page-margin-right) var(--page-margin-bottom) var(--page-margin-left);
   box-sizing: border-box;
   font-family: var(--page-font-family);
   font-size: var(--page-font-size);
   line-height: var(--page-line-height);
-  color: #000;
+  color: #000000;  /* Always black text for documents - overrides theme */
   position: relative;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e0e0e0;
+  box-shadow: var(--content-card-shadow);
+  border: 1px solid var(--content-card-border);
   overflow: hidden;
 }
 

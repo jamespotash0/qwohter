@@ -2,11 +2,15 @@
 export { BaseQuoteTemplate } from './BaseQuoteTemplate';
 
 // Type exports
-export type { 
-  QuoteData, 
-  TemplateHelpers, 
-  PageBreakStrategy 
+export type {
+  QuoteData,
+  TemplateHelpers,
+  PageBreakStrategy,
+  SectionVisibilityConfig
 } from './types';
+
+// Constant exports
+export { defaultSectionVisibility } from './types';
 
 // Utility exports (for testing or advanced usage)
 export { createTemplateHelpers } from './template-helpers';

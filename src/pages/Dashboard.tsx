@@ -345,7 +345,7 @@ const Dashboard = () => {
       const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
       const filteredReminders = data.filter(reminder => {
-        if (reminder.status === 'Completed') { //reminder_status
+        if (reminder.reminder_status === 'Completed') { //reminder_status
           const completedDate = new Date(reminder.updated_at);
           return completedDate > threeDaysAgo;
         }
@@ -825,7 +825,7 @@ const Dashboard = () => {
               <div className="space-y-3">
                 <Button
                   onClick={() => setShowNewQuoteDialog(true)}
-                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white"
+                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-coral hover:bg-coral-dark text-white"
                 >
                   <Plus className="w-5 h-5" />
                   <span className="font-medium">Create New Quote</span>
@@ -862,7 +862,7 @@ const Dashboard = () => {
                   <Button
                     size="sm"
                     onClick={() => setShowAddReminderModal(true)}
-                    className="h-8 px-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700"
+                    className="h-8 px-3 bg-dark-gray hover:bg-charcoal"
                   >
                     <Plus className="w-4 h-4 mr-1" />
                     Add
