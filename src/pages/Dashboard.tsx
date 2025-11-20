@@ -122,7 +122,7 @@ const Dashboard = () => {
 
 
     const channel = supabase
-      .channel('quote-activities-changes')
+      .channel(`quote-activities-changes-${organizationId}`)
       .on(
         'postgres_changes',
         {
@@ -135,8 +135,16 @@ const Dashboard = () => {
 
           if (payload.new) {
             setRecentActivities((prev) => {
-              // Add new activity to the beginning, keep only latest 100
               const newActivity = payload.new as QuoteActivity;
+
+              // ✅ FIX: Check if activity already exists to prevent duplicates
+              const activityExists = prev.some(activity => activity.id === newActivity.id);
+              if (activityExists) {
+                console.log('[Dashboard] Activity already exists, skipping:', newActivity.id);
+                return prev;
+              }
+
+              // Add new activity to the beginning, keep only latest 100
               const updated = [newActivity, ...prev];
               return updated.slice(0, 100);
             });

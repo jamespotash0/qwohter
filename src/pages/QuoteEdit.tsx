@@ -50,24 +50,8 @@ const QuoteEdit = () => {
     return await updateQuoteMutation({ id, updates: { date_last_downloaded: new Date().toISOString() } });
   };
 
-  const saveQuoteCustomization = async (id: string, customization: any, currentDocumentVersion: number) => {
-    // Increment document version when customization changes
-    const newDocumentVersion = currentDocumentVersion + 1;
-
-    // Store the new document version in customization metadata
-    const customizationWithVersion = {
-      ...customization,
-      version: newDocumentVersion
-    };
-
-    return await updateQuoteMutation({
-      id,
-      updates: {
-        customization: customizationWithVersion,
-        document_version: newDocumentVersion
-      }
-    });
-  };
+  // ✅ REMOVED: saveQuoteCustomization function - now combined with main update
+  // to prevent duplicate activity log entries
 
   // React Query automatically refetches, no manual fetch needed
   const fetchQuotes = () => {
@@ -152,14 +136,14 @@ const QuoteEdit = () => {
     if (!quote) return;
 
     try {
-      // First, save the form data changes to the main quote data
+      // Extract customization fields and form data
       const { customSections, customHTML, isCustomized, wall_details, ...formDataUpdates } = customizedQuote;
-      
+
       // Create updates object excluding wall_details first
       const updates: Partial<Quote> = {
         ...formDataUpdates
       };
-      
+
       // Handle wall_details separately to ensure proper typing
       if (wall_details) {
         updates.wall_details = {
@@ -167,31 +151,38 @@ const QuoteEdit = () => {
           walls: wall_details.walls || {}
         };
       }
-      
-      // Update the main quote data with form changes
-      await updateQuote(quote.id, updates);
-      
-      // Then, save customizations if they exist
+
+      // ✅ FIX: Include customization in the same update to prevent duplicate activity logs
+      // If customizations exist, add them to the updates object
       if (customSections) {
         const currentDocumentVersion = quote.document_version || 0;
-        await saveQuoteCustomization(quote.id, {
+        const newDocumentVersion = currentDocumentVersion + 1;
+
+        const customizationWithVersion = {
           customSections: customSections,
           customHTML: customHTML,
           isCustomized: isCustomized || true,
-          lastModified: new Date()
-        }, currentDocumentVersion);
+          lastModified: new Date(),
+          version: newDocumentVersion
+        };
+
+        updates.customization = customizationWithVersion;
+        updates.document_version = newDocumentVersion;
       }
-      
+
+      // ✅ Single update call that logs only ONE activity entry
+      await updateQuote(quote.id, updates);
+
       refreshQuotes();
-      
+
       toast({
         title: "Quote Saved",
         description: "All changes have been saved successfully.",
       });
-      
+
     } catch (error) {
       console.error('Save error:', error);
-      // Error handling is done in updateQuote and saveQuoteCustomization
+      // Error handling is done in updateQuote
     }
   };
 
