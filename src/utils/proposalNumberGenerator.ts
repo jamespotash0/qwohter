@@ -13,7 +13,7 @@ export class ProposalNumberGenerator {
     if (existingProposalNumber) {
       return this.generateNewVersion(existingProposalNumber);
     }
-    
+
     return this.generateNewQuoteNumber();
   }
 
@@ -22,7 +22,7 @@ export class ProposalNumberGenerator {
       // Get organization's quote starting point
       const organization = await organizationSettingsService.getOrganization();
       const quoteStartingPoint = organization?.quote_start_number || 'P100001';
-      
+
       const { data, error } = await supabase
         .from('quotes')
         .select('proposal_number')
@@ -33,12 +33,13 @@ export class ProposalNumberGenerator {
 
       // Parse the starting point to extract prefix and number
       const { prefix, baseNumber } = this.parseQuoteStartingPoint(quoteStartingPoint);
-      let highestMainNumber = baseNumber;
+      // Start one below the base number so that incrementing gives us the base number as the first quote
+      let highestMainNumber = baseNumber - 1;
 
       if (data && data.length > 0) {
         // Only consider quotes with the same prefix
         const mainNumbers = data
-          .map(quote => this.extractMainNumberWithPrefix(quote.proposal_number, prefix))
+          .map((quote: any) => this.extractMainNumberWithPrefix(quote.proposal_number, prefix))
           .filter(num => num !== null)
           .map(num => num as number);
 
@@ -73,7 +74,7 @@ export class ProposalNumberGenerator {
   private static async generateNewVersion(existingProposalNumber: string): Promise<ProposalNumberInfo> {
     try {
       const mainNumber = this.extractMainNumberString(existingProposalNumber);
-      
+
       const { data, error } = await supabase
         .from('quotes')
         .select('proposal_number')
@@ -86,7 +87,7 @@ export class ProposalNumberGenerator {
 
       if (data && data.length > 0) {
         const versions = data
-          .map(quote => this.extractVersion(quote.proposal_number))
+          .map((quote: any) => this.extractVersion(quote.proposal_number))
           .filter(version => version !== null)
           .map(version => version as number);
 
@@ -124,22 +125,22 @@ export class ProposalNumberGenerator {
   private static parseQuoteStartingPoint(startingPoint: string): { prefix: string; baseNumber: number } {
     // Remove any spaces and convert to uppercase
     const cleaned = startingPoint.replace(/\s/g, '').toUpperCase();
-    
+
     // Try to match prefix + number patterns (P10001, Q-10001, etc.)
     const prefixMatch = cleaned.match(/^([A-Z-]*)(\d+)$/);
-    
+
     if (prefixMatch) {
       const prefix = prefixMatch[1] || '';
       const number = parseInt(prefixMatch[2]!, 10);
       return { prefix, baseNumber: number };
     }
-    
+
     // If no prefix found, treat as pure number (15000)
     const numberMatch = cleaned.match(/^(\d+)$/);
     if (numberMatch) {
       return { prefix: '', baseNumber: parseInt(numberMatch[1]!, 10) };
     }
-    
+
     // Fallback for unparseable formats
     console.warn('Could not parse quote starting point:', startingPoint);
     return { prefix: 'P', baseNumber: 100001 };
@@ -171,7 +172,7 @@ export class ProposalNumberGenerator {
   static parseProposalNumber(proposalNumber: string): ProposalNumberInfo {
     const mainNumber = this.extractMainNumberString(proposalNumber);
     const version = this.extractVersion(proposalNumber) || 1;
-    
+
     return {
       mainNumber,
       version,
