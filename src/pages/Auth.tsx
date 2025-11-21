@@ -36,6 +36,7 @@ import {
   handleAuth,
   handleOtpVerification,
   handleOrganizationSubmit,
+  handleInviteJoin,
   handleCompanyInfoSubmit,
   handleCompanyInfoSkip,
   handleLogoUpload,
@@ -69,11 +70,10 @@ const Auth = () => {
   // ============================================================================
   useEffect(() => {
     // Prevent multiple executions
-    if (formState.orgCode || authFlow.orgChoice) return;
+    if (formState.orgCode) return;
 
     const urlParams = new URLSearchParams(location.search);
     const inviteToken = urlParams.get('invite');
-    const orgCodeFromUrl = urlParams.get('org');
 
     if (inviteToken && inviteToken.trim()) {
       // Handle secure invite token
@@ -83,10 +83,11 @@ const Auth = () => {
 
           if (tokenData) {
             formState.setOrgCode(tokenData.organization_code);
-            authFlow.setOrgChoice('join');
+            // Store invite token for later use after OTP verification
+            sessionStorage.setItem('pendingInviteToken', inviteToken.trim());
             toast({
               title: "Invite link detected",
-              description: `You're joining an organization`,
+              description: `You're joining ${tokenData.organization_code}`,
             });
           } else {
             toast({
@@ -106,10 +107,6 @@ const Auth = () => {
       };
 
       handleInviteToken();
-    } else if (orgCodeFromUrl && orgCodeFromUrl.trim()) {
-      // Handle legacy org code parameter
-      formState.setOrgCode(orgCodeFromUrl.trim().toUpperCase());
-      authFlow.setOrgChoice('join');
     }
   }, [location.search]);
 
@@ -226,6 +223,22 @@ const Auth = () => {
       toast,
       saveAuthState,
     });
+
+    // After successful OTP verification, check if there's a pending invite
+    const pendingInviteToken = sessionStorage.getItem('pendingInviteToken');
+    if (pendingInviteToken && authFlow.userId) {
+      // Process the invite join automatically
+      await handleInviteJoin({
+        userId: authFlow.userId,
+        orgCode: formState.orgCode,
+        inviteToken: pendingInviteToken,
+        setLoading: authFlow.setLoading,
+        navigate,
+        toast,
+      });
+      // Clear the pending invite token
+      sessionStorage.removeItem('pendingInviteToken');
+    }
   };
 
   const onResendCode = async () => {
@@ -299,10 +312,8 @@ const Auth = () => {
   const onOrganizationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await handleOrganizationSubmit({
-      orgChoice: authFlow.orgChoice,
       userId: authFlow.userId,
       orgName: formState.orgName,
-      orgCode: formState.orgCode,
       industry: formState.industry,
       foundVia: formState.foundVia,
       submissionInProgress: authFlow.submissionInProgress,
@@ -311,7 +322,6 @@ const Auth = () => {
       setLoading: authFlow.setLoading,
       navigate,
       toast,
-      locationSearch: location.search,
       saveAuthState,
     });
   };
@@ -638,12 +648,8 @@ const Auth = () => {
               {/* Organization Setup Form */}
               {authFlow.step === "organization" && (
               <OrganizationSetupForm
-                orgChoice={authFlow.orgChoice}
-                orgCode={formState.orgCode}
                 orgName={formState.orgName}
                 loading={authFlow.loading}
-                onOrgChoiceChange={authFlow.setOrgChoice}
-                onOrgCodeChange={formState.setOrgCode}
                 onOrgNameChange={formState.setOrgName}
                 onSubmit={onOrganizationSubmit}
               />

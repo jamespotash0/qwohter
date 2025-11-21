@@ -1,5 +1,5 @@
 import { Clock, Check, ChevronDown, LogOut } from "lucide-react";
-import { House, FileText, ChartBar, Users, List, Gear, Kanban, Sidebar as SidebarIcon, Lock, SquaresFour, Article, Buildings } from "@phosphor-icons/react";
+import { House, FileText, ChartBar, Users, List, Gear, Kanban, Sidebar as SidebarIcon, Lock, SquaresFour, Article, Buildings, AddressBook } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -37,6 +37,12 @@ const menuItems = [
     title: "Proposals",
     icon: FileText,
     path: "/quotes",
+    roles: ['Owner', 'Admin', 'Member'], // Available to all
+  },
+  {
+    title: "Contacts",
+    icon: AddressBook,
+    path: "/contacts",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
   {

@@ -95,6 +95,9 @@ const QuoteEditIncomplete = lazy(() => import("@/pages/QuoteEditIncomplete"));
 // Board page
 const Board = lazy(() => import("@/pages/Board"));
 
+// Contacts page
+const Contacts = lazy(() => import("@/pages/Contacts"));
+
 // Loading component
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -146,6 +149,9 @@ export const AppRouter = () => (
 
           {/* Board workflow */}
           <Route path="/board" element={<Board />} />
+
+          {/* Contacts CRM */}
+          <Route path="/contacts" element={<Contacts />} />
 
           {/* Analytics and reporting */}
           <Route path="/analytics" element={<Analytics />} />

@@ -325,7 +325,7 @@ export function useOrganizationContext(userId: string, enabled: boolean = true) 
 /**
  * Hook: Invite Member
  *
- * Invites a new member to the organization
+ * Invites a new member to the organization via email invitation
  */
 export function useInviteMember(organizationId: string) {
   const queryClient = useQueryClient();
@@ -335,53 +335,54 @@ export function useInviteMember(organizationId: string) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Check if user exists in profiles
-      const { data: profile, error: profileError } = await supabase
+      // Get current user's profile for inviter name
+      const { data: profile } = await supabase
         .from('profiles')
-        .select('*')
-        .eq('id', email) // Assuming we're getting user ID
+        .select('full_name')
+        .eq('id', user.id)
         .single();
 
-      if (profileError || !profile) {
-        throw new Error('User not found. They need to sign up first.');
+      const inviterName = profile?.full_name || 'Your teammate';
+
+      // Get organization details
+      const { data: organization } = await supabase
+        .from('organizations')
+        .select('name, organization_code')
+        .eq('id', organizationId)
+        .single();
+
+      if (!organization) {
+        throw new Error('Organization not found');
       }
 
-      // Check if user already has a membership
-      const { data: existingMembership } = await supabase
-        .from('memberships')
-        .select('id')
-        .eq('user_id', profile.id)
-        .single();
+      // Use team invitation service to send invite
+      const { teamInvitationService } = await import('@/services/teamInvitationService');
 
-      if (existingMembership) {
-        throw new Error('User is already a member of an organization.');
+      const result = await teamInvitationService.inviteMember({
+        organizationId,
+        organizationName: organization.name,
+        organizationCode: organization.organization_code,
+        email,
+        role,
+        invitedBy: user.id,
+        inviterName,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to send invitation');
       }
 
-      // Create membership invitation
-      const { data, error } = await supabase
-        .from('memberships')
-        .insert({
-          user_id: profile.id,
-          organization_id: organizationId,
-          role,
-          status: 'Pending', //membership_status
-          invited_by: user.id,
-        } as any)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
+      return result;
     },
     onSuccess: () => {
-      toast.success('Member invited successfully');
-      // Invalidate members list
+      toast.success('Invitation sent successfully');
+      // Invalidate invite tokens list to show new invitation
       queryClient.invalidateQueries({
-        queryKey: queryKeys.organization.members(organizationId),
+        queryKey: queryKeys.organization.invites(organizationId),
       });
     },
     onError: (error: Error) => {
-      toast.error(`Failed to invite member: ${error.message}`);
+      toast.error(`Failed to send invitation: ${error.message}`);
     },
   });
 }
