@@ -69,14 +69,36 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
     console.log('✅ Rate limit check passed:', rateLimitCheck.attempts_used, 'attempts used');
 
     // Get invite token data to extract department, role, and email
+    // MUST check: not used, not revoked, not expired
+    console.log('🔍 Fetching token data for:', {
+      token: inviteToken,
+      tokenLength: inviteToken.length,
+      tokenType: typeof inviteToken,
+    });
+
+    // First, check if ANY token exists with this value (debugging)
+    const { data: anyTokens, error: debugError } = await supabase
+      .from('invite_tokens')
+      .select('id, email, is_used, revoked_at, expires_at')
+      .eq('token', inviteToken);
+
+    console.log('🔍 Debug: Found tokens:', anyTokens, 'Error:', debugError);
+
     const { data: tokenData, error: tokenError } = await supabase
       .from('invite_tokens')
-      .select('department, role, email')
+      .select('department, role, email, is_used, revoked_at, expires_at')
       .eq('token', inviteToken)
-      .single<{ department: string | null; role: 'Admin' | 'Member'; email: string }>();
+      .maybeSingle<{
+        department: string | null;
+        role: 'Admin' | 'Member';
+        email: string;
+        is_used: boolean;
+        revoked_at: string | null;
+        expires_at: string;
+      }>();
 
-    if (tokenError) {
-      console.error('❌ Token query error:', tokenError);
+    if (tokenError || !tokenData) {
+      console.error('❌ Token not found. Error:', tokenError, 'Data:', tokenData);
 
       // Log failed attempt
       await logInviteAttempt({
@@ -84,12 +106,84 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
         userId: userId,
         inviteToken: inviteToken,
         success: false,
-        errorMessage: 'Invalid or expired token',
+        errorMessage: tokenError ? `Token query error: ${tokenError.message}` : 'Token not found in database',
       });
 
       toast({
         title: 'Invalid Invite',
-        description: 'This invitation is invalid or has expired.',
+        description: 'This invitation token does not exist or has been removed.',
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
+    console.log('📋 Token data retrieved:', {
+      email: tokenData.email,
+      role: tokenData.role,
+      is_used: tokenData.is_used,
+      revoked_at: tokenData.revoked_at,
+      expires_at: tokenData.expires_at,
+    });
+
+    // Validate token status
+    if (tokenData.is_used) {
+      console.error('❌ Token already used - Database shows is_used=true');
+
+      await logInviteAttempt({
+        ipAddress: userIp,
+        userId: userId,
+        inviteToken: inviteToken,
+        success: false,
+        errorMessage: 'Token already used',
+      });
+
+      toast({
+        title: 'Invite Already Used',
+        description: 'This invitation has already been accepted.',
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (tokenData.revoked_at) {
+      console.error('❌ Token revoked at:', tokenData.revoked_at);
+
+      await logInviteAttempt({
+        ipAddress: userIp,
+        userId: userId,
+        inviteToken: inviteToken,
+        success: false,
+        errorMessage: 'Token revoked',
+      });
+
+      toast({
+        title: 'Invite Revoked',
+        description: 'This invitation has been revoked. Please request a new invitation.',
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Check expiration
+    const now = new Date();
+    const expiresAt = new Date(tokenData.expires_at);
+    if (now > expiresAt) {
+      console.error('❌ Token expired:', tokenData.expires_at);
+
+      await logInviteAttempt({
+        ipAddress: userIp,
+        userId: userId,
+        inviteToken: inviteToken,
+        success: false,
+        errorMessage: 'Token expired',
+      });
+
+      toast({
+        title: 'Invite Expired',
+        description: 'This invitation has expired. Please request a new invitation.',
         variant: 'destructive',
       });
       setLoading(false);
@@ -167,7 +261,37 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
 
     console.log('✅ Found organization:', orgData.name);
 
+    // Check if user already has membership in this organization
+    const { data: existingMembership } = await supabase
+      .from('memberships')
+      .select('id, status')
+      .eq('user_id', userId)
+      .eq('organization_id', orgData.id)
+      .maybeSingle<{ id: string; status: string }>();
+
+    if (existingMembership) {
+      console.log('⚠️ User already has membership:', existingMembership);
+
+      await logInviteAttempt({
+        ipAddress: userIp,
+        userId: userId,
+        inviteToken: inviteToken,
+        success: false,
+        errorMessage: `User already has membership (status: ${existingMembership.status})`,
+      });
+
+      toast({
+        title: 'Already a Member',
+        description: `You are already a member of ${orgData.name}.`,
+      });
+
+      // User is already a member, navigate to dashboard
+      navigate('/dashboard');
+      return;
+    }
+
     // Create membership with Active status (auto-approved for invited users)
+    console.log('Creating membership for user:', userId);
     const { error: membershipsError } = await supabase
       .from('memberships')
       .insert({
@@ -180,7 +304,7 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
       } as any);
 
     if (membershipsError) {
-      console.error('Membership creation error:', membershipsError);
+      console.error('❌ Membership creation error:', membershipsError);
 
       // Log failed attempt
       await logInviteAttempt({
