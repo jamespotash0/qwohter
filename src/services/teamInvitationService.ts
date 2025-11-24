@@ -5,7 +5,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { createInviteToken } from '@/utils/inviteTokens';
+import { createInviteToken, generateSecureToken } from '@/utils/inviteTokens';
 
 interface InviteMemberParams {
   organizationId: string;
@@ -74,7 +74,7 @@ export const inviteMember = async (params: InviteMemberParams): Promise<InviteMe
     }
 
     // Check if there's an existing unused, non-revoked invite for this email
-    const { data: existingInvite } = await supabase
+    const { data: activeInvite } = await supabase
       .from('invite_tokens')
       .select('id, expires_at, revoked_at')
       .eq('organization_id', organizationId)
@@ -84,22 +84,66 @@ export const inviteMember = async (params: InviteMemberParams): Promise<InviteMe
       .gte('expires_at', new Date().toISOString())
       .maybeSingle();
 
-    if (existingInvite) {
+    if (activeInvite) {
       return {
         success: false,
         error: 'An invitation has already been sent to this email address',
       };
     }
 
-    // Create invite token with email and department
-    const { token, expires_at } = await createInviteToken(
-      organizationId,
-      role,
-      invitedBy,
-      2, // 2 hours expiry
-      department,
-      email // Pass email directly to avoid separate update
-    );
+    // Check for revoked invite for this email (to update instead of creating new)
+    const { data: revokedInvite } = await supabase
+      .from('invite_tokens')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('email', email)
+      .eq('is_used', false)
+      .not('revoked_at', 'is', null)
+      .order('revoked_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    let token: string;
+    let expires_at: string;
+
+    if (revokedInvite) {
+      // Reuse existing entry: generate new token and update it
+      const newToken = generateSecureToken();
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 2); // 2 hours expiry
+      const newExpiresAt = expiresAt.toISOString();
+
+      // Update the existing entry with new token and clear revoked_at
+      const { error: updateError } = await (supabase
+        .from('invite_tokens') as any)
+        .update({
+          token: newToken,
+          expires_at: newExpiresAt,
+          revoked_at: null, // Clear revocation
+          role, // Update role in case it changed
+          department: department || null, // Update department in case it changed
+        })
+        .eq('id', revokedInvite.id);
+
+      if (updateError) {
+        throw new Error('Failed to update invite token');
+      }
+
+      token = newToken;
+      expires_at = newExpiresAt;
+    } else {
+      // No revoked invite exists, create new token entry
+      const result = await createInviteToken(
+        organizationId,
+        role,
+        invitedBy,
+        2, // 2 hours expiry
+        department,
+        email
+      );
+      token = result.token;
+      expires_at = result.expires_at;
+    }
 
     // Get current user's session for authentication
     const { data: { session } } = await supabase.auth.getSession();

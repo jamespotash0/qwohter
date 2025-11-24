@@ -31,13 +31,14 @@ interface PendingInvite {
 
 export function TeamTab() {
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<string>("");
-  const [inviteDepartment, setInviteDepartment] = useState<string>("");
+  const [inviteRole, setInviteRole] = useState<string | undefined>(undefined);
+  const [inviteDepartment, setInviteDepartment] = useState<string | undefined>(undefined);
   const [pendingInvitesList, setPendingInvitesList] = useState<PendingInvite[]>([]);
   const [removeDialog, setRemoveDialog] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: "", memberName: "" });
   const [transferDialog, setTransferDialog] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: "", memberName: "" });
   const [inviteSentDialog, setInviteSentDialog] = useState<{ open: boolean; emails: string[] }>({ open: false, emails: [] });
   const [isSendingBatch, setIsSendingBatch] = useState(false);
+  const [isSendingSingle, setIsSendingSingle] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -60,15 +61,9 @@ export function TeamTab() {
   const { data: inviteTokens = [] } = useInviteTokens(organizationId || '', !!organizationId);
   const { mutateAsync: revokeInviteMutation } = useRevokeInvitation(organizationId || '');
 
-  // Filter for active invites (not used, not expired, not revoked)
-  const activeInvites = inviteTokens.filter(invite =>
-    !invite.is_used &&
-    !invite.revoked_at &&
-    new Date(invite.expires_at) > new Date()
-  );
+  // Filter for all pending invites (not used, includes revoked and expired for resending)
+  const pendingInvites = inviteTokens.filter(invite => !invite.is_used);
 
-  // Filter for revoked invites
-  const revokedInvites = inviteTokens.filter(invite => invite.revoked_at);
 
   // Realtime subscription for invite tokens
   useEffect(() => {
@@ -141,10 +136,37 @@ export function TeamTab() {
       department: inviteDepartment
     }]);
 
-    // Clear form
+    // Clear form and reset to placeholder
     setInviteEmail("");
-    setInviteRole("");
-    setInviteDepartment("");
+    setInviteRole(undefined);
+    setInviteDepartment(undefined);
+  };
+
+  const handleSendSingleInvite = async () => {
+    if (!inviteEmail || !inviteRole || !inviteDepartment) return;
+    if (inviteRole === 'placeholder' || inviteDepartment === 'placeholder') return;
+
+    setIsSendingSingle(true);
+    try {
+      await inviteMemberMutation({
+        email: inviteEmail,
+        role: inviteRole === 'Owner' || inviteRole === 'Admin' ? 'Admin' : 'Member',
+        department: inviteDepartment
+      });
+
+      // Show success dialog
+      setInviteSentDialog({ open: true, emails: [inviteEmail] });
+
+      // Clear form and reset to placeholder
+      setInviteEmail("");
+      setInviteRole(undefined);
+      setInviteDepartment(undefined);
+    } catch (error: any) {
+      // Error handling is done in the mutation
+      console.error('Failed to send invite:', error);
+    } finally {
+      setIsSendingSingle(false);
+    }
   };
 
   const handleRemoveFromList = (email: string) => {
@@ -190,7 +212,7 @@ export function TeamTab() {
     }
   };
 
-  const handleRevokeInvite = async (token: string, email: string) => {
+  const handleRevokeInvite = async (token: string) => {
     try {
       await revokeInviteMutation(token);
     } catch (error: any) {
@@ -213,11 +235,8 @@ export function TeamTab() {
       // Show success dialog
       setInviteSentDialog({ open: true, emails: [email] });
     } catch (error: any) {
-      toast({
-        title: "Failed to resend invite",
-        description: error.message,
-        variant: "destructive",
-      });
+      // Error already shown by mutation
+      console.error('Failed to resend invite:', error);
     }
   };
 
@@ -389,7 +408,7 @@ export function TeamTab() {
               onChange={(e) => setInviteEmail(e.target.value)}
               className="flex-1 placeholder:text-gray-400"
             />
-            <Select value={inviteDepartment || undefined} onValueChange={setInviteDepartment}>
+            <Select value={inviteDepartment} onValueChange={setInviteDepartment}>
               <SelectTrigger className="w-44 [&>span[data-placeholder]]:text-gray-400">
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
@@ -407,7 +426,7 @@ export function TeamTab() {
                 <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={inviteRole || undefined} onValueChange={(value) => setInviteRole(value as Role)}>
+            <Select value={inviteRole} onValueChange={(value) => setInviteRole(value as Role)}>
               <SelectTrigger className="w-44 [&>span[data-placeholder]]:text-gray-400">
                 <SelectValue placeholder="Role" />
               </SelectTrigger>
@@ -417,14 +436,23 @@ export function TeamTab() {
               </SelectContent>
             </Select>
             <Button
-              onClick={handleAddToList}
-              disabled={!inviteEmail || !inviteDepartment || !inviteRole}
+              onClick={handleSendSingleInvite}
+              disabled={!inviteEmail || !inviteDepartment || !inviteRole || isSendingSingle}
               className="bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white px-6"
             >
-              <Plus className="w-4 h-4 mr-1" />
-              Add
+              {isSendingSingle ? 'Sending...' : 'Invite'}
             </Button>
           </div>
+
+          {/* Add to Batch Button */}
+          <button
+            onClick={handleAddToList}
+            disabled={!inviteEmail || !inviteDepartment || !inviteRole}
+            className="mt-2 text-sm text-gray-600 dark:text-gray-400 hover:text-[var(--sidebar-icon-active)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+          >
+            <Plus className="w-4 h-4" />
+            Add another to batch send
+          </button>
         </div>
 
         {/* Pending Invites to Send */}
@@ -471,8 +499,8 @@ export function TeamTab() {
         )}
       </div>
 
-      {/* Active Invitations */}
-      {activeInvites.length > 0 && (
+      {/* Pending Invitations */}
+      {pendingInvites.length > 0 && (
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Pending Invitations</h3>
           <div className="h-px bg-gray-200 dark:bg-gray-700 mb-4"></div>
@@ -490,14 +518,14 @@ export function TeamTab() {
                     Role
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Invited
+                    Status
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                {activeInvites.map((invite) => (
+                {pendingInvites.map((invite) => (
                   <tr key={invite.id}>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
@@ -527,105 +555,40 @@ export function TeamTab() {
                       </span>
                     </td>
                     <td className="px-4 py-4">
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {new Date(invite.created_at).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                      </span>
+                      {invite.revoked_at ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                          Revoked
+                        </span>
+                      ) : new Date(invite.expires_at) < new Date() ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200">
+                          Expired
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
+                          Active
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-4 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRevokeInvite(invite.token, invite.email)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      >
-                        Revoke
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Revoked Invitations */}
-      {revokedInvites.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Revoked Invitations</h3>
-          <div className="h-px bg-gray-200 dark:bg-gray-700 mb-4"></div>
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Department
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Revoked
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                {revokedInvites.map((invite) => (
-                  <tr key={invite.id} className="opacity-60">
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs">
-                            {invite.email.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {invite.email}
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            Invitation revoked
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {invite.department || '—'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-                        {invite.role}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        {invite.revoked_at ? new Date(invite.revoked_at).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        }) : '—'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleResendInvite(invite.email, invite.role, invite.department || undefined)}
-                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                      >
-                        Resend
-                      </Button>
+                      {invite.revoked_at || new Date(invite.expires_at) < new Date() ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleResendInvite(invite.email, invite.role, invite.department || undefined)}
+                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        >
+                          Resend
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRevokeInvite(invite.token)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          Revoke
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -846,15 +809,17 @@ export function TeamTab() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Remove Team Member</DialogTitle>
-            <DialogDescription className="space-y-2">
-              <p>Are you sure you want to remove <span className="font-semibold">{removeDialog.memberName}</span> from the organization?</p>
-              <p className="text-sm">This action will:</p>
-              <ul className="text-sm list-disc list-inside space-y-1 ml-2">
-                <li>Deactivate their account and revoke access</li>
-                <li>Preserve their quotes and data</li>
-                <li>Display their name as "Deactivated User" on quotes</li>
-                <li>Allow reactivation later if needed</li>
-              </ul>
+            <DialogDescription asChild>
+              <div className="space-y-2">
+                <p>Are you sure you want to remove <span className="font-semibold">{removeDialog.memberName}</span> from the organization?</p>
+                <p className="text-sm">This action will:</p>
+                <ul className="text-sm list-disc list-inside space-y-1 ml-2">
+                  <li>Deactivate their account and revoke access</li>
+                  <li>Preserve their quotes and data</li>
+                  <li>Display their name as "Deactivated User" on quotes</li>
+                  <li>Allow reactivation later if needed</li>
+                </ul>
+              </div>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -882,15 +847,17 @@ export function TeamTab() {
               <AlertTriangle className="w-5 h-5 text-amber-600" />
               <DialogTitle>Transfer Ownership</DialogTitle>
             </div>
-            <DialogDescription className="space-y-2 pt-2">
-              <p>You are about to transfer ownership of <strong>"{currentOrganization?.name}"</strong> to <strong>{transferDialog.memberName}</strong>.</p>
-              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-3 space-y-1">
-                <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">After this action:</p>
-                <ul className="text-sm text-amber-700 dark:text-amber-300 space-y-1 ml-4 list-disc">
-                  <li>{transferDialog.memberName} will become the Owner</li>
-                  <li>You will become an Admin</li>
-                  <li>This action cannot be undone</li>
-                </ul>
+            <DialogDescription asChild>
+              <div className="space-y-2 pt-2">
+                <p>You are about to transfer ownership of <strong>"{currentOrganization?.name}"</strong> to <strong>{transferDialog.memberName}</strong>.</p>
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-3 space-y-1">
+                  <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">After this action:</p>
+                  <ul className="text-sm text-amber-700 dark:text-amber-300 space-y-1 ml-4 list-disc">
+                    <li>{transferDialog.memberName} will become the Owner</li>
+                    <li>You will become an Admin</li>
+                    <li>This action cannot be undone</li>
+                  </ul>
+                </div>
               </div>
             </DialogDescription>
           </DialogHeader>
@@ -918,43 +885,45 @@ export function TeamTab() {
             <DialogTitle className="text-center text-xl">
               {inviteSentDialog.emails.length === 1 ? 'Invitation Sent!' : 'Invitations Sent!'}
             </DialogTitle>
-            <DialogDescription className="text-center pt-4 space-y-4">
-              <div className="flex justify-center">
-                <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-3">
-                  <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <p className="text-base font-medium text-gray-900 dark:text-white">
-                  {inviteSentDialog.emails.length === 1
-                    ? "We've sent an invitation to:"
-                    : `We've sent ${inviteSentDialog.emails.length} invitations to:`}
-                </p>
-                {inviteSentDialog.emails.length === 1 ? (
-                  <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                    {inviteSentDialog.emails[0]}
-                  </p>
-                ) : (
-                  <div className="max-h-32 overflow-y-auto bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 space-y-1">
-                    {inviteSentDialog.emails.map((email, i) => (
-                      <p key={i} className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                        • {email}
-                      </p>
-                    ))}
+            <DialogDescription asChild>
+              <div className="text-center pt-4 space-y-4">
+                <div className="flex justify-center">
+                  <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-3">
+                    <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
                   </div>
-                )}
-              </div>
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-left">
-                <p className="text-sm text-blue-900 dark:text-blue-100 font-medium mb-2">
-                  Please ask them to:
-                </p>
-                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 ml-4 list-disc">
-                  <li>Check their inbox for the invitation email</li>
-                  <li>Check their spam/junk folder if not found</li>
-                  <li>Click the invitation link to join your organization</li>
-                </ul>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-base font-medium text-gray-900 dark:text-white">
+                    {inviteSentDialog.emails.length === 1
+                      ? "We've sent an invitation to:"
+                      : `We've sent ${inviteSentDialog.emails.length} invitations to:`}
+                  </p>
+                  {inviteSentDialog.emails.length === 1 ? (
+                    <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                      {inviteSentDialog.emails[0]}
+                    </p>
+                  ) : (
+                    <div className="max-h-32 overflow-y-auto bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 space-y-1">
+                      {inviteSentDialog.emails.map((email, i) => (
+                        <p key={i} className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                          • {email}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-left">
+                  <p className="text-sm text-blue-900 dark:text-blue-100 font-medium mb-2">
+                    Please ask them to:
+                  </p>
+                  <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 ml-4 list-disc">
+                    <li>Check their inbox for the invitation email</li>
+                    <li>Check their spam/junk folder if not found</li>
+                    <li>Click the invitation link to join your organization</li>
+                  </ul>
+                </div>
               </div>
             </DialogDescription>
           </DialogHeader>
