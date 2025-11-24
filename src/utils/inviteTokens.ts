@@ -70,29 +70,25 @@ export const createInviteToken = async (
 /**
  * Validate and retrieve invite token information
  * Checks for: not used, not revoked, not expired
+ * Uses RPC function to bypass RLS for anonymous users
  */
 export const validateInviteToken = async (token: string): Promise<InviteToken | null> => {
   if (!token || token.trim().length === 0) {
     return null;
   }
 
-  const { data, error } = await supabase
-    .from('invite_tokens')
-    .select('*')
-    .eq('token', token)
-    .eq('is_used', false)
-    .is('revoked_at', null)
-    .single();
+  // Use RPC function to validate token (bypasses RLS for anonymous users)
+  const { data, error } = await (supabase.rpc as any)(
+    'validate_invite_token',
+    { token_value: token }
+  ).maybeSingle();
 
-  if (error || !data) {
+  if (error) {
+    console.error('Token validation error:', error);
     return null;
   }
 
-  // Check if token has expired
-  const now = new Date();
-  const expiresAt = new Date((data as any).expires_at);
-
-  if (now > expiresAt) {
+  if (!data) {
     return null;
   }
 
