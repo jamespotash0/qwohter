@@ -38,7 +38,7 @@ export interface OrganizationMember {
   joined_at: string;
   email?: string;
   full_name?: string;
-  join_type?: 'Invited' | 'Requested' | 'Direct';
+  join_type: 'Invited' | 'Direct';
   department?: string | null;
 }
 
@@ -58,6 +58,7 @@ export interface InviteToken {
   expires_at: string;
   created_at: string;
   is_used: boolean;
+  department?: string | null;
 }
 
 export interface UpdateOrganizationData {
@@ -216,7 +217,7 @@ export async function fetchOrganizationMembers(organizationId: string): Promise<
         joined_at: membership.joined_at || new Date().toISOString(),
         email: profile?.email || undefined,
         full_name: profile?.full_name || undefined,
-        join_type: membership.join_type as 'Invited' | 'Requested' | 'Direct' | undefined,
+        join_type: (membership.join_type as 'Invited' | 'Direct') || 'Direct',
         department: membership.department || null,
       } as OrganizationMember;
     });

@@ -14,6 +14,7 @@ interface InviteMemberParams {
   role: 'Admin' | 'Member';
   invitedBy: string;
   inviterName: string;
+  department?: string;
 }
 
 interface InviteMemberResult {
@@ -33,6 +34,7 @@ export const inviteMember = async (params: InviteMemberParams): Promise<InviteMe
     role,
     invitedBy,
     inviterName,
+    department,
   } = params;
 
   try {
@@ -88,12 +90,13 @@ export const inviteMember = async (params: InviteMemberParams): Promise<InviteMe
       };
     }
 
-    // Create invite token with email stored in database
+    // Create invite token with email and department
     const { token, expires_at } = await createInviteToken(
       organizationId,
       role,
       invitedBy,
-      7 // 7 days expiry
+      2, // 2 hours expiry
+      department
     );
 
     // Update the invite token record with email

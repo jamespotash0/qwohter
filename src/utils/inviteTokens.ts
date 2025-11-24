@@ -14,6 +14,7 @@ export interface InviteToken {
   expires_at: string;
   created_at: string;
   is_used: boolean;
+  department?: string | null;
 }
 
 /**
@@ -33,11 +34,12 @@ export const createInviteToken = async (
   organizationId: string,
   role: 'Admin' | 'Member',
   createdBy: string,
-  expiryDays: number = 7
+  expiryHours: number = 2,
+  department?: string
 ): Promise<{ token: string; expires_at: string }> => {
   const token = generateSecureToken();
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + expiryDays);
+  expiresAt.setHours(expiresAt.getHours() + expiryHours);
 
   const { error } = await supabase
     .from('invite_tokens')
@@ -47,8 +49,9 @@ export const createInviteToken = async (
       role,
       created_by: createdBy,
       expires_at: expiresAt.toISOString(),
-      is_used: false
-    });
+      is_used: false,
+      department: department || null
+    } as any);
 
   if (error) {
     console.error('Error creating invite token:', error);

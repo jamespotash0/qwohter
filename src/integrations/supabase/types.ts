@@ -154,34 +154,40 @@ export interface Database {
           id: string;
           token: string;
           organization_id: string;
+          email: string;
           role: string;
           created_by: string;
           expires_at: string;
           created_at: string;
           updated_at: string;
           is_used: boolean;
+          department: string | null;
         };
         Insert: {
           id?: string;
           token: string;
           organization_id: string;
+          email?: string;
           role: string;
           created_by: string;
           expires_at: string;
           created_at?: string;
           updated_at?: string;
           is_used?: boolean;
+          department?: string | null;
         };
         Update: {
           id?: string;
           token?: string;
           organization_id?: string;
+          email?: string;
           role?: string;
           created_by?: string;
           expires_at?: string;
           created_at?: string;
           updated_at?: string;
           is_used?: boolean;
+          department?: string | null;
         };
         Relationships: [
           {
@@ -207,6 +213,7 @@ export interface Database {
           organization_id: string;
           role: 'Owner' | 'Admin' | 'Member';
           status: 'Active' | 'Suspended'; //membership_status
+          join_type: 'Direct' | 'Invited';
           invited_by: string | null;
           joined_at: string | null;
           created_at: string;
@@ -218,6 +225,7 @@ export interface Database {
           organization_id: string;
           role?: 'Owner' | 'Admin' | 'Member';
           status?: 'Active' | 'Suspended'; //membership_status
+          join_type?: 'Direct' | 'Invited';
           invited_by?: string | null;
           joined_at?: string | null;
           created_at?: string;
@@ -229,6 +237,7 @@ export interface Database {
           organization_id?: string;
           role?: 'Owner' | 'Admin' | 'Member';
           status?: 'Active' | 'Suspended'; //membership_status
+          join_type?: 'Direct' | 'Invited';
           invited_by?: string | null;
           joined_at?: string | null;
           created_at?: string;
@@ -498,6 +507,38 @@ export interface Database {
           completed_at?: string | null;
         };
       };
+      invite_token_attempts: {
+        Row: {
+          id: string;
+          ip_address: string;
+          user_id: string | null;
+          invite_token: string;
+          attempted_at: string;
+          success: boolean;
+          error_message: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          ip_address: string;
+          user_id?: string | null;
+          invite_token: string;
+          attempted_at?: string;
+          success?: boolean;
+          error_message?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          ip_address?: string;
+          user_id?: string | null;
+          invite_token?: string;
+          attempted_at?: string;
+          success?: boolean;
+          error_message?: string | null;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -526,6 +567,31 @@ export interface Database {
       cleanup_expired_onboarding: {
         Args: {};
         Returns: void;
+      };
+      check_invite_rate_limit: {
+        Args: {
+          p_ip_address: string;
+          p_user_id?: string | null;
+          p_invite_token?: string | null;
+          p_window_minutes?: number;
+          p_max_attempts?: number;
+        };
+        Returns: Array<{
+          allowed: boolean;
+          attempts_used: number;
+          window_reset_at: string;
+          reason: string;
+        }>;
+      };
+      log_invite_attempt: {
+        Args: {
+          p_ip_address: string;
+          p_user_id: string | null;
+          p_invite_token: string;
+          p_success: boolean;
+          p_error_message?: string | null;
+        };
+        Returns: string;
       };
     };
     Enums: {

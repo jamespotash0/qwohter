@@ -135,10 +135,74 @@ DROP FUNCTION IF EXISTS set_organization_code();
 
 RAISE NOTICE 'Organization code triggers and functions removed';
 
+-- ============================================================================
+-- 7. Update join_type constraint (remove 'Requested')
+-- ============================================================================
 
+-- Drop old unnamed constraint (if exists)
+DO $$
+BEGIN
+  -- Find and drop any CHECK constraints on join_type column
+  EXECUTE (
+    SELECT 'ALTER TABLE memberships DROP CONSTRAINT ' || conname || ';'
+    FROM pg_constraint
+    WHERE conrelid = 'memberships'::regclass
+    AND contype = 'c'
+    AND pg_get_constraintdef(oid) LIKE '%join_type%'
+    LIMIT 1
+  );
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'No existing join_type constraint to drop';
+END $$;
+
+-- Drop named constraint if it exists
+ALTER TABLE memberships DROP CONSTRAINT IF EXISTS valid_join_type;
+
+-- Update any existing 'Requested' memberships to 'Direct'
+UPDATE memberships
+SET join_type = 'Direct'
+WHERE join_type = 'Requested';
+
+-- Update any NULL join_type values to 'Direct' (shouldn't exist but safety check)
+UPDATE memberships
+SET join_type = 'Direct'
+WHERE join_type IS NULL;
+
+-- Make join_type NOT NULL with default 'Direct'
+ALTER TABLE memberships
+ALTER COLUMN join_type SET DEFAULT 'Direct',
+ALTER COLUMN join_type SET NOT NULL;
+
+-- Add new constraint without 'Requested' and without NULL
+ALTER TABLE memberships
+ADD CONSTRAINT valid_join_type CHECK (
+  join_type IN ('Direct', 'Invited')
+);
+
+RAISE NOTICE 'join_type constraint updated - Requested removed, NOT NULL enforced';
 
 -- ============================================================================
--- 8. Verify changes
+-- 8. Optimize invite_tokens table
+-- ============================================================================
+
+-- Add composite index for common query pattern (org + email + used status)
+CREATE INDEX IF NOT EXISTS idx_invite_tokens_org_email_used
+ON invite_tokens(organization_id, email, is_used);
+
+-- Add email index for lookup queries
+CREATE INDEX IF NOT EXISTS idx_invite_tokens_email
+ON invite_tokens(email);
+
+-- Add constraint to ensure expires_at is always in future
+ALTER TABLE invite_tokens
+ADD CONSTRAINT IF NOT EXISTS expires_at_future_check
+CHECK (expires_at > created_at);
+
+RAISE NOTICE 'invite_tokens table optimized - indexes added';
+
+-- ============================================================================
+-- 9. Verify changes
 -- ============================================================================
 
 DO $$

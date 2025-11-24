@@ -181,7 +181,7 @@ serve(async (req) => {
                 <a href="${inviteUrl}" class="button">Accept Invitation</a>
 
                 <div class="expiry">
-                  ⏱️ This invitation expires in 7 days
+                  ⏱️ This invitation expires in 2 hours
                 </div>
               </div>
 
@@ -222,7 +222,7 @@ Invited By: ${requestData.inviterName}
 Accept your invitation by clicking the link below:
 ${inviteUrl}
 
-This invitation expires in 7 days.
+This invitation expires in 2 hours.
 
 What is Qwohter?
 Qwohter is a professional quote management platform that helps teams create, track, and manage quotes efficiently.
