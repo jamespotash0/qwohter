@@ -1,6 +1,6 @@
-//@ts-ignore
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-//@ts-ignore
+// @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
 const corsHeaders = {
@@ -18,7 +18,7 @@ interface InviteData {
   role: 'Admin' | 'Member';
 }
 
-//@ts-ignore
+// @ts-ignore
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -42,9 +42,9 @@ serve(async (req) => {
     }
 
     // Initialize Supabase client to verify user
-    //@ts-ignore
+    // @ts-ignore
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    //@ts-ignore
+    // @ts-ignore
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -63,9 +63,9 @@ serve(async (req) => {
     }
 
     // Get Resend API key from environment
-    //@ts-ignore
+    // @ts-ignore
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    //@ts-ignore
+    // @ts-ignore
     const appUrl = Deno.env.get('APP_URL') || 'https://app.qwohter.com';
 
     if (!resendApiKey) {
@@ -211,7 +211,7 @@ If you weren't expecting this invitation, you can safely ignore this email.
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Qwohter Team <james@qwohter.com>',
+        from: 'Qwohter Team <invites@qwohter.com>',
         to: [requestData.email],
         subject: `${requestData.inviterName} invited you to join ${requestData.organizationName} on Qwohter`,
         html: emailHtml,
