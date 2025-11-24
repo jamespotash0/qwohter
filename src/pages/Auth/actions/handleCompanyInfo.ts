@@ -38,7 +38,8 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
     foundVia,
     setLoading,
     toast,
-    setStep,
+    clearAuthState,
+    navigate,
   } = params;
 
   if (!userId || !companyPhone || !companyAddress || !companyWebsite || !quoteStartingPoint) return;
@@ -67,20 +68,16 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
     });
 
     console.log('✅ Company info saved successfully');
-    console.log('🔍 setStep function exists?', !!setStep);
 
     toast({
-      title: 'Company information saved!',
-      description: 'Almost done! Choose how you want to get started.',
+      title: 'Setup complete!',
+      description: 'Welcome to your 14-day free trial. Enjoy full access to all features!',
     });
 
-    // Go to trial activation step to let user choose
-    if (setStep) {
-      console.log('🔄 Setting step to trial-activation');
-      setStep('trial-activation');
-    } else {
-      console.error('❌ setStep function not provided - cannot navigate to trial-activation');
-    }
+    // Clear auth state and navigate to dashboard
+    // User was already auto-enrolled in free trial during org creation
+    clearAuthState();
+    navigate('/dashboard');
   } catch (error: any) {
     toast({
       title: 'Company Info Error',
@@ -94,21 +91,22 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
 
 interface HandleCompanyInfoSkipParams {
   toast: (props: { title: string; description: string }) => void;
-  setStep?: (step: 'trial-activation') => void;
+  clearAuthState: () => void;
+  navigate: NavigateFunction;
 }
 
 export const handleCompanyInfoSkip = (params: HandleCompanyInfoSkipParams) => {
-  const { toast, setStep } = params;
+  const { toast, clearAuthState, navigate } = params;
 
   toast({
-    title: 'Company info skipped',
-    description: 'Choose how you want to get started.',
+    title: 'Setup complete!',
+    description: 'Welcome to your 14-day free trial. You can add company details later in Settings.',
   });
 
-  // Go to trial activation step to let user choose
-  if (setStep) {
-    setStep('trial-activation');
-  }
+  // Clear auth state and navigate to dashboard
+  // User was already auto-enrolled in free trial during org creation
+  clearAuthState();
+  navigate('/dashboard');
 };
 
 interface HandleLogoUploadParams {

@@ -501,6 +501,18 @@ export const authFlowHelpers = {
       // Log success
       await OrganizationCreationLimiter.logCreationAttempt(userId, 'Success');
 
+      // ✨ Auto-enroll new organization in 14-day free trial
+      console.log('🎁 Auto-enrolling organization in free trial:', organizationId);
+      const { stripeService } = await import('@/services/stripeService');
+      const trialResult = await stripeService.enrollInFreeTrial(organizationId);
+
+      if (trialResult.success) {
+        console.log('✅ Free trial enrollment successful');
+      } else {
+        console.warn('⚠️ Free trial enrollment failed (non-blocking):', trialResult.error);
+        // Don't block onboarding if trial enrollment fails
+      }
+
       // Complete onboarding step
       await onboardingStateHelpers.completeStep(
         userId,

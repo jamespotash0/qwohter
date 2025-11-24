@@ -25,7 +25,6 @@ const SIGNUP_STEPS: StepInfo[] = [
   { key: "verify-otp", label: "Verify Email", shortLabel: "Verify" },
   { key: "organization", label: "Organization", shortLabel: "Org" },
   { key: "company-info", label: "Company Details", shortLabel: "Details" },
-  { key: "subscription", label: "Choose Plan", shortLabel: "Plan" },
 ];
 
 const INVITE_SIGNUP_STEPS: StepInfo[] = [

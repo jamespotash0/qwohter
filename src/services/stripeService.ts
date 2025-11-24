@@ -548,26 +548,26 @@ export const enrollInFreeTrial = async (organizationId: string): Promise<{ succe
       return { success: true, error: null };
     }
 
-    // Get the Individual plan as default trial plan
-    const planResult = await getPlanByName('Individual');
+    // Get the Team plan as default trial plan
+    const planResult = await getPlanByName('Team');
 
     if (planResult.error || !planResult.data) {
-      console.error('Failed to get Individual plan for trial:', planResult.error);
-      return { success: false, error: 'Individual plan not found' };
+      console.error('Failed to get Team plan for trial:', planResult.error);
+      return { success: false, error: 'Team plan not found' };
     }
 
-    const individualPlan = planResult.data as SubscriptionPlan;
+    const teamPlan = planResult.data as SubscriptionPlan;
 
     // Calculate trial end date (14 days from now)
     const trialEndDate = new Date();
     trialEndDate.setDate(trialEndDate.getDate() + 14);
 
     // Create subscription record with trialing status
-    const { error } = await supabase
+    const { error: subscriptionError } = await supabase
       .from('subscriptions')
       .insert({
         organization_id: organizationId,
-        plan_id: individualPlan.id,
+        plan_id: teamPlan.id,
         stripe_subscription_status: 'trialing',
         current_period_end: trialEndDate.toISOString(),
         is_active: true,
@@ -576,9 +576,20 @@ export const enrollInFreeTrial = async (organizationId: string): Promise<{ succe
         number_of_active_users: 1,
       } as any);
 
-    if (error) {
-      console.error('Error enrolling in free trial:', error);
-      return { success: false, error: error.message };
+    if (subscriptionError) {
+      console.error('Error enrolling in free trial:', subscriptionError);
+      return { success: false, error: subscriptionError.message };
+    }
+
+    // Mark organization as having used trial
+    const { error: orgError } = await supabase
+      .from('organizations')
+      .update({ has_used_trial: true })
+      .eq('id', organizationId);
+
+    if (orgError) {
+      console.warn('Failed to mark organization trial as used:', orgError);
+      // Don't fail the enrollment if this update fails
     }
 
     console.log('Successfully enrolled organization in 14-day free trial');

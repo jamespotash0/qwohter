@@ -498,7 +498,8 @@ const Auth = () => {
   const onCompanyInfoSkip = () => {
     handleCompanyInfoSkip({
       toast,
-      setStep: authFlow.setStep,
+      clearAuthState,
+      navigate,
     });
   };
 
