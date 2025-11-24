@@ -562,13 +562,15 @@ export const enrollInFreeTrial = async (organizationId: string): Promise<{ succe
     const teamPlan = planResult.data as SubscriptionPlan;
     console.log('✅ Team plan found:', { id: teamPlan.id, name: teamPlan.name });
 
-    // Calculate trial end date (14 days from now)
+    // Calculate trial period (14 days from now)
+    const trialStartDate = new Date();
     const trialEndDate = new Date();
     trialEndDate.setDate(trialEndDate.getDate() + 14);
 
     console.log('💾 Inserting subscription record...', {
       organization_id: organizationId,
       plan_id: teamPlan.id,
+      trial_start: trialStartDate.toISOString(),
       trial_end: trialEndDate.toISOString()
     });
 
@@ -579,6 +581,7 @@ export const enrollInFreeTrial = async (organizationId: string): Promise<{ succe
         organization_id: organizationId,
         plan_id: teamPlan.id,
         stripe_subscription_status: 'Trialing',
+        current_period_start: trialStartDate.toISOString(),
         current_period_end: trialEndDate.toISOString(),
         is_active: true,
         access_blocked: false,

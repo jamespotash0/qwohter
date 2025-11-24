@@ -192,6 +192,27 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     }
   }, [searchParams, organization?.id]);
 
+  // Handle upgrade parameter from sidebar trial banner
+  useEffect(() => {
+    const shouldUpgrade = searchParams.get('upgrade');
+    if (shouldUpgrade === 'true' && subscription && plans.length > 0) {
+      const isTrialing = subscription.stripe_subscription_status?.toLowerCase() === 'trialing';
+
+      if (isTrialing) {
+        // Remove upgrade param from URL
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('upgrade');
+        setSearchParams(newParams);
+
+        // Find current plan and trigger upgrade
+        const currentPlan = plans.find(p => p.id === subscription.plan_id);
+        if (currentPlan) {
+          handleUpgradePlan(currentPlan);
+        }
+      }
+    }
+  }, [searchParams, subscription, plans]);
+
   // Set up centralized realtime subscriptions
   useRealtimeSubscription(
     'subscription_plans',
@@ -788,12 +809,33 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                   </div>
                 </div>
                 <Button
-                  onClick={() => setShowCancelDialog(true)}
+                  onClick={() => {
+                    const isTrialing = subscription?.stripe_subscription_status?.toLowerCase() === 'trialing';
+                    if (isTrialing) {
+                      // For trial users, redirect to Stripe checkout with their current plan
+                      const currentPlan = plans.find(p => p.id === subscription?.plan_id);
+                      if (currentPlan) {
+                        handleUpgradePlan(currentPlan);
+                      }
+                    } else {
+                      // For active paid users, open manage dialog
+                      setShowCancelDialog(true);
+                    }
+                  }}
                   variant="outline"
                   className="shrink-0 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
-                  disabled={!hasPermission}
+                  disabled={!hasPermission || processingPlan !== null}
                 >
-                  Manage Plan
+                  {processingPlan !== null ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : subscription?.stripe_subscription_status?.toLowerCase() === 'trialing' ? (
+                    'Upgrade Plan'
+                  ) : (
+                    'Manage Plan'
+                  )}
                 </Button>
               </>
             );
@@ -918,12 +960,13 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                     const isIntervalChanged = isCurrent && planIntervals[plan.id] && selectedInterval !== currentInterval;
 
                     if (isCurrent && !isIntervalChanged) {
-                      // Current plan with same interval - show "Current Plan"
+                      // Current plan with same interval - show "Current Plan" or "Free Trial"
+                      const isTrialing = subscription?.stripe_subscription_status?.toLowerCase() === 'trialing';
                       return (
                         <Button
                           className="w-full bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 cursor-default pointer-events-none"
                         >
-                          Current Plan
+                          {isTrialing ? 'Free Trial' : 'Current Plan'}
                         </Button>
                       );
                     } else if (isIndividualDisabled) {
