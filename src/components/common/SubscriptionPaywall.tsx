@@ -7,7 +7,7 @@ import { stripeService } from '@/services/stripeService';
 import { useSignOut } from '@/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 
 interface SubscriptionPaywallProps {
   organizationId: string;
@@ -83,67 +83,60 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
     } else {
       console.log('✅ Using cached subscription, realtime will handle updates');
     }
+  }, [organizationId]);
 
-    // REALTIME: Detects all subscription changes (activation & deactivation)
-    const channel = supabase
-      .channel(`subscription-changes-${organizationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'subscriptions',
-          filter: `organization_id=eq.${organizationId}`,
-        },
-        async (payload) => {
-          console.log('🔔 Realtime: Subscription changed:', payload);
+  // Set up centralized realtime subscription
+  useRealtimeSubscription(
+    'subscriptions',
+    ['subscriptions', organizationId],
+    { filter: `organization_id=eq.${organizationId}` },
+    !!organizationId
+  );
 
-          // Get the new subscription status
-          const { isValid, reason } = await stripeService.hasValidSubscription(organizationId);
+  // Watch for subscription changes via query invalidation
+  useEffect(() => {
+    if (!organizationId) return;
 
-          console.log('🔍 Realtime: New status:', { isValid, reason });
+    const unsubscribe = queryClient.getQueryCache().subscribe(async (event) => {
+      if (event?.query.queryKey[0] === 'subscriptions' && event?.query.queryKey[1] === organizationId) {
+        console.log('🔔 Realtime: Subscription changed');
 
-          // Check if status actually changed
-          const statusChanged = isValid !== hasAccess;
+        // Get the new subscription status
+        const { isValid, reason } = await stripeService.hasValidSubscription(organizationId);
 
-          if (statusChanged) {
-            console.log('✨ Realtime: Status changed:', { from: hasAccess, to: isValid });
+        console.log('🔍 Realtime: New status:', { isValid, reason });
 
-            // Update state immediately
-            setHasAccess(isValid);
-            setBlockReason(reason || '');
+        // Check if status actually changed
+        const statusChanged = isValid !== hasAccess;
 
-            // Update cache in localStorage
-            localStorage.setItem(`subscription_${organizationId}`, JSON.stringify({
-              hasAccess: isValid,
-              reason: reason || '',
-              timestamp: Date.now(),
-            }));
+        if (statusChanged) {
+          console.log('✨ Realtime: Status changed:', { from: hasAccess, to: isValid });
 
-            // Show toast and reload
-            if (isValid && !hasAccess) {
-              toast.success('Subscription activated! Reloading...', { duration: 2000 });
-              setTimeout(() => window.location.reload(), 2000);
-            } else if (!isValid && hasAccess) {
-              toast.error('Subscription expired. Redirecting...', { duration: 1500 });
-              setTimeout(() => window.location.reload(), 1500);
-            }
+          // Update state immediately
+          setHasAccess(isValid);
+          setBlockReason(reason || '');
+
+          // Update cache in localStorage
+          localStorage.setItem(`subscription_${organizationId}`, JSON.stringify({
+            hasAccess: isValid,
+            reason: reason || '',
+            timestamp: Date.now(),
+          }));
+
+          // Show toast and reload
+          if (isValid && !hasAccess) {
+            toast.success('Subscription activated! Reloading...', { duration: 2000 });
+            setTimeout(() => window.location.reload(), 2000);
+          } else if (!isValid && hasAccess) {
+            toast.error('Subscription expired. Redirecting...', { duration: 1500 });
+            setTimeout(() => window.location.reload(), 1500);
           }
         }
-      )
-      .subscribe((status) => {
-        console.log('📡 Realtime status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Realtime: Connected');
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('❌ Realtime: Connection failed');
-        }
-      });
+      }
+    });
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [organizationId]);
+    return unsubscribe;
+  }, [organizationId, queryClient, hasAccess]);
 
   const checkSubscription = async (showLoading: boolean = true) => {
     // Race condition fix: Increment request version

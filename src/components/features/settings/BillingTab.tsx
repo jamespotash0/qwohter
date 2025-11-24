@@ -21,6 +21,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
 import { useSession } from "@/auth";
+import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
 
 interface BillingTabProps {
   organization: any;
@@ -191,100 +192,89 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     }
   }, [searchParams, organization?.id]);
 
-  // Realtime subscription for subscription_plans
+  // Set up centralized realtime subscriptions
+  useRealtimeSubscription(
+    'subscription_plans',
+    ['subscription_plans'],
+    {}, // No filter - listen to all plans
+    true // Always enabled
+  );
+
+  useRealtimeSubscription(
+    'subscriptions',
+    ['subscriptions', organization?.id || ''],
+    { filter: `organization_id=eq.${organization?.id}` },
+    !!organization?.id
+  );
+
+  // Watch for subscription_plans changes
   useEffect(() => {
-    const channel = supabase
-      .channel('subscription_plans_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'subscription_plans'
-        },
-        (payload) => {
-          console.log('Subscription plans changed:', payload);
-          // Reload plans data
-          supabase
-            .from('subscription_plans')
-            .select('*')
-            .eq('is_active', true)
-            .order('sort_order', { ascending: true })
-            .then(({ data, error }) => {
-              if (!error && data) {
-                setPlans(data);
-                // Update cache
-                try {
-                  localStorage.setItem('billing_plans_cache', JSON.stringify(data));
-                } catch (e) {
-                  console.error('Failed to update plans cache:', e);
-                }
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event?.query.queryKey[0] === 'subscription_plans') {
+        console.log('Subscription plans changed, reloading...');
+        // Reload plans data
+        supabase
+          .from('subscription_plans')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+          .then(({ data, error }) => {
+            if (!error && data) {
+              setPlans(data);
+              // Update cache
+              try {
+                localStorage.setItem('billing_plans_cache', JSON.stringify(data));
+              } catch (e) {
+                console.error('Failed to update plans cache:', e);
               }
-            });
-        }
-      )
-      .subscribe();
+            }
+          });
+      }
+    });
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+    return unsubscribe;
+  }, [queryClient]);
 
-  // Realtime subscription for subscriptions table
+  // Watch for subscriptions changes
   useEffect(() => {
     if (!organization?.id) return;
 
-    const channel = supabase
-      .channel('subscriptions_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'subscriptions',
-          filter: `organization_id=eq.${organization.id}`
-        },
-        async (payload) => {
-          console.log('Subscription changed:', payload);
+    const unsubscribe = queryClient.getQueryCache().subscribe(async (event) => {
+      if (event?.query.queryKey[0] === 'subscriptions' && event?.query.queryKey[1] === organization.id) {
+        console.log('Subscription changed, reloading...');
 
-          // Clear subscription cache to force re-check on next navigation
-          queryClient.invalidateQueries({ queryKey: queryKeys.subscription.status(organization.id) });
-
-          // Reload subscription data
-          const { data: subData, error: subError } = await stripeService.getSubscription(organization.id);
-          if (!subError) {
-            // Update state even if subData is null (subscription was deleted)
-            setSubscription(subData);
-            // Update cache
-            try {
-              if (subData) {
-                localStorage.setItem('billing_subscription_cache', JSON.stringify(subData));
-              } else {
-                // Clear cache if subscription was deleted
-                localStorage.removeItem('billing_subscription_cache');
-              }
-            } catch (e) {
-              console.error('Failed to update subscription cache:', e);
-            }
-          }
-
-          // Recalculate user count
-          const { quantity } = await stripeService.calculateSubscriptionQuantity(organization.id);
-          setUserCount(quantity);
+        // Reload subscription data
+        const { data: subData, error: subError } = await stripeService.getSubscription(organization.id);
+        if (!subError) {
+          // Update state even if subData is null (subscription was deleted)
+          setSubscription(subData);
           // Update cache
           try {
-            localStorage.setItem('billing_user_count_cache', JSON.stringify(quantity));
+            if (subData) {
+              localStorage.setItem('billing_subscription_cache', JSON.stringify(subData));
+            } else {
+              // Clear cache if subscription was deleted
+              localStorage.removeItem('billing_subscription_cache');
+            }
           } catch (e) {
-            console.error('Failed to update user count cache:', e);
+            console.error('Failed to update subscription cache:', e);
           }
         }
-      )
-      .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [organization?.id]);
+        // Recalculate user count
+        const { quantity } = await stripeService.calculateSubscriptionQuantity(organization.id);
+        setUserCount(quantity);
+        // Update cache
+        try {
+          localStorage.setItem('billing_user_count_cache', JSON.stringify(quantity));
+        } catch (e) {
+          console.error('Failed to update user count cache:', e);
+        }
+      }
+    });
+
+    return unsubscribe;
+  }, [organization?.id, queryClient]);
 
   const loadBillingData = async () => {
     try {

@@ -5,44 +5,22 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { contactsService } from '@/services/contactsService';
 import type { Contact, CreateContactInput, UpdateContactInput } from '@/lib/types/contacts';
 import { useToast } from '@/hooks/use-toast';
+import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 
 /**
  * Fetch all contacts for an organization with realtime updates
  */
 export const useContacts = (organizationId: string | undefined) => {
-  const queryClient = useQueryClient();
-
-  // Set up realtime subscription
-  useEffect(() => {
-    if (!organizationId) return;
-
-    const channel = supabase
-      .channel(`contacts:${organizationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'contacts',
-          filter: `organization_id=eq.${organizationId}`,
-        },
-        (payload) => {
-          console.log('Contacts realtime update:', payload);
-          // Invalidate and refetch contacts when any change occurs
-          queryClient.invalidateQueries({ queryKey: ['contacts', organizationId] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [organizationId, queryClient]);
+  // Set up centralized realtime subscription
+  useRealtimeSubscription(
+    'contacts',
+    ['contacts', organizationId || ''],
+    { filter: `organization_id=eq.${organizationId}` },
+    !!organizationId
+  );
 
   return useQuery({
     queryKey: ['contacts', organizationId],
