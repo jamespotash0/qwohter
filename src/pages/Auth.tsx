@@ -114,9 +114,12 @@ const Auth = () => {
         const tokenData = await validateInviteToken(inviteToken.trim());
 
         if (tokenData) {
+          console.log('✅ Invite token validated, setting organizationId:', tokenData.organization_id);
           formState.setOrganizationId(tokenData.organization_id);
-          // Store invite token for later use after OTP verification
+          // Store both invite token AND organizationId for later use after OTP verification
           sessionStorage.setItem('pendingInviteToken', inviteToken.trim());
+          sessionStorage.setItem('pendingOrganizationId', tokenData.organization_id);
+          console.log('✅ Stored pendingInviteToken and pendingOrganizationId in sessionStorage');
 
           // SECURITY: Remove token from URL to prevent leakage via history/logs/screenshots
           const newUrl = new URL(window.location.href);
@@ -271,7 +274,24 @@ const Auth = () => {
 
     // Check if there's a pending invite token BEFORE OTP verification
     const pendingInviteToken = sessionStorage.getItem('pendingInviteToken');
-    const isInvitee = !!(pendingInviteToken && formState.organizationId);
+    const pendingOrgId = sessionStorage.getItem('pendingOrganizationId');
+
+    // Restore organizationId from sessionStorage if it's not in state
+    if (pendingOrgId && !formState.organizationId) {
+      console.log('🔄 Restoring organizationId from sessionStorage:', pendingOrgId);
+      formState.setOrganizationId(pendingOrgId);
+    }
+
+    const effectiveOrgId = formState.organizationId || pendingOrgId || undefined;
+    const isInviteeCheck = !!(pendingInviteToken && effectiveOrgId);
+
+    console.log('🔍 OTP Submit - Checking invite status:', {
+      hasPendingToken: !!pendingInviteToken,
+      hasPendingOrgId: !!pendingOrgId,
+      hasFormStateOrgId: !!formState.organizationId,
+      effectiveOrgId,
+      isInvitee: isInviteeCheck,
+    });
 
     const result = await handleOtpVerification({
       email: formState.email,
@@ -282,30 +302,31 @@ const Auth = () => {
       setLoading: authFlow.setLoading,
       toast,
       saveAuthState,
-      isInvitee,
-      organizationId: formState.organizationId,
+      isInvitee: isInviteeCheck,
+      organizationId: effectiveOrgId,
     });
 
     // After successful OTP verification, if this is an invitee, join the organization
-    if (result.success && isInvitee && result.userId && formState.organizationId && pendingInviteToken) {
+    if (result.success && isInviteeCheck && result.userId && effectiveOrgId && pendingInviteToken) {
       console.log('🎯 Processing invite join after OTP verification', {
         userId: result.userId,
-        organizationId: formState.organizationId,
+        organizationId: effectiveOrgId,
         hasToken: !!pendingInviteToken
       });
 
       // Process the invite join automatically
       await handleInviteJoin({
         userId: result.userId,
-        organizationId: formState.organizationId,
+        organizationId: effectiveOrgId,
         inviteToken: pendingInviteToken,
         setLoading: authFlow.setLoading,
         navigate,
         toast,
       });
 
-      // Clear the pending invite token
+      // Clear the pending invite data
       sessionStorage.removeItem('pendingInviteToken');
+      sessionStorage.removeItem('pendingOrganizationId');
     }
   };
 
