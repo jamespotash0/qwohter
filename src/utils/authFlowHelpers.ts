@@ -118,27 +118,33 @@ export const authFlowHelpers = {
 
     try {
       // Check if user already exists in profiles (should work with fixed RLS policy)
-      const { data: existingProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, email, full_name')
-        .eq('email', email)
-        .single();
+      // Note: This may fail with 406 if RLS policy doesn't allow anonymous access
+      // We'll handle this gracefully and let Supabase auth handle duplicate detection
+      try {
+        const { data: existingProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .eq('email', email)
+          .single();
 
-      if (existingProfile && !profileError) {
-        console.log('User already exists in profiles:', existingProfile);
-        return {
-          success: false,
-          error: "An account with this email already exists. Please sign in instead. If you're having trouble accessing your account, please contact support."
-        };
-      }
+        if (existingProfile && !profileError) {
+          console.log('User already exists in profiles:', existingProfile);
+          return {
+            success: false,
+            error: "An account with this email already exists. Please sign in instead. If you're having trouble accessing your account, please contact support."
+          };
+        }
 
-      // If profile check fails for reasons other than "not found", handle it
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Profile check error:', profileError);
-        return {
-          success: false,
-          error: `Email verification failed: ${profileError.message}. Please try again.`
-        };
+        // If profile check fails for reasons other than "not found", log but continue
+        // Let Supabase auth handle duplicate detection instead
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.warn('Profile check skipped due to RLS:', profileError.message);
+          // Continue with signup - Supabase will catch duplicates
+        }
+      } catch (profileCheckError) {
+        // RLS or other errors - log and continue
+        console.warn('Profile check failed, continuing with signup:', profileCheckError);
+        // Supabase auth will handle duplicate detection
       }
 
       // Store signup data temporarily
@@ -161,6 +167,24 @@ export const authFlowHelpers = {
         // Clean up temp data on error
         tempSignupService.clear();
 
+        // Handle rate limiting with specific guidance
+        if (error.message.includes('Email rate limit exceeded') ||
+            error.message.includes('rate limit') ||
+            error.message.includes('429') ||
+            error.message.includes('Too Many Requests')) {
+
+          // Extract wait time if available
+          const waitTimeMatch = error.message.match(/(\d+)\s*(seconds?|minutes?)/i);
+          const waitTime = waitTimeMatch
+            ? `${waitTimeMatch[1]} ${waitTimeMatch[2]}`
+            : '60 seconds';
+
+          return {
+            success: false,
+            error: `Rate limit exceeded. Supabase limits signup attempts to prevent abuse. Please wait ${waitTime} before trying again. If you already have an account, try signing in instead.`
+          };
+        }
+
         if (error.message.includes('User already registered') ||
             error.message.includes('already exists') ||
             error.message.includes('duplicate') ||
@@ -168,14 +192,6 @@ export const authFlowHelpers = {
           return {
             success: false,
             error: "An account with this email already exists. Please sign in instead. If you believe this is an error, please contact support."
-          };
-        }
-
-        if (error.message.includes('Email rate limit exceeded') ||
-            error.message.includes('rate limit')) {
-          return {
-            success: false,
-            error: "Too many signup attempts. Please wait a few minutes and try again."
           };
         }
 

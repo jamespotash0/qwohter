@@ -11,6 +11,7 @@ type StepType = "auth" | "verify-otp" | "organization" | "company-info" | "subsc
 interface OnboardingProgressProps {
   currentStep: StepType;
   isSignUp: boolean;
+  isInvitee?: boolean;
 }
 
 interface StepInfo {
@@ -27,6 +28,11 @@ const SIGNUP_STEPS: StepInfo[] = [
   { key: "subscription", label: "Choose Plan", shortLabel: "Plan" },
 ];
 
+const INVITE_SIGNUP_STEPS: StepInfo[] = [
+  { key: "auth", label: "Create Account", shortLabel: "Account" },
+  { key: "verify-otp", label: "Verify Email", shortLabel: "Verify" },
+];
+
 const SIGNIN_STEPS: StepInfo[] = [
   { key: "auth", label: "Sign In", shortLabel: "Sign In" },
   { key: "verify-otp", label: "Verify", shortLabel: "Verify" },
@@ -34,9 +40,11 @@ const SIGNIN_STEPS: StepInfo[] = [
 
 export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
   currentStep,
-  isSignUp
+  isSignUp,
+  isInvitee = false
 }) => {
-  const steps = isSignUp ? SIGNUP_STEPS : SIGNIN_STEPS;
+  // Determine which steps to show based on user type
+  const steps = isInvitee ? INVITE_SIGNUP_STEPS : (isSignUp ? SIGNUP_STEPS : SIGNIN_STEPS);
   const currentStepIndex = steps.findIndex(step => step.key === currentStep);
 
   // Calculate progress percentage

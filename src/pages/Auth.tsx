@@ -60,6 +60,9 @@ const Auth = () => {
   // Track processed invite tokens to prevent loops
   const processedInviteTokenRef = useRef<string | null>(null);
 
+  // Determine if user is an invitee (has pending invite token or organizationId set)
+  const isInvitee = !!(formState.organizationId || sessionStorage.getItem('pendingInviteToken'));
+
   // ============================================================================
   // RESET FORM WHEN SWITCHING BETWEEN SIGN-IN AND CREATE-ACCOUNT
   // ============================================================================
@@ -639,7 +642,7 @@ const Auth = () => {
                 <CardHeader className="text-center space-y-3 pb-2 pt-6 px-8">
                   {/* Progress Indicator - show for all onboarding steps */}
                   {authFlow.step !== "auth" && (
-                  <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} />
+                  <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} isInvitee={isInvitee} />
                   )}
 
                   <div className="space-y-1">
@@ -663,7 +666,7 @@ const Auth = () => {
                 {/* Progress Indicator for verify-otp step (standalone, no card header) */}
                 {authFlow.step === "verify-otp" && (
                 <div className="pt-6 px-8">
-                  <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} />
+                  <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} isInvitee={isInvitee} />
                 </div>
                 )}
 
