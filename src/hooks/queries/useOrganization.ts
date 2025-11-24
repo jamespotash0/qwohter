@@ -23,6 +23,7 @@ import {
   type UpdateOrganizationData,
   type SubscriptionStatus,
 } from '@/services/organizationService';
+import { teamInvitationService } from '@/services/teamInvitationService';
 
 // ============================================================================
 // Query Hooks
@@ -518,7 +519,6 @@ export function useRevokeInvitation(organizationId: string) {
 
   return useMutation({
     mutationFn: async (inviteToken: string) => {
-      const { teamInvitationService } = await import('@/services/teamInvitationService');
       const result = await teamInvitationService.cancelInvitation(inviteToken);
 
       if (!result.success) {
