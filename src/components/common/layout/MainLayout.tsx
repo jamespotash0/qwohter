@@ -48,7 +48,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
     '/auth',
     '/forgot-password',
     '/reset-password',
-    '/pending-approval',
     '/access-denied',
     '/account-inactive',
     '/demo',
@@ -87,10 +86,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
           // Check for various membership statuses
           if (membership.status === 'Inactive') { //membership_status
             setMembershipStatus('Inactive');
-          } else if (membership.status === 'Pending' && membership.role !== 'Owner') { //membership_status
-            // Only check pending status for non-Owners
-            // Owners (who created the org) should always have Active status
-            setMembershipStatus('Pending');
           } else {
             setMembershipStatus(membership.status); //membership_status
           }
@@ -128,12 +123,10 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   // Redirect based on membership status
   useEffect(() => {
     if (!shouldShowSidebar) return;
-    if (location.pathname === '/pending-approval' || location.pathname === '/account-inactive') return; // Prevent redirect loop
+    if (location.pathname === '/account-inactive') return; // Prevent redirect loop
 
     if (membershipStatus === 'Inactive' && !checkingMembership) {
       navigate('/account-inactive');
-    } else if (membershipStatus === 'Pending' && !checkingMembership) {
-      navigate('/pending-approval');
     }
   }, [membershipStatus, checkingMembership, shouldShowSidebar, location.pathname, navigate]);
 
@@ -267,7 +260,7 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   }
 
   // Check if we need to wait for subscription check on protected routes
-  const excludedPaths = ['/settings', '/pending-approval'];
+  const excludedPaths = ['/settings'];
   const shouldApplyPaywall = currentOrganization?.id && !excludedPaths.includes(location.pathname);
 
   // Main layout with persistent sidebar
@@ -339,7 +332,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     '/auth',
     '/forgot-password',
     '/reset-password',
-    '/pending-approval',
     '/access-denied',
     '/account-inactive',
     '/demo',

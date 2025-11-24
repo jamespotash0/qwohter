@@ -27,8 +27,8 @@ interface AuthFormState {
   setOtpCode: (code: string) => void;
 
   // Organization
-  orgCode: string;
-  setOrgCode: (code: string) => void;
+  organizationId: string;
+  setOrganizationId: (id: string) => void;
   orgName: string;
   setOrgName: (name: string) => void;
   industry: string;
@@ -52,7 +52,7 @@ export const useAuthFormState = (): AuthFormState => {
   const [lastName, setLastName] = useState('');
   const [fullName, setFullName] = useState('');
   const [otpCode, setOtpCode] = useState('');
-  const [orgCode, setOrgCode] = useState('');
+  const [organizationId, setOrganizationId] = useState('');
   const [orgName, setOrgName] = useState('');
   const [industry, setIndustry] = useState('');
   const [foundVia, setFoundVia] = useState('');
@@ -90,8 +90,8 @@ export const useAuthFormState = (): AuthFormState => {
     setFullName,
     otpCode,
     setOtpCode,
-    orgCode,
-    setOrgCode,
+    organizationId,
+    setOrganizationId,
     orgName,
     setOrgName,
     industry,

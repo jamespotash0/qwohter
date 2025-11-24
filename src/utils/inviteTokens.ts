@@ -9,7 +9,6 @@ export interface InviteToken {
   token: string;
   email: string;
   organization_id: string;
-  organization_code: string;
   role: 'Admin' | 'Member';
   created_by: string;
   expires_at: string;
@@ -32,7 +31,6 @@ export const generateSecureToken = (): string => {
  */
 export const createInviteToken = async (
   organizationId: string,
-  organizationCode: string,
   role: 'Admin' | 'Member',
   createdBy: string,
   expiryDays: number = 7
@@ -46,7 +44,6 @@ export const createInviteToken = async (
     .insert({
       token,
       organization_id: organizationId,
-      organization_code: organizationCode,
       role,
       created_by: createdBy,
       expires_at: expiresAt.toISOString(),

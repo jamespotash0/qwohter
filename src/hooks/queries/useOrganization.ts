@@ -347,7 +347,7 @@ export function useInviteMember(organizationId: string) {
       // Get organization details
       const { data: organization } = await supabase
         .from('organizations')
-        .select('name, organization_code')
+        .select('name')
         .eq('id', organizationId)
         .single();
 
@@ -361,7 +361,6 @@ export function useInviteMember(organizationId: string) {
       const result = await teamInvitationService.inviteMember({
         organizationId,
         organizationName: organization.name,
-        organizationCode: organization.organization_code,
         email,
         role,
         invitedBy: user.id,
@@ -457,7 +456,7 @@ export function useUpdateMemberStatus(organizationId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ membershipId, status }: { membershipId: string; status: 'Pending' | 'Active' | 'Suspended' }) => { //membership_status
+    mutationFn: async ({ membershipId, status }: { membershipId: string; status: 'Active' | 'Suspended' }) => { //membership_status
       const { data, error } = await supabase
         .from('memberships')
         .update({

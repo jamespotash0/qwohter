@@ -70,7 +70,7 @@ const Auth = () => {
   // ============================================================================
   useEffect(() => {
     // Prevent multiple executions
-    if (formState.orgCode) return;
+    if (formState.organizationId) return;
 
     const urlParams = new URLSearchParams(location.search);
     const inviteToken = urlParams.get('invite');
@@ -82,12 +82,12 @@ const Auth = () => {
           const tokenData = await validateInviteToken(inviteToken.trim());
 
           if (tokenData) {
-            formState.setOrgCode(tokenData.organization_code);
+            formState.setOrganizationId(tokenData.organization_id);
             // Store invite token for later use after OTP verification
             sessionStorage.setItem('pendingInviteToken', inviteToken.trim());
             toast({
               title: "Invite link detected",
-              description: `You're joining ${tokenData.organization_code}`,
+              description: "You've been invited to join an organization",
             });
           } else {
             toast({
@@ -127,7 +127,6 @@ const Auth = () => {
       if (savedState.fullName) formState.setFullName(savedState.fullName);
       if (savedState.orgChoice) authFlow.setOrgChoice(savedState.orgChoice as any);
       if (savedState.orgName) formState.setOrgName(savedState.orgName);
-      if (savedState.orgCode) formState.setOrgCode(savedState.orgCode);
 
       if (savedState.step && savedState.step !== 'auth') {
         authFlow.setStep(savedState.step as any);
@@ -226,11 +225,11 @@ const Auth = () => {
 
     // After successful OTP verification, check if there's a pending invite
     const pendingInviteToken = sessionStorage.getItem('pendingInviteToken');
-    if (pendingInviteToken && authFlow.userId) {
+    if (pendingInviteToken && authFlow.userId && formState.organizationId) {
       // Process the invite join automatically
       await handleInviteJoin({
         userId: authFlow.userId,
-        orgCode: formState.orgCode,
+        organizationId: formState.organizationId,
         inviteToken: pendingInviteToken,
         setLoading: authFlow.setLoading,
         navigate,

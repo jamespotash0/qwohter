@@ -194,11 +194,9 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               }`}
               autoComplete={isSignUp ? "new-password" : "current-password"}
             />
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute right-0 top-0 h-full px-3 py-0 hover:bg-transparent"
+              className="absolute right-0 top-0 h-full px-3 hover:opacity-70 transition-opacity"
               onClick={onTogglePasswordVisibility}
             >
               {showPassword ? (
@@ -206,7 +204,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               ) : (
                 <Eye className="h-4 w-4 text-gray-400" />
               )}
-            </Button>
+            </button>
           </div>
           {touched.password && passwordError && (
             <div className="text-sm text-red-600 mt-1">{passwordError}</div>
@@ -249,11 +247,9 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 }`}
                 autoComplete="new-password"
               />
-              <Button
+              <button
                 type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-0 hover:bg-transparent"
+                className="absolute right-0 top-0 h-full px-3 hover:opacity-70 transition-opacity"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               >
                 {showConfirmPassword ? (
@@ -261,7 +257,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 ) : (
                   <Eye className="h-4 w-4 text-gray-400" />
                 )}
-              </Button>
+              </button>
             </div>
             {touched.confirmPassword && confirmPasswordError && (
               <div className="text-sm text-red-600 mt-1">{confirmPasswordError}</div>

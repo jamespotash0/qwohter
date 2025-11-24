@@ -231,7 +231,6 @@ export function AppSidebar({
           organizations (
             id,
             name,
-            organization_code,
             created_at,
             updated_at,
             phone_number,

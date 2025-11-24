@@ -1,29 +1,21 @@
 /**
  * Team Header Component
- * 
- * Extracted from Team.tsx - displays organization name, user info, and org code
+ *
+ * Extracted from Team.tsx - displays organization name and user info
  */
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Building2, User, Copy, Check } from "lucide-react";
+import { Building2, User } from "lucide-react";
 
 interface TeamHeaderProps {
   organizationName: string;
   userDisplayName: string;
   userRole: string;
-  orgCode: string | null;
-  copiedCode: boolean;
-  onCopyOrgCode: () => void;
 }
 
 export const TeamHeader: React.FC<TeamHeaderProps> = ({
   organizationName,
   userDisplayName,
-  userRole,
-  orgCode,
-  copiedCode,
-  onCopyOrgCode
+  userRole
 }) => {
   return (
     <div className="p-6 pb-0">
@@ -48,31 +40,9 @@ export const TeamHeader: React.FC<TeamHeaderProps> = ({
         </div>
       </header>
 
-      <div className="flex items-center justify-between mt-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Team Management</h1>
-          <p className="text-muted-foreground mt-1">Manage your organization members and permissions.</p>
-        </div>
-        
-        {/* Organization Code */}
-        {orgCode && (
-          <div className="flex items-center gap-3">
-            <Card className="px-4 py-2 bg-secondary/50">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Org Code:</span>
-                <code className="font-mono font-semibold text-foreground">{orgCode}</code>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onCopyOrgCode}
-                  className="h-6 w-6 p-0"
-                >
-                  {copiedCode ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                </Button>
-              </div>
-            </Card>
-          </div>
-        )}
+      <div className="mt-6">
+        <h1 className="text-3xl font-bold text-foreground">Team Management</h1>
+        <p className="text-muted-foreground mt-1">Manage your organization members and permissions.</p>
       </div>
     </div>
   );

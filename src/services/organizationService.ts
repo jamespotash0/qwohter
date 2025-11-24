@@ -16,7 +16,7 @@ import * as Sentry from '@sentry/react';
 export interface Organization {
   id: string;
   name: string;
-  organization_code: string;
+  
   phone_number?: string;
   fax_number?: string;
   company_address?: string;
@@ -34,7 +34,7 @@ export interface OrganizationMember {
   user_id: string;
   organization_id: string;
   role: 'Owner' | 'Admin' | 'Member';
-  status: 'Pending' | 'Active' | 'Suspended' | 'Inactive'; //membership_status
+  status: 'Active' | 'Suspended' | 'Inactive'; //membership_status
   joined_at: string;
   email?: string;
   full_name?: string;
@@ -45,7 +45,7 @@ export interface OrganizationMember {
 export interface UserMembership {
   organization_id: string;
   role: 'Owner' | 'Admin' | 'Member';
-  status: 'Pending' | 'Active' | 'Suspended' | 'Inactive'; //membership_status
+  status: 'Active' | 'Suspended' | 'Inactive'; //membership_status
   joined_at: string;
   organization: Organization;
 }
@@ -212,7 +212,7 @@ export async function fetchOrganizationMembers(organizationId: string): Promise<
         user_id: membership.user_id,
         organization_id: membership.organization_id || '',
         role: (membership.role as 'Admin' | 'Member' | 'Owner') || 'Member',
-        status: (membership.status as 'Pending' | 'Active' | 'Suspended' | 'Inactive') || 'Active', //membership_status
+        status: (membership.status as 'Active' | 'Suspended' | 'Inactive') || 'Active', //membership_status
         joined_at: membership.joined_at || new Date().toISOString(),
         email: profile?.email || undefined,
         full_name: profile?.full_name || undefined,

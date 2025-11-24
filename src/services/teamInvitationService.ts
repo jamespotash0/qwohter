@@ -10,7 +10,6 @@ import { createInviteToken } from '@/utils/inviteTokens';
 interface InviteMemberParams {
   organizationId: string;
   organizationName: string;
-  organizationCode: string;
   email: string;
   role: 'Admin' | 'Member';
   invitedBy: string;
@@ -30,7 +29,6 @@ export const inviteMember = async (params: InviteMemberParams): Promise<InviteMe
   const {
     organizationId,
     organizationName,
-    organizationCode,
     email,
     role,
     invitedBy,
@@ -93,7 +91,6 @@ export const inviteMember = async (params: InviteMemberParams): Promise<InviteMe
     // Create invite token with email stored in database
     const { token, expires_at } = await createInviteToken(
       organizationId,
-      organizationCode,
       role,
       invitedBy,
       7 // 7 days expiry

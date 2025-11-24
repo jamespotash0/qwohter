@@ -16,7 +16,6 @@ interface UserData {
   role: string;
   organization: {
     name: string;
-    organization_code: string;
   };
 }
 
@@ -43,8 +42,7 @@ const AccessDenied: React.FC = () => {
           .select(`
             role,
             organizations (
-              name,
-              organization_code
+              name
             )
           `)
           .eq('user_id', user.id)
@@ -119,9 +117,6 @@ const AccessDenied: React.FC = () => {
                 <div>
                   <p className="font-medium text-slate-800">
                     {(userData as any).organizations?.name}
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    Code: {(userData as any).organizations?.organization_code}
                   </p>
                 </div>
               </div>

@@ -72,7 +72,6 @@ const ContactUs = lazy(() => import("@/pages/ContactUs"));
 const Auth = lazy(() => import("@/pages/Auth"));
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
-const PendingApproval = lazy(() => import("@/pages/PendingApproval"));
 const AccessDenied = lazy(() => import("@/pages/AccessDenied"));
 const AccountInactive = lazy(() => import("@/pages/AccountInactive"));
 
@@ -135,7 +134,6 @@ export const AppRouter = () => (
           <Route path="/create-account" element={<AuthRoute><Auth /></AuthRoute>} />
           <Route path="/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
           <Route path="/reset-password" element={<AuthRoute><ResetPassword /></AuthRoute>} />
-          <Route path="/pending-approval" element={<PendingApproval />} />
           <Route path="/access-denied" element={<AccessDenied />} />
           <Route path="/account-inactive" element={<AccountInactive />} />
 

@@ -59,7 +59,6 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
     await onboardingStateHelpers.saveOnboardingProgress(userId, 'organization', {
       orgChoice: 'create',
       orgName,
-      orgCode: '',
       industry,
       foundVia,
     });
@@ -83,8 +82,7 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
       saveAuthState({
         step: 'company-info',
         userId,
-        orgName: result.data.organizationName,
-        orgCode: result.data.organizationCode
+        orgName: result.data.organizationName
       });
     } else {
       toast({

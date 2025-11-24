@@ -1,16 +1,17 @@
 /**
  * handleInviteJoin Action
  * Handles joining organization via invitation link
+ * Auto-approves user to Active status (no pending approval needed)
  */
 
-import { authFlowHelpers } from '@/utils/authFlowHelpers';
+import { supabase } from '@/integrations/supabase/client';
 import { onboardingStateHelpers } from '@/services/onboardingStateService';
 import { markTokenAsUsed } from '@/utils/inviteTokens';
 import { NavigateFunction } from 'react-router-dom';
 
 interface HandleInviteJoinParams {
   userId: string | null;
-  orgCode: string;
+  organizationId: string;
   inviteToken: string;
   setLoading: (loading: boolean) => void;
   navigate: NavigateFunction;
@@ -20,55 +21,81 @@ interface HandleInviteJoinParams {
 export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
   const {
     userId,
-    orgCode,
+    organizationId,
     inviteToken,
     setLoading,
     navigate,
     toast,
   } = params;
 
-  if (!userId || !orgCode || !inviteToken) return;
+  if (!userId || !organizationId || !inviteToken) return;
 
   setLoading(true);
 
   try {
-    // Join organization via invite
-    const choice = {
-      type: 'join' as const,
-      orgCode,
-      industry: '',
-      foundVia: 'Invitation',
-    };
+    console.log('🔍 Joining organization:', organizationId);
 
-    const result = await authFlowHelpers.handleOrganizationSetup({ userId, choice });
+    // Get organization by ID
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('id, name')
+      .eq('id', organizationId)
+      .single();
 
-    if (result.success && result.data) {
-      // Mark invite token as used
-      try {
-        await markTokenAsUsed(inviteToken);
-        console.log('Invite token marked as used');
-      } catch (error) {
-        console.error('Error marking token as used:', error);
-        // Don't fail the join process if token marking fails
-      }
-
-      toast({
-        title: 'Join request sent!',
-        description: 'Your request to join the organization is pending approval.',
-      });
-
-      // Clear onboarding progress
-      await onboardingStateHelpers.clearOnboardingProgress(userId);
-
-      // Navigate to pending approval page
-      navigate('/pending-approval');
-    } else {
+    if (orgError || !orgData) {
+      console.error('❌ Organization query error:', orgError);
       toast({
         title: 'Join Error',
-        description: result.error as any,
+        description: orgError ? 'Database error while searching for organization.' : 'Organization not found.',
         variant: 'destructive',
       });
+      setLoading(false);
+      return;
     }
+
+    console.log('✅ Found organization:', orgData.name);
+
+    // Create membership with Active status (auto-approved for invited users)
+    const { error: membershipsError } = await supabase
+      .from('memberships')
+      .insert({
+        user_id: userId,
+        organization_id: orgData.id,
+        role: 'Member',
+        status: 'Active', // Auto-approve invited users
+        join_type: 'Invited' // User was invited (not requested)
+      } as any);
+
+    if (membershipsError) {
+      console.error('Membership creation error:', membershipsError);
+      toast({
+        title: 'Join Error',
+        description: membershipsError.message,
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Mark invite token as used
+    try {
+      await markTokenAsUsed(inviteToken);
+      console.log('Invite token marked as used');
+    } catch (error) {
+      console.error('Error marking token as used:', error);
+      // Don't fail the join process if token marking fails
+    }
+
+    toast({
+      title: 'Welcome to the team!',
+      description: `You've successfully joined ${orgData.name}.`,
+    });
+
+    // Clear onboarding progress
+    await onboardingStateHelpers.clearOnboardingProgress(userId);
+
+    // Navigate to dashboard (user is immediately active)
+    navigate('/dashboard');
   } catch (error: any) {
     console.error('Invite join error:', error);
     toast({

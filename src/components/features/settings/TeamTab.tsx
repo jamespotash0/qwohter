@@ -4,8 +4,7 @@ import {
   useInviteMember,
   useRemoveMember,
   useUpdateMemberRole,
-  useUpdateMemberStatus,
-  useApproveMember
+  useUpdateMemberStatus
 } from "@/hooks/queries/useOrganization";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/auth";
@@ -41,13 +40,6 @@ export function TeamTab() {
   const { mutateAsync: removeMemberMutation } = useRemoveMember(organizationId || '');
   const { mutateAsync: updateRoleMutation } = useUpdateMemberRole(organizationId || '');
   const { mutateAsync: updateStatusMutation } = useUpdateMemberStatus(organizationId || '');
-  const { mutate: approveMemberMutation } = useApproveMember(organizationId || '');
-
-  // Helper to get display text for member type
-  const getMemberType = (member: any) => {
-    // Always return the join_type from database
-    return member.join_type || 'Direct';
-  };
 
   const handleInvite = async () => {
     if (!currentOrganization || !inviteEmail || !inviteRole || !inviteDepartment) return;
@@ -163,43 +155,6 @@ export function TeamTab() {
     } catch (error: any) {
       toast({
         title: "Failed to update department",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleApprove = async (memberId: string, memberName: string) => {
-    if (!currentOrganization) return;
-
-    try {
-      approveMemberMutation(memberId);
-      toast({
-        title: "Member approved",
-        description: `${memberName} has been approved.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Failed to approve member",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleReject = async (memberId: string, memberName: string) => {
-    if (!currentOrganization) return;
-
-    try {
-      // Reject by removing the membership
-      await removeMemberMutation(memberId);
-      toast({
-        title: "Request rejected",
-        description: `${memberName}'s request has been rejected.`,
-      });
-    } catch (error: any) {
-      toast({
-        title: "Failed to reject request",
         description: error.message,
         variant: "destructive",
       });
@@ -364,26 +319,11 @@ export function TeamTab() {
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          {member.status === 'Pending' ? ( //membership_status
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                {member.full_name || member.email}
-                              </span>
-                              <span className="text-sm text-gray-600 dark:text-gray-400">
-                                {getMemberType(member) === 'Invited'
-                                  ? 'has been invited, waiting for response'
-                                  : 'has requested access'}
-                              </span>
-                            </div>
-                          ) : (
-                            <>
-                              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                {member.full_name || member.email || 'Unknown User'}
-                              </p>
-                              {member.full_name && member.email && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400">{member.email}</p>
-                              )}
-                            </>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {member.full_name || member.email || 'Unknown User'}
+                          </p>
+                          {member.full_name && member.email && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{member.email}</p>
                           )}
                         </div>
                       </div>
@@ -436,10 +376,6 @@ export function TeamTab() {
                           <span className="text-sm font-medium text-red-600 dark:text-red-400">
                             Inactive
                           </span>
-                        ) : member.status === 'Pending' ? ( //membership_status
-                          <span className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
-                            Pending
-                          </span>
                         ) : (
                           <span className="text-sm text-gray-500 dark:text-gray-400">
                             —
@@ -485,25 +421,7 @@ export function TeamTab() {
                       </span>
                     </td>
                     <td className="px-4 py-4 text-right">
-                      {member.status === 'Pending' ? ( //membership_status
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleApprove(member.user_id, member.full_name || member.email)}
-                            className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleReject(member.user_id, member.full_name || member.email)}
-                            className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
-                          >
-                            Reject
-                          </Button>
-                        </div>
-                      ) : member.status === 'Inactive' ? ( //membership_status
+                      {member.status === 'Inactive' ? ( //membership_status
                         <Button
                           size="sm"
                           onClick={() => handleReactivateMember(member.user_id, member.full_name || member.email)}

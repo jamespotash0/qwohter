@@ -109,7 +109,6 @@ export interface Database {
         Row: {
           id: string;
           name: string;
-          organization_code: string;
           found_via: string;
           phone_number: string;
           fax_number?: string | null;
@@ -124,7 +123,6 @@ export interface Database {
         Insert: {
           id?: string;
           name: string;
-          organization_code?: string;
           found_via: string;
           phone_number: string;
           fax_number?: string | null;
@@ -139,7 +137,6 @@ export interface Database {
         Update: {
           id?: string;
           name?: string;
-          organization_code?: string;
           found_via?: string;
           phone_number?: string;
           fax_number?: string | null;
@@ -157,7 +154,6 @@ export interface Database {
           id: string;
           token: string;
           organization_id: string;
-          organization_code: string;
           role: string;
           created_by: string;
           expires_at: string;
@@ -169,7 +165,6 @@ export interface Database {
           id?: string;
           token: string;
           organization_id: string;
-          organization_code: string;
           role: string;
           created_by: string;
           expires_at: string;
@@ -181,7 +176,6 @@ export interface Database {
           id?: string;
           token?: string;
           organization_id?: string;
-          organization_code?: string;
           role?: string;
           created_by?: string;
           expires_at?: string;
@@ -212,7 +206,7 @@ export interface Database {
           user_id: string;
           organization_id: string;
           role: 'Owner' | 'Admin' | 'Member';
-          status: 'Pending' | 'Active' | 'Suspended'; //membership_status
+          status: 'Active' | 'Suspended'; //membership_status
           invited_by: string | null;
           joined_at: string | null;
           created_at: string;
@@ -223,7 +217,7 @@ export interface Database {
           user_id: string;
           organization_id: string;
           role?: 'Owner' | 'Admin' | 'Member';
-          status?: 'Pending' | 'Active' | 'Suspended'; //membership_status
+          status?: 'Active' | 'Suspended'; //membership_status
           invited_by?: string | null;
           joined_at?: string | null;
           created_at?: string;
@@ -234,7 +228,7 @@ export interface Database {
           user_id?: string;
           organization_id?: string;
           role?: 'Owner' | 'Admin' | 'Member';
-          status?: 'Pending' | 'Active' | 'Suspended'; //membership_status
+          status?: 'Active' | 'Suspended'; //membership_status
           invited_by?: string | null;
           joined_at?: string | null;
           created_at?: string;
@@ -516,20 +510,6 @@ export interface Database {
         };
         Returns: any;
       };
-      create_organization_and_link_user: {
-        Args: {
-          org_name: string;
-          org_code: string;
-          creator_user_id: string;
-        };
-        Returns: any;
-      };
-      get_organization_by_code: {
-        Args: {
-          input_code: string;
-        };
-        Returns: any;
-      };
       update_org_creator_profile: {
         Args: {
           user_id: string;
@@ -550,7 +530,7 @@ export interface Database {
     };
     Enums: {
       membership_role: 'Owner' | 'Admin' | 'Member';
-      membership_status: 'Pending' | 'Active' | 'Suspended';
+      membership_status: 'Active' | 'Suspended';
       creation_log_status: 'Success' | 'Failed' | 'Rate_Limited';
     };
   };

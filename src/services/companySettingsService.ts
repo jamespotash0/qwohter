@@ -19,7 +19,6 @@ class OrganizationSettingsService {
           organizations (
             id,
             name,
-            organization_code,
             industry,
             found_via,
             phone_number,
@@ -60,7 +59,6 @@ class OrganizationSettingsService {
           organizations (
             id,
             name,
-            organization_code,
             industry,
             found_via,
             phone_number,
@@ -112,7 +110,6 @@ class OrganizationSettingsService {
         .select(`
           id,
           name,
-          organization_code,
           industry,
           found_via,
           phone_number,

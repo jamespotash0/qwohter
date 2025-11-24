@@ -15,7 +15,7 @@ export interface AuthResult {
   success: boolean;
   data?: any;
   error?: string;
-  nextStep?: 'verify-otp' | 'profile' | 'organization' | 'company-info' | 'pending-approval' | 'complete';
+  nextStep?: 'verify-otp' | 'profile' | 'organization' | 'company-info' | 'complete';
 }
 
 export interface ProfileSetupData {
@@ -24,8 +24,7 @@ export interface ProfileSetupData {
 }
 
 export interface OrganizationChoice {
-  type: 'join' | 'create';
-  orgCode?: string;
+  type: 'create';
   orgName?: string;
   industry?: string;
   foundVia?: string;
@@ -379,143 +378,51 @@ export const authFlowHelpers = {
       const industry = choice.industry || null;
       const foundVia = choice.foundVia || null;
 
-      if (choice.type === 'create') {
-        if (!choice.orgName) {
-          return { success: false, error: "Organization name is required" };
-        }
-
-        // Rate limiting
-        const rateLimitCheck = await OrganizationCreationLimiter.canCreateOrganization(userId);
-        if (!rateLimitCheck.allowed) {
-          await OrganizationCreationLimiter.logCreationAttempt(userId, 'Rate_Limited');
-          return { success: false, error: rateLimitCheck.reason || "Rate limit exceeded" };
-        }
-
-        // Generate unique org code
-        let orgCode = '';
-        let attempts = 0;
-        const maxAttempts = 3;
-
-        while (attempts < maxAttempts) {
-          orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-          const { data: existingOrg } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_code', orgCode)
-            .single();
-          if (!existingOrg) break;
-          attempts++;
-        }
-
-        if (attempts >= maxAttempts) {
-          await OrganizationCreationLimiter.logCreationAttempt(userId, 'Failed', undefined, 'Failed to generate unique org code');
-          return { success: false, error: "Failed to generate organization code. Please try again." };
-        }
-
-        // --- Transaction-safe insert via RPC function ---
-        const { data: orgData, error: rpcError } = await supabase.rpc('create_org_with_owner', {
-          org_name: sanitizeInput.string(choice.orgName),
-          org_code: orgCode,
-          found_via: foundVia,
-          industry: industry,
-          owner_id: userId
-        } as any);
-
-        if (rpcError) {
-          await OrganizationCreationLimiter.logCreationAttempt(userId, 'Failed', undefined, rpcError.message);
-          throw rpcError;
-        }
-
-        const organizationId = orgData[0].org_id;
-
-        // Log success
-        await OrganizationCreationLimiter.logCreationAttempt(userId, 'Success');
-
-        // Complete onboarding step
-        await onboardingStateHelpers.completeStep(
-          userId,
-          'organization',
-          'company-info',
-          { ...choice, orgCode }
-        );
-
-        return {
-          success: true,
-          data: {
-            organizationName: choice.orgName,
-            organizationCode: orgCode,
-            organizationId
-          },
-          nextStep: 'company-info'
-        };
-
-      } else {
-        // Join existing organization
-        if (!choice.orgCode) {
-          return { success: false, error: "Organization code is required" };
-        }
-
-        const cleanCode = choice.orgCode.trim().toUpperCase();
-
-        console.log('🔍 Looking for organization with code:', cleanCode);
-
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .select('id, name, organization_code')
-          .eq('organization_code', cleanCode)
-          .maybeSingle();
-
-        if (orgError) {
-          console.error('❌ Organization query error:', orgError);
-          return {
-            success: false,
-            error: `Database error while searching for organization. Please try again.`
-          };
-        }
-
-        if (!orgData) {
-          console.log('⚠️ No organization found with code:', cleanCode);
-
-          // Debug: List all organization codes to help troubleshoot
-          const { data: allOrgs } = await supabase
-            .from('organizations')
-            .select('organization_code, name')
-            .limit(10);
-
-          console.log('📋 Available organization codes:', allOrgs?.map(o => o.organization_code));
-
-          return {
-            success: false,
-            error: `Organization code "${cleanCode}" not found. Please check the code and try again.`
-          };
-        }
-
-        console.log('✅ Found organization:', orgData.name, '(code:', orgData.organization_code, ')');
-
-        const { error: membershipsError } = await supabase
-          .from('memberships')
-          .insert({
-            user_id: userId,
-            organization_id: orgData.id,
-            role: 'Member',
-            status: 'Pending', //membership_status
-            join_type: 'Requested' // User requested to join via org code
-          } as any);
-
-        if (membershipsError) throw membershipsError;
-
-        // Clear onboarding progress
-        await onboardingStateHelpers.clearOnboardingProgress(userId);
-
-        return {
-          success: true,
-          data: {
-            organizationName: orgData.name,
-            organizationId: orgData.id
-          },
-          nextStep: 'complete'
-        };
+      if (!choice.orgName) {
+        return { success: false, error: "Organization name is required" };
       }
+
+      // Rate limiting
+      const rateLimitCheck = await OrganizationCreationLimiter.canCreateOrganization(userId);
+      if (!rateLimitCheck.allowed) {
+        await OrganizationCreationLimiter.logCreationAttempt(userId, 'Rate_Limited');
+        return { success: false, error: rateLimitCheck.reason || "Rate limit exceeded" };
+      }
+
+      // --- Transaction-safe insert via RPC function ---
+      const { data: orgData, error: rpcError } = await supabase.rpc('create_org_with_owner', {
+        org_name: sanitizeInput.string(choice.orgName),
+        found_via: foundVia,
+        industry: industry,
+        owner_id: userId
+      } as any);
+
+      if (rpcError) {
+        await OrganizationCreationLimiter.logCreationAttempt(userId, 'Failed', undefined, rpcError.message);
+        throw rpcError;
+      }
+
+      const organizationId = orgData[0].org_id;
+
+      // Log success
+      await OrganizationCreationLimiter.logCreationAttempt(userId, 'Success');
+
+      // Complete onboarding step
+      await onboardingStateHelpers.completeStep(
+        userId,
+        'organization',
+        'company-info',
+        choice
+      );
+
+      return {
+        success: true,
+        data: {
+          organizationName: choice.orgName,
+          organizationId
+        },
+        nextStep: 'company-info'
+      };
     } catch (error: any) {
       console.error('Organization setup error:', error);
       return { success: false, error: error.message };
