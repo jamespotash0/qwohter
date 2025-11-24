@@ -9,7 +9,7 @@
  * - Main component is just orchestration (~200 lines)
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -57,6 +57,9 @@ const Auth = () => {
   const formState = useAuthFormState();
   const companyInfo = useCompanyInfoState();
 
+  // Track processed invite tokens to prevent loops
+  const processedInviteTokenRef = useRef<string | null>(null);
+
   // ============================================================================
   // RESET FORM WHEN SWITCHING BETWEEN SIGN-IN AND CREATE-ACCOUNT
   // ============================================================================
@@ -69,62 +72,74 @@ const Auth = () => {
   // INVITE TOKEN HANDLING (Priority: Sign out existing user if invite exists)
   // ============================================================================
   useEffect(() => {
-    // Prevent multiple executions
-    if (formState.organizationId) return;
-
     const urlParams = new URLSearchParams(location.search);
     const inviteToken = urlParams.get('invite');
 
-    if (inviteToken && inviteToken.trim()) {
-      // Handle secure invite token
-      const handleInviteToken = async () => {
-        try {
-          // FIRST: Check if user is currently logged in
-          const session = await authService.getSession();
+    // Skip if no invite token or already processed this token
+    if (!inviteToken || !inviteToken.trim()) return;
+    if (processedInviteTokenRef.current === inviteToken.trim()) {
+      console.log('Invite token already processed, skipping');
+      return;
+    }
 
-          if (session) {
-            console.log('User logged in, signing out to process invite token');
-            // Sign out the current user to allow invite acceptance
-            await authService.signOut();
-            // Clear any cached auth state
-            clearAuthState();
+    // Prevent multiple executions
+    if (formState.organizationId) return;
 
-            toast({
-              title: "Signed out",
-              description: "You've been signed out to accept this invitation",
-            });
-          }
+    // Handle secure invite token
+    const handleInviteToken = async () => {
+      try {
+        // Mark token as being processed to prevent loops
+        processedInviteTokenRef.current = inviteToken.trim();
 
-          // THEN: Validate the invite token
-          const tokenData = await validateInviteToken(inviteToken.trim());
+        // FIRST: Check if user is currently logged in
+        const session = await authService.getSession();
 
-          if (tokenData) {
-            formState.setOrganizationId(tokenData.organization_id);
-            // Store invite token for later use after OTP verification
-            sessionStorage.setItem('pendingInviteToken', inviteToken.trim());
-            toast({
-              title: "Invite link detected",
-              description: "You've been invited to join an organization",
-            });
-          } else {
-            toast({
-              title: "Invalid invite link",
-              description: "This invite link may have expired or been used already.",
-              variant: "destructive",
-            });
-          }
-        } catch (error) {
-          console.error('Error validating invite token:', error);
+        if (session) {
+          console.log('User logged in, signing out to process invite token');
+          // Sign out the current user to allow invite acceptance
+          await authService.signOut();
+          // Clear any cached auth state
+          clearAuthState();
+
           toast({
-            title: "Error",
-            description: "Could not validate invite link",
-            variant: "destructive",
+            title: "Signed out",
+            description: "You've been signed out to accept this invitation",
           });
         }
-      };
 
-      handleInviteToken();
-    }
+        // THEN: Validate the invite token
+        const tokenData = await validateInviteToken(inviteToken.trim());
+
+        if (tokenData) {
+          formState.setOrganizationId(tokenData.organization_id);
+          // Store invite token for later use after OTP verification
+          sessionStorage.setItem('pendingInviteToken', inviteToken.trim());
+          toast({
+            title: "Invite link detected",
+            description: "You've been invited to join an organization",
+          });
+        } else {
+          toast({
+            title: "Invalid invite link",
+            description: "This invite link may have expired or been used already.",
+            variant: "destructive",
+          });
+          // Clear the ref if token was invalid so user can try again
+          processedInviteTokenRef.current = null;
+        }
+      } catch (error) {
+        console.error('Error validating invite token:', error);
+        toast({
+          title: "Error",
+          description: "Could not validate invite link",
+          variant: "destructive",
+        });
+        // Clear the ref on error so user can retry
+        processedInviteTokenRef.current = null;
+      }
+    };
+
+    handleInviteToken();
   }, [location.search]);
 
   // ============================================================================
