@@ -1,5 +1,6 @@
 //@ts-ignore
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+//@ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
 const corsHeaders = {
@@ -137,7 +138,7 @@ serve(async (req) => {
             .logo { font-size: 32px; font-weight: bold; margin: 0; }
             .content { background-color: #ffffff; padding: 40px 30px; }
             .invite-box { background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%); border: 2px solid #e9ecef; border-radius: 8px; padding: 30px; margin: 30px 0; text-align: center; }
-            .button { display: inline-block; background-color: #EE6C4D; color: white; text-decoration: none; padding: 14px 40px; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 20px 0; }
+            .button { display: inline-block; background-color: #EE6C4D; color: white !important; text-decoration: none; padding: 14px 40px; border-radius: 6px; font-weight: bold; font-size: 16px; margin: 20px 0; }
             .button:hover { background-color: #d85a3d; }
             .info-row { margin: 15px 0; padding: 12px; background-color: #f8f9fa; border-radius: 4px; }
             .label { font-weight: 600; color: #555; display: inline-block; min-width: 100px; }
@@ -156,39 +157,18 @@ serve(async (req) => {
             </div>
 
             <div class="content">
-              <div class="greeting">
+              <p class="greeting">
                 <strong>${requestData.inviterName}</strong> has invited you to join their team!
-              </div>
-
-              <div class="invite-box">
-                <h2 style="margin: 0 0 20px 0; color: #333;">Join ${requestData.organizationName}</h2>
-
-                <div class="info-row">
-                  <span class="label">Organization:</span>
-                  <span class="value">${requestData.organizationName}</span>
-                </div>
-
-                <div class="info-row">
-                  <span class="label">Your Role:</span>
-                  <span class="value">${requestData.role}</span>
-                </div>
-
-                <div class="info-row">
-                  <span class="label">Invited By:</span>
-                  <span class="value">${requestData.inviterName}</span>
-                </div>
-
-                <a href="${inviteUrl}" class="button">Accept Invitation</a>
-              </div>
-
-              <h3 style="color: #333; margin-top: 30px;">What is Qwohter?</h3>
-              <p style="color: #555; line-height: 1.8;">
-                Qwohter is a professional quote management platform that helps teams create, track, and manage quotes efficiently.
-                You'll have access to powerful tools for creating beautiful quotes, tracking analytics, and collaborating with your team.
               </p>
 
-              <p style="color: #555; margin-top: 20px;">
-                If you have any questions or need assistance, feel free to reach out to your team admin or contact our support team.
+              <h2 style="margin: 30px 0 30px 0; color: #333; text-align: center;">Join ${requestData.organizationName}</h2>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${inviteUrl}" class="button" style="color: white !important; text-decoration: none;">Accept Invitation</a>
+              </div>
+
+              <p style="color: #555; margin-top: 40px; text-align: center;">
+                If you have any questions, feel free to reach out to your team admin or contact our support team.
               </p>
             </div>
 
@@ -210,18 +190,14 @@ serve(async (req) => {
 
     // Prepare plain text version for email clients that don't support HTML
     const emailText = `
-${requestData.inviterName} has invited you to join ${requestData.organizationName} on Qwohter
+${requestData.inviterName} has invited you to join their team!
 
-Your Role: ${requestData.role}
-Invited By: ${requestData.inviterName}
+Join ${requestData.organizationName}
 
 Accept your invitation by clicking the link below:
 ${inviteUrl}
 
-What is Qwohter?
-Qwohter is a professional quote management platform that helps teams create, track, and manage quotes efficiently.
-
-If you have any questions, contact your team admin or reach out to our support team.
+If you have any questions, feel free to reach out to your team admin or contact our support team.
 
 This invitation was sent to ${requestData.email}
 If you weren't expecting this invitation, you can safely ignore this email.
