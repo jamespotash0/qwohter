@@ -14,7 +14,7 @@ interface AuthFlowState {
 }
 
 const AUTH_STATE_KEY = 'auth_flow_state';
-const STATE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+const STATE_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
 const OTP_STEP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes for OTP step
 
 /**

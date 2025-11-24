@@ -117,25 +117,40 @@ const Auth = () => {
     // Prevent running if already redirecting
     if (authFlow.redirectingRef.current) return;
 
-    const savedState = loadAuthState();
+    const restoreState = async () => {
+      const savedState = loadAuthState();
 
-    if (savedState) {
-      console.log('Restoring auth state:', savedState);
+      if (savedState) {
+        console.log('Found saved auth state:', savedState);
 
-      if (savedState.email) formState.setEmail(savedState.email);
-      if (savedState.userId) authFlow.setUserId(savedState.userId);
-      if (savedState.fullName) formState.setFullName(savedState.fullName);
-      if (savedState.orgChoice) authFlow.setOrgChoice(savedState.orgChoice as any);
-      if (savedState.orgName) formState.setOrgName(savedState.orgName);
+        // Validate that the session still exists before restoring state
+        const session = await authService.getSession();
 
-      if (savedState.step && savedState.step !== 'auth') {
-        authFlow.setStep(savedState.step as any);
+        if (!session || (savedState.userId && session.user.id !== savedState.userId)) {
+          console.log('Session invalid or user mismatch, clearing saved state');
+          clearAuthState();
+          return;
+        }
+
+        console.log('Session valid, restoring auth state');
+
+        if (savedState.email) formState.setEmail(savedState.email);
+        if (savedState.userId) authFlow.setUserId(savedState.userId);
+        if (savedState.fullName) formState.setFullName(savedState.fullName);
+        if (savedState.orgChoice) authFlow.setOrgChoice(savedState.orgChoice as any);
+        if (savedState.orgName) formState.setOrgName(savedState.orgName);
+
+        if (savedState.step && savedState.step !== 'auth') {
+          authFlow.setStep(savedState.step as any);
+        }
+      } else {
+        // No saved state found - but don't clear tempSignup data yet
+        // It has its own 2-hour expiry and is needed for resending OTP
+        console.log('No saved state found, but keeping temp signup data for OTP resend');
       }
-    } else {
-      // No saved state found - but don't clear tempSignup data yet
-      // It has its own 2-hour expiry and is needed for resending OTP
-      console.log('No saved state found, but keeping temp signup data for OTP resend');
-    }
+    };
+
+    restoreState();
   }, []);
 
   // ============================================================================
