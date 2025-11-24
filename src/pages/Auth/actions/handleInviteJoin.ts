@@ -68,6 +68,10 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
 
     console.log('✅ Rate limit check passed:', rateLimitCheck.attempts_used, 'attempts used');
 
+    // Get current user's email for RLS debugging
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    console.log('🔍 Current authenticated user email:', currentUser?.email);
+
     // Get invite token data to extract department, role, and email
     // MUST check: not used, not revoked, not expired
     console.log('🔍 Fetching token data for:', {
@@ -83,6 +87,7 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
       .eq('token', inviteToken);
 
     console.log('🔍 Debug: Found tokens:', anyTokens, 'Error:', debugError);
+    console.log('🔍 RLS Check: If tokens array is empty but no error, RLS is blocking due to email mismatch');
 
     const { data: tokenData, error: tokenError } = await supabase
       .from('invite_tokens')
