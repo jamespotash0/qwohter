@@ -8,6 +8,7 @@ import {
   useInviteTokens,
   useRevokeInvitation
 } from "@/hooks/queries/useOrganization";
+import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -61,37 +62,16 @@ export function TeamTab() {
   const { data: inviteTokens = [] } = useInviteTokens(organizationId || '', !!organizationId);
   const { mutateAsync: revokeInviteMutation } = useRevokeInvitation(organizationId || '');
 
+  // Enable real-time updates for invite tokens
+  useRealtimeSubscription(
+    'invite_tokens',
+    queryKeys.organization.invites(organizationId || ''),
+    { filter: `organization_id=eq.${organizationId}` },
+    !!organizationId
+  );
+
   // Filter for all pending invites (not used, includes revoked and expired for resending)
   const pendingInvites = inviteTokens.filter(invite => !invite.is_used);
-
-
-  // Realtime subscription for invite tokens
-  useEffect(() => {
-    if (!organizationId) return;
-
-    const channel = supabase
-      .channel(`invite_tokens:${organizationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'invite_tokens',
-          filter: `organization_id=eq.${organizationId}`
-        },
-        () => {
-          // Invalidate invite tokens query to refetch
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.organization.invites(organizationId)
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [organizationId, queryClient]);
 
   // Automatic cleanup of expired tokens
   useEffect(() => {
@@ -539,7 +519,11 @@ export function TeamTab() {
                             {invite.email}
                           </div>
                           <div className="text-xs text-gray-500 dark:text-gray-400">
-                            Invitation sent
+                            Invitation sent at {new Date(invite.created_at).toLocaleTimeString('en-US', {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                              timeZoneName: 'short'
+                            })}
                           </div>
                         </div>
                       </div>

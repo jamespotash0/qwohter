@@ -86,7 +86,7 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
 
     const { data: tokenData, error: tokenError } = await supabase
       .from('invite_tokens')
-      .select('department, role, email, is_used, revoked_at, expires_at')
+      .select('department, role, email, is_used, revoked_at, expires_at, created_by')
       .eq('token', inviteToken)
       .maybeSingle<{
         department: string | null;
@@ -95,6 +95,7 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
         is_used: boolean;
         revoked_at: string | null;
         expires_at: string;
+        created_by: string;
       }>();
 
     if (tokenError || !tokenData) {
@@ -300,7 +301,8 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
         role: tokenData?.role || 'Member',
         status: 'Active', // Auto-approve invited users
         join_type: 'Invited', // User was invited (not requested)
-        department: tokenData?.department || null // Set department from invite token
+        department: tokenData?.department || null, // Set department from invite token
+        invited_by: tokenData?.created_by || null // Track who invited this member
       } as any);
 
     if (membershipsError) {
