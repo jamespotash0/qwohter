@@ -14,6 +14,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -34,7 +40,9 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  Info,
 } from 'lucide-react';
+import { parsePhoneNumberFromString, AsYouType } from 'libphonenumber-js';
 
 interface ContactDialogProps {
   open: boolean;
@@ -73,43 +81,92 @@ export const ContactDialog = ({
   const createContact = useCreateContact(organizationId);
   const updateContact = useUpdateContact();
 
-  // Helper to validate phone number
+  // Helper to validate phone number using libphonenumber-js
   const validatePhoneNumber = (phone: { number: string; type: string }): string | null => {
-    const numberDigits = phone.number.replace(/\D/g, '');
+    const numberStr = phone.number.trim();
 
     // If empty, it's valid (optional field)
-    if (!numberDigits) {
+    if (!numberStr) {
       return null;
     }
 
-    // Phone numbers with country code (>10 digits) or without (10 digits) are both valid
-    if (numberDigits.length < 10) {
-      return 'Phone number must be at least 10 digits';
+    // Check if it starts with + (country code required)
+    if (!numberStr.startsWith('+')) {
+      return 'Phone number must start with country code (e.g., +1 for US/Canada)';
     }
 
-    return null;
+    try {
+      // Try to parse the phone number
+      const phoneNumber = parsePhoneNumberFromString(numberStr);
+
+      if (!phoneNumber) {
+        return 'Unable to parse phone number. Please check the country code and format.';
+      }
+
+      if (!phoneNumber.isValid()) {
+        const countryName = phoneNumber.country
+          ? new Intl.DisplayNames(['en'], { type: 'region' }).of(phoneNumber.country)
+          : 'the detected country';
+        return `Invalid phone number format for ${countryName}. Please check the number.`;
+      }
+
+      return null;
+    } catch (error) {
+      return 'Invalid phone number format. Use international format: +[country code] [number]';
+    }
   };
 
-  // Helper to format phone number for display
-  const formatPhoneDisplay = (phoneNumber: string): string => {
-    if (!phoneNumber || phoneNumber.length < 3) return phoneNumber;
+  // Helper to format phone number as user types
+  const formatPhoneAsYouType = (value: string): string => {
+    const formatter = new AsYouType();
+    return formatter.input(value);
+  };
 
-    if (phoneNumber.length <= 3) {
-      return `(${phoneNumber}`;
-    } else if (phoneNumber.length <= 6) {
-      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
-    } else {
-      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+  // Helper to get country name from phone number
+  const getCountryFromPhone = (phoneNumber: string): { country: string; flag: string } | null => {
+    try {
+      const parsed = parsePhoneNumberFromString(phoneNumber);
+      if (parsed && parsed.country) {
+        // Get country name using Intl.DisplayNames
+        const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+        const countryName = regionNames.of(parsed.country);
+
+        // Get flag emoji (convert country code to flag emoji)
+        const flag = parsed.country
+          .toUpperCase()
+          .replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397));
+
+        return { country: countryName || parsed.country, flag };
+      }
+      return null;
+    } catch {
+      return null;
     }
   };
 
   // Initialize form data when contact changes (edit mode)
   useEffect(() => {
     if (contact) {
+      // Format phone numbers for display
+      const formattedPhones = contact.phones && contact.phones.length > 0
+        ? contact.phones.map(phone => {
+            try {
+              // Try to parse and format the stored phone number
+              const parsed = parsePhoneNumberFromString(phone.number);
+              return {
+                number: parsed ? parsed.formatInternational() : phone.number,
+                type: phone.type,
+              };
+            } catch {
+              return phone;
+            }
+          })
+        : [{ number: '', type: 'Mobile' }];
+
       setFormData({
         full_name: contact.full_name,
         emails: contact.emails.length > 0 ? contact.emails : [''],
-        phones: contact.phones && contact.phones.length > 0 ? contact.phones : [{ number: '', type: 'Mobile' }],
+        phones: formattedPhones,
         company_name: contact.company_name || '',
         contact_type: contact.contact_type || '',
         addresses: contact.addresses && contact.addresses.length > 0 ? contact.addresses : [''],
@@ -195,13 +252,25 @@ export const ContactDialog = ({
     }
 
     try {
-      // Clean up arrays by removing empty values
+      // Clean up arrays by removing empty values and convert to E.164 format
       const cleanedPhones = (formData.phones || [])
         .filter(phone => phone.number.trim())
-        .map(phone => ({
-          number: phone.number.replace(/\D/g, ''), // Store only digits
-          type: phone.type,
-        }));
+        .map(phone => {
+          try {
+            // Try to parse and convert to E.164 format (e.g., +12019269883)
+            const parsed = parsePhoneNumberFromString(phone.number);
+            return {
+              number: parsed?.number || phone.number, // E.164 format or original if parsing fails
+              type: phone.type,
+            };
+          } catch {
+            // If parsing fails, store as-is
+            return {
+              number: phone.number,
+              type: phone.type,
+            };
+          }
+        });
 
       const cleanedData: CreateContactInput = {
         ...formData,
@@ -283,58 +352,15 @@ export const ContactDialog = ({
     });
   };
 
-  // Phone-specific handlers
-  const handleCountryCodeChange = (index: number, value: string) => {
-    // Only allow digits, limit to 3
-    const digitsOnly = value.replace(/\D/g, '').slice(0, 3);
-
-    setFormData(prev => {
-      const newPhones = [...(prev.phones || [])];
-      const currentPhone = newPhones[index] || { number: '', type: 'Mobile' };
-
-      // Get the raw number from storage
-      const fullNumberDigits = currentPhone.number.replace(/\D/g, '');
-
-      // Extract the main 10-digit number (last 10 digits, or the whole thing if less)
-      const mainNumber = fullNumberDigits.length > 10
-        ? fullNumberDigits.slice(-10)
-        : fullNumberDigits;
-
-      // Combine new country code + main number
-      const fullNumber = digitsOnly ? digitsOnly + mainNumber : mainNumber;
-      newPhones[index] = { number: fullNumber, type: currentPhone.type };
-      return { ...prev, phones: newPhones };
-    });
-
-    // Clear error when user types
-    if (phoneErrors[index]) {
-      setPhoneErrors(prev => {
-        const newErrors = [...prev];
-        newErrors[index] = '';
-        return newErrors;
-      });
-    }
-  };
-
+  // Phone-specific handler for single field
   const handlePhoneNumberChange = (index: number, value: string) => {
-    // Only allow digits, limit to 10
-    const digitsOnly = value.replace(/\D/g, '').slice(0, 10);
+    // Use AsYouType to format as the user types
+    const formatted = formatPhoneAsYouType(value);
 
     setFormData(prev => {
       const newPhones = [...(prev.phones || [])];
       const currentPhone = newPhones[index] || { number: '', type: 'Mobile' };
-
-      // Get the raw number from storage
-      const fullNumberDigits = currentPhone.number.replace(/\D/g, '');
-
-      // Extract country code if exists (all digits beyond the last 10)
-      const countryCode = fullNumberDigits.length > 10
-        ? fullNumberDigits.slice(0, fullNumberDigits.length - 10)
-        : '';
-
-      // Combine country code + new main number
-      const fullNumber = countryCode ? countryCode + digitsOnly : digitsOnly;
-      newPhones[index] = { number: fullNumber, type: currentPhone.type };
+      newPhones[index] = { number: formatted, type: currentPhone.type };
       return { ...prev, phones: newPhones };
     });
 
@@ -536,28 +562,37 @@ export const ContactDialog = ({
             {/* Phone Numbers - 3 columns (60%) */}
             <div className="col-span-3 space-y-2">
               {(formData.phones || []).map((phone, index) => {
-                // Get raw digits from stored number
-                const fullNumberDigits = phone.number.replace(/\D/g, '');
-
-                // Extract country code (everything except last 10 digits)
-                const countryCode = fullNumberDigits.length > 10
-                  ? fullNumberDigits.slice(0, fullNumberDigits.length - 10)
-                  : '';
-
-                // Extract main number (last 10 digits, or entire number if less than 10)
-                const mainNumberDigits = fullNumberDigits.length > 10
-                  ? fullNumberDigits.slice(-10)
-                  : fullNumberDigits;
-
-                // Format main number for display
-                const mainNumberDisplay = formatPhoneDisplay(mainNumberDigits);
+                const countryInfo = phone.number ? getCountryFromPhone(phone.number) : null;
 
                 return (
                   <div key={index} className="space-y-1">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor={`phone_${index}`} className="font-semibold">
-                        Phone #{index + 1} {index === 0 && <span className="text-red-500">*</span>}
-                      </Label>
+                      <div className="flex items-center gap-1">
+                        <Label htmlFor={`phone_${index}`} className="font-semibold">
+                          Phone #{index + 1} {index === 0 && <span className="text-red-500">*</span>}
+                        </Label>
+                        <TooltipProvider delayDuration={200}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center cursor-help">
+                                <Info className="w-3.5 h-3.5 text-muted-foreground" />
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" align="start" className="max-w-xs">
+                              <p className="text-sm font-semibold mb-2">Phone Number Format</p>
+                              <p className="text-xs mb-2">
+                                Enter phone number starting with <strong>+</strong> followed by the country code and number.
+                              </p>
+                              <p className="text-xs font-medium mb-1">Examples:</p>
+                              <p className="text-xs space-y-1">
+                                <span className="block">• +1 (201) 555-0400 (US/Canada)</span>
+                                <span className="block">• +44 20 1234 5678 (UK)</span>
+                                <span className="block">• +52 55 1234 5678 (Mexico)</span>
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                       {index === (formData.phones || []).length - 1 && (
                         <Button
                           type="button"
@@ -572,31 +607,21 @@ export const ContactDialog = ({
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <div className="w-16">
-                        <div className="relative">
-                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">+</span>
-                          <Input
-                            type="text"
-                            inputMode="numeric"
-                            value={countryCode}
-                            onChange={(e) => handleCountryCodeChange(index, e.target.value)}
-                            placeholder="1"
-                            maxLength={3}
-                            className={`pl-5 ${phoneErrors[index] ? 'border-red-500' : ''}`}
-                          />
-                        </div>
-                      </div>
-                      <div className="flex-1">
+                      <div className="flex-1 relative">
                         <Input
                           id={`phone_${index}`}
-                          type="text"
-                          inputMode="numeric"
-                          value={mainNumberDisplay}
+                          type="tel"
+                          value={phone.number}
                           onChange={(e) => handlePhoneNumberChange(index, e.target.value)}
-                          placeholder="(201) 555-0400"
-                          maxLength={14}
-                          className={phoneErrors[index] ? 'border-red-500' : ''}
+                          placeholder="+1 (201) 555-0400"
+                          className={`${phoneErrors[index] ? 'border-red-500' : ''} ${countryInfo ? 'pr-32' : ''}`}
                         />
+                        {countryInfo && (
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs text-muted-foreground bg-background px-2 py-1 rounded pointer-events-none">
+                            <span className="text-base">{countryInfo.flag}</span>
+                            <span className="hidden sm:inline">{countryInfo.country}</span>
+                          </div>
+                        )}
                       </div>
                       <Select
                         value={phone.type}
