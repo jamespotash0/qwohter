@@ -66,7 +66,7 @@ const Auth = () => {
   }, [location.pathname]);
 
   // ============================================================================
-  // INVITE TOKEN HANDLING
+  // INVITE TOKEN HANDLING (Priority: Sign out existing user if invite exists)
   // ============================================================================
   useEffect(() => {
     // Prevent multiple executions
@@ -79,6 +79,23 @@ const Auth = () => {
       // Handle secure invite token
       const handleInviteToken = async () => {
         try {
+          // FIRST: Check if user is currently logged in
+          const session = await authService.getSession();
+
+          if (session) {
+            console.log('User logged in, signing out to process invite token');
+            // Sign out the current user to allow invite acceptance
+            await authService.signOut();
+            // Clear any cached auth state
+            clearAuthState();
+
+            toast({
+              title: "Signed out",
+              description: "You've been signed out to accept this invitation",
+            });
+          }
+
+          // THEN: Validate the invite token
           const tokenData = await validateInviteToken(inviteToken.trim());
 
           if (tokenData) {

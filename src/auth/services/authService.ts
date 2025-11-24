@@ -186,6 +186,15 @@ export async function signOut(): Promise<{ error: Error | null }> {
         const { error } = await supabase.auth.signOut();
 
         if (error) {
+          // Handle "session not found" gracefully - this is expected when session is already invalid
+          if (error.message?.includes('session_not_found') ||
+              error.message?.includes('Auth session missing')) {
+            console.log('Session already invalid, clearing local state');
+            clearSentryUser();
+            span.setStatus({ code: 1 }); // Treat as success
+            return { error: null };
+          }
+
           span.setStatus({ code: 2, message: error.message });
           Sentry.captureException(error, {
             tags: {
@@ -202,6 +211,15 @@ export async function signOut(): Promise<{ error: Error | null }> {
         span.setStatus({ code: 1 }); // Success
         return { error: null };
       } catch (error) {
+        // Also handle session missing errors here
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('session_not_found') ||
+            errorMessage.includes('Auth session missing')) {
+          console.log('Session already invalid during signOut, clearing local state');
+          clearSentryUser();
+          return { error: null };
+        }
+
         return {
           error: error instanceof Error ? error : new Error(String(error)),
         };
