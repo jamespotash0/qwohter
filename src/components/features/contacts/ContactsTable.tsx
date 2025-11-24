@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Contact } from '@/lib/types/contacts';
 import { formatPhoneNumber } from '@/lib/utils/contactUtils';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, UserCheck } from 'lucide-react';
 
 interface ContactsTableProps {
   contacts: Contact[];
@@ -223,10 +223,8 @@ export const ContactsTable = ({
               <TableCell className="font-normal align-middle">
                 <div className="flex items-center gap-2">
                   {contact.full_name}
-                  {contact.user_id && (
-                    <Badge variant="secondary" className="text-xs">
-                      Team Member
-                    </Badge>
+                  {contact.is_in_organization && (
+                    <UserCheck className="w-3.5 h-3.5 text-muted-foreground" />
                   )}
                 </div>
               </TableCell>

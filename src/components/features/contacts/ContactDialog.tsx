@@ -486,11 +486,6 @@ export const ContactDialog = ({
               <Label className="text-sm font-medium">
                 Is Contact in Organization?
               </Label>
-              {contact?.user_id && (
-                <p className="text-xs text-muted-foreground mb-2">
-                  This contact is a team member and is automatically in the organization.
-                </p>
-              )}
               <div className="flex items-center gap-4 pt-1">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -498,7 +493,6 @@ export const ContactDialog = ({
                     name="is_in_organization"
                     checked={formData.is_in_organization === true}
                     onChange={() => setFormData((prev) => ({ ...prev, is_in_organization: true }))}
-                    disabled={!!contact?.user_id}
                     className="w-4 h-4 text-blue-600 cursor-pointer"
                   />
                   <span className="text-sm text-gray-900 dark:text-white">Yes</span>
@@ -509,7 +503,6 @@ export const ContactDialog = ({
                     name="is_in_organization"
                     checked={formData.is_in_organization === false}
                     onChange={() => setFormData((prev) => ({ ...prev, is_in_organization: false }))}
-                    disabled={!!contact?.user_id}
                     className="w-4 h-4 text-blue-600 cursor-pointer"
                   />
                   <span className="text-sm text-gray-900 dark:text-white">No</span>

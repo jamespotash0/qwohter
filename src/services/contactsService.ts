@@ -73,7 +73,6 @@ export class ContactsService {
 
   /**
    * Create a new contact
-   * Automatically links to team member if email matches
    */
   async createContact(
     organizationId: string,
@@ -86,46 +85,11 @@ export class ContactsService {
       throw new Error('User not authenticated');
     }
 
-    // Check if any of the contact's emails match an existing team member
-    let linkedUserId: string | undefined;
-    let isInOrganization = input.is_in_organization || false;
-
-    if (input.emails && input.emails.length > 0) {
-      const { data: members } = await supabase
-        .from('memberships')
-        .select('user_id, profiles(id, email)')
-        .eq('organization_id', organizationId)
-        .eq('status', 'Active');
-
-      if (members && members.length > 0) {
-        // Check if any contact email matches a member email
-        for (const contactEmail of input.emails) {
-          const matchingMember = members.find(
-            (m: any) => m.profiles?.email?.toLowerCase() === contactEmail.toLowerCase()
-          ) as { user_id: string; profiles: { id: string; email: string } } | undefined;
-
-          if (matchingMember) {
-            linkedUserId = matchingMember.user_id;
-            isInOrganization = true;
-            console.log(`Auto-linking contact to existing team member: ${matchingMember.user_id}`);
-            break;
-          }
-        }
-      }
-    }
-
-    // Build the insert object with proper typing
     const insertData: any = {
       organization_id: organizationId,
       created_by: user.id,
       ...input,
-      is_in_organization: isInOrganization,
     };
-
-    // Add user_id if we found a match
-    if (linkedUserId) {
-      insertData.user_id = linkedUserId;
-    }
 
     const { data, error } = await supabase
       .from('contacts')
@@ -148,14 +112,14 @@ export class ContactsService {
     contactId: string,
     input: UpdateContactInput
   ): Promise<Contact> {
-    const updateData = {
+    const updateData: any = {
       ...input,
       updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase
       .from('contacts')
-      .update(updateData)
+      .update(updateData) as any)
       .eq('id', contactId)
       .select()
       .single();
