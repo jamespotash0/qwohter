@@ -35,7 +35,8 @@ export const createInviteToken = async (
   role: 'Admin' | 'Member',
   createdBy: string,
   expiryHours: number = 2,
-  department?: string
+  department?: string,
+  email?: string
 ): Promise<{ token: string; expires_at: string }> => {
   const token = generateSecureToken();
   const expiresAt = new Date();
@@ -50,7 +51,8 @@ export const createInviteToken = async (
       created_by: createdBy,
       expires_at: expiresAt.toISOString(),
       is_used: false,
-      department: department || null
+      email: email || '',
+      department: department || null,
     } as any);
 
   if (error) {
@@ -85,7 +87,7 @@ export const validateInviteToken = async (token: string): Promise<InviteToken | 
 
   // Check if token has expired
   const now = new Date();
-  const expiresAt = new Date(data.expires_at);
+  const expiresAt = new Date((data as any).expires_at);
 
   if (now > expiresAt) {
     return null;
@@ -98,8 +100,8 @@ export const validateInviteToken = async (token: string): Promise<InviteToken | 
  * Mark invite token as used
  */
 export const markTokenAsUsed = async (token: string): Promise<boolean> => {
-  const { error } = await supabase
-    .from('invite_tokens')
+  const { error } = await (supabase
+    .from('invite_tokens') as any)
     .update({ is_used: true })
     .eq('token', token);
 

@@ -96,14 +96,9 @@ export const inviteMember = async (params: InviteMemberParams): Promise<InviteMe
       role,
       invitedBy,
       2, // 2 hours expiry
-      department
+      department,
+      email // Pass email directly to avoid separate update
     );
-
-    // Update the invite token record with email
-    await supabase
-      .from('invite_tokens')
-      .update({ email })
-      .eq('token', token);
 
     // Get current user's session for authentication
     const { data: { session } } = await supabase.auth.getSession();

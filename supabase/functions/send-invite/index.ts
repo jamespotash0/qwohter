@@ -179,10 +179,6 @@ serve(async (req) => {
                 </div>
 
                 <a href="${inviteUrl}" class="button">Accept Invitation</a>
-
-                <div class="expiry">
-                  ⏱️ This invitation expires in 2 hours
-                </div>
               </div>
 
               <h3 style="color: #333; margin-top: 30px;">What is Qwohter?</h3>
@@ -222,8 +218,6 @@ Invited By: ${requestData.inviterName}
 Accept your invitation by clicking the link below:
 ${inviteUrl}
 
-This invitation expires in 2 hours.
-
 What is Qwohter?
 Qwohter is a professional quote management platform that helps teams create, track, and manage quotes efficiently.
 
@@ -241,7 +235,7 @@ If you weren't expecting this invitation, you can safely ignore this email.
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Qwohter Team <invites@qwohter.com>', // Update after domain verification
+        from: 'Qwohter Team <james@qwohter.com>',
         to: [requestData.email],
         subject: `${requestData.inviterName} invited you to join ${requestData.organizationName} on Qwohter`,
         html: emailHtml,

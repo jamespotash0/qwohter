@@ -331,7 +331,7 @@ export function useInviteMember(organizationId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ email, role }: { email: string; role: 'Admin' | 'Member' }) => {
+    mutationFn: async ({ email, role, department }: { email: string; role: 'Admin' | 'Member'; department?: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
@@ -365,6 +365,7 @@ export function useInviteMember(organizationId: string) {
         role,
         invitedBy: user.id,
         inviterName,
+        department,
       });
 
       if (!result.success) {
@@ -374,14 +375,10 @@ export function useInviteMember(organizationId: string) {
       return result;
     },
     onSuccess: () => {
-      toast.success('Invitation sent successfully');
       // Invalidate invite tokens list to show new invitation
       queryClient.invalidateQueries({
         queryKey: queryKeys.organization.invites(organizationId),
       });
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to send invitation: ${error.message}`);
     },
   });
 }

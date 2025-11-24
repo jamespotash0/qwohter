@@ -36,7 +36,7 @@ export function TeamTab() {
   } = useOrganizationContext(user?.id || '');
 
   // React Query mutation hooks
-  const { mutateAsync: inviteMemberMutation } = useInviteMember(organizationId || '');
+  const { mutateAsync: inviteMemberMutation, isPending: isInviting } = useInviteMember(organizationId || '');
   const { mutateAsync: removeMemberMutation } = useRemoveMember(organizationId || '');
   const { mutateAsync: updateRoleMutation } = useUpdateMemberRole(organizationId || '');
   const { mutateAsync: updateStatusMutation } = useUpdateMemberStatus(organizationId || '');
@@ -46,17 +46,13 @@ export function TeamTab() {
     if (inviteRole === 'placeholder' || inviteDepartment === 'placeholder') return;
 
     try {
-      // Note: The inviteMemberMutation expects { email, role }, not the full signature
-      // We need to handle department separately via Supabase update
       await inviteMemberMutation({
         email: inviteEmail,
-        role: inviteRole === 'Owner' || inviteRole === 'Admin' ? 'Admin' : 'Member'
+        role: inviteRole === 'Owner' || inviteRole === 'Admin' ? 'Admin' : 'Member',
+        department: inviteDepartment
       });
 
-      toast({
-        title: "Invitation sent",
-        description: `Invite sent to ${inviteEmail}`,
-      });
+      // Clear form after successful invite (no toast)
       setInviteEmail("");
       setInviteRole("");
       setInviteDepartment("");
@@ -266,10 +262,10 @@ export function TeamTab() {
             </Select>
             <Button
               onClick={handleInvite}
-              disabled={!inviteEmail || !inviteDepartment || !inviteRole}
+              disabled={!inviteEmail || !inviteDepartment || !inviteRole || isInviting}
               className="bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white px-6"
             >
-              Invite
+              {isInviting ? 'Sending...' : 'Invite'}
             </Button>
           </div>
         </div>
