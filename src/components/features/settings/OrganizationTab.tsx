@@ -167,7 +167,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
 
           <div className="space-y-1">
             {/* Company Logo */}
-            <div className="flex items-start justify-between py-6 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+            <div className="flex items-start justify-between py-6 px-6 rounded-lg">
               <div className="flex-1 pr-8">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Company Logo</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -188,7 +188,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
             </div>
 
             {/* Organization Name */}
-            <div className="flex items-start justify-between py-6 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+            <div className="flex items-start justify-between py-6 px-6 rounded-lg">
               <div className="flex-1 pr-8">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Organization Name</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -244,7 +244,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
             </div>
 
             {/* Industry */}
-            <div className="flex items-start justify-between py-6 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+            <div className="flex items-start justify-between py-6 px-6 rounded-lg">
               <div className="flex-1 pr-8">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Industry</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -300,7 +300,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
             </div>
 
             {/* Website */}
-            <div className="flex items-start justify-between py-6 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+            <div className="flex items-start justify-between py-6 px-6 rounded-lg">
               <div className="flex-1 pr-8">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Website</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -364,7 +364,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
 
           <div className="space-y-1">
             {/* Phone Number */}
-            <div className="flex items-start justify-between py-6 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+            <div className="flex items-start justify-between py-6 px-6 rounded-lg">
               <div className="flex-1 pr-8">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Phone Number</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -420,7 +420,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
             </div>
 
             {/* Fax Number */}
-            <div className="flex items-start justify-between py-6 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+            <div className="flex items-start justify-between py-6 px-6 rounded-lg">
               <div className="flex-1 pr-8">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Fax Number</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -476,7 +476,7 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
             </div>
 
             {/* Company Address */}
-            <div className="flex items-start justify-between py-6 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+            <div className="flex items-start justify-between py-6 px-6 rounded-lg">
               <div className="flex-1 pr-8">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Company Address</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">

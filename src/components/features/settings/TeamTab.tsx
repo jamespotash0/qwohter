@@ -309,7 +309,7 @@ export function TeamTab() {
                 </tr>
               ) : (
                 [...members].sort((a, b) => new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime()).map((member) => (
-                  <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                  <tr key={member.id}>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-3">
                         <Avatar className="w-10 h-10">

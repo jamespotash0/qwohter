@@ -182,7 +182,7 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({
                   </tr>
                   {/* Permissions */}
                   {category.permissions.map((permission) => (
-                    <tr key={permission.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                    <tr key={permission.id}>
                       <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                         {permission.label}
                       </td>

@@ -1074,7 +1074,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 {invoices.length > 0 ? (
                   invoices.map((invoice) => (
-                    <tr key={invoice.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <tr key={invoice.id}>
                       <td className="px-4 py-4">
                         <Checkbox
                           checked={selectedInvoices.includes(invoice.id)}
