@@ -248,12 +248,14 @@ export const resendInvitation = async (
 
 /**
  * Cancel/revoke an invitation
+ * Marks the invitation as revoked instead of deleting it,
+ * allowing the invite history to be preserved and re-inviting later
  */
 export const cancelInvitation = async (inviteToken: string): Promise<{ success: boolean; error?: string }> => {
   try {
     const { error } = await supabase
       .from('invite_tokens')
-      .delete()
+      .update({ revoked_at: new Date().toISOString() })
       .eq('token', inviteToken);
 
     if (error) {

@@ -15,6 +15,7 @@ export interface InviteToken {
   created_at: string;
   is_used: boolean;
   department?: string | null;
+  revoked_at?: string | null;
 }
 
 /**

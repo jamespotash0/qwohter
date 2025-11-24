@@ -507,3 +507,34 @@ export function useSuspendMember(organizationId: string) {
     mutate: (membershipId: string) => mutate({ membershipId, status: 'Suspended' }), //membership_status
   };
 }
+
+/**
+ * Hook: Revoke Invitation
+ *
+ * Revokes/cancels a pending invitation by deleting the invite token
+ */
+export function useRevokeInvitation(organizationId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (inviteToken: string) => {
+      const { teamInvitationService } = await import('@/services/teamInvitationService');
+      const result = await teamInvitationService.cancelInvitation(inviteToken);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to revoke invitation');
+      }
+
+      return result;
+    },
+    onSuccess: () => {
+      toast.success('Invitation revoked successfully');
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.organization.invites(organizationId),
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to revoke invitation: ${error.message}`);
+    },
+  });
+}
