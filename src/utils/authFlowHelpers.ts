@@ -503,13 +503,19 @@ export const authFlowHelpers = {
 
       // ✨ Auto-enroll new organization in 14-day free trial
       console.log('🎁 Auto-enrolling organization in free trial:', organizationId);
+      console.log('🔍 Current user ID:', userId);
+
+      // Small delay to ensure membership is fully committed
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       const { stripeService } = await import('@/services/stripeService');
       const trialResult = await stripeService.enrollInFreeTrial(organizationId);
 
       if (trialResult.success) {
         console.log('✅ Free trial enrollment successful');
       } else {
-        console.warn('⚠️ Free trial enrollment failed (non-blocking):', trialResult.error);
+        console.error('❌ Free trial enrollment failed:', trialResult.error);
+        console.error('⚠️ This may indicate an RLS policy issue or missing Team plan');
         // Don't block onboarding if trial enrollment fails
       }
 
