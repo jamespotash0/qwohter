@@ -110,7 +110,7 @@ export const inviteMember = async (params: InviteMemberParams): Promise<InviteMe
       // Reuse existing entry: generate new token and update it
       const newToken = generateSecureToken();
       const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 2); // 2 hours expiry
+      expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours expiry
       const newExpiresAt = expiresAt.toISOString();
 
       // Update the existing entry with new token and clear revoked_at
@@ -137,7 +137,7 @@ export const inviteMember = async (params: InviteMemberParams): Promise<InviteMe
         organizationId,
         role,
         invitedBy,
-        2, // 2 hours expiry
+        24, // 24 hours expiry
         department,
         email
       );

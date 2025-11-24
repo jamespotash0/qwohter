@@ -14,9 +14,12 @@ interface HandleOtpVerificationParams {
   setLoading: (loading: boolean) => void;
   toast: (props: { title: string; description: string; variant?: 'destructive' }) => void;
   saveAuthState: (state: any) => void;
+  // Optional: For invite flow
+  isInvitee?: boolean;
+  organizationId?: string;
 }
 
-export const handleOtpVerification = async (params: HandleOtpVerificationParams) => {
+export const handleOtpVerification = async (params: HandleOtpVerificationParams): Promise<{ success: boolean; userId?: string }> => {
   const {
     email,
     otpCode,
@@ -26,9 +29,11 @@ export const handleOtpVerification = async (params: HandleOtpVerificationParams)
     setLoading,
     toast,
     saveAuthState,
+    isInvitee,
+    organizationId,
   } = params;
 
-  if (!otpCode || !email) return;
+  if (!otpCode || !email) return { success: false };
 
   setLoading(true);
   try {
@@ -45,18 +50,31 @@ export const handleOtpVerification = async (params: HandleOtpVerificationParams)
         });
 
         if (profileResult.success) {
-          setStep('organization');
-          saveAuthState({ step: 'organization', email, userId: result.data.userId });
-          toast({
-            title: 'Email verified!',
-            description: 'Please set up your organization.',
-          });
+          // For invited users, don't set step to 'organization'
+          // Let the parent component handle the invite join flow
+          if (!isInvitee) {
+            setStep('organization');
+            saveAuthState({ step: 'organization', email, userId: result.data.userId });
+            toast({
+              title: 'Email verified!',
+              description: 'Please set up your organization.',
+            });
+          } else {
+            // For invitees, just show verification success
+            // The parent will handle joining the organization
+            toast({
+              title: 'Email verified!',
+              description: 'Joining your organization...',
+            });
+          }
+          return { success: true, userId: result.data.userId };
         } else {
           toast({
             title: 'Setup Error',
             description: profileResult.error as any,
             variant: 'destructive',
           });
+          return { success: false };
         }
       } else {
         toast({
@@ -64,6 +82,7 @@ export const handleOtpVerification = async (params: HandleOtpVerificationParams)
           description: 'Missing name information. Please try signing up again.',
           variant: 'destructive',
         });
+        return { success: false };
       }
     } else {
       toast({
@@ -71,6 +90,7 @@ export const handleOtpVerification = async (params: HandleOtpVerificationParams)
         description: result.error as any,
         variant: 'destructive',
       });
+      return { success: false };
     }
   } catch (error: any) {
     toast({
@@ -78,6 +98,7 @@ export const handleOtpVerification = async (params: HandleOtpVerificationParams)
       description: error.message,
       variant: 'destructive',
     });
+    return { success: false };
   } finally {
     setLoading(false);
   }

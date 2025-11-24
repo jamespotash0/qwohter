@@ -114,6 +114,12 @@ const Auth = () => {
           formState.setOrganizationId(tokenData.organization_id);
           // Store invite token for later use after OTP verification
           sessionStorage.setItem('pendingInviteToken', inviteToken.trim());
+
+          // SECURITY: Remove token from URL to prevent leakage via history/logs/screenshots
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('invite');
+          window.history.replaceState({}, '', newUrl.toString());
+
           toast({
             title: "Invite link detected",
             description: "You've been invited to join an organization",
@@ -259,7 +265,12 @@ const Auth = () => {
 
   const onOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await handleOtpVerification({
+
+    // Check if there's a pending invite token BEFORE OTP verification
+    const pendingInviteToken = sessionStorage.getItem('pendingInviteToken');
+    const isInvitee = !!(pendingInviteToken && formState.organizationId);
+
+    const result = await handleOtpVerification({
       email: formState.email,
       otpCode: formState.otpCode,
       fullName: formState.fullName,
@@ -268,20 +279,28 @@ const Auth = () => {
       setLoading: authFlow.setLoading,
       toast,
       saveAuthState,
+      isInvitee,
+      organizationId: formState.organizationId,
     });
 
-    // After successful OTP verification, check if there's a pending invite
-    const pendingInviteToken = sessionStorage.getItem('pendingInviteToken');
-    if (pendingInviteToken && authFlow.userId && formState.organizationId) {
+    // After successful OTP verification, if this is an invitee, join the organization
+    if (result.success && isInvitee && result.userId && formState.organizationId && pendingInviteToken) {
+      console.log('🎯 Processing invite join after OTP verification', {
+        userId: result.userId,
+        organizationId: formState.organizationId,
+        hasToken: !!pendingInviteToken
+      });
+
       // Process the invite join automatically
       await handleInviteJoin({
-        userId: authFlow.userId,
+        userId: result.userId,
         organizationId: formState.organizationId,
         inviteToken: pendingInviteToken,
         setLoading: authFlow.setLoading,
         navigate,
         toast,
       });
+
       // Clear the pending invite token
       sessionStorage.removeItem('pendingInviteToken');
     }
