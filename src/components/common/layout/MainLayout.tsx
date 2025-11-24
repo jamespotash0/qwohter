@@ -188,23 +188,13 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   }, []);
 
   const handleLogout = async () => {
-    const startTime = Date.now();
-    const MIN_LOGOUT_TIME = 800; // 800ms minimum for smooth UX
-
     // ✅ v3.0.0: Use new signOut mutation with callback
     // Note: signOut mutation triggers AuthProvider's SIGNED_OUT handler
     // which automatically clears React Query cache and resets stores
 
     signOut(undefined, {
-      onSuccess: async () => {
-        // Ensure minimum display time for loading spinner (smooth UX)
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, MIN_LOGOUT_TIME - elapsedTime);
-        if (remainingTime > 0) {
-          await new Promise(resolve => setTimeout(resolve, remainingTime));
-        }
-
-        // Navigate to sign-in
+      onSuccess: () => {
+        // Navigate to sign-in immediately (no artificial delay)
         navigate('/sign-in', { replace: true });
       },
       onError: (error) => {
@@ -275,16 +265,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
 
   return (
       <div className={`h-screen flex w-full overflow-hidden ${isBoardPage ? 'bg-sidebar' : 'bg-[var(--content-bg)]'}`}>
-          {/* Logout overlay to prevent flash */}
-          {isLoggingOut && (
-            <div className="absolute inset-0 bg-background z-50 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-3">
-                <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-muted-foreground">Signing out...</p>
-              </div>
-            </div>
-          )}
-
           <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Main Content */}
