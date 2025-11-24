@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS public.contacts (
   organization_id UUID NOT NULL,
   full_name TEXT NOT NULL,
   emails TEXT[] NOT NULL, -- Array of email addresses (at least one required)
-  phones TEXT[], -- Array of phone numbers
+  phones JSONB, -- Array of phone objects: [{"number": "12015550400", "type": "Mobile"}, ...]
   company_name TEXT,
   contact_type TEXT, -- Lead, Customer, Vendor, Partner, Contractor, Architect, etc.
   addresses TEXT[], -- Array of addresses
@@ -79,12 +79,12 @@ CREATE POLICY "contacts_update_policy"
     is_active_member(auth.uid(), organization_id)
   );
 
--- Policy: Only Admins and Owners can delete contacts
+-- Policy: Members can delete contacts in their organization
 CREATE POLICY "contacts_delete_policy"
   ON public.contacts
   FOR DELETE
   USING (
-    has_org_role(auth.uid(), organization_id, ARRAY['Admin', 'Owner'])
+    is_active_member(auth.uid(), organization_id)
   );
 
 -- ============================================================================
@@ -94,7 +94,7 @@ COMMENT ON TABLE public.contacts IS 'Customer/prospect contacts for organization
 COMMENT ON COLUMN public.contacts.organization_id IS 'Organization this contact belongs to';
 COMMENT ON COLUMN public.contacts.full_name IS 'Contact full name';
 COMMENT ON COLUMN public.contacts.emails IS 'Array of contact email addresses (at least one required)';
-COMMENT ON COLUMN public.contacts.phones IS 'Array of contact phone numbers (optional)';
+COMMENT ON COLUMN public.contacts.phones IS 'Array of phone objects with number and type stored as JSONB: [{"number": "12015550400", "type": "Mobile"}, ...]';
 COMMENT ON COLUMN public.contacts.company_name IS 'Company name of the contact (optional)';
 COMMENT ON COLUMN public.contacts.contact_type IS 'Type of contact: Lead, Customer, Vendor, Partner, Contractor, Architect, etc.';
 COMMENT ON COLUMN public.contacts.addresses IS 'Array of physical addresses (optional)';

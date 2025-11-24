@@ -49,7 +49,8 @@ export function combineContactOptions(
 
     // Use first email from the emails array
     const primaryEmail = contact.emails[0] || '';
-    const primaryPhone = contact.phones?.[0];
+    // Extract phone number from phone object
+    const primaryPhone = contact.phones?.[0]?.number;
 
     options.push({
       id: contact.id,
@@ -109,19 +110,36 @@ export function isValidEmail(email: string): boolean {
 }
 
 /**
- * Format phone number for display
+ * Format phone number for display with country code
+ * Converts: "12015550400" -> "+1 (201) 555-0400"
+ * Converts: "442012345678" -> "+44 (201) 234-5678"
+ * Handles both string (legacy) and PhoneNumber object formats
  */
-export function formatPhoneNumber(phone: string | undefined): string {
+export function formatPhoneNumber(phone: string | { number: string; type: string } | undefined): string {
   if (!phone) return '';
 
-  // Remove all non-numeric characters
-  const cleaned = phone.replace(/\D/g, '');
+  // Extract number string from object or use string directly
+  const phoneStr = typeof phone === 'string' ? phone : phone.number;
+  if (!phoneStr) return '';
 
-  // Format as (XXX) XXX-XXXX for US numbers
+  // Remove all non-numeric characters
+  const cleaned = phoneStr.replace(/\D/g, '');
+
+  // Handle numbers with country code (more than 10 digits)
+  if (cleaned.length > 10) {
+    const countryCode = cleaned.slice(0, cleaned.length - 10);
+    const areaCode = cleaned.slice(cleaned.length - 10, cleaned.length - 7);
+    const firstPart = cleaned.slice(cleaned.length - 7, cleaned.length - 4);
+    const secondPart = cleaned.slice(cleaned.length - 4);
+
+    return `+${countryCode} (${areaCode}) ${firstPart}-${secondPart}`;
+  }
+
+  // Format as (XXX) XXX-XXXX for 10-digit numbers (no country code)
   if (cleaned.length === 10) {
     return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
   }
 
-  // Return as-is for international or non-standard formats
-  return phone;
+  // Return as-is for non-standard formats
+  return phoneStr;
 }

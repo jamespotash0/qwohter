@@ -27,16 +27,13 @@ import { Textarea } from '@/components/ui/textarea';
 import MapboxInput from '@/components/common/inputs/MapboxInput';
 import { useCreateContact, useUpdateContact } from '@/hooks/useContacts';
 import type { Contact, CreateContactInput } from '@/lib/types/contacts';
-import { CONTACT_TYPES } from '@/lib/types/contacts';
+import { CONTACT_TYPES, PHONE_TYPES } from '@/lib/types/contacts';
 import { isValidEmail } from '@/lib/utils/contactUtils';
 import {
-  User,
-  Mail,
-  Phone,
-  Building,
-  FileText,
   Plus,
   X,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface ContactDialogProps {
@@ -59,7 +56,7 @@ export const ContactDialog = ({
   const [formData, setFormData] = useState<CreateContactInput>({
     full_name: '',
     emails: [''],
-    phones: [''],
+    phones: [{ number: '', type: 'Mobile' }],
     company_name: '',
     contact_type: '',
     addresses: [''],
@@ -71,87 +68,48 @@ export const ContactDialog = ({
   const [phoneErrors, setPhoneErrors] = useState<string[]>([]);
   const [showCustomType, setShowCustomType] = useState(false);
   const [customType, setCustomType] = useState('');
-
-  // Separate state for country codes and phone numbers
-  const [countryCodes, setCountryCodes] = useState<string[]>(['']);
-  const [phoneNumbers, setPhoneNumbers] = useState<string[]>(['']);
+  const [showMore, setShowMore] = useState(false);
 
   const createContact = useCreateContact(organizationId);
   const updateContact = useUpdateContact();
 
-  // Helper to parse phone number into country code and number
-  const parsePhoneNumber = (phone: string): { countryCode: string; number: string } => {
-    // Remove all non-digit characters
-    const digits = phone.replace(/\D/g, '');
-
-    // Assume first 1-3 digits could be country code
-    // Common patterns: +1 (US/Canada), +44 (UK), +91 (India), etc.
-    if (digits.length > 10) {
-      // If more than 10 digits, assume first 1-3 are country code
-      const possibleCountryCode = digits.substring(0, digits.length - 10);
-      return {
-        countryCode: possibleCountryCode.slice(0, 3),
-        number: digits.substring(digits.length - 10)
-      };
-    } else if (digits.length === 10) {
-      // If exactly 10 digits, assume no country code (or default to empty)
-      return {
-        countryCode: '',
-        number: digits
-      };
-    } else {
-      // Less than 10 digits, put all in number
-      return {
-        countryCode: '',
-        number: digits
-      };
-    }
-  };
-
   // Helper to validate phone number
-  const validatePhoneNumber = (countryCode: string, number: string): string | null => {
-    const countryCodeDigits = countryCode.replace(/\D/g, '');
-    const numberDigits = number.replace(/\D/g, '');
+  const validatePhoneNumber = (phone: { number: string; type: string }): string | null => {
+    const numberDigits = phone.number.replace(/\D/g, '');
 
-    // If both are empty, it's valid (optional field)
-    if (!countryCodeDigits && !numberDigits) {
+    // If empty, it's valid (optional field)
+    if (!numberDigits) {
       return null;
     }
 
-    // Check if country code is 1-3 digits if provided
-    if (countryCodeDigits && (countryCodeDigits.length < 1 || countryCodeDigits.length > 3)) {
-      return 'Country code must be 1-3 digits';
-    }
-
-    // Check if number has exactly 10 digits
-    if (numberDigits && numberDigits.length !== 10) {
-      return 'Phone number must be 10 digits';
-    }
-
-    // If one is filled, both must be filled
-    if ((countryCodeDigits && !numberDigits) || (!countryCodeDigits && numberDigits)) {
-      return 'Both country code and phone number are required';
+    // Phone numbers with country code (>10 digits) or without (10 digits) are both valid
+    if (numberDigits.length < 10) {
+      return 'Phone number must be at least 10 digits';
     }
 
     return null;
   };
 
+  // Helper to format phone number for display
+  const formatPhoneDisplay = (phoneNumber: string): string => {
+    if (!phoneNumber || phoneNumber.length < 3) return phoneNumber;
+
+    if (phoneNumber.length <= 3) {
+      return `(${phoneNumber}`;
+    } else if (phoneNumber.length <= 6) {
+      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+    } else {
+      return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+    }
+  };
+
   // Initialize form data when contact changes (edit mode)
   useEffect(() => {
     if (contact) {
-      // Parse phone numbers into country codes and numbers
-      const parsedPhones = (contact.phones && contact.phones.length > 0
-        ? contact.phones
-        : ['']
-      ).map(phone => parsePhoneNumber(phone));
-
-      setCountryCodes(parsedPhones.map(p => p.countryCode));
-      setPhoneNumbers(parsedPhones.map(p => p.number));
-
       setFormData({
         full_name: contact.full_name,
         emails: contact.emails.length > 0 ? contact.emails : [''],
-        phones: contact.phones && contact.phones.length > 0 ? contact.phones : [''],
+        phones: contact.phones && contact.phones.length > 0 ? contact.phones : [{ number: '', type: 'Mobile' }],
         company_name: contact.company_name || '',
         contact_type: contact.contact_type || '',
         addresses: contact.addresses && contact.addresses.length > 0 ? contact.addresses : [''],
@@ -166,12 +124,10 @@ export const ContactDialog = ({
       }
     } else {
       // Reset form for create mode
-      setCountryCodes(['']);
-      setPhoneNumbers(['']);
       setFormData({
         full_name: '',
         emails: [''],
-        phones: [''],
+        phones: [{ number: '', type: 'Mobile' }],
         company_name: '',
         contact_type: '',
         addresses: [''],
@@ -192,26 +148,39 @@ export const ContactDialog = ({
       newErrors.full_name = 'Name is required';
     }
 
+    if (!formData.contact_type?.trim()) {
+      newErrors.contact_type = 'Contact type is required';
+    }
+
+    if (!formData.company_name?.trim()) {
+      newErrors.company_name = 'Company is required';
+    }
+
     // Validate emails - at least one valid email required
     const validEmails = formData.emails.filter(email => email.trim() && isValidEmail(email));
     if (validEmails.length === 0) {
       newErrors.emails = 'At least one valid email is required';
     }
 
-    // Validate phone numbers
+    // Validate phone numbers - at least one valid phone required
     const phoneValidationErrors: string[] = [];
-    countryCodes.forEach((countryCode, index) => {
-      const phoneNumber = phoneNumbers[index] || '';
-      const error = validatePhoneNumber(countryCode, phoneNumber);
-      phoneValidationErrors.push(error || '');
-    });
+    const validPhones = (formData.phones || []).filter(phone => phone.number.trim());
 
-    setPhoneErrors(phoneValidationErrors);
+    if (validPhones.length === 0) {
+      newErrors.phones = 'At least one phone number is required';
+    } else {
+      (formData.phones || []).forEach((phone) => {
+        const error = validatePhoneNumber(phone);
+        phoneValidationErrors.push(error || '');
+      });
 
-    // Check if any phone has errors
-    const hasPhoneErrors = phoneValidationErrors.some(error => error !== '');
-    if (hasPhoneErrors) {
-      newErrors.phones = 'Please fix phone number errors';
+      setPhoneErrors(phoneValidationErrors);
+
+      // Check if any phone has errors
+      const hasPhoneErrors = phoneValidationErrors.some(error => error !== '');
+      if (hasPhoneErrors) {
+        newErrors.phones = 'Please fix phone number errors';
+      }
     }
 
     setErrors(newErrors);
@@ -226,26 +195,18 @@ export const ContactDialog = ({
     }
 
     try {
-      // Combine country codes and phone numbers into full phone numbers
-      const fullPhones = countryCodes
-        .map((countryCode, index) => {
-          const phoneNumber = phoneNumbers[index] || '';
-          const countryCodeDigits = countryCode.replace(/\D/g, '');
-          const phoneDigits = phoneNumber.replace(/\D/g, '');
-
-          // Only include if both country code and number are complete
-          if (countryCodeDigits.length >= 1 && countryCodeDigits.length <= 3 && phoneDigits.length === 10) {
-            return `${countryCodeDigits}${phoneDigits}`;
-          }
-          return '';
-        })
-        .filter(phone => phone !== '');
-
       // Clean up arrays by removing empty values
+      const cleanedPhones = (formData.phones || [])
+        .filter(phone => phone.number.trim())
+        .map(phone => ({
+          number: phone.number.replace(/\D/g, ''), // Store only digits
+          type: phone.type,
+        }));
+
       const cleanedData: CreateContactInput = {
         ...formData,
         emails: formData.emails.filter(email => email.trim()),
-        phones: fullPhones,
+        phones: cleanedPhones.length > 0 ? cleanedPhones : undefined,
         addresses: formData.addresses?.filter(address => address.trim()),
       };
 
@@ -286,9 +247,9 @@ export const ContactDialog = ({
     }
   };
 
-  // Helper functions for managing array fields
+  // Helper functions for managing array fields (emails and addresses)
   const handleArrayFieldChange = (
-    field: 'emails' | 'phones' | 'addresses',
+    field: 'emails' | 'addresses',
     index: number,
     value: string
   ) => {
@@ -303,62 +264,46 @@ export const ContactDialog = ({
     }
   };
 
-  const addArrayField = (field: 'emails' | 'phones' | 'addresses') => {
+  const addArrayField = (field: 'emails' | 'addresses') => {
     setFormData((prev) => ({
       ...prev,
       [field]: [...(prev[field] || []), ''],
     }));
   };
 
-  const removeArrayField = (field: 'emails' | 'phones' | 'addresses', index: number) => {
-    if (field === 'phones') {
-      // Handle phone removal by removing from both country codes and phone numbers
-      setCountryCodes(prev => {
-        const newArray = [...prev];
-        newArray.splice(index, 1);
-        if (newArray.length === 0) {
-          newArray.push('');
-        }
-        return newArray;
-      });
-      setPhoneNumbers(prev => {
-        const newArray = [...prev];
-        newArray.splice(index, 1);
-        if (newArray.length === 0) {
-          newArray.push('');
-        }
-        return newArray;
-      });
-      // Clear any error for this index
-      setPhoneErrors(prev => {
-        const newErrors = [...prev];
-        newErrors.splice(index, 1);
-        return newErrors;
-      });
-    } else {
-      setFormData((prev) => {
-        const newArray = [...(prev[field] || [])];
-        newArray.splice(index, 1);
-        // Ensure at least one field remains for emails
-        if (field === 'emails' && newArray.length === 0) {
-          newArray.push('');
-        }
-        return { ...prev, [field]: newArray };
-      });
-    }
+  const removeArrayField = (field: 'emails' | 'addresses', index: number) => {
+    setFormData((prev) => {
+      const newArray = [...(prev[field] || [])];
+      newArray.splice(index, 1);
+      // Ensure at least one field remains for emails
+      if (field === 'emails' && newArray.length === 0) {
+        newArray.push('');
+      }
+      return { ...prev, [field]: newArray };
+    });
   };
 
-  // Handler for country code changes
+  // Phone-specific handlers
   const handleCountryCodeChange = (index: number, value: string) => {
-    // Only allow digits
-    const digitsOnly = value.replace(/\D/g, '');
-    // Limit to 3 digits
-    const limited = digitsOnly.slice(0, 3);
+    // Only allow digits, limit to 3
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 3);
 
-    setCountryCodes(prev => {
-      const newArray = [...prev];
-      newArray[index] = limited;
-      return newArray;
+    setFormData(prev => {
+      const newPhones = [...(prev.phones || [])];
+      const currentPhone = newPhones[index] || { number: '', type: 'Mobile' };
+
+      // Get the raw number from storage
+      const fullNumberDigits = currentPhone.number.replace(/\D/g, '');
+
+      // Extract the main 10-digit number (last 10 digits, or the whole thing if less)
+      const mainNumber = fullNumberDigits.length > 10
+        ? fullNumberDigits.slice(-10)
+        : fullNumberDigits;
+
+      // Combine new country code + main number
+      const fullNumber = digitsOnly ? digitsOnly + mainNumber : mainNumber;
+      newPhones[index] = { number: fullNumber, type: currentPhone.type };
+      return { ...prev, phones: newPhones };
     });
 
     // Clear error when user types
@@ -371,17 +316,26 @@ export const ContactDialog = ({
     }
   };
 
-  // Handler for phone number changes
   const handlePhoneNumberChange = (index: number, value: string) => {
-    // Only allow digits
-    const digitsOnly = value.replace(/\D/g, '');
-    // Limit to 10 digits
-    const limited = digitsOnly.slice(0, 10);
+    // Only allow digits, limit to 10
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 10);
 
-    setPhoneNumbers(prev => {
-      const newArray = [...prev];
-      newArray[index] = limited;
-      return newArray;
+    setFormData(prev => {
+      const newPhones = [...(prev.phones || [])];
+      const currentPhone = newPhones[index] || { number: '', type: 'Mobile' };
+
+      // Get the raw number from storage
+      const fullNumberDigits = currentPhone.number.replace(/\D/g, '');
+
+      // Extract country code if exists (all digits beyond the last 10)
+      const countryCode = fullNumberDigits.length > 10
+        ? fullNumberDigits.slice(0, fullNumberDigits.length - 10)
+        : '';
+
+      // Combine country code + new main number
+      const fullNumber = countryCode ? countryCode + digitsOnly : digitsOnly;
+      newPhones[index] = { number: fullNumber, type: currentPhone.type };
+      return { ...prev, phones: newPhones };
     });
 
     // Clear error when user types
@@ -394,16 +348,45 @@ export const ContactDialog = ({
     }
   };
 
-  // Handler for adding phone field
-  const addPhoneField = () => {
-    setCountryCodes(prev => [...prev, '']);
-    setPhoneNumbers(prev => [...prev, '']);
+  const handlePhoneTypeChange = (index: number, value: string) => {
+    setFormData(prev => {
+      const newPhones = [...(prev.phones || [])];
+      const currentPhone = newPhones[index] || { number: '', type: 'Mobile' };
+      newPhones[index] = { number: currentPhone.number, type: value };
+      return { ...prev, phones: newPhones };
+    });
+  };
+
+  const addPhone = () => {
+    setFormData(prev => ({
+      ...prev,
+      phones: [...(prev.phones || []), { number: '', type: 'Mobile' }]
+    }));
     setPhoneErrors(prev => [...prev, '']);
+  };
+
+  const removePhone = (index: number) => {
+    setFormData(prev => {
+      const newPhones = [...(prev.phones || [])];
+      newPhones.splice(index, 1);
+      // Keep at least one phone field
+      if (newPhones.length === 0) {
+        newPhones.push({ number: '', type: 'Mobile' });
+      }
+      return { ...prev, phones: newPhones };
+    });
+
+    // Clear any error for this index
+    setPhoneErrors(prev => {
+      const newErrors = [...prev];
+      newErrors.splice(index, 1);
+      return newErrors;
+    });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[850px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditMode ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
           <DialogDescription>
@@ -414,142 +397,281 @@ export const ContactDialog = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Full Name */}
-          <div className="space-y-2">
-            <Label htmlFor="full_name" className="flex items-center gap-2">
-              <User className="w-4 h-4" />
-              Full Name <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="full_name"
-              value={formData.full_name}
-              onChange={(e) => handleChange('full_name', e.target.value)}
-              placeholder="John Doe"
-              className={errors.full_name ? 'border-red-500' : ''}
-              required
-            />
-            {errors.full_name && (
-              <p className="text-sm text-red-500">{errors.full_name}</p>
-            )}
-          </div>
-
-          {/* Email(s) */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Mail className="w-4 h-4" />
-              Email(s) <span className="text-red-500">*</span>
-            </Label>
-            {formData.emails.map((email, index) => (
-              <div key={index} className="flex gap-2">
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => handleArrayFieldChange('emails', index, e.target.value)}
-                  placeholder="john@example.com"
-                  className={errors.emails ? 'border-red-500' : ''}
-                />
-                {formData.emails.length > 1 && (
-                  <Button
+          {/* Row 1: Contact Type and Is In Organization */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Contact Type */}
+            <div className="space-y-2">
+              <Label htmlFor="contact_type">
+                Contact Type <span className="text-red-500">*</span>
+              </Label>
+              {showCustomType ? (
+                <div className="space-y-2">
+                  <Input
+                    value={customType}
+                    onChange={(e) => {
+                      setCustomType(e.target.value);
+                      handleChange('contact_type', e.target.value);
+                    }}
+                    placeholder="Enter custom type"
+                    className={errors.contact_type ? 'border-red-500' : ''}
+                  />
+                  <button
                     type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => removeArrayField('emails', index)}
-                    className="shrink-0"
+                    onClick={() => {
+                      setShowCustomType(false);
+                      setCustomType('');
+                      handleChange('contact_type', '');
+                    }}
+                    className="text-xs text-gray-500 hover:text-gray-700"
                   >
-                    <X className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => addArrayField('emails')}
-              className="w-full"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Email
-            </Button>
-            {errors.emails && (
-              <p className="text-sm text-red-500">{errors.emails}</p>
-            )}
-          </div>
+                    ← Back to dropdown
+                  </button>
+                </div>
+              ) : (
+                <Select
+                  value={formData.contact_type}
+                  onValueChange={handleTypeChange}
+                >
+                  <SelectTrigger className={errors.contact_type ? 'border-red-500' : ''}>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CONTACT_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom">
+                      <div className="flex items-center gap-2">
+                        <Plus className="w-4 h-4" />
+                        Custom type...
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+              {errors.contact_type && (
+                <p className="text-sm text-red-500">{errors.contact_type}</p>
+              )}
+            </div>
 
-          {/* Is In Organization */}
-          <div className="space-y-2 py-4">
-            <Label className="text-sm font-medium">
-              Is Contact in Organization?
-            </Label>
-            {contact?.user_id && (
-              <p className="text-xs text-muted-foreground">
-                This contact is a team member and is automatically in the organization.
-              </p>
-            )}
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant={formData.is_in_organization ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFormData((prev) => ({ ...prev, is_in_organization: true }))}
-                className="flex-1"
-                disabled={!!contact?.user_id}
-              >
-                Yes
-              </Button>
-              <Button
-                type="button"
-                variant={!formData.is_in_organization ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFormData((prev) => ({ ...prev, is_in_organization: false }))}
-                className="flex-1"
-                disabled={!!contact?.user_id}
-              >
-                No
-              </Button>
+            {/* Is In Organization */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">
+                Is Contact in Organization?
+              </Label>
+              {contact?.user_id && (
+                <p className="text-xs text-muted-foreground mb-2">
+                  This contact is a team member and is automatically in the organization.
+                </p>
+              )}
+              <div className="flex items-center gap-4 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="is_in_organization"
+                    checked={formData.is_in_organization === true}
+                    onChange={() => setFormData((prev) => ({ ...prev, is_in_organization: true }))}
+                    disabled={!!contact?.user_id}
+                    className="w-4 h-4 text-blue-600 cursor-pointer"
+                  />
+                  <span className="text-sm text-gray-900 dark:text-white">Yes</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="is_in_organization"
+                    checked={formData.is_in_organization === false}
+                    onChange={() => setFormData((prev) => ({ ...prev, is_in_organization: false }))}
+                    disabled={!!contact?.user_id}
+                    className="w-4 h-4 text-blue-600 cursor-pointer"
+                  />
+                  <span className="text-sm text-gray-900 dark:text-white">No</span>
+                </label>
+              </div>
             </div>
           </div>
 
-          {/* Phone(s) */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Phone className="w-4 h-4" />
-              Phone(s)
-            </Label>
-            {countryCodes.map((countryCode, index) => (
-              <div key={index} className="space-y-1">
-                <div className="flex gap-2">
-                  <div className="w-24">
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">+</span>
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        value={countryCode}
-                        onChange={(e) => handleCountryCodeChange(index, e.target.value)}
-                        placeholder="1"
-                        maxLength={3}
-                        className={`pl-6 ${phoneErrors[index] ? 'border-red-500' : ''}`}
-                      />
+          {/* Row 2: Full Name and Company */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Full Name */}
+            <div className="space-y-2">
+              <Label htmlFor="full_name">
+                Full Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="full_name"
+                value={formData.full_name}
+                onChange={(e) => handleChange('full_name', e.target.value)}
+                placeholder="John Doe"
+                className={errors.full_name ? 'border-red-500' : ''}
+                required
+              />
+              {errors.full_name && (
+                <p className="text-sm text-red-500">{errors.full_name}</p>
+              )}
+            </div>
+
+            {/* Company Name */}
+            <div className="space-y-2">
+              <Label htmlFor="company_name">
+                Company <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="company_name"
+                value={formData.company_name}
+                onChange={(e) => handleChange('company_name', e.target.value)}
+                placeholder="Acme Corp"
+                className={errors.company_name ? 'border-red-500' : ''}
+                required
+              />
+              {errors.company_name && (
+                <p className="text-sm text-red-500">{errors.company_name}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Row 3: Phone and Email on same line */}
+          <div className="grid grid-cols-5 gap-4">
+            {/* Phone Numbers - 3 columns (60%) */}
+            <div className="col-span-3 space-y-2">
+              {(formData.phones || []).map((phone, index) => {
+                // Get raw digits from stored number
+                const fullNumberDigits = phone.number.replace(/\D/g, '');
+
+                // Extract country code (everything except last 10 digits)
+                const countryCode = fullNumberDigits.length > 10
+                  ? fullNumberDigits.slice(0, fullNumberDigits.length - 10)
+                  : '';
+
+                // Extract main number (last 10 digits, or entire number if less than 10)
+                const mainNumberDigits = fullNumberDigits.length > 10
+                  ? fullNumberDigits.slice(-10)
+                  : fullNumberDigits;
+
+                // Format main number for display
+                const mainNumberDisplay = formatPhoneDisplay(mainNumberDigits);
+
+                return (
+                  <div key={index} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor={`phone_${index}`} className="font-semibold">
+                        Phone #{index + 1} {index === 0 && <span className="text-red-500">*</span>}
+                      </Label>
+                      {index === (formData.phones || []).length - 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={addPhone}
+                          className="h-6 text-xs"
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add
+                        </Button>
+                      )}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Country code</p>
+                    <div className="flex gap-2">
+                      <div className="w-16">
+                        <div className="relative">
+                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">+</span>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            value={countryCode}
+                            onChange={(e) => handleCountryCodeChange(index, e.target.value)}
+                            placeholder="1"
+                            maxLength={3}
+                            className={`pl-5 ${phoneErrors[index] ? 'border-red-500' : ''}`}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <Input
+                          id={`phone_${index}`}
+                          type="text"
+                          inputMode="numeric"
+                          value={mainNumberDisplay}
+                          onChange={(e) => handlePhoneNumberChange(index, e.target.value)}
+                          placeholder="(201) 555-0400"
+                          maxLength={14}
+                          className={phoneErrors[index] ? 'border-red-500' : ''}
+                        />
+                      </div>
+                      <Select
+                        value={phone.type}
+                        onValueChange={(value) => handlePhoneTypeChange(index, value)}
+                      >
+                        <SelectTrigger className="w-24">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PHONE_TYPES.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {(formData.phones || []).length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => removePhone(index)}
+                          className="shrink-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {phoneErrors[index] && (
+                      <p className="text-sm text-red-500">{phoneErrors[index]}</p>
+                    )}
                   </div>
-                  <div className="flex-1 flex gap-2">
+                );
+              })}
+              {errors.phones && (
+                <p className="text-sm text-red-500">{errors.phones}</p>
+              )}
+            </div>
+
+            {/* Email Addresses - 2 columns (40%) */}
+            <div className="col-span-2 space-y-2">
+              {formData.emails.map((email, index) => (
+                <div key={index} className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={`email_${index}`} className="font-semibold">
+                      Email #{index + 1} {index === 0 && <span className="text-red-500">*</span>}
+                    </Label>
+                    {index === formData.emails.length - 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => addArrayField('emails')}
+                        className="h-6 text-xs"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
                     <Input
-                      type="text"
-                      inputMode="numeric"
-                      value={phoneNumbers[index] || ''}
-                      onChange={(e) => handlePhoneNumberChange(index, e.target.value)}
-                      placeholder="5551234567"
-                      maxLength={10}
-                      className={phoneErrors[index] ? 'border-red-500' : ''}
+                      id={`email_${index}`}
+                      type="email"
+                      value={email}
+                      onChange={(e) => handleArrayFieldChange('emails', index, e.target.value)}
+                      placeholder="john@example.com"
+                      className={errors.emails ? 'border-red-500' : ''}
                     />
-                    {countryCodes.length > 1 && (
+                    {formData.emails.length > 1 && (
                       <Button
                         type="button"
                         variant="outline"
                         size="icon"
-                        onClick={() => removeArrayField('phones', index)}
+                        onClick={() => removeArrayField('emails', index)}
                         className="shrink-0"
                       >
                         <X className="w-4 h-4" />
@@ -557,143 +679,100 @@ export const ContactDialog = ({
                     )}
                   </div>
                 </div>
-                {phoneErrors[index] && (
-                  <p className="text-sm text-red-500">{phoneErrors[index]}</p>
-                )}
-              </div>
-            ))}
+              ))}
+              {errors.emails && (
+                <p className="text-sm text-red-500">{errors.emails}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Show More/Less Button */}
+          <div className="flex justify-center pt-2">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              onClick={addPhoneField}
-              className="w-full"
+              onClick={() => setShowMore(!showMore)}
+              className="text-sm font-medium"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Phone
+              {showMore ? (
+                <>
+                  <ChevronUp className="w-4 h-4 mr-2" />
+                  Show Less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="w-4 h-4 mr-2" />
+                  Show More
+                </>
+              )}
             </Button>
           </div>
 
-          {/* Company Name */}
-          <div className="space-y-2">
-            <Label htmlFor="company_name" className="flex items-center gap-2">
-              <Building className="w-4 h-4" />
-              Company
-            </Label>
-            <Input
-              id="company_name"
-              value={formData.company_name}
-              onChange={(e) => handleChange('company_name', e.target.value)}
-              placeholder="Acme Corp"
-            />
-          </div>
-
-          {/* Contact Type */}
-          <div className="space-y-2">
-            <Label htmlFor="contact_type" className="flex items-center gap-2">
-              <User className="w-4 h-4" />
-              Contact Type
-            </Label>
-            {showCustomType ? (
+          {/* Expanded Section: Address and Notes */}
+          {showMore && (
+            <div className="space-y-4 pt-2 border-t">
+              {/* Address(es) */}
               <div className="space-y-2">
-                <Input
-                  value={customType}
-                  onChange={(e) => {
-                    setCustomType(e.target.value);
-                    handleChange('contact_type', e.target.value);
-                  }}
-                  placeholder="Enter custom type"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCustomType(false);
-                    setCustomType('');
-                    handleChange('contact_type', '');
-                  }}
-                  className="text-xs text-gray-500 hover:text-gray-700"
-                >
-                  ← Back to dropdown
-                </button>
-              </div>
-            ) : (
-              <Select
-                value={formData.contact_type}
-                onValueChange={handleTypeChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CONTACT_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="custom">
-                    <div className="flex items-center gap-2">
-                      <Plus className="w-4 h-4" />
-                      Custom type...
+                {formData.addresses?.map((address, index) => (
+                  <div key={index} className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor={`address_${index}`} className="font-semibold">
+                        Address #{index + 1}
+                      </Label>
+                      {index === (formData.addresses?.length || 1) - 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => addArrayField('addresses')}
+                          className="h-6 text-xs"
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Add Address
+                        </Button>
+                      )}
                     </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-
-          {/* Address(es) */}
-          <div className="space-y-2">
-            {formData.addresses?.map((address, index) => (
-              <div key={index} className="flex gap-2 items-start">
-                <div className="flex-1">
-                  <MapboxInput
-                    label={index === 0 ? "Address(es)" : ""}
-                    value={address}
-                    onChange={(value) => handleArrayFieldChange('addresses', index, value)}
-                    placeholder="123 Main St, City, State ZIP"
-                    id={`address_${index}`}
-                    className="w-full"
-                  />
-                </div>
-                {(formData.addresses?.length || 0) > 1 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => removeArrayField('addresses', index)}
-                    className="shrink-0 mt-6"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                )}
+                    <div className="flex gap-2 items-start">
+                      <div className="flex-1">
+                        <MapboxInput
+                          label=""
+                          value={address}
+                          onChange={(value) => handleArrayFieldChange('addresses', index, value)}
+                          placeholder="123 Main St, City, State ZIP"
+                          id={`address_${index}`}
+                          className="w-full"
+                        />
+                      </div>
+                      {(formData.addresses?.length || 0) > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => removeArrayField('addresses', index)}
+                          className="shrink-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => addArrayField('addresses')}
-              className="w-full"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Address
-            </Button>
-          </div>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Notes
-            </Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => handleChange('notes', e.target.value)}
-              placeholder="Additional notes about this contact..."
-              rows={3}
-            />
-          </div>
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => handleChange('notes', e.target.value)}
+                  placeholder="Additional notes about this contact..."
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
 
           <DialogFooter>
             <Button

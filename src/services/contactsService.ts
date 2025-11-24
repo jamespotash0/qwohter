@@ -170,7 +170,7 @@ export class ContactsService {
 
   /**
    * Delete a contact
-   * Only Admins and Owners can delete contacts (enforced by RLS)
+   * Members can delete contacts in their organization (enforced by RLS)
    */
   async deleteContact(contactId: string): Promise<void> {
     const { error } = await supabase
@@ -180,6 +180,12 @@ export class ContactsService {
 
     if (error) {
       console.error('Failed to delete contact:', error);
+
+      // Check if it's a permission error
+      if (error.code === 'PGRST301' || error.message.includes('policy')) {
+        throw new Error('You do not have permission to delete contacts. Only active members can delete contacts.');
+      }
+
       throw new Error(`Failed to delete contact: ${error.message}`);
     }
   }

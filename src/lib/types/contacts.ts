@@ -5,12 +5,20 @@
  * stored in the contacts table
  */
 
+/**
+ * Phone number with type
+ */
+export interface PhoneNumber {
+  number: string;
+  type: string; // Mobile, Business, Home, Fax, Other
+}
+
 export interface Contact {
   id: string;
   organization_id: string;
   full_name: string;
   emails: string[]; // Array of email addresses (at least one required)
-  phones?: string[]; // Array of phone numbers
+  phones?: PhoneNumber[]; // Array of phone objects with number and type
   company_name?: string;
   contact_type?: string; // Lead, Customer, Vendor, Partner, Contractor, Architect, etc.
   addresses?: string[]; // Array of addresses
@@ -25,7 +33,7 @@ export interface Contact {
 export interface CreateContactInput {
   full_name: string;
   emails: string[]; // At least one email required
-  phones?: string[];
+  phones?: PhoneNumber[];
   company_name?: string;
   contact_type?: string;
   addresses?: string[];
@@ -36,7 +44,7 @@ export interface CreateContactInput {
 export interface UpdateContactInput {
   full_name?: string;
   emails?: string[];
-  phones?: string[];
+  phones?: PhoneNumber[];
   company_name?: string;
   contact_type?: string;
   addresses?: string[];
@@ -60,16 +68,32 @@ export interface ContactOption {
  * Predefined contact types for dropdown
  */
 export const CONTACT_TYPES = [
-  'Lead',
   'Customer',
+  'Employee',
+  'Salesperson',
   'Vendor',
-  'Partner',
   'Contractor',
   'Architect',
   'Designer',
+  'Engineer',
+  'Manufacturer',
+  'Business',
   'Supplier',
-  'Consultant',
+  'Lead',
   'Other',
 ] as const;
 
 export type ContactType = typeof CONTACT_TYPES[number];
+
+/**
+ * Predefined phone types for dropdown
+ */
+export const PHONE_TYPES = [
+  'Mobile',
+  'Business',
+  'Home',
+  'Fax',
+  'Other',
+] as const;
+
+export type PhoneType = typeof PHONE_TYPES[number];
