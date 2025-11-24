@@ -66,7 +66,7 @@ serve(async (req) => {
     // @ts-ignore
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     // @ts-ignore
-    const appUrl = Deno.env.get('APP_URL') || 'https://app.qwohter.com';
+    const appUrl = Deno.env.get('APP_URL') || 'https://www.qwohter.com';
 
     if (!resendApiKey) {
       console.error('RESEND_API_KEY not found in environment variables');

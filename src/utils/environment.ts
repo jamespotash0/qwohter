@@ -22,7 +22,7 @@ export const getAppUrl = (): string => {
   
   switch (env) {
     case 'production':
-      return import.meta.env.VITE_APP_URL_PRODUCTION || 'https://app.qwohter.com';
+      return import.meta.env.VITE_APP_URL_PRODUCTION || 'https://www.qwohter.com';
     case 'staging':
       return import.meta.env.VITE_APP_URL_STAGING || 'https://aiqu-three.vercel.app';
     case 'development':
