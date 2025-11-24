@@ -9,8 +9,10 @@
  * - Main component is just orchestration (~200 lines)
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { AuthForm } from "@/components/auth/AuthForm";
@@ -51,6 +53,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Use extracted hooks for state management
   const authFlow = useAuthFlow();
@@ -59,6 +62,10 @@ const Auth = () => {
 
   // Track processed invite tokens to prevent loops
   const processedInviteTokenRef = useRef<string | null>(null);
+
+  // Track OTP verification attempts
+  const [otpAttempts, setOtpAttempts] = useState(0);
+  const MAX_OTP_ATTEMPTS = 3;
 
   // Determine if user is an invitee (has pending invite token or organizationId set)
   const isInvitee = !!(formState.organizationId || sessionStorage.getItem('pendingInviteToken'));
@@ -293,6 +300,16 @@ const Auth = () => {
       isInvitee: isInviteeCheck,
     });
 
+    // Check if max attempts reached
+    if (otpAttempts >= MAX_OTP_ATTEMPTS) {
+      toast({
+        title: "Too Many Attempts",
+        description: "Please request a new verification code to continue.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const result = await handleOtpVerification({
       email: formState.email,
       otpCode: formState.otpCode,
@@ -305,6 +322,32 @@ const Auth = () => {
       isInvitee: isInviteeCheck,
       organizationId: effectiveOrgId,
     });
+
+    // Track failed attempts
+    if (!result.success) {
+      const newAttempts = otpAttempts + 1;
+      setOtpAttempts(newAttempts);
+
+      // Show contextual error message
+      if (newAttempts >= MAX_OTP_ATTEMPTS) {
+        toast({
+          title: "Too Many Failed Attempts",
+          description: "Please click 'Resend Code' to get a new verification code.",
+          variant: "destructive"
+        });
+      } else {
+        const remainingAttempts = MAX_OTP_ATTEMPTS - newAttempts;
+        toast({
+          title: "Invalid Code",
+          description: `Incorrect verification code. ${remainingAttempts} ${remainingAttempts === 1 ? 'attempt' : 'attempts'} remaining.`,
+          variant: "destructive"
+        });
+      }
+      return;
+    }
+
+    // Reset attempts on success
+    setOtpAttempts(0);
 
     // After successful OTP verification, if this is an invitee, join the organization
     if (result.success && isInviteeCheck && result.userId && effectiveOrgId && pendingInviteToken) {
@@ -377,6 +420,15 @@ const Auth = () => {
 
     // Update the OTP sent status
     tempSignupService.markOtpSent();
+
+    // Reset OTP attempts
+    setOtpAttempts(0);
+
+    // Show success message
+    toast({
+      title: "Code Sent!",
+      description: "A new verification code has been sent to your email."
+    });
   };
 
   const onChangeEmail = () => {
@@ -413,6 +465,14 @@ const Auth = () => {
       toast,
       saveAuthState,
     });
+
+    // Invalidate organization query to refetch the newly created org
+    if (authFlow.userId) {
+      console.log('🔄 Invalidating organization query for userId:', authFlow.userId);
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.organization.byUser(authFlow.userId)
+      });
+    }
   };
 
   const onCompanyInfoSubmit = async (e: React.FormEvent) => {
@@ -438,8 +498,7 @@ const Auth = () => {
   const onCompanyInfoSkip = () => {
     handleCompanyInfoSkip({
       toast,
-      clearAuthState,
-      navigate,
+      setStep: authFlow.setStep,
     });
   };
 

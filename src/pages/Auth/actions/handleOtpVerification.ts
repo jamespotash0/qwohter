@@ -19,7 +19,7 @@ interface HandleOtpVerificationParams {
   organizationId?: string;
 }
 
-export const handleOtpVerification = async (params: HandleOtpVerificationParams): Promise<{ success: boolean; userId?: string }> => {
+export const handleOtpVerification = async (params: HandleOtpVerificationParams): Promise<{ success: boolean; userId?: string; error?: string }> => {
   const {
     email,
     otpCode,
@@ -85,12 +85,8 @@ export const handleOtpVerification = async (params: HandleOtpVerificationParams)
         return { success: false };
       }
     } else {
-      toast({
-        title: 'Verification Error',
-        description: result.error as any,
-        variant: 'destructive',
-      });
-      return { success: false };
+      // Don't show toast here - let parent component handle it with attempt tracking
+      return { success: false, error: result.error };
     }
   } catch (error: any) {
     toast({

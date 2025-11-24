@@ -6,6 +6,7 @@
 import { organizationSettingsService } from '@/services/companySettingsService';
 import { LogoUploadResult } from '@/services/LogoUploadService';
 import { NavigateFunction } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 interface HandleCompanyInfoSubmitParams {
   userId: string | null;
@@ -48,6 +49,12 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
 
   setLoading(true);
   try {
+    // Small delay to ensure membership is committed
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Refresh session to ensure RLS policies recognize the new membership
+    await supabase.auth.refreshSession();
+
     // Use the organization settings service to update company info
     await organizationSettingsService.updateCompanyInfo({
       phone_number: companyPhone,
@@ -59,6 +66,9 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
       found_via: foundVia,
     });
 
+    console.log('✅ Company info saved successfully');
+    console.log('🔍 setStep function exists?', !!setStep);
+
     toast({
       title: 'Company information saved!',
       description: 'Almost done! Choose how you want to get started.',
@@ -66,7 +76,10 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
 
     // Go to trial activation step to let user choose
     if (setStep) {
+      console.log('🔄 Setting step to trial-activation');
       setStep('trial-activation');
+    } else {
+      console.error('❌ setStep function not provided - cannot navigate to trial-activation');
     }
   } catch (error: any) {
     toast({
@@ -81,19 +94,21 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
 
 interface HandleCompanyInfoSkipParams {
   toast: (props: { title: string; description: string }) => void;
-  clearAuthState: () => void;
-  navigate: NavigateFunction;
+  setStep?: (step: 'trial-activation') => void;
 }
 
 export const handleCompanyInfoSkip = (params: HandleCompanyInfoSkipParams) => {
-  const { toast, clearAuthState, navigate } = params;
+  const { toast, setStep } = params;
 
   toast({
-    title: 'Setup completed!',
-    description: 'You can add company information later in Settings.',
+    title: 'Company info skipped',
+    description: 'Choose how you want to get started.',
   });
-  clearAuthState();
-  navigate('/dashboard');
+
+  // Go to trial activation step to let user choose
+  if (setStep) {
+    setStep('trial-activation');
+  }
 };
 
 interface HandleLogoUploadParams {

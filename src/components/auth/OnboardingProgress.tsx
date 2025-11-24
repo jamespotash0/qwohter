@@ -47,8 +47,10 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
   const steps = isInvitee ? INVITE_SIGNUP_STEPS : (isSignUp ? SIGNUP_STEPS : SIGNIN_STEPS);
   const currentStepIndex = steps.findIndex(step => step.key === currentStep);
 
-  // Calculate progress percentage
-  const progressPercentage = ((currentStepIndex + 1) / steps.length) * 100;
+  // Show consistent step count throughout the flow
+  const displayStepNumber = currentStepIndex + 1;
+  const displayTotalSteps = steps.length;
+  const progressPercentage = (displayStepNumber / displayTotalSteps) * 100;
 
   return (
     <div className="w-full max-w-lg mx-auto mb-6">
@@ -67,7 +69,7 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({
       {/* Progress Text */}
       <div className="mt-3 text-center">
         <p className="text-sm text-gray-600 font-medium">
-          Step {currentStepIndex + 1} of {steps.length}
+          Step {displayStepNumber} of {displayTotalSteps}
         </p>
       </div>
     </div>

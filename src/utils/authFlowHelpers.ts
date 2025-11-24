@@ -118,16 +118,16 @@ export const authFlowHelpers = {
 
     try {
       // Check if user already exists in profiles (should work with fixed RLS policy)
-      // Note: This may fail with 406 if RLS policy doesn't allow anonymous access
+      // Note: This may fail if RLS policy doesn't allow anonymous access
       // We'll handle this gracefully and let Supabase auth handle duplicate detection
       try {
         const { data: existingProfile, error: profileError } = await supabase
           .from('profiles')
           .select('id, email, full_name')
           .eq('email', email)
-          .single();
+          .maybeSingle(); // Returns null if no rows found (no error)
 
-        if (existingProfile && !profileError) {
+        if (existingProfile) {
           console.log('User already exists in profiles:', existingProfile);
           return {
             success: false,
@@ -135,15 +135,15 @@ export const authFlowHelpers = {
           };
         }
 
-        // If profile check fails for reasons other than "not found", log but continue
+        // If profile check fails due to RLS or other errors, log but continue
         // Let Supabase auth handle duplicate detection instead
-        if (profileError && profileError.code !== 'PGRST116') {
-          console.warn('Profile check skipped due to RLS:', profileError.message);
+        if (profileError) {
+          console.warn('Profile check failed, continuing with signup:', profileError.message);
           // Continue with signup - Supabase will catch duplicates
         }
       } catch (profileCheckError) {
-        // RLS or other errors - log and continue
-        console.warn('Profile check failed, continuing with signup:', profileCheckError);
+        // Unexpected errors - log and continue
+        console.warn('Profile check failed with exception, continuing with signup:', profileCheckError);
         // Supabase auth will handle duplicate detection
       }
 
@@ -271,11 +271,11 @@ export const authFlowHelpers = {
       const { user: verifyUser, error: verifyError } = await authService.verifyOtp(email, otpCode);
 
       if (verifyError) {
+        // Don't clear temp data on error - user should be able to retry
         if (verifyError.message.includes('expired')) {
-          tempSignupService.clear();
           return {
             success: false,
-            error: "Verification code has expired. Please sign up again."
+            error: "Verification code has expired. Please request a new code."
           };
         }
 
@@ -323,6 +323,56 @@ export const authFlowHelpers = {
       return {
         success: false,
         error: error.message || "An error occurred during verification."
+      };
+    }
+  },
+
+  /**
+   * Resend OTP verification code
+   */
+  handleResendOtp: async (email: string): Promise<AuthResult> => {
+    if (!email) {
+      return {
+        success: false,
+        error: "Email is required"
+      };
+    }
+
+    try {
+      // Verify temp signup data exists
+      const tempData = tempSignupService.get();
+      if (!tempData || tempData.email !== email) {
+        return {
+          success: false,
+          error: "Session expired. Please sign up again."
+        };
+      }
+
+      const { error } = await authService.resendOtp(email);
+
+      if (error) {
+        if (error.message.includes('rate limit') || error.message.includes('429')) {
+          return {
+            success: false,
+            error: "Too many requests. Please wait a minute before requesting another code."
+          };
+        }
+
+        return {
+          success: false,
+          error: "Failed to resend code. Please try again."
+        };
+      }
+
+      return {
+        success: true,
+        data: { message: "Verification code resent successfully" }
+      };
+    } catch (error: any) {
+      console.error('Resend OTP error:', error);
+      return {
+        success: false,
+        error: error.message || "An error occurred while resending the code."
       };
     }
   },
@@ -406,6 +456,13 @@ export const authFlowHelpers = {
       }
 
       // --- Transaction-safe insert via RPC function ---
+      console.log('🏢 [DEBUG] Creating organization with RPC:', {
+        orgName: choice.orgName,
+        userId,
+        industry,
+        foundVia
+      });
+
       const { data: orgData, error: rpcError } = await supabase.rpc('create_org_with_owner', {
         org_name: sanitizeInput.string(choice.orgName),
         found_via: foundVia,
@@ -414,11 +471,32 @@ export const authFlowHelpers = {
       } as any);
 
       if (rpcError) {
+        console.error('🏢 [DEBUG] RPC Error:', rpcError);
         await OrganizationCreationLimiter.logCreationAttempt(userId, 'Failed', undefined, rpcError.message);
         throw rpcError;
       }
 
       const organizationId = orgData[0].org_id;
+      console.log('🏢 [DEBUG] Organization created successfully:', {
+        organizationId,
+        userId,
+        orgData
+      });
+
+      // Verify membership was created
+      const { data: membershipCheck, error: membershipCheckError } = await supabase
+        .from('memberships')
+        .select('id, user_id, organization_id, role, status')
+        .eq('user_id', userId)
+        .eq('organization_id', organizationId);
+
+      console.log('🏢 [DEBUG] Membership verification:', {
+        userId,
+        organizationId,
+        membershipExists: !!membershipCheck && membershipCheck.length > 0,
+        membershipData: membershipCheck,
+        error: membershipCheckError
+      });
 
       // Log success
       await OrganizationCreationLimiter.logCreationAttempt(userId, 'Success');

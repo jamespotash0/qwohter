@@ -52,47 +52,62 @@ class OrganizationSettingsService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      // First, get the user's membership to find their organization_id
       const { data: membershipData, error: membershipError } = await supabase
         .from('memberships')
-        .select(`
-          organization_id,
-          organizations (
-            id,
-            name,
-            industry,
-            found_via,
-            phone_number,
-            fax_number,
-            company_address,
-            website,
-            quote_start_number,
-            logo_data,
-            created_at,
-            updated_at
-          )
-        `)
+        .select('organization_id')
         .eq('user_id', user.id)
         .single();
 
-      if (membershipError) throw membershipError;
-      if (!membershipData || !(membershipData as any)?.organizations) throw new Error('User not associated with an organization');
+      console.log('🔍 [DEBUG] Membership query result:', {
+        hasError: !!membershipError,
+        error: membershipError,
+        hasMembershipData: !!membershipData,
+        membershipData,
+        userId: user.id
+      });
 
-      const orgData = (membershipData as any).organizations;
+      if (membershipError) throw membershipError;
+
+      const membership = membershipData as { organization_id: string } | null;
+      if (!membership?.organization_id) throw new Error('User not associated with an organization');
+
+      const organizationId = membership.organization_id;
+
+      // Now get the organization data
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .select('id, name, industry, found_via, phone_number, fax_number, company_address, website, quote_start_number, logo_data, created_at, updated_at')
+        .eq('id', organizationId)
+        .single();
+
+      console.log('🔍 [DEBUG] Organization query result:', {
+        hasError: !!orgError,
+        error: orgError,
+        hasOrgData: !!orgData,
+        orgData
+      });
+
+      if (orgError) throw orgError;
+      if (!orgData) throw new Error('Organization not found');
+
+      // Type the organization data
+      const org = orgData as any;
 
       // Prepare update data using individual fields instead of JSONB
       const logoData = {
-        ...(orgData.logo_data || {}),
+        ...(org.logo_data || {}),
         ...(companyData.logo_data && companyData.logo_data)
       };
 
       const updateData = {
-        phone_number: companyData.phone_number || orgData.phone_number,
-        fax_number: companyData.fax_number || orgData.fax_number,
-        company_address: companyData.company_address || orgData.company_address,
-        website: companyData.website || orgData.website,
-        quote_start_number: companyData.quote_start_number || orgData.quote_start_number,
-        industry: companyData.industry || orgData.industry,
-        found_via: companyData.found_via || orgData.found_via,
+        phone_number: companyData.phone_number || org.phone_number,
+        fax_number: companyData.fax_number || org.fax_number,
+        company_address: companyData.company_address || org.company_address,
+        website: companyData.website || org.website,
+        quote_start_number: companyData.quote_start_number || org.quote_start_number,
+        industry: companyData.industry || org.industry,
+        found_via: companyData.found_via || org.found_via,
         logo_data: logoData,
         updated_at: new Date().toISOString()
       };
@@ -106,7 +121,7 @@ class OrganizationSettingsService {
       const { data, error } = await supabase
         .from('organizations')
         .update(updateData)
-        .eq('id', (membershipData as any).organization_id)
+        .eq('id', organizationId)
         .select(`
           id,
           name,
