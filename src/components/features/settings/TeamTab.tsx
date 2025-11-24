@@ -19,16 +19,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { MoreVertical, Trash2, Crown, AlertTriangle, RotateCcw } from "lucide-react";
+import { MoreVertical, Trash2, Crown, AlertTriangle, RotateCcw, Plus, X } from "lucide-react";
 import type { Role } from "@/utils/teamManagementHelpers";
+import { cleanupExpiredTokens } from "@/utils/inviteTokens";
+
+interface PendingInvite {
+  email: string;
+  role: 'Admin' | 'Member';
+  department: string;
+}
 
 export function TeamTab() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<string>("");
   const [inviteDepartment, setInviteDepartment] = useState<string>("");
+  const [pendingInvitesList, setPendingInvitesList] = useState<PendingInvite[]>([]);
   const [removeDialog, setRemoveDialog] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: "", memberName: "" });
   const [transferDialog, setTransferDialog] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: "", memberName: "" });
-  const [inviteSentDialog, setInviteSentDialog] = useState<{ open: boolean; email: string }>({ open: false, email: "" });
+  const [inviteSentDialog, setInviteSentDialog] = useState<{ open: boolean; emails: string[] }>({ open: false, emails: [] });
+  const [isSendingBatch, setIsSendingBatch] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -89,30 +98,93 @@ export function TeamTab() {
     };
   }, [organizationId, queryClient]);
 
-  const handleInvite = async () => {
-    if (!currentOrganization || !inviteEmail || !inviteRole || !inviteDepartment) return;
+  // Automatic cleanup of expired tokens
+  useEffect(() => {
+    if (!organizationId) return;
+
+    const cleanup = async () => {
+      try {
+        const deletedCount = await cleanupExpiredTokens();
+        if (deletedCount > 0) {
+          console.log(`Cleaned up ${deletedCount} expired invite tokens`);
+          // Refresh the invite tokens list
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.organization.invites(organizationId)
+          });
+        }
+      } catch (error) {
+        console.error('Error cleaning up expired tokens:', error);
+      }
+    };
+
+    cleanup();
+  }, [organizationId, queryClient]);
+
+  const handleAddToList = () => {
+    if (!inviteEmail || !inviteRole || !inviteDepartment) return;
     if (inviteRole === 'placeholder' || inviteDepartment === 'placeholder') return;
 
-    const emailToInvite = inviteEmail;
-
-    try {
-      await inviteMemberMutation({
-        email: inviteEmail,
-        role: inviteRole === 'Owner' || inviteRole === 'Admin' ? 'Admin' : 'Member',
-        department: inviteDepartment
-      });
-
-      // Clear form after successful invite
-      setInviteEmail("");
-      setInviteRole("");
-      setInviteDepartment("");
-
-      // Show success dialog
-      setInviteSentDialog({ open: true, email: emailToInvite });
-    } catch (error: any) {
+    // Check if email already in list
+    if (pendingInvitesList.some(invite => invite.email === inviteEmail)) {
       toast({
-        title: "Failed to send invite",
-        description: error.message,
+        title: "Duplicate email",
+        description: "This email is already in the invite list",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Add to pending list
+    setPendingInvitesList([...pendingInvitesList, {
+      email: inviteEmail,
+      role: inviteRole === 'Owner' || inviteRole === 'Admin' ? 'Admin' : 'Member',
+      department: inviteDepartment
+    }]);
+
+    // Clear form
+    setInviteEmail("");
+    setInviteRole("");
+    setInviteDepartment("");
+  };
+
+  const handleRemoveFromList = (email: string) => {
+    setPendingInvitesList(pendingInvitesList.filter(invite => invite.email !== email));
+  };
+
+  const handleSendAllInvites = async () => {
+    if (pendingInvitesList.length === 0) return;
+
+    setIsSendingBatch(true);
+    const successfulEmails: string[] = [];
+    const failedEmails: string[] = [];
+
+    for (const invite of pendingInvitesList) {
+      try {
+        await inviteMemberMutation({
+          email: invite.email,
+          role: invite.role,
+          department: invite.department
+        });
+        successfulEmails.push(invite.email);
+      } catch (error: any) {
+        failedEmails.push(invite.email);
+      }
+    }
+
+    setIsSendingBatch(false);
+
+    // Clear the list
+    setPendingInvitesList([]);
+
+    // Show results
+    if (successfulEmails.length > 0) {
+      setInviteSentDialog({ open: true, emails: successfulEmails });
+    }
+
+    if (failedEmails.length > 0) {
+      toast({
+        title: `Failed to send ${failedEmails.length} invitation(s)`,
+        description: `Could not send invites to: ${failedEmails.join(', ')}`,
         variant: "destructive",
       });
     }
@@ -139,7 +211,7 @@ export function TeamTab() {
       });
 
       // Show success dialog
-      setInviteSentDialog({ open: true, email });
+      setInviteSentDialog({ open: true, emails: [email] });
     } catch (error: any) {
       toast({
         title: "Failed to resend invite",
@@ -345,14 +417,58 @@ export function TeamTab() {
               </SelectContent>
             </Select>
             <Button
-              onClick={handleInvite}
-              disabled={!inviteEmail || !inviteDepartment || !inviteRole || isInviting}
+              onClick={handleAddToList}
+              disabled={!inviteEmail || !inviteDepartment || !inviteRole}
               className="bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white px-6"
             >
-              {isInviting ? 'Sending...' : 'Invite'}
+              <Plus className="w-4 h-4 mr-1" />
+              Add
             </Button>
           </div>
         </div>
+
+        {/* Pending Invites to Send */}
+        {pendingInvitesList.length > 0 && (
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {pendingInvitesList.length} pending invite{pendingInvitesList.length !== 1 ? 's' : ''}
+              </p>
+              <Button
+                onClick={handleSendAllInvites}
+                disabled={isSendingBatch}
+                className="bg-green-600 hover:bg-green-700 text-white px-4"
+              >
+                {isSendingBatch ? 'Sending...' : `Send ${pendingInvitesList.length} Invite${pendingInvitesList.length !== 1 ? 's' : ''}`}
+              </Button>
+            </div>
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg divide-y divide-gray-200 dark:divide-gray-700">
+              {pendingInvitesList.map((invite, index) => (
+                <div key={index} className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/50">
+                  <div className="flex items-center gap-4 flex-1">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white min-w-[200px]">
+                      {invite.email}
+                    </span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400 min-w-[120px]">
+                      {invite.department}
+                    </span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
+                      {invite.role}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveFromList(invite.email)}
+                    className="text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Active Invitations */}
@@ -799,7 +915,9 @@ export function TeamTab() {
       <Dialog open={inviteSentDialog.open} onOpenChange={(open) => setInviteSentDialog({ ...inviteSentDialog, open })}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-center text-xl">Invitation Sent!</DialogTitle>
+            <DialogTitle className="text-center text-xl">
+              {inviteSentDialog.emails.length === 1 ? 'Invitation Sent!' : 'Invitations Sent!'}
+            </DialogTitle>
             <DialogDescription className="text-center pt-4 space-y-4">
               <div className="flex justify-center">
                 <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-3">
@@ -810,11 +928,23 @@ export function TeamTab() {
               </div>
               <div className="space-y-2">
                 <p className="text-base font-medium text-gray-900 dark:text-white">
-                  We've sent an invitation to:
+                  {inviteSentDialog.emails.length === 1
+                    ? "We've sent an invitation to:"
+                    : `We've sent ${inviteSentDialog.emails.length} invitations to:`}
                 </p>
-                <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                  {inviteSentDialog.email}
-                </p>
+                {inviteSentDialog.emails.length === 1 ? (
+                  <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                    {inviteSentDialog.emails[0]}
+                  </p>
+                ) : (
+                  <div className="max-h-32 overflow-y-auto bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 space-y-1">
+                    {inviteSentDialog.emails.map((email, i) => (
+                      <p key={i} className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                        • {email}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-left">
                 <p className="text-sm text-blue-900 dark:text-blue-100 font-medium mb-2">
@@ -830,7 +960,7 @@ export function TeamTab() {
           </DialogHeader>
           <DialogFooter className="sm:justify-center">
             <Button
-              onClick={() => setInviteSentDialog({ open: false, email: "" })}
+              onClick={() => setInviteSentDialog({ open: false, emails: [] })}
               className="bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white px-8"
             >
               Got it

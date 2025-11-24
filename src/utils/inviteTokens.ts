@@ -69,6 +69,7 @@ export const createInviteToken = async (
 
 /**
  * Validate and retrieve invite token information
+ * Checks for: not used, not revoked, not expired
  */
 export const validateInviteToken = async (token: string): Promise<InviteToken | null> => {
   if (!token || token.trim().length === 0) {
@@ -80,6 +81,7 @@ export const validateInviteToken = async (token: string): Promise<InviteToken | 
     .select('*')
     .eq('token', token)
     .eq('is_used', false)
+    .is('revoked_at', null)
     .single();
 
   if (error || !data) {

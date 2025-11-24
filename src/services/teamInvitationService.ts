@@ -73,13 +73,14 @@ export const inviteMember = async (params: InviteMemberParams): Promise<InviteMe
       }
     }
 
-    // Check if there's an existing unused invite for this email
+    // Check if there's an existing unused, non-revoked invite for this email
     const { data: existingInvite } = await supabase
       .from('invite_tokens')
-      .select('id, expires_at')
+      .select('id, expires_at, revoked_at')
       .eq('organization_id', organizationId)
       .eq('email', email)
       .eq('is_used', false)
+      .is('revoked_at', null)
       .gte('expires_at', new Date().toISOString())
       .maybeSingle();
 
