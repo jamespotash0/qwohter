@@ -30,6 +30,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   const [connectingType, setConnectingType] = useState<IntegrationType | null>(null);
   const [showQBOnlineDialog, setShowQBOnlineDialog] = useState(false);
   const [showQBDesktopDialog, setShowQBDesktopDialog] = useState(false);
+  const [availableIntegrations, setAvailableIntegrations] = useState<any[]>([]);
 
   const hasEditPermission = hasAdminPermissions(userRole);
 
@@ -52,6 +53,15 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
 
     loadIntegrations();
   }, [organization?.id]);
+
+  // Load available integrations
+  useEffect(() => {
+    const loadAvailableIntegrations = async () => {
+      const integrations = await getAvailableIntegrations();
+      setAvailableIntegrations(integrations);
+    };
+    loadAvailableIntegrations();
+  }, []);
 
   // Handle connect
   const handleConnect = async (type: IntegrationType) => {
@@ -140,8 +150,6 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
       </div>
     );
   }
-
-  const availableIntegrations = getAvailableIntegrations();
 
   return (
     <div className="max-w-5xl">

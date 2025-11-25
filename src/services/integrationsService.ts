@@ -183,42 +183,134 @@ export interface AvailableIntegration {
   logoUrl: string;
   features: string[];
   comingSoon?: boolean;
+  category?: string;
+  requiredPlan?: string;
+  setupDifficulty?: string;
+  estimatedSetupTimeMinutes?: number;
+  documentationUrl?: string;
+}
+
+interface AvailableIntegrationRow {
+  id: string;
+  integration_type: string;
+  name: string;
+  description: string | null;
+  logo_url: string | null;
+  category: string | null;
+  is_enabled: boolean;
+  is_beta: boolean;
+  coming_soon: boolean;
+  required_plan: string | null;
+  features: any;
+  documentation_url: string | null;
+  setup_difficulty: string | null;
+  estimated_setup_time_minutes: number | null;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
- * Get list of available integrations (static data)
+ * Get list of available integrations from database
+ *
+ * NOTE: Integrations are now managed in the database (available_integrations table)
+ * instead of being hardcoded. This allows for easier management, plan-based filtering,
+ * and enabling/disabling integrations without code deploys.
+ *
+ * To add a new integration:
+ * 1. INSERT into available_integrations table
+ * 2. Implement the integration code (OAuth, API calls, etc.)
+ * 3. Add the integration_type to TypeScript types
+ *
+ * See INTEGRATIONS_ARCHITECTURE.md for more details.
  */
-export function getAvailableIntegrations(): AvailableIntegration[] {
-  return [
-    {
-      type: 'quickbooks_online',
-      name: 'QuickBooks Online',
-      description: 'Sync your quotes and create invoices with QuickBooks Online integration.',
-      logoUrl: '/images/integrations/quickbooks-online.png',
-      features: [],
-    },
-    {
-      type: 'quickbooks_desktop',
-      name: 'QuickBooks Desktop',
-      description: 'Integrate with QuickBooks Desktop to manage invoices and quotes.',
-      logoUrl: '/images/integrations/quickbooks-desktop.png',
-      features: [],
-    },
-  ];
+export async function getAvailableIntegrations(
+  organizationPlan?: string
+): Promise<AvailableIntegration[]> {
+  const { data, error } = await supabase
+    .from('available_integrations')
+    .select('*')
+    .eq('is_enabled', true)
+    .order('display_order', { ascending: true })
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('Failed to fetch available integrations:', error);
+    return [];
+  }
+
+  // Filter by organization plan if provided
+  let filteredData = (data || []) as AvailableIntegrationRow[];
+  if (organizationPlan) {
+    filteredData = filteredData.filter(
+      (integration) =>
+        !integration.required_plan ||
+        integration.required_plan === organizationPlan ||
+        organizationPlan === 'Enterprise' // Enterprise has access to all
+    );
+  }
+
+  // Map to expected format
+  return filteredData.map((integration) => ({
+    type: integration.integration_type as IntegrationType,
+    name: integration.name,
+    description: integration.description || '',
+    logoUrl: integration.logo_url || '',
+    features: Array.isArray(integration.features) ? integration.features : [],
+    comingSoon: integration.coming_soon || false,
+    category: integration.category || undefined,
+    requiredPlan: integration.required_plan || undefined,
+    setupDifficulty: integration.setup_difficulty || undefined,
+    estimatedSetupTimeMinutes: integration.estimated_setup_time_minutes || undefined,
+    documentationUrl: integration.documentation_url || undefined,
+  }));
 }
+
+/*
+ * ============================================================================
+ * DEPRECATED: Old hardcoded approach
+ * ============================================================================
+ *
+ * The old approach used a hardcoded array of integrations:
+ *
+ * export function getAvailableIntegrations(): AvailableIntegration[] {
+ *   return [
+ *     {
+ *       type: 'quickbooks_online',
+ *       name: 'QuickBooks Online',
+ *       description: 'Sync your quotes and create invoices...',
+ *       logoUrl: '/images/integrations/quickbooks-online.png',
+ *       features: [],
+ *     },
+ *     {
+ *       type: 'quickbooks_desktop',
+ *       name: 'QuickBooks Desktop',
+ *       description: 'Integrate with QuickBooks Desktop...',
+ *       logoUrl: '/images/integrations/quickbooks-desktop.png',
+ *       features: [],
+ *     },
+ *   ];
+ * }
+ *
+ * This has been replaced with the database-driven approach above.
+ * All integration metadata is now stored in the `available_integrations` table.
+ *
+ * Migration: supabase/migrations/20251125000002_add_available_integrations.sql
+ */
 
 /**
  * Get integration card display data
  */
 export async function getIntegrationCardData(
-  organizationId: string
-): Promise<AvailableIntegration[]> {
-  const availableIntegrations = getAvailableIntegrations();
+  organizationId: string,
+  organizationPlan?: string
+): Promise<any[]> {
+  const availableIntegrations = await getAvailableIntegrations(organizationPlan);
   const connectedIntegrations = await getIntegrations(organizationId);
 
-  return availableIntegrations.map(available => {
+  return availableIntegrations.map((available) => {
     const connected = connectedIntegrations.find(
-      i => i.integration_type === available.type
+      (i) => i.integration_type === available.type
     );
 
     return {
