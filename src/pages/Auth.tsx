@@ -19,15 +19,11 @@ import { AuthForm } from "@/components/auth/AuthForm";
 import { OtpVerificationForm } from "@/components/auth/OtpVerificationForm";
 import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
 import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
-import { SubscriptionSelectionForm } from "@/components/auth/SubscriptionSelectionForm";
-import { TrialActivationForm } from "@/components/auth/TrialActivationForm";
 import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
 import { LogoUploadResult } from "@/services/LogoUploadService";
 import { validateInviteToken } from "@/utils/inviteTokens";
 import { tempSignupService } from "@/services/tempSignupService";
 import { supabase } from "@/integrations/supabase/client";
-import { stripeService } from "@/services/stripeService";
-import { fetchOrganizationByUserId } from "@/services/organizationService";
 import * as authService from "@/auth/services/authService";
 
 // Import extracted hooks
@@ -374,18 +370,6 @@ const Auth = () => {
   };
 
   const onResendCode = async () => {
-    // Check if we have temporary signup data
-    const tempData = tempSignupService.get();
-    if (!tempData || tempData.email !== formState.email) {
-      toast({
-        title: "Session Expired",
-        description: "Please sign up again to resend verification code.",
-        variant: "destructive"
-      });
-      authFlow.setStep("auth");
-      return;
-    }
-
     // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
     const { error } = await authService.resendOtp(formState.email);
 
@@ -418,8 +402,11 @@ const Auth = () => {
       return;
     }
 
-    // Update the OTP sent status
-    tempSignupService.markOtpSent();
+    // Update the OTP sent status if temp data exists
+    const tempData = tempSignupService.get();
+    if (tempData) {
+      tempSignupService.markOtpSent();
+    }
 
     // Reset OTP attempts
     setOtpAttempts(0);
@@ -431,22 +418,53 @@ const Auth = () => {
     });
   };
 
-  const onChangeEmail = () => {
-    // Clear temp signup data
-    tempSignupService.clear();
+  const onChangeEmail = async (newEmail: string) => {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive"
+      });
+      throw new Error("Invalid email format");
+    }
 
-    // Clear auth state
-    clearAuthState();
-
-    // Reset to auth step
-    authFlow.setStep("auth");
+    // Update the email in form state
+    formState.setEmail(newEmail);
 
     // Clear OTP code
     formState.setOtpCode("");
 
+    // Send OTP to new email
+    const { error } = await authService.resendOtp(newEmail);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send verification code to new email. Please try again.",
+        variant: "destructive"
+      });
+      throw error;
+    }
+
+    // Update temp signup data with new email if it exists
+    const tempData = tempSignupService.get();
+    if (tempData) {
+      tempSignupService.store({
+        email: newEmail,
+        password: tempData.password,
+        fullName: tempData.fullName
+      });
+      tempSignupService.markOtpSent();
+    }
+
+    // Reset OTP attempts
+    setOtpAttempts(0);
+
     toast({
-      title: "Email Reset",
-      description: "You can now enter a new email address.",
+      title: "Email Updated",
+      description: `A verification code has been sent to ${newEmail}`,
     });
   };
 
@@ -514,130 +532,6 @@ const Auth = () => {
     handleLogoError(error, toast);
   };
 
-  const onSelectPlan = async (planName: string, billingPeriod: 'monthly' | 'yearly') => {
-    authFlow.setLoading(true);
-    try {
-      // Fetch current organization from database
-      if (!authFlow.userId) {
-        toast({
-          title: 'Error',
-          description: 'User not found. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const membership = await fetchOrganizationByUserId(authFlow.userId);
-
-      if (!membership?.organization) {
-        toast({
-          title: 'Error',
-          description: 'No organization found. Please complete the organization setup first.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const currentOrg = membership.organization;
-
-      if (!currentOrg) {
-        toast({
-          title: 'Error',
-          description: 'No organization found. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // All plans include a 14-day free trial configured in Stripe
-      // Redirect user to complete their setup and choose a plan
-      toast({
-        title: 'Welcome!',
-        description: 'Complete your setup by choosing a plan. All plans include a 14-day free trial.',
-      });
-      clearAuthState();
-      // Redirect to billing settings to choose a plan
-      navigate('/settings?tab=billing');
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to process subscription',
-        variant: 'destructive',
-      });
-    } finally {
-      authFlow.setLoading(false);
-    }
-  };
-
-  const onSkipSubscription = () => {
-    toast({
-      title: 'Setup completed!',
-      description: 'You can choose a plan later in Settings.',
-    });
-    clearAuthState();
-    navigate('/dashboard');
-  };
-
-  const onActivateTrial = async () => {
-    authFlow.setLoading(true);
-    try {
-      // Fetch current organization from database
-      if (!authFlow.userId) {
-        toast({
-          title: 'Error',
-          description: 'User not found. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const membership = await fetchOrganizationByUserId(authFlow.userId);
-      const currentOrg = membership?.organization;
-
-      if (!currentOrg) {
-        toast({
-          title: 'Error',
-          description: 'No organization found. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // Enroll organization in 14-day trial
-      const trialResult = await stripeService.enrollInFreeTrial(currentOrg.id);
-
-      if (trialResult.error) {
-        toast({
-          title: 'Error',
-          description: trialResult.error || 'Failed to activate trial',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      toast({
-        title: 'Trial activated!',
-        description: 'Your 14-day free trial starts today. Enjoy full access to all features!',
-      });
-
-      clearAuthState();
-      navigate('/dashboard');
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to activate trial',
-        variant: 'destructive',
-      });
-    } finally {
-      authFlow.setLoading(false);
-    }
-  };
-
-  const onChoosePlan = () => {
-    clearAuthState();
-    navigate('/settings?tab=billing');
-  };
-
   // ============================================================================
   // RENDER
   // ============================================================================
@@ -698,28 +592,11 @@ const Auth = () => {
       <div className="min-h-screen flex items-center justify-center p-8">
         <div className="w-full flex items-center justify-center">
           <div className={`w-full relative z-10 ${
-            authFlow.step === "subscription" || authFlow.step === "trial-activation" ? "max-w-4xl" :
-            authFlow.step === "auth" && !authFlow.isSignUp ? "max-w-md" :
-            "max-w-lg"
+            authFlow.step === "auth" && !authFlow.isSignUp ? "max-w-md" : "max-w-lg"
           }`}>
-            {/* Trial Activation step - no card wrapper */}
-            {authFlow.step === "trial-activation" ? (
-              <TrialActivationForm
-                loading={authFlow.loading}
-                onActivateTrial={onActivateTrial}
-                onChoosePlan={onChoosePlan}
-              />
-            ) : authFlow.step === "subscription" ? (
-              /* Subscription step - no card wrapper */
-              <SubscriptionSelectionForm
-                loading={authFlow.loading}
-                onSelectPlan={onSelectPlan}
-                onSkip={onSkipSubscription}
-              />
-            ) : (
-              /* Main form card for other steps */
-                <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
-                {!["subscription", "trial-activation", "verify-otp"].includes(authFlow.step) && (
+            {/* Main form card for all steps */}
+            <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
+              {!["verify-otp"].includes(authFlow.step) && (
                 <CardHeader className="text-center space-y-3 pb-2 pt-6 px-8">
                   {/* Progress Indicator - show for all onboarding steps */}
                   {authFlow.step !== "auth" && (
@@ -831,9 +708,8 @@ const Auth = () => {
                 onSkip={onCompanyInfoSkip}
               />
               )}
-                </CardContent>
-              </Card>
-            )}
+            </CardContent>
+          </Card>
           </div>
         </div>
       </div>

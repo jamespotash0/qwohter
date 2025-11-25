@@ -6,7 +6,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Mail } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Mail, Edit2, Check, X } from "lucide-react";
 
 interface OtpVerificationFormProps {
   otpCode: string;
@@ -15,7 +16,7 @@ interface OtpVerificationFormProps {
   onOtpCodeChange: (code: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   onResendCode: () => Promise<void>;
-  onChangeEmail?: () => void;
+  onChangeEmail?: (newEmail: string) => Promise<void>;
 }
 
 
@@ -32,6 +33,9 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
   const [timeLeft, setTimeLeft] = useState(165); // 2:45 in seconds
   const [showOverlay, setShowOverlay] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
+  const [isEditingEmail, setIsEditingEmail] = useState(false);
+  const [editedEmail, setEditedEmail] = useState(email);
+  const [emailChangeLoading, setEmailChangeLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Initialize digits from otpCode
@@ -140,6 +144,44 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
     }
   };
 
+  const handleEmailChange = async () => {
+    if (!onChangeEmail || !editedEmail || editedEmail === email) {
+      setIsEditingEmail(false);
+      return;
+    }
+
+    try {
+      setEmailChangeLoading(true);
+      await onChangeEmail(editedEmail);
+
+      // Clear OTP inputs
+      const clearedDigits = ['', '', '', '', '', ''];
+      setDigits(clearedDigits);
+      onOtpCodeChange('');
+
+      // Reset timer
+      setTimeLeft(165);
+
+      // Exit edit mode
+      setIsEditingEmail(false);
+
+      // Focus first input
+      setTimeout(() => {
+        inputRefs.current[0]?.focus();
+      }, 100);
+
+    } catch (error) {
+      console.error('Failed to change email:', error);
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  };
+
+  const handleCancelEmailEdit = () => {
+    setEditedEmail(email);
+    setIsEditingEmail(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -149,7 +191,62 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Check your inbox!</h1>
         <p className="text-gray-600 text-sm mb-2">We've sent a 6-digit verification code to</p>
-        <p className="text-slate-700 font-semibold mb-4">{email}</p>
+
+        {/* Email Display/Edit */}
+        {!isEditingEmail ? (
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <p className="text-slate-700 font-semibold">{email}</p>
+            {onChangeEmail && (
+              <button
+                type="button"
+                onClick={() => setIsEditingEmail(true)}
+                className="text-orange-600 hover:text-orange-700 p-1 rounded transition-colors"
+                title="Change email"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="max-w-sm mx-auto mb-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <Input
+                type="email"
+                value={editedEmail}
+                onChange={(e) => setEditedEmail(e.target.value)}
+                className="flex-1"
+                placeholder="Enter new email"
+                autoFocus
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleEmailChange}
+                disabled={emailChangeLoading || !editedEmail}
+                className="bg-green-600 hover:bg-green-700 text-white px-3"
+              >
+                {emailChangeLoading ? (
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleCancelEmailEdit}
+                disabled={emailChangeLoading}
+                className="px-3"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500">
+              A new verification code will be sent to the new email
+            </p>
+          </div>
+        )}
       </div>
 
       <form onSubmit={onSubmit} className="space-y-6">
@@ -203,8 +300,8 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
         </Button>
       </form>
 
-      {/* Resend Code and Change Email Options */}
-      <div className="text-center space-y-3">
+      {/* Resend Code Option */}
+      <div className="text-center">
         <div className="flex items-center justify-center gap-2">
           <p className="text-gray-600 text-sm">
             Didn't receive it?
@@ -218,18 +315,6 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
             {resendLoading ? "Sending..." : "Resend Code"}
           </button>
         </div>
-
-        {onChangeEmail && (
-          <div>
-            <button
-              type="button"
-              onClick={onChangeEmail}
-              className="text-orange-600 hover:text-orange-700 font-semibold text-sm underline-offset-4 hover:underline"
-            >
-              Change email address
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Countdown Timer */}
