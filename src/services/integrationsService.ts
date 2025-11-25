@@ -217,16 +217,22 @@ interface AvailableIntegrationRow {
  * instead of being hardcoded. This allows for easier management, plan-based filtering,
  * and enabling/disabling integrations without code deploys.
  *
+ * IMPORTANT: This function should be called via React Query hooks (useAvailableIntegrations)
+ * which provides automatic caching, deduplication, and cache invalidation.
+ * See src/hooks/useIntegrations.ts
+ *
  * To add a new integration:
  * 1. INSERT into available_integrations table
  * 2. Implement the integration code (OAuth, API calls, etc.)
  * 3. Add the integration_type to TypeScript types
+ * 4. Call invalidateQueries.availableIntegrations() to refresh the cache
  *
  * See INTEGRATIONS_ARCHITECTURE.md for more details.
  */
 export async function getAvailableIntegrations(
   organizationPlan?: string
 ): Promise<AvailableIntegration[]> {
+  // Fetch from database
   const { data, error } = await supabase
     .from('available_integrations')
     .select('*')
@@ -236,13 +242,15 @@ export async function getAvailableIntegrations(
 
   if (error) {
     console.error('Failed to fetch available integrations:', error);
-    return [];
+    throw new Error(`Failed to fetch integrations: ${error.message}`);
   }
 
+  const rawData = (data || []) as AvailableIntegrationRow[];
+
   // Filter by organization plan if provided
-  let filteredData = (data || []) as AvailableIntegrationRow[];
+  let filteredData = rawData;
   if (organizationPlan) {
-    filteredData = filteredData.filter(
+    filteredData = rawData.filter(
       (integration) =>
         !integration.required_plan ||
         integration.required_plan === organizationPlan ||

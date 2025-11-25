@@ -58,6 +58,59 @@ INSERT INTO available_integrations VALUES (
 
 ---
 
+## Caching Strategy
+
+### React Query Caching (Industry Standard)
+Integrations use React Query for automatic caching, deduplication, and cache invalidation:
+
+**Configuration:**
+- **Available Integrations:** 5-minute stale time (changes rarely)
+- **Connected Integrations:** 30-second stale time (connection status changes more frequently)
+- **Storage:** In-memory + localStorage persistence (5-minute TTL)
+- **Auto-refetch:** On window focus, reconnect, and component mount
+
+**Benefits:**
+- Zero manual cache management (React Query handles it automatically)
+- Request deduplication (concurrent requests merged)
+- Optimistic updates with automatic rollback
+- Automatic background refetching
+- localStorage persistence for instant page loads
+
+**Usage via Hooks:**
+```typescript
+import { useAvailableIntegrations, useConnectedIntegrations, useIntegrationsData } from '@/hooks/useIntegrations';
+
+// Fetch available integrations (catalog) - 5 minute cache
+const { data: available, isLoading } = useAvailableIntegrations(organizationPlan);
+
+// Fetch connected integrations for org - 30 second cache
+const { data: connected, isLoading } = useConnectedIntegrations(organizationId);
+
+// Combined data (recommended for UI) - automatic caching
+const { integrations, isLoading } = useIntegrationsData(organizationId, organizationPlan);
+```
+
+**Cache Invalidation (Automatic Refetch):**
+```typescript
+import { invalidateQueries } from '@/lib/queryClient';
+
+// After admin adds/updates integration
+await supabase.from('available_integrations').insert(newIntegration);
+invalidateQueries.availableIntegrations(); // Triggers refetch
+
+// After connecting/disconnecting integration
+await connectQBOnline(organizationId);
+invalidateQueries.connectedIntegrations(organizationId); // Triggers refetch
+```
+
+**When Cache Refreshes:**
+- Automatically after stale time expires (5 min for available, 30 sec for connected)
+- When `invalidateQueries` is called
+- On window focus (user returns to tab)
+- On network reconnect
+
+---
+
 ## How to Add a New Integration
 
 ### Step 1: Add to Database (Metadata)

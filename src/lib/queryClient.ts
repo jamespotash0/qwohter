@@ -171,6 +171,15 @@ export const queryKeys = {
     list: (organizationId: string) =>
       [...queryKeys.reminders.lists(), organizationId] as const,
   },
+
+  // Integrations
+  integrations: {
+    all: ['integrations'] as const,
+    available: (organizationPlan?: string) =>
+      [...queryKeys.integrations.all, 'available', organizationPlan] as const,
+    connected: (organizationId: string) =>
+      [...queryKeys.integrations.all, 'connected', organizationId] as const,
+  },
 } as const;
 
 /**
@@ -268,6 +277,26 @@ export const invalidateQueries = {
   boardTasks: (organizationId: string) => {
     return queryClient.invalidateQueries({
       queryKey: queryKeys.board.tasks(organizationId)
+    });
+  },
+
+  /**
+   * Invalidate available integrations
+   * Use after: admin adds/updates/removes integration from catalog
+   */
+  availableIntegrations: () => {
+    return queryClient.invalidateQueries({
+      queryKey: queryKeys.integrations.all
+    });
+  },
+
+  /**
+   * Invalidate connected integrations for organization
+   * Use after: connect/disconnect integration
+   */
+  connectedIntegrations: (organizationId: string) => {
+    return queryClient.invalidateQueries({
+      queryKey: queryKeys.integrations.connected(organizationId)
     });
   },
 };

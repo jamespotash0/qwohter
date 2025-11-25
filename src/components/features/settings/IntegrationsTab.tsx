@@ -4,17 +4,18 @@
  * Displays and manages third-party integrations
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Shield, Plug, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { IntegrationCard } from '@/components/features/integrations/IntegrationCard';
 import { QBOnlineConnectDialog } from '@/components/features/integrations/QBOnlineConnectDialog';
 import { QBDesktopConnectDialog } from '@/components/features/integrations/QBDesktopConnectDialog';
-import { getIntegrations, getAvailableIntegrations } from '@/services/integrationsService';
-import { checkQBOnlineConnection, disconnectQBOnline } from '@/services/quickbooksOnlineService';
-import { checkQBDesktopConnection, disconnectQBDesktop } from '@/services/quickbooksDesktopService';
+import { useIntegrationsData } from '@/hooks/useIntegrations';
+import { disconnectQBOnline } from '@/services/quickbooksOnlineService';
+import { disconnectQBDesktop } from '@/services/quickbooksDesktopService';
 import { hasAdminPermissions } from '@/utils/permissions';
-import type { Integration, IntegrationType } from '@/lib/types/integrations';
+import { invalidateQueries } from '@/lib/queryClient';
+import type { IntegrationType } from '@/lib/types/integrations';
 
 interface IntegrationsTabProps {
   organization: any;
@@ -25,43 +26,25 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
   organization,
   userRole,
 }) => {
-  const [integrations, setIntegrations] = useState<Integration[]>([]);
-  const [loading, setLoading] = useState(true);
   const [connectingType, setConnectingType] = useState<IntegrationType | null>(null);
   const [showQBOnlineDialog, setShowQBOnlineDialog] = useState(false);
   const [showQBDesktopDialog, setShowQBDesktopDialog] = useState(false);
-  const [availableIntegrations, setAvailableIntegrations] = useState<any[]>([]);
 
   const hasEditPermission = hasAdminPermissions(userRole);
 
-  // Load integrations
-  useEffect(() => {
-    if (!organization?.id) return;
+  // Use React Query hook for integrations data (automatic caching)
+  const { integrations, isLoading, error } = useIntegrationsData(
+    organization?.id || '',
+    // organization?.plan // Uncomment when plan filtering is needed
+  );
 
-    const loadIntegrations = async () => {
-      try {
-        setLoading(true);
-        const data = await getIntegrations(organization.id);
-        setIntegrations(data);
-      } catch (error) {
-        console.error('Failed to load integrations:', error);
-        toast.error('Failed to load integrations');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadIntegrations();
-  }, [organization?.id]);
-
-  // Load available integrations
-  useEffect(() => {
-    const loadAvailableIntegrations = async () => {
-      const integrations = await getAvailableIntegrations();
-      setAvailableIntegrations(integrations);
-    };
-    loadAvailableIntegrations();
-  }, []);
+  // Show error toast if loading failed
+  React.useEffect(() => {
+    if (error) {
+      console.error('Failed to load integrations:', error);
+      toast.error('Failed to load integrations');
+    }
+  }, [error]);
 
   // Handle connect
   const handleConnect = async (type: IntegrationType) => {
@@ -101,9 +84,8 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
         toast.success('QuickBooks Desktop disconnected');
       }
 
-      // Reload integrations
-      const data = await getIntegrations(organization.id);
-      setIntegrations(data);
+      // Invalidate cache to trigger refetch
+      await invalidateQueries.connectedIntegrations(organization.id);
     } catch (error) {
       console.error('Failed to disconnect integration:', error);
       toast.error('Failed to disconnect integration');
@@ -117,14 +99,9 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
 
     if (!organization?.id) return;
 
-    // Reload integrations
-    try {
-      const data = await getIntegrations(organization.id);
-      setIntegrations(data);
-      toast.success('Integration connected successfully');
-    } catch (error) {
-      console.error('Failed to reload integrations:', error);
-    }
+    // Invalidate cache to trigger refetch
+    await invalidateQueries.connectedIntegrations(organization.id);
+    toast.success('Integration connected successfully');
   };
 
   if (!hasEditPermission) {
@@ -143,7 +120,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
     );
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -164,29 +141,23 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
 
         {/* Integrations Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {availableIntegrations.map((available) => {
-            const connected = integrations.find(
-              (i) => i.integration_type === available.type
-            );
-
-            return (
-              <IntegrationCard
-                key={available.type}
-                name={available.name}
-                description={available.description}
-                logoUrl={available.logoUrl}
-                isConnected={connected?.is_connected || false}
-                onConnect={() => handleConnect(available.type)}
-                onDisconnect={() => handleDisconnect(available.type)}
-                isConnecting={connectingType === available.type}
-                comingSoon={available.comingSoon}
-              />
-            );
-          })}
+          {integrations.map((integration) => (
+            <IntegrationCard
+              key={integration.type}
+              name={integration.name}
+              description={integration.description}
+              logoUrl={integration.logoUrl}
+              isConnected={integration.isConnected}
+              onConnect={() => handleConnect(integration.type)}
+              onDisconnect={() => handleDisconnect(integration.type)}
+              isConnecting={connectingType === integration.type}
+              comingSoon={integration.comingSoon}
+            />
+          ))}
         </div>
 
         {/* Empty state if no integrations available */}
-        {availableIntegrations.length === 0 && (
+        {integrations.length === 0 && !isLoading && (
           <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
             <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
               <Plug className="w-8 h-8 text-gray-400" />
