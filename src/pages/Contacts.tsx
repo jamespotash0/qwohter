@@ -181,7 +181,10 @@ export default function ContactsPage() {
           </Button>
 
           {/* Add Contact */}
-          <Button onClick={handleAddContact} className="w-full md:w-auto">
+          <Button
+            onClick={handleAddContact}
+            className="w-full md:w-auto bg-[#EE6C4D] hover:bg-[#d85d3f]"
+          >
             <UserPlus className="w-4 h-4 mr-2" />
             Add Contact
           </Button>
