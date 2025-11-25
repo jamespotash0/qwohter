@@ -53,6 +53,11 @@ const STALE_CLIENT_ERROR_PATTERNS = [
   // API contract mismatch (high confidence)
   /unexpected.*response.*format/i,
   /api.*version.*mismatch/i,
+
+  // Module/chunk loading errors (high confidence - indicates stale client)
+  /failed.*to.*fetch.*dynamically.*imported.*module/i,
+  /expected.*javascript.*module.*but.*server.*responded.*with.*mime.*type/i,
+  /loading.*chunk.*\d+.*failed/i,
 ];
 
 /**
