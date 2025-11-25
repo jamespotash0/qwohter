@@ -109,7 +109,6 @@ export interface Database {
         Row: {
           id: string;
           name: string;
-          organization_code: string;
           found_via: string;
           phone_number: string;
           fax_number?: string | null;
@@ -124,7 +123,6 @@ export interface Database {
         Insert: {
           id?: string;
           name: string;
-          organization_code?: string;
           found_via: string;
           phone_number: string;
           fax_number?: string | null;
@@ -139,7 +137,6 @@ export interface Database {
         Update: {
           id?: string;
           name?: string;
-          organization_code?: string;
           found_via?: string;
           phone_number?: string;
           fax_number?: string | null;
@@ -157,37 +154,40 @@ export interface Database {
           id: string;
           token: string;
           organization_id: string;
-          organization_code: string;
+          email: string;
           role: string;
           created_by: string;
           expires_at: string;
           created_at: string;
           updated_at: string;
           is_used: boolean;
+          department: string | null;
         };
         Insert: {
           id?: string;
           token: string;
           organization_id: string;
-          organization_code: string;
+          email?: string;
           role: string;
           created_by: string;
           expires_at: string;
           created_at?: string;
           updated_at?: string;
           is_used?: boolean;
+          department?: string | null;
         };
         Update: {
           id?: string;
           token?: string;
           organization_id?: string;
-          organization_code?: string;
+          email?: string;
           role?: string;
           created_by?: string;
           expires_at?: string;
           created_at?: string;
           updated_at?: string;
           is_used?: boolean;
+          department?: string | null;
         };
         Relationships: [
           {
@@ -212,7 +212,8 @@ export interface Database {
           user_id: string;
           organization_id: string;
           role: 'Owner' | 'Admin' | 'Member';
-          status: 'Pending' | 'Active' | 'Suspended'; //membership_status
+          status: 'Active' | 'Suspended'; //membership_status
+          join_type: 'Direct' | 'Invited';
           invited_by: string | null;
           joined_at: string | null;
           created_at: string;
@@ -223,7 +224,8 @@ export interface Database {
           user_id: string;
           organization_id: string;
           role?: 'Owner' | 'Admin' | 'Member';
-          status?: 'Pending' | 'Active' | 'Suspended'; //membership_status
+          status?: 'Active' | 'Suspended'; //membership_status
+          join_type?: 'Direct' | 'Invited';
           invited_by?: string | null;
           joined_at?: string | null;
           created_at?: string;
@@ -234,7 +236,8 @@ export interface Database {
           user_id?: string;
           organization_id?: string;
           role?: 'Owner' | 'Admin' | 'Member';
-          status?: 'Pending' | 'Active' | 'Suspended'; //membership_status
+          status?: 'Active' | 'Suspended'; //membership_status
+          join_type?: 'Direct' | 'Invited';
           invited_by?: string | null;
           joined_at?: string | null;
           created_at?: string;
@@ -504,128 +507,36 @@ export interface Database {
           completed_at?: string | null;
         };
       };
-      forms: {
+      invite_token_attempts: {
         Row: {
           id: string;
-          organization_id: string | null; // NULL for system templates
-          name: string;
-          description: string | null;
-          form_type: string;
-          tabs: any; // JSONB
-          metadata: any | null; // JSONB
-          created_by: string;
+          ip_address: string;
+          user_id: string | null;
+          invite_token: string;
+          attempted_at: string;
+          success: boolean;
+          error_message: string | null;
           created_at: string;
-          updated_at: string;
-          is_archived: boolean;
-          is_default: boolean;
-          starting_proposal_number: string;
-          allow_save_incomplete: boolean;
-          // Template library fields
-          is_template: boolean;
-          copied_from_form_id: string | null;
         };
         Insert: {
           id?: string;
-          organization_id?: string | null; // NULL for system templates
-          name: string;
-          description?: string | null;
-          form_type: string;
-          tabs?: any;
-          metadata?: any | null;
-          created_by: string;
+          ip_address: string;
+          user_id?: string | null;
+          invite_token: string;
+          attempted_at?: string;
+          success?: boolean;
+          error_message?: string | null;
           created_at?: string;
-          updated_at?: string;
-          is_archived?: boolean;
-          is_default?: boolean;
-          starting_proposal_number: string;
-          allow_save_incomplete?: boolean;
-          // Template library fields
-          is_template?: boolean;
-          copied_from_form_id?: string | null;
         };
         Update: {
           id?: string;
-          organization_id?: string | null;
-          name?: string;
-          description?: string | null;
-          form_type?: string;
-          tabs?: any;
-          metadata?: any | null;
-          created_by?: string;
+          ip_address?: string;
+          user_id?: string | null;
+          invite_token?: string;
+          attempted_at?: string;
+          success?: boolean;
+          error_message?: string | null;
           created_at?: string;
-          updated_at?: string;
-          is_archived?: boolean;
-          is_default?: boolean;
-          starting_proposal_number?: string;
-          allow_save_incomplete?: boolean;
-          // Template library fields
-          is_template?: boolean;
-          copied_from_form_id?: string | null;
-        };
-      };
-      proposals: {
-        Row: {
-          id: string;
-          organization_id: string;
-          created_by: string;
-          proposal_number: string;
-          proposal_name: string | null;
-          proposal_status: string;
-          form_id: string;
-          form_data: any; // JSONB
-          product_items: any | null; // JSONB
-          computed_totals: any | null; // JSONB
-          customization: any | null; // JSONB
-          submitted_at: string | null;
-          accepted_at: string | null;
-          rejected_at: string | null;
-          paid_at: string | null;
-          created_at: string;
-          updated_at: string;
-          archived: boolean;
-          parent_proposal_id: string | null;
-        };
-        Insert: {
-          id?: string;
-          organization_id: string;
-          created_by: string;
-          proposal_number: string;
-          proposal_name?: string | null;
-          proposal_status?: string;
-          form_id: string;
-          form_data?: any;
-          product_items?: any | null;
-          computed_totals?: any | null;
-          customization?: any | null;
-          submitted_at?: string | null;
-          accepted_at?: string | null;
-          rejected_at?: string | null;
-          paid_at?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          archived?: boolean;
-          parent_proposal_id?: string | null;
-        };
-        Update: {
-          id?: string;
-          organization_id?: string;
-          created_by?: string;
-          proposal_number?: string;
-          proposal_name?: string | null;
-          proposal_status?: string;
-          form_id?: string;
-          form_data?: any;
-          product_items?: any | null;
-          computed_totals?: any | null;
-          customization?: any | null;
-          submitted_at?: string | null;
-          accepted_at?: string | null;
-          rejected_at?: string | null;
-          paid_at?: string | null;
-          created_at?: string;
-          updated_at?: string;
-          archived?: boolean;
-          parent_proposal_id?: string | null;
         };
       };
     };
@@ -637,20 +548,6 @@ export interface Database {
         Args: {
           user_id: string;
           full_name_value: string;
-        };
-        Returns: any;
-      };
-      create_organization_and_link_user: {
-        Args: {
-          org_name: string;
-          org_code: string;
-          creator_user_id: string;
-        };
-        Returns: any;
-      };
-      get_organization_by_code: {
-        Args: {
-          input_code: string;
         };
         Returns: any;
       };
@@ -671,10 +568,35 @@ export interface Database {
         Args: {};
         Returns: void;
       };
+      check_invite_rate_limit: {
+        Args: {
+          p_ip_address: string;
+          p_user_id?: string | null;
+          p_invite_token?: string | null;
+          p_window_minutes?: number;
+          p_max_attempts?: number;
+        };
+        Returns: Array<{
+          allowed: boolean;
+          attempts_used: number;
+          window_reset_at: string;
+          reason: string;
+        }>;
+      };
+      log_invite_attempt: {
+        Args: {
+          p_ip_address: string;
+          p_user_id: string | null;
+          p_invite_token: string;
+          p_success: boolean;
+          p_error_message?: string | null;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       membership_role: 'Owner' | 'Admin' | 'Member';
-      membership_status: 'Pending' | 'Active' | 'Suspended';
+      membership_status: 'Active' | 'Suspended';
       creation_log_status: 'Success' | 'Failed' | 'Rate_Limited';
     };
   };

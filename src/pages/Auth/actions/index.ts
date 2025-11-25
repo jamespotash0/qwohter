@@ -6,6 +6,7 @@
 export { handleAuth } from './handleAuth';
 export { handleOtpVerification } from './handleOtpVerification';
 export { handleOrganizationSubmit } from './handleOrganizationSubmit';
+export { handleInviteJoin } from './handleInviteJoin';
 export {
   handleCompanyInfoSubmit,
   handleCompanyInfoSkip,

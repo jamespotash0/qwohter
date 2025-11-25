@@ -48,7 +48,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
     '/auth',
     '/forgot-password',
     '/reset-password',
-    '/pending-approval',
     '/access-denied',
     '/account-inactive',
     '/demo',
@@ -57,9 +56,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
 
   // Check if we're on a full-screen wizard page (no padding/max-width)
   const isFullScreenPage = ['/proposals/new'].includes(location.pathname);
-
-  // Check if we're on the Board page (show bottom border with padding)
-  const isBoardPage = location.pathname === '/board';
 
   // Check membership status for protected routes
   useEffect(() => {
@@ -86,10 +82,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
           // Check for various membership statuses
           if (membership.status === 'Inactive') { //membership_status
             setMembershipStatus('Inactive');
-          } else if (membership.status === 'Pending' && membership.role !== 'Owner') { //membership_status
-            // Only check pending status for non-Owners
-            // Owners (who created the org) should always have Active status
-            setMembershipStatus('Pending');
           } else {
             setMembershipStatus(membership.status); //membership_status
           }
@@ -127,12 +119,10 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   // Redirect based on membership status
   useEffect(() => {
     if (!shouldShowSidebar) return;
-    if (location.pathname === '/pending-approval' || location.pathname === '/account-inactive') return; // Prevent redirect loop
+    if (location.pathname === '/account-inactive') return; // Prevent redirect loop
 
     if (membershipStatus === 'Inactive' && !checkingMembership) {
       navigate('/account-inactive');
-    } else if (membershipStatus === 'Pending' && !checkingMembership) {
-      navigate('/pending-approval');
     }
   }, [membershipStatus, checkingMembership, shouldShowSidebar, location.pathname, navigate]);
 
@@ -194,23 +184,13 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   }, []);
 
   const handleLogout = async () => {
-    const startTime = Date.now();
-    const MIN_LOGOUT_TIME = 800; // 800ms minimum for smooth UX
-
     // ✅ v3.0.0: Use new signOut mutation with callback
     // Note: signOut mutation triggers AuthProvider's SIGNED_OUT handler
     // which automatically clears React Query cache and resets stores
 
     signOut(undefined, {
-      onSuccess: async () => {
-        // Ensure minimum display time for loading spinner (smooth UX)
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, MIN_LOGOUT_TIME - elapsedTime);
-        if (remainingTime > 0) {
-          await new Promise(resolve => setTimeout(resolve, remainingTime));
-        }
-
-        // Navigate to sign-in
+      onSuccess: () => {
+        // Navigate to sign-in immediately (no artificial delay)
         navigate('/sign-in', { replace: true });
       },
       onError: (error) => {
@@ -266,7 +246,7 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   }
 
   // Check if we need to wait for subscription check on protected routes
-  const excludedPaths = ['/settings', '/pending-approval'];
+  const excludedPaths = ['/settings'];
   const shouldApplyPaywall = currentOrganization?.id && !excludedPaths.includes(location.pathname);
 
   // Main layout with persistent sidebar
@@ -280,17 +260,7 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   );
 
   return (
-      <div className={`h-screen flex w-full overflow-hidden ${isBoardPage ? 'bg-sidebar' : 'bg-[var(--content-bg)]'}`}>
-          {/* Logout overlay to prevent flash */}
-          {isLoggingOut && (
-            <div className="absolute inset-0 bg-background z-50 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-3">
-                <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-muted-foreground">Signing out...</p>
-              </div>
-            </div>
-          )}
-
+      <div className="h-screen flex w-full overflow-hidden bg-[var(--content-bg)]">
           <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Main Content */}
@@ -299,19 +269,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
               // Full-screen layout for wizards (no padding, no max-width)
               <div className="h-full overflow-auto">
                 {content}
-              </div>
-            ) : isBoardPage ? (
-              // Board page: Card-based layout with sidebar background
-              <div className="h-full pt-3 pr-3 pl-4 pb-3">
-                <div className="h-full max-w-[1400px] mx-auto">
-                  <div className="h-full shadow-xl flex flex-col relative z-10 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                    <div className="flex-1 overflow-y-auto bg-sidebar">
-                      <div className="h-full pt-4 px-6 pb-6 bg-white dark:bg-gray-900">
-                        {content}
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             ) : (
               // Standard layout with padding and max-width (original)
@@ -338,7 +295,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     '/auth',
     '/forgot-password',
     '/reset-password',
-    '/pending-approval',
     '/access-denied',
     '/account-inactive',
     '/demo',

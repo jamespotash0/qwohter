@@ -193,7 +193,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
 
           <div className="space-y-1">
             {/* Full Name Section */}
-            <div className="flex items-start justify-between py-4 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+            <div className="flex items-start justify-between py-4 px-6 rounded-lg">
           <div className="flex-1 pr-8">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Full name</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -257,7 +257,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
 
           <div className="space-y-1">
             {/* Email Address Section */}
-            <div className="flex items-start justify-between py-4 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+            <div className="flex items-start justify-between py-4 px-6 rounded-lg">
           <div className="flex-1 pr-8">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Email address</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -346,7 +346,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
 
           <div className="space-y-1">
             {/* Password Section */}
-            <div className="flex items-start justify-between py-4 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+            <div className="flex items-start justify-between py-4 px-6 rounded-lg">
           <div className="flex-1 pr-8">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Password</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -433,7 +433,7 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
 
             <div className="space-y-1">
             {userRole !== 'Owner' && (
-              <div className="flex items-start justify-between py-4 px-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors">
+              <div className="flex items-start justify-between py-4 px-6 rounded-lg">
             <div className="flex-1 pr-8">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1.5">Deactivate Account</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
@@ -443,13 +443,9 @@ export const ProfileTab: React.FC<ProfileTabProps> = ({ user, profile, userRole 
             <div className="flex items-center gap-3 min-w-[480px] justify-end">
               <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <DialogTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-9 px-4 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  >
+                  <button className="h-9 px-4 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors">
                     Deactivate Account
-                  </Button>
+                  </button>
                 </DialogTrigger>
               <DialogContent>
                 <DialogHeader>

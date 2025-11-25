@@ -9,12 +9,13 @@ export interface InviteToken {
   token: string;
   email: string;
   organization_id: string;
-  organization_code: string;
   role: 'Admin' | 'Member';
   created_by: string;
   expires_at: string;
   created_at: string;
   is_used: boolean;
+  department?: string | null;
+  revoked_at?: string | null;
 }
 
 /**
@@ -32,26 +33,28 @@ export const generateSecureToken = (): string => {
  */
 export const createInviteToken = async (
   organizationId: string,
-  organizationCode: string,
   role: 'Admin' | 'Member',
   createdBy: string,
-  expiryDays: number = 7
+  expiryHours: number = 2,
+  department?: string,
+  email?: string
 ): Promise<{ token: string; expires_at: string }> => {
   const token = generateSecureToken();
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + expiryDays);
+  expiresAt.setHours(expiresAt.getHours() + expiryHours);
 
   const { error } = await supabase
     .from('invite_tokens')
     .insert({
       token,
       organization_id: organizationId,
-      organization_code: organizationCode,
       role,
       created_by: createdBy,
       expires_at: expiresAt.toISOString(),
-      is_used: false
-    });
+      is_used: false,
+      email: email || '',
+      department: department || null,
+    } as any);
 
   if (error) {
     console.error('Error creating invite token:', error);
@@ -64,42 +67,164 @@ export const createInviteToken = async (
   };
 };
 
+export interface InviteTokenValidationResult {
+  success: boolean;
+  data: InviteToken | null;
+  error: {
+    type: 'expired' | 'used' | 'revoked' | 'not_found' | 'invalid';
+    message: string;
+    userMessage: string; // User-friendly message
+  } | null;
+}
+
 /**
- * Validate and retrieve invite token information
+ * Validate and retrieve invite token information with detailed error info
+ * Checks for: not used, not revoked, not expired
+ * Uses RPC function to bypass RLS for anonymous users
+ *
+ * Returns detailed validation result for better UX
+ */
+export const validateInviteTokenDetailed = async (token: string): Promise<InviteTokenValidationResult> => {
+  if (!token || token.trim().length === 0) {
+    return {
+      success: false,
+      data: null,
+      error: {
+        type: 'invalid',
+        message: 'Token is empty or invalid',
+        userMessage: 'Invalid invitation link. Please check the link and try again.'
+      }
+    };
+  }
+
+  try {
+    // Use RPC function to validate token (bypasses RLS for anonymous users)
+    const { data, error } = await (supabase.rpc as any)(
+      'validate_invite_token',
+      { token_value: token }
+    ).maybeSingle();
+
+    if (error) {
+      console.error('Token validation RPC error:', error);
+      return {
+        success: false,
+        data: null,
+        error: {
+          type: 'invalid',
+          message: error.message,
+          userMessage: 'Failed to validate invitation link. Please try again or contact support.'
+        }
+      };
+    }
+
+    if (!data) {
+      // Token not found or failed validation in RPC
+      // Need to check raw token data to determine why
+      const { data: rawToken } = await supabase
+        .from('invite_tokens')
+        .select('is_used, revoked_at, expires_at')
+        .eq('token', token)
+        .maybeSingle<{ is_used: boolean; revoked_at: string | null; expires_at: string }>();
+
+      if (!rawToken) {
+        return {
+          success: false,
+          data: null,
+          error: {
+            type: 'not_found',
+            message: 'Token not found in database',
+            userMessage: 'This invitation link is invalid or has been removed. Please contact your administrator for a new invitation.'
+          }
+        };
+      }
+
+      // Check why token failed validation
+      if (rawToken.is_used) {
+        return {
+          success: false,
+          data: null,
+          error: {
+            type: 'used',
+            message: 'Token has already been used',
+            userMessage: 'This invitation has already been accepted. If you believe this is an error, please contact your administrator.'
+          }
+        };
+      }
+
+      if (rawToken.revoked_at) {
+        return {
+          success: false,
+          data: null,
+          error: {
+            type: 'revoked',
+            message: 'Token has been revoked',
+            userMessage: 'This invitation has been revoked. Please contact your administrator for a new invitation.'
+          }
+        };
+      }
+
+      if (new Date(rawToken.expires_at) < new Date()) {
+        return {
+          success: false,
+          data: null,
+          error: {
+            type: 'expired',
+            message: 'Token has expired',
+            userMessage: 'This invitation link has expired. Please contact your administrator for a new invitation.'
+          }
+        };
+      }
+
+      // Unknown reason
+      return {
+        success: false,
+        data: null,
+        error: {
+          type: 'invalid',
+          message: 'Token validation failed for unknown reason',
+          userMessage: 'This invitation link is invalid. Please contact your administrator for assistance.'
+        }
+      };
+    }
+
+    // Token is valid
+    return {
+      success: true,
+      data: data as InviteToken,
+      error: null
+    };
+  } catch (error) {
+    console.error('Token validation exception:', error);
+    return {
+      success: false,
+      data: null,
+      error: {
+        type: 'invalid',
+        message: error instanceof Error ? error.message : String(error),
+        userMessage: 'An error occurred while validating the invitation. Please try again.'
+      }
+    };
+  }
+};
+
+/**
+ * Validate and retrieve invite token information (legacy - returns null on failure)
+ * Checks for: not used, not revoked, not expired
+ * Uses RPC function to bypass RLS for anonymous users
+ *
+ * @deprecated Use validateInviteTokenDetailed for better error handling
  */
 export const validateInviteToken = async (token: string): Promise<InviteToken | null> => {
-  if (!token || token.trim().length === 0) {
-    return null;
-  }
-
-  const { data, error } = await supabase
-    .from('invite_tokens')
-    .select('*')
-    .eq('token', token)
-    .eq('is_used', false)
-    .single();
-
-  if (error || !data) {
-    return null;
-  }
-
-  // Check if token has expired
-  const now = new Date();
-  const expiresAt = new Date(data.expires_at);
-
-  if (now > expiresAt) {
-    return null;
-  }
-
-  return data as InviteToken;
+  const result = await validateInviteTokenDetailed(token);
+  return result.success ? result.data : null;
 };
 
 /**
  * Mark invite token as used
  */
 export const markTokenAsUsed = async (token: string): Promise<boolean> => {
-  const { error } = await supabase
-    .from('invite_tokens')
+  const { error } = await (supabase
+    .from('invite_tokens') as any)
     .update({ is_used: true })
     .eq('token', token);
 

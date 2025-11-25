@@ -40,13 +40,6 @@ export const canManagePermissions = (role: string): boolean => {
 };
 
 /**
- * Check if user can regenerate organization code
- */
-export const canRegenerateOrgCode = (role: string): boolean => {
-  return hasAdminPermissions(role);
-};
-
-/**
  * Check if user can invite new members
  */
 export const canInviteMembers = (role: string): boolean => {

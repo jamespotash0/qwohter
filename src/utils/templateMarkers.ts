@@ -15,6 +15,7 @@ import type {
   ParsedMarkedElement,
   ReEvaluationOptions,
 } from '@/lib/types/template/semanticMarkup';
+import { formatDateEST } from '@/utils/dateUtils';
 
 /**
  * Escape HTML to prevent XSS when embedding in attributes
@@ -46,8 +47,20 @@ const formatValue = (value: string | number, format?: string): string => {
         minimumFractionDigits: 2,
       }).format(Number(value));
 
-    case 'date':
-      return new Date(value).toLocaleDateString('en-US');
+    case 'date': {
+      const dateString = String(value);
+      if (!dateString) return '-';
+
+      // Handle YYYY-MM-DD format (standard database format)
+      const parts = dateString.split('-');
+      if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+        const isoDate = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}T12:00:00Z`;
+        return formatDateEST(isoDate, { year: 'numeric', month: 'long', day: 'numeric' });
+      }
+
+      // Otherwise pass to formatDateEST as-is
+      return formatDateEST(dateString, { year: 'numeric', month: 'long', day: 'numeric' });
+    }
 
     case 'number':
       return new Intl.NumberFormat('en-US').format(Number(value));

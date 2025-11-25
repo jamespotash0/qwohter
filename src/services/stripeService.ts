@@ -540,48 +540,82 @@ export const getDaysRemaining = (currentPeriodEnd: string | null): number | null
  */
 export const enrollInFreeTrial = async (organizationId: string): Promise<{ success: boolean; error: string | null }> => {
   try {
+    console.log('📋 enrollInFreeTrial called for organization:', organizationId);
+
     // Check if organization already has a subscription
     const { data: existingSubscription } = await getSubscription(organizationId);
 
     if (existingSubscription) {
-      console.log('Organization already has subscription, skipping trial enrollment');
+      console.log('⏭️ Organization already has subscription, skipping trial enrollment');
       return { success: true, error: null };
     }
 
-    // Get the Individual plan as default trial plan
-    const planResult = await getPlanByName('Individual');
+    console.log('📦 Fetching Team plan from database...');
+    // Get the Team plan as default trial plan
+    const planResult = await getPlanByName('Team');
 
     if (planResult.error || !planResult.data) {
-      console.error('Failed to get Individual plan for trial:', planResult.error);
-      return { success: false, error: 'Individual plan not found' };
+      console.error('❌ Failed to get Team plan for trial:', planResult.error);
+      return { success: false, error: 'Team plan not found' };
     }
 
-    const individualPlan = planResult.data as SubscriptionPlan;
+    const teamPlan = planResult.data as SubscriptionPlan;
+    console.log('✅ Team plan found:', { id: teamPlan.id, name: teamPlan.name });
 
-    // Calculate trial end date (14 days from now)
+    // Calculate trial period (14 days from now)
+    const trialStartDate = new Date();
     const trialEndDate = new Date();
     trialEndDate.setDate(trialEndDate.getDate() + 14);
 
+    console.log('💾 Inserting subscription record...', {
+      organization_id: organizationId,
+      plan_id: teamPlan.id,
+      trial_start: trialStartDate.toISOString(),
+      trial_end: trialEndDate.toISOString()
+    });
+
     // Create subscription record with trialing status
-    const { error } = await supabase
+    const { error: subscriptionError } = await supabase
       .from('subscriptions')
       .insert({
         organization_id: organizationId,
-        plan_id: individualPlan.id,
-        stripe_subscription_status: 'trialing',
+        plan_id: teamPlan.id,
+        stripe_subscription_status: 'Trialing',
+        current_period_start: trialStartDate.toISOString(),
         current_period_end: trialEndDate.toISOString(),
         is_active: true,
         access_blocked: false,
-        has_used_trial: true, // Mark that trial has been used
         number_of_active_users: 1,
       } as any);
 
-    if (error) {
-      console.error('Error enrolling in free trial:', error);
-      return { success: false, error: error.message };
+    if (subscriptionError) {
+      console.error('❌ Subscription insert failed:', {
+        error: subscriptionError,
+        code: subscriptionError.code,
+        message: subscriptionError.message,
+        details: subscriptionError.details,
+        hint: subscriptionError.hint
+      });
+      return { success: false, error: subscriptionError.message };
     }
 
-    console.log('Successfully enrolled organization in 14-day free trial');
+    console.log('✅ Subscription record created successfully');
+
+    // Mark organization as having used trial
+    console.log('🏢 Updating organization has_used_trial flag...');
+    const { error: orgError } = await supabase
+      .from('organizations')
+      .update({ has_used_trial: true })
+      .eq('id', organizationId);
+
+    if (orgError) {
+      console.warn('⚠️ Failed to mark organization trial as used:', orgError);
+      // Don't fail the enrollment if this update fails
+    } else {
+      console.log('✅ Organization marked as having used trial');
+    }
+
+    console.log('🎉 Successfully enrolled organization in 14-day free trial');
     return { success: true, error: null };
   } catch (error) {
     console.error('Error enrolling in free trial:', error);

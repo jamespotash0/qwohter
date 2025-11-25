@@ -43,14 +43,30 @@ import {
   ArchiveRestore,
   Bell,
   ChevronRight,
-  Layers
+  Layers,
+  Kanban
 } from 'lucide-react';
 
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Quote } from '@/services/quotesService';
+import { sendQuoteToProjectBoard, removeQuoteFromProjectBoard } from '@/services/quotesService';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidateQueries } from '@/lib/queryClient';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 // import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 import useEnhancedSearch from '@/hooks/useEnhancedSearch';
@@ -68,6 +84,7 @@ interface EnhancedQuotesTableProps {
   onSetReminder?: (id: string) => void;
   onQuoteSourceChange: (id: string, source: string) => void;
   onCreateVersion?: (id: string) => void;
+  onCreateInvoice?: (quote: Quote) => void;
   onCreateQuote?: () => void;
   onArchiveQuote?: (id: string) => void;
   onUnarchiveQuote?: (id: string) => void;
@@ -169,6 +186,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   onStatusChange,
   onQuoteSourceChange,
   onCreateVersion,
+  onCreateInvoice,
   onSetReminder,
   onCreateQuote,
   onArchiveQuote,
@@ -204,6 +222,26 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
 
   // Track which version is "main" for each base number (stored in local state only)
   const [mainVersions, setMainVersions] = useState<Record<string, string>>({});
+
+  // Toast for notifications
+  const { toast } = useToast();
+
+  // Query client for cache invalidation
+  const queryClient = useQueryClient();
+
+  // Track pending status changes for confirmation
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    quoteId: string;
+    currentStatus: string;
+    newStatus: string;
+  } | null>(null);
+
+  // Track grouped quote deletion (warns all versions will be deleted)
+  const [deleteGroupedQuote, setDeleteGroupedQuote] = useState<{
+    id: string;
+    baseNumber: string;
+    versionCount: number;
+  } | null>(null);
 
   // Group quotes by version
   const quoteGroups = useMemo(() => groupQuotesByVersion(quotes), [quotes]);
@@ -283,6 +321,146 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         column.resetSize();
       }
     });
+  };
+
+  // Handle sending quote to project board
+  const handleSendToBoard = async (quoteId: string) => {
+    try {
+      console.log('Attempting to send quote to board:', quoteId);
+      const result = await sendQuoteToProjectBoard(quoteId);
+      console.log('Send result:', result);
+
+      if (result.success) {
+        // Invalidate queries to refetch with updated is_on_board status
+        invalidateQueries.allQuotes();
+        invalidateQueries.allBoard();
+
+        toast({
+          title: 'Sent to Project Board',
+          description: 'Quote has been added to the project board',
+        });
+      } else {
+        console.error('Failed to send to board:', result.error);
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to send quote to project board',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Exception sending to board:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Handle removing quote from project board
+  const handleRemoveFromBoard = async (quoteId: string) => {
+    try {
+      console.log('Attempting to remove quote from board:', quoteId);
+      const result = await removeQuoteFromProjectBoard(quoteId);
+      console.log('Remove result:', result);
+
+      if (result.success) {
+        // Invalidate queries to refetch with updated is_on_board status
+        invalidateQueries.allQuotes();
+        invalidateQueries.allBoard();
+
+        toast({
+          title: 'Removed from Project Board',
+          description: 'Quote has been removed from the project board',
+        });
+      } else {
+        console.error('Failed to remove from board:', result.error);
+        toast({
+          title: 'Error',
+          description: result.error || 'Failed to remove quote from project board',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Exception removing from board:', error);
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Handle deleting all versions in a group
+  const handleDeleteAllVersions = async () => {
+    if (!deleteGroupedQuote) return;
+
+    try {
+      // Find all quotes with the same base number
+      const group = quoteGroups.find(g => g.baseNumber === deleteGroupedQuote.baseNumber);
+      if (!group) {
+        toast({
+          title: 'Error',
+          description: 'Could not find quote group',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Delete all versions in the group
+      for (const version of group.versions) {
+        await onDeleteQuote(version.id);
+      }
+
+      toast({
+        title: 'Deleted',
+        description: `All ${deleteGroupedQuote.versionCount} version(s) have been deleted`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete all versions',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleteGroupedQuote(null);
+    }
+  };
+
+  // Handle status change with confirmation for Won<->Rejected transitions
+  const handleStatusChange = (quoteId: string, currentStatus: string, newStatus: string) => {
+    // Check if we're switching between Won and Rejected
+    const isWonToRejected = currentStatus === 'Won' && newStatus === 'Rejected';
+    const isRejectedToWon = currentStatus === 'Rejected' && newStatus === 'Won';
+
+    if (isWonToRejected || isRejectedToWon) {
+      // Show confirmation dialog
+      setPendingStatusChange({ quoteId, currentStatus, newStatus });
+    } else {
+      // Proceed directly without confirmation
+      onStatusChange(quoteId, newStatus);
+    }
+  };
+
+  // Confirm status change after user approval
+  const confirmStatusChange = async () => {
+    if (pendingStatusChange) {
+      const { quoteId, newStatus } = pendingStatusChange;
+
+      // Update the status
+      onStatusChange(quoteId, newStatus);
+      setPendingStatusChange(null);
+
+      // Note: No need to manually remove from board - the database trigger
+      // 'sync_project_on_quote_status_change' automatically deletes projects
+      // when status changes FROM Won to anything else, and then
+      // 'sync_quote_on_board_after_project_changes' updates is_on_board to false
+    }
+  };
+
+  // Cancel status change
+  const cancelStatusChange = () => {
+    setPendingStatusChange(null);
   };
 
   // Reset column visibility to show all columns
@@ -521,7 +699,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         return (
           <Select
             value={currentStatus || "Incomplete"}
-            onValueChange={(value) => onStatusChange(row.original.id, value)}
+            onValueChange={(value) => handleStatusChange(row.original.id, currentStatus || "Incomplete", value)}
           >
             <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[currentStatus as keyof typeof statusColors]}`}>
               <SelectValue />
@@ -657,53 +835,130 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
     columnHelper.display({
       id: 'actions',
       header: 'Actions',
-      cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
-            <DropdownMenuItem onClick={() => onEditQuote(row.original)}>
-              <Edit3 className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            {onCreateVersion && (
-              <DropdownMenuItem onClick={() => onCreateVersion(row.original.id)}>
-                <Copy className="mr-2 h-4 w-4" />
-                Create Version
+      cell: ({ row }) => {
+        const quote = row.original;
+        const groupInfo = quoteToGroupMap.get(quote.id);
+        const hasMultipleVersions = groupInfo?.hasMultipleVersions || false;
+
+        // Grouped quotes (placeholder rows) only show Archive and Delete All Versions
+        if (hasMultipleVersions) {
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="h-8 w-8 p-0">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
+                {isArchiveView && onUnarchiveQuote ? (
+                  <DropdownMenuItem onClick={() => onUnarchiveQuote(quote.id)}>
+                    <ArchiveRestore className="mr-2 h-4 w-4" />
+                    Unarchive
+                  </DropdownMenuItem>
+                ) : onArchiveQuote && (
+                  <DropdownMenuItem onClick={() => onArchiveQuote(quote.id)}>
+                    <Archive className="mr-2 h-4 w-4" />
+                    Archive
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (groupInfo) {
+                      setDeleteGroupedQuote({
+                        id: quote.id,
+                        baseNumber: groupInfo.baseNumber,
+                        versionCount: groupInfo.versions.length
+                      });
+                    }
+                  }}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete All Versions
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        }
+
+        // Single quotes or non-grouped quotes show full actions (but no Create Version if single)
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
+              <DropdownMenuItem onClick={() => onEditQuote(quote)}>
+                <Edit3 className="mr-2 h-4 w-4" />
+                Edit
               </DropdownMenuItem>
-            )}
-            {onSetReminder && (
-              <DropdownMenuItem onClick={() => onSetReminder(row.original.id)}>
-                <Bell className="mr-2 h-4 w-4" />
-                Set Reminder
+              {onCreateVersion && (
+                <DropdownMenuItem onClick={() => onCreateVersion(quote.id)}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Create Version
+                </DropdownMenuItem>
+              )}
+              {onCreateInvoice && (
+                <DropdownMenuItem onClick={() => onCreateInvoice(quote)}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Create Invoice
+                </DropdownMenuItem>
+              )}
+              {onSetReminder && (
+                <DropdownMenuItem onClick={() => onSetReminder(quote.id)}>
+                  <Bell className="mr-2 h-4 w-4" />
+                  Set Reminder
+                </DropdownMenuItem>
+              )}
+              {quote.status === 'Won' && quote.is_main_version && (
+                quote.is_on_board ? (
+                  <DropdownMenuItem onClick={() => handleRemoveFromBoard(quote.id)}>
+                    <X className="mr-2 h-4 w-4" />
+                    Remove from Board
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => handleSendToBoard(quote.id)}>
+                    <Kanban className="mr-2 h-4 w-4" />
+                    Send to Project Board
+                  </DropdownMenuItem>
+                )
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => {
+                // Open editor in new tab - user can download PDF from there
+                const url = `/editor/${quote.proposal_number}`;
+                window.open(url, '_blank');
+              }}>
+                <Download className="mr-2 h-4 w-4" />
+                Download PDF
               </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator />
-            {isArchiveView && onUnarchiveQuote ? (
-              <DropdownMenuItem onClick={() => onUnarchiveQuote(row.original.id)}>
-                <ArchiveRestore className="mr-2 h-4 w-4" />
-                Unarchive
+              <DropdownMenuSeparator />
+              {isArchiveView && onUnarchiveQuote ? (
+                <DropdownMenuItem onClick={() => onUnarchiveQuote(quote.id)}>
+                  <ArchiveRestore className="mr-2 h-4 w-4" />
+                  Unarchive
+                </DropdownMenuItem>
+              ) : onArchiveQuote && (
+                <DropdownMenuItem onClick={() => onArchiveQuote(quote.id)}>
+                  <Archive className="mr-2 h-4 w-4" />
+                  Archive
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => onDeleteQuote(quote.id)}
+                className="text-red-600 focus:text-red-600"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
               </DropdownMenuItem>
-            ) : onArchiveQuote && (
-              <DropdownMenuItem onClick={() => onArchiveQuote(row.original.id)}>
-                <Archive className="mr-2 h-4 w-4" />
-                Archive
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => onDeleteQuote(row.original.id)}
-              className="text-red-600 focus:text-red-600"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ),
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
       size: 80,
       enableSorting: false,
     }),
@@ -1330,7 +1585,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                             <td className="px-4 py-2">
                               <Select
                                 value={version.status || "Incomplete"}
-                                onValueChange={(value) => onStatusChange(version.id, value)}
+                                onValueChange={(value) => handleStatusChange(version.id, version.status || "Incomplete", value)}
                               >
                                 <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[version.status as keyof typeof statusColors]}`}>
                                   <SelectValue />
@@ -1425,6 +1680,40 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                                     <Edit3 className="mr-2 h-4 w-4" />
                                     Edit
                                   </DropdownMenuItem>
+                                  {onCreateVersion && (
+                                    <DropdownMenuItem onClick={() => onCreateVersion(version.id)}>
+                                      <Copy className="mr-2 h-4 w-4" />
+                                      Create Version
+                                    </DropdownMenuItem>
+                                  )}
+                                  {onSetReminder && (
+                                    <DropdownMenuItem onClick={() => onSetReminder(version.id)}>
+                                      <Bell className="mr-2 h-4 w-4" />
+                                      Set Reminder
+                                    </DropdownMenuItem>
+                                  )}
+                                  {version.status === 'Won' && version.is_main_version && (
+                                    version.is_on_board ? (
+                                      <DropdownMenuItem onClick={() => handleRemoveFromBoard(version.id)}>
+                                        <X className="mr-2 h-4 w-4" />
+                                        Remove from Board
+                                      </DropdownMenuItem>
+                                    ) : (
+                                      <DropdownMenuItem onClick={() => handleSendToBoard(version.id)}>
+                                        <Kanban className="mr-2 h-4 w-4" />
+                                        Send to Project Board
+                                      </DropdownMenuItem>
+                                    )
+                                  )}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => {
+                                    // Open editor in new tab - user can download PDF from there
+                                    const url = `/editor/${version.proposal_number}`;
+                                    window.open(url, '_blank');
+                                  }}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Download PDF
+                                  </DropdownMenuItem>
                                   <DropdownMenuSeparator />
                                   {isArchiveView && onUnarchiveQuote ? (
                                     <DropdownMenuItem onClick={() => onUnarchiveQuote(version.id)}>
@@ -1473,6 +1762,72 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         {/* Pagination */}
         <PaginationControls table={table} />
       </div>
+
+      {/* Status Change Confirmation Dialog */}
+      <AlertDialog open={!!pendingStatusChange} onOpenChange={(open) => !open && cancelStatusChange()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Status Change</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              {pendingStatusChange?.currentStatus === 'Won' && pendingStatusChange?.newStatus === 'Rejected' && (
+                <div className="text-base">
+                  Changing from <strong className="text-green-600">Won</strong> to <strong className="text-red-600">Rejected</strong> will:
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li><strong>Remove the Won timestamp</strong></li>
+                    <li><strong>Update analytics accordingly</strong></li>
+                  </ul>
+                </div>
+              )}
+              {pendingStatusChange?.currentStatus === 'Rejected' && pendingStatusChange?.newStatus === 'Won' && (
+                <div className="text-base">
+                  Changing from <strong className="text-red-600">Rejected</strong> to <strong className="text-green-600">Won</strong> will:
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li><strong>Remove the Rejected timestamp</strong></li>
+                    <li><strong>Update analytics accordingly</strong></li>
+                  </ul>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelStatusChange}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmStatusChange}
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+            >
+              Proceed
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Grouped Quote Confirmation Dialog */}
+      <AlertDialog open={!!deleteGroupedQuote} onOpenChange={(open) => !open && setDeleteGroupedQuote(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete All Versions</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <div className="text-base">
+                <p className="mb-3">
+                  You are about to delete <strong className="text-red-600">{deleteGroupedQuote?.versionCount} version(s)</strong> of quote <strong>{deleteGroupedQuote?.baseNumber}</strong>.
+                </p>
+                <p className="text-red-600 font-semibold">
+                  This action cannot be undone and will permanently delete all versions in this group.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteGroupedQuote(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAllVersions}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

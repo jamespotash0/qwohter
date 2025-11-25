@@ -16,7 +16,26 @@
 
 ## Quick Start
 
-### Create a New Worktree
+### Basic Git Worktree Commands
+
+```bash
+# Create a worktree
+git worktree add <treeName> <fullBranchName>
+
+# Example: Create a worktree for an existing branch
+git worktree add ../feature-design feature/designTheme
+
+# Example: Create a new branch and worktree
+git worktree add ../new-feature -b feature/newFeature
+
+# Open in new VSCode window
+code ../<treeName>/
+
+# Example: Open the worktree
+code ../feature-design/
+```
+
+### Using the Helper Scripts (Automated Setup)
 
 ```bash
 # Create a worktree for a new feature

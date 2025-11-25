@@ -157,65 +157,15 @@
 }
 
 /* ============================================
-   📐 REACT-GRID-LAYOUT ENHANCEMENTS
+   🔧 UTILITY CLASSES
    ============================================ */
 
-/* Make resize handles more visible and clickable */
-/* .react-grid-item > .react-resizable-handle {
-  z-index: 100 !important;
-  opacity: 1 !important;
-  width: 20px !important;
-  height: 20px !important;
-} */
-
-/* .react-grid-item > .react-resizable-handle::after {
-  content: "";
-  position: absolute;
-  right: 3px;
-  bottom: 3px;
-  width: 8px;
-  height: 8px;
-  border-right: 2px solid rgba(59, 130, 246, 0.7);
-  border-bottom: 2px solid rgba(59, 130, 246, 0.7);
-} */
-
-/* Hover state for resize handles */
-/* .react-grid-item:hover > .react-resizable-handle::after {
-  border-right-color: rgba(59, 130, 246, 1);
-  border-bottom-color: rgba(59, 130, 246, 1);
-} */
-
-/* Placeholder styling when dragging */
-/* .react-grid-item.react-grid-placeholder {
-  background: rgb(59, 130, 246);
-  opacity: 0.2;
-  transition-duration: 100ms;
-  z-index: 2;
-  border-radius: 4px;
-} */
-
-/* Selected field styling */
-/* .react-grid-item-selected {
-  outline: 2px solid rgb(59, 130, 246);
-  outline-offset: 2px;
-} */
-
-/* Ensure drag handle is always on top */
-.drag-handle {
-  z-index: 150 !important;
-  pointer-events: all !important;
+/* Hide scrollbar while maintaining scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
-/* Dragging state */
-.react-grid-item.react-draggable-dragging {
-  transition: none;
-  z-index: 100;
-  opacity: 0.8;
-}
-
-/* Resizing state */
-.react-grid-item.resizing {
-  transition: none;
-  z-index: 100;
-  opacity: 0.9;
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, and Opera */
 }

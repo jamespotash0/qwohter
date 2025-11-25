@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import * as authService from '@/auth/services/authService';
 import * as Sentry from '@sentry/react';
+import { quoteActivityService } from './quoteActivityService';
 // ============================================================================
 // Types
 // ============================================================================
@@ -20,6 +21,8 @@ export type Quote = Database['public']['Tables']['quotes']['Row'] & {
   total_value?: number | null; // From price_details.final_selling_price
   subtotal?: number | null; // From price_details.subtotal
   margin_percentage?: number | null; // Calculated margin
+  // Project board status (added by migration 20251118000002_add_is_on_board_to_quotes.sql)
+  is_on_board?: boolean | null; // Tracks if quote is on project board, synced via trigger
 };
 
 export interface QuoteFilters {
@@ -57,8 +60,8 @@ export interface UpdateQuoteData {
   total_value?: number;
   subtotal?: number;
   submitted_at?: string;
-  won_at?: string;
-  rejected_at?: string;
+  won_at?: string | null;
+  rejected_at?: string | null;
   margin_percentage?: number;
   is_main_version?: boolean;
   quote_source?: string;
@@ -99,7 +102,7 @@ export async function fetchQuotes(
         quote_details, job_details, delivery_details, labor_details,
         wall_details, price_details, status, date_last_downloaded,
         document_version, created_at, updated_at, customization,
-        quote_source, archived, is_main_version,
+        quote_source, archived, is_main_version, is_on_board,
         total_value, subtotal,
         submitted_at, won_at, rejected_at, margin_percentage
       `)
@@ -127,7 +130,7 @@ export async function fetchQuotes(
         quote_details, job_details, delivery_details, labor_details,
         wall_details, price_details, status, date_last_downloaded,
         document_version, created_at, updated_at, customization,
-        quote_source, archived, is_main_version,
+        quote_source, archived, is_main_version, is_on_board,
         total_value, subtotal,
         submitted_at, won_at, rejected_at, margin_percentage
       `)
@@ -218,12 +221,85 @@ export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
 
         const createdByName = profileData?.full_name || session.user.email || 'Unknown';
 
-        // Create quote with created_by_name explicitly set
+        // Fetch organization name to ensure it's always available
+        const { data: orgData, error: orgError } = await supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', membershipData.organization_id as string)
+          .single();
+
+        // Track organization name source for debugging
+        let orgNameSource = 'unknown';
+        let finalOrgName = 'Organization Name Not Available';
+
+        if (orgError) {
+          // Log detailed error context
+          console.error('[createQuote] Failed to fetch organization name:', {
+            error: orgError,
+            errorCode: orgError.code,
+            errorMessage: orgError.message,
+            errorDetails: orgError.details,
+            organizationId: membershipData.organization_id,
+            userId: session.user.id,
+            userEmail: session.user.email
+          });
+
+          // Track in Sentry
+          Sentry.captureException(orgError, {
+            tags: {
+              operation: 'createQuote',
+              subOperation: 'fetchOrganizationName',
+              organizationId: membershipData.organization_id,
+            },
+            extra: {
+              userId: session.user.id,
+              errorCode: orgError.code,
+              errorDetails: orgError.details,
+            },
+            level: 'warning',
+          });
+
+          span.setAttribute('org.fetch_error', true);
+          span.setAttribute('org.error_code', orgError.code || 'unknown');
+        }
+
+        // Determine organization name with fallback priority
+        if ((quoteData.quote_details as any)?.organizationName) {
+          finalOrgName = (quoteData.quote_details as any).organizationName;
+          orgNameSource = 'frontend';
+        } else if (orgData?.name) {
+          finalOrgName = orgData.name;
+          orgNameSource = 'database';
+        } else {
+          orgNameSource = 'fallback';
+          // Log when we have to use fallback
+          console.warn('[createQuote] Using fallback organization name:', {
+            organizationId: membershipData.organization_id,
+            userId: session.user.id,
+            frontendProvided: !!(quoteData.quote_details as any)?.organizationName,
+            databaseFetched: !!orgData?.name,
+            hadError: !!orgError
+          });
+        }
+
+        // Track source in Sentry
+        span.setAttribute('org.name_source', orgNameSource);
+        span.setAttribute('org.name', finalOrgName);
+
+        // Ensure quote_details has organization name
+        const quoteDetails = {
+          ...(quoteData.quote_details || {}),
+          organizationName: finalOrgName
+        };
+
+        // Create quote with created_by_name and organizationName explicitly set
         const insertData = {
           ...quoteData,
+          quote_details: quoteDetails,
           organization_id: membershipData.organization_id,
           created_by: session.user.id,
           created_by_name: createdByName,
+          is_main_version: true, // ✅ FIX: New quotes are always main versions
         };
 
         const { data, error } = await supabase
@@ -237,9 +313,22 @@ export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
           throw error;
         }
 
+        const createdQuote = data as Quote;
+
+        // Log quote creation activity
+        await quoteActivityService.logCreation({
+          quoteId: createdQuote.id,
+          quoteNumber: createdQuote.proposal_number,
+          projectName: createdQuote.project_name || 'Untitled',
+          userId: session.user.id,
+          userName: createdByName,
+          organizationId: membershipData.organization_id,
+          status: createdQuote.status
+        });
+
         span.setStatus({ code: 1 }); // Success
-        span.setAttribute('quote.id', data.id);
-        return data as Quote;
+        span.setAttribute('quote.id', createdQuote.id);
+        return createdQuote;
       } catch (error) {
         // Capture exception with context
         Sentry.captureException(error, {
@@ -280,6 +369,9 @@ export async function updateQuote(
     },
     async (span) => {
       try {
+        // Get user context for activity logging
+        const session = await authService.getSession();
+
         const { data, error } = await supabase
           .from('quotes')
           .update(updates)
@@ -298,8 +390,46 @@ export async function updateQuote(
           throw error;
         }
 
+        const updatedQuote = data as Quote;
+
+        // Log activity if user is authenticated (skip for system updates)
+        if (session?.user) {
+          // Get user's name from profile
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+          const userName = (profileData as any)?.full_name || session.user.email || 'Unknown';
+          const changedFields = Object.keys(updates);
+
+          // Don't log activity for certain updates:
+          // - Silent updates (like date_last_downloaded)
+          // - Status changes (handled by updateQuoteStatus function)
+          // - Archive changes (handled by archiveQuote/unarchiveQuote functions)
+          const isSilentUpdate =
+            changedFields.length === 1 &&
+            changedFields[0] === 'date_last_downloaded';
+
+          const isStatusChange = updates.status !== undefined;
+          const isArchiveChange = updates.archived !== undefined;
+
+          if (!isSilentUpdate && !isStatusChange && !isArchiveChange) {
+            await quoteActivityService.logUpdate({
+              quoteId: updatedQuote.id,
+              quoteNumber: updatedQuote.proposal_number,
+              projectName: updatedQuote.project_name || 'Untitled',
+              userId: session.user.id,
+              userName: userName,
+              organizationId: updatedQuote.organization_id,
+              changedFields: changedFields
+            });
+          }
+        }
+
         span.setStatus({ code: 1 }); // Success
-        return data as Quote;
+        return updatedQuote;
       } catch (error) {
         throw error;
       }
@@ -328,6 +458,35 @@ export async function deleteQuote(quoteId: string): Promise<void> {
     },
     async (span) => {
       try {
+        // Get user context for activity logging
+        const session = await authService.getSession();
+
+        // Fetch quote data before deletion for activity logging
+        const quoteToDelete = await fetchQuoteById(quoteId);
+
+        // Log deletion activity BEFORE deleting the quote
+        // (must be before deletion due to foreign key constraint)
+        if (session?.user) {
+          // Get user's name from profile
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+          const userName = (profileData as any)?.full_name || session.user.email || 'Unknown';
+
+          await quoteActivityService.logDeletion({
+            quoteId: quoteToDelete.id,
+            quoteNumber: quoteToDelete.proposal_number,
+            projectName: quoteToDelete.project_name || 'Untitled',
+            userId: session.user.id,
+            userName: userName,
+            organizationId: quoteToDelete.organization_id
+          });
+        }
+
+        // Now delete the quote
         const { error } = await supabase
           .from('quotes')
           .delete()
@@ -357,14 +516,68 @@ export async function deleteQuote(quoteId: string): Promise<void> {
  * Archive a quote
  */
 export async function archiveQuote(quoteId: string): Promise<Quote> {
-  return updateQuote(quoteId, { archived: true });
+  // Get user context for activity logging
+  const session = await authService.getSession();
+
+  const updatedQuote = await updateQuote(quoteId, { archived: true });
+
+  // Log archive activity if user is authenticated
+  if (session?.user) {
+    // Get user's name from profile
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    const userName = (profileData as any)?.full_name || session.user.email || 'Unknown';
+
+    await quoteActivityService.logActivity({
+      quoteId: updatedQuote.id,
+      quoteNumber: updatedQuote.proposal_number,
+      projectName: updatedQuote.project_name || 'Untitled',
+      userId: session.user.id,
+      userName: userName,
+      organizationId: updatedQuote.organization_id,
+      activityType: 'Archived'
+    });
+  }
+
+  return updatedQuote;
 }
 
 /**
  * Unarchive a quote
  */
 export async function unarchiveQuote(quoteId: string): Promise<Quote> {
-  return updateQuote(quoteId, { archived: false });
+  // Get user context for activity logging
+  const session = await authService.getSession();
+
+  const updatedQuote = await updateQuote(quoteId, { archived: false });
+
+  // Log unarchive activity if user is authenticated
+  if (session?.user) {
+    // Get user's name from profile
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    const userName = (profileData as any)?.full_name || session.user.email || 'Unknown';
+
+    await quoteActivityService.logActivity({
+      quoteId: updatedQuote.id,
+      quoteNumber: updatedQuote.proposal_number,
+      projectName: updatedQuote.project_name || 'Untitled',
+      userId: session.user.id,
+      userName: userName,
+      organizationId: updatedQuote.organization_id,
+      activityType: 'Unarchived'
+    });
+  }
+
+  return updatedQuote;
 }
 
 /**
@@ -383,9 +596,16 @@ export async function updateQuoteStatus(
   quoteId: string,
   status: string
 ): Promise<Quote> {
+  // Get user context for activity logging
+  const session = await authService.getSession();
+
+  // Fetch old quote to get the old status
+  const oldQuote = await fetchQuoteById(quoteId);
+  const oldStatus = oldQuote.status || 'Draft';
+
   const updates: UpdateQuoteData = { status };
 
-  // Add timestamp for status transitions
+  // Add timestamp for status transitions and clear conflicting timestamps
   const now = new Date().toISOString();
   switch (status) {
     case 'Submitted':
@@ -393,66 +613,210 @@ export async function updateQuoteStatus(
       break;
     case 'Won':
       updates.won_at = now;
+      // Clear rejected_at if switching from Rejected to Won
+      if (oldStatus === 'Rejected') {
+        updates.rejected_at = null;
+      }
       break;
     case 'Rejected':
       updates.rejected_at = now;
+      // Clear won_at if switching from Won to Rejected
+      if (oldStatus === 'Won') {
+        updates.won_at = null;
+      }
       break;
   }
 
   const updatedQuote = await updateQuote(quoteId, updates);
 
-  // If status is "Won", automatically create a project for the board
-  // ONLY for main version quotes (don't create projects for quote versions)
-  if (status === 'Won' && updatedQuote.is_main_version === true) {
-    // Check if project already exists for this quote
+  // Log status change activity if user is authenticated
+  if (session?.user) {
+    // Get user's name from profile
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    const userName = (profileData as any)?.full_name || session.user.email || 'Unknown';
+
+    await quoteActivityService.logStatusChange({
+      quoteId: updatedQuote.id,
+      quoteNumber: updatedQuote.proposal_number,
+      projectName: updatedQuote.project_name || 'Untitled',
+      userId: session.user.id,
+      userName: userName,
+      organizationId: updatedQuote.organization_id,
+      oldStatus: oldStatus,
+      newStatus: status
+    });
+  }
+
+  return updatedQuote;
+}
+
+/**
+ * Manually send a Won quote to the project board
+ * - Automatically promotes quote to main version
+ * - Creates project with default workflow status
+ */
+export async function sendQuoteToProjectBoard(quoteId: string): Promise<{ success: boolean; error?: string; projectId?: string }> {
+  try {
+    // Get current session
+    const session = await authService.getSession();
+    if (!session?.user) {
+      return { success: false, error: 'Not authenticated' };
+    }
+
+    // Get the quote
+    const { data: quote, error: fetchError } = await supabase
+      .from('quotes')
+      .select('*')
+      .eq('id', quoteId)
+      .single();
+
+    if (fetchError || !quote) {
+      return { success: false, error: 'Quote not found' };
+    }
+
+    // Check if quote is Won
+    if (quote.status !== 'Won') {
+      return { success: false, error: 'Only Won quotes can be sent to the project board' };
+    }
+
+    // Check if project already exists
     const { data: existingProject } = await supabase
       .from('projects')
       .select('id')
       .eq('quote_id', quoteId)
       .maybeSingle();
 
-    // Only create if no project exists
-    if (!existingProject) {
-      // Get default workflow column for the organization
-      const { data: defaultColumn } = await supabase
-        .from('project_workflow_columns')
-        .select('name')
-        .eq('organization_id', updatedQuote.organization_id)
-        .eq('is_default', true)
-        .maybeSingle();
+    if (existingProject) {
+      return { success: false, error: 'Quote already has a project on the board' };
+    }
 
-      const workflowStatus = (defaultColumn as any)?.name || 'To Do'; // Fallback to 'To Do' if no default
+    // Auto-promote to main version if not already
+    if (quote.is_main_version !== true) {
+      // Set this quote as main version
+      await updateQuote(quoteId, { is_main_version: true });
 
-      // Get next board_order (highest + 1)
-      const { data: maxOrderProject } = await supabase
-        .from('projects')
-        .select('board_order')
-        .eq('organization_id', updatedQuote.organization_id)
-        .order('board_order', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Demote other versions with the same proposal number
+      const baseProposalNumber = quote.proposal_number.split('-v')[0];
+      const { data: relatedQuotes } = await supabase
+        .from('quotes')
+        .select('id')
+        .eq('organization_id', quote.organization_id)
+        .neq('id', quoteId)
+        .like('proposal_number', `${baseProposalNumber}%`);
 
-      const nextOrder = ((maxOrderProject as any)?.board_order || 0) + 1;
-
-      // Create project with default workflow status
-      const { error: projectError } = await supabase
-        .from('projects')
-        .insert({
-          quote_id: quoteId,
-          organization_id: updatedQuote.organization_id,
-          workflow_status: workflowStatus,
-          board_order: nextOrder,
-          priority: 'Medium',
-        } as any);
-
-      if (projectError) {
-        console.error('Failed to create project for won quote:', projectError);
-        // Don't throw - quote was still updated successfully
+      if (relatedQuotes && relatedQuotes.length > 0) {
+        for (const relatedQuote of relatedQuotes) {
+          await updateQuote(relatedQuote.id, { is_main_version: false });
+        }
       }
     }
-  }
 
-  return updatedQuote;
+    // Get default workflow column
+    const { data: defaultColumn } = await supabase
+      .from('project_workflow_columns')
+      .select('name')
+      .eq('organization_id', quote.organization_id)
+      .eq('is_default', true)
+      .maybeSingle();
+
+    const workflowStatus = (defaultColumn as any)?.name || 'To Do';
+
+    // Get next board_order
+    const { data: maxOrderProject } = await supabase
+      .from('projects')
+      .select('board_order')
+      .eq('organization_id', quote.organization_id)
+      .order('board_order', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const nextOrder = ((maxOrderProject as any)?.board_order || 0) + 1;
+
+    // Create project (priority defaults to NULL - user can set it manually)
+    const { data: newProject, error: projectError } = await supabase
+      .from('projects')
+      .insert({
+        quote_id: quoteId,
+        organization_id: quote.organization_id,
+        workflow_status: workflowStatus,
+        board_order: nextOrder,
+        priority: null,
+      } as any)
+      .select()
+      .single();
+
+    if (projectError) {
+      console.error('Failed to create project:', projectError);
+      return { success: false, error: 'Failed to create project on board' };
+    }
+
+    return { success: true, projectId: newProject.id };
+  } catch (error) {
+    console.error('Error in sendQuoteToProjectBoard:', error);
+    return { success: false, error: 'An unexpected error occurred' };
+  }
+}
+
+/**
+ * Remove a quote from the project board (delete the project)
+ */
+export async function removeQuoteFromProjectBoard(quoteId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('[removeQuoteFromProjectBoard] 🗑️ Starting removal for quote:', quoteId);
+
+    // Get current session
+    const session = await authService.getSession();
+    if (!session?.user) {
+      console.error('[removeQuoteFromProjectBoard] ❌ Not authenticated');
+      return { success: false, error: 'Not authenticated' };
+    }
+    console.log('[removeQuoteFromProjectBoard] ✅ User authenticated:', session.user.id);
+
+    // Find the project
+    console.log('[removeQuoteFromProjectBoard] 🔍 Looking for project with quote_id:', quoteId);
+    const { data: project, error: fetchError } = await supabase
+      .from('projects')
+      .select('id, quote_id, workflow_status')
+      .eq('quote_id', quoteId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error('[removeQuoteFromProjectBoard] ❌ Error fetching project:', fetchError);
+      return { success: false, error: 'Error finding project' };
+    }
+
+    if (!project) {
+      console.warn('[removeQuoteFromProjectBoard] ⚠️ No project found for quote:', quoteId);
+      return { success: false, error: 'No project found for this quote' };
+    }
+
+    console.log('[removeQuoteFromProjectBoard] ✅ Found project:', project);
+
+    // Delete the project
+    console.log('[removeQuoteFromProjectBoard] 🗑️ Deleting project with id:', project.id);
+    const { data: deletedData, error: deleteError } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', project.id)
+      .select(); // Return the deleted row to confirm deletion
+
+    if (deleteError) {
+      console.error('[removeQuoteFromProjectBoard] ❌ Failed to delete project:', deleteError);
+      return { success: false, error: 'Failed to remove project from board' };
+    }
+
+    console.log('[removeQuoteFromProjectBoard] ✅ Successfully deleted project. Deleted rows:', deletedData?.length || 0, deletedData);
+
+    return { success: true };
+  } catch (error) {
+    console.error('[removeQuoteFromProjectBoard] ❌ Exception:', error);
+    return { success: false, error: 'An unexpected error occurred' };
+  }
 }
 
 /**
@@ -502,6 +866,10 @@ export async function createQuoteVersion(
       proposal_number: newProposalNumber,
       document_version: versionNumber,
       is_main_version: false,
+      status: 'Draft', // Versions always start as Draft
+      submitted_at: null, // Clear status timestamps
+      won_at: null,
+      rejected_at: null,
       created_by: session.user.id,
       created_by_name: createdByName,
       organization_id: existingQuote.organization_id,

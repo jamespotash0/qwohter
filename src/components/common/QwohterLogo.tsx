@@ -12,7 +12,8 @@ export const QwohterLogo: React.FC<QwohterLogoProps> = ({
   showText = true,
   className = ''
 }) => {
-  const { effectiveTheme } = useTheme();
+  const themeData = useTheme();
+  const effectiveTheme = themeData?.effectiveTheme || 'light';
 
   // Logo dimensions - smaller sizes
   const sizeClasses = {
@@ -24,12 +25,12 @@ export const QwohterLogo: React.FC<QwohterLogoProps> = ({
   };
 
   // Determine which logo to use based on effective theme (actual theme being displayed)
+  // Default to light mode if theme is not yet initialized
   const getLogoSrc = () => {
     switch (effectiveTheme) {
       case 'dark':
         return '/logos/Main_Sidebar_Logo_Dark.svg';
       case 'light':
-        return '/logos/Main_Sidebar_Logo_Light.svg';
       default:
         return '/logos/Main_Sidebar_Logo_Light.svg';
     }

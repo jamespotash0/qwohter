@@ -27,48 +27,6 @@ export interface TeamOperationResult {
  */
 export const teamManagementHelpers = {
   /**
-   * Get organization code for admin users
-   */
-  getOrganizationCode: async (
-    _userId: string, 
-    currentOrganization: any, 
-    currentUserRole: string | null
-  ): Promise<string | null> => {
-    try {
-      // For now, use the existing organization hook until RPC function is deployed
-      // This is secure because the useOrganizations hook uses RLS policies
-      if (currentOrganization?.organization_code) {
-        // Only return code if user has admin privileges (checked by UI state)
-        if (hasAdminPrivileges(currentUserRole)) {
-          return currentOrganization.organization_code;
-        }
-      }
-      return null;
-    } catch (error) {
-      console.error('Error fetching organization code:', error);
-      return null;
-    }
-  },
-
-  /**
-   * Copy organization code to clipboard
-   */
-  copyOrganizationCode: async (orgCode: string): Promise<TeamOperationResult> => {
-    try {
-      await navigator.clipboard.writeText(orgCode);
-      return {
-        success: true,
-        data: { message: 'Organization code copied to clipboard' }
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: 'Failed to copy organization code'
-      };
-    }
-  },
-
-  /**
    * Invite a new member to the organization
    */
   inviteMember: async (

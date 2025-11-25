@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import {
   Save,
   Download,
@@ -10,7 +9,10 @@ import {
   ZoomIn,
   ZoomOut,
   Settings,
-  Eye
+  Eye,
+  ArrowLeft,
+  MoreVertical,
+  EyeOff
 } from 'lucide-react';
 import { generateQuoteText } from '@/components/features/quotes/generation/QuoteTextGenerator';
 import { SmartQuoteHelper, QuoteSection, SmartQuoteData } from '@/templates/SmartQuoteTemplate';
@@ -31,7 +33,15 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 // Unified state interface
 interface UnifiedQuoteState {
@@ -63,8 +73,6 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   onRemoveWallSystem,
   className = ''
 }) => {
-  const { toast } = useToast();
-
   // React Query handles realtime updates automatically, use the prop
   const activeQuote = quote;
   
@@ -364,18 +372,14 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
         
       } catch (error) {
         console.error('Error initializing editor:', error);
-        toast({
-          title: "Initialization Error",
-          description: "Failed to load quote editor. Please try again.",
-          variant: "destructive",
-        });
+        // Toast removed - errors only shown on main pages
       } finally {
         setIsLoading(false);
       }
     };
 
     initializeEditor();
-  }, [quote, syncEngine, toast, sectionVisibility]);
+  }, [quote, syncEngine, sectionVisibility]);
 
   // Real-time preview updates when data changes
   useEffect(() => {
@@ -569,34 +573,20 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
 
     } catch (error) {
       console.error('Save error:', error);
-      toast({
-        title: "Save Failed",
-        description: "Failed to save quote. Please try again.",
-        variant: "destructive",
-      });
+      // Toast removed - errors only shown on main pages
     }
-  }, [state, onSave, toast]);
+  }, [state, onSave]);
 
   // Unified download action
   const handleDownload = useCallback(async () => {
     try {
       // Pass both HTML and Smart PDF state to the download handler
       onDownload?.(state.previewHTML, showSmartPDFPreview);
-      
-      toast({
-        title: "Download Started",
-        description: "Your quote PDF (2 pages) is being generated.",
-      });
-      
     } catch (error) {
       console.error('Download error:', error);
-      toast({
-        title: "Download Failed",
-        description: "Failed to download quote. Please try again.",
-        variant: "destructive",
-      });
+      // Toast removed - errors only shown on main pages
     }
-  }, [state.previewHTML, showSmartPDFPreview, onDownload, toast]);
+  }, [state.previewHTML, showSmartPDFPreview, onDownload]);
 
 
   // Reset to last saved state from database
@@ -639,14 +629,10 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
       isDirty: false, // Not dirty since we're reverting to saved state
       lastSaved: quote?.updated_at ? new Date(quote.updated_at) : prev.lastSaved
     }));
-    
+
     setSelectedSection(null);
-    
-    toast({
-      title: "Quote Reset",
-      description: "All changes have been reverted to the last saved state from the database.",
-    });
-  }, [quote, syncEngine, toast, sectionVisibility]);
+    // Toast removed - notifications only shown on main pages
+  }, [quote, syncEngine, sectionVisibility]);
 
   // Close modal
   const handleCloseModal = useCallback(() => {
@@ -717,24 +703,17 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
 
       onSave?.(unifiedData);
 
-      // Hide banner and show success message
+      // Hide banner after successful upgrade
       setShowMigrationBanner(false);
-      toast({
-        title: "Template Upgraded",
-        description: "Your quote now has live-preview editing enabled. Changes to form data will update immediately.",
-      });
+      // Toast removed - notifications only shown on main pages
 
     } catch (error) {
       console.error('Upgrade error:', error);
-      toast({
-        title: "Upgrade Failed",
-        description: "Failed to upgrade template. Please try again.",
-        variant: "destructive",
-      });
+      // Toast removed - errors only shown on main pages
     } finally {
       setIsUpgrading(false);
     }
-  }, [quote, syncEngine, sectionVisibility, onSave, toast]);
+  }, [quote, syncEngine, sectionVisibility, onSave]);
 
   // Handle dismissing migration banner
   const handleDismissMigration = useCallback(() => {
@@ -753,62 +732,31 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
   }
 
   return (
-    <div data-testid="unified-quote-editor" className={`fixed inset-0 bg-white ${className}`}>
-      {/* Full-page layout with sidebar and content */}
-      <div className="flex h-full">
-        {/* Elevated Sidebar - Extends to top */}
-        {showDataPanel && (
-          <div className="w-80 flex-shrink-0 bg-white border-r border-gray-200 shadow-xl z-50 flex flex-col">
-            {/* Sidebar Header - Match nav bar height of 64px (h-16) */}
-            <div className="h-16 px-6 flex items-center border-b border-gray-200 bg-gradient-to-br from-slate-50 to-blue-50 flex-shrink-0">
-              <h3 className="text-base font-semibold text-slate-800 flex items-center gap-2">
-                <Edit3 className="w-5 h-5" />
-                Quote Data
-              </h3>
-            </div>
-
-            {/* Sidebar Content - Scrollable */}
-            <div className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50/30 to-blue-50/30">
-              <div className="p-6">
-                <QuoteDataPanel
-                  data={state.rawData}
-                  onChange={handleFormDataChange}
-                  onDatabaseSave={handleSave}
-                  onUpdateWallSystem={onUpdateWallSystem ? (wallName: string, wallData: any) => onUpdateWallSystem(quote.id, wallName, wallData) : undefined}
-                  onRemoveWallSystem={onRemoveWallSystem ? (wallName: string) => onRemoveWallSystem(quote.id, wallName) : undefined}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Top Navigation Bar - Runs up to sidebar */}
-          <div className="h-16 bg-white border-b border-gray-200 shadow-sm flex-shrink-0 z-40">
+    <TooltipProvider>
+      <div data-testid="unified-quote-editor" className={`fixed inset-0 bg-white ${className}`}>
+        {/* Full-page layout with top nav and content below */}
+        <div className="flex flex-col h-full">
+          {/* Top Navigation Bar - Full Width */}
+          <div className="h-16 bg-white border-b border-gray-200 shadow-sm flex-shrink-0 z-50">
             <div className="h-full px-6 flex items-center justify-between">
-              {/* Left: Title and Status */}
-              <div className="flex items-center gap-4">
-                <FileText className="w-5 h-5 text-blue-500" />
-                {isEditingTitle ? (
-                  <input
-                    type="text"
-                    value={editedTitle}
-                    onChange={(e) => setEditedTitle(e.target.value)}
-                    onBlur={handleTitleSave}
-                    onKeyDown={handleTitleKeyDown}
-                    autoFocus
-                    className="text-base font-semibold text-gray-800 bg-white border border-blue-500 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ minWidth: '200px', maxWidth: '400px' }}
-                  />
-                ) : (
-                  <div
-                    className="text-base font-semibold text-gray-800 cursor-pointer hover:text-blue-600 transition-colors"
-                    onClick={handleTitleClick}
-                    title="Click to edit quote name"
-                  >
-                    {documentTitle || 'Untitled Quote'}
-                  </div>
+              {/* Left: Back Button and Status */}
+              <div className="flex items-center gap-3">
+                {onBack && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onBack}
+                        className="h-9 w-9"
+                      >
+                        <ArrowLeft className="w-5 h-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p>Back to Quotes</p>
+                    </TooltipContent>
+                  </Tooltip>
                 )}
                 {state.isDirty ? (
                   <span className="text-xs text-amber-700 bg-amber-100 px-2.5 py-1 rounded-full font-medium whitespace-nowrap">
@@ -832,6 +780,31 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
                     })()}
                   </span>
                 ) : null}
+              </div>
+
+              {/* Center: Quote Title */}
+              <div className="flex-1 flex items-center justify-center">
+                {isEditingTitle ? (
+                  <input
+                    type="text"
+                    value={editedTitle}
+                    onChange={(e) => setEditedTitle(e.target.value)}
+                    onBlur={handleTitleSave}
+                    onKeyDown={handleTitleKeyDown}
+                    autoFocus
+                    className="text-base font-semibold text-gray-600 bg-white border border-blue-500 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ minWidth: '200px', maxWidth: '400px' }}
+                  />
+                ) : (
+                  <div
+                    className="flex items-center gap-2 text-base font-semibold text-gray-600 cursor-pointer group"
+                    onClick={handleTitleClick}
+                    title="Click to edit quote name"
+                  >
+                    <span>{documentTitle || 'Untitled Quote'}</span>
+                    <Edit3 className="w-4 h-4 text-black group-hover:text-gray-500 transition-colors" />
+                  </div>
+                )}
               </div>
 
               {/* Right: Zoom Controls and Actions */}
@@ -865,60 +838,55 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       className="text-gray-700 hover:text-gray-900 hover:bg-gray-100"
                     >
-                      <Eye className="w-4 h-4 mr-1.5" />
-                      Sections
+                      <MoreVertical className="w-4 h-4 mr-1.5" />
+                      Options
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[380px] p-0">
-                    <VisibilityControls
-                      visibility={sectionVisibility}
-                      onChange={setSectionVisibility}
-                    />
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={() => setShowDataPanel(!showDataPanel)}>
+                      {showDataPanel ? (
+                        <>
+                          <EyeOff className="w-4 h-4 mr-2" />
+                          Hide Panel
+                        </>
+                      ) : (
+                        <>
+                          <Settings className="w-4 h-4 mr-2" />
+                          Show Panel
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={handleReset}
+                      disabled={!state.isDirty}
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Reset Changes
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <div className="px-2 py-1.5">
+                      <div className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1">
+                        <Eye className="w-3 h-3" />
+                        Section Visibility
+                      </div>
+                      <VisibilityControls
+                        visibility={sectionVisibility}
+                        onChange={setSectionVisibility}
+                      />
+                    </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowDataPanel(!showDataPanel)}
-                  className="text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                >
-                  <Settings className="w-4 h-4 mr-1.5" />
-                  {showDataPanel ? 'Hide' : 'Show'} Panel
-                </Button>
-
-                {onBack && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onBack}
-                    className="border-gray-300"
-                  >
-                    Back
-                  </Button>
-                )}
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleReset}
-                  disabled={!state.isDirty}
-                  className="text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                >
-                  <RefreshCw className="w-4 h-4 mr-1.5" />
-                  Reset
-                </Button>
 
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleSave}
                   disabled={!state.isDirty}
-                  className="border-gray-300"
+                  className="text-gray-700 hover:text-gray-900 hover:bg-gray-100"
                 >
                   <Save className="w-4 h-4 mr-1.5" />
                   Save
@@ -936,8 +904,31 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
             </div>
           </div>
 
-          {/* Live Preview Panel - Takes remaining space */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
+          {/* Content Area - Sidebar and Preview side by side */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* Sidebar Panel */}
+            {showDataPanel && (
+              <div className="w-80 flex-shrink-0 bg-gradient-to-br from-slate-50/30 to-blue-50/30 border-r border-gray-200 overflow-y-auto">
+                <div className="p-6">
+                  <div className="mb-4">
+                    <h3 className="text-base font-semibold text-slate-800 flex items-center gap-2">
+                      <Edit3 className="w-5 h-5" />
+                      Quote Data
+                    </h3>
+                  </div>
+                  <QuoteDataPanel
+                    data={state.rawData}
+                    onChange={handleFormDataChange}
+                    onDatabaseSave={handleSave}
+                    onUpdateWallSystem={onUpdateWallSystem ? (wallName: string, wallData: any) => onUpdateWallSystem(quote.id, wallName, wallData) : undefined}
+                    onRemoveWallSystem={onRemoveWallSystem ? (wallName: string) => onRemoveWallSystem(quote.id, wallName) : undefined}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Live Preview Panel - Takes remaining space */}
+            <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
             {/* Migration Banner */}
             {showMigrationBanner && (
               <div className="p-4">
@@ -961,6 +952,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
               onSectionHover={setHoveredSectionId}
               showSmartPDFPreview={showSmartPDFPreview}
             />
+            </div>
           </div>
         </div>
       </div>
@@ -974,7 +966,7 @@ export const UnifiedQuoteEditor: React.FC<UnifiedQuoteEditorProps> = ({
           onSave={handleSectionOverride}
         />
       )}
-    </div>
+    </TooltipProvider>
   );
 };
 

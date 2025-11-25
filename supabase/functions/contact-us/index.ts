@@ -11,6 +11,7 @@ interface ContactUsData {
   firstName: string;
   lastName: string;
   email: string;
+  phone: string;
   message: string;
 }
 
@@ -44,7 +45,7 @@ serve(async (req) => {
     const requestData: ContactUsData = await req.json();
 
     // Validate required fields
-    if (!requestData.firstName || !requestData.lastName || !requestData.email || !requestData.message) {
+    if (!requestData.firstName || !requestData.lastName || !requestData.email || !requestData.phone || !requestData.message) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         {
@@ -100,6 +101,11 @@ serve(async (req) => {
               <div class="field">
                 <div class="label">Email:</div>
                 <div class="value"><a href="mailto:${requestData.email}">${requestData.email}</a></div>
+              </div>
+
+              <div class="field">
+                <div class="label">Phone:</div>
+                <div class="value"><a href="tel:${requestData.phone}">${requestData.phone}</a></div>
               </div>
 
               <div class="field">

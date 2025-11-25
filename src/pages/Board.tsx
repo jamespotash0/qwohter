@@ -44,13 +44,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { formatDateEST } from '@/utils/dateUtils';
+import { Button } from '@/components/ui/button';
+import { File as FileIcon } from '@phosphor-icons/react';
 
 const COLUMN_COLORS = [
   { name: 'Slate', value: '#94A3B8', icon: '⚪' },
@@ -1060,33 +1056,54 @@ export default function Board() {
         </div>
       )}
 
-      {/* Quote Details Dialog */}
-      <Dialog open={!!selectedProject} onOpenChange={(open) => !open && setSelectedProject(null)}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">
-              {selectedProject?.quote?.project_name || 'Project Details'}
-            </DialogTitle>
-          </DialogHeader>
+      {/* Simplified Sidebar */}
+      {selectedProject && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-40"
+            onClick={() => setSelectedProject(null)}
+          />
 
-          {selectedProject && (
-            <div className="space-y-6">
-              {/* Header Info */}
-              <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="text-sm text-gray-600">Proposal Number</p>
-                  <p className="font-medium">{selectedProject.quote?.proposal_number || 'N/A'}</p>
+          <div className="fixed top-0 right-0 h-full w-[600px] bg-white shadow-2xl z-50 overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Project Name:</span>
+                  <span className="text-base font-semibold text-gray-900">
+                    {selectedProject.quote?.project_name || 'Untitled Project'}
+                  </span>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Status</p>
-                  <Badge variant="secondary">{selectedProject.workflow_status}</Badge>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Proposal #:</span>
+                  <span className="text-sm text-gray-700">
+                    {selectedProject.quote?.proposal_number || 'N/A'}
+                  </span>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Priority</p>
+              </div>
+              <button
+                onClick={() => setSelectedProject(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <XIcon className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-4 space-y-5">
+              {/* Status Section - No card background */}
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-500">Status:</span>
+                  <span className="text-sm text-gray-900">{selectedProject.workflow_status}</span>
+                </div>
+                <span className="text-gray-300">|</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-500">Priority:</span>
                   <select
                     value={selectedProject.priority || ''}
                     onChange={(e) => updateProject({ id: selectedProject.id, updates: { priority: (e.target.value as ProjectPriority) || null } })}
-                    className={`w-full text-sm px-2 py-1 rounded border ${getPriorityColor(selectedProject.priority)} font-medium capitalize`}
+                    className={`text-xs px-2 py-1 rounded border ${getPriorityColor(selectedProject.priority)} capitalize cursor-pointer`}
                   >
                     <option value="">None</option>
                     <option value="Lowest">Lowest</option>
@@ -1100,78 +1117,102 @@ export default function Board() {
 
               {/* Completion Date */}
               <div>
-                <label className="text-sm text-gray-600 block mb-2">Completion Date</label>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Completion Date</label>
                 <Input
                   type="date"
                   value={selectedProject.completion_date || ''}
-                  onChange={(e) => updateProject({ id: selectedProject.id, updates: { completion_date: e.target.value } })}
-                  className="max-w-xs"
+                  onChange={(e) => updateProject({ id: selectedProject.id, updates: { completion_date: e.target.value || null } })}
+                  className="text-sm max-w-xs"
                 />
               </div>
 
-              {/* Client & Job Details */}
-              {selectedProject.quote?.quote_details && (
-                <div>
-                  <h3 className="font-semibold mb-3">Client & Job Details</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Client Name</p>
-                      <p className="font-medium">{selectedProject.quote.quote_details.contactName || 'N/A'}</p>
+              {/* Quick Summary */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Project Summary</h3>
+                <div className="space-y-2 text-sm">
+                  {selectedProject.quote?.job_details?.client_name && (
+                    <div className="flex gap-3">
+                      <span className="text-gray-500 min-w-[100px]">Client:</span>
+                      <span className="text-gray-900">{selectedProject.quote.job_details.client_name}</span>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Company</p>
-                      <p className="font-medium">{selectedProject.quote.job_details.client_company || 'N/A'}</p>
+                  )}
+                  {selectedProject.quote?.job_details?.client_company && (
+                    <div className="flex gap-3">
+                      <span className="text-gray-500 min-w-[100px]">Company:</span>
+                      <span className="text-gray-900">{selectedProject.quote.job_details.client_company}</span>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Phone</p>
-                      <p className="font-medium">{selectedProject.quote.quote_details.phone || 'N/A'}</p>
+                  )}
+                  {selectedProject.quote?.job_details?.client_address && (
+                    <div className="flex gap-3">
+                      <span className="text-gray-500 min-w-[100px]">Address:</span>
+                      <span className="text-gray-900">{selectedProject.quote.job_details.client_address}</span>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Email</p>
-                      <p className="font-medium">{selectedProject.quote.quote_details.contactEmail || 'N/A'}</p>
+                  )}
+                  {selectedProject.quote?.quote_details?.contactEmail && (
+                    <div className="flex gap-3">
+                      <span className="text-gray-500 min-w-[100px]">Email:</span>
+                      <span className="text-gray-900">{selectedProject.quote.quote_details.contactEmail}</span>
                     </div>
-                    {selectedProject.quote.quote_details.address && (
-                      <div className="col-span-2">
-                        <p className="text-sm text-gray-600">Address</p>
-                        <p className="font-medium">{selectedProject.quote.quote_details.address}</p>
-                      </div>
-                    )}
-                  </div>
+                  )}
+                  {selectedProject.quote?.quote_details?.phone && (
+                    <div className="flex gap-3">
+                      <span className="text-gray-500 min-w-[100px]">Phone:</span>
+                      <span className="text-gray-900">{selectedProject.quote.quote_details.phone}</span>
+                    </div>
+                  )}
+                  {selectedProject.quote?.wall_details?.wall_type && (
+                    <div className="flex gap-3">
+                      <span className="text-gray-500 min-w-[100px]">Wall Type:</span>
+                      <span className="text-gray-900">
+                        {selectedProject.quote.wall_details.wall_type}
+                        {selectedProject.quote.wall_details.series && ` - ${selectedProject.quote.wall_details.series}`}
+                        {selectedProject.quote.wall_details.model && ` (${selectedProject.quote.wall_details.model})`}
+                      </span>
+                    </div>
+                  )}
+                  {selectedProject.quote?.price_details?.final_selling_price && (
+                    <div className="flex gap-3">
+                      <span className="text-gray-500 min-w-[100px]">Total Price:</span>
+                      <span className="text-gray-900 font-semibold text-blue-600">
+                        {formatCurrency(selectedProject.quote.price_details.final_selling_price)}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
 
-              {/* Price Details */}
-              {selectedProject.quote?.price_details && (
-                <div>
-                  <h3 className="font-semibold mb-3">Pricing</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span className="font-medium">{formatCurrency(selectedProject.quote.price_details.subtotal)}</span>
-                    </div>
-                    {selectedProject.quote.price_details.tax && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Tax</span>
-                        <span className="font-medium">{formatCurrency(selectedProject.quote.price_details.tax)}</span>
-                      </div>
-                    )}
-                    {selectedProject.quote.price_details.discount && (
-                      <div className="flex justify-between text-green-600">
-                        <span>Discount</span>
-                        <span className="font-medium">-{formatCurrency(selectedProject.quote.price_details.discount)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                      <span>Total</span>
-                      <span>{formatCurrency(selectedProject.quote.price_details.grand_total)}</span>
-                    </div>
-                  </div>
+              {/* Documents/Links */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Documents</h3>
+                <div className="space-y-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      window.location.href = `/quotes/${selectedProject.quote_id}`;
+                    }}
+                  >
+                    <FileIcon className="w-4 h-4 mr-2" />
+                    View Full Quote
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      console.log('View pricing breakdown');
+                    }}
+                  >
+                    <CurrencyDollarIcon className="w-4 h-4 mr-2" />
+                    View Pricing Breakdown
+                  </Button>
                 </div>
-              )}
+              </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        </>
+      )}
     </PageContent>
   );
 }

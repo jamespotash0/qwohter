@@ -57,7 +57,7 @@ export interface OrganizationInfo {
 export interface OrganizationWithCompanyInfo {
   id: string;
   name: string;
-  organization_code: string;
+  
   industry?: string;
   found_via?: string;
   phone_number?: string;
