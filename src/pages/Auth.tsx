@@ -21,7 +21,7 @@ import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
 import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
 import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
 import { LogoUploadResult } from "@/services/LogoUploadService";
-import { validateInviteToken } from "@/utils/inviteTokens";
+import { validateInviteTokenDetailed } from "@/utils/inviteTokens";
 import { tempSignupService } from "@/services/tempSignupService";
 import { supabase } from "@/integrations/supabase/client";
 import * as authService from "@/auth/services/authService";
@@ -113,15 +113,15 @@ const Auth = () => {
           });
         }
 
-        // THEN: Validate the invite token
-        const tokenData = await validateInviteToken(inviteToken.trim());
+        // THEN: Validate the invite token with detailed error information
+        const validationResult = await validateInviteTokenDetailed(inviteToken.trim());
 
-        if (tokenData) {
-          console.log('✅ Invite token validated, setting organizationId:', tokenData.organization_id);
-          formState.setOrganizationId(tokenData.organization_id);
+        if (validationResult.success && validationResult.data) {
+          console.log('✅ Invite token validated, setting organizationId:', validationResult.data.organization_id);
+          formState.setOrganizationId(validationResult.data.organization_id);
           // Store both invite token AND organizationId for later use after OTP verification
           sessionStorage.setItem('pendingInviteToken', inviteToken.trim());
-          sessionStorage.setItem('pendingOrganizationId', tokenData.organization_id);
+          sessionStorage.setItem('pendingOrganizationId', validationResult.data.organization_id);
           console.log('✅ Stored pendingInviteToken and pendingOrganizationId in sessionStorage');
 
           // SECURITY: Remove token from URL to prevent leakage via history/logs/screenshots
@@ -134,13 +134,29 @@ const Auth = () => {
             description: "You've been invited to join an organization",
           });
         } else {
+          // Show specific error message based on failure type
+          const errorMessage = validationResult.error?.userMessage || "This invite link is invalid.";
+          const errorTitle = validationResult.error?.type === 'expired'
+            ? "Invitation Expired"
+            : validationResult.error?.type === 'used'
+            ? "Invitation Already Used"
+            : validationResult.error?.type === 'revoked'
+            ? "Invitation Revoked"
+            : "Invalid Invitation";
+
           toast({
-            title: "Invalid invite link",
-            description: "This invite link may have expired or been used already.",
+            title: errorTitle,
+            description: errorMessage,
             variant: "destructive",
           });
+
           // Clear the ref if token was invalid so user can try again
           processedInviteTokenRef.current = null;
+
+          // Redirect to login page since invite is invalid
+          setTimeout(() => {
+            navigate('/');
+          }, 3000);
         }
       } catch (error) {
         console.error('Error validating invite token:', error);
