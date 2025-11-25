@@ -276,14 +276,28 @@ export const QBDesktopConnectDialog: React.FC<QBDesktopConnectDialogProps> = ({
                 </h4>
                 <ol className="space-y-2 ml-4 list-decimal text-gray-600 dark:text-gray-400">
                   <li>Download the .QWC configuration file below</li>
-                  <li>Open the downloaded file to add it to Web Connector</li>
-                  <li>Enter the username and password you created above</li>
-                  <li>Click "Yes, always allow" when QuickBooks asks for permission</li>
-                  <li>
-                    Web Connector will now sync automatically every{' '}
-                    {formData.sync_frequency_minutes} minutes
+                  <li><strong>Double-click</strong> the downloaded .QWC file to launch Web Connector</li>
+                  <li>Enter your credentials:
+                    <ul className="ml-4 mt-1 list-disc text-xs">
+                      <li>Username: <code className="bg-gray-100 px-1 py-0.5 rounded">{formData.username}</code></li>
+                      <li>Password: (the password you created above)</li>
+                    </ul>
                   </li>
+                  <li>In QuickBooks Desktop, click <strong>"Yes, always allow"</strong> when asked for permission</li>
+                  <li>Web Connector will sync automatically every {formData.sync_frequency_minutes} minutes</li>
                 </ol>
+
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                  <strong>Need help?</strong>{' '}
+                  <a
+                    href="https://quickbooks.intuit.com/learn-support/en-us/help-article/install-products/set-quickbooks-web-connector/L4Vp7VI44_US_en_US"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-700 underline"
+                  >
+                    View Intuit's official setup guide
+                  </a>
+                </div>
               </div>
 
               {/* Download Button */}
