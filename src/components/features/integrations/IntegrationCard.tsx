@@ -18,6 +18,7 @@ interface IntegrationCardProps {
   onDisconnect: () => void;
   isConnecting?: boolean;
   comingSoon?: boolean;
+  platformRequirement?: string;
 }
 
 export const IntegrationCard: React.FC<IntegrationCardProps> = ({
@@ -29,11 +30,21 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
   onDisconnect,
   isConnecting = false,
   comingSoon = false,
+  platformRequirement,
 }) => {
 
   return (
-    <Card className="hover:shadow-lg transition-shadow duration-200">
+    <Card className="hover:shadow-lg transition-shadow duration-200 relative">
       <CardContent className="p-4">
+        {/* Platform Requirement Badge - Top Right */}
+        {platformRequirement && (
+          <div className="absolute top-2 right-2">
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+              {platformRequirement}
+            </Badge>
+          </div>
+        )}
+
         <div className="flex flex-col space-y-3">
           {/* Integration Logo */}
           <div className="w-16 h-16 rounded-lg bg-white border border-gray-200 flex items-center justify-center flex-shrink-0 shadow-sm">

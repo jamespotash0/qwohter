@@ -152,6 +152,7 @@ export const IntegrationsTab: React.FC<IntegrationsTabProps> = ({
               onDisconnect={() => handleDisconnect(integration.type)}
               isConnecting={connectingType === integration.type}
               comingSoon={integration.comingSoon}
+              platformRequirement={integration.platformRequirement}
             />
           ))}
         </div>

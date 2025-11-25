@@ -188,6 +188,7 @@ export interface AvailableIntegration {
   setupDifficulty?: string;
   estimatedSetupTimeMinutes?: number;
   documentationUrl?: string;
+  platformRequirement?: string; // e.g., 'Windows Only', 'Mac Only', 'Windows/Mac'
 }
 
 interface AvailableIntegrationRow {
@@ -205,6 +206,7 @@ interface AvailableIntegrationRow {
   documentation_url: string | null;
   setup_difficulty: string | null;
   estimated_setup_time_minutes: number | null;
+  platform_requirement: string | null;
   display_order: number;
   created_at: string;
   updated_at: string;
@@ -271,6 +273,7 @@ export async function getAvailableIntegrations(
     setupDifficulty: integration.setup_difficulty || undefined,
     estimatedSetupTimeMinutes: integration.estimated_setup_time_minutes || undefined,
     documentationUrl: integration.documentation_url || undefined,
+    platformRequirement: integration.platform_requirement || undefined,
   }));
 }
 
