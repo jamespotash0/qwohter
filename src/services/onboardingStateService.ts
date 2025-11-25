@@ -10,7 +10,6 @@ export interface OnboardingSessionData {
   fullName?: string;
   orgChoice?: 'join' | 'create';
   orgName?: string;
-  orgCode?: string;
   industry?: string;
   foundVia?: string;
   companyPhone?: string;
@@ -271,13 +270,9 @@ export const onboardingStateHelpers = {
         return 'organization'; // Need to set up organization
       }
 
-      // Check membership status
-      if (membership.status === 'Pending') { //membership_status
-        return 'pending-approval'; // Special state for pending approval
-      }
-
-      // If Active membership and Member role, onboarding is complete
-      if (membership.status === 'Active' && membership.role === 'Member') { //membership_status
+      // If membership exists and Member role, onboarding is complete
+      // Note: With auto-approval flow, all invited members are immediately Active
+      if (membership.role === 'Member') {
         return null; // Members don't need company-info
       }
 

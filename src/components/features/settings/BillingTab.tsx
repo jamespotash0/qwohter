@@ -21,6 +21,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
 import { useSession } from "@/auth";
+import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
 
 interface BillingTabProps {
   organization: any;
@@ -191,100 +192,110 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     }
   }, [searchParams, organization?.id]);
 
-  // Realtime subscription for subscription_plans
+  // Handle upgrade parameter from sidebar trial banner
   useEffect(() => {
-    const channel = supabase
-      .channel('subscription_plans_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'subscription_plans'
-        },
-        (payload) => {
-          console.log('Subscription plans changed:', payload);
-          // Reload plans data
-          supabase
-            .from('subscription_plans')
-            .select('*')
-            .eq('is_active', true)
-            .order('sort_order', { ascending: true })
-            .then(({ data, error }) => {
-              if (!error && data) {
-                setPlans(data);
-                // Update cache
-                try {
-                  localStorage.setItem('billing_plans_cache', JSON.stringify(data));
-                } catch (e) {
-                  console.error('Failed to update plans cache:', e);
-                }
-              }
-            });
+    const shouldUpgrade = searchParams.get('upgrade');
+    if (shouldUpgrade === 'true' && subscription && plans.length > 0) {
+      const isTrialing = subscription.stripe_subscription_status?.toLowerCase() === 'trialing';
+
+      if (isTrialing) {
+        // Remove upgrade param from URL
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('upgrade');
+        setSearchParams(newParams);
+
+        // Find current plan and trigger upgrade
+        const currentPlan = plans.find(p => p.id === subscription.plan_id);
+        if (currentPlan) {
+          handleUpgradePlan(currentPlan);
         }
-      )
-      .subscribe();
+      }
+    }
+  }, [searchParams, subscription, plans]);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // Set up centralized realtime subscriptions
+  useRealtimeSubscription(
+    'subscription_plans',
+    ['subscription_plans'],
+    {}, // No filter - listen to all plans
+    true // Always enabled
+  );
 
-  // Realtime subscription for subscriptions table
+  useRealtimeSubscription(
+    'subscriptions',
+    ['subscriptions', organization?.id || ''],
+    { filter: `organization_id=eq.${organization?.id}` },
+    !!organization?.id
+  );
+
+  // Watch for subscription_plans changes
+  useEffect(() => {
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event?.query.queryKey[0] === 'subscription_plans') {
+        console.log('Subscription plans changed, reloading...');
+        // Reload plans data
+        supabase
+          .from('subscription_plans')
+          .select('*')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+          .then(({ data, error }) => {
+            if (!error && data) {
+              setPlans(data);
+              // Update cache
+              try {
+                localStorage.setItem('billing_plans_cache', JSON.stringify(data));
+              } catch (e) {
+                console.error('Failed to update plans cache:', e);
+              }
+            }
+          });
+      }
+    });
+
+    return unsubscribe;
+  }, [queryClient]);
+
+  // Watch for subscriptions changes
   useEffect(() => {
     if (!organization?.id) return;
 
-    const channel = supabase
-      .channel('subscriptions_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'subscriptions',
-          filter: `organization_id=eq.${organization.id}`
-        },
-        async (payload) => {
-          console.log('Subscription changed:', payload);
+    const unsubscribe = queryClient.getQueryCache().subscribe(async (event) => {
+      if (event?.query.queryKey[0] === 'subscriptions' && event?.query.queryKey[1] === organization.id) {
+        console.log('Subscription changed, reloading...');
 
-          // Clear subscription cache to force re-check on next navigation
-          queryClient.invalidateQueries({ queryKey: queryKeys.subscription.status(organization.id) });
-
-          // Reload subscription data
-          const { data: subData, error: subError } = await stripeService.getSubscription(organization.id);
-          if (!subError) {
-            // Update state even if subData is null (subscription was deleted)
-            setSubscription(subData);
-            // Update cache
-            try {
-              if (subData) {
-                localStorage.setItem('billing_subscription_cache', JSON.stringify(subData));
-              } else {
-                // Clear cache if subscription was deleted
-                localStorage.removeItem('billing_subscription_cache');
-              }
-            } catch (e) {
-              console.error('Failed to update subscription cache:', e);
-            }
-          }
-
-          // Recalculate user count
-          const { quantity } = await stripeService.calculateSubscriptionQuantity(organization.id);
-          setUserCount(quantity);
+        // Reload subscription data
+        const { data: subData, error: subError } = await stripeService.getSubscription(organization.id);
+        if (!subError) {
+          // Update state even if subData is null (subscription was deleted)
+          setSubscription(subData);
           // Update cache
           try {
-            localStorage.setItem('billing_user_count_cache', JSON.stringify(quantity));
+            if (subData) {
+              localStorage.setItem('billing_subscription_cache', JSON.stringify(subData));
+            } else {
+              // Clear cache if subscription was deleted
+              localStorage.removeItem('billing_subscription_cache');
+            }
           } catch (e) {
-            console.error('Failed to update user count cache:', e);
+            console.error('Failed to update subscription cache:', e);
           }
         }
-      )
-      .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [organization?.id]);
+        // Recalculate user count
+        const { quantity } = await stripeService.calculateSubscriptionQuantity(organization.id);
+        setUserCount(quantity);
+        // Update cache
+        try {
+          localStorage.setItem('billing_user_count_cache', JSON.stringify(quantity));
+        } catch (e) {
+          console.error('Failed to update user count cache:', e);
+        }
+      }
+    });
+
+    return unsubscribe;
+  }, [organization?.id, queryClient]);
 
   const loadBillingData = async () => {
     try {
@@ -798,12 +809,33 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                   </div>
                 </div>
                 <Button
-                  onClick={() => setShowCancelDialog(true)}
+                  onClick={() => {
+                    const isTrialing = subscription?.stripe_subscription_status?.toLowerCase() === 'trialing';
+                    if (isTrialing) {
+                      // For trial users, redirect to Stripe checkout with their current plan
+                      const currentPlan = plans.find(p => p.id === subscription?.plan_id);
+                      if (currentPlan) {
+                        handleUpgradePlan(currentPlan);
+                      }
+                    } else {
+                      // For active paid users, open manage dialog
+                      setShowCancelDialog(true);
+                    }
+                  }}
                   variant="outline"
                   className="shrink-0 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
-                  disabled={!hasPermission}
+                  disabled={!hasPermission || processingPlan !== null}
                 >
-                  Manage Plan
+                  {processingPlan !== null ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : subscription?.stripe_subscription_status?.toLowerCase() === 'trialing' ? (
+                    'Upgrade Plan'
+                  ) : (
+                    'Manage Plan'
+                  )}
                 </Button>
               </>
             );
@@ -928,12 +960,13 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                     const isIntervalChanged = isCurrent && planIntervals[plan.id] && selectedInterval !== currentInterval;
 
                     if (isCurrent && !isIntervalChanged) {
-                      // Current plan with same interval - show "Current Plan"
+                      // Current plan with same interval - show "Current Plan" or "Free Trial"
+                      const isTrialing = subscription?.stripe_subscription_status?.toLowerCase() === 'trialing';
                       return (
                         <Button
                           className="w-full bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 cursor-default pointer-events-none"
                         >
-                          Current Plan
+                          {isTrialing ? 'Free Trial' : 'Current Plan'}
                         </Button>
                       );
                     } else if (isIndividualDisabled) {
@@ -1074,7 +1107,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 {invoices.length > 0 ? (
                   invoices.map((invoice) => (
-                    <tr key={invoice.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <tr key={invoice.id}>
                       <td className="px-4 py-4">
                         <Checkbox
                           checked={selectedInvoices.includes(invoice.id)}

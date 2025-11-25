@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { PageContent } from "@/components/common/layout";
+import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   CurrencyDollar,
@@ -91,66 +92,59 @@ const Dashboard = () => {
 
   // React Query automatically fetches quotes - no manual fetching needed!
 
-  // Fetch recent activities from database and subscribe to real-time updates
-  useEffect(() => {
-    const fetchRecentActivities = async () => {
-      if (!user || !organizationId) {
-        console.log('[Dashboard] Skipping activities fetch - no user or org');
-        setActivitiesLoading(false);
-        return;
-      }
-
-      console.log('[Dashboard] Fetching activities for org:', organizationId);
-      setActivitiesLoading(true);
-      const { data, error } = await quoteActivityService.getRecentActivities({
-        organizationId,
-        limit: 100
-      });
-
-      console.log('[Dashboard] Activities fetch result:', { data, error, count: data?.length });
-
-      if (data) {
-        setRecentActivities(data);
-      }
+  // Function to fetch recent activities (used by initial load and real-time updates)
+  const fetchRecentActivities = async () => {
+    if (!user || !organizationId) {
+      console.log('[Dashboard] Skipping activities fetch - no user or org');
       setActivitiesLoading(false);
-    };
+      return;
+    }
 
+    console.log('[Dashboard] Fetching activities for org:', organizationId);
+    setActivitiesLoading(true);
+    const { data, error } = await quoteActivityService.getRecentActivities({
+      organizationId,
+      limit: 100
+    });
+
+    console.log('[Dashboard] Activities fetch result:', { data, error, count: data?.length });
+
+    if (data) {
+      setRecentActivities(data);
+    }
+    setActivitiesLoading(false);
+  };
+
+  // Fetch recent activities on mount and when user/org changes
+  useEffect(() => {
     fetchRecentActivities();
+  }, [user, organizationId]);
 
-    // Subscribe to real-time quote_activities updates
+  // Set up centralized realtime subscription for quote_activities
+  useRealtimeSubscription(
+    'quote_activities',
+    ['quote_activities', organizationId || ''],
+    {
+      filter: `organization_id=eq.${organizationId}`,
+      events: ['INSERT'] // Only listen to INSERT events for activities
+    },
+    !!(user && organizationId)
+  );
+
+  // Watch for quote_activities changes via query invalidation
+  const queryClient = useQueryClient();
+  useEffect(() => {
     if (!user || !organizationId) return;
 
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event?.query.queryKey[0] === 'quote_activities' && event?.query.queryKey[1] === organizationId) {
+        // Refetch recent activities when real-time detects changes
+        fetchRecentActivities();
+      }
+    });
 
-    const channel = supabase
-      .channel('quote-activities-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'quote_activities',
-          filter: `organization_id=eq.${organizationId}`
-        },
-        (payload) => {
-
-          if (payload.new) {
-            setRecentActivities((prev) => {
-              // Add new activity to the beginning, keep only latest 100
-              const newActivity = payload.new as QuoteActivity;
-              const updated = [newActivity, ...prev];
-              return updated.slice(0, 100);
-            });
-          }
-        }
-      )
-      .subscribe((status) => {
-      });
-
-    // Cleanup: unsubscribe on unmount
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, organizationId]);
+    return unsubscribe;
+  }, [user, organizationId, queryClient]);
 
   // Fetch reminders and subscribe to real-time updates
   useEffect(() => {
@@ -190,53 +184,47 @@ const Dashboard = () => {
     };
 
     fetchReminders();
+  }, [user, organizationId]);
 
-    // Subscribe to real-time reminders updates
+  // Set up centralized realtime subscription for reminders
+  useRealtimeSubscription(
+    'reminders',
+    ['reminders', organizationId || ''],
+    { filter: `organization_id=eq.${organizationId}` },
+    !!(user && organizationId)
+  );
+
+  // Watch for reminders changes via query invalidation
+  useEffect(() => {
     if (!user || !organizationId) return;
 
+    const unsubscribe = queryClient.getQueryCache().subscribe(async (event) => {
+      if (event?.query.queryKey[0] === 'reminders' && event?.query.queryKey[1] === organizationId) {
+        // Refetch all reminders to ensure we have complete data with joins
+        const { data } = await reminderService.getReminders({
+          organizationId,
+          includeCompleted: true
+        });
+        if (data) {
+          // Filter out completed reminders older than 3 days
+          const now = new Date();
+          const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
-    const channel = supabase
-      .channel('reminders-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'reminders',
-          filter: `organization_id=eq.${organizationId}`
-        },
-        async (payload) => {
-
-          // Refetch all reminders to ensure we have complete data with joins
-          const { data } = await reminderService.getReminders({
-            organizationId,
-            includeCompleted: true
+          const filteredReminders = data.filter(reminder => {
+            if (reminder.reminder_status === 'Completed') {
+              const completedDate = new Date(reminder.updated_at);
+              return completedDate > threeDaysAgo;
+            }
+            return true;
           });
-          if (data) {
-            // Filter out completed reminders older than 3 days
-            const now = new Date();
-            const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
-            const filteredReminders = data.filter(reminder => {
-              if (reminder.reminder_status === 'Completed') { //reminder_status formerly status
-                const completedDate = new Date(reminder.updated_at);
-                return completedDate > threeDaysAgo;
-              }
-              return true;
-            });
-
-            setReminders(filteredReminders);
-          }
+          setReminders(filteredReminders);
         }
-      )
-      .subscribe((status) => {
-      });
+      }
+    });
 
-    // Cleanup: unsubscribe on unmount
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, organizationId]);
+    return unsubscribe;
+  }, [user, organizationId, queryClient]);
 
   // Reminder action handlers
   const handleCompleteReminder = async (reminderId: string, quoteId?: string, quoteNumber?: string, projectName?: string) => {
@@ -337,7 +325,7 @@ const Dashboard = () => {
       const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
       const filteredReminders = data.filter(reminder => {
-        if (reminder.status === 'Completed') { //reminder_status
+        if (reminder.reminder_status === 'Completed') { //reminder_status
           const completedDate = new Date(reminder.updated_at);
           return completedDate > threeDaysAgo;
         }
@@ -817,7 +805,7 @@ const Dashboard = () => {
               <div className="space-y-3">
                 <Button
                   onClick={() => setShowNewQuoteDialog(true)}
-                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white"
+                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-coral hover:bg-coral-dark text-white"
                 >
                   <Plus className="w-5 h-5" />
                   <span className="font-medium">Create New Quote</span>
@@ -854,7 +842,7 @@ const Dashboard = () => {
                   <Button
                     size="sm"
                     onClick={() => setShowAddReminderModal(true)}
-                    className="h-8 px-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700"
+                    className="h-8 px-3 bg-dark-gray hover:bg-charcoal"
                   >
                     <Plus className="w-4 h-4 mr-1" />
                     Add

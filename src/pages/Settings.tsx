@@ -13,7 +13,7 @@ import { AppearanceTab } from "@/components/features/settings/AppearanceTab";
 import { TeamTab } from "@/components/features/settings/TeamTab";
 import { canAccessSettingsTab } from "@/utils/permissions";
 import { stripeService } from "@/services/stripeService";
-import { supabase } from "@/integrations/supabase/client";
+import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
 
 const Settings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -70,39 +70,41 @@ const Settings = () => {
     };
 
     checkSubscription();
-
-    // Set up realtime subscription to detect subscription changes
-    if (organization?.id) {
-      const channel = supabase
-        .channel(`settings-subscription-${organization.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'subscriptions',
-            filter: `organization_id=eq.${organization.id}`,
-          },
-          async () => {
-            console.log('Subscription changed in settings, rechecking access');
-            // Re-check and update cache
-            const { isValid } = await stripeService.hasValidSubscription(organization.id);
-            setHasValidSubscription(isValid);
-            try {
-              localStorage.setItem('settings_subscription_valid', JSON.stringify(isValid));
-            } catch (e) {
-              console.error('Failed to cache subscription status:', e);
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-    return undefined;
   }, [organization?.id]);
+
+  // Set up centralized realtime subscription for subscriptions table
+  useRealtimeSubscription(
+    'subscriptions',
+    ['subscriptions', organization?.id || ''],
+    { filter: `organization_id=eq.${organization?.id}` },
+    !!organization?.id
+  );
+
+  // Watch for subscription changes via query invalidation
+  useEffect(() => {
+    if (!organization?.id) return;
+
+    // When queries are invalidated by real-time, re-check subscription
+    const recheckSubscription = async () => {
+      console.log('Subscription changed in settings, rechecking access');
+      const { isValid } = await stripeService.hasValidSubscription(organization.id);
+      setHasValidSubscription(isValid);
+      try {
+        localStorage.setItem('settings_subscription_valid', JSON.stringify(isValid));
+      } catch (e) {
+        console.error('Failed to cache subscription status:', e);
+      }
+    };
+
+    // Listen for query invalidations
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event?.query.queryKey[0] === 'subscriptions' && event?.query.queryKey[1] === organization.id) {
+        recheckSubscription();
+      }
+    });
+
+    return unsubscribe;
+  }, [organization?.id, queryClient]);
 
   // Sync activeTab with URL (only when URL changes, not when activeTab changes)
   useEffect(() => {

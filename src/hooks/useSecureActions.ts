@@ -170,40 +170,6 @@ export const useSecureActions = () => {
     }
   }, [user, currentOrganization, currentUserRole]);
 
-  /**
-   * Secure organization code retrieval
-   */
-  const getOrganizationCodeSecurely = useCallback(async () => {
-    if (!user?.id) {
-      throw new Error('User not authenticated');
-    }
-
-    // Validate admin role
-    if (!validateSecurity.adminRole(currentUserRole ?? null)) {
-      throw new Error('Access denied: Admin privileges required');
-    }
-
-    try {
-      // Get user's organization with code
-      if (!currentOrganization?.id) {
-        throw new Error('User not assigned to organization');
-      }
-      const { data: orgData, error } = await supabase
-        .from('organizations')
-        .select('organization_code')
-        .eq('id', currentOrganization.id)
-        .single();
-
-      if (error || !orgData) {
-        throw new Error('Failed to fetch organization code');
-      }
-
-      return orgData.organization_code;
-    } catch (error) {
-      console.error('Failed to get organization code:', error);
-      throw error;
-    }
-  }, [user, currentOrganization, currentUserRole]);
 
   /**
    * Secure file upload validation
@@ -242,7 +208,6 @@ export const useSecureActions = () => {
     createQuoteSecurely,
     updateQuoteSecurely,
     performAdminAction,
-    getOrganizationCodeSecurely,
     validateFileUpload,
   };
 };

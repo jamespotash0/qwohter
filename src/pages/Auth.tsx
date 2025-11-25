@@ -9,23 +9,21 @@
  * - Main component is just orchestration (~200 lines)
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { OtpVerificationForm } from "@/components/auth/OtpVerificationForm";
 import { OrganizationSetupForm } from "@/components/auth/OrganizationSetupForm";
 import { CompanyInfoSetupForm } from "@/components/auth/CompanyInfoSetupForm";
-import { SubscriptionSelectionForm } from "@/components/auth/SubscriptionSelectionForm";
-import { TrialActivationForm } from "@/components/auth/TrialActivationForm";
 import { OnboardingProgress } from "@/components/auth/OnboardingProgress";
 import { LogoUploadResult } from "@/services/LogoUploadService";
-import { validateInviteToken } from "@/utils/inviteTokens";
+import { validateInviteTokenDetailed } from "@/utils/inviteTokens";
 import { tempSignupService } from "@/services/tempSignupService";
 import { supabase } from "@/integrations/supabase/client";
-import { stripeService } from "@/services/stripeService";
-import { fetchOrganizationByUserId } from "@/services/organizationService";
 import * as authService from "@/auth/services/authService";
 
 // Import extracted hooks
@@ -36,6 +34,7 @@ import {
   handleAuth,
   handleOtpVerification,
   handleOrganizationSubmit,
+  handleInviteJoin,
   handleCompanyInfoSubmit,
   handleCompanyInfoSkip,
   handleLogoUpload,
@@ -50,11 +49,22 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Use extracted hooks for state management
   const authFlow = useAuthFlow();
   const formState = useAuthFormState();
   const companyInfo = useCompanyInfoState();
+
+  // Track processed invite tokens to prevent loops
+  const processedInviteTokenRef = useRef<string | null>(null);
+
+  // Track OTP verification attempts
+  const [otpAttempts, setOtpAttempts] = useState(0);
+  const MAX_OTP_ATTEMPTS = 3;
+
+  // Determine if user is an invitee (has pending invite token or organizationId set)
+  const isInvitee = !!(formState.organizationId || sessionStorage.getItem('pendingInviteToken'));
 
   // ============================================================================
   // RESET FORM WHEN SWITCHING BETWEEN SIGN-IN AND CREATE-ACCOUNT
@@ -65,52 +75,102 @@ const Auth = () => {
   }, [location.pathname]);
 
   // ============================================================================
-  // INVITE TOKEN HANDLING
+  // INVITE TOKEN HANDLING (Priority: Sign out existing user if invite exists)
   // ============================================================================
   useEffect(() => {
-    // Prevent multiple executions
-    if (formState.orgCode || authFlow.orgChoice) return;
-
     const urlParams = new URLSearchParams(location.search);
     const inviteToken = urlParams.get('invite');
-    const orgCodeFromUrl = urlParams.get('org');
 
-    if (inviteToken && inviteToken.trim()) {
-      // Handle secure invite token
-      const handleInviteToken = async () => {
-        try {
-          const tokenData = await validateInviteToken(inviteToken.trim());
+    // Skip if no invite token or already processed this token
+    if (!inviteToken || !inviteToken.trim()) return;
+    if (processedInviteTokenRef.current === inviteToken.trim()) {
+      console.log('Invite token already processed, skipping');
+      return;
+    }
 
-          if (tokenData) {
-            formState.setOrgCode(tokenData.organization_code);
-            authFlow.setOrgChoice('join');
-            toast({
-              title: "Invite link detected",
-              description: `You're joining an organization`,
-            });
-          } else {
-            toast({
-              title: "Invalid invite link",
-              description: "This invite link may have expired or been used already.",
-              variant: "destructive",
-            });
-          }
-        } catch (error) {
-          console.error('Error validating invite token:', error);
+    // Prevent multiple executions
+    if (formState.organizationId) return;
+
+    // Handle secure invite token
+    const handleInviteToken = async () => {
+      try {
+        // Mark token as being processed to prevent loops
+        processedInviteTokenRef.current = inviteToken.trim();
+
+        // FIRST: Check if user is currently logged in
+        const session = await authService.getSession();
+
+        if (session) {
+          console.log('User logged in, signing out to process invite token');
+          // Sign out the current user to allow invite acceptance
+          await authService.signOut();
+          // Clear any cached auth state
+          clearAuthState();
+
           toast({
-            title: "Error",
-            description: "Could not validate invite link",
-            variant: "destructive",
+            title: "Signed out",
+            description: "You've been signed out to accept this invitation",
           });
         }
-      };
 
-      handleInviteToken();
-    } else if (orgCodeFromUrl && orgCodeFromUrl.trim()) {
-      // Handle legacy org code parameter
-      formState.setOrgCode(orgCodeFromUrl.trim().toUpperCase());
-      authFlow.setOrgChoice('join');
-    }
+        // THEN: Validate the invite token with detailed error information
+        const validationResult = await validateInviteTokenDetailed(inviteToken.trim());
+
+        if (validationResult.success && validationResult.data) {
+          console.log('✅ Invite token validated, setting organizationId:', validationResult.data.organization_id);
+          formState.setOrganizationId(validationResult.data.organization_id);
+          // Store both invite token AND organizationId for later use after OTP verification
+          sessionStorage.setItem('pendingInviteToken', inviteToken.trim());
+          sessionStorage.setItem('pendingOrganizationId', validationResult.data.organization_id);
+          console.log('✅ Stored pendingInviteToken and pendingOrganizationId in sessionStorage');
+
+          // SECURITY: Remove token from URL to prevent leakage via history/logs/screenshots
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete('invite');
+          window.history.replaceState({}, '', newUrl.toString());
+
+          toast({
+            title: "Invite link detected",
+            description: "You've been invited to join an organization",
+          });
+        } else {
+          // Show specific error message based on failure type
+          const errorMessage = validationResult.error?.userMessage || "This invite link is invalid.";
+          const errorTitle = validationResult.error?.type === 'expired'
+            ? "Invitation Expired"
+            : validationResult.error?.type === 'used'
+            ? "Invitation Already Used"
+            : validationResult.error?.type === 'revoked'
+            ? "Invitation Revoked"
+            : "Invalid Invitation";
+
+          toast({
+            title: errorTitle,
+            description: errorMessage,
+            variant: "destructive",
+          });
+
+          // Clear the ref if token was invalid so user can try again
+          processedInviteTokenRef.current = null;
+
+          // Redirect to login page since invite is invalid
+          setTimeout(() => {
+            navigate('/');
+          }, 3000);
+        }
+      } catch (error) {
+        console.error('Error validating invite token:', error);
+        toast({
+          title: "Error",
+          description: "Could not validate invite link",
+          variant: "destructive",
+        });
+        // Clear the ref on error so user can retry
+        processedInviteTokenRef.current = null;
+      }
+    };
+
+    handleInviteToken();
   }, [location.search]);
 
   // ============================================================================
@@ -120,26 +180,40 @@ const Auth = () => {
     // Prevent running if already redirecting
     if (authFlow.redirectingRef.current) return;
 
-    const savedState = loadAuthState();
+    const restoreState = async () => {
+      const savedState = loadAuthState();
 
-    if (savedState) {
-      console.log('Restoring auth state:', savedState);
+      if (savedState) {
+        console.log('Found saved auth state:', savedState);
 
-      if (savedState.email) formState.setEmail(savedState.email);
-      if (savedState.userId) authFlow.setUserId(savedState.userId);
-      if (savedState.fullName) formState.setFullName(savedState.fullName);
-      if (savedState.orgChoice) authFlow.setOrgChoice(savedState.orgChoice as any);
-      if (savedState.orgName) formState.setOrgName(savedState.orgName);
-      if (savedState.orgCode) formState.setOrgCode(savedState.orgCode);
+        // Validate that the session still exists before restoring state
+        const session = await authService.getSession();
 
-      if (savedState.step && savedState.step !== 'auth') {
-        authFlow.setStep(savedState.step as any);
+        if (!session || (savedState.userId && session.user.id !== savedState.userId)) {
+          console.log('Session invalid or user mismatch, clearing saved state');
+          clearAuthState();
+          return;
+        }
+
+        console.log('Session valid, restoring auth state');
+
+        if (savedState.email) formState.setEmail(savedState.email);
+        if (savedState.userId) authFlow.setUserId(savedState.userId);
+        if (savedState.fullName) formState.setFullName(savedState.fullName);
+        if (savedState.orgChoice) authFlow.setOrgChoice(savedState.orgChoice as any);
+        if (savedState.orgName) formState.setOrgName(savedState.orgName);
+
+        if (savedState.step && savedState.step !== 'auth') {
+          authFlow.setStep(savedState.step as any);
+        }
+      } else {
+        // No saved state found - but don't clear tempSignup data yet
+        // It has its own 2-hour expiry and is needed for resending OTP
+        console.log('No saved state found, but keeping temp signup data for OTP resend');
       }
-    } else {
-      // No saved state found - but don't clear tempSignup data yet
-      // It has its own 2-hour expiry and is needed for resending OTP
-      console.log('No saved state found, but keeping temp signup data for OTP resend');
-    }
+    };
+
+    restoreState();
   }, []);
 
   // ============================================================================
@@ -216,7 +290,39 @@ const Auth = () => {
 
   const onOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await handleOtpVerification({
+
+    // Check if there's a pending invite token BEFORE OTP verification
+    const pendingInviteToken = sessionStorage.getItem('pendingInviteToken');
+    const pendingOrgId = sessionStorage.getItem('pendingOrganizationId');
+
+    // Restore organizationId from sessionStorage if it's not in state
+    if (pendingOrgId && !formState.organizationId) {
+      console.log('🔄 Restoring organizationId from sessionStorage:', pendingOrgId);
+      formState.setOrganizationId(pendingOrgId);
+    }
+
+    const effectiveOrgId = formState.organizationId || pendingOrgId || undefined;
+    const isInviteeCheck = !!(pendingInviteToken && effectiveOrgId);
+
+    console.log('🔍 OTP Submit - Checking invite status:', {
+      hasPendingToken: !!pendingInviteToken,
+      hasPendingOrgId: !!pendingOrgId,
+      hasFormStateOrgId: !!formState.organizationId,
+      effectiveOrgId,
+      isInvitee: isInviteeCheck,
+    });
+
+    // Check if max attempts reached
+    if (otpAttempts >= MAX_OTP_ATTEMPTS) {
+      toast({
+        title: "Too Many Attempts",
+        description: "Please request a new verification code to continue.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const result = await handleOtpVerification({
       email: formState.email,
       otpCode: formState.otpCode,
       fullName: formState.fullName,
@@ -225,35 +331,73 @@ const Auth = () => {
       setLoading: authFlow.setLoading,
       toast,
       saveAuthState,
+      isInvitee: isInviteeCheck,
+      organizationId: effectiveOrgId,
     });
-  };
 
-  const onResendCode = async () => {
-    // Check if we have temporary signup data
-    const tempData = tempSignupService.get();
-    if (!tempData || tempData.email !== formState.email) {
-      toast({
-        title: "Session Expired",
-        description: "Please sign up again to resend verification code.",
-        variant: "destructive"
-      });
-      authFlow.setStep("auth");
+    // Track failed attempts
+    if (!result.success) {
+      const newAttempts = otpAttempts + 1;
+      setOtpAttempts(newAttempts);
+
+      // Show contextual error message
+      if (newAttempts >= MAX_OTP_ATTEMPTS) {
+        toast({
+          title: "Too Many Failed Attempts",
+          description: "Please click 'Resend Code' to get a new verification code.",
+          variant: "destructive"
+        });
+      } else {
+        const remainingAttempts = MAX_OTP_ATTEMPTS - newAttempts;
+        toast({
+          title: "Invalid Code",
+          description: `Incorrect verification code. ${remainingAttempts} ${remainingAttempts === 1 ? 'attempt' : 'attempts'} remaining.`,
+          variant: "destructive"
+        });
+      }
       return;
     }
 
-    // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
+    // Reset attempts on success
+    setOtpAttempts(0);
+
+    // After successful OTP verification, if this is an invitee, join the organization
+    if (result.success && isInviteeCheck && result.userId && effectiveOrgId && pendingInviteToken) {
+      console.log('🎯 Processing invite join after OTP verification', {
+        userId: result.userId,
+        organizationId: effectiveOrgId,
+        hasToken: !!pendingInviteToken
+      });
+
+      // Process the invite join automatically
+      await handleInviteJoin({
+        userId: result.userId,
+        organizationId: effectiveOrgId,
+        inviteToken: pendingInviteToken,
+        setLoading: authFlow.setLoading,
+        navigate,
+        toast,
+        queryClient,
+      });
+
+      // Clear the pending invite data
+      sessionStorage.removeItem('pendingInviteToken');
+      sessionStorage.removeItem('pendingOrganizationId');
+    }
+  };
+
+  const onResendCode = async () => {
     const { error } = await authService.resendOtp(formState.email);
 
     if (error) {
       // Extract the wait time from Supabase error message
-      // Format: "For security purposes, you can only request this after 42 seconds."
       const waitTimeMatch = error.message?.match(/after (\d+) seconds/);
 
       if (waitTimeMatch && waitTimeMatch[1]) {
         const seconds = parseInt(waitTimeMatch[1], 10);
         toast({
           title: "Please Wait",
-          description: `Please Wait - You can request another code in ${seconds} seconds.`,
+          description: `You can request another code in ${seconds} seconds.`,
           variant: "destructive"
         });
       } else if (error.message?.includes('rate limit') || error.message?.includes('Email rate limit exceeded')) {
@@ -263,46 +407,98 @@ const Auth = () => {
           variant: "destructive"
         });
       } else {
+        // Show the actual error message so user knows what went wrong
         toast({
-          title: "Error",
-          description: "Failed to resend verification code. Please try again.",
+          title: "Resend Failed",
+          description: error.message || "Failed to resend verification code.",
           variant: "destructive"
         });
       }
-      // Don't throw - let the error be handled gracefully without clearing state
       return;
     }
 
-    // Update the OTP sent status
-    tempSignupService.markOtpSent();
+    // Update the OTP sent status if temp data exists
+    const tempData = tempSignupService.get();
+    if (tempData) {
+      tempSignupService.markOtpSent();
+    }
+
+    // Reset OTP attempts
+    setOtpAttempts(0);
+
+    toast({
+      title: "Code Sent!",
+      description: "A new verification code has been sent to your email."
+    });
   };
 
-  const onChangeEmail = () => {
-    // Clear temp signup data
-    tempSignupService.clear();
+  const onChangeEmail = async (newEmail: string) => {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive"
+      });
+      throw new Error("Invalid email format");
+    }
 
-    // Clear auth state
-    clearAuthState();
+    const tempData = tempSignupService.get();
+    if (!tempData) {
+      toast({
+        title: "Session Expired",
+        description: "Please start the signup process again.",
+        variant: "destructive"
+      });
+      throw new Error("No temp signup data");
+    }
 
-    // Reset to auth step
-    authFlow.setStep("auth");
+    // Update the email in form state
+    formState.setEmail(newEmail);
 
     // Clear OTP code
     formState.setOtpCode("");
 
+    // Initiate a NEW signup with the new email (this will send a new OTP)
+    // This creates a fresh signup flow for the new email
+    const { error } = await authService.signUp({
+      email: newEmail,
+      password: tempData.password,
+      fullName: tempData.fullName
+    });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: `Failed to send code to new email: ${error.message}`,
+        variant: "destructive"
+      });
+      throw error;
+    }
+
+    // Update temp signup data with new email
+    tempSignupService.store({
+      email: newEmail,
+      password: tempData.password,
+      fullName: tempData.fullName
+    });
+    tempSignupService.markOtpSent();
+
+    // Reset OTP attempts
+    setOtpAttempts(0);
+
     toast({
-      title: "Email Reset",
-      description: "You can now enter a new email address.",
+      title: "Email Updated",
+      description: `A verification code has been sent to ${newEmail}`,
     });
   };
 
   const onOrganizationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await handleOrganizationSubmit({
-      orgChoice: authFlow.orgChoice,
       userId: authFlow.userId,
       orgName: formState.orgName,
-      orgCode: formState.orgCode,
       industry: formState.industry,
       foundVia: formState.foundVia,
       submissionInProgress: authFlow.submissionInProgress,
@@ -311,9 +507,16 @@ const Auth = () => {
       setLoading: authFlow.setLoading,
       navigate,
       toast,
-      locationSearch: location.search,
       saveAuthState,
     });
+
+    // Invalidate organization query to refetch the newly created org
+    if (authFlow.userId) {
+      console.log('🔄 Invalidating organization query for userId:', authFlow.userId);
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.organization.byUser(authFlow.userId)
+      });
+    }
   };
 
   const onCompanyInfoSubmit = async (e: React.FormEvent) => {
@@ -355,130 +558,6 @@ const Auth = () => {
     handleLogoError(error, toast);
   };
 
-  const onSelectPlan = async (planName: string, billingPeriod: 'monthly' | 'yearly') => {
-    authFlow.setLoading(true);
-    try {
-      // Fetch current organization from database
-      if (!authFlow.userId) {
-        toast({
-          title: 'Error',
-          description: 'User not found. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const membership = await fetchOrganizationByUserId(authFlow.userId);
-
-      if (!membership?.organization) {
-        toast({
-          title: 'Error',
-          description: 'No organization found. Please complete the organization setup first.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const currentOrg = membership.organization;
-
-      if (!currentOrg) {
-        toast({
-          title: 'Error',
-          description: 'No organization found. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // All plans include a 14-day free trial configured in Stripe
-      // Redirect user to complete their setup and choose a plan
-      toast({
-        title: 'Welcome!',
-        description: 'Complete your setup by choosing a plan. All plans include a 14-day free trial.',
-      });
-      clearAuthState();
-      // Redirect to billing settings to choose a plan
-      navigate('/settings?tab=billing');
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to process subscription',
-        variant: 'destructive',
-      });
-    } finally {
-      authFlow.setLoading(false);
-    }
-  };
-
-  const onSkipSubscription = () => {
-    toast({
-      title: 'Setup completed!',
-      description: 'You can choose a plan later in Settings.',
-    });
-    clearAuthState();
-    navigate('/dashboard');
-  };
-
-  const onActivateTrial = async () => {
-    authFlow.setLoading(true);
-    try {
-      // Fetch current organization from database
-      if (!authFlow.userId) {
-        toast({
-          title: 'Error',
-          description: 'User not found. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const membership = await fetchOrganizationByUserId(authFlow.userId);
-      const currentOrg = membership?.organization;
-
-      if (!currentOrg) {
-        toast({
-          title: 'Error',
-          description: 'No organization found. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // Enroll organization in 14-day trial
-      const trialResult = await stripeService.enrollInFreeTrial(currentOrg.id);
-
-      if (trialResult.error) {
-        toast({
-          title: 'Error',
-          description: trialResult.error || 'Failed to activate trial',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      toast({
-        title: 'Trial activated!',
-        description: 'Your 14-day free trial starts today. Enjoy full access to all features!',
-      });
-
-      clearAuthState();
-      navigate('/dashboard');
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to activate trial',
-        variant: 'destructive',
-      });
-    } finally {
-      authFlow.setLoading(false);
-    }
-  };
-
-  const onChoosePlan = () => {
-    clearAuthState();
-    navigate('/settings?tab=billing');
-  };
-
   // ============================================================================
   // RENDER
   // ============================================================================
@@ -511,7 +590,7 @@ const Auth = () => {
           className="absolute inset-0 opacity-[0.08]"
           style={{
             backgroundImage: `
-              url("data:image/svg+xml,%3Csvg width='120' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='30' y='60' font-family='serif' font-size='60' fill='%23334155' opacity='0.5'%3E%22%3C/text%3E%3Ctext x='90' y='60' font-family='serif' font-size='60' fill='%23f97316' opacity='0.4'%3E%22%3C/text%3E%3Ctext x='60' y='30' font-family='serif' font-size='60' fill='%23334155' opacity='0.3'%3E%22%3C/text%3E%3Ctext x='60' y='90' font-family='serif' font-size='60' fill='%23334155' opacity='0.3'%3E%22%3C/text%3E%3C/svg%3E")
+              url("data:image/svg+xml,%3Csvg width='120' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='30' y='60' font-family='serif' font-size='60' fill='%23334155' opacity='0.5'%3E%22%3C/text%3E%3Ctext x='90' y='60' font-family='serif' font-size='60' fill='%23EE6C4D' opacity='0.4'%3E%22%3C/text%3E%3Ctext x='60' y='30' font-family='serif' font-size='60' fill='%23334155' opacity='0.3'%3E%22%3C/text%3E%3Ctext x='60' y='90' font-family='serif' font-size='60' fill='%23334155' opacity='0.3'%3E%22%3C/text%3E%3C/svg%3E")
             `,
             backgroundSize: '120px 120px',
             backgroundRepeat: 'repeat'
@@ -533,38 +612,21 @@ const Auth = () => {
 
         {/* Subtle gradient orbs for depth */}
         <div className="absolute top-20 left-20 w-32 h-32 bg-blue-100/6 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-20 w-40 h-40 bg-orange-100/4 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-20 w-40 h-40 rounded-full blur-3xl" style={{ backgroundColor: 'rgba(238, 108, 77, 0.04)' }} />
       </div>
 
       <div className="min-h-screen flex items-center justify-center p-8">
         <div className="w-full flex items-center justify-center">
           <div className={`w-full relative z-10 ${
-            authFlow.step === "subscription" || authFlow.step === "trial-activation" ? "max-w-4xl" :
-            authFlow.step === "auth" && !authFlow.isSignUp ? "max-w-md" :
-            "max-w-lg"
+            authFlow.step === "auth" && !authFlow.isSignUp ? "max-w-md" : "max-w-lg"
           }`}>
-            {/* Trial Activation step - no card wrapper */}
-            {authFlow.step === "trial-activation" ? (
-              <TrialActivationForm
-                loading={authFlow.loading}
-                onActivateTrial={onActivateTrial}
-                onChoosePlan={onChoosePlan}
-              />
-            ) : authFlow.step === "subscription" ? (
-              /* Subscription step - no card wrapper */
-              <SubscriptionSelectionForm
-                loading={authFlow.loading}
-                onSelectPlan={onSelectPlan}
-                onSkip={onSkipSubscription}
-              />
-            ) : (
-              /* Main form card for other steps */
-                <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
-                {!["subscription", "trial-activation", "verify-otp"].includes(authFlow.step) && (
+            {/* Main form card for all steps */}
+            <Card className="bg-white border border-gray-200 shadow-lg rounded-2xl overflow-hidden">
+              {!["verify-otp"].includes(authFlow.step) && (
                 <CardHeader className="text-center space-y-3 pb-2 pt-6 px-8">
                   {/* Progress Indicator - show for all onboarding steps */}
                   {authFlow.step !== "auth" && (
-                  <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} />
+                  <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} isInvitee={isInvitee} />
                   )}
 
                   <div className="space-y-1">
@@ -588,7 +650,7 @@ const Auth = () => {
                 {/* Progress Indicator for verify-otp step (standalone, no card header) */}
                 {authFlow.step === "verify-otp" && (
                 <div className="pt-6 px-8">
-                  <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} />
+                  <OnboardingProgress currentStep={authFlow.step} isSignUp={authFlow.isSignUp} isInvitee={isInvitee} />
                 </div>
                 )}
 
@@ -631,19 +693,14 @@ const Auth = () => {
                 onOtpCodeChange={formState.setOtpCode}
                 onSubmit={onOtpSubmit}
                 onResendCode={onResendCode}
-                onChangeEmail={onChangeEmail}
               />
               )}
 
               {/* Organization Setup Form */}
               {authFlow.step === "organization" && (
               <OrganizationSetupForm
-                orgChoice={authFlow.orgChoice}
-                orgCode={formState.orgCode}
                 orgName={formState.orgName}
                 loading={authFlow.loading}
-                onOrgChoiceChange={authFlow.setOrgChoice}
-                onOrgCodeChange={formState.setOrgCode}
                 onOrgNameChange={formState.setOrgName}
                 onSubmit={onOrganizationSubmit}
               />
@@ -676,9 +733,8 @@ const Auth = () => {
                 onSkip={onCompanyInfoSkip}
               />
               )}
-                </CardContent>
-              </Card>
-            )}
+            </CardContent>
+          </Card>
           </div>
         </div>
       </div>

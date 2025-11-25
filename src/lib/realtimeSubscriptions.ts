@@ -21,7 +21,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
-type TableName = 'quotes' | 'reminders' | 'projects' | 'organizations' | 'memberships' | 'subscriptions';
+type TableName = 'quotes' | 'reminders' | 'projects' | 'organizations' | 'memberships' | 'subscriptions' | 'invite_tokens' | 'contacts' | 'profiles' | 'subscription_plans' | 'quote_activities';
 
 interface SubscriptionOptions {
   /**

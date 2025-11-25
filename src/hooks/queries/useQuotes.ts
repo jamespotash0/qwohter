@@ -158,14 +158,9 @@ export function useUpdateQuote() {
     },
 
     onSuccess: (data, variables) => {
-      // Don't show toast for download tracking (silent update)
-      const isDownloadTracking =
-        Object.keys(variables.updates).length === 1 &&
-        'date_last_downloaded' in variables.updates;
-
-      if (!isDownloadTracking) {
-        toast.success('Quote updated successfully');
-      }
+      // Silent update - toasts are handled by calling pages (Quotes table, etc.)
+      // Editor pages show their own "Quote Saved" toast
+      // Download tracking is completely silent
 
       // Invalidate all quotes lists to refresh the table
       invalidateQueries.allQuotes();
@@ -179,7 +174,8 @@ export function useUpdateQuote() {
         );
       }
 
-      toast.error('Failed to update quote');
+      // Silent error - errors are handled by calling pages
+      console.error('Failed to update quote:', error);
     },
   });
 }

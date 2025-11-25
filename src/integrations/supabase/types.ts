@@ -109,7 +109,6 @@ export interface Database {
         Row: {
           id: string;
           name: string;
-          organization_code: string;
           found_via: string;
           phone_number: string;
           fax_number?: string | null;
@@ -124,7 +123,6 @@ export interface Database {
         Insert: {
           id?: string;
           name: string;
-          organization_code?: string;
           found_via: string;
           phone_number: string;
           fax_number?: string | null;
@@ -139,7 +137,6 @@ export interface Database {
         Update: {
           id?: string;
           name?: string;
-          organization_code?: string;
           found_via?: string;
           phone_number?: string;
           fax_number?: string | null;
@@ -157,37 +154,40 @@ export interface Database {
           id: string;
           token: string;
           organization_id: string;
-          organization_code: string;
+          email: string;
           role: string;
           created_by: string;
           expires_at: string;
           created_at: string;
           updated_at: string;
           is_used: boolean;
+          department: string | null;
         };
         Insert: {
           id?: string;
           token: string;
           organization_id: string;
-          organization_code: string;
+          email?: string;
           role: string;
           created_by: string;
           expires_at: string;
           created_at?: string;
           updated_at?: string;
           is_used?: boolean;
+          department?: string | null;
         };
         Update: {
           id?: string;
           token?: string;
           organization_id?: string;
-          organization_code?: string;
+          email?: string;
           role?: string;
           created_by?: string;
           expires_at?: string;
           created_at?: string;
           updated_at?: string;
           is_used?: boolean;
+          department?: string | null;
         };
         Relationships: [
           {
@@ -212,7 +212,8 @@ export interface Database {
           user_id: string;
           organization_id: string;
           role: 'Owner' | 'Admin' | 'Member';
-          status: 'Pending' | 'Active' | 'Suspended'; //membership_status
+          status: 'Active' | 'Suspended'; //membership_status
+          join_type: 'Direct' | 'Invited';
           invited_by: string | null;
           joined_at: string | null;
           created_at: string;
@@ -223,7 +224,8 @@ export interface Database {
           user_id: string;
           organization_id: string;
           role?: 'Owner' | 'Admin' | 'Member';
-          status?: 'Pending' | 'Active' | 'Suspended'; //membership_status
+          status?: 'Active' | 'Suspended'; //membership_status
+          join_type?: 'Direct' | 'Invited';
           invited_by?: string | null;
           joined_at?: string | null;
           created_at?: string;
@@ -234,7 +236,8 @@ export interface Database {
           user_id?: string;
           organization_id?: string;
           role?: 'Owner' | 'Admin' | 'Member';
-          status?: 'Pending' | 'Active' | 'Suspended'; //membership_status
+          status?: 'Active' | 'Suspended'; //membership_status
+          join_type?: 'Direct' | 'Invited';
           invited_by?: string | null;
           joined_at?: string | null;
           created_at?: string;
@@ -504,6 +507,38 @@ export interface Database {
           completed_at?: string | null;
         };
       };
+      invite_token_attempts: {
+        Row: {
+          id: string;
+          ip_address: string;
+          user_id: string | null;
+          invite_token: string;
+          attempted_at: string;
+          success: boolean;
+          error_message: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          ip_address: string;
+          user_id?: string | null;
+          invite_token: string;
+          attempted_at?: string;
+          success?: boolean;
+          error_message?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          ip_address?: string;
+          user_id?: string | null;
+          invite_token?: string;
+          attempted_at?: string;
+          success?: boolean;
+          error_message?: string | null;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -513,20 +548,6 @@ export interface Database {
         Args: {
           user_id: string;
           full_name_value: string;
-        };
-        Returns: any;
-      };
-      create_organization_and_link_user: {
-        Args: {
-          org_name: string;
-          org_code: string;
-          creator_user_id: string;
-        };
-        Returns: any;
-      };
-      get_organization_by_code: {
-        Args: {
-          input_code: string;
         };
         Returns: any;
       };
@@ -547,10 +568,35 @@ export interface Database {
         Args: {};
         Returns: void;
       };
+      check_invite_rate_limit: {
+        Args: {
+          p_ip_address: string;
+          p_user_id?: string | null;
+          p_invite_token?: string | null;
+          p_window_minutes?: number;
+          p_max_attempts?: number;
+        };
+        Returns: Array<{
+          allowed: boolean;
+          attempts_used: number;
+          window_reset_at: string;
+          reason: string;
+        }>;
+      };
+      log_invite_attempt: {
+        Args: {
+          p_ip_address: string;
+          p_user_id: string | null;
+          p_invite_token: string;
+          p_success: boolean;
+          p_error_message?: string | null;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       membership_role: 'Owner' | 'Admin' | 'Member';
-      membership_status: 'Pending' | 'Active' | 'Suspended';
+      membership_status: 'Active' | 'Suspended';
       creation_log_status: 'Success' | 'Failed' | 'Rate_Limited';
     };
   };

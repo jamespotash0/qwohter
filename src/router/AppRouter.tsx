@@ -64,7 +64,7 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 // Public pages
-const Landing = lazy(() => import("@/pages/LandingEnhanced"));
+const Landing = lazy(() => import("@/pages/LandingPage"));
 const Demo = lazy(() => import("@/pages/Demo"));
 const ContactUs = lazy(() => import("@/pages/ContactUs"));
 
@@ -72,7 +72,6 @@ const ContactUs = lazy(() => import("@/pages/ContactUs"));
 const Auth = lazy(() => import("@/pages/Auth"));
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
-const PendingApproval = lazy(() => import("@/pages/PendingApproval"));
 const AccessDenied = lazy(() => import("@/pages/AccessDenied"));
 const AccountInactive = lazy(() => import("@/pages/AccountInactive"));
 
@@ -94,6 +93,9 @@ const QuoteEditIncomplete = lazy(() => import("@/pages/QuoteEditIncomplete"));
 
 // Board page
 const Board = lazy(() => import("@/pages/Board"));
+
+// Contacts page
+const Contacts = lazy(() => import("@/pages/Contacts"));
 
 // Loading component
 const PageLoader = () => (
@@ -132,7 +134,6 @@ export const AppRouter = () => (
           <Route path="/create-account" element={<AuthRoute><Auth /></AuthRoute>} />
           <Route path="/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
           <Route path="/reset-password" element={<AuthRoute><ResetPassword /></AuthRoute>} />
-          <Route path="/pending-approval" element={<PendingApproval />} />
           <Route path="/access-denied" element={<AccessDenied />} />
           <Route path="/account-inactive" element={<AccountInactive />} />
 
@@ -146,6 +147,9 @@ export const AppRouter = () => (
 
           {/* Board workflow */}
           <Route path="/board" element={<Board />} />
+
+          {/* Contacts CRM */}
+          <Route path="/contacts" element={<Contacts />} />
 
           {/* Analytics and reporting */}
           <Route path="/analytics" element={<Analytics />} />

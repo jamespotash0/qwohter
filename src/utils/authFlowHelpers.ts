@@ -15,7 +15,7 @@ export interface AuthResult {
   success: boolean;
   data?: any;
   error?: string;
-  nextStep?: 'verify-otp' | 'profile' | 'organization' | 'company-info' | 'pending-approval' | 'complete';
+  nextStep?: 'verify-otp' | 'profile' | 'organization' | 'company-info' | 'complete';
 }
 
 export interface ProfileSetupData {
@@ -24,8 +24,7 @@ export interface ProfileSetupData {
 }
 
 export interface OrganizationChoice {
-  type: 'join' | 'create';
-  orgCode?: string;
+  type: 'create';
   orgName?: string;
   industry?: string;
   foundVia?: string;
@@ -119,27 +118,33 @@ export const authFlowHelpers = {
 
     try {
       // Check if user already exists in profiles (should work with fixed RLS policy)
-      const { data: existingProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, email, full_name')
-        .eq('email', email)
-        .single();
+      // Note: This may fail if RLS policy doesn't allow anonymous access
+      // We'll handle this gracefully and let Supabase auth handle duplicate detection
+      try {
+        const { data: existingProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .eq('email', email)
+          .maybeSingle(); // Returns null if no rows found (no error)
 
-      if (existingProfile && !profileError) {
-        console.log('User already exists in profiles:', existingProfile);
-        return {
-          success: false,
-          error: "An account with this email already exists. Please sign in instead. If you're having trouble accessing your account, please contact support."
-        };
-      }
+        if (existingProfile) {
+          console.log('User already exists in profiles:', existingProfile);
+          return {
+            success: false,
+            error: "An account with this email already exists. Please sign in instead. If you're having trouble accessing your account, please contact support."
+          };
+        }
 
-      // If profile check fails for reasons other than "not found", handle it
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Profile check error:', profileError);
-        return {
-          success: false,
-          error: `Email verification failed: ${profileError.message}. Please try again.`
-        };
+        // If profile check fails due to RLS or other errors, log but continue
+        // Let Supabase auth handle duplicate detection instead
+        if (profileError) {
+          console.warn('Profile check failed, continuing with signup:', profileError.message);
+          // Continue with signup - Supabase will catch duplicates
+        }
+      } catch (profileCheckError) {
+        // Unexpected errors - log and continue
+        console.warn('Profile check failed with exception, continuing with signup:', profileCheckError);
+        // Supabase auth will handle duplicate detection
       }
 
       // Store signup data temporarily
@@ -162,6 +167,24 @@ export const authFlowHelpers = {
         // Clean up temp data on error
         tempSignupService.clear();
 
+        // Handle rate limiting with specific guidance
+        if (error.message.includes('Email rate limit exceeded') ||
+            error.message.includes('rate limit') ||
+            error.message.includes('429') ||
+            error.message.includes('Too Many Requests')) {
+
+          // Extract wait time if available
+          const waitTimeMatch = error.message.match(/(\d+)\s*(seconds?|minutes?)/i);
+          const waitTime = waitTimeMatch
+            ? `${waitTimeMatch[1]} ${waitTimeMatch[2]}`
+            : '60 seconds';
+
+          return {
+            success: false,
+            error: `Rate limit exceeded. Supabase limits signup attempts to prevent abuse. Please wait ${waitTime} before trying again. If you already have an account, try signing in instead.`
+          };
+        }
+
         if (error.message.includes('User already registered') ||
             error.message.includes('already exists') ||
             error.message.includes('duplicate') ||
@@ -169,14 +192,6 @@ export const authFlowHelpers = {
           return {
             success: false,
             error: "An account with this email already exists. Please sign in instead. If you believe this is an error, please contact support."
-          };
-        }
-
-        if (error.message.includes('Email rate limit exceeded') ||
-            error.message.includes('rate limit')) {
-          return {
-            success: false,
-            error: "Too many signup attempts. Please wait a few minutes and try again."
           };
         }
 
@@ -256,11 +271,11 @@ export const authFlowHelpers = {
       const { user: verifyUser, error: verifyError } = await authService.verifyOtp(email, otpCode);
 
       if (verifyError) {
+        // Don't clear temp data on error - user should be able to retry
         if (verifyError.message.includes('expired')) {
-          tempSignupService.clear();
           return {
             success: false,
-            error: "Verification code has expired. Please sign up again."
+            error: "Verification code has expired. Please request a new code."
           };
         }
 
@@ -308,6 +323,56 @@ export const authFlowHelpers = {
       return {
         success: false,
         error: error.message || "An error occurred during verification."
+      };
+    }
+  },
+
+  /**
+   * Resend OTP verification code
+   */
+  handleResendOtp: async (email: string): Promise<AuthResult> => {
+    if (!email) {
+      return {
+        success: false,
+        error: "Email is required"
+      };
+    }
+
+    try {
+      // Verify temp signup data exists
+      const tempData = tempSignupService.get();
+      if (!tempData || tempData.email !== email) {
+        return {
+          success: false,
+          error: "Session expired. Please sign up again."
+        };
+      }
+
+      const { error } = await authService.resendOtp(email);
+
+      if (error) {
+        if (error.message.includes('rate limit') || error.message.includes('429')) {
+          return {
+            success: false,
+            error: "Too many requests. Please wait a minute before requesting another code."
+          };
+        }
+
+        return {
+          success: false,
+          error: "Failed to resend code. Please try again."
+        };
+      }
+
+      return {
+        success: true,
+        data: { message: "Verification code resent successfully" }
+      };
+    } catch (error: any) {
+      console.error('Resend OTP error:', error);
+      return {
+        success: false,
+        error: error.message || "An error occurred while resending the code."
       };
     }
   },
@@ -379,143 +444,97 @@ export const authFlowHelpers = {
       const industry = choice.industry || null;
       const foundVia = choice.foundVia || null;
 
-      if (choice.type === 'create') {
-        if (!choice.orgName) {
-          return { success: false, error: "Organization name is required" };
-        }
-
-        // Rate limiting
-        const rateLimitCheck = await OrganizationCreationLimiter.canCreateOrganization(userId);
-        if (!rateLimitCheck.allowed) {
-          await OrganizationCreationLimiter.logCreationAttempt(userId, 'Rate_Limited');
-          return { success: false, error: rateLimitCheck.reason || "Rate limit exceeded" };
-        }
-
-        // Generate unique org code
-        let orgCode = '';
-        let attempts = 0;
-        const maxAttempts = 3;
-
-        while (attempts < maxAttempts) {
-          orgCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-          const { data: existingOrg } = await supabase
-            .from('organizations')
-            .select('id')
-            .eq('organization_code', orgCode)
-            .single();
-          if (!existingOrg) break;
-          attempts++;
-        }
-
-        if (attempts >= maxAttempts) {
-          await OrganizationCreationLimiter.logCreationAttempt(userId, 'Failed', undefined, 'Failed to generate unique org code');
-          return { success: false, error: "Failed to generate organization code. Please try again." };
-        }
-
-        // --- Transaction-safe insert via RPC function ---
-        const { data: orgData, error: rpcError } = await supabase.rpc('create_org_with_owner', {
-          org_name: sanitizeInput.string(choice.orgName),
-          org_code: orgCode,
-          found_via: foundVia,
-          industry: industry,
-          owner_id: userId
-        } as any);
-
-        if (rpcError) {
-          await OrganizationCreationLimiter.logCreationAttempt(userId, 'Failed', undefined, rpcError.message);
-          throw rpcError;
-        }
-
-        const organizationId = orgData[0].org_id;
-
-        // Log success
-        await OrganizationCreationLimiter.logCreationAttempt(userId, 'Success');
-
-        // Complete onboarding step
-        await onboardingStateHelpers.completeStep(
-          userId,
-          'organization',
-          'company-info',
-          { ...choice, orgCode }
-        );
-
-        return {
-          success: true,
-          data: {
-            organizationName: choice.orgName,
-            organizationCode: orgCode,
-            organizationId
-          },
-          nextStep: 'company-info'
-        };
-
-      } else {
-        // Join existing organization
-        if (!choice.orgCode) {
-          return { success: false, error: "Organization code is required" };
-        }
-
-        const cleanCode = choice.orgCode.trim().toUpperCase();
-
-        console.log('🔍 Looking for organization with code:', cleanCode);
-
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .select('id, name, organization_code')
-          .eq('organization_code', cleanCode)
-          .maybeSingle();
-
-        if (orgError) {
-          console.error('❌ Organization query error:', orgError);
-          return {
-            success: false,
-            error: `Database error while searching for organization. Please try again.`
-          };
-        }
-
-        if (!orgData) {
-          console.log('⚠️ No organization found with code:', cleanCode);
-
-          // Debug: List all organization codes to help troubleshoot
-          const { data: allOrgs } = await supabase
-            .from('organizations')
-            .select('organization_code, name')
-            .limit(10);
-
-          console.log('📋 Available organization codes:', allOrgs?.map(o => o.organization_code));
-
-          return {
-            success: false,
-            error: `Organization code "${cleanCode}" not found. Please check the code and try again.`
-          };
-        }
-
-        console.log('✅ Found organization:', orgData.name, '(code:', orgData.organization_code, ')');
-
-        const { error: membershipsError } = await supabase
-          .from('memberships')
-          .insert({
-            user_id: userId,
-            organization_id: orgData.id,
-            role: 'Member',
-            status: 'Pending', //membership_status
-            join_type: 'Requested' // User requested to join via org code
-          } as any);
-
-        if (membershipsError) throw membershipsError;
-
-        // Clear onboarding progress
-        await onboardingStateHelpers.clearOnboardingProgress(userId);
-
-        return {
-          success: true,
-          data: {
-            organizationName: orgData.name,
-            organizationId: orgData.id
-          },
-          nextStep: 'complete'
-        };
+      if (!choice.orgName) {
+        return { success: false, error: "Organization name is required" };
       }
+
+      // Rate limiting
+      const rateLimitCheck = await OrganizationCreationLimiter.canCreateOrganization(userId);
+      if (!rateLimitCheck.allowed) {
+        await OrganizationCreationLimiter.logCreationAttempt(userId, 'Rate_Limited');
+        return { success: false, error: rateLimitCheck.reason || "Rate limit exceeded" };
+      }
+
+      // --- Transaction-safe insert via RPC function ---
+      console.log('🏢 [DEBUG] Creating organization with RPC:', {
+        orgName: choice.orgName,
+        userId,
+        industry,
+        foundVia
+      });
+
+      const { data: orgData, error: rpcError } = await supabase.rpc('create_org_with_owner', {
+        org_name: sanitizeInput.string(choice.orgName),
+        found_via: foundVia,
+        industry: industry,
+        owner_id: userId
+      } as any);
+
+      if (rpcError) {
+        console.error('🏢 [DEBUG] RPC Error:', rpcError);
+        await OrganizationCreationLimiter.logCreationAttempt(userId, 'Failed', undefined, rpcError.message);
+        throw rpcError;
+      }
+
+      const organizationId = orgData[0].org_id;
+      console.log('🏢 [DEBUG] Organization created successfully:', {
+        organizationId,
+        userId,
+        orgData
+      });
+
+      // Verify membership was created
+      const { data: membershipCheck, error: membershipCheckError } = await supabase
+        .from('memberships')
+        .select('id, user_id, organization_id, role, status')
+        .eq('user_id', userId)
+        .eq('organization_id', organizationId);
+
+      console.log('🏢 [DEBUG] Membership verification:', {
+        userId,
+        organizationId,
+        membershipExists: !!membershipCheck && membershipCheck.length > 0,
+        membershipData: membershipCheck,
+        error: membershipCheckError
+      });
+
+      // Log success
+      await OrganizationCreationLimiter.logCreationAttempt(userId, 'Success');
+
+      // ✨ Auto-enroll new organization in 14-day free trial
+      console.log('🎁 Auto-enrolling organization in free trial:', organizationId);
+      console.log('🔍 Current user ID:', userId);
+
+      // Small delay to ensure membership is fully committed
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const { stripeService } = await import('@/services/stripeService');
+      const trialResult = await stripeService.enrollInFreeTrial(organizationId);
+
+      if (trialResult.success) {
+        console.log('✅ Free trial enrollment successful');
+      } else {
+        console.error('❌ Free trial enrollment failed:', trialResult.error);
+        console.error('⚠️ This may indicate an RLS policy issue or missing Team plan');
+        // Don't block onboarding if trial enrollment fails
+      }
+
+      // Complete onboarding step
+      await onboardingStateHelpers.completeStep(
+        userId,
+        'organization',
+        'company-info',
+        choice
+      );
+
+      return {
+        success: true,
+        data: {
+          organizationName: choice.orgName,
+          organizationId
+        },
+        nextStep: 'company-info'
+      };
     } catch (error: any) {
       console.error('Organization setup error:', error);
       return { success: false, error: error.message };

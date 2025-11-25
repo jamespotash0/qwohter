@@ -6,6 +6,7 @@
 import { organizationSettingsService } from '@/services/companySettingsService';
 import { LogoUploadResult } from '@/services/LogoUploadService';
 import { NavigateFunction } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 interface HandleCompanyInfoSubmitParams {
   userId: string | null;
@@ -37,7 +38,8 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
     foundVia,
     setLoading,
     toast,
-    setStep,
+    clearAuthState,
+    navigate,
   } = params;
 
   if (!userId || !companyPhone || !companyAddress || !companyWebsite || !quoteStartingPoint) return;
@@ -48,6 +50,12 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
 
   setLoading(true);
   try {
+    // Small delay to ensure membership is committed
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Refresh session to ensure RLS policies recognize the new membership
+    await supabase.auth.refreshSession();
+
     // Use the organization settings service to update company info
     await organizationSettingsService.updateCompanyInfo({
       phone_number: companyPhone,
@@ -59,15 +67,17 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
       found_via: foundVia,
     });
 
+    console.log('✅ Company info saved successfully');
+
     toast({
-      title: 'Company information saved!',
-      description: 'Almost done! Choose how you want to get started.',
+      title: 'Setup complete!',
+      description: 'Welcome to your 14-day free trial. Enjoy full access to all features!',
     });
 
-    // Go to trial activation step to let user choose
-    if (setStep) {
-      setStep('trial-activation');
-    }
+    // Clear auth state and navigate to dashboard
+    // User was already auto-enrolled in free trial during org creation
+    clearAuthState();
+    navigate('/dashboard');
   } catch (error: any) {
     toast({
       title: 'Company Info Error',
@@ -89,9 +99,12 @@ export const handleCompanyInfoSkip = (params: HandleCompanyInfoSkipParams) => {
   const { toast, clearAuthState, navigate } = params;
 
   toast({
-    title: 'Setup completed!',
-    description: 'You can add company information later in Settings.',
+    title: 'Setup complete!',
+    description: 'Welcome to your 14-day free trial. You can add company details later in Settings.',
   });
+
+  // Clear auth state and navigate to dashboard
+  // User was already auto-enrolled in free trial during org creation
   clearAuthState();
   navigate('/dashboard');
 };
