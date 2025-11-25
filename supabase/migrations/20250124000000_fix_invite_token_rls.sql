@@ -6,13 +6,13 @@
 CREATE POLICY "Authenticated users can view their own invite tokens" ON public.invite_tokens
   FOR SELECT
   USING (
-    -- User is authenticated
+    -- User is authenticated AND token's email matches the user's email from JWT
     auth.uid() IS NOT NULL
-    -- AND the token's email matches the authenticated user's email
-    AND email = (SELECT email FROM auth.users WHERE id = auth.uid())
+    AND email = (auth.jwt() ->> 'email')
   );
 
 -- Note: This policy works alongside the existing organization membership policy
 -- Users can view tokens either by:
 -- 1. Having an active membership in the organization (existing policy)
 -- 2. Being the invited user with matching email (new policy)
+-- Uses JWT email instead of querying auth.users to avoid permission errors

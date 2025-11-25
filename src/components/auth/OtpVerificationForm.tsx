@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mail, Edit2, Check, X } from "lucide-react";
+import { Mail, Check, X } from "lucide-react";
 
 interface OtpVerificationFormProps {
   otpCode: string;
@@ -194,19 +194,7 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
 
         {/* Email Display/Edit */}
         {!isEditingEmail ? (
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <p className="text-slate-700 font-semibold">{email}</p>
-            {onChangeEmail && (
-              <button
-                type="button"
-                onClick={() => setIsEditingEmail(true)}
-                className="text-orange-600 hover:text-orange-700 p-1 rounded transition-colors"
-                title="Change email"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+          <p className="text-slate-700 font-semibold mb-4">{email}</p>
         ) : (
           <div className="max-w-sm mx-auto mb-4 space-y-2">
             <div className="flex items-center gap-2">
@@ -301,7 +289,7 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
       </form>
 
       {/* Resend Code Option */}
-      <div className="text-center">
+      <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2">
           <p className="text-gray-600 text-sm">
             Didn't receive it?
@@ -315,6 +303,19 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
             {resendLoading ? "Sending..." : "Resend Code"}
           </button>
         </div>
+
+        {/* Change Email Address Option */}
+        {onChangeEmail && !isEditingEmail && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setIsEditingEmail(true)}
+              className="text-gray-600 hover:text-gray-700 font-medium text-sm underline-offset-4 hover:underline"
+            >
+              Change email address
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Countdown Timer */}

@@ -361,6 +361,7 @@ const Auth = () => {
         setLoading: authFlow.setLoading,
         navigate,
         toast,
+        queryClient,
       });
 
       // Clear the pending invite data
@@ -370,19 +371,17 @@ const Auth = () => {
   };
 
   const onResendCode = async () => {
-    // ✅ v3.0.0: Use authService instead of direct supabase.auth calls
     const { error } = await authService.resendOtp(formState.email);
 
     if (error) {
       // Extract the wait time from Supabase error message
-      // Format: "For security purposes, you can only request this after 42 seconds."
       const waitTimeMatch = error.message?.match(/after (\d+) seconds/);
 
       if (waitTimeMatch && waitTimeMatch[1]) {
         const seconds = parseInt(waitTimeMatch[1], 10);
         toast({
           title: "Please Wait",
-          description: `Please Wait - You can request another code in ${seconds} seconds.`,
+          description: `You can request another code in ${seconds} seconds.`,
           variant: "destructive"
         });
       } else if (error.message?.includes('rate limit') || error.message?.includes('Email rate limit exceeded')) {
@@ -392,13 +391,13 @@ const Auth = () => {
           variant: "destructive"
         });
       } else {
+        // Show the actual error message so user knows what went wrong
         toast({
-          title: "Error",
-          description: "Failed to resend verification code. Please try again.",
+          title: "Resend Failed",
+          description: error.message || "Failed to resend verification code.",
           variant: "destructive"
         });
       }
-      // Don't throw - let the error be handled gracefully without clearing state
       return;
     }
 
@@ -411,7 +410,6 @@ const Auth = () => {
     // Reset OTP attempts
     setOtpAttempts(0);
 
-    // Show success message
     toast({
       title: "Code Sent!",
       description: "A new verification code has been sent to your email."
@@ -430,34 +428,46 @@ const Auth = () => {
       throw new Error("Invalid email format");
     }
 
+    const tempData = tempSignupService.get();
+    if (!tempData) {
+      toast({
+        title: "Session Expired",
+        description: "Please start the signup process again.",
+        variant: "destructive"
+      });
+      throw new Error("No temp signup data");
+    }
+
     // Update the email in form state
     formState.setEmail(newEmail);
 
     // Clear OTP code
     formState.setOtpCode("");
 
-    // Send OTP to new email
-    const { error } = await authService.resendOtp(newEmail);
+    // Initiate a NEW signup with the new email (this will send a new OTP)
+    // This creates a fresh signup flow for the new email
+    const { error } = await authService.signUp({
+      email: newEmail,
+      password: tempData.password,
+      fullName: tempData.fullName
+    });
 
     if (error) {
       toast({
         title: "Error",
-        description: "Failed to send verification code to new email. Please try again.",
+        description: `Failed to send code to new email: ${error.message}`,
         variant: "destructive"
       });
       throw error;
     }
 
-    // Update temp signup data with new email if it exists
-    const tempData = tempSignupService.get();
-    if (tempData) {
-      tempSignupService.store({
-        email: newEmail,
-        password: tempData.password,
-        fullName: tempData.fullName
-      });
-      tempSignupService.markOtpSent();
-    }
+    // Update temp signup data with new email
+    tempSignupService.store({
+      email: newEmail,
+      password: tempData.password,
+      fullName: tempData.fullName
+    });
+    tempSignupService.markOtpSent();
 
     // Reset OTP attempts
     setOtpAttempts(0);
@@ -667,7 +677,6 @@ const Auth = () => {
                 onOtpCodeChange={formState.setOtpCode}
                 onSubmit={onOtpSubmit}
                 onResendCode={onResendCode}
-                onChangeEmail={onChangeEmail}
               />
               )}
 

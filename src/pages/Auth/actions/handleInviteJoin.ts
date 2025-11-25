@@ -15,6 +15,8 @@ import {
   formatRateLimitReset,
 } from '@/utils/rateLimiting';
 import { NavigateFunction } from 'react-router-dom';
+import { QueryClient } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/queryClient';
 
 interface HandleInviteJoinParams {
   userId: string | null;
@@ -23,6 +25,7 @@ interface HandleInviteJoinParams {
   setLoading: (loading: boolean) => void;
   navigate: NavigateFunction;
   toast: (props: { title: string; description: string; variant?: 'destructive' }) => void;
+  queryClient: QueryClient;
 }
 
 export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
@@ -33,6 +36,7 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
     setLoading,
     navigate,
     toast,
+    queryClient,
   } = params;
 
   if (!userId || !organizationId || !inviteToken) return;
@@ -307,7 +311,8 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
         status: 'Active', // Auto-approve invited users
         join_type: 'Invited', // User was invited (not requested)
         department: tokenData?.department || null, // Set department from invite token
-        invited_by: tokenData?.created_by || null // Track who invited this member
+        invited_by: tokenData?.created_by || null, // Track who invited this member
+        joined_at: new Date().toISOString() // Set when user joined
       } as any);
 
     if (membershipsError) {
@@ -347,6 +352,12 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
       inviteToken: inviteToken,
       success: true,
     });
+
+    // Invalidate React Query cache to fetch fresh organization and user data
+    await queryClient.invalidateQueries({ queryKey: queryKeys.organization.all });
+    await queryClient.invalidateQueries({ queryKey: queryKeys.user.all });
+
+    console.log('✅ Cache invalidated - fresh data will be fetched');
 
     toast({
       title: 'Welcome to the team!',
