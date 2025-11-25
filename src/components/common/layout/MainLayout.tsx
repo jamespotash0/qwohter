@@ -58,9 +58,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   const isFullScreenPage = ['/quotes/new'].includes(location.pathname) ||
     location.pathname.startsWith('/quotes/edit-incomplete/');
 
-  // Check if we're on the Board page (show bottom border with padding)
-  const isBoardPage = location.pathname === '/board';
-
   // Check membership status for protected routes
   useEffect(() => {
     const checkMembershipStatus = async () => {
@@ -264,7 +261,7 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   );
 
   return (
-      <div className={`h-screen flex w-full overflow-hidden ${isBoardPage ? 'bg-sidebar' : 'bg-[var(--content-bg)]'}`}>
+      <div className="h-screen flex w-full overflow-hidden bg-[var(--content-bg)]">
           <AppSidebar user={user?.email || ''} onLogout={handleLogout} />
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Main Content */}
@@ -273,19 +270,6 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
               // Full-screen layout for wizards (no padding, no max-width)
               <div className="h-full overflow-auto">
                 {content}
-              </div>
-            ) : isBoardPage ? (
-              // Board page: Card-based layout with sidebar background
-              <div className="h-full pt-3 pr-3 pl-4 pb-3">
-                <div className="h-full max-w-[1400px] mx-auto">
-                  <div className="h-full shadow-xl flex flex-col relative z-10 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-                    <div className="flex-1 overflow-y-auto bg-sidebar">
-                      <div className="h-full pt-4 px-6 pb-6 bg-white dark:bg-gray-900">
-                        {content}
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             ) : (
               // Standard layout with padding and max-width (original)
