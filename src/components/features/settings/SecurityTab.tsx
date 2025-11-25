@@ -108,10 +108,10 @@ export const SecurityTab: React.FC<SecurityTabProps> = ({
 
   return (
     <div className="w-full max-w-5xl min-w-[640px] space-y-12">
-      {/* Roles & Permissions Section */}
+      {/* Roles Permissions Section */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Roles & Permissions</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Roles Permissions</h2>
           {canEditPermissions && (
             <div className="flex items-center gap-2">
               {isEditMode ? (

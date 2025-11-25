@@ -2,8 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageContent, ContentCard } from "@/components/common/layout";
 import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
+import { CreateInvoiceDialog } from "@/components/features/integrations/CreateInvoiceDialog";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/auth";
+import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useQuotes, useUpdateQuote, useUpdateQuoteStatus, useArchiveQuote, useUnarchiveQuote, useDeleteQuote, useSetMainVersion, useCreateQuoteVersion } from "@/hooks/queries";
 import type { Quote } from "@/services/quotesService";
 import { EnhancedQuotesTable } from "@/components/features/quotes/table/EnhancedQuotesTable";
@@ -41,9 +43,13 @@ const Quotes = () => {
   const [deleteQuoteId, setDeleteQuoteId] = useState<string | null>(null);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [invoiceQuote, setInvoiceQuote] = useState<Quote | null>(null);
 
   // Track the currently displayed "main" versions from the table
   const [currentMainVersions, setCurrentMainVersions] = useState<Quote[]>([]);
+
+  // Get organization for invoice creation
+  const { organization } = useCurrentOrganization(user?.id || '');
 
   // ✅ React Query automatically handles fetching and caching
   // No manual fetching or subscriptions needed!
@@ -293,6 +299,10 @@ const Quotes = () => {
     } catch (error) {
       console.error('Error creating quote version:', error);
     }
+  };
+
+  const handleCreateInvoice = (quote: Quote) => {
+    setInvoiceQuote(quote);
   };
 
   // Export functions (same as before)
@@ -588,6 +598,7 @@ const Quotes = () => {
           onStatusChange={updateQuoteStatus}
           onQuoteSourceChange={updateQuoteSource}
           onCreateVersion={handleCreateVersion}
+          onCreateInvoice={handleCreateInvoice}
           onCreateQuote={() => setShowNewQuoteDialog(true)}
           // onSetReminder={handleSetReminder}
           onArchiveQuote={showArchived ? undefined : handleArchiveQuote}
@@ -672,6 +683,14 @@ const Quotes = () => {
         open={showNewQuoteDialog}
         onOpenChange={setShowNewQuoteDialog}
         onCreateQuote={handleCreateQuote}
+      />
+
+      {/* Create Invoice Dialog */}
+      <CreateInvoiceDialog
+        isOpen={!!invoiceQuote}
+        onClose={() => setInvoiceQuote(null)}
+        quote={invoiceQuote}
+        organizationId={organization?.id || ''}
       />
 
     </PageContent>

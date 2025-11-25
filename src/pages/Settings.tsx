@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { User as UserIcon, Building, Shield, CreditCard, Palette, Users } from "lucide-react";
+import { User as UserIcon, Building, Shield, CreditCard, Palette, Users, Plug } from "lucide-react";
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useUser, useProfile } from "@/auth";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,6 +11,7 @@ import { SecurityTab } from "@/components/features/settings/SecurityTab";
 import { BillingTab } from "@/components/features/settings/BillingTab";
 import { AppearanceTab } from "@/components/features/settings/AppearanceTab";
 import { TeamTab } from "@/components/features/settings/TeamTab";
+import { IntegrationsTab } from "@/components/features/settings/IntegrationsTab";
 import { canAccessSettingsTab } from "@/utils/permissions";
 import { stripeService } from "@/services/stripeService";
 import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
@@ -139,6 +140,25 @@ const Settings = () => {
         requiresSubscription: true
       },
       {
+        id: "team",
+        label: "Team",
+        icon: <Users className="w-4 h-4" />,
+        component: <TeamTab />,
+        requiresPermission: "team",
+        requiresSubscription: true
+      },
+      {
+        id: "integrations",
+        label: "Integrations",
+        icon: <Plug className="w-4 h-4" />,
+        component: <IntegrationsTab
+          organization={organization}
+          userRole={userRole || 'Member'}
+        />,
+        requiresPermission: "organization",
+        requiresSubscription: true
+      },
+      {
         id: "billing",
         label: "Plan & Billing",
         icon: <CreditCard className="w-4 h-4" />,
@@ -150,16 +170,8 @@ const Settings = () => {
         alwaysAvailable: true
       },
       {
-        id: "team",
-        label: "Team",
-        icon: <Users className="w-4 h-4" />,
-        component: <TeamTab />,
-        requiresPermission: "team",
-        requiresSubscription: true
-      },
-      {
         id: "security",
-        label: "Security & Permissions",
+        label: "Permissions",
         icon: <Shield className="w-4 h-4" />,
         component: <SecurityTab
           organization={organization}

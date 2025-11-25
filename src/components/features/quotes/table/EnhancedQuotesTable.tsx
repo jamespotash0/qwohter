@@ -84,6 +84,7 @@ interface EnhancedQuotesTableProps {
   onSetReminder?: (id: string) => void;
   onQuoteSourceChange: (id: string, source: string) => void;
   onCreateVersion?: (id: string) => void;
+  onCreateInvoice?: (quote: Quote) => void;
   onCreateQuote?: () => void;
   onArchiveQuote?: (id: string) => void;
   onUnarchiveQuote?: (id: string) => void;
@@ -185,6 +186,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   onStatusChange,
   onQuoteSourceChange,
   onCreateVersion,
+  onCreateInvoice,
   onSetReminder,
   onCreateQuote,
   onArchiveQuote,
@@ -897,6 +899,12 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 <DropdownMenuItem onClick={() => onCreateVersion(quote.id)}>
                   <Copy className="mr-2 h-4 w-4" />
                   Create Version
+                </DropdownMenuItem>
+              )}
+              {onCreateInvoice && (
+                <DropdownMenuItem onClick={() => onCreateInvoice(quote)}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Create Invoice
                 </DropdownMenuItem>
               )}
               {onSetReminder && (
