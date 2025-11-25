@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageContent, ContentCard } from "@/components/common/layout";
-import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
+// import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
 import { CreateInvoiceDialog } from "@/components/features/integrations/CreateInvoiceDialog";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/auth";
@@ -679,11 +679,11 @@ const Quotes = () => {
       </AlertDialog>
 
       {/* Create Proposal Dialog */}
-      <CreateProposalDialog
+      {/* <CreateProposalDialog
         open={showNewQuoteDialog}
         onOpenChange={setShowNewQuoteDialog}
         onCreateQuote={handleCreateQuote}
-      />
+      /> */}
 
       {/* Create Invoice Dialog */}
       <CreateInvoiceDialog

@@ -9,12 +9,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Bell, Calendar as CalendarIcon, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useQuotes } from '@/hooks/queries/useQuotes';
+import { useQuotes, useCurrentOrganization } from '@/hooks/queries';
 import { reminderService, type ReminderType } from '@/services/reminderService';
 import { quoteActivityService } from '@/services/quoteActivityService';
 import { toast } from 'sonner';
 import { useUser, useProfile } from '@/auth';
-import { supabase } from '@/integrations/supabase/client'
 
 interface AddReminderModalProps {
   open: boolean;
@@ -34,8 +33,9 @@ interface Reminder {
 }
 
 export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCreated }: AddReminderModalProps) => {
-  // Get user and quotes using React Query
+  // Get user, organization, and quotes using hooks
   const user = useUser();
+  const { organization } = useCurrentOrganization(user?.id || '', !!user?.id);
   const { data: quotes = [] } = useQuotes(user?.id);
 
   const [reminderType, setReminderType] = useState<string>('');
@@ -121,21 +121,13 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
     setIsSubmitting(true);
 
     try {
-      // Get current user's organization
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         toast.error('User not authenticated');
         setIsSubmitting(false);
         return;
       }
 
-      const { data: membership, error: membershipError } = await supabase
-        .from('memberships')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (membershipError || !membership) {
+      if (!organization?.id) {
         toast.error('Organization not found');
         setIsSubmitting(false);
         return;
@@ -164,7 +156,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
           due_date: dueDateTime.toISOString(),
           quote_id: quoteReference && quoteReference !== 'none' ? quoteReference : undefined,
           reminder_type: reminderType as ReminderType,
-          organization_id: (membership as any).organization_id,
+          organization_id: organization.id,
           is_shared: true, // Default to shared with organization
         });
         error = createResult.error;
