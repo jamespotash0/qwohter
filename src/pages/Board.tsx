@@ -2,6 +2,12 @@ import { useEffect, useState, useRef } from 'react';
 import { PageContent } from '@/components/common/layout';
 import { Project, ProjectPriority } from '@/services/boardService';
 import {
+  initializeTimelineMilestones,
+  updateMilestone,
+  formatMilestoneLabel,
+  type TimelineMilestone,
+} from '@/lib/timelineMilestones';
+import {
   useProjects,
   useWorkflowColumns,
   useUpdateProject,
@@ -96,10 +102,33 @@ export default function Board() {
   const [isAddingColumn, setIsAddingColumn] = useState(false);
   const [newColumnName, setNewColumnName] = useState('');
   const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(new Set());
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const columnRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const isAnimatingRef = useRef(false);
   const lastColumnDropTarget = useRef<{ columnId: string; side: 'left' | 'right' } | null>(null);
+
+  // Derive selected project from projects array to ensure we always have fresh data
+  const selectedProject = selectedProjectId
+    ? projects.find(p => p.id === selectedProjectId) || null
+    : null;
+
+  // Initialize timeline milestones if they don't exist
+  useEffect(() => {
+    if (!selectedProject) return;
+
+    // If project doesn't have milestones, initialize them
+    if (!selectedProject.timeline_milestones || selectedProject.timeline_milestones.length === 0) {
+      const initialMilestones = initializeTimelineMilestones(
+        selectedProject.quote,
+        selectedProject.completion_date
+      );
+
+      updateProject({
+        id: selectedProject.id,
+        updates: { timeline_milestones: initialMilestones }
+      });
+    }
+  }, [selectedProject?.id]);
 
   // React Query automatically handles:
   // - Data fetching via useProjects/useWorkflowColumns
@@ -817,7 +846,7 @@ export default function Board() {
                                 // Prevent column drag when clicking on card
                                 e.stopPropagation();
                               }}
-                              onClick={() => setSelectedProject(project)}
+                              onClick={() => setSelectedProjectId(project.id)}
                               className={`bg-white rounded-lg border border-gray-200 p-2.5 cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col min-h-[120px] relative ${
                                 draggedProject === project.id ? 'opacity-50' : ''
                               }`}
@@ -1061,7 +1090,7 @@ export default function Board() {
         <>
           <div
             className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setSelectedProject(null)}
+            onClick={() => setSelectedProjectId(null)}
           />
 
           <div className="fixed top-0 right-0 h-full w-[600px] bg-white shadow-2xl z-50 overflow-y-auto">
@@ -1082,7 +1111,7 @@ export default function Board() {
                 </div>
               </div>
               <button
-                onClick={() => setSelectedProject(null)}
+                onClick={() => setSelectedProjectId(null)}
                 className="p-2 hover:bg-gray-100 rounded-lg"
               >
                 <XIcon className="w-5 h-5 text-gray-500" />
@@ -1103,7 +1132,7 @@ export default function Board() {
                   <select
                     value={selectedProject.priority || ''}
                     onChange={(e) => updateProject({ id: selectedProject.id, updates: { priority: (e.target.value as ProjectPriority) || null } })}
-                    className={`text-xs px-2 py-1 rounded border ${getPriorityColor(selectedProject.priority)} capitalize cursor-pointer`}
+                    className={`text-xs px-2 py-1 rounded border ${getPriorityColor(selectedProject.priority)} capitalize cursor-pointer w-24`}
                   >
                     <option value="">None</option>
                     <option value="Lowest">Lowest</option>
@@ -1113,17 +1142,16 @@ export default function Board() {
                     <option value="Highest">Highest</option>
                   </select>
                 </div>
-              </div>
-
-              {/* Completion Date */}
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Completion Date</label>
-                <Input
-                  type="date"
-                  value={selectedProject.completion_date || ''}
-                  onChange={(e) => updateProject({ id: selectedProject.id, updates: { completion_date: e.target.value || null } })}
-                  className="text-sm max-w-xs"
-                />
+                <span className="text-gray-300">|</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-500">Completion:</span>
+                  <Input
+                    type="date"
+                    value={selectedProject.completion_date || ''}
+                    onChange={(e) => updateProject({ id: selectedProject.id, updates: { completion_date: e.target.value || null } })}
+                    className="text-xs h-7 w-32"
+                  />
+                </div>
               </div>
 
               {/* Quick Summary */}
@@ -1142,22 +1170,10 @@ export default function Board() {
                       <span className="text-gray-900">{selectedProject.quote.job_details.client_company}</span>
                     </div>
                   )}
-                  {selectedProject.quote?.job_details?.client_address && (
+                  {selectedProject.quote?.job_details?.job_location && (
                     <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Address:</span>
-                      <span className="text-gray-900">{selectedProject.quote.job_details.client_address}</span>
-                    </div>
-                  )}
-                  {selectedProject.quote?.quote_details?.contactEmail && (
-                    <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Email:</span>
-                      <span className="text-gray-900">{selectedProject.quote.quote_details.contactEmail}</span>
-                    </div>
-                  )}
-                  {selectedProject.quote?.quote_details?.phone && (
-                    <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Phone:</span>
-                      <span className="text-gray-900">{selectedProject.quote.quote_details.phone}</span>
+                      <span className="text-gray-500 min-w-[100px]">Job Location:</span>
+                      <span className="text-gray-900">{selectedProject.quote.job_details.job_location}</span>
                     </div>
                   )}
                   {selectedProject.quote?.wall_details?.wall_type && (
@@ -1181,6 +1197,50 @@ export default function Board() {
                 </div>
               </div>
 
+              {/* Project Timeline */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Project Timeline</h3>
+                <div className="space-y-3 text-sm">
+                  {/* Won Date (always show) */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-gray-500 min-w-[140px]">Won:</span>
+                    <span className="text-gray-900">{formatDateEST(selectedProject.created_at)}</span>
+                  </div>
+
+                  {/* Dynamic Milestones */}
+                  {selectedProject.timeline_milestones?.map((milestone) => (
+                    <div key={milestone.type} className="flex items-center gap-3">
+                      <span className="text-gray-500 min-w-[140px]">
+                        {milestone.label || formatMilestoneLabel(milestone.type)}:
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="date"
+                          value={milestone.date || ''}
+                          onChange={(e) => {
+                            const newDate = e.target.value || null;
+                            const updatedMilestones = updateMilestone(
+                              selectedProject.timeline_milestones || [],
+                              milestone.type,
+                              newDate
+                            );
+                            updateProject({
+                              id: selectedProject.id,
+                              updates: { timeline_milestones: updatedMilestones }
+                            });
+                          }}
+                          className="text-xs h-7 w-40"
+                          placeholder={milestone.auto_calculated ? "Auto-calc" : "Not set"}
+                        />
+                        {milestone.auto_calculated && milestone.date && (
+                          <span className="text-xs text-blue-600 font-medium">Auto</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Documents/Links */}
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 mb-2">Documents</h3>
@@ -1190,7 +1250,7 @@ export default function Board() {
                     size="sm"
                     className="w-full justify-start"
                     onClick={() => {
-                      window.location.href = `/quotes/${selectedProject.quote_id}`;
+                      window.location.href = `/editor/${selectedProject.quote?.proposal_number}`;
                     }}
                   >
                     <FileIcon className="w-4 h-4 mr-2" />
