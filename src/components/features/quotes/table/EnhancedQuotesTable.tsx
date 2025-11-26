@@ -1115,7 +1115,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 <div className="p-2" onClick={(e) => e.stopPropagation()}>
                   <div className="text-xs text-gray-500 mb-2 font-medium">Show/Hide Columns</div>
                   {table.getAllColumns()
-                    .filter(column => column.getCanHide())
+                    .filter(column => column.getCanHide() && column.id !== 'select')
                     .map(column => (
                       <DropdownMenuCheckboxItem
                         key={column.id}
