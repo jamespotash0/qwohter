@@ -3,6 +3,8 @@ import { PageContent } from '@/components/common/layout';
 import { Project, ProjectPriority } from '@/services/boardService';
 import { type TimelineMilestone } from '@/lib/timelineMilestones';
 import { TimelineVisualizer } from '@/components/features/board/TimelineVisualizer';
+import { ProjectAttachments } from '@/components/features/board/ProjectAttachments';
+import { useProjectAttachments } from '@/hooks/useProjectAttachments';
 import {
   useProjects,
   useWorkflowColumns,
@@ -108,6 +110,9 @@ export default function Board() {
   const selectedProject = selectedProjectId
     ? projects.find(p => p.id === selectedProjectId) || null
     : null;
+
+  // Fetch project attachments for selected project
+  const { attachments, refetch: refetchAttachments } = useProjectAttachments(selectedProject?.id);
 
   // React Query automatically handles:
   // - Data fetching via useProjects/useWorkflowColumns
@@ -1196,6 +1201,32 @@ export default function Board() {
                       </span>
                     </div>
                   )}
+
+                  {/* Quick Actions */}
+                  <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 h-8 text-xs justify-start"
+                      onClick={() => {
+                        window.location.href = `/editor/${selectedProject.quote?.proposal_number}`;
+                      }}
+                    >
+                      <FileIcon className="w-3.5 h-3.5 mr-1.5" />
+                      View Quote
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 h-8 text-xs justify-start"
+                      onClick={() => {
+                        console.log('View pricing breakdown');
+                      }}
+                    >
+                      <CurrencyDollarIcon className="w-3.5 h-3.5 mr-1.5" />
+                      Pricing
+                    </Button>
+                  </div>
                 </div>
                 )}
               </div>
@@ -1241,31 +1272,11 @@ export default function Board() {
                   )}
                 </button>
                 {!collapsedSections.has('documents') && (
-                  <div className="space-y-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        window.location.href = `/editor/${selectedProject.quote?.proposal_number}`;
-                      }}
-                    >
-                      <FileIcon className="w-4 h-4 mr-2" />
-                      View Full Quote
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        console.log('View pricing breakdown');
-                      }}
-                    >
-                      <CurrencyDollarIcon className="w-4 h-4 mr-2" />
-                      View Pricing Breakdown
-                    </Button>
-                    {/* TODO: Add file upload/attachment UI here */}
-                  </div>
+                  <ProjectAttachments
+                    projectId={selectedProject.id}
+                    attachments={attachments}
+                    onAttachmentsChange={refetchAttachments}
+                  />
                 )}
               </div>
             </div>
