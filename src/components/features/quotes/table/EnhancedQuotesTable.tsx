@@ -33,7 +33,6 @@ import {
   SlidersHorizontal,
   Eye,
   Download,
-  RotateCcw,
   Plus,
   FileSpreadsheet,
   X,
@@ -71,7 +70,7 @@ import { Badge } from "@/components/ui/badge";
 // import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 import useEnhancedSearch from '@/hooks/useEnhancedSearch';
 import { PaginationControls } from './components/PaginationControls';
-import { formatDateEST, formatDateTimeEST } from '@/utils/dateUtils';
+import { formatDateEST } from '@/utils/dateUtils';
 import { groupQuotesByVersion, getBaseProposalNumber } from '@/utils/quoteVersionGrouping';
 import type { QuoteVersionGroup } from '@/utils/quoteVersionGrouping';
 
@@ -172,12 +171,6 @@ const formatCurrency = (amount: number) => {
     currency: 'USD',
   }).format(amount);
 };
-
-const formatLastUpdated = (time: string) => {
-  return formatDateTimeEST(time);
-};
-
-
 
 export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   quotes,
@@ -298,28 +291,6 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
 
     return resultIds.has(row.original.id);
   }, [search]);
-
-  // Store original column sizes for reset functionality (compact to avoid scroll)
-  const originalColumnSizes = useMemo(() => ({
-    select: 40,
-    proposal_number: 140,
-    project_name: 240,
-    client_name: 160,
-    total: 110,
-    status: 130,
-    created_at: 110,
-    actions: 60,
-  }), []);
-
-  // Reset column sizes to original
-  const resetColumnSizes = () => {
-    table.getAllColumns().forEach(column => {
-      const originalSize = originalColumnSizes[column.id as keyof typeof originalColumnSizes];
-      if (originalSize) {
-        column.resetSize();
-      }
-    });
-  };
 
   // Handle sending quote to project board
   const handleSendToBoard = async (quoteId: string) => {
@@ -461,16 +432,6 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
     setPendingStatusChange(null);
   };
 
-  // Reset column visibility to show all columns
-  const resetColumnVisibility = () => {
-    table.getAllColumns().forEach(column => {
-      if (column.getCanHide()) {
-        column.toggleVisibility(true);
-      }
-    });
-    setColumnVisibility({});
-  };
-
   // Update follow-up times every minute
   useEffect(() => {
     const interval = setInterval(() => {
@@ -509,12 +470,14 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         };
 
         return (
-          <input
-            type="checkbox"
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            checked={table.getIsAllPageRowsSelected()}
-            onChange={handleSelectAll}
-          />
+          <div className="flex items-center justify-center">
+            <input
+              type="checkbox"
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              checked={table.getIsAllPageRowsSelected()}
+              onChange={handleSelectAll}
+            />
+          </div>
         );
       },
       cell: ({ row }) => {
@@ -556,7 +519,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           </div>
         );
       },
-      size: 40,
+      size: 32,
       enableSorting: false,
       enableResizing: false,
     }),
@@ -582,7 +545,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
 
         return (
           <div className="flex items-center gap-2">
-            <div className="font-mono text-sm font-medium">
+            <div className="font-mono text-[13px] text-gray-900">
               {displayNumber}
             </div>
             {hasMultipleVersions && (
@@ -621,8 +584,8 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         const projectName = row.original.project_name || row.original.quote_details?.project_name || "Untitled Project";
         const projectLocation = row.original.job_details?.job_location || "";
         return (
-          <div className="space-y-0.5 min-w-0">
-            <div className="font-medium text-sm truncate" title={projectName}>{projectName}</div>
+          <div className="space-y-0 min-w-0">
+            <div className="text-[13px] text-gray-900 truncate" title={projectName}>{projectName}</div>
             {projectLocation && (
               <div className="text-xs text-gray-500 truncate" title={projectLocation}>{projectLocation}</div>
             )}
@@ -649,7 +612,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         }
 
         const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client";
-        return <div className="font-medium text-sm truncate" title={clientName}>{clientName}</div>;
+        return <div className="text-[13px] text-gray-900 truncate" title={clientName}>{clientName}</div>;
       },
       size: 160,
       enableSorting: false,
@@ -671,7 +634,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         }
 
         const total = quote.price_details?.final_selling_price || 0;
-        return <div className="font-semibold text-sm">{formatCurrency(total)}</div>;
+        return <div className="text-[13px] text-gray-900">{formatCurrency(total)}</div>;
       },
       size: 110,
       enableSorting: true,
@@ -694,7 +657,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
             value={currentStatus || "Incomplete"}
             onValueChange={(value) => handleStatusChange(row.original.id, currentStatus || "Incomplete", value)}
           >
-            <SelectTrigger className={`w-28 h-7 border-0 text-xs px-2 ${statusColors[currentStatus as keyof typeof statusColors]}`}>
+            <SelectTrigger className={`w-24 h-6 border-0 text-xs px-2 ${statusColors[currentStatus as keyof typeof statusColors]}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -792,11 +755,11 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         const versionGroup = quoteToGroupMap.get(quote.id);
 
         if (versionGroup && versionGroup.hasMultipleVersions) {
-          return <div className="text-xs italic text-gray-500">Various</div>;
+          return <div className="text-sm italic text-gray-500">Various</div>;
         }
 
         return (
-          <div className="text-xs text-gray-600">
+          <div className="text-[13px] text-gray-900">
             {formatDateEST(getValue())}
           </div>
         );
@@ -972,8 +935,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       pagination,
     },
     enableRowSelection: true,
-    enableColumnResizing: true,
-    columnResizeMode: 'onChange' as ColumnResizeMode,
+    enableColumnResizing: false,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
@@ -1207,30 +1169,6 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Reset Controls */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-10 h-10 p-0 hover:bg-[var(--sidebar-nav-bg-hover)] dark:hover:bg-[var(--sidebar-nav-bg-hover)]"
-                  title="Reset Table"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={resetColumnSizes}>
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Reset Column Sizes
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={resetColumnVisibility}>
-                  <Eye className="w-4 h-4 mr-2" />
-                  Show All Columns
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
             {/* Create Quote Button - Just a plus icon */}
             {onCreateQuote && (
               <Button
@@ -1411,19 +1349,22 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => {
                       const isActionsColumn = header.id === 'actions';
-                      const rowHeight = dataDensity === 'compact' ? 'h-10' : dataDensity === 'comfortable' ? 'h-12' : 'h-16';
-                      
+                      const isSelectColumn = header.id === 'select';
+                      const isProposalColumn = header.id === 'proposal_number';
+                      const rowHeight = dataDensity === 'compact' ? 'h-8' : dataDensity === 'comfortable' ? 'h-9' : 'h-10';
+                      const columnPadding = isSelectColumn ? 'pl-3 pr-1' : isProposalColumn ? 'pl-1 pr-3' : 'px-3';
+
                       return (
                         <th
                           key={header.id}
-                          className={`relative px-4 py-3 text-left text-sm font-semibold text-gray-900 border-r border-gray-200 last:border-r-0 ${
-                            isActionsColumn ? 'sticky right-0 bg-gray-50 border-l border-gray-200 z-20' : ''
+                          className={`relative ${columnPadding} py-1 text-left text-xs font-medium text-gray-500 ${
+                            isActionsColumn ? 'sticky right-0 bg-gray-50 z-20' : ''
                           } ${rowHeight}`}
                           style={{ width: header.getSize() }}
                         >
                           {header.isPlaceholder ? null : (
                             <div
-                              className={`flex items-center space-x-2 ${
+                              className={`flex items-center space-x-1 ${
                                 header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-gray-100 rounded p-1 -m-1' : ''
                               }`}
                               onClick={header.column.getToggleSortingHandler()}
@@ -1432,29 +1373,15 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                               {header.column.getCanSort() && (
                                 <div className="flex flex-col">
                                   {header.column.getIsSorted() === 'asc' ? (
-                                    <ChevronUp className="w-4 h-4 text-blue-600" />
+                                    <ChevronUp className="w-3.5 h-3.5 text-blue-600" />
                                   ) : header.column.getIsSorted() === 'desc' ? (
-                                    <ChevronDown className="w-4 h-4 text-blue-600" />
+                                    <ChevronDown className="w-3.5 h-3.5 text-blue-600" />
                                   ) : (
-                                    <ArrowUpDown className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                    <ArrowUpDown className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600" />
                                   )}
                                 </div>
                               )}
                             </div>
-                          )}
-                          
-                          {/* Column Resizer */}
-                          {header.column.getCanResize() && (
-                            <div
-                              onMouseDown={header.getResizeHandler()}
-                              onTouchStart={header.getResizeHandler()}
-                              className={`absolute right-0 top-0 h-full w-1 bg-transparent hover:bg-blue-500 cursor-col-resize select-none touch-none ${
-                                header.column.getIsResizing() ? 'bg-blue-500' : ''
-                              }`}
-                              style={{
-                                transform: 'translateX(50%)',
-                              }}
-                            />
                           )}
                         </th>
                       );
@@ -1462,10 +1389,10 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                   </tr>
                 ))}
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-100">
                 {table.getRowModel().rows.map(row => {
-                  const rowHeight = dataDensity === 'compact' ? 'h-10' : dataDensity === 'comfortable' ? 'h-14' : 'h-18';
-                  const paddingY = dataDensity === 'compact' ? 'py-1' : dataDensity === 'comfortable' ? 'py-2' : 'py-4';
+                  const rowHeight = dataDensity === 'compact' ? 'h-9' : dataDensity === 'comfortable' ? 'h-11' : 'h-14';
+                  const paddingY = dataDensity === 'compact' ? 'py-1' : dataDensity === 'comfortable' ? 'py-1.5' : 'py-2';
                   const quote = row.original;
                   const versionGroup = quoteToGroupMap.get(quote.id);
                   const baseNumber = getBaseProposalNumber(quote.proposal_number);
@@ -1475,16 +1402,19 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                     <React.Fragment key={row.id}>
                       {/* Main Row */}
                       <tr
-                        className={`group transition-colors border-b border-gray-100 dark:border-[var(--content-table-border)] last:border-b-0 ${rowHeight} hover:bg-gray-50/50 dark:hover:bg-[var(--content-table-row-hover)]`}
+                        className={`group transition-colors ${rowHeight} hover:bg-gray-50/50 dark:hover:bg-[var(--content-table-row-hover)]`}
                       >
                         {row.getVisibleCells().map((cell) => {
                           const isActionsColumn = cell.column.id === 'actions';
+                          const isSelectColumn = cell.column.id === 'select';
+                          const isProposalColumn = cell.column.id === 'proposal_number';
+                          const columnPadding = isSelectColumn ? 'pl-3 pr-1' : isProposalColumn ? 'pl-1 pr-3' : 'px-3';
                           return (
                             <td
                               key={cell.id}
-                              className={`px-4 ${paddingY} text-sm border-r border-gray-100 dark:border-[var(--content-table-border)] last:border-r-0 ${
+                              className={`${columnPadding} ${paddingY} text-xs ${
                                 isActionsColumn
-                                  ? 'sticky right-0 bg-white dark:bg-[var(--content-table-bg)] group-hover:bg-gray-50 dark:group-hover:bg-[var(--content-table-row-hover)] border-l border-gray-200 dark:border-[var(--content-table-border)] z-10'
+                                  ? 'sticky right-0 bg-white dark:bg-[var(--content-table-bg)] group-hover:bg-gray-50 dark:group-hover:bg-[var(--content-table-row-hover)] z-10'
                                   : ''
                               }`}
                               style={{ width: cell.column.getSize() }}
@@ -1497,88 +1427,88 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
 
                       {/* Expanded Version Rows */}
                       {isExpanded && versionGroup && versionGroup.hasMultipleVersions && (
-                        versionGroup.versions.map((version, _) => (
+                        versionGroup.versions.map((version) => (
                           <tr
                             key={`${row.id}-version-${version.id}`}
-                            className="bg-white border-l-4 border-l-blue-200 hover:bg-gray-50"
+                            className="bg-gray-50/50 hover:bg-gray-100/50"
                           >
                             {/* Selection */}
-                            <td className="px-4 py-2">
-                              <input
-                                type="checkbox"
-                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                checked={versionSelection[version.id] || false}
-                                onChange={(e) => {
-                                  setVersionSelection(prev => ({
-                                    ...prev,
-                                    [version.id]: e.target.checked
-                                  }));
-                                }}
-                              />
+                            <td className="pl-3 pr-1 py-1">
+                              <div className="flex items-center justify-center">
+                                <input
+                                  type="checkbox"
+                                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                  checked={versionSelection[version.id] || false}
+                                  onChange={(e) => {
+                                    setVersionSelection(prev => ({
+                                      ...prev,
+                                      [version.id]: e.target.checked
+                                    }));
+                                  }}
+                                />
+                              </div>
                             </td>
 
                             {/* Proposal Number */}
-                            <td className="px-4 py-2 text-sm">
-                              <div className="flex items-center gap-2">
-                                <span className="text-gray-400">└─</span>
-                                <span className="font-mono text-xs text-gray-600">
+                            <td className="pl-1 pr-3 py-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-gray-300 text-xs">└</span>
+                                <span className="font-mono text-xs text-gray-500">
                                   {version.proposal_number}
                                 </span>
                                 {version.is_main_version === true ? (
-                                  <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                                  <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-50 text-blue-600 border-blue-200">
                                     Main
                                   </Badge>
                                 ) : (
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-5 px-2 text-xs text-gray-500 hover:text-blue-700 hover:bg-blue-50"
+                                    className="h-4 px-1.5 text-[10px] text-gray-400 hover:text-blue-600 hover:bg-blue-50"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      // Update database
                                       if (onSetMainVersion) {
                                         onSetMainVersion(version.id, versionGroup.baseNumber);
                                       }
-                                      // Update local state for immediate UI feedback
                                       setMainVersions(prev => ({
                                         ...prev,
                                         [versionGroup.baseNumber]: version.id
                                       }));
                                     }}
                                   >
-                                    Set as Main
+                                    Set Main
                                   </Button>
                                 )}
                               </div>
                             </td>
 
-                            {/* Project Name + Address */}
-                            <td className="px-4 py-2">
-                              <div className="space-y-1">
-                                <div className="font-medium text-sm">{version.project_name || "Untitled"}</div>
+                            {/* Project Name */}
+                            <td className="px-3 py-1">
+                              <div className="space-y-0">
+                                <div className="text-[13px] text-gray-700 truncate">{version.project_name || "Untitled"}</div>
                                 {version.job_details?.job_location && (
-                                  <div className="text-xs text-gray-500">{version.job_details.job_location}</div>
+                                  <div className="text-xs text-gray-500 truncate">{version.job_details.job_location}</div>
                                 )}
                               </div>
                             </td>
 
                             {/* Client */}
-                            <td className="px-4 py-2 text-sm text-gray-600">
+                            <td className="px-3 py-1 text-[13px] text-gray-700 truncate">
                               {version.job_details?.client_company || version.job_details?.client_name || "—"}
                             </td>
 
                             {/* Total */}
-                            <td className="px-4 py-2 text-sm text-gray-600">
+                            <td className="px-3 py-1 text-[13px] text-gray-700">
                               {formatCurrency(version.price_details?.final_selling_price || 0)}
                             </td>
 
                             {/* Status */}
-                            <td className="px-4 py-2">
+                            <td className="px-3 py-1">
                               <Select
                                 value={version.status || "Incomplete"}
                                 onValueChange={(value) => handleStatusChange(version.id, version.status || "Incomplete", value)}
                               >
-                                <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[version.status as keyof typeof statusColors]}`}>
+                                <SelectTrigger className={`w-24 h-6 border-0 text-xs px-2 ${statusColors[version.status as keyof typeof statusColors]}`}>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1591,79 +1521,17 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                               </Select>
                             </td>
 
-                            {/* Quote Source */}
-                            <td className="px-4 py-2">
-                              {(() => {
-                                const versionQuoteSource = version.quote_source;
-                                const isCustomVersionSource = versionQuoteSource && !getQuoteSourceOptions().some(opt => opt.value === versionQuoteSource);
-
-                                return (
-                                  <Select
-                                    value={versionQuoteSource || ""}
-                                    onValueChange={(value) => onQuoteSourceChange(version.id, value)}
-                                  >
-                                    <SelectTrigger className={`w-full h-8 border-0 text-xs px-3 ${
-                                      isCustomVersionSource
-                                        ? "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
-                                        : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-                                    }`}>
-                                      <SelectValue placeholder="Select source" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {/* Custom value for this version */}
-                                      {isCustomVersionSource && versionQuoteSource && (
-                                        <>
-                                          <SelectItem value={versionQuoteSource} className="bg-amber-50 dark:bg-amber-950/30">
-                                            {versionQuoteSource}
-                                          </SelectItem>
-                                          <div className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400 border-b">
-                                            Standard Options:
-                                          </div>
-                                        </>
-                                      )}
-                                      {/* Standard options - show new format only */}
-                                      {getQuoteSourceOptions()
-                                        .filter(source => !source.value.includes('_') && source.value !== 'Manual')
-                                        .map((source) => (
-                                          <SelectItem key={source.value} value={source.value}>
-                                            {source.label}
-                                          </SelectItem>
-                                        ))}
-                                      {/* Legacy format options - hidden but available for SelectValue */}
-                                      {getQuoteSourceOptions()
-                                        .filter(source => source.value.includes('_') || source.value === 'Manual')
-                                        .map((source) => (
-                                          <SelectItem key={source.value} value={source.value} className="hidden">
-                                            {source.label}
-                                          </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                  </Select>
-                                );
-                              })()}
-                            </td>
-
-                            {/* Created By */}
-                            <td className="px-4 py-2 text-xs text-gray-500">
-                              {version.created_by_name || "Unknown"}
-                            </td>
-
                             {/* Created At */}
-                            <td className="px-4 py-2 text-xs text-gray-500">
+                            <td className="px-3 py-1 text-[13px] text-gray-700">
                               {formatDateEST(version.created_at)}
                             </td>
 
-                            {/* Updated At */}
-                            <td className="px-4 py-2 text-xs text-gray-500">
-                              {formatLastUpdated(version.updated_at)}
-                            </td>
-
                             {/* Actions */}
-                            <td className="px-4 py-2 sticky right-0 bg-white border-l border-gray-200">
+                            <td className="px-3 py-1 sticky right-0 bg-gray-50/50 group-hover:bg-gray-100/50">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <MoreHorizontal className="h-4 w-4" />
+                                  <Button variant="ghost" className="h-6 w-6 p-0">
+                                    <MoreHorizontal className="h-3.5 w-3.5" />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
@@ -1698,7 +1566,6 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                                   )}
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem onClick={() => {
-                                    // Open editor in new tab - user can download PDF from there
                                     const url = `/editor/${version.proposal_number}`;
                                     window.open(url, '_blank');
                                   }}>

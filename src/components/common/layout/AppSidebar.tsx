@@ -76,6 +76,10 @@ interface UserOrganization {
   id: string;
   name: string;
   role: 'Owner' | 'Admin' | 'Member';
+  logo_data?: {
+    logo_url?: string;
+    logo_public_url?: string;
+  } | null;
 }
 
 export function AppSidebar({
@@ -169,7 +173,8 @@ export function AppSidebar({
             role,
             organizations (
               id,
-              name
+              name,
+              logo_data
             )
           `)
           .eq('user_id', user.id)
@@ -183,6 +188,7 @@ export function AppSidebar({
             id: m.organizations.id,
             name: m.organizations.name,
             role: m.role as 'Owner' | 'Admin' | 'Member',
+            logo_data: m.organizations.logo_data,
           })) || [];
 
         setUserOrganizations(orgs);
@@ -314,9 +320,9 @@ export function AppSidebar({
             <div className="mb-2 animate-in fade-in slide-in-from-top-2 duration-300">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 pl-[6px] py-1 group focus:outline-none focus-visible:outline-none hover:opacity-80 transition-opacity">
+                  <button className="flex items-center gap-2 pl-[6px] py-1 group focus:outline-none focus-visible:outline-none hover:opacity-80 transition-opacity max-w-[182px]">
                     <Buildings size={16} weight="fill" className="text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                    <span className="font-semibold text-gray-900 dark:text-gray-100 text-base truncate">
+                    <span className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate min-w-0 flex-1">
                       {currentOrganization?.name || 'Select Organization'}
                     </span>
                     <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
