@@ -201,6 +201,7 @@ export const ContactDialog = ({
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof CreateContactInput, string>> = {};
 
+    // Only name and contact type are required
     if (!formData.full_name.trim()) {
       newErrors.full_name = 'Name is required';
     }
@@ -209,23 +210,20 @@ export const ContactDialog = ({
       newErrors.contact_type = 'Contact type is required';
     }
 
-    if (!formData.company_name?.trim()) {
-      newErrors.company_name = 'Company is required';
+    // Validate emails only if provided (not required)
+    const providedEmails = formData.emails.filter(email => email.trim());
+    if (providedEmails.length > 0) {
+      const invalidEmails = providedEmails.filter(email => !isValidEmail(email));
+      if (invalidEmails.length > 0) {
+        newErrors.emails = 'Please enter valid email addresses';
+      }
     }
 
-    // Validate emails - at least one valid email required
-    const validEmails = formData.emails.filter(email => email.trim() && isValidEmail(email));
-    if (validEmails.length === 0) {
-      newErrors.emails = 'At least one valid email is required';
-    }
-
-    // Validate phone numbers - at least one valid phone required
+    // Validate phone numbers only if provided (not required)
     const phoneValidationErrors: string[] = [];
-    const validPhones = (formData.phones || []).filter(phone => phone.number.trim());
+    const providedPhones = (formData.phones || []).filter(phone => phone.number.trim());
 
-    if (validPhones.length === 0) {
-      newErrors.phones = 'At least one phone number is required';
-    } else {
+    if (providedPhones.length > 0) {
       (formData.phones || []).forEach((phone) => {
         const error = validatePhoneNumber(phone);
         phoneValidationErrors.push(error || '');
@@ -533,20 +531,13 @@ export const ContactDialog = ({
 
             {/* Company Name */}
             <div className="space-y-2">
-              <Label htmlFor="company_name">
-                Company <span className="text-red-500">*</span>
-              </Label>
+              <Label htmlFor="company_name">Company</Label>
               <Input
                 id="company_name"
                 value={formData.company_name}
                 onChange={(e) => handleChange('company_name', e.target.value)}
                 placeholder="Acme Corp"
-                className={errors.company_name ? 'border-red-500' : ''}
-                required
               />
-              {errors.company_name && (
-                <p className="text-sm text-red-500">{errors.company_name}</p>
-              )}
             </div>
           </div>
 
@@ -562,7 +553,7 @@ export const ContactDialog = ({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1">
                         <Label htmlFor={`phone_${index}`} className="font-semibold">
-                          Phone #{index + 1} {index === 0 && <span className="text-red-500">*</span>}
+                          Phone #{index + 1}
                         </Label>
                         <TooltipProvider delayDuration={200}>
                           <Tooltip>
@@ -660,7 +651,7 @@ export const ContactDialog = ({
                 <div key={index} className="space-y-1">
                   <div className="flex items-center justify-between">
                     <Label htmlFor={`email_${index}`} className="font-semibold">
-                      Email #{index + 1} {index === 0 && <span className="text-red-500">*</span>}
+                      Email #{index + 1}
                     </Label>
                     {index === formData.emails.length - 1 && (
                       <Button

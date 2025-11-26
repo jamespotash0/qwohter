@@ -108,7 +108,7 @@ export const ContactsTable = ({
   });
 
   // Helper to display array field with "+N" indicator that shows all values on hover
-  const displayArrayField = (values: string[] | undefined, emptyText = '—') => {
+  const displayArrayField = (values: string[] | undefined, emptyText = '-') => {
     if (!values || values.length === 0) {
       return <span className="text-muted-foreground">{emptyText}</span>;
     }
@@ -238,14 +238,14 @@ export const ContactsTable = ({
               <TableCell className="align-middle">
                 {contact.phones && contact.phones.length > 0
                   ? displayArrayField(contact.phones.map(p => formatPhoneNumber(p)))
-                  : <span className="text-muted-foreground">—</span>
+                  : <span className="text-muted-foreground">-</span>
                 }
               </TableCell>
 
               {/* Company */}
               <TableCell className="align-middle">
                 {contact.company_name || (
-                  <span className="text-muted-foreground">—</span>
+                  <span className="text-muted-foreground">-</span>
                 )}
               </TableCell>
 
@@ -259,7 +259,7 @@ export const ContactsTable = ({
                     {contact.contact_type}
                   </Badge>
                 ) : (
-                  <span className="text-muted-foreground">—</span>
+                  <span className="text-muted-foreground">-</span>
                 )}
               </TableCell>
 

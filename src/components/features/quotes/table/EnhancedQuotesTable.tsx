@@ -566,7 +566,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       size: 140,
       enableSorting: true,
     }),
-    columnHelper.accessor((row) => `${row.project_name || row.quote_details?.project_name || "Untitled Project"}`, {
+    columnHelper.accessor((row) => `${row.project_name || row.quote_details?.project_name || "-"}`, {
       id: 'project_name',
       header: () => (
         <div className="flex items-center">
@@ -575,7 +575,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         </div>
       ),
       cell: ({ row }) => {
-        const projectName = row.original.project_name || row.original.quote_details?.project_name || "Untitled Project";
+        const projectName = row.original.project_name || row.original.quote_details?.project_name || "-";
         const projectLocation = row.original.job_details?.job_location || "";
         return (
           <div className="space-y-0 min-w-0">
@@ -589,7 +589,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       size: 240,
       enableSorting: false,
     }),
-    columnHelper.accessor((row) => row.job_details?.client_company || row.job_details?.client_name || "Untitled Client", {
+    columnHelper.accessor((row) => row.job_details?.client_company || row.job_details?.client_name || "-", {
       id: 'client_name',
       header: () => (
         <div className="flex items-center">
@@ -605,7 +605,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           return <div className="text-sm text-gray-500 italic">Various</div>;
         }
 
-        const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client";
+        const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "-";
         return <div className="text-[13px] text-gray-900 truncate" title={clientName}>{clientName}</div>;
       },
       size: 160,
@@ -1338,11 +1338,10 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                 tableLayout: 'fixed'
               }}
             >
-              <thead className="bg-gray-50/80 border-b border-gray-200 sticky top-0 z-10">
+              <thead className="bg-[#EE6C4D]/10 border-b border-[#EE6C4D]/20 sticky top-0 z-10">
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => {
-                      const isActionsColumn = header.id === 'actions';
                       const isSelectColumn = header.id === 'select';
                       const isProposalColumn = header.id === 'proposal_number';
                       const rowHeight = dataDensity === 'compact' ? 'h-8' : dataDensity === 'comfortable' ? 'h-9' : 'h-10';
@@ -1351,9 +1350,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                       return (
                         <th
                           key={header.id}
-                          className={`relative ${columnPadding} py-1 text-left text-xs font-medium text-gray-500 ${
-                            isActionsColumn ? 'sticky right-0 bg-gray-50 z-20' : ''
-                          } ${rowHeight}`}
+                          className={`relative ${columnPadding} py-1 text-left text-xs font-medium text-gray-500 ${rowHeight}`}
                           style={{ width: header.getSize() }}
                         >
                           {header.isPlaceholder ? null : (
@@ -1399,18 +1396,13 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                         className={`group transition-colors ${rowHeight} hover:bg-gray-50/50 dark:hover:bg-[var(--content-table-row-hover)]`}
                       >
                         {row.getVisibleCells().map((cell) => {
-                          const isActionsColumn = cell.column.id === 'actions';
                           const isSelectColumn = cell.column.id === 'select';
                           const isProposalColumn = cell.column.id === 'proposal_number';
                           const columnPadding = isSelectColumn ? 'pl-3 pr-1' : isProposalColumn ? 'pl-1 pr-3' : 'px-3';
                           return (
                             <td
                               key={cell.id}
-                              className={`${columnPadding} ${paddingY} text-xs ${
-                                isActionsColumn
-                                  ? 'sticky right-0 bg-white dark:bg-[var(--content-table-bg)] group-hover:bg-gray-50 dark:group-hover:bg-[var(--content-table-row-hover)] z-10'
-                                  : ''
-                              }`}
+                              className={`${columnPadding} ${paddingY} text-xs`}
                               style={{ width: cell.column.getSize() }}
                             >
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -1476,7 +1468,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                             {/* Project Name */}
                             <td className="px-3 py-1">
                               <div className="space-y-0">
-                                <div className="text-[13px] text-gray-700 truncate">{version.project_name || "Untitled"}</div>
+                                <div className="text-[13px] text-gray-700 truncate">{version.project_name || "-"}</div>
                                 {version.job_details?.job_location && (
                                   <div className="text-xs text-gray-500 truncate">{version.job_details.job_location}</div>
                                 )}
@@ -1485,7 +1477,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
 
                             {/* Client */}
                             <td className="px-3 py-1 text-[13px] text-gray-700 truncate">
-                              {version.job_details?.client_company || version.job_details?.client_name || "—"}
+                              {version.job_details?.client_company || version.job_details?.client_name || "-"}
                             </td>
 
                             {/* Total */}
@@ -1518,7 +1510,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                             </td>
 
                             {/* Actions */}
-                            <td className="px-3 py-1 sticky right-0 bg-gray-50/50 group-hover:bg-gray-100/50">
+                            <td className="px-3 py-1">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <button className="h-6 w-6 p-0 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
