@@ -42,8 +42,8 @@ import {
   ArchiveRestore,
   Bell,
   ChevronRight,
-  Layers,
-  Kanban
+  Kanban,
+  Star
 } from 'lucide-react';
 
 import { Button } from "@/components/ui/button";
@@ -470,14 +470,12 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         };
 
         return (
-          <div className="flex items-center justify-center">
-            <input
-              type="checkbox"
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-              checked={table.getIsAllPageRowsSelected()}
-              onChange={handleSelectAll}
-            />
-          </div>
+          <input
+            type="checkbox"
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            checked={table.getIsAllPageRowsSelected()}
+            onChange={handleSelectAll}
+          />
         );
       },
       cell: ({ row }) => {
@@ -508,15 +506,13 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         }, [row, versionGroup, versionSelection]);
 
         return (
-          <div className="flex items-center justify-center">
-            <input
-              type="checkbox"
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-              checked={isChecked}
-              onChange={handleChange}
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
+          <input
+            type="checkbox"
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            checked={isChecked}
+            onChange={handleChange}
+            onClick={(e) => e.stopPropagation()}
+          />
         );
       },
       size: 32,
@@ -536,34 +532,32 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         const versionGroup = quoteToGroupMap.get(quote.id);
         const proposalNumber = getValue();
         const baseNumber = getBaseProposalNumber(proposalNumber);
-        const isExpanded = expanded[baseNumber];
+        const isExpanded = (expanded as Record<string, boolean>)[baseNumber] === true;
         const hasMultipleVersions = versionGroup && versionGroup.hasMultipleVersions;
 
-        // Show full proposal number (with version suffix) if it's the main version of the group
-        // or if it's a standalone quote
-        const displayNumber = proposalNumber;
+        // Always show the base proposal number (without version suffix) for grouped quotes
+        // For standalone quotes, show the full proposal number
+        const displayNumber = hasMultipleVersions ? baseNumber : proposalNumber;
 
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 group/versions">
             <div className="font-mono text-[13px] text-gray-900">
               {displayNumber}
             </div>
-            {hasMultipleVersions && (
+            {hasMultipleVersions && versionGroup && (
               <button
-                onClick={() => setExpanded(prev => ({
-                  ...prev as object,
-                  [baseNumber]: !prev[baseNumber]
-                }))}
-                className="hover:bg-gray-100 rounded p-1 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpanded(prev => ({
+                    ...(prev as Record<string, boolean>),
+                    [baseNumber]: !(prev as Record<string, boolean>)[baseNumber]
+                  }));
+                }}
+                className="flex items-center gap-0.5 text-[11px] text-gray-400 hover:text-blue-600 transition-colors"
+                title={isExpanded ? 'Collapse versions' : `Show ${versionGroup.versions.length} versions`}
               >
-                <Badge variant="secondary" className="flex items-center gap-1 text-xs cursor-pointer">
-                  {isExpanded ? (
-                    <ChevronDown className="h-3 w-3" />
-                  ) : (
-                    <ChevronRight className="h-3 w-3" />
-                  )}
-                  <Layers className="h-3 w-3" />
-                </Badge>
+                <ChevronRight className={`w-3 h-3 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+                <span className="hover:underline">{versionGroup.versions.length - 1} more</span>
               </button>
             )}
           </div>
@@ -801,9 +795,9 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-8 w-8 p-0">
+                <button className="h-8 w-8 p-0 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
                   <MoreHorizontal className="h-4 w-4" />
-                </Button>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
                 {isArchiveView && onUnarchiveQuote ? (
@@ -842,9 +836,9 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
+              <button className="h-8 w-8 p-0 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
                 <MoreHorizontal className="h-4 w-4" />
-              </Button>
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
               <DropdownMenuItem onClick={() => onEditQuote(quote)}>
@@ -918,7 +912,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
       size: 60,
       enableSorting: false,
     }),
-  ], [onEditQuote, onDeleteQuote, onStatusChange, onQuoteSourceChange, onCreateVersion, onSetReminder, onArchiveQuote, onUnarchiveQuote, isArchiveView, forceUpdate]);
+  ], [onEditQuote, onDeleteQuote, onStatusChange, onQuoteSourceChange, onCreateVersion, onSetReminder, onArchiveQuote, onUnarchiveQuote, isArchiveView, forceUpdate, expanded]);
 
   const table = useReactTable({
     data: displayQuotes,
@@ -1434,19 +1428,17 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                           >
                             {/* Selection */}
                             <td className="pl-3 pr-1 py-1">
-                              <div className="flex items-center justify-center">
-                                <input
-                                  type="checkbox"
-                                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                  checked={versionSelection[version.id] || false}
-                                  onChange={(e) => {
-                                    setVersionSelection(prev => ({
-                                      ...prev,
-                                      [version.id]: e.target.checked
-                                    }));
-                                  }}
-                                />
-                              </div>
+                              <input
+                                type="checkbox"
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                checked={versionSelection[version.id] || false}
+                                onChange={(e) => {
+                                  setVersionSelection(prev => ({
+                                    ...prev,
+                                    [version.id]: e.target.checked
+                                  }));
+                                }}
+                              />
                             </td>
 
                             {/* Proposal Number */}
@@ -1457,14 +1449,12 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                                   {version.proposal_number}
                                 </span>
                                 {version.is_main_version === true ? (
-                                  <Badge variant="outline" className="text-[10px] h-4 px-1 bg-blue-50 text-blue-600 border-blue-200">
-                                    Main
-                                  </Badge>
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600">
+                                    <Star className="w-3 h-3 fill-amber-400 stroke-amber-500" />
+                                  </span>
                                 ) : (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-4 px-1.5 text-[10px] text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                                  <button
+                                    className="inline-flex items-center gap-0.5 text-[10px] text-gray-400 hover:text-amber-600 transition-colors"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (onSetMainVersion) {
@@ -1475,9 +1465,10 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                                         [versionGroup.baseNumber]: version.id
                                       }));
                                     }}
+                                    title="Set as main version"
                                   >
-                                    Set Main
-                                  </Button>
+                                    <Star className="w-3 h-3" />
+                                  </button>
                                 )}
                               </div>
                             </td>
@@ -1530,9 +1521,9 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                             <td className="px-3 py-1 sticky right-0 bg-gray-50/50 group-hover:bg-gray-100/50">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" className="h-6 w-6 p-0">
+                                  <button className="h-6 w-6 p-0 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
                                     <MoreHorizontal className="h-3.5 w-3.5" />
-                                  </Button>
+                                  </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="bg-white border shadow-lg z-50">
                                   <DropdownMenuItem onClick={() => onEditQuote(version)}>
