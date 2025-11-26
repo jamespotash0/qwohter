@@ -1,14 +1,20 @@
 /**
  * Project Attachments Component
  *
- * Drag-and-drop file upload and management for project attachments.
- * Displays both quote files and project-specific files.
+ * Simple file upload and management for project attachments.
+ * Uses modal for adding new documents.
  */
 
-import React, { useState, useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
-import { Upload, X, Download, FileText, Loader2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Plus, X, Download, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -17,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { ProjectAttachmentsService } from '@/services/projectAttachmentsService';
 import type { ProjectAttachment, AttachmentCategory } from '@/lib/types/projectAttachments';
 import { useToast } from '@/hooks/use-toast';
@@ -33,61 +40,75 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
   onAttachmentsChange,
 }) => {
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadingFileName, setUploadingFileName] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<AttachmentCategory>('other');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<AttachmentCategory | ''>('');
   const [description, setDescription] = useState('');
 
-  const onDrop = useCallback(
-    async (acceptedFiles: File[]) => {
-      if (acceptedFiles.length === 0) return;
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
+  };
 
-      const file = acceptedFiles[0]; // Upload one file at a time
-      setUploading(true);
-      setUploadingFileName(file.name);
+  const handleUpload = async () => {
+    if (!selectedFile) return;
 
-      try {
-        const result = await ProjectAttachmentsService.uploadAttachment(
-          projectId,
-          file,
-          description || undefined,
-          selectedCategory
-        );
+    setUploading(true);
 
-        if (result.success) {
-          toast({
-            title: 'File Uploaded',
-            description: `${file.name} has been uploaded successfully.`,
-          });
-          setDescription('');
-          onAttachmentsChange();
-        } else {
-          toast({
-            title: 'Upload Failed',
-            description: result.error || 'Failed to upload file.',
-            variant: 'destructive',
-          });
-        }
-      } catch (error) {
-        console.error('Upload error:', error);
+    try {
+      const result = await ProjectAttachmentsService.uploadAttachment(
+        projectId,
+        selectedFile,
+        description || undefined,
+        selectedCategory || undefined
+      );
+
+      if (result.success) {
+        toast({
+          title: 'File Uploaded',
+          description: `${selectedFile.name} has been uploaded successfully.`,
+        });
+        resetForm();
+        setIsModalOpen(false);
+        onAttachmentsChange();
+      } else {
         toast({
           title: 'Upload Failed',
-          description: 'An unexpected error occurred.',
+          description: result.error || 'Failed to upload file.',
           variant: 'destructive',
         });
-      } finally {
-        setUploading(false);
-        setUploadingFileName('');
       }
-    },
-    [projectId, description, selectedCategory, onAttachmentsChange, toast]
-  );
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: 'Upload Failed',
+        description: 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    maxFiles: 1,
-    disabled: uploading,
-  });
+  const resetForm = () => {
+    setSelectedFile(null);
+    setSelectedCategory('');
+    setDescription('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (!uploading) {
+      resetForm();
+      setIsModalOpen(false);
+    }
+  };
 
   const handleDelete = async (attachmentId: string, fileName: string) => {
     if (!confirm(`Are you sure you want to delete "${fileName}"?`)) return;
@@ -120,128 +141,158 @@ export const ProjectAttachments: React.FC<ProjectAttachmentsProps> = ({
   };
 
   return (
-    <div className="space-y-4">
-      {/* Upload Section */}
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <Select
-            value={selectedCategory}
-            onValueChange={(value) => setSelectedCategory(value as AttachmentCategory)}
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="drawing">Drawing</SelectItem>
-              <SelectItem value="invoice">Invoice</SelectItem>
-              <SelectItem value="photo">Photo</SelectItem>
-              <SelectItem value="contract">Contract</SelectItem>
-              <SelectItem value="proposal">Proposal</SelectItem>
-              <SelectItem value="specification">Specification</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Input
-            type="text"
-            placeholder="Description (optional)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="h-8 text-xs"
-            disabled={uploading}
-          />
-        </div>
-
-        <div
-          {...getRootProps()}
-          className={`
-            border-2 border-dashed rounded-lg p-4 text-center cursor-pointer
-            transition-colors
-            ${isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
-            ${uploading ? 'opacity-50 cursor-not-allowed' : ''}
-          `}
-        >
-          <input {...getInputProps()} />
-          {uploading ? (
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
-              <p className="text-xs text-gray-600">Uploading {uploadingFileName}...</p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              <Upload className="w-6 h-6 text-gray-400" />
-              <p className="text-xs text-gray-600">
-                {isDragActive ? 'Drop file here...' : 'Drag & drop a file or click to browse'}
-              </p>
-              <p className="text-[10px] text-gray-400">Max file size: 50MB</p>
-            </div>
-          )}
-        </div>
-      </div>
-
+    <div className="space-y-3">
       {/* Files List */}
       {attachments.length > 0 ? (
-        <div className="space-y-2">
-          <h4 className="text-xs font-semibold text-gray-700">
-            Attached Files ({attachments.length})
-          </h4>
-          <div className="space-y-1.5">
-            {attachments.map((attachment) => (
-              <div
-                key={attachment.id}
-                className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors group"
-              >
-                <span className="text-lg flex-shrink-0">
-                  {ProjectAttachmentsService.getFileIcon(attachment.file_type)}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-900 truncate">
-                    {attachment.file_name}
-                  </p>
-                  <div className="flex items-center gap-2 text-[10px] text-gray-500">
-                    <span>{ProjectAttachmentsService.formatFileSize(attachment.file_size)}</span>
-                    {attachment.category && (
-                      <>
-                        <span>•</span>
-                        <span className="capitalize">{attachment.category}</span>
-                      </>
-                    )}
-                    {attachment.description && (
-                      <>
-                        <span>•</span>
-                        <span className="truncate max-w-[100px]">{attachment.description}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDownload(attachment.public_url, attachment.file_name)}
-                    className="h-6 w-6 p-0"
-                  >
-                    <Download className="w-3.5 h-3.5 text-gray-600" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(attachment.id, attachment.file_name)}
-                    className="h-6 w-6 p-0"
-                  >
-                    <X className="w-3.5 h-3.5 text-red-600" />
-                  </Button>
+        <div className="space-y-1.5">
+          {attachments.map((attachment) => (
+            <div
+              key={attachment.id}
+              className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors group"
+            >
+              <span className="text-lg flex-shrink-0">
+                {ProjectAttachmentsService.getFileIcon(attachment.file_type)}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-gray-900 truncate">
+                  {attachment.file_name}
+                </p>
+                <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                  <span>{ProjectAttachmentsService.formatFileSize(attachment.file_size)}</span>
+                  {attachment.category && (
+                    <>
+                      <span>•</span>
+                      <span className="capitalize">{attachment.category}</span>
+                    </>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDownload(attachment.public_url, attachment.file_name)}
+                  className="h-6 w-6 p-0"
+                >
+                  <Download className="w-3.5 h-3.5 text-gray-600" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDelete(attachment.id, attachment.file_name)}
+                  className="h-6 w-6 p-0"
+                >
+                  <X className="w-3.5 h-3.5 text-red-600" />
+                </Button>
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
-        <div className="text-center py-6">
-          <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-          <p className="text-xs text-gray-500">No files attached yet</p>
+        <div className="text-center py-4">
+          <FileText className="w-6 h-6 text-gray-300 mx-auto mb-1" />
+          <p className="text-xs text-gray-500">No documents attached</p>
         </div>
       )}
+
+      {/* Add Document Button - Below files */}
+      <Button
+        onClick={() => setIsModalOpen(true)}
+        size="sm"
+        variant="outline"
+        className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+      >
+        <Plus className="w-4 h-4 mr-1.5" />
+        Add Document
+      </Button>
+
+      {/* Upload Modal */}
+      <Dialog open={isModalOpen} onOpenChange={handleCloseModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Document</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* File Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="file">File</Label>
+              <Input
+                ref={fileInputRef}
+                id="file"
+                type="file"
+                onChange={handleFileSelect}
+                disabled={uploading}
+                className="cursor-pointer"
+              />
+              {selectedFile && (
+                <p className="text-xs text-gray-500">
+                  Selected: {selectedFile.name} ({ProjectAttachmentsService.formatFileSize(selectedFile.size)})
+                </p>
+              )}
+            </div>
+
+            {/* File Type */}
+            <div className="space-y-2">
+              <Label htmlFor="category">File Type</Label>
+              <Select
+                value={selectedCategory}
+                onValueChange={(value) => setSelectedCategory(value as AttachmentCategory)}
+                disabled={uploading}
+              >
+                <SelectTrigger id="category">
+                  <SelectValue placeholder="Select file type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="drawing">Drawing</SelectItem>
+                  <SelectItem value="invoice">Invoice</SelectItem>
+                  <SelectItem value="photo">Photo</SelectItem>
+                  <SelectItem value="contract">Contract</SelectItem>
+                  <SelectItem value="proposal">Proposal</SelectItem>
+                  <SelectItem value="specification">Specification</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="description">Description (optional)</Label>
+              <Input
+                id="description"
+                type="text"
+                placeholder="Enter description..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                disabled={uploading}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCloseModal}
+              disabled={uploading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpload}
+              disabled={!selectedFile || uploading}
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                'Upload'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

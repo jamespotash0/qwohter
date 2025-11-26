@@ -4,7 +4,9 @@ import { Project, ProjectPriority } from '@/services/boardService';
 import { type TimelineMilestone } from '@/lib/timelineMilestones';
 import { TimelineVisualizer } from '@/components/features/board/TimelineVisualizer';
 import { ProjectAttachments } from '@/components/features/board/ProjectAttachments';
+import { AIMilestoneSuggestions } from '@/components/features/board/AIMilestoneSuggestions';
 import { useProjectAttachments } from '@/hooks/useProjectAttachments';
+import { AIMilestoneService } from '@/services/aiMilestoneService';
 import {
   useProjects,
   useWorkflowColumns,
@@ -106,6 +108,12 @@ export default function Board() {
   const isAnimatingRef = useRef(false);
   const lastColumnDropTarget = useRef<{ columnId: string; side: 'left' | 'right' } | null>(null);
 
+  // AI Milestone Suggestions state
+  const [showAISuggestions, setShowAISuggestions] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<TimelineMilestone[]>([]);
+  const [aiReasoning, setAiReasoning] = useState<string>('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+
   // Derive selected project from projects array to ensure we always have fresh data
   const selectedProject = selectedProjectId
     ? projects.find(p => p.id === selectedProjectId) || null
@@ -130,6 +138,44 @@ export default function Board() {
       }
       return newSet;
     });
+  };
+
+  const handleRequestAISuggestions = async () => {
+    if (!selectedProject?.quote) {
+      alert('No quote data found for this project. AI suggestions require quote information.');
+      return;
+    }
+
+    setIsGeneratingAI(true);
+    try {
+      const result = await AIMilestoneService.generateMilestones(
+        selectedProject.quote,
+        selectedProject.created_at
+      );
+      setAiSuggestions(result.milestones);
+      setAiReasoning(result.reasoning);
+      setShowAISuggestions(true);
+    } catch (error) {
+      console.error('Failed to generate AI suggestions:', error);
+      alert('Failed to generate milestone suggestions. Please check your API key and try again.');
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
+  const handleAddAIMilestones = (selectedMilestones: TimelineMilestone[]) => {
+    if (!selectedProject) return;
+
+    const existingMilestones = selectedProject.timeline_milestones || [];
+    const updatedMilestones = [...existingMilestones, ...selectedMilestones];
+
+    updateProject({
+      id: selectedProject.id,
+      updates: { timeline_milestones: updatedMilestones }
+    });
+
+    setShowAISuggestions(false);
+    setAiSuggestions([]);
   };
 
   const handleDragStart = (e: React.DragEvent, projectId: string) => {
@@ -1091,7 +1137,7 @@ export default function Board() {
 
           <div className="fixed top-0 right-0 h-full w-[600px] bg-white shadow-2xl z-50 overflow-y-auto">
             {/* Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
               <div className="flex-1">
                 <div className="flex items-baseline gap-2">
                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Project Name:</span>
@@ -1245,6 +1291,8 @@ export default function Board() {
                         updates: { timeline_milestones: updatedMilestones }
                       });
                     }}
+                    onRequestAISuggestions={handleRequestAISuggestions}
+                    isGeneratingAI={isGeneratingAI}
                   />
                 )}
               </div>
@@ -1274,6 +1322,15 @@ export default function Board() {
           </div>
         </>
       )}
+
+      {/* AI Milestone Suggestions Dialog */}
+      <AIMilestoneSuggestions
+        suggestions={aiSuggestions}
+        reasoning={aiReasoning}
+        isOpen={showAISuggestions}
+        onClose={() => setShowAISuggestions(false)}
+        onAddMilestones={handleAddAIMilestones}
+      />
     </PageContent>
   );
 }

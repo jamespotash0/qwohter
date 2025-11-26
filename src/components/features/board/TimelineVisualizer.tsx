@@ -20,7 +20,7 @@ import {
   deleteMilestone
 } from '@/lib/timelineMilestones';
 import { formatDateEST } from '@/utils/dateUtils';
-import { Plus, Trash2, Edit2, Calendar, CheckCircle2, Circle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, Edit2, Calendar, CheckCircle2, Circle, AlertCircle, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 
 interface TimelineVisualizerProps {
   milestones: TimelineMilestone[];
@@ -28,6 +28,8 @@ interface TimelineVisualizerProps {
   onMilestoneUpdate: (updatedMilestones: TimelineMilestone[]) => void;
   isAddingMilestone?: boolean;
   onAddingMilestoneChange?: (isAdding: boolean) => void;
+  onRequestAISuggestions?: () => void;
+  isGeneratingAI?: boolean;
 }
 
 export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
@@ -36,6 +38,8 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
   onMilestoneUpdate,
   isAddingMilestone: externalIsAddingMilestone,
   onAddingMilestoneChange,
+  onRequestAISuggestions,
+  isGeneratingAI = false,
 }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [internalIsAddingMilestone, setInternalIsAddingMilestone] = useState(false);
@@ -159,9 +163,9 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
     setEditingId(null);
   };
 
-  // Show first 4 items (won + 3 milestones) unless expanded
-  const visibleItems = showAllMilestones ? allItems : allItems.slice(0, 4);
-  const hiddenCount = allItems.length - 4;
+  // Show first 3 items (won + 2 milestones) unless expanded
+  const visibleItems = showAllMilestones ? allItems : allItems.slice(0, 3);
+  const hiddenCount = allItems.length - 3;
 
   return (
     <div className="space-y-4">
@@ -177,7 +181,7 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
               {/* Timeline Line & Dot */}
               <div className="flex flex-col items-center">
                 {/* Dot */}
-                <div className={`w-3 h-3 rounded-full mt-1.5 z-10 ${
+                <div className={`w-3 h-3 rounded-full mt-1.5 ${
                   item.isWon
                     ? 'bg-green-500 ring-4 ring-green-100'
                     : item.completed
@@ -349,17 +353,17 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
       {hiddenCount > 0 && (
         <button
           onClick={() => setShowAllMilestones(!showAllMilestones)}
-          className="w-full flex items-center justify-center gap-2 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+          className="w-full flex items-center justify-center gap-1.5 py-1 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors -mt-2"
         >
           {showAllMilestones ? (
             <>
-              <ChevronUp className="w-4 h-4" />
+              <ChevronUp className="w-3.5 h-3.5" />
               Show less
             </>
           ) : (
             <>
-              <ChevronDown className="w-4 h-4" />
-              Show {hiddenCount} more milestone{hiddenCount !== 1 ? 's' : ''}
+              <ChevronDown className="w-3.5 h-3.5" />
+              Show {hiddenCount} more
             </>
           )}
         </button>
@@ -429,18 +433,31 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
         </div>
       )}
 
-      {/* Show button only if not controlled externally */}
+      {/* Action Buttons */}
       {!onAddingMilestoneChange && !isAddingMilestone && (
-        <div className="pt-2">
+        <div className="pt-2 flex gap-2">
           <Button
             onClick={() => setIsAddingMilestone(true)}
             size="sm"
             variant="outline"
-            className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
           >
-            <Plus className="w-4 h-4 mr-1.5" />
-            Add Milestone
+            <Plus className="w-4 h-4 mr-1" />
+            Add
           </Button>
+
+          {onRequestAISuggestions && (
+            <Button
+              onClick={onRequestAISuggestions}
+              size="sm"
+              variant="outline"
+              disabled={isGeneratingAI}
+              className="flex-1 text-purple-600 hover:text-purple-700 hover:bg-purple-50 disabled:opacity-50"
+            >
+              <Sparkles className="w-4 h-4 mr-1" />
+              {isGeneratingAI ? 'Generating...' : 'AI Suggest'}
+            </Button>
+          )}
         </div>
       )}
     </div>

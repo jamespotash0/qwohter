@@ -72,6 +72,8 @@ export async function fetchBoardItems(organizationId: string): Promise<Project[]
         quote_details,
         job_details,
         price_details,
+        delivery_details,
+        wall_details,
         status,
         is_main_version
       )
@@ -108,6 +110,8 @@ export async function fetchBoardItemById(itemId: string): Promise<Project> {
         quote_details,
         job_details,
         price_details,
+        delivery_details,
+        wall_details,
         status,
         is_main_version
       )
