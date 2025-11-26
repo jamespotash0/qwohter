@@ -8,7 +8,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Skeleton } from "@/components/ui/skeleton";
 // import { Card, CardContent } from "@/components/ui/card";
 import { QwohterLogo } from "@/components/common/QwohterLogo";
-import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import { useCurrentOrganization, useOrganizationMembers } from "@/hooks/queries/useOrganization";
 import { useUser, useProfile, useAuthStatus, useSignOut } from "@/auth";
 import { stripeService } from "@/services/stripeService";
@@ -144,12 +143,17 @@ export function AppSidebar({
 
   // Track path changes for animations
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
     if (previousPathRef.current !== location.pathname) {
       previousPathRef.current = location.pathname;
       // Reset clicked item after navigation completes
-      const timer = setTimeout(() => setClickedItem(null), 500);
-      return () => clearTimeout(timer);
+      timer = setTimeout(() => setClickedItem(null), 500);
     }
+    return () => {
+      if (timer !== null) {
+        clearTimeout(timer);
+      }
+    };
   }, [location.pathname]);
 
   // Fetch all user organizations on mount
@@ -268,7 +272,7 @@ export function AppSidebar({
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Header with Logo and Collapse Toggle */}
-      <SidebarHeader className={`transition-all duration-200 ease-in-out ${isCollapsed ? 'px-0 pt-5 pb-0' : 'px-4 pt-6 pb-1 pl-6'}`}>
+      <SidebarHeader className={`transition-all duration-200 ease-in-out ${isCollapsed ? 'px-0 pt-5 pb-0' : 'pl-5 pr-5 pt-6 pb-1'}`}>
         <div className="flex items-center justify-between">
           {/* Logo or Menu Icon Toggle */}
           <div className={`flex items-center transition-all duration-300 ${isCollapsed ? 'justify-center w-full' : ''}`}>
@@ -303,39 +307,19 @@ export function AppSidebar({
       </SidebarHeader>
 
       {/* Main Navigation */}
-      <SidebarContent className={`px-2 ${isCollapsed ? 'pt-2' : 'pt-4'} pb-6 flex-1 transition-all duration-300`}>
+      <SidebarContent className={`px-2 ${isCollapsed ? 'pt-2' : 'pt-2'} pb-6 flex-1 transition-all duration-300`}>
         <SidebarGroup>
           {/* Organization Switcher */}
           {!isCollapsed ? (
-            <div className="mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="mb-2 animate-in fade-in slide-in-from-top-2 duration-300">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button
-                    className="w-full h-11 px-3 flex items-center justify-between gap-3 shadow-sm transition-colors group focus:outline-none focus-visible:outline-none bg-gray-50 dark:bg-gray-800"
-                    style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
-                    }}
-                    onMouseLeave={(e) => {
-                      const isDark = document.documentElement.classList.contains('dark');
-                      e.currentTarget.style.backgroundColor = isDark ? 'rgb(31, 41, 55)' : 'rgb(249, 250, 251)';
-                    }}
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--sidebar-nav-bg-hover)' }}>
-                        <Buildings size={16} weight="fill" className="text-orange-800 dark:text-orange-700" />
-                      </div>
-                      <p
-                        className={`font-medium text-gray-900 dark:text-gray-100 flex-1 text-left leading-tight whitespace-nowrap overflow-hidden text-ellipsis ${
-                          (currentOrganization?.name || '').length > 25 ? 'text-[10px]' :
-                          (currentOrganization?.name || '').length > 20 ? 'text-[11px]' :
-                          (currentOrganization?.name || '').length > 15 ? 'text-xs' : 'text-sm'
-                        }`}
-                      >
-                        {currentOrganization?.name || 'Select Organization'}
-                      </p>
-                    </div>
-                    <ChevronDown className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors flex-shrink-0" />
+                  <button className="flex items-center gap-2 pl-[6px] py-1 group focus:outline-none focus-visible:outline-none hover:opacity-80 transition-opacity">
+                    <Buildings size={16} weight="fill" className="text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                    <span className="font-semibold text-gray-900 dark:text-gray-100 text-base truncate">
+                      {currentOrganization?.name || 'Select Organization'}
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-[240px]">
@@ -420,20 +404,11 @@ export function AppSidebar({
             </div>
           )}
 
-          <div
-            className={`px-0 pl-0 mb-2 flex items-center transition-all duration-300 ${
-              isCollapsed ? 'justify-center' : 'justify-between'
-            }`}
-          >
-            {!isCollapsed && (
-              <p className="text-xs font-inter font-medium text-[var(--sidebar-section-label)] uppercase tracking-wide animate-in fade-in slide-in-from-left-2 duration-300">
-                Menu
-              </p>
-            )}
-            <div className="transition-all duration-300 hover:scale-110 active:scale-95">
-              <ThemeToggleButton />
+          {!isCollapsed && (
+            <div className="flex justify-center mb-2">
+              <div className="w-[95%] h-px bg-gray-200 dark:bg-gray-700" />
             </div>
-          </div>
+          )}
 
           <SidebarGroupContent>
             <SidebarMenu className={`space-y-0 ${isCollapsed ? 'space-y-1' : 'space-y-0'}`}>
@@ -460,8 +435,8 @@ export function AppSidebar({
                     }}
                   >
                     <SidebarMenuButton
-                      className={`h-11 flex items-center relative group/item overflow-hidden ${
-                        isCollapsed ? 'justify-center w-full px-0' : 'px-3'
+                      className={`h-10 flex items-center relative group/item overflow-hidden ${
+                        isCollapsed ? 'justify-center w-full px-0' : 'ml-[-2px] mr-[-10px] pl-[8px] pr-[13px]'
                       } ${
                         isDisabled
                           ? 'text-[var(--sidebar-nav-text)] opacity-50 cursor-not-allowed'
@@ -572,7 +547,7 @@ export function AppSidebar({
         </div>
       )}
 
-      <SidebarFooter className="p-2 pb-4 transition-all duration-300">
+      <SidebarFooter className="pl-2 pr-5 pb-4 pt-2 transition-all duration-300">
         {!isLoggingOut && (
           <>
             {!shouldShowProfile ? (
@@ -597,7 +572,7 @@ export function AppSidebar({
             ) : !isCollapsed ? (
               <div className="space-y-3 animate-in fade-in duration-300 delay-150">
               {/* User Profile Section */}
-                <div className="flex items-center justify-between p-3 rounded-xl group transition-all duration-200">
+                <div className="flex items-center justify-between pl-3 pr-0 py-3 rounded-xl group transition-all duration-200">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <Avatar className="h-9 w-9 ring-2 ring-[var(--sidebar-user-avatar-bg)] transition-all duration-300">
                       <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-sm font-semibold">

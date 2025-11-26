@@ -15,6 +15,7 @@ import { FileText, Plus, Sparkles, DollarSign, Clock, CheckCircle } from "lucide
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDateEST } from "@/utils/dateUtils";
+import { DebugGrid } from "@/components/common/DebugGrid";
 
 /**
  * Streamlined Quotes Page using AppLayout
@@ -442,6 +443,7 @@ const Quotes = () => {
 
   return (
     <PageContent title="Proposals" subtitle="Manage and track all your project proposals" showPageHeader={true}>
+      <DebugGrid />
       {/* Loading State - Show while fetching fresh data from database */}
       {quotesLoading ? (
         <div className="flex flex-col items-center justify-center py-20">

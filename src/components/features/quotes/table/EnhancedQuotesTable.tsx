@@ -299,18 +299,16 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
     return resultIds.has(row.original.id);
   }, [search]);
 
-  // Store original column sizes for reset functionality
+  // Store original column sizes for reset functionality (compact to avoid scroll)
   const originalColumnSizes = useMemo(() => ({
-    select: 50,
-    proposal_number: 150,
-    project_name: 300,
-    client_name: 200,
-    total: 150,
-    status: 150,
-    quote_source: 180,
-    created_by: 150,
-    created_at: 120,
-    actions: 80,
+    select: 40,
+    proposal_number: 140,
+    project_name: 240,
+    client_name: 160,
+    total: 110,
+    status: 130,
+    created_at: 110,
+    actions: 60,
   }), []);
 
   // Reset column sizes to original
@@ -558,16 +556,16 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           </div>
         );
       },
-      size: 50,
+      size: 40,
       enableSorting: false,
       enableResizing: false,
     }),
     columnHelper.accessor('proposal_number', {
       id: 'proposal_number',
       header: () => (
-        <div className="flex items-center gap-2">
-          <Tag className="w-4 h-4" />
-          Proposal #
+        <div className="flex items-center">
+          {/* <Tag className="w-3.5 h-3.5" /> */}
+          <span>Proposal #</span>
         </div>
       ),
       cell: ({ getValue, row }) => {
@@ -608,38 +606,38 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           </div>
         );
       },
-      size: 200,
+      size: 140,
       enableSorting: true,
     }),
     columnHelper.accessor((row) => `${row.project_name || row.quote_details?.project_name || "Untitled Project"}`, {
       id: 'project_name',
       header: () => (
-        <div className="flex items-center gap-2">
-          <Building className="w-4 h-4" />
-          Project Name
+        <div className="flex items-center">
+          {/* <Building className="w-3.5 h-3.5" /> */}
+          <span>Project</span>
         </div>
       ),
       cell: ({ row }) => {
         const projectName = row.original.project_name || row.original.quote_details?.project_name || "Untitled Project";
         const projectLocation = row.original.job_details?.job_location || "";
         return (
-          <div className="space-y-1">
-            <div className="font-medium text-sm">{projectName}</div>
+          <div className="space-y-0.5 min-w-0">
+            <div className="font-medium text-sm truncate" title={projectName}>{projectName}</div>
             {projectLocation && (
-              <div className="text-xs text-gray-500">{projectLocation}</div>
+              <div className="text-xs text-gray-500 truncate" title={projectLocation}>{projectLocation}</div>
             )}
           </div>
         );
       },
-      size: 400,
+      size: 240,
       enableSorting: false,
     }),
     columnHelper.accessor((row) => row.job_details?.client_company || row.job_details?.client_name || "Untitled Client", {
       id: 'client_name',
       header: () => (
-        <div className="flex items-center gap-2">
-          <User className="w-4 h-4" />
-          Client Name
+        <div className="flex items-center">
+          {/* <User className="w-3.5 h-3.5" /> */}
+          <span>Client</span>
         </div>
       ),
       cell: ({ row }) => {
@@ -647,22 +645,21 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         const versionGroup = quoteToGroupMap.get(quote.id);
 
         if (versionGroup && versionGroup.hasMultipleVersions) {
-          // Always show "Various" (italicized) for parent rows with multiple versions
           return <div className="text-sm text-gray-500 italic">Various</div>;
         }
 
         const clientName = quote.job_details?.client_company || quote.job_details?.client_name || "Untitled Client";
-        return <div className="font-medium text-sm">{clientName}</div>;
+        return <div className="font-medium text-sm truncate" title={clientName}>{clientName}</div>;
       },
-      size: 200,
+      size: 160,
       enableSorting: false,
     }),
     columnHelper.accessor((row) => row.price_details?.final_selling_price || 0, {
       id: 'total',
       header: () => (
-        <div className="flex items-center gap-2">
-          <DollarSign className="w-4 h-4" />
-          Total
+        <div className="flex items-center">
+          {/* <DollarSign className="w-3.5 h-3.5" /> */}
+          <span>Total</span>
         </div>
       ),
       cell: ({ row }) => {
@@ -670,17 +667,13 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         const versionGroup = quoteToGroupMap.get(quote.id);
 
         if (versionGroup && versionGroup.hasMultipleVersions) {
-          return (
-            <div className="text-sm italic text-gray-500">
-              Range
-            </div>
-          );
+          return <div className="text-sm italic text-gray-500">Range</div>;
         }
 
         const total = quote.price_details?.final_selling_price || 0;
         return <div className="font-semibold text-sm">{formatCurrency(total)}</div>;
       },
-      size: 150,
+      size: 110,
       enableSorting: true,
     }),
     columnHelper.accessor('status', {
@@ -701,7 +694,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
             value={currentStatus || "Incomplete"}
             onValueChange={(value) => handleStatusChange(row.original.id, currentStatus || "Incomplete", value)}
           >
-            <SelectTrigger className={`w-32 h-8 border-0 text-xs px-3 ${statusColors[currentStatus as keyof typeof statusColors]}`}>
+            <SelectTrigger className={`w-28 h-7 border-0 text-xs px-2 ${statusColors[currentStatus as keyof typeof statusColors]}`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -714,84 +707,84 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           </Select>
         );
       },
-      size: 150,
+      size: 130,
       filterFn: 'equals',
       enableSorting: false,
     }),
-    columnHelper.accessor('quote_source', {
-      id: 'quote_source',
-      header: 'Quote Source',
-      cell: ({ row, getValue }) => {
-        const quote = row.original;
-        const versionGroup = quoteToGroupMap.get(quote.id);
-        const currentValue = getValue();
+    // columnHelper.accessor('quote_source', {
+    //   id: 'quote_source',
+    //   header: 'Quote Source',
+    //   cell: ({ row, getValue }) => {
+    //     const quote = row.original;
+    //     const versionGroup = quoteToGroupMap.get(quote.id);
+    //     const currentValue = getValue();
 
-        if (versionGroup && versionGroup.hasMultipleVersions) {
-          return <div className="text-sm italic text-gray-500">Various</div>;
-        }
+    //     if (versionGroup && versionGroup.hasMultipleVersions) {
+    //       return <div className="text-sm italic text-gray-500">Various</div>;
+    //     }
 
-        // Check if current value is a custom source (not in standard options)
-        const isCustomSource = currentValue && !getQuoteSourceOptions().some(opt => opt.value === currentValue);
+    //     // Check if current value is a custom source (not in standard options)
+    //     const isCustomSource = currentValue && !getQuoteSourceOptions().some(opt => opt.value === currentValue);
 
-        return (
-          <Select
-            value={currentValue || ""}
-            onValueChange={(value) => onQuoteSourceChange(row.original.id, value)}
-          >
-            <SelectTrigger className={`w-full h-8 border-0 text-xs px-3 ${
-              isCustomSource
-                ? "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
-                : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-            }`}>
-              <SelectValue placeholder="Select source" />
-            </SelectTrigger>
-            <SelectContent>
-              {/* Show current custom value first if it exists */}
-              {isCustomSource && (
-                <>
-                  <SelectItem value={currentValue!} className="bg-amber-50 dark:bg-amber-950/30">
-                    {formatQuoteSource(currentValue)}
-                  </SelectItem>
-                  <div className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400 border-b">
-                    Standard Options:
-                  </div>
-                </>
-              )}
-              {getQuoteSourceOptions().map((source) => (
-                <SelectItem key={source.value} value={source.value}>
-                  {source.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-      },
-      size: 180,
-      filterFn: 'equals',
-      enableSorting: false,
-    }),
-    columnHelper.accessor('created_by_name', {
-      id: 'created_by',
-      header: 'Created By',
-      cell: ({ row }) => {
-        const quote = row.original;
-        const versionGroup = quoteToGroupMap.get(quote.id);
+    //     return (
+    //       <Select
+    //         value={currentValue || ""}
+    //         onValueChange={(value) => onQuoteSourceChange(row.original.id, value)}
+    //       >
+    //         <SelectTrigger className={`w-full h-8 border-0 text-xs px-3 ${
+    //           isCustomSource
+    //             ? "bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+    //             : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+    //         }`}>
+    //           <SelectValue placeholder="Select source" />
+    //         </SelectTrigger>
+    //         <SelectContent>
+    //           {/* Show current custom value first if it exists */}
+    //           {isCustomSource && (
+    //             <>
+    //               <SelectItem value={currentValue!} className="bg-amber-50 dark:bg-amber-950/30">
+    //                 {formatQuoteSource(currentValue)}
+    //               </SelectItem>
+    //               <div className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400 border-b">
+    //                 Standard Options:
+    //               </div>
+    //             </>
+    //           )}
+    //           {getQuoteSourceOptions().map((source) => (
+    //             <SelectItem key={source.value} value={source.value}>
+    //               {source.label}
+    //             </SelectItem>
+    //           ))}
+    //         </SelectContent>
+    //       </Select>
+    //     );
+    //   },
+    //   size: 180,
+    //   filterFn: 'equals',
+    //   enableSorting: false,
+    // }),
+    // columnHelper.accessor('created_by_name', {
+    //   id: 'created_by',
+    //   header: 'Created By',
+    //   cell: ({ row }) => {
+    //     const quote = row.original;
+    //     const versionGroup = quoteToGroupMap.get(quote.id);
 
-        if (versionGroup && versionGroup.hasMultipleVersions) {
-          return <div className="text-sm italic text-gray-500">Various</div>;
-        }
+    //     if (versionGroup && versionGroup.hasMultipleVersions) {
+    //       return <div className="text-sm italic text-gray-500">Various</div>;
+    //     }
 
-        return <div className="text-sm text-gray-600">{quote.created_by_name || 'Unknown'}</div>;
-      },
-      size: 200,
-      enableSorting: false,
-    }),
+    //     return <div className="text-sm text-gray-600">{quote.created_by_name || 'Unknown'}</div>;
+    //   },
+    //   size: 200,
+    //   enableSorting: false,
+    // }),
     columnHelper.accessor('created_at', {
       id: 'created_at',
       header: () => (
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4" />
-          Created At
+        <div className="flex items-center">
+          {/* <Calendar className="w-3.5 h-3.5" /> */}
+          <span>Created</span>
         </div>
       ),
       cell: ({ row, getValue }) => {
@@ -799,39 +792,39 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         const versionGroup = quoteToGroupMap.get(quote.id);
 
         if (versionGroup && versionGroup.hasMultipleVersions) {
-          return <div className="text-sm italic text-gray-500">Various</div>;
+          return <div className="text-xs italic text-gray-500">Various</div>;
         }
 
         return (
-          <div className="text-sm text-gray-600">
+          <div className="text-xs text-gray-600">
             {formatDateEST(getValue())}
           </div>
         );
       },
-      size: 200,
+      size: 110,
       enableSorting: true,
     }),
-    columnHelper.accessor('updated_at', {
-      id: 'updated_at',
-      header: () => (
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4" />
-          Last Updated
-        </div>
-      ),
-      cell: ({ row, getValue }) => {
-        const quote = row.original;
-        const versionGroup = quoteToGroupMap.get(quote.id);
+    // columnHelper.accessor('updated_at', {
+    //   id: 'updated_at',
+    //   header: () => (
+    //     <div className="flex items-center gap-2">
+    //       <Calendar className="w-4 h-4" />
+    //       Last Updated
+    //     </div>
+    //   ),
+    //   cell: ({ row, getValue }) => {
+    //     const quote = row.original;
+    //     const versionGroup = quoteToGroupMap.get(quote.id);
 
-        if (versionGroup && versionGroup.hasMultipleVersions) {
-          return <div className="text-sm italic text-gray-500">Various</div>;
-        }
+    //     if (versionGroup && versionGroup.hasMultipleVersions) {
+    //       return <div className="text-sm italic text-gray-500">Various</div>;
+    //     }
 
-        return <div className="text-sm text-gray-600">{formatLastUpdated(getValue())}</div>;
-      },
-      size: 200,
-      enableSorting: true,
-    }),
+    //     return <div className="text-sm text-gray-600">{formatLastUpdated(getValue())}</div>;
+    //   },
+    //   size: 200,
+    //   enableSorting: true,
+    // }),
     columnHelper.display({
       id: 'actions',
       header: 'Actions',
@@ -959,7 +952,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
           </DropdownMenu>
         );
       },
-      size: 80,
+      size: 60,
       enableSorting: false,
     }),
   ], [onEditQuote, onDeleteQuote, onStatusChange, onQuoteSourceChange, onCreateVersion, onSetReminder, onArchiveQuote, onUnarchiveQuote, isArchiveView, forceUpdate]);
@@ -1404,13 +1397,11 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         </div>
 
         <div className="relative">
-          {/* Scrollable Table Area */}
-          <div className="overflow-x-auto overflow-y-auto max-h-[600px] scroll-smooth [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+          {/* Table Area */}
+          <div className="overflow-y-auto max-h-[600px] scroll-smooth [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
             <table
-              className="border-collapse font-table"
+              className="w-full border-collapse font-table"
               style={{
-                width: Math.max(table.getTotalSize(), 1900),
-                minWidth: '1900px',
                 fontFamily: 'var(--font-table)',
                 tableLayout: 'fixed'
               }}
