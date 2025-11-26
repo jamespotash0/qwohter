@@ -1,12 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { PageContent } from '@/components/common/layout';
 import { Project, ProjectPriority } from '@/services/boardService';
-import {
-  initializeTimelineMilestones,
-  updateMilestone,
-  formatMilestoneLabel,
-  type TimelineMilestone,
-} from '@/lib/timelineMilestones';
+import { type TimelineMilestone } from '@/lib/timelineMilestones';
+import { TimelineVisualizer } from '@/components/features/board/TimelineVisualizer';
 import {
   useProjects,
   useWorkflowColumns,
@@ -111,24 +107,6 @@ export default function Board() {
   const selectedProject = selectedProjectId
     ? projects.find(p => p.id === selectedProjectId) || null
     : null;
-
-  // Initialize timeline milestones if they don't exist
-  useEffect(() => {
-    if (!selectedProject) return;
-
-    // If project doesn't have milestones, initialize them
-    if (!selectedProject.timeline_milestones || selectedProject.timeline_milestones.length === 0) {
-      const initialMilestones = initializeTimelineMilestones(
-        selectedProject.quote,
-        selectedProject.completion_date
-      );
-
-      updateProject({
-        id: selectedProject.id,
-        updates: { timeline_milestones: initialMilestones }
-      });
-    }
-  }, [selectedProject?.id]);
 
   // React Query automatically handles:
   // - Data fetching via useProjects/useWorkflowColumns
@@ -1199,46 +1177,17 @@ export default function Board() {
 
               {/* Project Timeline */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Project Timeline</h3>
-                <div className="space-y-3 text-sm">
-                  {/* Won Date (always show) */}
-                  <div className="flex items-center gap-3">
-                    <span className="text-gray-500 min-w-[140px]">Won:</span>
-                    <span className="text-gray-900">{formatDateEST(selectedProject.created_at)}</span>
-                  </div>
-
-                  {/* Dynamic Milestones */}
-                  {selectedProject.timeline_milestones?.map((milestone) => (
-                    <div key={milestone.type} className="flex items-center gap-3">
-                      <span className="text-gray-500 min-w-[140px]">
-                        {milestone.label || formatMilestoneLabel(milestone.type)}:
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="date"
-                          value={milestone.date || ''}
-                          onChange={(e) => {
-                            const newDate = e.target.value || null;
-                            const updatedMilestones = updateMilestone(
-                              selectedProject.timeline_milestones || [],
-                              milestone.type,
-                              newDate
-                            );
-                            updateProject({
-                              id: selectedProject.id,
-                              updates: { timeline_milestones: updatedMilestones }
-                            });
-                          }}
-                          className="text-xs h-7 w-40"
-                          placeholder={milestone.auto_calculated ? "Auto-calc" : "Not set"}
-                        />
-                        {milestone.auto_calculated && milestone.date && (
-                          <span className="text-xs text-blue-600 font-medium">Auto</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">Project Timeline</h3>
+                <TimelineVisualizer
+                  milestones={selectedProject.timeline_milestones || []}
+                  wonDate={selectedProject.created_at}
+                  onMilestoneUpdate={(updatedMilestones) => {
+                    updateProject({
+                      id: selectedProject.id,
+                      updates: { timeline_milestones: updatedMilestones }
+                    });
+                  }}
+                />
               </div>
 
               {/* Documents/Links */}
