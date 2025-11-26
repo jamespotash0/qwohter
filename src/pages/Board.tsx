@@ -1202,31 +1202,22 @@ export default function Board() {
                     </div>
                   )}
 
-                  {/* Quick Actions */}
-                  <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex-1 h-8 text-xs justify-start"
-                      onClick={() => {
-                        window.location.href = `/editor/${selectedProject.quote?.proposal_number}`;
-                      }}
-                    >
-                      <FileIcon className="w-3.5 h-3.5 mr-1.5" />
-                      View Quote
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex-1 h-8 text-xs justify-start"
-                      onClick={() => {
-                        console.log('View pricing breakdown');
-                      }}
-                    >
-                      <CurrencyDollarIcon className="w-3.5 h-3.5 mr-1.5" />
-                      Pricing
-                    </Button>
-                  </div>
+                  {/* Quick Actions - Only show if quote exists */}
+                  {selectedProject.quote?.proposal_number && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full h-8 text-xs justify-start"
+                        onClick={() => {
+                          window.location.href = `/editor/${selectedProject.quote.proposal_number}`;
+                        }}
+                      >
+                        <FileIcon className="w-3.5 h-3.5 mr-1.5" />
+                        View Quote
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 )}
               </div>
