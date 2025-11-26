@@ -14,6 +14,7 @@ export interface TimelineMilestone {
   label: string;           // User-defined milestone name
   date: string | null;     // ISO date string (YYYY-MM-DD) or null
   notes?: string;          // Optional notes about this milestone
+  completed?: boolean;     // Whether milestone is completed (for tracking overdue)
   order: number;           // Display order on timeline (0, 1, 2, 3...)
   created_at: string;      // When milestone was created (ISO timestamp)
 }
@@ -62,7 +63,7 @@ export function addMilestone(
 export function updateMilestone(
   milestones: TimelineMilestone[],
   milestoneId: string,
-  updates: Partial<Pick<TimelineMilestone, 'label' | 'date' | 'notes'>>
+  updates: Partial<Pick<TimelineMilestone, 'label' | 'date' | 'notes' | 'completed'>>
 ): TimelineMilestone[] {
   return milestones.map(m =>
     m.id === milestoneId ? { ...m, ...updates } : m

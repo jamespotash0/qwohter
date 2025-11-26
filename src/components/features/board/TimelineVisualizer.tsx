@@ -20,7 +20,7 @@ import {
   deleteMilestone
 } from '@/lib/timelineMilestones';
 import { formatDateEST } from '@/utils/dateUtils';
-import { Plus, Trash2, Edit2, Calendar, CheckCircle2, Circle } from 'lucide-react';
+import { Plus, Trash2, Edit2, Calendar, CheckCircle2, Circle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface TimelineVisualizerProps {
   milestones: TimelineMilestone[];
@@ -42,6 +42,7 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
   const [newMilestoneLabel, setNewMilestoneLabel] = useState('');
   const [newMilestoneDate, setNewMilestoneDate] = useState('');
   const [newMilestoneNotes, setNewMilestoneNotes] = useState('');
+  const [showAllMilestones, setShowAllMilestones] = useState(false);
 
   // Use external state if provided, otherwise use internal state
   const isAddingMilestone = externalIsAddingMilestone !== undefined ? externalIsAddingMilestone : internalIsAddingMilestone;
@@ -87,22 +88,35 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
         label: 'Project Won',
         date: wonDate,
         notes: undefined,
+        completed: true,
         isWon: true,
         isPast: parseLocalDate(wonDate).getTime() < todayTime,
         isToday: false,
+        isOverdue: false,
+        daysUntil: 0,
       },
       ...sortedMilestones
         .filter(m => m.date) // Only show milestones with dates
         .map(m => {
           const milestoneTime = parseLocalDate(m.date!).getTime();
+          const isPast = milestoneTime < todayTime;
+          const isCompleted = m.completed || false;
+          const isOverdue = isPast && !isCompleted;
+
+          // Calculate days until milestone
+          const daysDiff = Math.ceil((milestoneTime - todayTime) / (1000 * 60 * 60 * 24));
+
           return {
             id: m.id,
             label: m.label,
             date: m.date!,
             notes: m.notes,
+            completed: isCompleted,
             isWon: false,
-            isPast: milestoneTime < todayTime,
+            isPast,
             isToday: milestoneTime === todayTime,
+            isOverdue,
+            daysUntil: daysDiff,
           };
         }),
     ];
@@ -130,9 +144,13 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
     setIsAddingMilestone(false);
   };
 
-  const handleUpdateMilestone = (milestoneId: string, updates: Partial<Pick<TimelineMilestone, 'label' | 'date' | 'notes'>>) => {
+  const handleUpdateMilestone = (milestoneId: string, updates: Partial<Pick<TimelineMilestone, 'label' | 'date' | 'notes' | 'completed'>>) => {
     const updated = updateMilestone(sortedMilestones, milestoneId, updates);
     onMilestoneUpdate(updated);
+  };
+
+  const handleToggleComplete = (milestoneId: string, currentlyCompleted: boolean) => {
+    handleUpdateMilestone(milestoneId, { completed: !currentlyCompleted });
   };
 
   const handleDeleteMilestone = (milestoneId: string) => {
@@ -141,12 +159,18 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
     setEditingId(null);
   };
 
+  // Show first 4 items (won + 3 milestones) unless expanded
+  const visibleItems = showAllMilestones ? allItems : allItems.slice(0, 4);
+  const hiddenCount = allItems.length - 4;
+
   return (
     <div className="space-y-4">
       {/* Timeline Items */}
       <div className="space-y-0">
-        {allItems.map((item, index) => {
-          const isLast = index === allItems.length - 1;
+        {visibleItems.map((item, index) => {
+          const isLast = showAllMilestones
+            ? index === allItems.length - 1
+            : index === visibleItems.length - 1;
 
           return (
             <div key={item.id} className="relative flex gap-4">
@@ -156,15 +180,17 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
                 <div className={`w-3 h-3 rounded-full mt-1.5 z-10 ${
                   item.isWon
                     ? 'bg-green-500 ring-4 ring-green-100'
-                    : item.isPast
-                      ? 'bg-blue-500 ring-4 ring-blue-100'
-                      : 'bg-gray-300 ring-4 ring-gray-100'
+                    : item.completed
+                      ? 'bg-green-500 ring-4 ring-green-100'
+                      : item.isOverdue
+                        ? 'bg-orange-500 ring-4 ring-orange-100'
+                        : 'bg-gray-300 ring-4 ring-gray-100'
                 }`} />
 
                 {/* Connecting Line */}
                 {!isLast && (
                   <div className={`w-0.5 flex-1 ${
-                    item.isPast ? 'bg-blue-200' : 'bg-gray-200'
+                    item.completed ? 'bg-green-200' : item.isOverdue ? 'bg-orange-200' : 'bg-gray-200'
                   }`} style={{ minHeight: '40px' }} />
                 )}
               </div>
@@ -174,9 +200,11 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
                 <div className={`rounded-lg border p-3 transition-all ${
                   item.isToday
                     ? 'bg-orange-50 border-orange-300 shadow-sm'
-                    : item.isPast
-                      ? 'bg-white border-gray-200'
-                      : 'bg-gray-50 border-gray-200'
+                    : item.isOverdue
+                      ? 'bg-orange-50 border-orange-200'
+                      : item.completed
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-gray-50 border-gray-200'
                 }`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -200,19 +228,39 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
                         </span>
                       </div>
 
-                      {/* Status Badge */}
-                      <div className="mt-2">
-                        {item.isPast ? (
-                          <div className="flex items-center gap-1.5 text-xs text-green-700">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Completed</span>
+                      {/* Status Badge with Checkbox */}
+                      <div className="mt-2 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          {!item.isWon && (
+                            <button
+                              onClick={() => handleToggleComplete(item.id, item.completed)}
+                              className="flex-shrink-0 hover:opacity-70 transition-opacity"
+                              title={item.completed ? "Mark as incomplete" : "Mark as complete"}
+                            >
+                              {item.completed ? (
+                                <CheckCircle2 className="w-4 h-4 text-green-600 cursor-pointer" />
+                              ) : (
+                                <Circle className="w-4 h-4 text-gray-400 cursor-pointer" />
+                              )}
+                            </button>
+                          )}
+                          <div className="flex items-center gap-1.5 text-xs">
+                            {item.completed ? (
+                              <span className="text-green-700 font-medium">Completed</span>
+                            ) : item.isOverdue ? (
+                              <>
+                                <AlertCircle className="w-3.5 h-3.5 text-orange-600" />
+                                <span className="text-orange-600 font-medium">Overdue</span>
+                              </>
+                            ) : item.isToday ? (
+                              <span className="text-orange-600 font-medium">Today</span>
+                            ) : (
+                              <span className="text-gray-500">
+                                {item.daysUntil === 1 ? 'Tomorrow' : `In ${item.daysUntil} days`}
+                              </span>
+                            )}
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                            <Circle className="w-3.5 h-3.5" />
-                            <span>Upcoming</span>
-                          </div>
-                        )}
+                        </div>
                       </div>
 
                       {/* Notes */}
@@ -296,6 +344,26 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
           );
         })}
       </div>
+
+      {/* Show More/Less Button */}
+      {hiddenCount > 0 && (
+        <button
+          onClick={() => setShowAllMilestones(!showAllMilestones)}
+          className="w-full flex items-center justify-center gap-2 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+        >
+          {showAllMilestones ? (
+            <>
+              <ChevronUp className="w-4 h-4" />
+              Show less
+            </>
+          ) : (
+            <>
+              <ChevronDown className="w-4 h-4" />
+              Show {hiddenCount} more milestone{hiddenCount !== 1 ? 's' : ''}
+            </>
+          )}
+        </button>
+      )}
 
       {/* Add Milestone Form */}
       {isAddingMilestone && (

@@ -99,6 +99,7 @@ export default function Board() {
   const [newColumnName, setNewColumnName] = useState('');
   const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(new Set());
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const columnRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const isAnimatingRef = useRef(false);
   const lastColumnDropTarget = useRef<{ columnId: string; side: 'left' | 'right' } | null>(null);
@@ -113,6 +114,18 @@ export default function Board() {
   // - Realtime subscriptions (built into hooks)
   // - Cleanup on unmount
   // No manual initialization needed!
+
+  const toggleSection = (sectionId: string) => {
+    setCollapsedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sectionId)) {
+        newSet.delete(sectionId);
+      } else {
+        newSet.add(sectionId);
+      }
+      return newSet;
+    });
+  };
 
   const handleDragStart = (e: React.DragEvent, projectId: string) => {
     setDraggedProject(projectId);
@@ -1132,10 +1145,21 @@ export default function Board() {
                 </div>
               </div>
 
-              {/* Quick Summary */}
+              {/* Project Summary */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">Project Summary</h3>
-                <div className="space-y-2 text-sm">
+                <button
+                  onClick={() => toggleSection('summary')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
+                >
+                  <span>Project Summary</span>
+                  {collapsedSections.has('summary') ? (
+                    <CaretRightIcon className="w-4 h-4" />
+                  ) : (
+                    <CaretDownIcon className="w-4 h-4" />
+                  )}
+                </button>
+                {!collapsedSections.has('summary') && (
+                  <div className="space-y-2 text-sm">
                   {selectedProject.quote?.job_details?.client_name && (
                     <div className="flex gap-3">
                       <span className="text-gray-500 min-w-[100px]">Client:</span>
@@ -1173,50 +1197,76 @@ export default function Board() {
                     </div>
                   )}
                 </div>
+                )}
               </div>
 
               {/* Project Timeline */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-1">Project Timeline</h3>
-                <TimelineVisualizer
-                  milestones={selectedProject.timeline_milestones || []}
-                  wonDate={selectedProject.created_at}
-                  onMilestoneUpdate={(updatedMilestones) => {
-                    updateProject({
-                      id: selectedProject.id,
-                      updates: { timeline_milestones: updatedMilestones }
-                    });
-                  }}
-                />
+                <button
+                  onClick={() => toggleSection('timeline')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
+                >
+                  <span>Project Timeline</span>
+                  {collapsedSections.has('timeline') ? (
+                    <CaretRightIcon className="w-4 h-4" />
+                  ) : (
+                    <CaretDownIcon className="w-4 h-4" />
+                  )}
+                </button>
+                {!collapsedSections.has('timeline') && (
+                  <TimelineVisualizer
+                    milestones={selectedProject.timeline_milestones || []}
+                    wonDate={selectedProject.created_at}
+                    onMilestoneUpdate={(updatedMilestones) => {
+                      updateProject({
+                        id: selectedProject.id,
+                        updates: { timeline_milestones: updatedMilestones }
+                      });
+                    }}
+                  />
+                )}
               </div>
 
               {/* Documents/Links */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">Documents</h3>
-                <div className="space-y-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      window.location.href = `/editor/${selectedProject.quote?.proposal_number}`;
-                    }}
-                  >
-                    <FileIcon className="w-4 h-4 mr-2" />
-                    View Full Quote
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      console.log('View pricing breakdown');
-                    }}
-                  >
-                    <CurrencyDollarIcon className="w-4 h-4 mr-2" />
-                    View Pricing Breakdown
-                  </Button>
-                </div>
+                <button
+                  onClick={() => toggleSection('documents')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
+                >
+                  <span>Documents</span>
+                  {collapsedSections.has('documents') ? (
+                    <CaretRightIcon className="w-4 h-4" />
+                  ) : (
+                    <CaretDownIcon className="w-4 h-4" />
+                  )}
+                </button>
+                {!collapsedSections.has('documents') && (
+                  <div className="space-y-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        window.location.href = `/editor/${selectedProject.quote?.proposal_number}`;
+                      }}
+                    >
+                      <FileIcon className="w-4 h-4 mr-2" />
+                      View Full Quote
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        console.log('View pricing breakdown');
+                      }}
+                    >
+                      <CurrencyDollarIcon className="w-4 h-4 mr-2" />
+                      View Pricing Breakdown
+                    </Button>
+                    {/* TODO: Add file upload/attachment UI here */}
+                  </div>
+                )}
               </div>
             </div>
           </div>
