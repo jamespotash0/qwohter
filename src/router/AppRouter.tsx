@@ -91,8 +91,9 @@ const QuoteEditIncomplete = lazy(() => import("@/pages/QuoteEditIncomplete"));
 // const Forms = lazy(() => import("@/pages/Forms"));
 // const FormBuilderV2 = lazy(() => import("@/pages/FormBuilderV2"));
 
-// Board page
+// Board pages
 const Board = lazy(() => import("@/pages/Board"));
+const TaskBoard = lazy(() => import("@/pages/TaskBoard"));
 
 // Contacts page
 const Contacts = lazy(() => import("@/pages/Contacts"));
@@ -147,6 +148,7 @@ export const AppRouter = () => (
 
           {/* Board workflow */}
           <Route path="/board" element={<Board />} />
+          <Route path="/task-board" element={<TaskBoard />} />
 
           {/* Contacts CRM */}
           <Route path="/contacts" element={<Contacts />} />

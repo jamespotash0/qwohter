@@ -1,5 +1,5 @@
 import { Clock, Check, ChevronDown, LogOut } from "lucide-react";
-import { House, FileText, ChartBar, Users, List, Gear, Kanban, Sidebar as SidebarIcon, Lock, SquaresFour, Article, Buildings, AddressBook } from "@phosphor-icons/react";
+import { House, FileText, ChartBar, Gear, Kanban, Sidebar as SidebarIcon, Lock, SquaresFour, Article, Buildings, AddressBook, CheckSquare, CaretDown } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -19,7 +19,22 @@ interface AppSidebarProps {
   onLogout: () => void;
 }
 
-const menuItems = [
+interface SubMenuItem {
+  title: string;
+  path: string;
+  icon?: React.ComponentType<{ size?: number; weight?: 'regular' | 'fill'; className?: string }>;
+}
+
+interface MenuItem {
+  title: string;
+  icon: React.ComponentType<{ size?: number; weight?: 'regular' | 'fill'; className?: string }>;
+  path: string;
+  roles: string[];
+  disabled?: boolean;
+  subItems?: SubMenuItem[];
+}
+
+const menuItems: MenuItem[] = [
   {
     title: "Dashboard",
     icon: House,
@@ -27,10 +42,14 @@ const menuItems = [
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
   {
-    title: "Project Board",
+    title: "Board",
     icon: Kanban,
     path: "/board",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
+    subItems: [
+      { title: "Task Board", path: "/task-board", icon: CheckSquare },
+      { title: "Project Board", path: "/board", icon: Kanban },
+    ],
   },
   {
     title: "Proposals",
@@ -87,10 +106,20 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [clickedItem, setClickedItem] = useState<string | null>(null);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const previousPathRef = useRef<string>('');
   const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
   const [userOrganizations, setUserOrganizations] = useState<UserOrganization[]>([]);
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(false);
+
+  // Toggle expanded state for menu items with subItems
+  const toggleExpanded = (title: string) => {
+    setExpandedItems(prev =>
+      prev.includes(title)
+        ? prev.filter(t => t !== title)
+        : [...prev, title]
+    );
+  };
 
   // Use React Query hooks for organization data
   const user = useUser();
@@ -421,12 +450,167 @@ export function AppSidebar({
               {menuItems
                 .filter(item => !currentUserRole || item.roles.includes(currentUserRole))
                 .map((item, index) => {
-                const isActive = location.pathname === item.path;
+                const isActive = location.pathname === item.path ||
+                  (item.subItems?.some(sub => location.pathname === sub.path) ?? false);
                 const Icon = item.icon;
                 const isDisabled = item.disabled || false;
+                const hasSubItems = item.subItems && item.subItems.length > 0;
 
                 const isClicked = clickedItem === item.title;
 
+                // Render expandable menu for items with subItems
+                // Option 4: Click navigates to default path, separate caret toggles expand
+                if (hasSubItems) {
+                  const isExpanded = expandedItems.includes(item.title);
+
+                  return (
+                    <div key={item.title}>
+                      <SidebarMenuItem
+                        className={`${
+                          isCollapsed
+                            ? 'animate-in fade-in zoom-in-95 duration-200'
+                            : 'animate-in fade-in slide-in-from-left-3 duration-300'
+                        }`}
+                        style={{
+                          animationDelay: `${index * 40}ms`,
+                          animationFillMode: 'backwards'
+                        }}
+                      >
+                        {/* Split button: main area navigates, caret toggles expand */}
+                        <div
+                          className={`h-10 flex items-center relative group/item overflow-hidden ${
+                            isCollapsed ? 'justify-center w-full px-0' : 'ml-[-2px] mr-[-10px] pl-[8px] pr-[2px]'
+                          } ${
+                            isActive
+                              ? 'text-[var(--sidebar-nav-text-active)] shadow-sm scale-[1.01]'
+                              : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)]'
+                          } transition-all duration-300 ease-out`}
+                          style={{
+                            borderRadius: 'var(--sidebar-nav-border-radius)',
+                            ...(isActive
+                              ? {
+                                  backgroundColor: 'var(--sidebar-nav-bg-active)',
+                                  color: 'var(--sidebar-nav-text-active)',
+                                }
+                              : {})
+                          }}
+                        >
+                          {/* Main clickable area - navigates to default path */}
+                          <button
+                            className="flex items-center gap-3 flex-1 h-full cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={(e) => handleNavigate(item.path, item.title, e)}
+                          >
+                            <div className={`transition-all duration-300 ${isActive ? 'scale-110' : 'scale-100'}`}>
+                              <Icon
+                                size={18}
+                                weight={isActive ? 'fill' : 'regular'}
+                                className={`transition-all duration-300 ${
+                                  isActive
+                                    ? 'text-[var(--sidebar-icon-active)]'
+                                    : 'text-[var(--sidebar-icon-default)] group-hover/item:text-[var(--sidebar-icon-hover)]'
+                                }`}
+                              />
+                            </div>
+                            {!isCollapsed && (
+                              <span className={`font-inter font-normal tracking-tight transition-all duration-300 whitespace-nowrap ${
+                                isActive ? 'font-medium' : ''
+                              }`}>
+                                {item.title}
+                              </span>
+                            )}
+                          </button>
+
+                          {/* Separate caret button - toggles expand */}
+                          {!isCollapsed && (
+                            <button
+                              className="h-full px-2.5 flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-colors ml-auto"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpanded(item.title);
+                              }}
+                              title={isExpanded ? 'Collapse' : 'Expand'}
+                            >
+                              <CaretDown
+                                size={14}
+                                weight="bold"
+                                className={`text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                              />
+                            </button>
+                          )}
+                        </div>
+                      </SidebarMenuItem>
+
+                      {/* Expandable sub-items */}
+                      {!isCollapsed && isExpanded && (
+                        <div className="ml-6 mt-1 space-y-0.5 animate-in slide-in-from-top-2 fade-in duration-200">
+                          {item.subItems?.map((subItem) => {
+                            const SubIcon = subItem.icon;
+                            const isSubActive = location.pathname === subItem.path;
+                            return (
+                              <SidebarMenuItem key={subItem.path}>
+                                <SidebarMenuButton
+                                  className={`h-9 flex items-center pl-2 pr-3 group/subitem ${
+                                    isSubActive
+                                      ? 'text-[var(--sidebar-nav-text-active)] bg-[var(--sidebar-nav-bg-active)]'
+                                      : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)]'
+                                  } transition-all duration-200`}
+                                  style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
+                                  onClick={(e) => handleNavigate(subItem.path, subItem.title, e)}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    {SubIcon && (
+                                      <SubIcon
+                                        size={16}
+                                        weight={isSubActive ? 'fill' : 'regular'}
+                                        className={`transition-all duration-200 ${
+                                          isSubActive
+                                            ? 'text-[var(--sidebar-icon-active)]'
+                                            : 'text-[var(--sidebar-icon-default)] group-hover/subitem:text-[var(--sidebar-icon-hover)]'
+                                        }`}
+                                      />
+                                    )}
+                                    <span className={`text-sm ${isSubActive ? 'font-medium' : ''}`}>
+                                      {subItem.title}
+                                    </span>
+                                  </div>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Collapsed view - show dropdown on click */}
+                      {isCollapsed && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <div className="absolute inset-0 cursor-pointer" style={{ marginTop: '-40px' }} />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent side="right" align="start" className="w-[180px]">
+                            {item.subItems?.map((subItem) => {
+                              const SubIcon = subItem.icon;
+                              const isSubActive = location.pathname === subItem.path;
+                              return (
+                                <DropdownMenuItem
+                                  key={subItem.path}
+                                  onClick={() => handleNavigate(subItem.path, subItem.title)}
+                                  className={`cursor-pointer ${isSubActive ? 'bg-gray-100' : ''}`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {SubIcon && <SubIcon size={16} weight={isSubActive ? 'fill' : 'regular'} />}
+                                    <span className={isSubActive ? 'font-medium' : ''}>{subItem.title}</span>
+                                  </div>
+                                </DropdownMenuItem>
+                              );
+                            })}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Regular menu item (no subItems)
                 return (
                   <SidebarMenuItem
                     key={item.title}

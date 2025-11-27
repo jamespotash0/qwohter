@@ -5,6 +5,7 @@ import { type TimelineMilestone } from '@/lib/timelineMilestones';
 import { TimelineVisualizer } from '@/components/features/board/TimelineVisualizer';
 import { ProjectAttachments } from '@/components/features/board/ProjectAttachments';
 import { AIMilestoneSuggestions } from '@/components/features/board/AIMilestoneSuggestions';
+import { ProjectTasks } from '@/components/features/board/ProjectTasks';
 import { useProjectAttachments } from '@/hooks/useProjectAttachments';
 import { AIMilestoneService } from '@/services/aiMilestoneService';
 import {
@@ -674,7 +675,7 @@ export default function Board() {
                   )}
 
                   <div
-                    className={`flex-shrink-0 transition-all duration-300 ease-in-out rounded-lg flex flex-col h-full ${
+                    className={`flex-shrink-0 transition-all duration-300 ease-in-out rounded-lg flex flex-col max-h-[calc(100vh-10rem)] ${
                       isCollapsed ? 'w-12' : 'w-72'
                     } ${draggedColumnId === column.id ? 'opacity-40 bg-gray-200 border-2 border-dashed border-gray-400' : 'bg-gray-50'} ${
                       dragOverColumn === column.name && !draggedColumnId ? 'ring-2 ring-blue-400 bg-blue-50 p-2' : 'p-0'
@@ -683,6 +684,11 @@ export default function Board() {
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, column.name)}
                   >
+                  {/* Colored Banner */}
+                  <div
+                    className="h-1.5 rounded-t-lg flex-shrink-0"
+                    style={{ backgroundColor: column.color }}
+                  />
                   {/* Column Header */}
                   <div className="mb-3 flex items-center justify-between px-2 py-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -841,7 +847,7 @@ export default function Board() {
                   {/* Column Cards */}
                   {!isCollapsed && (
                     <div
-                      className="space-y-1.5 px-2 pb-2 overflow-y-auto h-[calc(100vh-13rem)]"
+                      className="space-y-1.5 px-2 pb-2 flex-1 overflow-y-auto"
                       onDragOver={(e) => {
                         // Only handle at container level if empty, otherwise cards handle it
                         if (columnProjects.length === 0) {
@@ -1086,7 +1092,7 @@ export default function Board() {
 
           {/* Add New Column */}
           {isAddingColumn ? (
-            <div className="flex-shrink-0 w-80 bg-gray-50 rounded-lg p-3">
+            <div className="flex-shrink-0 w-72 bg-gray-50 rounded-lg p-3">
               <div className="flex items-center gap-2">
                 <Input
                   value={newColumnName}
@@ -1114,10 +1120,10 @@ export default function Board() {
               </div>
             </div>
           ) : (
-            <div className="flex-shrink-0 w-80">
+            <div className="flex-shrink-0 w-72">
               <button
                 onClick={() => setIsAddingColumn(true)}
-                className="w-50 px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-2 border-2 border-dashed border-gray-300 hover:border-gray-400"
+                className="w-full px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-2 border-2 border-dashed border-gray-300 hover:border-gray-400"
               >
                 <PlusIcon className="w-4 h-4" />
                 Add Column
@@ -1293,6 +1299,28 @@ export default function Board() {
                     }}
                     onRequestAISuggestions={handleRequestAISuggestions}
                     isGeneratingAI={isGeneratingAI}
+                  />
+                )}
+              </div>
+
+              {/* Project Tasks */}
+              <div>
+                <button
+                  onClick={() => toggleSection('tasks')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
+                >
+                  <span>Tasks</span>
+                  {collapsedSections.has('tasks') ? (
+                    <CaretRightIcon className="w-4 h-4" />
+                  ) : (
+                    <CaretDownIcon className="w-4 h-4" />
+                  )}
+                </button>
+                {!collapsedSections.has('tasks') && (
+                  <ProjectTasks
+                    projectId={selectedProject.id}
+                    organizationId={organizationId}
+                    projectName={selectedProject.quote?.project_name || 'Project'}
                   />
                 )}
               </div>
