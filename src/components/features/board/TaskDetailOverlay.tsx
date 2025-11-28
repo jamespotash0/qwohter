@@ -22,12 +22,11 @@ import {
   X,
   Trash,
   Flag,
-  Calendar,
-  User,
   FolderOpen,
   Check,
 } from '@phosphor-icons/react';
 import { ExternalLink, Link2 } from 'lucide-react';
+import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import type { ProjectTask, TaskPriority } from '@/lib/types/projectTasks';
 
 interface ProjectOption {
@@ -38,10 +37,7 @@ interface ProjectOption {
   } | null;
 }
 import type { TaskBoardColumn } from '@/lib/types/taskBoardColumns';
-import {
-  TASK_PRIORITY_LABELS,
-  TASK_PRIORITY_COLORS,
-} from '@/lib/types/projectTasks';
+import { TASK_PRIORITY_LABELS } from '@/lib/types/projectTasks';
 
 interface Member {
   user_id: string;
@@ -84,6 +80,7 @@ export function TaskDetailOverlay({
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [descriptionChanged, setDescriptionChanged] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Sync local state when task changes
   useEffect(() => {
@@ -162,12 +159,7 @@ export function TaskDetailOverlay({
               variant="ghost"
               size="sm"
               className="text-red-600 hover:text-red-700 hover:bg-red-50"
-              onClick={() => {
-                if (confirm('Delete this task?')) {
-                  onDelete(task.id);
-                  onClose();
-                }
-              }}
+              onClick={() => setShowDeleteDialog(true)}
             >
               <Trash className="w-4 h-4" />
             </Button>
@@ -176,6 +168,20 @@ export function TaskDetailOverlay({
             </Button>
           </div>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmDeleteDialog
+          open={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          onConfirm={() => {
+            onDelete(task.id);
+            setShowDeleteDialog(false);
+            onClose();
+          }}
+          title="Delete Task"
+          description="This action cannot be undone. This task will be permanently deleted."
+          itemName={task.title}
+        />
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6">

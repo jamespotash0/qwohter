@@ -55,6 +55,7 @@ import {
   Flag,
   User,
 } from '@phosphor-icons/react';
+import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 
 interface ProjectTasksProps {
   projectId: string;
@@ -68,6 +69,10 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
   const [priority, setPriority] = useState<TaskPriority>('medium');
   const [dueDate, setDueDate] = useState('');
   const [assigneeId, setAssigneeId] = useState<string>('');
+  const [deleteTaskDialog, setDeleteTaskDialog] = useState<{ open: boolean; task: ProjectTask | null }>({
+    open: false,
+    task: null,
+  });
 
   const user = useUser();
   const { data: members = [] } = useOrganizationMembers(organizationId);
@@ -200,7 +205,7 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
             Move to Done
           </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => deleteTask.mutate(task.id)}
+            onClick={() => setDeleteTaskDialog({ open: true, task })}
             className="text-red-600"
           >
             <Trash className="w-4 h-4 mr-2" />
@@ -381,6 +386,21 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
           </Button>
         </div>
       )}
+
+      {/* Delete Task Confirmation Dialog */}
+      <ConfirmDeleteDialog
+        open={deleteTaskDialog.open}
+        onOpenChange={(open) => setDeleteTaskDialog({ open, task: open ? deleteTaskDialog.task : null })}
+        onConfirm={() => {
+          if (deleteTaskDialog.task) {
+            deleteTask.mutate(deleteTaskDialog.task.id);
+            setDeleteTaskDialog({ open: false, task: null });
+          }
+        }}
+        title="Delete Task"
+        description="This action cannot be undone. This task will be permanently deleted."
+        itemName={deleteTaskDialog.task?.title}
+      />
     </div>
   );
 }

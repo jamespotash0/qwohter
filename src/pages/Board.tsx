@@ -54,6 +54,7 @@ import {
 import { formatDateEST } from '@/utils/dateUtils';
 import { Button } from '@/components/ui/button';
 import { File as FileIcon } from '@phosphor-icons/react';
+import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 
 const COLUMN_COLORS = [
   { name: 'Slate', value: '#94A3B8', icon: '⚪' },
@@ -114,6 +115,12 @@ export default function Board() {
   const [aiSuggestions, setAiSuggestions] = useState<TimelineMilestone[]>([]);
   const [aiReasoning, setAiReasoning] = useState<string>('');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+
+  // Delete confirmation state
+  const [deleteProjectDialog, setDeleteProjectDialog] = useState<{ open: boolean; project: Project | null }>({
+    open: false,
+    project: null,
+  });
 
   // Derive selected project from projects array to ensure we always have fresh data
   const selectedProject = selectedProjectId
@@ -900,7 +907,7 @@ export default function Board() {
                                     className="text-red-600 cursor-pointer"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      deleteProject(project.id);
+                                      setDeleteProjectDialog({ open: true, project });
                                     }}
                                   >
                                     <TrashIcon className="w-4 h-4 mr-2" />
@@ -1346,6 +1353,21 @@ export default function Board() {
         isOpen={showAISuggestions}
         onClose={() => setShowAISuggestions(false)}
         onAddMilestones={handleAddAIMilestones}
+      />
+
+      {/* Delete Project Confirmation Dialog */}
+      <ConfirmDeleteDialog
+        open={deleteProjectDialog.open}
+        onOpenChange={(open) => setDeleteProjectDialog({ open, project: open ? deleteProjectDialog.project : null })}
+        onConfirm={() => {
+          if (deleteProjectDialog.project) {
+            deleteProject(deleteProjectDialog.project.id);
+            setDeleteProjectDialog({ open: false, project: null });
+          }
+        }}
+        title="Delete Project"
+        description="This action cannot be undone. All tasks, attachments, and milestones associated with this project will be permanently removed."
+        itemName={deleteProjectDialog.project?.quote?.project_name || 'Untitled Project'}
       />
     </PageContent>
   );

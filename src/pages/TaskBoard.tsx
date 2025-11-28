@@ -41,6 +41,7 @@ import { useOrganizationMembers, useCurrentOrganization } from '@/hooks/queries/
 import { useProjects } from '@/hooks/queries/useBoard';
 import { useUser } from '@/auth';
 import { TaskDetailOverlay } from '@/components/features/board/TaskDetailOverlay';
+import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import type { ProjectTask } from '@/lib/types/projectTasks';
 import type { TaskBoardColumn } from '@/lib/types/taskBoardColumns';
 import { COLUMN_COLORS } from '@/lib/types/taskBoardColumns';
@@ -86,6 +87,12 @@ export default function TaskBoard() {
 
   // State for task detail overlay
   const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
+
+  // State for delete task dialog
+  const [deleteTaskDialog, setDeleteTaskDialog] = useState<{ open: boolean; task: ProjectTask | null }>({
+    open: false,
+    task: null,
+  });
 
   // State for new column
   const [isAddingColumn, setIsAddingColumn] = useState(false);
@@ -574,12 +581,33 @@ export default function TaskBoard() {
                           draggable
                           onDragStart={() => handleDragStart(task.id)}
                           onClick={() => setSelectedTask(task)}
-                          className={`group bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all duration-200 ${
+                          className={`group bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all duration-200 relative ${
                             draggedTask === task.id ? 'opacity-50' : ''
                           }`}
                         >
+                          {/* Task Menu - 3 dot ellipsis */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                onClick={(e) => e.stopPropagation()}
+                                className="absolute top-2 right-2 p-1 rounded hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <DotsThreeVertical className="w-4 h-4 text-gray-500" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenuItem
+                                onClick={() => setDeleteTaskDialog({ open: true, task })}
+                                className="flex items-center gap-2 text-red-600 focus:text-red-600"
+                              >
+                                <Trash className="w-4 h-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+
                           {/* Task Title & Reference */}
-                          <div className="mb-2">
+                          <div className="mb-2 pr-6">
                             {task.reference && (
                               <span className="text-[10px] font-mono text-gray-400 uppercase block mb-0.5">
                                 {task.reference}
@@ -997,6 +1025,21 @@ export default function TaskBoard() {
           onLinkProject={handleLinkProject}
         />
       )}
+
+      {/* Delete Task Confirmation Dialog */}
+      <ConfirmDeleteDialog
+        open={deleteTaskDialog.open}
+        onOpenChange={(open) => setDeleteTaskDialog({ open, task: open ? deleteTaskDialog.task : null })}
+        onConfirm={() => {
+          if (deleteTaskDialog.task) {
+            handleDeleteTask(deleteTaskDialog.task.id, deleteTaskDialog.task.project_id);
+          }
+          setDeleteTaskDialog({ open: false, task: null });
+        }}
+        title="Delete Task"
+        description="This action cannot be undone. This task will be permanently deleted."
+        itemName={deleteTaskDialog.task?.title}
+      />
     </PageContent>
   );
 }
