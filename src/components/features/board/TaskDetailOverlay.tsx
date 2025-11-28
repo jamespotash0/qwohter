@@ -130,7 +130,6 @@ export function TaskDetailOverlay({
     }
   };
 
-  const currentColumn = columns.find(c => c.slug === task.status);
   const proposalNumber = task.project?.quote?.proposal_number;
 
   const handleNavigateToProject = () => {
