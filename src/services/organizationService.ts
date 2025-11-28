@@ -281,3 +281,69 @@ export async function checkSubscriptionStatus(organizationId: string): Promise<S
     reason: hasAccess ? '' : 'Subscription is not active',
   };
 }
+
+// ============================================================================
+// Organization Switching
+// ============================================================================
+
+export interface SwitchOrganizationResult {
+  success: boolean;
+  organization?: Organization;
+  error?: string;
+}
+
+/**
+ * Switch to a different organization
+ * Validates membership and returns organization data
+ */
+export async function switchOrganization(
+  userId: string,
+  organizationId: string
+): Promise<SwitchOrganizationResult> {
+  try {
+    const { data: membershipData, error } = await supabase
+      .from('memberships')
+      .select(`
+        role,
+        joined_at,
+        organizations (
+          id,
+          name,
+          created_at,
+          updated_at,
+          phone_number,
+          fax_number,
+          company_address,
+          website,
+          industry,
+          found_via,
+          quote_start_number,
+          logo_data
+        )
+      `)
+      .eq('user_id', userId)
+      .eq('organization_id', organizationId)
+      .eq('status', 'Active')
+      .single();
+
+    if (error) {
+      console.error('Failed to switch organization:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!membershipData?.organizations) {
+      return { success: false, error: 'Organization not found or access denied' };
+    }
+
+    return {
+      success: true,
+      organization: membershipData.organizations as unknown as Organization,
+    };
+  } catch (error) {
+    console.error('Failed to switch organization:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}

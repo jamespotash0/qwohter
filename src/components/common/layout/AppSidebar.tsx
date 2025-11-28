@@ -1,5 +1,5 @@
 import { Clock, Check, ChevronDown, LogOut } from "lucide-react";
-import { House, FileText, ChartBar, Gear, Kanban, Sidebar as SidebarIcon, Lock, SquaresFour, Article, Buildings, AddressBook, CheckSquare, CaretDown } from "@phosphor-icons/react";
+import { House, FileText, ChartBar, Gear, Kanban, Sidebar as SidebarIcon, Lock, SquaresFour, Article, Buildings, AddressBook, CheckSquare, CaretDown, Stack } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -11,6 +11,7 @@ import { QwohterLogo } from "@/components/common/QwohterLogo";
 import { useCurrentOrganization, useOrganizationMembers } from "@/hooks/queries/useOrganization";
 import { useUser, useProfile, useAuthStatus, useSignOut } from "@/auth";
 import { stripeService } from "@/services/stripeService";
+import { switchOrganization } from "@/services/organizationService";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef } from "react";
 
@@ -22,12 +23,14 @@ interface AppSidebarProps {
 interface SubMenuItem {
   title: string;
   path: string;
-  icon?: React.ComponentType<{ size?: number; weight?: 'regular' | 'fill'; className?: string }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon?: React.ComponentType<any>;
 }
 
 interface MenuItem {
   title: string;
-  icon: React.ComponentType<{ size?: number; weight?: 'regular' | 'fill'; className?: string }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon: React.ComponentType<any>;
   path: string;
   roles: string[];
   disabled?: boolean;
@@ -43,7 +46,7 @@ const menuItems: MenuItem[] = [
   },
   {
     title: "Board",
-    icon: Kanban,
+    icon: Stack,
     path: "/board",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
     subItems: [
@@ -258,44 +261,14 @@ export function AppSidebar({
   };
 
   const handleSwitchOrganization = async (orgId: string) => {
-    if (orgId === currentOrganization?.id) return;
+    if (orgId === currentOrganization?.id || !user?.id) return;
 
-    try {
-      // Fetch the full organization data with the selected org
-      const { data: membershipData, error } = await supabase
-        .from('memberships')
-        .select(`
-          role,
-          joined_at,
-          organizations (
-            id,
-            name,
-            created_at,
-            updated_at,
-            phone_number,
-            fax_number,
-            company_address,
-            website,
-            industry,
-            found_via,
-            quote_start_number,
-            logo_data
-          )
-        `)
-        .eq('user_id', user?.id)
-        .eq('organization_id', orgId)
-        .eq('status', 'Active') //membership_status
-        .single();
+    const result = await switchOrganization(user.id, orgId);
 
-      if (error) throw error;
-
-      if (membershipData?.organizations) {
-        // Refresh the page to reload all organization-specific data with the new organization
-        // React Query will automatically fetch the new organization data
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Failed to switch organization:', error);
+    if (result.success) {
+      // Refresh the page to reload all organization-specific data
+      // React Query will automatically fetch the new organization data
+      window.location.reload();
     }
   };
 
@@ -551,7 +524,7 @@ export function AppSidebar({
                                 <SidebarMenuButton
                                   className={`h-9 flex items-center pl-2 pr-3 group/subitem ${
                                     isSubActive
-                                      ? 'text-[var(--sidebar-nav-text-active)] bg-[var(--sidebar-nav-bg-active)]'
+                                      ? 'text-[var(--sidebar-nav-text-active)] bg-[var(--sidebar-nav-bg-active)] hover:bg-[var(--sidebar-nav-bg-active)] hover:text-[var(--sidebar-nav-text-active)]'
                                       : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)]'
                                   } transition-all duration-200`}
                                   style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
@@ -594,7 +567,7 @@ export function AppSidebar({
                                 <DropdownMenuItem
                                   key={subItem.path}
                                   onClick={() => handleNavigate(subItem.path, subItem.title)}
-                                  className={`cursor-pointer ${isSubActive ? 'bg-gray-100' : ''}`}
+                                  className={`cursor-pointer ${isSubActive ? 'bg-gray-100 hover:bg-gray-100' : ''}`}
                                 >
                                   <div className="flex items-center gap-2">
                                     {SubIcon && <SubIcon size={16} weight={isSubActive ? 'fill' : 'regular'} />}
