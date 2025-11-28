@@ -727,20 +727,18 @@ export default function Board() {
                             </PopoverContent>
                           </Popover>
 
-                          {/* Drag handle - only show for non-default columns */}
-                          {!column.is_default && (
-                            <div
-                              draggable
-                              onDragStart={(e) => {
-                                e.stopPropagation();
-                                handleColumnDragStart(e, column.id);
-                              }}
-                              className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing"
-                              title="Drag to reorder column"
-                            >
-                              <DragIcon className="w-4 h-4 text-gray-400" />
-                            </div>
-                          )}
+                          {/* Drag handle */}
+                          <div
+                            draggable
+                            onDragStart={(e) => {
+                              e.stopPropagation();
+                              handleColumnDragStart(e, column.id);
+                            }}
+                            className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing"
+                            title="Drag to reorder column"
+                          >
+                            <DragIcon className="w-4 h-4 text-gray-400" />
+                          </div>
 
                           {isEditing ? (
                             <div className="flex items-center gap-1 flex-1">
@@ -777,11 +775,6 @@ export default function Board() {
                               <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600 font-normal shrink-0">
                                 {columnProjects.length}
                               </Badge>
-                              {column.is_default && (
-                                <Badge className="text-xs px-1.5 py-0 h-4 bg-white border border-white text-blue-700 font-normal pointer-events-none">
-                                  Default
-                                </Badge>
-                              )}
                             </>
                           )}
 
@@ -799,19 +792,14 @@ export default function Board() {
                                 <PencilSimpleIcon className="w-4 h-4" />
                                 Rename
                               </DropdownMenuItem>
-                              {/* Only show delete for non-default columns */}
-                              {!column.is_default && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => handleDeleteColumn(column.id)}
-                                    className="flex items-center gap-2 text-red-600 focus:text-red-600"
-                                  >
-                                    <TrashIcon className="w-4 h-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </>
-                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteColumn(column.id)}
+                                className="flex items-center gap-2 text-red-600 focus:text-red-600"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                                Delete
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </>

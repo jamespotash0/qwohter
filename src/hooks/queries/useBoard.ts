@@ -293,14 +293,6 @@ export function useDeleteWorkflowColumn(organizationId: string) {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Check if column is default
-      const columns = queryClient.getQueryData<WorkflowColumn[]>([...queryKeys.board.all, 'columns', organizationId]);
-      const column = columns?.find(c => c.id === id);
-
-      if (column?.is_default) {
-        throw new Error('Cannot delete default column. You can rename it instead.');
-      }
-
       await deleteWorkflowColumn(id);
       return id;
     },

@@ -50,7 +50,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Quote } from '@/services/quotesService';
 import { sendQuoteToProjectBoard, removeQuoteFromProjectBoard } from '@/services/quotesService';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "@/components/ui/dropdown-menu";
+import { useWorkflowColumns } from '@/hooks/queries/useBoard';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -222,6 +223,10 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   // Query client for cache invalidation
   const queryClient = useQueryClient();
 
+  // Get workflow columns for "Send to Board" column selection
+  const organizationId = quotes[0]?.organization_id;
+  const { data: workflowColumns = [] } = useWorkflowColumns(organizationId || '', !!organizationId);
+
   // Track pending status changes for confirmation
   const [pendingStatusChange, setPendingStatusChange] = useState<{
     quoteId: string;
@@ -293,10 +298,10 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   }, [search]);
 
   // Handle sending quote to project board
-  const handleSendToBoard = async (quoteId: string) => {
+  const handleSendToBoard = async (quoteId: string, columnName?: string) => {
     try {
-      console.log('Attempting to send quote to board:', quoteId);
-      const result = await sendQuoteToProjectBoard(quoteId);
+      console.log('Attempting to send quote to board:', quoteId, 'column:', columnName);
+      const result = await sendQuoteToProjectBoard(quoteId, columnName);
       console.log('Send result:', result);
 
       if (result.success) {
@@ -306,7 +311,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
 
         toast({
           title: 'Sent to Project Board',
-          description: 'Quote has been added to the project board',
+          description: `Quote has been added to "${columnName || 'first column'}"`,
         });
       } else {
         console.error('Failed to send to board:', result.error);
@@ -870,10 +875,34 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
                     Remove from Board
                   </DropdownMenuItem>
                 ) : (
-                  <DropdownMenuItem onClick={() => handleSendToBoard(quote.id)}>
-                    <Kanban className="mr-2 h-4 w-4" />
-                    Send to Project Board
-                  </DropdownMenuItem>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Kanban className="mr-2 h-4 w-4" />
+                      Send to Project Board
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      {workflowColumns.length > 0 ? (
+                        workflowColumns
+                          .sort((a, b) => a.column_order - b.column_order)
+                          .map((col) => (
+                            <DropdownMenuItem
+                              key={col.id}
+                              onClick={() => handleSendToBoard(quote.id, col.name)}
+                            >
+                              <div
+                                className="w-2 h-2 rounded-full mr-2"
+                                style={{ backgroundColor: col.color }}
+                              />
+                              {col.name}
+                            </DropdownMenuItem>
+                          ))
+                      ) : (
+                        <DropdownMenuItem onClick={() => handleSendToBoard(quote.id)}>
+                          Active (default)
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                 )
               )}
               <DropdownMenuSeparator />

@@ -658,9 +658,11 @@ export async function updateQuoteStatus(
 /**
  * Manually send a Won quote to the project board
  * - Automatically promotes quote to main version
- * - Creates project with default workflow status
+ * - Creates project with specified or first column
+ * @param quoteId - The quote to send
+ * @param targetColumnName - Optional column name to place project in (defaults to first column)
  */
-export async function sendQuoteToProjectBoard(quoteId: string): Promise<{ success: boolean; error?: string; projectId?: string }> {
+export async function sendQuoteToProjectBoard(quoteId: string, targetColumnName?: string): Promise<{ success: boolean; error?: string; projectId?: string }> {
   try {
     // Get current session
     const session = await authService.getSession();
@@ -716,15 +718,20 @@ export async function sendQuoteToProjectBoard(quoteId: string): Promise<{ succes
       }
     }
 
-    // Get default workflow column
-    const { data: defaultColumn } = await supabase
-      .from('project_workflow_columns')
-      .select('name')
-      .eq('organization_id', quote.organization_id)
-      .eq('is_default', true)
-      .maybeSingle();
+    // Get workflow column - use provided column or first by order
+    let workflowStatus = targetColumnName;
 
-    const workflowStatus = (defaultColumn as any)?.name || 'To Do';
+    if (!workflowStatus) {
+      const { data: firstColumn } = await supabase
+        .from('project_workflow_columns')
+        .select('name')
+        .eq('organization_id', quote.organization_id)
+        .order('column_order', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      workflowStatus = (firstColumn as any)?.name || 'Active';
+    }
 
     // Get next board_order
     const { data: maxOrderProject } = await supabase
