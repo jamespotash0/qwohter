@@ -10,7 +10,6 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Select,
@@ -28,8 +27,16 @@ import {
   FolderOpen,
   Check,
 } from '@phosphor-icons/react';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Link2 } from 'lucide-react';
 import type { ProjectTask, TaskPriority } from '@/lib/types/projectTasks';
+
+interface ProjectOption {
+  id: string;
+  quote?: {
+    project_name?: string;
+    proposal_number?: string;
+  } | null;
+}
 import type { TaskBoardColumn } from '@/lib/types/taskBoardColumns';
 import {
   TASK_PRIORITY_LABELS,
@@ -47,22 +54,26 @@ interface TaskDetailOverlayProps {
   task: ProjectTask;
   columns: TaskBoardColumn[];
   members: Member[];
+  projects: ProjectOption[];
   currentUserId?: string;
   onClose: () => void;
   onUpdate: (taskId: string, updates: Partial<ProjectTask>) => Promise<void>;
   onDelete: (taskId: string) => void;
   onStatusChange: (taskId: string, newStatus: string) => void;
+  onLinkProject: (taskId: string, projectId: string | null) => Promise<void>;
 }
 
 export function TaskDetailOverlay({
   task,
   columns,
   members,
+  projects,
   currentUserId,
   onClose,
   onUpdate,
   onDelete,
   onStatusChange,
+  onLinkProject,
 }: TaskDetailOverlayProps) {
   const navigate = useNavigate();
   const [title, setTitle] = useState(task.title);
@@ -120,7 +131,6 @@ export function TaskDetailOverlay({
   };
 
   const currentColumn = columns.find(c => c.slug === task.status);
-  const projectName = task.project?.quote?.project_name;
   const proposalNumber = task.project?.quote?.proposal_number;
 
   const handleNavigateToProject = () => {
@@ -146,25 +156,6 @@ export function TaskDetailOverlay({
               <span className="text-xs font-mono text-gray-500 uppercase">
                 {task.reference}
               </span>
-            )}
-            {projectName && (
-              <div className="flex items-center gap-1">
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-purple-50 text-purple-700 border-purple-200">
-                  <FolderOpen className="w-2.5 h-2.5 mr-1" />
-                  {projectName}
-                </Badge>
-                {proposalNumber && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0 text-purple-600 hover:text-purple-800 hover:bg-purple-100"
-                    onClick={handleNavigateToProject}
-                    title="Open project"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                  </Button>
-                )}
-              </div>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -329,6 +320,49 @@ export function TaskDetailOverlay({
                 }}
               >
                 <X className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
+
+          {/* Link to Project */}
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500 w-20 flex items-center gap-1">
+              <Link2 className="w-3.5 h-3.5" />
+              Project
+            </span>
+            <Select
+              value={task.project_id || 'none'}
+              onValueChange={(value) => {
+                const newProjectId = value === 'none' ? null : value;
+                onLinkProject(task.id, newProjectId);
+              }}
+            >
+              <SelectTrigger className="w-48 h-8">
+                <SelectValue placeholder="Link to project..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">
+                  <span className="text-gray-400">No project</span>
+                </SelectItem>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    <div className="flex items-center gap-2">
+                      <FolderOpen className="w-3 h-3 text-purple-500" />
+                      {project.quote?.project_name || 'Unnamed Project'}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {task.project_id && proposalNumber && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-purple-600 hover:text-purple-800 hover:bg-purple-100"
+                onClick={handleNavigateToProject}
+                title="Open project"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
               </Button>
             )}
           </div>

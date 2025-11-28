@@ -37,6 +37,7 @@ import {
   useReorderTaskBoardColumns,
 } from '@/hooks/useTaskBoardColumns';
 import { useOrganizationMembers, useCurrentOrganization } from '@/hooks/queries/useOrganization';
+import { useProjects } from '@/hooks/queries/useBoard';
 import { useUser } from '@/auth';
 import { TaskDetailOverlay } from '@/components/features/board/TaskDetailOverlay';
 import type { ProjectTask } from '@/lib/types/projectTasks';
@@ -63,10 +64,11 @@ export default function TaskBoard() {
   const { organization } = useCurrentOrganization(user?.id || '');
   const organizationId = organization?.id || '';
 
-  // Fetch columns and tasks
+  // Fetch columns, tasks, and projects
   const { data: columns = [], isLoading: columnsLoading } = useTaskBoardColumns(organizationId);
   const { data: tasks = [], isLoading: tasksLoading } = useOrganizationTasks(organizationId);
   const { data: members = [] } = useOrganizationMembers(organizationId);
+  const { data: projects = [] } = useProjects(organizationId, !!organizationId);
   const createTask = useCreateProjectTask(organizationId, '');
   const createColumn = useCreateTaskBoardColumn(organizationId);
   const updateColumn = useUpdateTaskBoardColumn(organizationId);
@@ -175,6 +177,25 @@ export default function TaskBoard() {
 
   const handleQuickDueDate = async (taskId: string, date: string | null) => {
     await handleUpdateTask(taskId, { due_date: date } as any);
+  };
+
+  const handleLinkProject = async (taskId: string, projectId: string | null) => {
+    await handleUpdateTask(taskId, { project_id: projectId } as any);
+    // Update selected task for UI
+    if (selectedTask?.id === taskId) {
+      const linkedProject = projectId ? projects.find(p => p.id === projectId) : null;
+      setSelectedTask(prev => prev ? {
+        ...prev,
+        project_id: projectId,
+        project: linkedProject ? {
+          id: linkedProject.id,
+          quote: linkedProject.quote ? {
+            project_name: linkedProject.quote.project_name,
+            proposal_number: linkedProject.quote.proposal_number,
+          } : undefined,
+        } : null,
+      } : null);
+    }
   };
 
   // Quick add task with optional due date and assignee
@@ -906,6 +927,7 @@ export default function TaskBoard() {
           task={selectedTask}
           columns={columns}
           members={activeMembers}
+          projects={projects}
           currentUserId={user?.id}
           onClose={() => setSelectedTask(null)}
           onUpdate={handleUpdateTask}
@@ -918,6 +940,7 @@ export default function TaskBoard() {
             // Update selected task's status for UI
             setSelectedTask(prev => prev ? { ...prev, status: newStatus } : null);
           }}
+          onLinkProject={handleLinkProject}
         />
       )}
     </PageContent>
