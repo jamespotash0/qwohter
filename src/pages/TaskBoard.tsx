@@ -7,6 +7,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
+import { parseLocalDate } from '@/lib/utils';
 import { PageContent } from '@/components/common/layout';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -80,6 +81,7 @@ export default function TaskBoard() {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [newTaskAssignee, setNewTaskAssignee] = useState('');
+  const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const addTaskInputRef = useRef<HTMLInputElement>(null);
 
   // State for task detail overlay
@@ -208,11 +210,13 @@ export default function TaskBoard() {
       status: columnSlug as any,
       due_date: newTaskDueDate || undefined,
       assigned_to: newTaskAssignee || undefined,
+      priority: newTaskPriority,
     });
 
     setNewTaskTitle('');
     setNewTaskDueDate('');
     setNewTaskAssignee('');
+    setNewTaskPriority('medium');
     setAddingToColumn(null);
   };
 
@@ -220,6 +224,7 @@ export default function TaskBoard() {
     setNewTaskTitle('');
     setNewTaskDueDate('');
     setNewTaskAssignee('');
+    setNewTaskPriority('medium');
     setAddingToColumn(null);
   };
 
@@ -615,13 +620,13 @@ export default function TaskBoard() {
                                   <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
                                     <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700">
                                       <Calendar className="w-3 h-3" />
-                                      {format(new Date(task.due_date), 'MMM d')}
+                                      {format(parseLocalDate(task.due_date), 'MMM d')}
                                     </button>
                                   </PopoverTrigger>
                                   <PopoverContent className="w-auto p-0" align="start" onClick={(e) => e.stopPropagation()}>
                                     <CalendarPicker
                                       mode="single"
-                                      selected={new Date(task.due_date)}
+                                      selected={parseLocalDate(task.due_date)}
                                       onSelect={(date) => handleQuickDueDate(task.id, date ? format(date, 'yyyy-MM-dd') : null)}
                                       initialFocus
                                     />
@@ -756,22 +761,23 @@ export default function TaskBoard() {
                               {createTask.isPending ? 'Adding...' : 'Create'}
                             </Button>
 
-                            {/* Due Date Icon */}
+                            {/* Due Date */}
                             <Popover>
                               <PopoverTrigger asChild>
-                                <button
-                                  className={`p-1.5 rounded transition-colors ${
-                                    newTaskDueDate ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-400'
-                                  }`}
-                                  title={newTaskDueDate ? format(new Date(newTaskDueDate), 'MMM d, yyyy') : 'Set due date'}
-                                >
-                                  <Calendar className="w-4 h-4" />
-                                </button>
+                                {newTaskDueDate ? (
+                                  <span className="text-xs text-blue-600 hover:text-blue-700 hover:underline cursor-pointer">
+                                    {format(parseLocalDate(newTaskDueDate), 'MMM d, yyyy')}
+                                  </span>
+                                ) : (
+                                  <button className="p-1.5 rounded hover:bg-gray-100 text-gray-400" title="Set due date">
+                                    <Calendar className="w-4 h-4" />
+                                  </button>
+                                )}
                               </PopoverTrigger>
                               <PopoverContent className="w-auto p-0" align="start">
                                 <CalendarPicker
                                   mode="single"
-                                  selected={newTaskDueDate ? new Date(newTaskDueDate) : undefined}
+                                  selected={newTaskDueDate ? parseLocalDate(newTaskDueDate) : undefined}
                                   onSelect={(date) => setNewTaskDueDate(date ? format(date, 'yyyy-MM-dd') : '')}
                                   initialFocus
                                 />
@@ -790,17 +796,23 @@ export default function TaskBoard() {
                               </PopoverContent>
                             </Popover>
 
-                            {/* Assignee Icon */}
+                            {/* Assignee */}
                             <Popover>
                               <PopoverTrigger asChild>
-                                <button
-                                  className={`p-1.5 rounded transition-colors ${
-                                    newTaskAssignee ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-400'
-                                  }`}
-                                  title="Assign to"
-                                >
-                                  <User className="w-4 h-4" />
-                                </button>
+                                {newTaskAssignee ? (
+                                  <Avatar
+                                    className="h-5 w-5 cursor-pointer hover:ring-2 hover:ring-blue-200"
+                                    title={activeMembers.find(m => m.user_id === newTaskAssignee)?.full_name || 'Assigned'}
+                                  >
+                                    <AvatarFallback className="bg-blue-100 text-blue-700 text-[8px]">
+                                      {getInitials(activeMembers.find(m => m.user_id === newTaskAssignee)?.full_name)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                ) : (
+                                  <button className="p-1.5 rounded hover:bg-gray-100 text-gray-400" title="Assign to">
+                                    <User className="w-4 h-4" />
+                                  </button>
+                                )}
                               </PopoverTrigger>
                               <PopoverContent className="w-48 p-2" align="start">
                                 <div className="space-y-1">
@@ -826,6 +838,48 @@ export default function TaskBoard() {
                                         </AvatarFallback>
                                       </Avatar>
                                       <span className="truncate">{member.full_name || member.email}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+
+                            {/* Priority */}
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  className="p-1 rounded hover:bg-gray-100 cursor-pointer"
+                                  title={`Priority: ${newTaskPriority}`}
+                                >
+                                  <Flag
+                                    className={`w-4 h-4 ${
+                                      newTaskPriority === 'high' ? 'text-red-500' :
+                                      newTaskPriority === 'medium' ? 'text-yellow-500' :
+                                      'text-gray-400'
+                                    }`}
+                                    weight="fill"
+                                  />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-32 p-2" align="start">
+                                <div className="space-y-1">
+                                  {(['high', 'medium', 'low'] as const).map((priority) => (
+                                    <button
+                                      key={priority}
+                                      onClick={() => setNewTaskPriority(priority)}
+                                      className={`w-full text-left px-2 py-1.5 text-sm hover:bg-gray-100 rounded flex items-center gap-2 ${
+                                        newTaskPriority === priority ? 'bg-blue-50' : ''
+                                      }`}
+                                    >
+                                      <Flag
+                                        className={`w-3 h-3 ${
+                                          priority === 'high' ? 'text-red-500' :
+                                          priority === 'medium' ? 'text-yellow-500' :
+                                          'text-gray-400'
+                                        }`}
+                                        weight="fill"
+                                      />
+                                      <span className="capitalize">{priority}</span>
                                     </button>
                                   ))}
                                 </div>

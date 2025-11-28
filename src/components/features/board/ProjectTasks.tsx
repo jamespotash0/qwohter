@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
+import { parseLocalDate } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -158,7 +159,7 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
           {task.due_date && (
             <span className="text-xs text-gray-500 flex items-center gap-1">
               <Calendar className="w-3 h-3" />
-              {format(new Date(task.due_date), 'MMM d')}
+              {format(parseLocalDate(task.due_date), 'MMM d')}
             </span>
           )}
           {task.assignee && (

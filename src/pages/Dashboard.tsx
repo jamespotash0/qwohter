@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { parseLocalDate } from "@/lib/utils";
 import { PageContent } from "@/components/common/layout";
 import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
 import { useQueryClient } from "@tanstack/react-query";
@@ -410,7 +411,7 @@ const Dashboard = () => {
     const today = new Date();
     const overdueReminders = reminders.filter(r => {
       if (r.reminder_status === 'Completed' || r.reminder_status === 'Dismissed') return false; //reminder_status formerly status
-      const dueDate = new Date(r.due_date);
+      const dueDate = parseLocalDate(r.due_date);
       return dueDate < today;
     }).length;
 
@@ -868,7 +869,7 @@ const Dashboard = () => {
                 ) : (
                   <div className="space-y-2 flex-1 overflow-y-auto pr-2 -mr-2">
                     {reminders.map((reminder) => {
-                      const dueDate = new Date(reminder.due_date);
+                      const dueDate = parseLocalDate(reminder.due_date);
                       const isOverdue = isPast(dueDate) && !isToday(dueDate);
                       const isDueToday = isToday(dueDate);
                       const isDueTomorrow = isTomorrow(dueDate);

@@ -8,7 +8,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Bell, Calendar as CalendarIcon, X } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, parseLocalDate } from '@/lib/utils';
 import { useQuotes } from '@/hooks/queries/useQuotes';
 import { reminderService, type ReminderType } from '@/services/reminderService';
 import { quoteActivityService } from '@/services/quoteActivityService';
@@ -65,7 +65,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
         setNotes(editingReminder.description || '');
 
         // Parse date and time from due_date
-        const dueDateTime = new Date(editingReminder.due_date);
+        const dueDateTime = parseLocalDate(editingReminder.due_date);
         setDate(dueDateTime);
 
         // Format time as HH:mm
