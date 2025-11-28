@@ -64,11 +64,22 @@ export function TaskDetailOverlay({
 }: TaskDetailOverlayProps) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
-  const [priority, setPriority] = useState<TaskPriority>(task.priority);
+  const [priority, setPriority] = useState<TaskPriority | null>(task.priority);
   const [dueDate, setDueDate] = useState(task.due_date || '');
   const [assignee, setAssignee] = useState(task.assigned_to || '');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [descriptionChanged, setDescriptionChanged] = useState(false);
+
+  // Sync local state when task changes
+  useEffect(() => {
+    setTitle(task.title);
+    setDescription(task.description || '');
+    setPriority(task.priority);
+    setDueDate(task.due_date || '');
+    setAssignee(task.assigned_to || '');
+    setDescriptionChanged(false);
+  }, [task.id]);
 
   const activeMembers = members.filter(m => m.status === 'Active');
 
@@ -93,9 +104,15 @@ export function TaskDetailOverlay({
     setIsEditingTitle(false);
   };
 
-  const handleDescriptionBlur = async () => {
+  const handleDescriptionChange = (value: string) => {
+    setDescription(value);
+    setDescriptionChanged(value !== (task.description || ''));
+  };
+
+  const handleDescriptionSave = async () => {
     if (description !== (task.description || '')) {
-      await handleSave('description', description.trim());
+      await handleSave('description', description.trim() || null);
+      setDescriptionChanged(false);
     }
   };
 
@@ -208,16 +225,20 @@ export function TaskDetailOverlay({
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500 w-20">Priority</span>
             <Select
-              value={priority}
+              value={priority || 'none'}
               onValueChange={(value) => {
-                setPriority(value as TaskPriority);
-                handleSave('priority', value);
+                const newPriority = value === 'none' ? null : value as TaskPriority;
+                setPriority(newPriority);
+                handleSave('priority', newPriority);
               }}
             >
               <SelectTrigger className="w-40 h-8">
-                <SelectValue />
+                <SelectValue placeholder="None" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="none">
+                  <span className="text-gray-400">None</span>
+                </SelectItem>
                 {(Object.keys(TASK_PRIORITY_LABELS) as TaskPriority[]).map((p) => (
                   <SelectItem key={p} value={p}>
                     <div className="flex items-center gap-2">
@@ -294,12 +315,23 @@ export function TaskDetailOverlay({
 
           {/* Description */}
           <div>
-            <span className="text-sm text-gray-500 block mb-2">Description</span>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-500">Description</span>
+              <Button
+                size="sm"
+                variant={descriptionChanged ? 'default' : 'outline'}
+                className="h-7 text-xs gap-1"
+                onClick={handleDescriptionSave}
+                disabled={isSaving || !descriptionChanged}
+              >
+                <Check className="w-3 h-3" />
+                {isSaving ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
             <Textarea
               placeholder="Add a description..."
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onBlur={handleDescriptionBlur}
+              onChange={(e) => handleDescriptionChange(e.target.value)}
               className="min-h-[120px] resize-none"
             />
           </div>

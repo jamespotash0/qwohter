@@ -105,7 +105,7 @@ export async function createProjectTask(
     title: input.title,
     description: input.description || null,
     status: input.status || 'todo',
-    priority: input.priority || 'medium',
+    priority: input.priority || null,
     due_date: input.due_date || null,
     assigned_to: input.assigned_to || null,
   };

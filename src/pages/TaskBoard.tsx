@@ -1,25 +1,18 @@
 /**
  * TaskBoard Page
  *
- * Organization-wide kanban board for all tasks
- * Supports custom columns and standalone/project-linked tasks
+ * Jira-like kanban board for organization tasks
+ * Clean card design with overlay for details
  */
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
 import { PageContent } from '@/components/common/layout';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +20,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import {
   useOrganizationTasks,
   useCreateProjectTask,
@@ -40,13 +38,10 @@ import {
 } from '@/hooks/useTaskBoardColumns';
 import { useOrganizationMembers, useCurrentOrganization } from '@/hooks/queries/useOrganization';
 import { useUser } from '@/auth';
-import type { ProjectTask, TaskPriority } from '@/lib/types/projectTasks';
+import { TaskDetailOverlay } from '@/components/features/board/TaskDetailOverlay';
+import type { ProjectTask } from '@/lib/types/projectTasks';
 import type { TaskBoardColumn } from '@/lib/types/taskBoardColumns';
 import { COLUMN_COLORS } from '@/lib/types/taskBoardColumns';
-import {
-  TASK_PRIORITY_LABELS,
-  TASK_PRIORITY_COLORS,
-} from '@/lib/types/projectTasks';
 import {
   Plus,
   DotsThreeVertical,
@@ -60,12 +55,8 @@ import {
   DotsSixVertical,
   CaretDown,
   CaretRight,
+  User,
 } from '@phosphor-icons/react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 
 export default function TaskBoard() {
   const user = useUser();
@@ -82,15 +73,17 @@ export default function TaskBoard() {
   const deleteColumn = useDeleteTaskBoardColumn(organizationId);
   const reorderColumns = useReorderTaskBoardColumns(organizationId);
 
-  // State for new task form
-  const [isAddingTask, setIsAddingTask] = useState<string | null>(null);
+  // State for adding task
+  const [addingToColumn, setAddingToColumn] = useState<string | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskDescription, setNewTaskDescription] = useState('');
-  const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority>('medium');
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [newTaskAssignee, setNewTaskAssignee] = useState('');
+  const addTaskInputRef = useRef<HTMLInputElement>(null);
 
-  // State for new column (inline form like Project Board)
+  // State for task detail overlay
+  const [selectedTask, setSelectedTask] = useState<ProjectTask | null>(null);
+
+  // State for new column
   const [isAddingColumn, setIsAddingColumn] = useState(false);
   const [newColumnName, setNewColumnName] = useState('');
   const [newColumnColor, setNewColumnColor] = useState(COLUMN_COLORS[0]?.value || '#94A3B8');
@@ -111,6 +104,13 @@ export default function TaskBoard() {
 
   const activeMembers = members.filter(m => m.status === 'Active');
   const isLoading = columnsLoading || tasksLoading;
+
+  // Focus input when adding task
+  useEffect(() => {
+    if (addingToColumn && addTaskInputRef.current) {
+      addTaskInputRef.current.focus();
+    }
+  }, [addingToColumn]);
 
   // Group tasks by status (column slug)
   const getTasksByStatus = (status: string) => {
@@ -135,7 +135,7 @@ export default function TaskBoard() {
     if (draggedTask) {
       const task = tasks.find((t: ProjectTask) => t.id === draggedTask);
       if (task && task.status !== newStatus) {
-        handleStatusUpdate(draggedTask, newStatus, task.project_id);
+        handleStatusUpdate(task.id, newStatus, task.project_id);
       }
     }
     setDraggedTask(null);
@@ -162,28 +162,44 @@ export default function TaskBoard() {
     }
   };
 
-  const handleAddTask = async (status: string) => {
+  const handleUpdateTask = async (taskId: string, updates: Partial<ProjectTask>) => {
+    const { updateProjectTask } = await import('@/services/projectTasksService');
+    await updateProjectTask(taskId, updates as any);
+    const { queryClient } = await import('@/lib/queryClient');
+    queryClient.invalidateQueries({ queryKey: ['organization-tasks', organizationId] });
+  };
+
+  const handleQuickAssign = async (taskId: string, userId: string | null) => {
+    await handleUpdateTask(taskId, { assigned_to: userId } as any);
+  };
+
+  const handleQuickDueDate = async (taskId: string, date: string | null) => {
+    await handleUpdateTask(taskId, { due_date: date } as any);
+  };
+
+  // Quick add task with optional due date and assignee
+  const handleAddTask = async (columnSlug: string) => {
     if (!newTaskTitle.trim()) return;
 
     await createTask.mutateAsync({
       project_id: null,
       title: newTaskTitle.trim(),
-      description: newTaskDescription.trim() || undefined,
-      status: status as any,
-      priority: newTaskPriority,
+      status: columnSlug as any,
       due_date: newTaskDueDate || undefined,
       assigned_to: newTaskAssignee || undefined,
     });
 
     setNewTaskTitle('');
-    setNewTaskDescription('');
-    setNewTaskPriority('medium');
     setNewTaskDueDate('');
     setNewTaskAssignee('');
-    setIsAddingTask(null);
+    setAddingToColumn(null);
+  };
 
-    const { queryClient } = await import('@/lib/queryClient');
-    queryClient.invalidateQueries({ queryKey: ['organization-tasks', organizationId] });
+  const resetAddTaskForm = () => {
+    setNewTaskTitle('');
+    setNewTaskDueDate('');
+    setNewTaskAssignee('');
+    setAddingToColumn(null);
   };
 
   const handleAddColumn = async () => {
@@ -274,14 +290,12 @@ export default function TaskBoard() {
 
     if (draggedIndex === -1 || targetIndex === -1) return;
 
-    // Reorder array
     const reordered = [...sortedCols];
     const [removed] = reordered.splice(draggedIndex, 1);
     if (removed) {
       reordered.splice(targetIndex, 0, removed);
     }
 
-    // Update positions
     await reorderColumns.mutateAsync(reordered.map(c => c.id));
 
     setDraggedColumnId(null);
@@ -290,7 +304,6 @@ export default function TaskBoard() {
   };
 
   const handleDeleteColumn = async (columnId: string, columnSlug: string) => {
-    // Check if there are tasks in this column
     const tasksInColumn = getTasksByStatus(columnSlug);
     if (tasksInColumn.length > 0) {
       alert('Cannot delete column with tasks. Move or delete tasks first.');
@@ -299,7 +312,7 @@ export default function TaskBoard() {
     await deleteColumn.mutateAsync(columnId);
   };
 
-  const getInitials = (name?: string) => {
+  const getInitials = (name?: string | null) => {
     if (!name) return '?';
     return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
   };
@@ -347,11 +360,10 @@ export default function TaskBoard() {
               onDragLeave={handleColumnDragLeave}
               onDrop={(e) => handleColumnDrop(e, column.id)}
             >
-              {/* Column drop indicator - left */}
+              {/* Column drop indicators */}
               {dragOverColumnId === column.id && columnDropSide === 'left' && (
                 <div className="absolute -left-2 top-0 bottom-0 w-0.5 bg-blue-500 z-10" />
               )}
-              {/* Column drop indicator - right */}
               {dragOverColumnId === column.id && columnDropSide === 'right' && (
                 <div className="absolute -right-2 top-0 bottom-0 w-0.5 bg-blue-500 z-10" />
               )}
@@ -411,22 +423,20 @@ export default function TaskBoard() {
                           </PopoverContent>
                         </Popover>
 
-                        {/* Drag handle - only for non-default columns */}
-                        {!column.is_default && (
-                          <div
-                            draggable
-                            onDragStart={(e) => {
-                              e.stopPropagation();
-                              handleColumnDragStart(e, column.id);
-                            }}
-                            className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing"
-                            title="Drag to reorder column"
-                          >
-                            <DotsSixVertical className="w-4 h-4 text-gray-400" />
-                          </div>
-                        )}
+                        {/* Drag handle - all columns can be reordered */}
+                        <div
+                          draggable
+                          onDragStart={(e) => {
+                            e.stopPropagation();
+                            handleColumnDragStart(e, column.id);
+                          }}
+                          className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing"
+                          title="Drag to reorder column"
+                        >
+                          <DotsSixVertical className="w-4 h-4 text-gray-400" />
+                        </div>
 
-                        {/* Column name - editable */}
+                        {/* Column name */}
                         {isEditing ? (
                           <div className="flex items-center gap-1 flex-1">
                             <Input
@@ -465,19 +475,10 @@ export default function TaskBoard() {
                           </>
                         )}
 
-                        {/* Add Task Button */}
-                        <button
-                          onClick={() => setIsAddingTask(column.slug)}
-                          className="p-1 hover:bg-gray-100 rounded ml-auto"
-                          title="Add task"
-                        >
-                          <Plus className="w-4 h-4 text-gray-500" />
-                        </button>
-
                         {/* Column Menu */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <button className="p-1 hover:bg-gray-100 rounded">
+                            <button className="p-1 hover:bg-gray-100 rounded ml-auto">
                               <DotsThreeVertical className="w-4 h-4 text-gray-500" />
                             </button>
                           </DropdownMenuTrigger>
@@ -534,189 +535,302 @@ export default function TaskBoard() {
                   </div>
                 </div>
 
-              {/* Tasks List */}
-              <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                {/* Add Task Form */}
-                {isAddingTask === column.slug && (
-                  <div className="bg-white rounded-lg border border-gray-200 p-3 space-y-3 shadow-sm">
-                    <Input
-                      placeholder="Task title..."
-                      value={newTaskTitle}
-                      onChange={(e) => setNewTaskTitle(e.target.value)}
-                      className="text-sm"
-                      autoFocus
-                    />
-                    <Textarea
-                      placeholder="Description (optional)..."
-                      value={newTaskDescription}
-                      onChange={(e) => setNewTaskDescription(e.target.value)}
-                      className="text-sm min-h-[60px]"
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <Select value={newTaskPriority} onValueChange={(v) => setNewTaskPriority(v as TaskPriority)}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue placeholder="Priority" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(Object.keys(TASK_PRIORITY_LABELS) as TaskPriority[]).map((p) => (
-                            <SelectItem key={p} value={p}>
-                              {TASK_PRIORITY_LABELS[p]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Input
-                        type="date"
-                        value={newTaskDueDate}
-                        onChange={(e) => setNewTaskDueDate(e.target.value)}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                    <Select
-                      value={newTaskAssignee || 'unassigned'}
-                      onValueChange={(v) => setNewTaskAssignee(v === 'unassigned' ? '' : v)}
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Assign to..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned">Unassigned</SelectItem>
-                        {activeMembers.map((member) => (
-                          <SelectItem key={member.user_id} value={member.user_id}>
-                            {member.full_name || member.email}
-                            {member.user_id === user?.id && ' (You)'}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        className="flex-1 h-8"
-                        onClick={() => handleAddTask(column.slug)}
-                        disabled={!newTaskTitle.trim() || createTask.isPending}
-                      >
-                        {createTask.isPending ? 'Adding...' : 'Add Task'}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8"
-                        onClick={() => {
-                          setIsAddingTask(null);
-                          setNewTaskTitle('');
-                          setNewTaskDescription('');
-                          setNewTaskPriority('medium');
-                          setNewTaskDueDate('');
-                          setNewTaskAssignee('');
-                        }}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                {/* Tasks List */}
+                {!isCollapsed && (
+                  <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                    {/* Task Cards */}
+                    {columnTasks.map((task: ProjectTask) => {
+                      const projectName = getProjectName(task);
 
-                {/* Task Cards */}
-                {columnTasks.map((task: ProjectTask) => {
-                  const projectName = getProjectName(task);
+                      return (
+                        <div
+                          key={task.id}
+                          draggable
+                          onDragStart={() => handleDragStart(task.id)}
+                          onClick={() => setSelectedTask(task)}
+                          className={`group bg-white rounded-lg border border-gray-200 p-3 cursor-pointer hover:shadow-md hover:border-gray-300 transition-all duration-200 ${
+                            draggedTask === task.id ? 'opacity-50' : ''
+                          }`}
+                        >
+                          {/* Task Title & Reference */}
+                          <div className="mb-2">
+                            {task.reference && (
+                              <span className="text-[10px] font-mono text-gray-400 uppercase block mb-0.5">
+                                {task.reference}
+                              </span>
+                            )}
+                            <h4 className="text-sm font-medium text-gray-900 line-clamp-2">
+                              {task.title}
+                            </h4>
+                          </div>
 
-                  return (
-                    <div
-                      key={task.id}
-                      draggable
-                      onDragStart={() => handleDragStart(task.id)}
-                      className={`bg-white rounded-lg border border-gray-200 p-3 cursor-grab hover:shadow-md transition-all duration-200 ${
-                        draggedTask === task.id ? 'opacity-50' : ''
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="flex-1 min-w-0">
-                          {task.reference && (
-                            <span className="text-[10px] font-mono text-gray-400 uppercase">
-                              {task.reference}
-                            </span>
+                          {/* Project Badge */}
+                          {projectName && (
+                            <div className="mb-2">
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-purple-50 text-purple-700 border-purple-200">
+                                <FolderOpen className="w-2.5 h-2.5 mr-1" />
+                                {projectName}
+                              </Badge>
+                            </div>
                           )}
-                          <h4 className="text-sm font-medium text-gray-900 line-clamp-2">
-                            {task.title}
-                          </h4>
+
+                          {/* Bottom Row: Priority, Due Date, Assignee */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {/* Priority Indicator - only show if priority is set */}
+                              {task.priority && (
+                                <Flag
+                                  weight="fill"
+                                  className={`w-3.5 h-3.5 ${
+                                    task.priority === 'high' ? 'text-red-500' :
+                                    task.priority === 'medium' ? 'text-yellow-500' : 'text-gray-400'
+                                  }`}
+                                />
+                              )}
+
+                              {/* Due Date */}
+                              {task.due_date ? (
+                                <Popover>
+                                  <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                    <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700">
+                                      <Calendar className="w-3 h-3" />
+                                      {format(new Date(task.due_date), 'MMM d')}
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="start" onClick={(e) => e.stopPropagation()}>
+                                    <CalendarPicker
+                                      mode="single"
+                                      selected={new Date(task.due_date)}
+                                      onSelect={(date) => handleQuickDueDate(task.id, date ? format(date, 'yyyy-MM-dd') : null)}
+                                      initialFocus
+                                    />
+                                    <div className="border-t p-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="w-full text-red-600"
+                                        onClick={() => handleQuickDueDate(task.id, null)}
+                                      >
+                                        Remove date
+                                      </Button>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              ) : (
+                                <Popover>
+                                  <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                    <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-100 rounded">
+                                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="start" onClick={(e) => e.stopPropagation()}>
+                                    <CalendarPicker
+                                      mode="single"
+                                      selected={undefined}
+                                      onSelect={(date) => handleQuickDueDate(task.id, date ? format(date, 'yyyy-MM-dd') : null)}
+                                      initialFocus
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                            </div>
+
+                            {/* Assignee */}
+                            {task.assignee ? (
+                              <Popover>
+                                <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                  <button>
+                                    <Avatar className="h-6 w-6 hover:ring-2 ring-blue-300">
+                                      <AvatarFallback className="bg-blue-100 text-blue-700 text-[10px]">
+                                        {getInitials(task.assignee.full_name)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-2" align="end" onClick={(e) => e.stopPropagation()}>
+                                  <div className="space-y-1">
+                                    <button
+                                      onClick={() => handleQuickAssign(task.id, null)}
+                                      className="w-full text-left px-2 py-1.5 text-sm hover:bg-gray-100 rounded text-gray-500"
+                                    >
+                                      Unassign
+                                    </button>
+                                    {activeMembers.map((member) => (
+                                      <button
+                                        key={member.user_id}
+                                        onClick={() => handleQuickAssign(task.id, member.user_id)}
+                                        className={`w-full text-left px-2 py-1.5 text-sm hover:bg-gray-100 rounded flex items-center gap-2 ${
+                                          task.assigned_to === member.user_id ? 'bg-blue-50' : ''
+                                        }`}
+                                      >
+                                        <Avatar className="h-5 w-5">
+                                          <AvatarFallback className="bg-blue-100 text-blue-700 text-[8px]">
+                                            {getInitials(member.full_name)}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <span className="truncate">{member.full_name || member.email}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            ) : (
+                              <Popover>
+                                <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                  <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-gray-100 rounded">
+                                    <User className="w-4 h-4 text-gray-400" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-48 p-2" align="end" onClick={(e) => e.stopPropagation()}>
+                                  <div className="space-y-1">
+                                    {activeMembers.map((member) => (
+                                      <button
+                                        key={member.user_id}
+                                        onClick={() => handleQuickAssign(task.id, member.user_id)}
+                                        className="w-full text-left px-2 py-1.5 text-sm hover:bg-gray-100 rounded flex items-center gap-2"
+                                      >
+                                        <Avatar className="h-5 w-5">
+                                          <AvatarFallback className="bg-blue-100 text-blue-700 text-[8px]">
+                                            {getInitials(member.full_name)}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <span className="truncate">{member.full_name || member.email}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                          </div>
                         </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="p-1 hover:bg-gray-100 rounded flex-shrink-0">
-                              <DotsThreeVertical className="w-4 h-4 text-gray-400" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {columns.filter((c: TaskBoardColumn) => c.slug !== task.status).map((col: TaskBoardColumn) => (
-                              <DropdownMenuItem
-                                key={col.id}
-                                onClick={() => handleStatusUpdate(task.id, col.slug, task.project_id)}
-                              >
-                                Move to {col.name}
-                              </DropdownMenuItem>
-                            ))}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteTask(task.id, task.project_id)}
-                              className="text-red-600"
+                      );
+                    })}
+
+                    {/* Add Task Form - at bottom of column */}
+                    {addingToColumn === column.slug ? (
+                      <div className="bg-white rounded-lg border border-blue-200 p-2 shadow-sm">
+                        <Input
+                          ref={addTaskInputRef}
+                          placeholder="What needs to be done?"
+                          value={newTaskTitle}
+                          onChange={(e) => setNewTaskTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && newTaskTitle.trim()) {
+                              handleAddTask(column.slug);
+                            }
+                            if (e.key === 'Escape') {
+                              resetAddTaskForm();
+                            }
+                          }}
+                          className="border-0 shadow-none focus-visible:ring-0 px-1 text-sm"
+                        />
+                        <div className="flex items-center justify-between mt-2">
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => handleAddTask(column.slug)}
+                              disabled={!newTaskTitle.trim() || createTask.isPending}
                             >
-                              <Trash className="w-4 h-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                              {createTask.isPending ? 'Adding...' : 'Create'}
+                            </Button>
 
-                      {task.description && (
-                        <p className="text-xs text-gray-500 mb-2 line-clamp-2">
-                          {task.description}
-                        </p>
-                      )}
+                            {/* Due Date Icon */}
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  className={`p-1.5 rounded transition-colors ${
+                                    newTaskDueDate ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-400'
+                                  }`}
+                                  title={newTaskDueDate ? format(new Date(newTaskDueDate), 'MMM d, yyyy') : 'Set due date'}
+                                >
+                                  <Calendar className="w-4 h-4" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <CalendarPicker
+                                  mode="single"
+                                  selected={newTaskDueDate ? new Date(newTaskDueDate) : undefined}
+                                  onSelect={(date) => setNewTaskDueDate(date ? format(date, 'yyyy-MM-dd') : '')}
+                                  initialFocus
+                                />
+                                {newTaskDueDate && (
+                                  <div className="border-t p-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="w-full text-red-600"
+                                      onClick={() => setNewTaskDueDate('')}
+                                    >
+                                      Clear date
+                                    </Button>
+                                  </div>
+                                )}
+                              </PopoverContent>
+                            </Popover>
 
-                      {projectName && (
-                        <div className="flex items-center gap-1 mb-2">
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-purple-50 text-purple-700 border-purple-200">
-                            <FolderOpen className="w-2.5 h-2.5 mr-1" />
-                            {projectName}
-                          </Badge>
-                        </div>
-                      )}
+                            {/* Assignee Icon */}
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button
+                                  className={`p-1.5 rounded transition-colors ${
+                                    newTaskAssignee ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-100 text-gray-400'
+                                  }`}
+                                  title="Assign to"
+                                >
+                                  <User className="w-4 h-4" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-48 p-2" align="start">
+                                <div className="space-y-1">
+                                  {newTaskAssignee && (
+                                    <button
+                                      onClick={() => setNewTaskAssignee('')}
+                                      className="w-full text-left px-2 py-1.5 text-sm hover:bg-gray-100 rounded text-gray-500"
+                                    >
+                                      Unassign
+                                    </button>
+                                  )}
+                                  {activeMembers.map((member) => (
+                                    <button
+                                      key={member.user_id}
+                                      onClick={() => setNewTaskAssignee(member.user_id)}
+                                      className={`w-full text-left px-2 py-1.5 text-sm hover:bg-gray-100 rounded flex items-center gap-2 ${
+                                        newTaskAssignee === member.user_id ? 'bg-blue-50' : ''
+                                      }`}
+                                    >
+                                      <Avatar className="h-5 w-5">
+                                        <AvatarFallback className="bg-blue-100 text-blue-700 text-[8px]">
+                                          {getInitials(member.full_name)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="truncate">{member.full_name || member.email}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
 
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant="outline"
-                            className={`text-[10px] px-1.5 py-0 ${TASK_PRIORITY_COLORS[task.priority]}`}
+                          <button
+                            onClick={resetAddTaskForm}
+                            className="p-1 hover:bg-gray-100 rounded text-gray-400"
                           >
-                            <Flag className="w-2.5 h-2.5 mr-0.5" />
-                            {TASK_PRIORITY_LABELS[task.priority]}
-                          </Badge>
-                          {task.due_date && (
-                            <span className="text-gray-500 flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {format(new Date(task.due_date), 'MMM d')}
-                            </span>
-                          )}
+                            <X className="w-4 h-4" />
+                          </button>
                         </div>
-                        {task.assignee && (
-                          <Avatar className="h-5 w-5">
-                            <AvatarFallback className="bg-blue-100 text-blue-700 text-[8px]">
-                              {getInitials(task.assignee.full_name)}
-                            </AvatarFallback>
-                          </Avatar>
-                        )}
                       </div>
-                    </div>
-                  );
-                })}
-
-                {columnTasks.length === 0 && isAddingTask !== column.slug && !isCollapsed && (
-                  <div className="text-center py-8 text-gray-400 text-sm">
-                    No tasks
+                    ) : (
+                      <button
+                        onClick={() => setAddingToColumn(column.slug)}
+                        className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg flex items-center justify-center gap-1 transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Create
+                      </button>
+                    )}
                   </div>
                 )}
-              </div>
               </div>
             </div>
           );
@@ -785,6 +899,27 @@ export default function TaskBoard() {
           </div>
         )}
       </div>
+
+      {/* Task Detail Overlay */}
+      {selectedTask && (
+        <TaskDetailOverlay
+          task={selectedTask}
+          columns={columns}
+          members={activeMembers}
+          currentUserId={user?.id}
+          onClose={() => setSelectedTask(null)}
+          onUpdate={handleUpdateTask}
+          onDelete={(taskId) => {
+            handleDeleteTask(taskId, selectedTask.project_id);
+            setSelectedTask(null);
+          }}
+          onStatusChange={(taskId, newStatus) => {
+            handleStatusUpdate(taskId, newStatus, selectedTask.project_id);
+            // Update selected task's status for UI
+            setSelectedTask(prev => prev ? { ...prev, status: newStatus } : null);
+          }}
+        />
+      )}
     </PageContent>
   );
 }
