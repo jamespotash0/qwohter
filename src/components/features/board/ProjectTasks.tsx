@@ -72,10 +72,10 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
   const { data: members = [] } = useOrganizationMembers(organizationId);
   const { data: tasks = [], isLoading } = useProjectTasks(projectId);
   const createTask = useCreateProjectTask(organizationId, projectId);
-  const deleteTask = useDeleteProjectTask(projectId);
-  const updateStatus = useUpdateTaskStatus(projectId);
-  const updatePriority = useUpdateTaskPriority(projectId);
-  const assignTask = useAssignTask(projectId);
+  const deleteTask = useDeleteProjectTask(organizationId, projectId);
+  const updateStatus = useUpdateTaskStatus(organizationId, projectId);
+  const updatePriority = useUpdateTaskPriority(organizationId, projectId);
+  const assignTask = useAssignTask(organizationId, projectId);
 
   // Filter active members for assignee dropdown
   const activeMembers = members.filter(m => m.status === 'Active');

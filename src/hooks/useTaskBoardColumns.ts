@@ -2,6 +2,7 @@
  * useTaskBoardColumns Hook
  *
  * React Query hooks for task board columns management
+ * Includes realtime subscriptions for automatic updates
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -17,15 +18,29 @@ import type {
   UpdateTaskBoardColumnInput,
 } from '@/lib/types/taskBoardColumns';
 import { useToast } from '@/hooks/use-toast';
+import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 
 const QUERY_KEY = 'task-board-columns';
 
 export function useTaskBoardColumns(organizationId: string | undefined) {
+  const queryKey = [QUERY_KEY, organizationId] as const;
+
+  // Set up realtime subscription for this organization's columns
+  useRealtimeSubscription(
+    'task_board_columns',
+    queryKey,
+    {
+      filter: `organization_id=eq.${organizationId}`,
+    },
+    !!organizationId
+  );
+
   return useQuery({
-    queryKey: [QUERY_KEY, organizationId],
+    queryKey,
     queryFn: () => fetchTaskBoardColumns(organizationId!),
     enabled: !!organizationId,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes - columns don't change often
+    staleTime: 1 * 60 * 1000, // 1 minute - refresh more often with realtime
+    gcTime: 5 * 60 * 1000,
   });
 }
 

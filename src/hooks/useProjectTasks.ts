@@ -2,6 +2,7 @@
  * useProjectTasks Hook
  *
  * React Query hooks for project tasks management
+ * Includes realtime subscriptions for automatic updates
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -16,20 +17,32 @@ import {
   updateTaskPriority,
 } from '@/services/projectTasksService';
 import type {
-  ProjectTask,
   CreateProjectTaskInput,
   UpdateProjectTaskInput,
   TaskStatus,
   TaskPriority,
 } from '@/lib/types/projectTasks';
 import { useToast } from '@/hooks/use-toast';
+import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
 
 const QUERY_KEY = 'project-tasks';
 const ORG_TASKS_KEY = 'organization-tasks';
 
 export function useProjectTasks(projectId: string | undefined) {
+  const queryKey = [QUERY_KEY, projectId] as const;
+
+  // Set up realtime subscription for this project's tasks
+  useRealtimeSubscription(
+    'project_tasks',
+    queryKey,
+    {
+      filter: `project_id=eq.${projectId}`,
+    },
+    !!projectId
+  );
+
   return useQuery({
-    queryKey: [QUERY_KEY, projectId],
+    queryKey,
     queryFn: () => fetchProjectTasks(projectId!),
     enabled: !!projectId,
     staleTime: 30 * 1000, // 30 seconds - show cached data, refetch in background
@@ -41,8 +54,20 @@ export function useProjectTasks(projectId: string | undefined) {
  * Fetch all tasks for an organization (for Task Board)
  */
 export function useOrganizationTasks(organizationId: string | undefined) {
+  const queryKey = [ORG_TASKS_KEY, organizationId] as const;
+
+  // Set up realtime subscription for this organization's tasks
+  useRealtimeSubscription(
+    'project_tasks',
+    queryKey,
+    {
+      filter: `organization_id=eq.${organizationId}`,
+    },
+    !!organizationId
+  );
+
   return useQuery({
-    queryKey: [ORG_TASKS_KEY, organizationId],
+    queryKey,
     queryFn: () => fetchOrganizationTasks(organizationId!),
     enabled: !!organizationId,
     staleTime: 30 * 1000, // 30 seconds - show cached data, refetch in background
@@ -58,10 +83,14 @@ export function useCreateProjectTask(organizationId: string, projectId: string) 
     mutationFn: (input: CreateProjectTaskInput) =>
       createProjectTask(organizationId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
+      // Invalidate both project-specific and organization-wide task queries
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
+      }
+      queryClient.invalidateQueries({ queryKey: [ORG_TASKS_KEY, organizationId] });
       toast({
         title: 'Task created',
-        description: 'The task has been added to the project.',
+        description: 'The task has been added.',
       });
     },
     onError: (error: Error) => {
@@ -74,7 +103,7 @@ export function useCreateProjectTask(organizationId: string, projectId: string) 
   });
 }
 
-export function useUpdateProjectTask(projectId: string) {
+export function useUpdateProjectTask(organizationId: string, projectId?: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -82,7 +111,10 @@ export function useUpdateProjectTask(projectId: string) {
     mutationFn: ({ taskId, input }: { taskId: string; input: UpdateProjectTaskInput }) =>
       updateProjectTask(taskId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
+      }
+      queryClient.invalidateQueries({ queryKey: [ORG_TASKS_KEY, organizationId] });
     },
     onError: (error: Error) => {
       toast({
@@ -94,14 +126,17 @@ export function useUpdateProjectTask(projectId: string) {
   });
 }
 
-export function useDeleteProjectTask(projectId: string) {
+export function useDeleteProjectTask(organizationId: string, projectId?: string) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
     mutationFn: (taskId: string) => deleteProjectTask(taskId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
+      }
+      queryClient.invalidateQueries({ queryKey: [ORG_TASKS_KEY, organizationId] });
       toast({
         title: 'Task deleted',
         description: 'The task has been removed.',
@@ -117,38 +152,47 @@ export function useDeleteProjectTask(projectId: string) {
   });
 }
 
-export function useAssignTask(projectId: string) {
+export function useAssignTask(organizationId: string, projectId?: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ taskId, userId }: { taskId: string; userId: string | null }) =>
       assignTask(taskId, userId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
+      }
+      queryClient.invalidateQueries({ queryKey: [ORG_TASKS_KEY, organizationId] });
     },
   });
 }
 
-export function useUpdateTaskStatus(projectId: string) {
+export function useUpdateTaskStatus(organizationId: string, projectId?: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ taskId, status }: { taskId: string; status: TaskStatus }) =>
       updateTaskStatus(taskId, status),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
+      }
+      queryClient.invalidateQueries({ queryKey: [ORG_TASKS_KEY, organizationId] });
     },
   });
 }
 
-export function useUpdateTaskPriority(projectId: string) {
+export function useUpdateTaskPriority(organizationId: string, projectId?: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: ({ taskId, priority }: { taskId: string; priority: TaskPriority }) =>
       updateTaskPriority(taskId, priority),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
+      if (projectId) {
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEY, projectId] });
+      }
+      queryClient.invalidateQueries({ queryKey: [ORG_TASKS_KEY, organizationId] });
     },
   });
 }
