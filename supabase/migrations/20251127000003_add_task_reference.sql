@@ -12,20 +12,31 @@ ADD CONSTRAINT project_tasks_reference_unique UNIQUE (organization_id, reference
 -- Create index for faster lookups
 CREATE INDEX IF NOT EXISTS idx_project_tasks_reference ON public.project_tasks(organization_id, reference);
 
--- Function to generate task reference
+-- Function to generate task reference based on organization name
 CREATE OR REPLACE FUNCTION generate_task_reference(
   org_id UUID,
-  task_title TEXT
+  task_title TEXT -- kept for backwards compatibility but not used
 ) RETURNS TEXT AS $$
 DECLARE
+  org_name TEXT;
   initials TEXT;
   words TEXT[];
   word TEXT;
   next_num INTEGER;
   new_ref TEXT;
 BEGIN
-  -- Split title into words and get initials (max 3 characters)
-  words := string_to_array(upper(trim(task_title)), ' ');
+  -- Get organization name
+  SELECT name INTO org_name
+  FROM public.organizations
+  WHERE id = org_id;
+
+  -- Fallback if org not found
+  IF org_name IS NULL OR org_name = '' THEN
+    org_name := 'TASK';
+  END IF;
+
+  -- Split org name into words and get initials (max 3 characters)
+  words := string_to_array(upper(trim(org_name)), ' ');
   initials := '';
 
   FOREACH word IN ARRAY words LOOP
@@ -37,23 +48,23 @@ BEGIN
 
   -- If single word and less than 3 chars, take more letters
   IF array_length(words, 1) = 1 AND length(initials) < 3 THEN
-    initials := upper(left(trim(task_title), 3));
+    initials := upper(left(trim(org_name), 3));
   END IF;
 
   -- Ensure we have at least 2 characters
   IF length(initials) < 2 THEN
-    initials := upper(left(trim(task_title), 2));
+    initials := upper(left(trim(org_name), 2));
   END IF;
 
-  -- Find the next number for this prefix in this organization
+  -- Find the next number for this organization (sequential across all tasks)
   SELECT COALESCE(MAX(
     CAST(
-      SUBSTRING(reference FROM length(initials) + 2) AS INTEGER
+      REGEXP_REPLACE(reference, '^[A-Z]+-', '') AS INTEGER
     )
   ), 0) + 1 INTO next_num
   FROM public.project_tasks
   WHERE organization_id = org_id
-    AND reference LIKE initials || '-%';
+    AND reference ~ '^[A-Z]+-[0-9]+$';
 
   new_ref := initials || '-' || next_num;
 

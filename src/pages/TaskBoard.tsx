@@ -606,14 +606,9 @@ export default function TaskBoard() {
                             </DropdownMenuContent>
                           </DropdownMenu>
 
-                          {/* Task Title & Reference */}
+                          {/* Task Title */}
                           <div className="mb-2 pr-6">
-                            {task.reference && (
-                              <span className="text-[10px] font-mono text-gray-400 uppercase block mb-0.5">
-                                {task.reference}
-                              </span>
-                            )}
-                            <h4 className="text-sm font-medium text-gray-900 line-clamp-2">
+                            <h4 className="text-sm font-small text-gray-900 line-clamp-2">
                               {task.title}
                             </h4>
                           </div>
@@ -628,9 +623,16 @@ export default function TaskBoard() {
                             </div>
                           )}
 
-                          {/* Bottom Row: Priority, Due Date, Assignee */}
+                          {/* Bottom Row: Reference, Priority, Due Date, Assignee */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
+                              {/* Task Reference */}
+                              {task.reference && (
+                                <span className="text-xs font-medium text-gray-900 uppercase">
+                                  {task.reference}
+                                </span>
+                              )}
+
                               {/* Priority Indicator - only show if priority is set */}
                               {task.priority && (
                                 <Flag
