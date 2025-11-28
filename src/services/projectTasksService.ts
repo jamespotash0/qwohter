@@ -56,7 +56,8 @@ export async function fetchOrganizationTasks(organizationId: string): Promise<Pr
       project:projects (
         id,
         quote:quotes (
-          project_name
+          project_name,
+          proposal_number
         )
       )
     `)

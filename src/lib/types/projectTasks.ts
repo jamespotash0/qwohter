@@ -38,6 +38,7 @@ export interface ProjectTask {
     id: string;
     quote?: {
       project_name?: string;
+      proposal_number?: string;
     };
   } | null;
 }

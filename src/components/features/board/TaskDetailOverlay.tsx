@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +28,7 @@ import {
   FolderOpen,
   Check,
 } from '@phosphor-icons/react';
+import { ExternalLink } from 'lucide-react';
 import type { ProjectTask, TaskPriority } from '@/lib/types/projectTasks';
 import type { TaskBoardColumn } from '@/lib/types/taskBoardColumns';
 import {
@@ -62,6 +64,7 @@ export function TaskDetailOverlay({
   onDelete,
   onStatusChange,
 }: TaskDetailOverlayProps) {
+  const navigate = useNavigate();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
   const [priority, setPriority] = useState<TaskPriority | null>(task.priority);
@@ -118,6 +121,13 @@ export function TaskDetailOverlay({
 
   const currentColumn = columns.find(c => c.slug === task.status);
   const projectName = task.project?.quote?.project_name;
+  const proposalNumber = task.project?.quote?.proposal_number;
+
+  const handleNavigateToProject = () => {
+    if (proposalNumber) {
+      navigate(`/editor/${proposalNumber}`);
+    }
+  };
 
   return (
     <>
@@ -138,10 +148,23 @@ export function TaskDetailOverlay({
               </span>
             )}
             {projectName && (
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-purple-50 text-purple-700 border-purple-200">
-                <FolderOpen className="w-2.5 h-2.5 mr-1" />
-                {projectName}
-              </Badge>
+              <div className="flex items-center gap-1">
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-purple-50 text-purple-700 border-purple-200">
+                  <FolderOpen className="w-2.5 h-2.5 mr-1" />
+                  {projectName}
+                </Badge>
+                {proposalNumber && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 text-purple-600 hover:text-purple-800 hover:bg-purple-100"
+                    onClick={handleNavigateToProject}
+                    title="Open project"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                  </Button>
+                )}
+              </div>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -225,20 +248,17 @@ export function TaskDetailOverlay({
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500 w-20">Priority</span>
             <Select
-              value={priority || 'none'}
+              value={priority || 'low'}
               onValueChange={(value) => {
-                const newPriority = value === 'none' ? null : value as TaskPriority;
+                const newPriority = value as TaskPriority;
                 setPriority(newPriority);
                 handleSave('priority', newPriority);
               }}
             >
               <SelectTrigger className="w-40 h-8">
-                <SelectValue placeholder="None" />
+                <SelectValue placeholder="Select priority" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">
-                  <span className="text-gray-400">None</span>
-                </SelectItem>
                 {(Object.keys(TASK_PRIORITY_LABELS) as TaskPriority[]).map((p) => (
                   <SelectItem key={p} value={p}>
                     <div className="flex items-center gap-2">
