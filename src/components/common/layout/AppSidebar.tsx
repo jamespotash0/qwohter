@@ -432,7 +432,7 @@ export function AppSidebar({
                 const isClicked = clickedItem === item.title;
 
                 // Render expandable menu for items with subItems
-                // Option 4: Click navigates to default path, separate caret toggles expand
+                // Click toggles expand - parent item never shows active state
                 if (hasSubItems) {
                   const isExpanded = expandedItems.includes(item.title);
 
@@ -449,68 +449,39 @@ export function AppSidebar({
                           animationFillMode: 'backwards'
                         }}
                       >
-                        {/* Split button: main area navigates, caret toggles expand */}
-                        <div
-                          className={`h-10 flex items-center relative group/item overflow-hidden ${
-                            isCollapsed ? 'justify-center w-full px-0' : 'ml-[-2px] mr-[-10px] pl-[8px] pr-[2px]'
-                          } ${
-                            isActive
-                              ? 'text-[var(--sidebar-nav-text-active)] shadow-sm scale-[1.01]'
-                              : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)]'
-                          } transition-all duration-300 ease-out`}
-                          style={{
-                            borderRadius: 'var(--sidebar-nav-border-radius)',
-                            ...(isActive
-                              ? {
-                                  backgroundColor: 'var(--sidebar-nav-bg-active)',
-                                  color: 'var(--sidebar-nav-text-active)',
-                                }
-                              : {})
-                          }}
+                        {/* Clickable row - toggles expand, never shows active state */}
+                        <button
+                          className={`h-10 w-full flex items-center relative group/item overflow-hidden cursor-pointer ${
+                            isCollapsed ? 'justify-center px-0' : 'ml-[-2px] mr-[-10px] pl-[8px] pr-[2px]'
+                          } text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)] transition-all duration-300 ease-out`}
+                          style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
+                          onClick={() => toggleExpanded(item.title)}
                         >
-                          {/* Main clickable area - navigates to default path */}
-                          <button
-                            className="flex items-center gap-3 flex-1 h-full cursor-pointer hover:opacity-80 transition-opacity"
-                            onClick={(e) => handleNavigate(item.path, item.title, e)}
-                          >
-                            <div className={`transition-all duration-300 ${isActive ? 'scale-110' : 'scale-100'}`}>
-                              <Icon
-                                size={18}
-                                weight={isActive ? 'fill' : 'regular'}
-                                className={`transition-all duration-300 ${
-                                  isActive
-                                    ? 'text-[var(--sidebar-icon-active)]'
-                                    : 'text-[var(--sidebar-icon-default)] group-hover/item:text-[var(--sidebar-icon-hover)]'
-                                }`}
-                              />
-                            </div>
+                          {/* Icon */}
+                          <div className="flex items-center gap-3 flex-1">
+                            <Icon
+                              size={18}
+                              weight="regular"
+                              className="text-[var(--sidebar-icon-default)] group-hover/item:text-[var(--sidebar-icon-hover)] transition-all duration-300"
+                            />
                             {!isCollapsed && (
-                              <span className={`font-inter font-normal tracking-tight transition-all duration-300 whitespace-nowrap ${
-                                isActive ? 'font-medium' : ''
-                              }`}>
+                              <span className="font-inter font-normal tracking-tight transition-all duration-300 whitespace-nowrap">
                                 {item.title}
                               </span>
                             )}
-                          </button>
+                          </div>
 
-                          {/* Separate caret button - toggles expand */}
+                          {/* Caret indicator */}
                           {!isCollapsed && (
-                            <button
-                              className="h-full px-2.5 flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 rounded-md transition-colors ml-auto"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleExpanded(item.title);
-                              }}
-                              title={isExpanded ? 'Collapse' : 'Expand'}
-                            >
+                            <div className="px-2.5 flex items-center justify-center">
                               <CaretDown
                                 size={14}
                                 weight="bold"
                                 className={`text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
                               />
-                            </button>
+                            </div>
                           )}
-                        </div>
+                        </button>
                       </SidebarMenuItem>
 
                       {/* Expandable sub-items */}
