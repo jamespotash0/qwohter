@@ -51,16 +51,57 @@ interface ExtractedSpecifications {
   additionalSpecs: Record<string, string>;
 }
 
+// Generic product specification - supports any product type with flexible nested specs
+interface ExtractedProductSpec {
+  // Core identifiers
+  name: string;                           // Product name/identifier (e.g., "Wall A", "Conference Table 1", "HVAC Unit 1")
+  productType: string | null;             // Type of product (e.g., "Operable Wall", "Office Chair", "Air Handler")
+  manufacturer: string | null;            // Manufacturer/brand name
+  model: string | null;                   // Model number
+  series: string | null;                  // Series/line
+  sku: string | null;                     // SKU or part number
+
+  // Quantities & Pricing
+  quantity: string | null;
+  unitPrice: number | null;
+  totalPrice: number | null;
+
+  // Dimensions (flexible - can be used for any product)
+  dimensions: {
+    height: string | null;
+    width: string | null;
+    length: string | null;
+    depth: string | null;
+    area: string | null;
+    weight: string | null;
+  } | null;
+
+  // All other specifications as flexible key-value pairs
+  // This allows any product-specific specs to be captured
+  specifications: Record<string, any>;
+
+  // For complex nested specifications (e.g., wall seals, door configs, furniture options)
+  components: Record<string, any> | null;
+
+  // Notes specific to this product
+  notes: string | null;
+}
+
+interface ExtractedProducts {
+  items: ExtractedProductSpec[];
+}
+
 interface ExtractedQuoteData {
   client: ExtractedClient;
   job: ExtractedJob;
   pricing: ExtractedPricing;
-  specifications: ExtractedSpecifications;
+  specifications: ExtractedSpecifications;  // Legacy/summary specs
+  products: ExtractedProducts;              // Detailed product breakdown
   notes: string | null;
   confidence: number;
 }
 
-const EXTRACTION_PROMPT = `You are an expert at extracting structured data from quotes, estimates, proposals, and invoices for ANY type of project or industry (construction, furniture, flooring, walls, IT services, landscaping, etc.).
+const EXTRACTION_PROMPT = `You are an expert at extracting structured data from quotes, estimates, proposals, and invoices for ANY type of project or industry (construction, furniture, flooring, walls, HVAC, IT services, landscaping, etc.).
 
 Your job is to carefully read the document and extract as much relevant information as possible.
 Adapt your extraction based on what type of project/service the document describes.
@@ -99,15 +140,91 @@ Return ONLY valid JSON (no markdown, no code blocks) with this exact structure:
     ]
   },
   "specifications": {
-    "dimensions": "string or null - any size/area measurements (e.g., '10ft x 25ft', '500 sq ft', '3 rooms')",
-    "quantity": "string or null - quantity of items/units (e.g., '15 chairs', '3 walls', '200 linear ft')",
-    "materials": "string or null - materials or products being used (e.g., 'Oak hardwood', 'Glass partition', 'Herman Miller chairs')",
-    "productType": "string or null - type of product/service (e.g., 'Demountable wall', 'Office furniture', 'Flooring installation')",
-    "additionalSpecs": "object - any other relevant specifications as key-value pairs (e.g., {'color': 'walnut', 'finish': 'matte', 'warranty': '5 years'})"
+    "dimensions": "string or null - overall project dimensions/area",
+    "quantity": "string or null - total quantity summary",
+    "materials": "string or null - primary materials summary",
+    "productType": "string or null - main product/service type",
+    "additionalSpecs": "object - other high-level specs as key-value pairs"
+  },
+  "products": {
+    "items": [
+      {
+        "name": "string - product identifier (e.g., 'Wall A', 'Conference Table 1', 'HVAC Unit 1', 'Workstation Set 1')",
+        "productType": "string or null - type (e.g., 'Operable Wall', 'Office Chair', 'Air Handler', 'Demountable Partition')",
+        "manufacturer": "string or null - brand/manufacturer name",
+        "model": "string or null - model number",
+        "series": "string or null - product series/line",
+        "sku": "string or null - SKU or part number",
+        "quantity": "string or null - quantity of this item",
+        "unitPrice": "number or null - price per unit",
+        "totalPrice": "number or null - total price for this item",
+        "dimensions": {
+          "height": "string or null - e.g., '8ft 4in' or '96 inches'",
+          "width": "string or null",
+          "length": "string or null - e.g., '38ft 5in'",
+          "depth": "string or null",
+          "area": "string or null - e.g., '500 sq ft'",
+          "weight": "string or null"
+        },
+        "specifications": {
+          "// For WALLS/PARTITIONS - include relevant fields like:": "",
+          "panelCount": "string - number of panels",
+          "panelThickness": "string - e.g., '4 inch'",
+          "panelSkin": "string - e.g., 'Standard Steel Skin'",
+          "panelConfiguration": "string - e.g., 'Individual Panels'",
+          "panelFinishCategory": "string - e.g., 'Koroseal Standard Vinyl'",
+          "panelFinishSpecificItem": "string - specific color/finish",
+          "topSeals": "string - e.g., 'Fixed'",
+          "bottomSeals": "string - e.g., 'Operable'",
+          "verticalSeals": "string - e.g., 'Trimless Astragal'",
+          "trackType": "string - e.g., 'Multi-Directional Track'",
+          "trackSystem": "string - full track description",
+          "structureSupport": "string - e.g., 'Pre-Drilled Steel Beam'",
+          "stcRating": "string - e.g., '52'",
+          "// For FURNITURE - include relevant fields like:": "",
+          "material": "string - e.g., 'Oak', 'Leather'",
+          "color": "string",
+          "finish": "string - e.g., 'Matte', 'Glossy'",
+          "upholstery": "string",
+          "armStyle": "string",
+          "baseType": "string",
+          "// For HVAC - include relevant fields like:": "",
+          "btuCapacity": "string",
+          "seerRating": "string",
+          "tonnage": "string",
+          "refrigerantType": "string",
+          "// Add ANY other specs found as key-value pairs": ""
+        },
+        "components": {
+          "// For complex sub-components, nest them here:": "",
+          "passDoors": {
+            "type": "string - e.g., 'Single', 'Double'",
+            "quantity": "string"
+          },
+          "pocketDoors": {
+            "foldType": "string",
+            "foldStyle": "string"
+          },
+          "closureSystem": {
+            "initial": "string - e.g., 'Bulb Seal'",
+            "final": "string - e.g., 'Expander Panel'"
+          }
+        },
+        "notes": "string or null - notes specific to this product"
+      }
+    ]
   },
   "notes": "string or null - any additional relevant notes, terms, or conditions",
   "confidence": "number between 0 and 1 indicating extraction confidence"
 }
+
+PRODUCT EXTRACTION RULES:
+- Extract EACH distinct product/item as a separate entry in the products.items array
+- Name products descriptively: "Wall A", "Wall B" for walls; "Desk 1", "Chair Set" for furniture; "Rooftop Unit 1" for HVAC
+- Put ALL product-specific specifications in the "specifications" object as key-value pairs
+- Use "components" for nested sub-items (doors, accessories, options)
+- Include pricing per product when available
+- Preserve the hierarchical structure of specifications (e.g., panel specs, seal types, finishes)
 
 CONFIDENCE GUIDELINES:
 - 0.8-1.0: Found client info AND pricing total - definitely a quote/invoice
@@ -122,10 +239,11 @@ IMPORTANT RULES:
 3. Look for common patterns: "Bill To", "Sold To", "Client", "Customer", "Total", "Grand Total", etc.
 4. Look for proposal/quote numbers near the top - patterns like "Quote #", "Proposal No.", "Estimate #", "Invoice #", etc.
 5. Look for dates near the proposal number or at the top of the document
-6. If you see line items, extract them even if missing some fields
+6. If you see line items, extract them as separate products with full specifications
 7. Be conservative - only extract what you're confident about
-8. For specifications, extract whatever is relevant to THIS document's project type
-9. Use additionalSpecs for industry-specific details (colors, finishes, models, warranties, etc.)`;
+8. Adapt the specifications fields based on the product type (walls, furniture, HVAC, etc.)
+9. Preserve manufacturer-specific terminology and specifications
+10. If a product has options or configurations, capture them in the specifications or components`;
 
 //@ts-ignore
 serve(async (req) => {
@@ -278,6 +396,36 @@ serve(async (req) => {
           && extractedData.specifications?.additionalSpecs !== null
           ? extractedData.specifications.additionalSpecs
           : {},
+      },
+      products: {
+        items: Array.isArray(extractedData.products?.items)
+          ? extractedData.products.items.map((item: any) => ({
+              name: item.name || 'Unnamed Product',
+              productType: item.productType || null,
+              manufacturer: item.manufacturer || null,
+              model: item.model || null,
+              series: item.series || null,
+              sku: item.sku || null,
+              quantity: item.quantity || null,
+              unitPrice: typeof item.unitPrice === 'number' ? item.unitPrice : null,
+              totalPrice: typeof item.totalPrice === 'number' ? item.totalPrice : null,
+              dimensions: item.dimensions && typeof item.dimensions === 'object' ? {
+                height: item.dimensions.height || null,
+                width: item.dimensions.width || null,
+                length: item.dimensions.length || null,
+                depth: item.dimensions.depth || null,
+                area: item.dimensions.area || null,
+                weight: item.dimensions.weight || null,
+              } : null,
+              specifications: typeof item.specifications === 'object' && item.specifications !== null
+                ? item.specifications
+                : {},
+              components: typeof item.components === 'object' && item.components !== null
+                ? item.components
+                : null,
+              notes: item.notes || null,
+            }))
+          : [],
       },
       notes: extractedData.notes || null,
       confidence: typeof extractedData.confidence === 'number'

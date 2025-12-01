@@ -235,6 +235,33 @@ export function ImportQuoteDialog({ open, onOpenChange }: ImportQuoteDialogProps
     try {
       const { extractedData, manual } = state;
 
+      // Calculate status date based on quote date (use quote date for the status timestamp)
+      const statusDate = manual.quoteDate
+        ? new Date(manual.quoteDate).toISOString()
+        : new Date().toISOString();
+
+      // Build status timestamps based on selected status
+      const statusTimestamps: {
+        submitted_at?: string;
+        won_at?: string;
+        rejected_at?: string;
+      } = {};
+
+      switch (manual.status) {
+        case 'Submitted':
+          statusTimestamps.submitted_at = statusDate;
+          break;
+        case 'Won':
+          statusTimestamps.submitted_at = statusDate; // Also mark as submitted
+          statusTimestamps.won_at = statusDate;
+          break;
+        case 'Rejected':
+          statusTimestamps.submitted_at = statusDate; // Also mark as submitted
+          statusTimestamps.rejected_at = statusDate;
+          break;
+        // Draft and Incomplete don't need status timestamps
+      }
+
       // Build quote data from extracted + manual fields
       const quoteData = {
         project_name: manual.projectName.trim(),
@@ -255,19 +282,45 @@ export function ImportQuoteDialog({ open, onOpenChange }: ImportQuoteDialogProps
           date: manual.quoteDate || new Date().toISOString().split('T')[0],
         },
         wall_details: {
-          // Map generic specifications to wall details where applicable
-          walls: extractedData.specifications.dimensions
-            ? [
-                {
-                  dimensions: extractedData.specifications.dimensions || '',
-                  quantity: extractedData.specifications.quantity || '',
-                  material: extractedData.specifications.materials || '',
-                  productType: extractedData.specifications.productType || '',
-                },
-              ]
-            : [],
+          // Map extracted products to wall details
+          walls: extractedData.products.items.length > 0
+            ? extractedData.products.items.reduce((acc, product, index) => {
+                // Use product name or generate a wall identifier
+                const wallName = product.name || `Wall ${String.fromCharCode(65 + index)}`;
+                acc[wallName] = {
+                  // Core identifiers
+                  model: product.model || '',
+                  series: product.series || '',
+                  quantity: product.quantity || '1',
+                  wallSystemType: product.productType || '',
+                  manufacturer: product.manufacturer || '',
+                  sku: product.sku || '',
+                  // Dimensions - parse from extracted dimensions
+                  heightFeet: product.dimensions?.height?.match(/\d+/)?.[0] || '',
+                  heightInches: '',
+                  lengthFeet: product.dimensions?.length?.match(/\d+/)?.[0] || '',
+                  lengthInches: '',
+                  // All extracted specifications
+                  ...product.specifications,
+                  // Components if present
+                  ...(product.components ? { components: product.components } : {}),
+                };
+                return acc;
+              }, {} as Record<string, any>)
+            : extractedData.specifications.dimensions
+              ? {
+                  'Wall A': {
+                    dimensions: extractedData.specifications.dimensions || '',
+                    quantity: extractedData.specifications.quantity || '',
+                    material: extractedData.specifications.materials || '',
+                    productType: extractedData.specifications.productType || '',
+                  },
+                }
+              : {},
           // Store additional specs for reference
           additionalSpecs: extractedData.specifications.additionalSpecs,
+          // Store raw products data for reference
+          extractedProducts: extractedData.products.items,
         },
         price_details: {
           final_selling_price: extractedData.pricing.total || 0,
@@ -276,6 +329,8 @@ export function ImportQuoteDialog({ open, onOpenChange }: ImportQuoteDialogProps
         created_at: manual.quoteDate
           ? new Date(manual.quoteDate).toISOString()
           : undefined,
+        // Set status timestamps based on the selected status and quote date
+        ...statusTimestamps,
       };
 
       const newQuote = await createQuote(quoteData);

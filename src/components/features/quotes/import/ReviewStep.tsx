@@ -13,9 +13,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { User, Mail, Phone, MapPin, DollarSign, Ruler, Calendar, FileText } from 'lucide-react';
+import { User, Mail, Phone, MapPin, DollarSign, Ruler, Calendar, FileText, Package, ChevronDown, ChevronRight } from 'lucide-react';
 import MapboxInput from '@/components/common/inputs/MapboxInput';
-import type { ExtractedQuoteData, ImportQuoteStatus } from '@/lib/types/quoteImport';
+import type { ExtractedQuoteData, ImportQuoteStatus, ExtractedProductSpec } from '@/lib/types/quoteImport';
+import { useState } from 'react';
 
 interface ReviewStepProps {
   extractedData: ExtractedQuoteData;
@@ -51,6 +52,13 @@ export function ReviewStep({
   quoteDate,
   onQuoteDateChange,
 }: ReviewStepProps) {
+  // Track expanded products
+  const [expandedProducts, setExpandedProducts] = useState<Record<number, boolean>>({});
+
+  const toggleProductExpanded = (index: number) => {
+    setExpandedProducts(prev => ({ ...prev, [index]: !prev[index] }));
+  };
+
   const updateClient = (field: keyof typeof extractedData.client, value: string) => {
     onUpdateExtracted({
       client: {
@@ -104,9 +112,32 @@ export function ReviewStep({
     });
   };
 
+  const updateProduct = (index: number, updates: Partial<ExtractedProductSpec>) => {
+    const newItems = [...extractedData.products.items];
+    newItems[index] = { ...newItems[index], ...updates };
+    onUpdateExtracted({
+      products: { items: newItems },
+    });
+  };
+
+  const updateProductSpec = (index: number, specKey: string, value: string) => {
+    const product = extractedData.products.items[index];
+    const newSpecs = { ...product.specifications, [specKey]: value || undefined };
+    if (!value) delete newSpecs[specKey];
+    updateProduct(index, { specifications: newSpecs });
+  };
+
   const formatCurrency = (value: number | null): string => {
     if (value === null) return '';
     return value.toString();
+  };
+
+  // Helper to format spec keys for display
+  const formatSpecKey = (key: string): string => {
+    return key
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/^./, str => str.toUpperCase())
+      .trim();
   };
 
   return (
@@ -358,6 +389,172 @@ export function ReviewStep({
           </div>
         )}
       </div>
+
+      {/* Products Section - Only show if products were extracted */}
+      {extractedData.products.items.length > 0 && (
+        <>
+          <Separator />
+          <div>
+            <SectionHeader icon={Package} title={`Products (${extractedData.products.items.length})`} />
+            <div className="space-y-3">
+              {extractedData.products.items.map((product, index) => {
+                const isExpanded = expandedProducts[index] ?? true; // Default expanded
+                const hasSpecs = Object.keys(product.specifications || {}).length > 0;
+                const hasDimensions = product.dimensions && Object.values(product.dimensions).some(v => v);
+                const hasComponents = product.components && Object.keys(product.components).length > 0;
+
+                return (
+                  <div
+                    key={index}
+                    className="border border-gray-200 rounded-lg overflow-hidden"
+                  >
+                    {/* Product Header - Collapsible */}
+                    <button
+                      type="button"
+                      onClick={() => toggleProductExpanded(index)}
+                      className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        {isExpanded ? (
+                          <ChevronDown className="w-4 h-4 text-gray-500" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-gray-500" />
+                        )}
+                        <span className="font-medium text-gray-900">{product.name}</span>
+                        {product.productType && (
+                          <span className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded">
+                            {product.productType}
+                          </span>
+                        )}
+                      </div>
+                      {product.quantity && (
+                        <span className="text-sm text-gray-600">Qty: {product.quantity}</span>
+                      )}
+                    </button>
+
+                    {/* Product Details - Expanded */}
+                    {isExpanded && (
+                      <div className="p-3 space-y-3 bg-white">
+                        {/* Basic Info Row */}
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <Label className="text-xs text-gray-500">Manufacturer</Label>
+                            <Input
+                              value={product.manufacturer || ''}
+                              onChange={(e) => updateProduct(index, { manufacturer: e.target.value || null })}
+                              placeholder="Brand name"
+                              className="mt-1 h-8 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-gray-500">Model</Label>
+                            <Input
+                              value={product.model || ''}
+                              onChange={(e) => updateProduct(index, { model: e.target.value || null })}
+                              placeholder="Model #"
+                              className="mt-1 h-8 text-sm"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-gray-500">Series</Label>
+                            <Input
+                              value={product.series || ''}
+                              onChange={(e) => updateProduct(index, { series: e.target.value || null })}
+                              placeholder="Series"
+                              className="mt-1 h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Dimensions - if present */}
+                        {hasDimensions && product.dimensions && (
+                          <div>
+                            <Label className="text-xs text-gray-500 mb-1 block">Dimensions</Label>
+                            <div className="grid grid-cols-4 gap-2">
+                              {product.dimensions.height && (
+                                <div className="text-xs">
+                                  <span className="text-gray-400">H:</span> {product.dimensions.height}
+                                </div>
+                              )}
+                              {product.dimensions.length && (
+                                <div className="text-xs">
+                                  <span className="text-gray-400">L:</span> {product.dimensions.length}
+                                </div>
+                              )}
+                              {product.dimensions.width && (
+                                <div className="text-xs">
+                                  <span className="text-gray-400">W:</span> {product.dimensions.width}
+                                </div>
+                              )}
+                              {product.dimensions.area && (
+                                <div className="text-xs">
+                                  <span className="text-gray-400">Area:</span> {product.dimensions.area}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Specifications - editable key-value pairs */}
+                        {hasSpecs && (
+                          <div>
+                            <Label className="text-xs text-gray-500 mb-2 block">Specifications</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              {Object.entries(product.specifications)
+                                .filter(([key]) => !key.startsWith('//')) // Filter out comment keys
+                                .map(([key, value]) => (
+                                  <div key={key} className="flex items-center gap-2">
+                                    <Label className="text-xs text-gray-400 w-24 truncate" title={formatSpecKey(key)}>
+                                      {formatSpecKey(key)}:
+                                    </Label>
+                                    <Input
+                                      value={String(value || '')}
+                                      onChange={(e) => updateProductSpec(index, key, e.target.value)}
+                                      className="h-7 text-xs flex-1"
+                                    />
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Components - display nested structures */}
+                        {hasComponents && product.components && (
+                          <div>
+                            <Label className="text-xs text-gray-500 mb-2 block">Components</Label>
+                            <div className="bg-gray-50 rounded p-2 text-xs">
+                              {Object.entries(product.components)
+                                .filter(([key]) => !key.startsWith('//'))
+                                .map(([key, value]) => (
+                                  <div key={key} className="mb-1">
+                                    <span className="font-medium text-gray-600">{formatSpecKey(key)}:</span>{' '}
+                                    <span className="text-gray-700">
+                                      {typeof value === 'object'
+                                        ? Object.entries(value).map(([k, v]) => `${k}: ${v}`).join(', ')
+                                        : String(value)
+                                      }
+                                    </span>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Product Notes */}
+                        {product.notes && (
+                          <div className="text-xs text-gray-500 italic">
+                            Note: {product.notes}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -44,6 +44,10 @@ export interface CreateQuoteData {
   quote_source?: string;
   proposal_number?: string;
   created_at?: string; // For imported quotes - use the original quote date
+  // Status timestamps for imported quotes
+  submitted_at?: string;
+  won_at?: string;
+  rejected_at?: string;
 }
 
 export interface UpdateQuoteData {

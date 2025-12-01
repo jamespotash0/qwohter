@@ -76,12 +76,56 @@ export interface ExtractedSpecifications {
   additionalSpecs: Record<string, string>;
 }
 
+// Product dimensions
+export interface ExtractedProductDimensions {
+  height: string | null;
+  width: string | null;
+  length: string | null;
+  depth: string | null;
+  area: string | null;
+  weight: string | null;
+}
+
+// Generic product specification - supports any product type with flexible nested specs
+export interface ExtractedProductSpec {
+  // Core identifiers
+  name: string;                           // Product name/identifier (e.g., "Wall A", "Conference Table 1")
+  productType: string | null;             // Type of product (e.g., "Operable Wall", "Office Chair")
+  manufacturer: string | null;            // Manufacturer/brand name
+  model: string | null;                   // Model number
+  series: string | null;                  // Series/line
+  sku: string | null;                     // SKU or part number
+
+  // Quantities & Pricing
+  quantity: string | null;
+  unitPrice: number | null;
+  totalPrice: number | null;
+
+  // Dimensions (flexible - can be used for any product)
+  dimensions: ExtractedProductDimensions | null;
+
+  // All other specifications as flexible key-value pairs
+  specifications: Record<string, any>;
+
+  // For complex nested specifications (e.g., wall seals, door configs)
+  components: Record<string, any> | null;
+
+  // Notes specific to this product
+  notes: string | null;
+}
+
+// Products container
+export interface ExtractedProducts {
+  items: ExtractedProductSpec[];
+}
+
 // Complete extracted quote data from AI
 export interface ExtractedQuoteData {
   client: ExtractedClient;
   job: ExtractedJob;
   pricing: ExtractedPricing;
-  specifications: ExtractedSpecifications;
+  specifications: ExtractedSpecifications;  // Legacy/summary specs
+  products: ExtractedProducts;              // Detailed product breakdown
   notes: string | null;
   confidence: number; // 0-1 overall confidence in extraction
   rawText?: string; // Original extracted text (for debugging)
@@ -115,6 +159,9 @@ export const EMPTY_EXTRACTED_DATA: ExtractedQuoteData = {
     materials: null,
     productType: null,
     additionalSpecs: {},
+  },
+  products: {
+    items: [],
   },
   notes: null,
   confidence: 0,
