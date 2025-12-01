@@ -191,6 +191,9 @@ serve(async (req) => {
     });
     const hasPaymentMethod = paymentMethods.data.length > 0;
 
+    // Capitalize Stripe status for database consistency (trialing → Trialing)
+    const capitalizedStatus = subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1);
+
     // Create or update subscription record in database
     if (existingSubscription) {
       await supabase
@@ -198,7 +201,7 @@ serve(async (req) => {
         .update({
           stripe_customer_id: customerId,
           stripe_subscription_id: subscription.id,
-          stripe_subscription_status: subscription.status,
+          stripe_subscription_status: capitalizedStatus,
           current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
           current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
           trial_start: subscription.trial_start ? new Date(subscription.trial_start * 1000).toISOString() : null,
@@ -218,7 +221,7 @@ serve(async (req) => {
           organization_id: organizationId,
           stripe_customer_id: customerId,
           stripe_subscription_id: subscription.id,
-          stripe_subscription_status: subscription.status,
+          stripe_subscription_status: capitalizedStatus,
           current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
           current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
           trial_start: subscription.trial_start ? new Date(subscription.trial_start * 1000).toISOString() : null,
