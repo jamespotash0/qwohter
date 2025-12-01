@@ -61,12 +61,6 @@ export const OrganizationSetupForm: React.FC<OrganizationSetupFormProps> = ({
         {loading ? "Creating Organization..." : "Create Organization"}
       </Button>
 
-      <div className="text-center mt-4">
-        <p className="text-xs text-gray-500">
-          Need to join an existing organization?{" "}
-          <span className="text-orange-600 font-medium">Ask your admin for an invitation link</span>
-        </p>
-      </div>
     </form>
   );
 };

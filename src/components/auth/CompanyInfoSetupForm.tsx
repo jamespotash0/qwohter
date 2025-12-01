@@ -136,9 +136,9 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
     onQuoteStartingPointChange(formatQuoteStartingPoint(value));
   };
 
-  // Check if form has validation errors
+  // Check if form has validation errors - only Quote Starting Number and Found Via are required
   const hasValidationErrors = Object.values(validationErrors).some(error => error !== undefined);
-  const hasRequiredFieldsEmpty = !phone.trim() || !address.trim() || !website.trim() || !quoteStartingPoint.trim() || !industry.trim() || !foundVia.trim();
+  const hasRequiredFieldsEmpty = !quoteStartingPoint.trim() || !foundVia.trim();
   const isFormInvalid = hasValidationErrors || hasRequiredFieldsEmpty;
   return (
     <div className="space-y-4">
@@ -214,9 +214,8 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
             id="phone"
             value={phone}
             onChange={handlePhoneChange}
-            label="Phone Number"
+            label="Phone Number (Optional)"
             placeholder="Enter your business phone number"
-            required
             disabled={loading}
             error={touched.phone ? validationErrors.phone : undefined}
             showValidation={false}
@@ -279,11 +278,11 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
         <div className="space-y-2">
           <MapboxInput
             id="address"
-            label="Address *"
+            label="Address (Optional)"
             value={address}
             onChange={onAddressChange}
             placeholder="Start typing your business address..."
-            required={true}
+            required={false}
             className="bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
           />
           <p className="text-xs text-gray-400">
@@ -293,13 +292,12 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
 
         {/* Website */}
         <div className="space-y-2">
-          <Label htmlFor="website" className="text-gray-700 font-medium text-sm">Website <span className="text-red-500">*</span></Label>
+          <Label htmlFor="website" className="text-gray-700 font-medium text-sm">Website (Optional)</Label>
           <Input
             id="website"
             value={website}
             onChange={handleWebsiteChange}
             placeholder="https://www.yourcompany.com"
-            required
             className={`bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500 ${
               touched.website && validationErrors.website ? 'border-red-500 focus:border-red-500' : ''
             }`}
@@ -314,7 +312,7 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
         <IndustrySelector
           value={industry}
           onChange={onIndustryChange}
-          required
+          required={false}
           disabled={loading}
         />
 

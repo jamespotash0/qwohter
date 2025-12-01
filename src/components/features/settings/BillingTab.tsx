@@ -150,13 +150,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
       // Remove success param from URL immediately
       setSearchParams({});
 
-      // Show processing message
-      toast({
-        title: "Processing subscription...",
-        description: "Please wait while we verify your subscription.",
-      });
-
-      // Poll for subscription with retry logic
+      // Poll for subscription with retry logic (silent - no toasts)
       let retries = 0;
       const maxRetries = 5; // Try for up to 10 seconds (5 retries * 2 seconds)
 
@@ -165,11 +159,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
           const { data: sub } = await stripeService.getSubscription(organization.id);
 
           if (sub && sub.stripe_subscription_status) {
-            // Subscription found! Show success
-            toast({
-              title: "Subscription activated!",
-              description: "Your subscription has been successfully activated.",
-            });
+            // Subscription found - refresh data silently
             loadBillingData();
           } else if (retries < maxRetries) {
             // Not found yet, retry

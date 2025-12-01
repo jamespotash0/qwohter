@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { parseLocalDate } from "@/lib/utils";
 import { PageContent } from "@/components/common/layout";
 import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
@@ -55,6 +55,7 @@ import { supabase } from "@/integrations/supabase/client";
  */
 const Dashboard = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Use auth and React Query hooks
   const user = useUser();
@@ -74,6 +75,7 @@ const Dashboard = () => {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
   const [showExpiryModal, setShowExpiryModal] = useState(false);
+  const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(false);
   const [trialStatus, setTrialStatus] = useState<{
     daysRemaining: number;
     trialEnd: string | null;
@@ -98,6 +100,22 @@ const Dashboard = () => {
       localStorage.setItem('sidebar_cached_profile', JSON.stringify(profile));
     }
   }, [profile, cachedProfile]);
+
+  // Handle welcome overlay for new users
+  useEffect(() => {
+    const welcome = searchParams.get('welcome');
+    if (welcome === 'true') {
+      // Remove welcome param from URL immediately
+      setSearchParams({});
+      // Show the welcome overlay
+      setShowWelcomeOverlay(true);
+      // Auto-dismiss after 3 seconds
+      const timer = setTimeout(() => {
+        setShowWelcomeOverlay(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, setSearchParams]);
 
   // Fetch trial status from subscription
   useEffect(() => {
@@ -691,6 +709,31 @@ const Dashboard = () => {
 
   return (
     <PageContent>
+      {/* Welcome Overlay for New Users */}
+      {showWelcomeOverlay && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-300"
+          onClick={() => setShowWelcomeOverlay(false)}
+        >
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 mx-4 max-w-md w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Welcome to Qwohter!
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Your 14-day free trial has started.
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Enjoy full access to all features!
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Dashboard Header */}
       <div className="mb-8 flex items-start justify-between">
         <div className="flex-1 max-w-3xl">

@@ -71,15 +71,10 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
 
     console.log('✅ Company info saved successfully');
 
-    toast({
-      title: 'Setup complete!',
-      description: 'Welcome to your 14-day free trial. Enjoy full access to all features!',
-    });
-
-    // Clear auth state and navigate to dashboard
+    // Clear auth state and navigate to dashboard with welcome flag
     // User was already auto-enrolled in free trial during org creation
     clearAuthState();
-    navigate('/dashboard');
+    navigate('/dashboard?welcome=true');
   } catch (error: any) {
     toast({
       title: 'Company Info Error',
@@ -98,17 +93,12 @@ interface HandleCompanyInfoSkipParams {
 }
 
 export const handleCompanyInfoSkip = (params: HandleCompanyInfoSkipParams) => {
-  const { toast, clearAuthState, navigate } = params;
+  const { clearAuthState, navigate } = params;
 
-  toast({
-    title: 'Setup complete!',
-    description: 'Welcome to your 14-day free trial. You can add company details later in Settings.',
-  });
-
-  // Clear auth state and navigate to dashboard
+  // Clear auth state and navigate to dashboard with welcome flag
   // User was already auto-enrolled in free trial during org creation
   clearAuthState();
-  navigate('/dashboard');
+  navigate('/dashboard?welcome=true');
 };
 
 interface HandleLogoUploadParams {
