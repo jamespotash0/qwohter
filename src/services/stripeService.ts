@@ -227,16 +227,6 @@ export const hasValidSubscription = async (organizationId: string) => {
     };
   }
 
-  // Check is_active flag (master switch for subscription access)
-  // This is set to false when subscription is canceled, paused, or otherwise inactive
-  // Must match the database has_valid_subscription() function for consistency
-  if (!subscription.is_active) {
-    return {
-      isValid: false,
-      reason: 'Subscription is not active',
-    };
-  }
-
   // Check subscription status (cached from Stripe)
   // We store capitalized statuses in DB (Active, Trialing, Canceled, etc.)
   // Compare case-insensitively
