@@ -20,6 +20,7 @@ import { ProcessingStep } from './ProcessingStep';
 import { ReviewStep } from './ReviewStep';
 import { extractTextFromFile, parseQuoteWithAI } from '@/services/quoteImport';
 import { createQuote } from '@/services/quotesService';
+import { invalidateQueries } from '@/lib/queryClient';
 import type {
   ImportQuoteState,
   ImportFileType,
@@ -278,6 +279,9 @@ export function ImportQuoteDialog({ open, onOpenChange }: ImportQuoteDialogProps
       };
 
       const newQuote = await createQuote(quoteData);
+
+      // Invalidate the quotes cache so the table updates immediately
+      await invalidateQueries.allQuotes();
 
       toast({
         title: 'Quote Imported',
