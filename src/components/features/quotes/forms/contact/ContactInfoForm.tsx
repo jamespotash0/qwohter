@@ -1,11 +1,16 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { User, Mail, Phone, Printer, MapPin, Globe, Plus, TrendingUp } from "lucide-react";
-import { useOrganizations } from "@/hooks/useOrganizations";
-import { useOrganizationSettings } from "@/hooks/useCompanySettings";
+import { User, Mail, Phone, Printer, MapPin, Globe, Plus, TrendingUp, UserPlus } from "lucide-react";
+import { useCurrentOrganization, useOrganizationMembers } from "@/hooks/queries";
+import { useUser } from "@/auth";
 import { extractCompanyInfoForForm } from "@/lib/types/settings/companySettings";
+import { useContacts } from "@/hooks/useContacts";
+import { combineContactOptions, getUniqueContactNames, getUniqueContactEmails } from "@/lib/utils/contactUtils";
+import { ContactDialog } from "@/components/features/contacts/ContactDialog";
+import type { Contact } from "@/lib/types/contacts";
 
 interface ContactInfoData {
   contactName: string;
@@ -24,47 +29,55 @@ interface ContactInfoFormProps {
 }
 
 const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
-  const { currentOrganization, members, loading } = useOrganizations();
-  const { organization, isLoading: organizationLoading } = useOrganizationSettings();
+  const user = useUser();
+  const { organization, isLoading: loading } = useCurrentOrganization(user?.id);
+  const { data: members = [] } = useOrganizationMembers(organization?.id || '', !!organization?.id);
+  const { data: contacts = [], isLoading: contactsLoading } = useContacts(organization?.id);
+  const organizationLoading = loading;
   const [showCustomNameInput, setShowCustomNameInput] = useState(false);
   const [showCustomEmailInput, setShowCustomEmailInput] = useState(false);
   const [showCustomQuoteSourceInput, setShowCustomQuoteSourceInput] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customEmail, setCustomEmail] = useState("");
   const [customQuoteSource, setCustomQuoteSource] = useState("");
+  const [showContactDialog, setShowContactDialog] = useState(false);
 
 
   const handleChange = (field: keyof ContactInfoData, value: string) => {
     onUpdate({ ...data, [field]: value });
   };
 
+  // Handle successful contact creation
+  const handleContactCreated = (newContact: Contact) => {
+    // Auto-fill the form with the new contact's data
+    handleChange('contactName', newContact.full_name);
+    handleChange('contactEmail', newContact.emails[0] || '');
+  };
+
   // Automatically set organization name when organization loads
   useEffect(() => {
-    if (currentOrganization && !data.organizationName) {
-      console.log('[ContactInfoForm] Setting organizationName:', currentOrganization.name);
-      handleChange('organizationName', currentOrganization.name);
+    if (organization && !data.organizationName) {
+      console.log('[ContactInfoForm] Setting organizationName:', organization.name);
+      handleChange('organizationName', organization.name);
     }
-  }, [currentOrganization, data.organizationName]);
+  }, [organization, data.organizationName]);
 
   // Debug: Log when organization is not available
   useEffect(() => {
-    if (!currentOrganization) {
-      console.warn('[ContactInfoForm] currentOrganization is not available');
+    if (!organization) {
+      console.warn('[ContactInfoForm] organization is not available');
     }
-  }, [currentOrganization]);
+  }, [organization]);
 
   // Get active members from the organization
-  const activeMembers = members.filter(member => member.status === 'Active');
-  
-  // Create contact options from organization members
-  const contactNames = activeMembers
-    .filter(member => member.full_name)
-    .map(member => member.full_name!)
-    .sort();
+  const activeMembers = (members || []).filter(member => member.status === 'Active'); //membership_status
 
-  const contactEmails = activeMembers
-    .map(member => member.email)
-    .sort();
+  // Combine members and contacts into unified contact options
+  const contactOptions = combineContactOptions(activeMembers, contacts);
+
+  // Get unique names and emails for dropdowns
+  const contactNames = getUniqueContactNames(contactOptions);
+  const contactEmails = getUniqueContactEmails(contactOptions);
 
   // Handle custom name input
   const handleNameChange = (value: string) => {
@@ -105,13 +118,13 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
 
   // Handle when existing values don't match dropdown options (e.g., custom values from saved data)
   useEffect(() => {
-    if (!loading && activeMembers.length > 0) {
+    if (!loading && !contactsLoading && (activeMembers.length > 0 || contacts.length > 0)) {
       // Check if current contactName is not in the dropdown options and set custom input if needed
       if (data.contactName && !contactNames.includes(data.contactName)) {
         setShowCustomNameInput(true);
         setCustomName(data.contactName);
       }
-      
+
       // Check if current contactEmail is not in the dropdown options and set custom input if needed
       if (data.contactEmail && !contactEmails.includes(data.contactEmail)) {
         setShowCustomEmailInput(true);
@@ -125,12 +138,12 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
       'Architect Referral', 'Phone Inquiry', 'Email Inquiry', 'Trade Show',
       'Repeat Customer'
     ];
-    
+
     if (data.quoteSource && !standardQuoteSources.includes(data.quoteSource)) {
       setShowCustomQuoteSourceInput(true);
       setCustomQuoteSource(data.quoteSource);
     }
-  }, [loading, activeMembers, data.contactName, data.contactEmail, data.quoteSource, contactNames, contactEmails]);
+  }, [loading, contactsLoading, activeMembers, contacts, data.contactName, data.contactEmail, data.quoteSource, contactNames, contactEmails]);
 
   // Auto-set fields from organization when available (always override for company fields)
   useEffect(() => {
@@ -165,6 +178,20 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
 
   return (
     <div className="p-1">
+      {/* Add Contact Button */}
+      <div className="mb-4 flex justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setShowContactDialog(true)}
+          className="flex items-center gap-2"
+        >
+          <UserPlus className="w-4 h-4" />
+          Add New Contact
+        </Button>
+      </div>
+
       {/* Three-row layout as requested */}
       <div className="space-y-6">
         {/* Row 1: Contact Name and Contact Email */}
@@ -210,8 +237,8 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
               <SelectTrigger className={`h-10 ${
                 data.contactName ? 'border-green-500' : 'border-red-500'
               }`}>
-                <SelectValue 
-                  placeholder={loading ? "Loading contacts..." : "Select contact name"} 
+                <SelectValue
+                  placeholder={(loading || contactsLoading) ? "Loading contacts..." : "Select contact name"}
                   className="text-gray-600"
                 />
               </SelectTrigger>
@@ -274,14 +301,14 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
               <SelectTrigger className={`h-10 w-full ${
                 data.contactEmail ? 'border-green-500' : 'border-red-500'
               }`}>
-                <SelectValue 
-                  placeholder={loading ? "Loading emails..." : "Select contact email"} 
+                <SelectValue
+                  placeholder={(loading || contactsLoading) ? "Loading emails..." : "Select contact email"}
                   className="text-gray-600"
                 />
               </SelectTrigger>
               <SelectContent>
                 {contactEmails.map((email) => (
-                  <SelectItem key={email} value={email}>
+                  <SelectItem key={email} value={email!}>
                     {email}
                   </SelectItem>
                 ))}
@@ -459,6 +486,16 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
           </div>
         </div>
       </div>
+
+      {/* Contact Dialog for adding/editing contacts */}
+      {organization && (
+        <ContactDialog
+          open={showContactDialog}
+          onOpenChange={setShowContactDialog}
+          organizationId={organization.id}
+          onSuccess={handleContactCreated}
+        />
+      )}
     </div>
   );
 };

@@ -1,41 +1,27 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuotesStore } from "@/stores/quotes/quotesStore";
+import { useQuotes } from "@/hooks/queries/useQuotes";
+import { useUser } from "@/auth";
 import QuoteEditingWizard from "@/components/features/quotes/editing/QuoteEditingWizard/QuoteEditingWizard";
 
 const QuoteEditIncomplete = () => {
   const navigate = useNavigate();
   const { proposalNumber } = useParams<{ proposalNumber: string }>();
-  const [user, setUser] = useState<any>(null);
-  const quotes = useQuotesStore((state) => state.quotes);
-  
+  const user = useUser();
+
+  // Fetch quotes using React Query
+  const { data: quotes = [] } = useQuotes(user?.id);
+
   // Find the quote to edit
   const existingQuote = proposalNumber ? quotes.find(q => q.proposal_number === proposalNumber) : null;
 
+  // Auth is handled by AuthProvider and useUser hook
   useEffect(() => {
-    // Check authentication
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/auth");
-        return;
-      }
-      setUser(session.user);
-    };
-
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
-      if (!session) {
-        navigate("/auth");
-      } else {
-        setUser(session.user);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    if (!user) {
+      navigate("/auth");
+    }
+  }, [user, navigate]);
 
   // Redirect if quote not found or not incomplete
   useEffect(() => {

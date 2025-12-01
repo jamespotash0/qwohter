@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import * as Sentry from '@sentry/react';
 
 export type ReminderType = 'Quote_Follow_Up' | 'General' | 'Meeting' | 'Deadline' | 'Task' | 'Other';
 export type ReminderStatus = 'Pending' | 'Completed' | 'Dismissed';
@@ -12,7 +13,7 @@ export interface Reminder {
   due_date: string;
   quote_id?: string;
   reminder_type: ReminderType;
-  status: ReminderStatus;
+  reminder_status: ReminderStatus; //reminder_status formerly status
   is_shared: boolean;
   completed_at?: string;
   completed_by?: string;
@@ -43,7 +44,7 @@ export interface UpdateReminderParams {
 }
 
 export interface CompleteReminderParams {
-  status: 'Completed' | 'Dismissed';
+  status: 'Completed' | 'Dismissed'; // Maps to reminder_status in DB
   completed_by: string;
 }
 
@@ -75,7 +76,7 @@ export const reminderService = {
         .order('due_date', { ascending: true });
 
       if (!params.includeCompleted) {
-        query = query.eq('status', 'Pending');
+        query = query.eq('reminder_status', 'Pending'); //reminder_status formerly status
       }
 
       const { data, error } = await query;
@@ -129,66 +130,140 @@ export const reminderService = {
 
   /**
    * Create a new reminder
+   *
+   * Why instrumented: Critical business flow - reminders drive follow-ups which close deals.
+   * If reminder creation fails silently, users miss opportunities.
+   *
+   * What we track:
+   * - Success/failure rate
+   * - Reminder type distribution (which types are used most)
+   * - Quote association (are reminders linked to quotes?)
+   * - Auth failures
    */
   async createReminder(params: CreateReminderParams): Promise<{ data: Reminder | null; error?: string }> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return { data: null, error: 'User not authenticated' };
+    return await Sentry.startSpan(
+      {
+        name: 'createReminder',
+        op: 'db.query',
+        attributes: {
+          'reminder.type': params.reminder_type,
+          'reminder.has_quote': !!params.quote_id,
+          'reminder.is_shared': params.is_shared ?? false,
+        },
+      },
+      async (span) => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            span.setStatus({ code: 2, message: 'Not authenticated' });
+            Sentry.captureMessage('Reminder creation failed: User not authenticated', {
+              level: 'warning',
+              tags: { operation: 'createReminder' },
+            });
+            return { data: null, error: 'User not authenticated' };
+          }
+
+          span.setAttribute('user.id', user.id);
+          span.setAttribute('organization.id', params.organization_id);
+
+          const { data, error } = await supabase
+            .from('reminders')
+            .insert({
+              title: params.title,
+              description: params.description,
+              due_date: params.due_date,
+              quote_id: params.quote_id,
+              reminder_type: params.reminder_type,
+              reminder_status: 'Pending', // Default status for new reminders
+              organization_id: params.organization_id,
+              created_by: user.id,
+              is_shared: params.is_shared ?? false, // Default to personal (false)
+            } as any)
+            .select()
+            .single();
+
+          if (error) {
+            span.setStatus({ code: 2, message: error.message });
+            Sentry.captureException(error, {
+              tags: {
+                operation: 'createReminder',
+                reminder_type: params.reminder_type,
+              },
+              level: 'error',
+            });
+            console.error('Failed to create reminder:', error);
+            return { data: null, error: error.message };
+          }
+
+          span.setStatus({ code: 1 }); // Success
+          span.setAttribute('reminder.id', data.id);
+          return { data: data as Reminder };
+        } catch (error) {
+          Sentry.captureException(error, {
+            tags: { operation: 'createReminder' },
+          });
+          console.error('Failed to create reminder:', error);
+          return { data: null, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
       }
-
-      const { data, error } = await supabase
-        .from('reminders')
-        .insert({
-          title: params.title,
-          description: params.description,
-          due_date: params.due_date,
-          quote_id: params.quote_id,
-          reminder_type: params.reminder_type,
-          organization_id: params.organization_id,
-          created_by: user.id,
-          is_shared: params.is_shared ?? false, // Default to personal (false)
-        } as any)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Failed to create reminder:', error);
-        return { data: null, error: error.message };
-      }
-
-      return { data: data as Reminder };
-    } catch (error) {
-      console.error('Failed to create reminder:', error);
-      return { data: null, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
+    );
   },
 
   /**
    * Update a reminder
+   *
+   * Why instrumented: Users need to modify reminders frequently (reschedule, update details).
+   * Track failures to ensure reliability.
+   *
+   * What we track:
+   * - Which fields are updated most often
+   * - Update failures (permissions, not found)
    */
   async updateReminder(
     id: string,
     params: UpdateReminderParams
   ): Promise<{ data: Reminder | null; error?: string }> {
-    try {
-      const { data, error } = await supabase
-        .from('reminders')
-        .update(params)
-        .eq('id', id)
-        .select()
-        .single();
+    return await Sentry.startSpan(
+      {
+        name: 'updateReminder',
+        op: 'db.query',
+        attributes: {
+          'reminder.id': id,
+          'update.fields': Object.keys(params).join(', '),
+        },
+      },
+      async (span) => {
+        try {
+          const { data, error } = await supabase
+            .from('reminders')
+            .update(params)
+            .eq('id', id)
+            .select()
+            .single();
 
-      if (error) {
-        console.error('Failed to update reminder:', error);
-        return { data: null, error: error.message };
+          if (error) {
+            span.setStatus({ code: 2, message: error.message });
+            Sentry.captureException(error, {
+              tags: {
+                operation: 'updateReminder',
+                reminder_id: id,
+              },
+            });
+            console.error('Failed to update reminder:', error);
+            return { data: null, error: error.message };
+          }
+
+          span.setStatus({ code: 1 }); // Success
+          return { data: data as Reminder };
+        } catch (error) {
+          Sentry.captureException(error, {
+            tags: { operation: 'updateReminder' },
+          });
+          console.error('Failed to update reminder:', error);
+          return { data: null, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
       }
-
-      return { data: data as Reminder };
-    } catch (error) {
-      console.error('Failed to update reminder:', error);
-      return { data: null, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
+    );
   },
 
   /**
@@ -202,10 +277,10 @@ export const reminderService = {
       const { data, error } = await supabase
         .from('reminders')
         .update({
-          status: params.status,
+          reminder_status: params.status, // params.status maps to DB reminder_status column
           completed_at: new Date().toISOString(),
           completed_by: params.completed_by,
-        })
+        } as any) // Type assertion needed until Supabase types are regenerated post-migration
         .eq('id', id)
         .select()
         .single();
@@ -224,24 +299,53 @@ export const reminderService = {
 
   /**
    * Delete a reminder
+   *
+   * Why instrumented: Destructive operation - if this fails, reminders linger.
+   * Users may think they deleted a reminder but it's still active.
+   *
+   * What we track:
+   * - Deletion failures (permissions, not found)
    */
   async deleteReminder(id: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { error } = await supabase
-        .from('reminders')
-        .delete()
-        .eq('id', id);
+    return await Sentry.startSpan(
+      {
+        name: 'deleteReminder',
+        op: 'db.query',
+        attributes: {
+          'reminder.id': id,
+        },
+      },
+      async (span) => {
+        try {
+          const { error } = await supabase
+            .from('reminders')
+            .delete()
+            .eq('id', id);
 
-      if (error) {
-        console.error('Failed to delete reminder:', error);
-        return { success: false, error: error.message };
+          if (error) {
+            span.setStatus({ code: 2, message: error.message });
+            Sentry.captureException(error, {
+              tags: {
+                operation: 'deleteReminder',
+                reminder_id: id,
+              },
+              level: 'warning',
+            });
+            console.error('Failed to delete reminder:', error);
+            return { success: false, error: error.message };
+          }
+
+          span.setStatus({ code: 1 }); // Success
+          return { success: true };
+        } catch (error) {
+          Sentry.captureException(error, {
+            tags: { operation: 'deleteReminder' },
+          });
+          console.error('Failed to delete reminder:', error);
+          return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        }
       }
-
-      return { success: true };
-    } catch (error) {
-      console.error('Failed to delete reminder:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
+    );
   },
 
   /**
@@ -272,7 +376,7 @@ export const reminderService = {
           )
         `)
         .eq('organization_id', params.organizationId)
-        .eq('status', 'Pending')
+        .eq('reminder_status', 'Pending') //reminder_status formerly status
         .lte('due_date', futureDate.toISOString())
         .order('due_date', { ascending: true });
 

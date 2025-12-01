@@ -1,10 +1,14 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageContent, ContentCard } from "@/components/common/layout";
 import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
+import { ImportQuoteDialog } from "@/components/features/quotes/import";
+import { CreateInvoiceDialog } from "@/components/features/integrations/CreateInvoiceDialog";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useQuotesStore, type Quote } from "@/stores/quotes/quotesStore";
+import { useUser } from "@/auth";
+import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
+import { useQuotes, useUpdateQuote, useUpdateQuoteStatus, useArchiveQuote, useUnarchiveQuote, useDeleteQuote, useSetMainVersion, useCreateQuoteVersion } from "@/hooks/queries";
+import type { Quote } from "@/services/quotesService";
 import { EnhancedQuotesTable } from "@/components/features/quotes/table/EnhancedQuotesTable";
 import { ProposalNumberGenerator } from "@/utils/proposalNumberGenerator";
 import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
@@ -12,6 +16,7 @@ import { FileText, Plus, Sparkles, DollarSign, Clock, CheckCircle } from "lucide
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDateEST } from "@/utils/dateUtils";
+import { DebugGrid } from "@/components/common/DebugGrid";
 
 /**
  * Streamlined Quotes Page using AppLayout
@@ -23,79 +28,67 @@ import { formatDateEST } from "@/utils/dateUtils";
  */
 const Quotes = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
-  const quotes = useQuotesStore((state) => state.quotes);
-  const quotesLoading = useQuotesStore((state) => state.isLoading);
-  const fetchQuotes = useQuotesStore((state) => state.fetchQuotes);
-  const subscribeToRealtime = useQuotesStore((state) => state.subscribeToRealtime);
-  const unsubscribeFromRealtime = useQuotesStore((state) => state.unsubscribeFromRealtime);
-  const updateQuote = useQuotesStore((state) => state.updateQuote);
-  const archiveQuote = useQuotesStore((state) => state.archiveQuote);
-  const unarchiveQuote = useQuotesStore((state) => state.unarchiveQuote);
-  const createQuoteVersion = useQuotesStore((state) => state.createQuoteVersion);
-  const deleteQuoteFromDB = useQuotesStore((state) => state.deleteQuote);
-  const setMainVersion = useQuotesStore((state) => state.setMainVersion);
 
-  // Get filtered quotes using the selector
-  const getFilteredQuotes = useQuotesStore((state) => state.getFilteredQuotes);
-  const getArchivedQuotes = useQuotesStore((state) => state.getArchivedQuotes);
+  // ✅ v3.0.0: Use React Query hooks for automatic caching
+  const user = useUser();
+  const { data: allQuotes = [], isLoading: quotesLoading, isFetching } = useQuotes(user?.id);
 
-  const filteredQuotes = getFilteredQuotes();
-  const archivedQuotes = getArchivedQuotes();
+  // Mutation hooks
+  const { mutateAsync: updateQuoteMutation } = useUpdateQuote();
+  const { mutate: updateStatusMutation } = useUpdateQuoteStatus();
+  const { mutateAsync: archiveQuoteMutation } = useArchiveQuote();
+  const { mutateAsync: unarchiveQuoteMutation } = useUnarchiveQuote();
+  const { mutateAsync: deleteQuoteMutation } = useDeleteQuote();
+  const { mutateAsync: setMainVersionMutation } = useSetMainVersion();
+  const { mutateAsync: createVersionMutation } = useCreateQuoteVersion();
 
   const [deleteQuoteId, setDeleteQuoteId] = useState<string | null>(null);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [invoiceQuote, setInvoiceQuote] = useState<Quote | null>(null);
 
   // Track the currently displayed "main" versions from the table
   const [currentMainVersions, setCurrentMainVersions] = useState<Quote[]>([]);
 
-  // Get current user for quotes initialization
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-      }
-    };
-    getCurrentUser();
-  }, []);
+  // Get organization for invoice creation
+  const { organization } = useCurrentOrganization(user?.id || '');
 
-  // Fetch quotes and setup realtime subscription when page mounts
-  useEffect(() => {
-    if (!user) return;
+  // ✅ React Query automatically handles fetching and caching
+  // No manual fetching or subscriptions needed!
 
-    console.log('📊 Quotes page mounted - fetching quotes and setting up subscription');
+  // Filter quotes into active and archived using memoization
+  const filteredQuotes = useMemo(() => {
+    return allQuotes.filter(q => !q.archived);
+  }, [allQuotes]);
 
-    // Fetch quotes
-    fetchQuotes({ refresh: true });
+  const archivedQuotes = useMemo(() => {
+    return allQuotes.filter(q => q.archived === true);
+  }, [allQuotes]);
 
-    // Setup realtime subscription
-    subscribeToRealtime();
-
-    // Cleanup: unsubscribe when page unmounts
-    return () => {
-      console.log('🧹 Quotes page unmounting - cleaning up subscription');
-      unsubscribeFromRealtime();
-    };
-  }, [user]); // Only re-run if user changes
-
-  // Quote management functions
-  const updateQuoteStatus = async (id: string, newStatus: string) => {
-    await updateQuote(id, { status: newStatus as any });
+  // Quote management functions using React Query mutations
+  const updateQuoteStatus = (id: string, newStatus: string) => {
+    // Use dedicated status update hook to bypass quote_status_history trigger
+    updateStatusMutation({ quoteId: id, status: newStatus });
   };
 
   const updateQuoteSource = async (id: string, newSource: string) => {
-    await updateQuote(id, { quote_source: newSource });
+    try {
+      await updateQuoteMutation({ id, updates: { quote_source: newSource } });
+      // Toast for successful quote source update (mutation is silent by default)
+      // Note: No toast here - user sees the dropdown change which is feedback enough
+    } catch (error) {
+      // Errors are logged in the mutation hook
+    }
   };
 
   const handleDeleteQuote = async (id: string) => {
     // Find if this quote is part of a version group
-    const quoteGroups = groupQuotesByVersion(quotes);
-    const quoteToDelete = quotes.find(q => q.id === id);
+    const quoteGroups = groupQuotesByVersion(allQuotes);
+    const quoteToDelete = allQuotes.find(q => q.id === id);
 
     if (!quoteToDelete) {
-      await deleteQuoteFromDB(id);
+      await deleteQuoteMutation(id);
       setDeleteQuoteId(null);
       return;
     }
@@ -112,16 +105,15 @@ const Quotes = () => {
       if (isMainVersion) {
         // This is the main version - delete ALL versions in the group (cascade delete)
         console.log('🗑️ Cascade deleting all versions for group:', group.baseNumber);
-        for (const version of group.versions) {
-          await deleteQuoteFromDB(version.id);
-        }
+        // Delete all in parallel for better performance
+        await Promise.all(group.versions.map(version => deleteQuoteMutation(version.id)));
       } else {
         // This is a child version - delete only this one
-        await deleteQuoteFromDB(id);
+        await deleteQuoteMutation(id);
       }
     } else {
       // Single version, no group - just delete it
-      await deleteQuoteFromDB(id);
+      await deleteQuoteMutation(id);
     }
 
     setDeleteQuoteId(null);
@@ -129,11 +121,11 @@ const Quotes = () => {
 
   const handleArchiveQuote = async (id: string) => {
     // Find if this quote is part of a version group
-    const quoteGroups = groupQuotesByVersion(quotes);
-    const quoteToArchive = quotes.find(q => q.id === id);
+    const quoteGroups = groupQuotesByVersion(allQuotes);
+    const quoteToArchive = allQuotes.find(q => q.id === id);
 
     if (!quoteToArchive) {
-      await archiveQuote(id);
+      await archiveQuoteMutation(id);
       return;
     }
 
@@ -149,26 +141,25 @@ const Quotes = () => {
       if (isMainVersion) {
         // This is the main version - archive ALL versions in the group (cascade archive)
         console.log('📦 Cascade archiving all versions for group:', group.baseNumber);
-        for (const version of group.versions) {
-          await archiveQuote(version.id);
-        }
+        // Archive all in parallel for better performance
+        await Promise.all(group.versions.map(version => archiveQuoteMutation(version.id)));
       } else {
         // This is a child version - archive only this one
-        await archiveQuote(id);
+        await archiveQuoteMutation(id);
       }
     } else {
       // Single version, no group - just archive it
-      await archiveQuote(id);
+      await archiveQuoteMutation(id);
     }
   };
 
   const handleUnarchiveQuote = async (id: string) => {
     // Find if this quote is part of a version group
-    const quoteGroups = groupQuotesByVersion(quotes);
-    const quoteToUnarchive = quotes.find(q => q.id === id);
+    const quoteGroups = groupQuotesByVersion(allQuotes);
+    const quoteToUnarchive = allQuotes.find(q => q.id === id);
 
     if (!quoteToUnarchive) {
-      await unarchiveQuote(id);
+      await unarchiveQuoteMutation(id);
       return;
     }
 
@@ -184,19 +175,22 @@ const Quotes = () => {
       if (isMainVersion) {
         // This is the main version - unarchive ALL versions in the group (cascade unarchive)
         console.log('📤 Cascade unarchiving all versions for group:', group.baseNumber);
-        for (const version of group.versions) {
-          await unarchiveQuote(version.id);
-        }
+        // Unarchive all in parallel for better performance
+        await Promise.all(group.versions.map(version => unarchiveQuoteMutation(version.id)));
       } else {
         // This is a child version - unarchive only this one
-        await unarchiveQuote(id);
+        await unarchiveQuoteMutation(id);
       }
     } else {
       // Single version, no group - just unarchive it
-      await unarchiveQuote(id);
+      await unarchiveQuoteMutation(id);
     }
   };
 
+  // Set main version handler
+  const setMainVersion = (quoteId: string, baseProposalNumber: string) => {
+    setMainVersionMutation({ quoteId, baseProposalNumber });
+  };
 
   // Calculate quote statistics
   const metrics = useMemo(() => {
@@ -205,7 +199,7 @@ const Quotes = () => {
     let mainVersions = currentMainVersions;
 
     if (mainVersions.length === 0) {
-      const activeQuotes = quotes.filter(q => !q.archived);
+      const activeQuotes = allQuotes.filter(q => !q.archived);
       const quoteGroups = groupQuotesByVersion(activeQuotes);
       mainVersions = quoteGroups.map(group => group.mainVersion);
     }
@@ -271,7 +265,7 @@ const Quotes = () => {
       totalValue,
       valueThisMonth
     };
-  }, [currentMainVersions, quotes]);
+  }, [currentMainVersions, allQuotes]);
 
   const editQuote = (quote: Quote) => {
     const proposalNumber = quote.proposal_number;
@@ -290,11 +284,28 @@ const Quotes = () => {
 
   const handleCreateVersion = async (quoteId: string) => {
     try {
-      const newQuote = await createQuoteVersion(quoteId);
+      // Find the quote to create a version from
+      const existingQuote = allQuotes.find(q => q.id === quoteId);
+      if (!existingQuote) throw new Error('Quote not found');
+
+      // Use ProposalNumberGenerator to get the next version number
+      const proposalInfo = await ProposalNumberGenerator.getNextProposalNumber(existingQuote.proposal_number);
+
+      // Create new quote version using React Query mutation (auto-invalidates cache)
+      const newQuote = await createVersionMutation({
+        quoteId,
+        newProposalNumber: proposalInfo.fullNumber,
+        versionNumber: proposalInfo.version
+      });
+
       navigate(`/editor/${newQuote.proposal_number as string}`);
     } catch (error) {
       console.error('Error creating quote version:', error);
     }
+  };
+
+  const handleCreateInvoice = (quote: Quote) => {
+    setInvoiceQuote(quote);
   };
 
   // Export functions (same as before)
@@ -324,7 +335,7 @@ const Quotes = () => {
       const total = formatCurrency(quote.price_details?.final_selling_price || 0);
       const status = quote.status || 'Draft';
       const source = quote.quote_source || '';
-      const creator = quote.creator_name || '';
+      const creator = quote.created_by_name || '';
       const created = formatDateEST(quote.created_at, {
         year: 'numeric',
         month: 'short',
@@ -385,7 +396,7 @@ const Quotes = () => {
       const total = formatCurrency(quote.price_details?.final_selling_price || 0);
       const status = quote.status || 'Draft';
       const source = quote.quote_source || '';
-      const creator = quote.creator_name || '';
+      const creator = quote.created_by_name || '';
       const created = formatDateEST(quote.created_at, {
         year: 'numeric',
         month: 'short',
@@ -434,13 +445,14 @@ const Quotes = () => {
 
   return (
     <PageContent title="Proposals" subtitle="Manage and track all your project proposals" showPageHeader={true}>
+      <DebugGrid />
       {/* Loading State - Show while fetching fresh data from database */}
       {quotesLoading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-12 h-12 border-4 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin mb-4"></div>
           <p className="text-[var(--content-muted-text)]">Loading proposals...</p>
         </div>
-      ) : !quotesLoading && quotes.length === 0 ? (
+      ) : !quotesLoading && allQuotes.length === 0 ? (
         <ContentCard>
           <div className="flex flex-col items-center justify-center py-16 px-6">
             <div className="relative mb-6">
@@ -590,7 +602,9 @@ const Quotes = () => {
           onStatusChange={updateQuoteStatus}
           onQuoteSourceChange={updateQuoteSource}
           onCreateVersion={handleCreateVersion}
+          onCreateInvoice={handleCreateInvoice}
           onCreateQuote={() => setShowNewQuoteDialog(true)}
+          onImportQuote={() => setShowImportDialog(true)}
           // onSetReminder={handleSetReminder}
           onArchiveQuote={showArchived ? undefined : handleArchiveQuote}
           onUnarchiveQuote={showArchived ? handleUnarchiveQuote : undefined}
@@ -599,16 +613,16 @@ const Quotes = () => {
           archivedCount={archivedQuotes.length}
           onToggleArchive={() => setShowArchived(!showArchived)}
           onBulkDelete={(ids) => {
-            ids.forEach(id => deleteQuoteFromDB(id));
+            ids.forEach(id => deleteQuoteMutation(id));
           }}
           onBulkStatusChange={(ids, status) => {
             ids.forEach(id => updateQuoteStatus(id, status));
           }}
           onBulkArchive={showArchived ? undefined : (ids) => {
-            ids.forEach(id => archiveQuote(id));
+            ids.forEach(id => archiveQuoteMutation(id));
           }}
           onBulkUnarchive={showArchived ? (ids) => {
-            ids.forEach(id => unarchiveQuote(id));
+            ids.forEach(id => unarchiveQuoteMutation(id));
           } : undefined}
           onExportCSV={handleExportCSV}
           onExportPDF={handleExportPDF}
@@ -624,7 +638,37 @@ const Quotes = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the quote.
+              {(() => {
+                const quoteToDelete = allQuotes.find(q => q.id === deleteQuoteId);
+                if (quoteToDelete) {
+                  // Check if this is a main version with multiple versions
+                  const quoteGroups = groupQuotesByVersion(allQuotes);
+                  const group = quoteGroups.find(g => g.versions.some(v => v.id === deleteQuoteId));
+                  const isMainVersion = group ? (group.mainVersion.id === deleteQuoteId || quoteToDelete.is_main_version === true) : false;
+                  const hasMultipleVersions = group && group.hasMultipleVersions;
+
+                  return (
+                    <>
+                      This action cannot be undone. This will permanently delete:
+                      <div className="text-lg font-semibold text-foreground mt-2">
+                        Quote #{quoteToDelete.proposal_number} - {quoteToDelete.project_name || 'Untitled Quote'}
+                      </div>
+                      {isMainVersion && hasMultipleVersions && (
+                        <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-md text-destructive">
+                          <div className="font-semibold">⚠️ Warning: This is the main version</div>
+                          <div className="mt-1 text-sm">
+                            Deleting it will also delete all {group!.versions.length - 1} other version(s) in this group.
+                          </div>
+                          <div className="mt-2 text-sm font-medium">
+                            To delete only this version, first set a new main version using the dropdown in the quotes table.
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                }
+                return "This action cannot be undone. This will permanently delete the quote.";
+              })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -644,6 +688,20 @@ const Quotes = () => {
         open={showNewQuoteDialog}
         onOpenChange={setShowNewQuoteDialog}
         onCreateQuote={handleCreateQuote}
+      />
+
+      {/* Import Quote Dialog */}
+      <ImportQuoteDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+      />
+
+      {/* Create Invoice Dialog */}
+      <CreateInvoiceDialog
+        isOpen={!!invoiceQuote}
+        onClose={() => setInvoiceQuote(null)}
+        quote={invoiceQuote}
+        organizationId={organization?.id || ''}
       />
 
     </PageContent>

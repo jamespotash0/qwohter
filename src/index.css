@@ -8,6 +8,42 @@
 /* Import the complete design system */
 @import './styles/design-system.css';
 
+/* Import semantic markup visual indicators for quote templates */
+@import './styles/templateMarkers.css';
+
+/* ============================================
+   🍞 TOAST NOTIFICATIONS (SONNER)
+   ============================================ */
+
+/* Hide the Sonner progress bar that appears as a black bar above toast on hover */
+[data-sonner-toaster] {
+  --normal-bg: transparent !important;
+  --normal-border: transparent !important;
+}
+
+[data-sonner-toaster] [data-progress],
+[data-sonner-toast] [data-progress],
+[data-progress],
+.sonner-loading-bar,
+[data-sonner-toast]::before,
+[data-sonner-toast]::after,
+[data-sonner-toast] > div[style*="position: absolute"] {
+  display: none !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  width: 0 !important;
+  visibility: hidden !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Additional targeting for any divs with absolute positioning that might be the progress bar */
+[data-sonner-toast]:hover > div[style*="position: absolute"],
+[data-sonner-toast]:hover::before,
+[data-sonner-toast]:hover::after {
+  display: none !important;
+}
+
 /* ============================================
    🏗️ TAILWIND COMPATIBILITY LAYER
    ============================================ */
@@ -118,4 +154,18 @@
 
 .animate-marquee-slow2 {
   animation: marquee2 35s linear infinite;
+}
+
+/* ============================================
+   🔧 UTILITY CLASSES
+   ============================================ */
+
+/* Hide scrollbar while maintaining scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, and Opera */
 }

@@ -1,13 +1,13 @@
 import React from 'react';
 import { Table } from '@tanstack/react-table';
 import {
-  Plus, RotateCcw, 
+  Plus, RotateCcw,
   SlidersHorizontal, Eye, Download, ChevronDown, Trash2,
-  Copy, FileSpreadsheet, FileText
+  Copy, FileSpreadsheet, FileText, FileUp
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem } from "@/components/ui/dropdown-menu";
-import { Quote } from "@/stores/quotes/quotesStore";
+import type { Quote } from "@/services/quotesService";
 
 interface TableToolbarProps {
   table: Table<Quote>;
@@ -19,6 +19,7 @@ interface TableToolbarProps {
   resetColumnSizes: () => void;
   resetColumnVisibility: () => void;
   onCreateQuote?: () => void;
+  onImportQuote?: () => void;
   onBulkDelete?: (ids: string[]) => void;
   onBulkStatusChange?: (ids: string[], status: string) => void;
   onCreateVersion?: (id: string) => void;
@@ -37,6 +38,7 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
   resetColumnSizes,
   resetColumnVisibility,
   onCreateQuote,
+  onImportQuote,
   onBulkDelete,
   onBulkStatusChange,
   onCreateVersion,
@@ -349,17 +351,35 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Create Quote Button - Just a plus icon */}
-        {onCreateQuote && (
-          <Button
-            onClick={onCreateQuote}
-            variant="outline"
-            size="sm"
-            className="w-10 h-10 p-0 bg-[var(--brand-secondary)] hover:bg-[var(--brand-secondary-dark)] text-white border-[var(--brand-secondary)] hover:border-[var(--brand-secondary-dark)]"
-            title="Create New Quote"
-          >
-            <Plus className="w-5 h-5" />
-          </Button>
+        {/* Create Quote Dropdown */}
+        {(onCreateQuote || onImportQuote) && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 px-3 bg-[var(--brand-secondary)] hover:bg-[var(--brand-secondary-dark)] text-white border-[var(--brand-secondary)] hover:border-[var(--brand-secondary-dark)]"
+                title="Add Quote"
+              >
+                <Plus className="w-5 h-5" />
+                <ChevronDown className="w-4 h-4 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              {onCreateQuote && (
+                <DropdownMenuItem onClick={onCreateQuote} className="cursor-pointer">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create New
+                </DropdownMenuItem>
+              )}
+              {onImportQuote && (
+                <DropdownMenuItem onClick={onImportQuote} className="cursor-pointer">
+                  <FileUp className="w-4 h-4 mr-2" />
+                  Import from File
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
     </div>

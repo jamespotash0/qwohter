@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuotesStore, Quote } from "@/stores/quotes/quotesStore";
+import type { Quote } from "@/services/quotesService";
+import { useUpdateQuote } from "@/hooks/queries/useQuotes";
 import { useToast } from "@/hooks/use-toast";
 import UnifiedQuoteEditor from "@/components/features/quotes/editing/UnifiedQuoteEditor";
 import { SmartQuoteData } from "@/templates/SmartQuoteTemplate";
+import { useUser } from "@/auth";
 // import { WallDetails } from "@/types/quote";
 
 const QuoteEdit = () => {
@@ -13,32 +15,58 @@ const QuoteEdit = () => {
   }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [user, setUser] = useState<any>(null);
+
+  // ✅ v3.0.0: Use new auth hook
+  const user = useUser();
+
   const [quote, setQuote] = useState<Quote | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const updateQuote = useQuotesStore((state) => state.updateQuote);
-  const updateWallSystem = useQuotesStore((state) => state.updateWallSystem);
-  const removeWallSystem = useQuotesStore((state) => state.removeWallSystem);
-  const markAsDownloaded = useQuotesStore((state) => state.markAsDownloaded);
-  const saveQuoteCustomization = useQuotesStore((state) => state.saveQuoteCustomization);
-  const fetchQuotes = useQuotesStore((state) => state.fetchQuotes);
+  // Use React Query mutation hook
+  const { mutateAsync: updateQuoteMutation } = useUpdateQuote();
+
+  // Wrapper functions for backward compatibility with UnifiedQuoteEditor
+  const updateQuote = async (id: string, updates: any) => {
+    return await updateQuoteMutation({ id, updates });
+  };
+
+  // These were convenience wrappers that called updateQuote
+  const updateWallSystem = async (quoteId: string, wallName: string, wallData: any) => {
+    return await updateQuoteMutation({
+      id: quoteId,
+      updates: {
+        wall_details: {
+          walls: { [wallName]: wallData }
+        }
+      }
+    });
+  };
+
+  const removeWallSystem = async (quoteId: string, wallName: string) => {
+    return await updateQuoteMutation({ id: quoteId, updates: { wall_details: { id: '', walls: {} } } });
+  };
+
+  const markAsDownloaded = async (id: string) => {
+    return await updateQuoteMutation({ id, updates: { date_last_downloaded: new Date().toISOString() } });
+  };
+
+  // ✅ REMOVED: saveQuoteCustomization function - now combined with main update
+  // to prevent duplicate activity log entries
+
+  // React Query automatically refetches, no manual fetch needed
+  const fetchQuotes = () => {
+    // No-op: React Query handles this automatically
+  };
 
   // Alias for compatibility
   const refreshQuotes = fetchQuotes;
 
   // Check authentication
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/auth");
-        return;
-      }
-      setUser(session.user);
-    };
-    checkAuth();
-  }, [navigate]);
+    if (!user) {
+      navigate("/auth");
+    }
+  }, [user, navigate]);
 
   // Load quote based on URL parameters
   useEffect(() => {
@@ -53,8 +81,9 @@ const QuoteEdit = () => {
           .from('quotes')
           .select('*')
           .eq('proposal_number', proposalNumber)
-          .order('version', { ascending: false })
-          .limit(1);
+          .order('document_version', { ascending: false })
+          .limit(1)
+          .returns<Quote[]>();
 
         if (error) {
           throw error;
@@ -107,14 +136,14 @@ const QuoteEdit = () => {
     if (!quote) return;
 
     try {
-      // First, save the form data changes to the main quote data
+      // Extract customization fields and form data
       const { customSections, customHTML, isCustomized, wall_details, ...formDataUpdates } = customizedQuote;
-      
+
       // Create updates object excluding wall_details first
       const updates: Partial<Quote> = {
         ...formDataUpdates
       };
-      
+
       // Handle wall_details separately to ensure proper typing
       if (wall_details) {
         updates.wall_details = {
@@ -122,30 +151,38 @@ const QuoteEdit = () => {
           walls: wall_details.walls || {}
         };
       }
-      
-      // Update the main quote data with form changes
-      await updateQuote(quote.id, updates);
-      
-      // Then, save customizations if they exist
+
+      // ✅ FIX: Include customization in the same update to prevent duplicate activity logs
+      // If customizations exist, add them to the updates object
       if (customSections) {
-        await saveQuoteCustomization(quote.id, {
+        const currentDocumentVersion = quote.document_version || 0;
+        const newDocumentVersion = currentDocumentVersion + 1;
+
+        const customizationWithVersion = {
           customSections: customSections,
           customHTML: customHTML,
           isCustomized: isCustomized || true,
-          lastModified: new Date()
-        });
+          lastModified: new Date(),
+          version: newDocumentVersion
+        };
+
+        updates.customization = customizationWithVersion;
+        updates.document_version = newDocumentVersion;
       }
-      
+
+      // ✅ Single update call that logs only ONE activity entry
+      await updateQuote(quote.id, updates);
+
       refreshQuotes();
-      
+
       toast({
         title: "Quote Saved",
         description: "All changes have been saved successfully.",
       });
-      
+
     } catch (error) {
       console.error('Save error:', error);
-      // Error handling is done in updateQuote and saveQuoteCustomization
+      // Error handling is done in updateQuote
     }
   };
 

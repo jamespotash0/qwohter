@@ -1,17 +1,20 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { User as UserIcon, Building, Shield, CreditCard, Palette, Users } from "lucide-react";
-import { useCurrentOrganization, useOrganizationStore } from "@/stores/organization/organizationStore";
-import { useAuthStore } from "@/stores/auth/authStore";
+import { User as UserIcon, Building, Shield, CreditCard, Palette, Users, Plug } from "lucide-react";
+import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
+import { useUser, useProfile } from "@/auth";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryClient";
 import { ProfileTab } from "@/components/features/settings/ProfileTab";
 import { OrganizationTab } from "@/components/features/settings/OrganizationTab";
 import { SecurityTab } from "@/components/features/settings/SecurityTab";
 import { BillingTab } from "@/components/features/settings/BillingTab";
 import { AppearanceTab } from "@/components/features/settings/AppearanceTab";
 import { TeamTab } from "@/components/features/settings/TeamTab";
+import { IntegrationsTab } from "@/components/features/settings/IntegrationsTab";
 import { canAccessSettingsTab } from "@/utils/permissions";
 import { stripeService } from "@/services/stripeService";
-import { supabase } from "@/integrations/supabase/client";
+import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
 
 const Settings = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -30,11 +33,23 @@ const Settings = () => {
     }
   });
 
-  const user = useAuthStore((state) => state.user);
-  const profile = useAuthStore((state) => state.profile);
-  const organization = useCurrentOrganization();
-  const refetchOrganization = useOrganizationStore((state) => state.fetchOrganization);
-  const userRole = useOrganizationStore((state) => state.currentUserRole);
+  const user = useUser();
+  const { data: profile } = useProfile(user?.id);
+  const queryClient = useQueryClient();
+
+  // Get current organization and role from React Query
+  const { organization, role: userRole } = useCurrentOrganization(user?.id || '');
+
+  // Function to refetch organization data (memoized to prevent recreating on every render)
+  const refetchOrganization = useCallback(async (userId?: string, forceRefresh?: boolean) => {
+    const targetUserId = userId || user?.id;
+    if (targetUserId) {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.organization.byUser(targetUserId) });
+      if (forceRefresh) {
+        await queryClient.refetchQueries({ queryKey: queryKeys.organization.byUser(targetUserId) });
+      }
+    }
+  }, [user?.id, queryClient]);
 
   // Check subscription status
   useEffect(() => {
@@ -56,46 +71,48 @@ const Settings = () => {
     };
 
     checkSubscription();
-
-    // Set up realtime subscription to detect subscription changes
-    if (organization?.id) {
-      const channel = supabase
-        .channel(`settings-subscription-${organization.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'subscriptions',
-            filter: `organization_id=eq.${organization.id}`,
-          },
-          async () => {
-            console.log('Subscription changed in settings, rechecking access');
-            // Re-check and update cache
-            const { isValid } = await stripeService.hasValidSubscription(organization.id);
-            setHasValidSubscription(isValid);
-            try {
-              localStorage.setItem('settings_subscription_valid', JSON.stringify(isValid));
-            } catch (e) {
-              console.error('Failed to cache subscription status:', e);
-            }
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-    return undefined;
   }, [organization?.id]);
 
-  // Sync activeTab with URL
+  // Set up centralized realtime subscription for subscriptions table
+  useRealtimeSubscription(
+    'subscriptions',
+    ['subscriptions', organization?.id || ''],
+    { filter: `organization_id=eq.${organization?.id}` },
+    !!organization?.id
+  );
+
+  // Watch for subscription changes via query invalidation
   useEffect(() => {
-    if (tabFromUrl && tabFromUrl !== activeTab) {
+    if (!organization?.id) return;
+
+    // When queries are invalidated by real-time, re-check subscription
+    const recheckSubscription = async () => {
+      console.log('Subscription changed in settings, rechecking access');
+      const { isValid } = await stripeService.hasValidSubscription(organization.id);
+      setHasValidSubscription(isValid);
+      try {
+        localStorage.setItem('settings_subscription_valid', JSON.stringify(isValid));
+      } catch (e) {
+        console.error('Failed to cache subscription status:', e);
+      }
+    };
+
+    // Listen for query invalidations
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event?.query.queryKey[0] === 'subscriptions' && event?.query.queryKey[1] === organization.id) {
+        recheckSubscription();
+      }
+    });
+
+    return unsubscribe;
+  }, [organization?.id, queryClient]);
+
+  // Sync activeTab with URL (only when URL changes, not when activeTab changes)
+  useEffect(() => {
+    if (tabFromUrl) {
       setActiveTab(tabFromUrl);
     }
-  }, [tabFromUrl]);
+  }, [tabFromUrl]); // Removed activeTab from dependencies to prevent infinite loop
 
   // Don't show loading spinner - organization and role should be cached
   // If they're not available, show settings anyway with default values
@@ -123,6 +140,25 @@ const Settings = () => {
         requiresSubscription: true
       },
       {
+        id: "team",
+        label: "Team",
+        icon: <Users className="w-4 h-4" />,
+        component: <TeamTab />,
+        requiresPermission: "team",
+        requiresSubscription: true
+      },
+      {
+        id: "integrations",
+        label: "Integrations",
+        icon: <Plug className="w-4 h-4" />,
+        component: <IntegrationsTab
+          organization={organization}
+          userRole={userRole || 'Member'}
+        />,
+        requiresPermission: "organization",
+        requiresSubscription: true
+      },
+      {
         id: "billing",
         label: "Plan & Billing",
         icon: <CreditCard className="w-4 h-4" />,
@@ -134,16 +170,8 @@ const Settings = () => {
         alwaysAvailable: true
       },
       {
-        id: "team",
-        label: "Team",
-        icon: <Users className="w-4 h-4" />,
-        component: <TeamTab />,
-        requiresPermission: "team",
-        requiresSubscription: true
-      },
-      {
         id: "security",
-        label: "Security & Permissions",
+        label: "Permissions",
         icon: <Shield className="w-4 h-4" />,
         component: <SecurityTab
           organization={organization}
@@ -184,7 +212,7 @@ const Settings = () => {
       const { offsetLeft, offsetWidth } = activeTabElement;
       setIndicatorStyle({ left: offsetLeft, width: offsetWidth });
     }
-  }, [activeTab, availableTabs]);
+  }, [activeTab]); // Only depend on activeTab - availableTabs not needed
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);

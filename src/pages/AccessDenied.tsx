@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useUser, useSignOut } from '@/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +16,6 @@ interface UserData {
   role: string;
   organization: {
     name: string;
-    organization_code: string;
   };
 }
 
@@ -25,13 +25,16 @@ const AccessDenied: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // ✅ v3.0.0: Use new auth hooks
+  const user = useUser();
+  const { mutate: signOut } = useSignOut();
+
   // Get required role from navigation state, default to 'Admin'
   const requiredRole = (location.state as any)?.requiredRole || 'Admin';
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
         const { data, error } = await supabase
@@ -39,12 +42,11 @@ const AccessDenied: React.FC = () => {
           .select(`
             role,
             organizations (
-              name,
-              organization_code
+              name
             )
           `)
           .eq('user_id', user.id)
-          .eq('status', 'Active')
+          .eq('status', 'Active') //membership_status
           .single();
 
         if (!error && data) {
@@ -58,14 +60,14 @@ const AccessDenied: React.FC = () => {
     };
 
     fetchUserData();
-  }, []);
+  }, [user]);
 
   const handleGoBack = () => {
     navigate('/dashboard');
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
+  const handleSignOut = () => {
+    signOut();
   };
 
   const getRoleDescription = (role: string) => {
@@ -115,9 +117,6 @@ const AccessDenied: React.FC = () => {
                 <div>
                   <p className="font-medium text-slate-800">
                     {(userData as any).organizations?.name}
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    Code: {(userData as any).organizations?.organization_code}
                   </p>
                 </div>
               </div>

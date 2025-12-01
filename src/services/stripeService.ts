@@ -217,6 +217,26 @@ export const hasValidSubscription = async (organizationId: string) => {
     };
   }
 
+  // Check is_active flag (master switch for subscription access)
+  // This is set to false when subscription is canceled, paused, or otherwise inactive
+  // Must match the database has_valid_subscription() function for consistency
+  if (!subscription.is_active) {
+    return {
+      isValid: false,
+      reason: 'Subscription is not active',
+    };
+  }
+
+  // Check is_active flag (master switch for subscription access)
+  // This is set to false when subscription is canceled, paused, or otherwise inactive
+  // Must match the database has_valid_subscription() function for consistency
+  if (!subscription.is_active) {
+    return {
+      isValid: false,
+      reason: 'Subscription is not active',
+    };
+  }
+
   // Check subscription status (cached from Stripe)
   // We store capitalized statuses in DB (Active, Trialing, Canceled, etc.)
   // Compare case-insensitively
@@ -224,6 +244,8 @@ export const hasValidSubscription = async (organizationId: string) => {
   const status = subscription.stripe_subscription_status?.toLowerCase();
 
   console.log('🔍 Subscription validation:', {
+    isActive: subscription.is_active,
+    accessBlocked: subscription.access_blocked,
     rawStatus: subscription.stripe_subscription_status,
     lowercaseStatus: status,
     validStatuses,
@@ -354,7 +376,7 @@ export const calculateSubscriptionQuantity = async (organizationId: string) => {
     .from('memberships')
     .select('id', { count: 'exact', head: true })
     .eq('organization_id', organizationId)
-    .eq('status', 'Active');
+    .eq('status', 'Active'); //membership_status
 
   if (error) {
     console.error('Error counting active users:', error);
@@ -586,46 +608,83 @@ export const getDaysRemaining = (currentPeriodEnd: string | null): number | null
  */
 export const createTrialSubscription = async (organizationId: string): Promise<{ success: boolean; error: string | null; data?: any }> => {
   try {
-    // Get current user's session token
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return { success: false, error: 'Not authenticated' };
+    console.log('📋 enrollInFreeTrial called for organization:', organizationId);
+
+    // Check if organization already has a subscription
+    const { data: existingSubscription } = await getSubscription(organizationId);
+
+    if (existingSubscription) {
+      console.log('⏭️ Organization already has subscription, skipping trial enrollment');
+      return { success: true, error: null };
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
+    console.log('📦 Fetching Team plan from database...');
+    // Get the Team plan as default trial plan
+    const planResult = await getPlanByName('Team');
 
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-    const functionsUrl = supabaseUrl?.replace('.supabase.co', '.supabase.co/functions/v1') || '';
+    if (planResult.error || !planResult.data) {
+      console.error('❌ Failed to get Team plan for trial:', planResult.error);
+      return { success: false, error: 'Team plan not found' };
+    }
 
-    console.log('Creating trial subscription for organization:', organizationId);
+    const teamPlan = planResult.data as SubscriptionPlan;
+    console.log('✅ Team plan found:', { id: teamPlan.id, name: teamPlan.name });
 
-    const response = await fetch(`${functionsUrl}/create-trial-subscription`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({
-        organizationId,
-        userEmail: user?.email,
-        userName: user?.user_metadata?.full_name,
-      }),
+    // Calculate trial period (14 days from now)
+    const trialStartDate = new Date();
+    const trialEndDate = new Date();
+    trialEndDate.setDate(trialEndDate.getDate() + 14);
+
+    console.log('💾 Inserting subscription record...', {
+      organization_id: organizationId,
+      plan_id: teamPlan.id,
+      trial_start: trialStartDate.toISOString(),
+      trial_end: trialEndDate.toISOString()
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Trial subscription creation failed:', errorText);
-      return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+    // Create subscription record with trialing status
+    const { error: subscriptionError } = await supabase
+      .from('subscriptions')
+      .insert({
+        organization_id: organizationId,
+        plan_id: teamPlan.id,
+        stripe_subscription_status: 'Trialing',
+        current_period_start: trialStartDate.toISOString(),
+        current_period_end: trialEndDate.toISOString(),
+        is_active: true,
+        access_blocked: false,
+        number_of_active_users: 1,
+      } as any);
+
+    if (subscriptionError) {
+      console.error('❌ Subscription insert failed:', {
+        error: subscriptionError,
+        code: subscriptionError.code,
+        message: subscriptionError.message,
+        details: subscriptionError.details,
+        hint: subscriptionError.hint
+      });
+      return { success: false, error: subscriptionError.message };
     }
 
-    const result = await response.json();
+    console.log('✅ Subscription record created successfully');
 
-    if (!result.success) {
-      return { success: false, error: result.error || 'Failed to create trial subscription' };
+    // Mark organization as having used trial
+    console.log('🏢 Updating organization has_used_trial flag...');
+    const { error: orgError } = await supabase
+      .from('organizations')
+      .update({ has_used_trial: true })
+      .eq('id', organizationId);
+
+    if (orgError) {
+      console.warn('⚠️ Failed to mark organization trial as used:', orgError);
+      // Don't fail the enrollment if this update fails
+    } else {
+      console.log('✅ Organization marked as having used trial');
     }
 
-    console.log('Trial subscription created successfully:', result);
-    return { success: true, error: null, data: result };
+    console.log('🎉 Successfully enrolled organization in 14-day free trial');
+    return { success: true, error: null };
   } catch (error) {
     console.error('Error creating trial subscription:', error);
     return {

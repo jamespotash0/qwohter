@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import useEnhancedSearch from '@/hooks/useEnhancedSearch';
-import { Quote } from '@/stores/quotes/quotesStore';
+import type { Quote } from '@/services/quotesService';
 
 interface EnhancedSearchInputProps {
   quotes: Quote[];

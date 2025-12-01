@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { LogoUploadService, LogoUploadResult, LogoValidationResult } from '@/services/LogoUploadService';
 import { supabase } from '@/integrations/supabase/client';
+import { useUser } from '@/auth';
 
 interface LogoUploadProps {
   onUploadSuccess: (result: LogoUploadResult) => void;
@@ -32,6 +33,9 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
   disabled = false,
   className = ''
 }) => {
+  // ✅ v3.0.0: Use new auth hook
+  const authUser = useUser();
+
   const [uploadState, setUploadState] = useState<UploadState>({
     isDragging: false,
     isUploading: false,
@@ -100,16 +104,14 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
 
       // Step 2: Save to database immediately
       try {
-        // Get current authenticated user ID
-        const { data: { user } } = await supabase.auth.getUser();
         let orgId = '';
-        
-        if (user) {
+
+        if (authUser) {
           const { data: membershipData } = await supabase
             .from('memberships')
             .select('organization_id')
-            .eq('user_id', user.id)
-            .eq('status', 'Active')
+            .eq('user_id', authUser.id)
+            .eq('status', 'Active') //membership_status
             .single();
 
           orgId = (membershipData as any)?.organization_id || '';
@@ -256,21 +258,21 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
               </div>
             </div>
           ) : hasCurrentLogo && !uploadState.uploadedFile ? (
-            // Uploaded Logo State - Circular Profile
+            // Uploaded Logo State - Rectangular container for logos
             <div className="space-y-4 group">
-              <div className="w-14 h-14 mx-auto border-2 border-gray-200 dark:border-gray-700 rounded-full overflow-hidden bg-white dark:bg-gray-800 relative cursor-pointer"
+              <div className="w-24 h-16 mx-auto border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800 relative cursor-pointer"
                    onClick={handleBrowseClick}>
                 <img
                   src={currentLogoUrl}
                   alt="Company logo"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain p-1"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
                   }}
                 />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                  <Upload className="w-3.5 h-3.5 text-white" />
+                  <Upload className="w-4 h-4 text-white" />
                 </div>
               </div>
               <div className="space-y-2 pt-2">

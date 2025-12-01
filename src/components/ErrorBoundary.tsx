@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, ArrowLeft, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -59,44 +59,42 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
-      // Default error UI
+      // Default error UI - Clean and simple, no error details shown to users
       return (
-        <Card className="max-w-md mx-auto mt-8">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              <CardTitle>Something went wrong</CardTitle>
-            </div>
-            <CardDescription>
-              We encountered an unexpected error. You can try refreshing or contact support if the problem persists.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {process.env.NODE_ENV === 'development' && (
-              <details className="text-xs text-muted-foreground">
-                <summary className="cursor-pointer">Error Details (Dev Mode)</summary>
-                <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto">
-                  {this.state.error?.message}
-                  {this.state.error?.stack}
-                </pre>
-              </details>
-            )}
-            <div className="flex gap-2">
-              <Button onClick={this.handleReset} size="sm" className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700">
-                <RefreshCw className="h-4 w-4" />
-                Try Again
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.location.reload()}
-                className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                Refresh Page
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <div className="rounded-full bg-red-100 dark:bg-red-900/20 p-3">
+                  <AlertTriangle className="h-12 w-12 text-red-600 dark:text-red-400" />
+                </div>
+              </div>
+              <CardTitle className="text-2xl font-bold">Something Went Wrong</CardTitle>
+              <CardDescription className="text-base mt-2">
+                We encountered an unexpected error. Please try again or return to the dashboard.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={() => window.location.reload()}
+                  className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Try Again
+                </Button>
+                <Button
+                  onClick={() => window.location.href = '/dashboard'}
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  <Home className="h-4 w-4" />
+                  Go to Dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       );
     }
 
@@ -115,25 +113,43 @@ export const QuoteErrorBoundary: React.FC<{ children: ReactNode }> = ({ children
   };
 
   return (
-    <ErrorBoundary 
+    <ErrorBoundary
       onError={handleQuoteError}
       fallback={
-        <Card className="max-w-md mx-auto mt-8">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              <CardTitle>Quote Error</CardTitle>
-            </div>
-            <CardDescription>
-              There was an issue with your quote. Your data has been saved automatically.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => window.location.reload()} size="sm">
-              Reload Quote Editor
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <div className="rounded-full bg-red-100 dark:bg-red-900/20 p-3">
+                  <AlertTriangle className="h-12 w-12 text-red-600 dark:text-red-400" />
+                </div>
+              </div>
+              <CardTitle className="text-2xl font-bold">Quote Error</CardTitle>
+              <CardDescription className="text-base mt-2">
+                There was an issue loading your quote. Your data has been saved automatically.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={() => window.location.reload()}
+                  className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Try Again
+                </Button>
+                <Button
+                  onClick={() => window.location.href = '/quotes'}
+                  variant="outline"
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  <Home className="h-4 w-4" />
+                  All Quotes
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       }
     >
       {children}

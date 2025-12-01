@@ -1,19 +1,16 @@
 /**
  * handleOrganizationSubmit Action
- * Handles organization creation or join request
+ * Simplified - only handles organization creation (default flow)
  */
 
 import { authFlowHelpers } from '@/utils/authFlowHelpers';
 import { onboardingStateHelpers } from '@/services/onboardingStateService';
 import { OrganizationCreationLimiter } from '@/services/rateLimitingService';
-import { markTokenAsUsed } from '@/utils/inviteTokens';
 import { NavigateFunction } from 'react-router-dom';
 
 interface HandleOrganizationSubmitParams {
-  orgChoice: 'join' | 'create' | null;
   userId: string | null;
   orgName: string;
-  orgCode: string;
   industry: string;
   foundVia: string;
   submissionInProgress: boolean;
@@ -23,16 +20,13 @@ interface HandleOrganizationSubmitParams {
   setLoading: (loading: boolean) => void;
   navigate: NavigateFunction;
   toast: (props: { title: string; description: string; variant?: 'destructive' }) => void;
-  locationSearch: string;
   saveAuthState: (state: any) => void;
 }
 
 export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitParams) => {
   const {
-    orgChoice,
     userId,
     orgName,
-    orgCode,
     industry,
     foundVia,
     submissionInProgress,
@@ -40,13 +34,11 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
     setOrganizationId,
     setStep,
     setLoading,
-    navigate,
     toast,
-    locationSearch,
     saveAuthState,
   } = params;
 
-  if (!orgChoice || !userId || submissionInProgress) return;
+  if (!userId || submissionInProgress || !orgName.trim()) return;
 
   // Prevent double submission
   setSubmissionInProgress(true);
@@ -54,77 +46,46 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
 
   try {
     // Check rate limiting before creation
-    if (orgChoice === 'create') {
-      const rateLimitCheck = await OrganizationCreationLimiter.canCreateOrganization(userId);
+    const rateLimitCheck = await OrganizationCreationLimiter.canCreateOrganization(userId);
 
-      if (!rateLimitCheck.allowed) {
-        toast({
-          title: 'Creation Limit Reached',
-          description: rateLimitCheck.reason as any,
-          variant: 'destructive',
-        });
-        return;
-      }
+    if (!rateLimitCheck.allowed) {
+      toast({
+        title: 'Creation Limit Reached',
+        description: rateLimitCheck.reason as any,
+        variant: 'destructive',
+      });
+      return;
     }
 
     // Save current form state before submission
     await onboardingStateHelpers.saveOnboardingProgress(userId, 'organization', {
-      orgChoice,
+      orgChoice: 'create',
       orgName,
-      orgCode,
       industry,
       foundVia,
     });
 
+    // Create organization
     const choice = {
-      type: orgChoice,
-      orgName: orgChoice === 'create' ? orgName : undefined,
-      orgCode: orgChoice === 'join' ? orgCode : undefined,
+      type: 'create' as const,
+      orgName,
       industry,
       foundVia,
     };
 
     const result = await authFlowHelpers.handleOrganizationSetup({ userId, choice });
 
-    if (result.success) {
-      if (orgChoice === 'create' && result.data) {
-        // Store organizationId in state for trial enrollment
-        setOrganizationId(result.data.organizationId);
-
-        toast({
-          title: 'Organization created!',
-          description: `${result.data.organizationName} has been created successfully. Your code: ${result.data.organizationCode}`,
-        });
-        setStep('company-info');
-        saveAuthState({
-          step: 'company-info',
-          userId,
-          orgName: result.data.organizationName,
-          orgCode: result.data.organizationCode,
-          organizationId: result.data.organizationId
-        });
-      } else if (orgChoice === 'join' && result.data) {
-        // Check if user joined via invite token and mark it as used
-        const urlParams = new URLSearchParams(locationSearch);
-        const inviteToken = urlParams.get('invite');
-
-        if (inviteToken && inviteToken.trim()) {
-          try {
-            await markTokenAsUsed(inviteToken.trim());
-            console.log('Invite token marked as used');
-          } catch (error) {
-            console.error('Error marking token as used:', error);
-            // Don't fail the join process if token marking fails
-          }
-        }
-
-        toast({
-          title: 'Join request sent!',
-          description: 'Your request to join the organization is pending approval.',
-        });
-        await onboardingStateHelpers.clearOnboardingProgress(userId);
-        navigate('/pending-approval');
-      }
+    if (result.success && result.data) {
+      toast({
+        title: 'Organization created!',
+        description: `${result.data.organizationName} has been created successfully.`,
+      });
+      setStep('company-info');
+      saveAuthState({
+        step: 'company-info',
+        userId,
+        orgName: result.data.organizationName
+      });
     } else {
       toast({
         title: 'Organization Error',
@@ -133,7 +94,7 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
       });
     }
   } catch (error: any) {
-    console.error('Organization submit error:', error);
+    console.error('Organization creation error:', error);
     toast({
       title: 'Organization Error',
       description: error.message,

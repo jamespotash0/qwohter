@@ -49,6 +49,7 @@ export interface EnhancedChartCardProps {
   className?: string;
   height?: string;
   hideHeader?: boolean; // Hide title/subtitle (useful for enlarged modal)
+  isEnlarged?: boolean; // Whether the card is in enlarged/modal view
   // Additional metrics to display in header
   primaryMetric?: {
     value: string;
@@ -82,6 +83,7 @@ export const EnhancedChartCard = ({
   className,
   height = 'h-80',
   hideHeader = false,
+  isEnlarged = false,
   primaryMetric,
   secondaryMetric,
 }: EnhancedChartCardProps) => {
@@ -136,6 +138,7 @@ export const EnhancedChartCard = ({
       className={cn(
         'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800',
         'shadow-sm hover:shadow-md transition-shadow',
+        isEnlarged ? 'flex flex-col h-full' : '',
         className
       )}
     >
@@ -324,7 +327,7 @@ export const EnhancedChartCard = ({
         )}
       </CardHeader>
 
-      <CardContent className={cn('pt-2', height)}>
+      <CardContent className={cn('pt-2', isEnlarged ? 'flex-1 min-h-0' : height)}>
         {typeof children === 'function' ? children(timePeriod, periodOffset) : children}
       </CardContent>
     </Card>

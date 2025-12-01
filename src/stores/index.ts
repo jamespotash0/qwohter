@@ -1,37 +1,19 @@
-// Global State Management System for Qwohter
-// Built with Zustand for lightweight, performant state management
+// ====================================================================
+// ZUSTAND STORES - Local UI State Only
+// ====================================================================
+//
+// Architecture Decision (v3.0.0):
+// - Server State → React Query (@/hooks/queries)
+// - Local UI State → Zustand (here)
+// - Auth State → React Context + React Query (@/auth)
+//
+// This follows industry best practices used by Linear, Vercel, Stripe
+// ====================================================================
 
 // ====================================================================
-// AUTH STORE - Authentication and user profile management
+// UI STORE - Application UI state (theme, sidebar, modals, etc.)
 // ====================================================================
-export {
-  useAuthStore,
-  useUser,
-  useProfile,
-  useIsAuthenticated,
-  useAuthLoading,
-  useAuthError,
-  useAuthActions
-} from './auth/authStore';
-
-// ====================================================================
-// QUOTES STORE - Quote data management with CRUD operations
-// ====================================================================
-export {
-  useQuotesStore,
-  useQuotes,
-  useCurrentQuote,
-  useQuotesLoading,
-  useQuotesError,
-  useQuotesFilters,
-  useQuotesPagination,
-  useFilteredQuotes,
-  useQuotesActions
-} from './quotes/quotesStore';
-
-// ====================================================================
-// UI STORE - Application UI state, modals, toasts, theming
-// ====================================================================
+// ✅ KEEP - This is local UI state, perfect for Zustand
 export {
   useUIStore,
   useTheme,
@@ -46,8 +28,9 @@ export {
 } from './ui/uiStore';
 
 // ====================================================================
-// APP STORE - Application lifecycle, feature flags, performance
+// APP STORE - Application lifecycle and feature flags
 // ====================================================================
+// ✅ KEEP - Application-level UI state
 export {
   useAppStore,
   useAppInitialized,
@@ -59,135 +42,48 @@ export {
 } from './app/appStore';
 
 // ====================================================================
-// ORGANIZATION STORE - Organization and team management
+// DEPRECATED STORES - Migrated to React Query
 // ====================================================================
+// ⚠️ These stores have been archived and replaced with React Query hooks
+
+/**
+ * @deprecated Use React Query hooks instead
+ *
+ * Migration guide:
+ *
+ * QUOTES:
+ * - OLD: useQuotesStore((state) => state.quotes)
+ * - NEW: const { data: quotes } = useQuotes(userId) from '@/hooks/queries'
+ *
+ * ORGANIZATION:
+ * - OLD: useOrganizationStore((state) => state.currentOrganization)
+ * - NEW: const { data: org } = useUserOrganization(userId) from '@/hooks/queries'
+ *
+ * BOARD:
+ * - OLD: useBoardStore((state) => state.projects)
+ * - NEW: const { data: projects } = useProjects(orgId) from '@/hooks/queries'
+ *
+ * REMINDERS:
+ * - OLD: useRemindersStore((state) => state.reminders)
+ * - NEW: const { data: reminders } = useReminders(orgId) from '@/hooks/queries'
+ *
+ * AUTH:
+ * - OLD: useAuthStore((state) => state.user)
+ * - NEW: const user = useUser() from '@/auth'
+ */
+
+// Re-export for type compatibility only
+// Actual implementations have been removed (migrated to React Query)
+export type { Quote, QuoteFilters, CreateQuoteData, UpdateQuoteData } from '@/services/quotesService';
+export type { Organization, OrganizationMember, UserMembership, InviteToken } from '@/services/organizationService';
+export type { Project, WorkflowColumn, ProjectPriority } from '@/services/boardService';
+export type { Reminder } from '@/services/reminderService';
+
+// Re-export React Query hooks for backward compatibility
 export {
-  useOrganizationStore,
-  useCurrentOrganization,
-  useOrganizationMembers,
-  useInviteTokens,
-  useCurrentUserRole,
-  useOrganizationLoading
-} from './organization/organizationStore';
-
-// ====================================================================
-// STORE UTILITIES AND HOOKS
-// ====================================================================
-
-/**
- * Combined hook for common application state
- * 
- * @example
- * const { user, isLoading, quotes, theme } = useAppState();
- */
-import { useUser, useAuthLoading } from './auth/authStore';
-import { useQuotes, useQuotesLoading } from './quotes/quotesStore';
-import { useTheme, useGlobalLoading } from './ui/uiStore';
-import { useAppInitialized } from './app/appStore';
-
-export const useAppState = () => ({
-  // Auth state
-  user: useUser(),
-  isAuthenticated: useUser() !== null,
-  authLoading: useAuthLoading(),
-  
-  // Data state
-  quotes: useQuotes(),
-  quotesLoading: useQuotesLoading(),
-  
-  // UI state
-  theme: useTheme(),
-  globalLoading: useGlobalLoading(),
-  
-  // App state
-  isAppInitialized: useAppInitialized(),
-  
-  // Combined loading state
-  isLoading: useAuthLoading() || useQuotesLoading() || useGlobalLoading().loading,
-});
-
-/**
- * Hook for common application actions
- * 
- * @example
- * const { signIn, createQuote, showToast } = useAppActions();
- */
-import { useAuthActions } from './auth/authStore';
-import { useQuotesActions } from './quotes/quotesStore';
-import { useUIActions } from './ui/uiStore';
-import { useAppActions as useAppStoreActions } from './app/appStore';
-
-export const useAppGlobalActions = () => ({
-  // Auth actions
-  ...useAuthActions(),
-  
-  // Data actions
-  ...useQuotesActions(),
-  
-  // UI actions
-  ...useUIActions(),
-  
-  // App actions
-  ...useAppStoreActions(),
-});
-
-/**
- * Development utilities for debugging store state
- */
-export const devUtils = {
-  // Log all store states
-  logStores: () => {
-    if (process.env.NODE_ENV !== 'development') return;
-    
-    console.group('📊 Store State Debug');
-    console.log('Auth:', useAuthStore.getState());
-    console.log('Quotes:', useQuotesStore.getState());
-    console.log('UI:', useUIStore.getState());
-    console.log('App:', useAppStore.getState());
-    console.groupEnd();
-  },
-  
-  // Reset all stores (development only)
-  resetAllStores: () => {
-    if (process.env.NODE_ENV !== 'development') {
-      console.warn('Store reset is only available in development');
-      return;
-    }
-    
-    console.log('🔄 Resetting all stores...');
-    useAppStore.getState().reset();
-  },
-  
-  // Performance metrics
-  getPerformanceReport: () => {
-    const appState = useAppStore.getState();
-    const quotesCount = useQuotesStore.getState().quotes.length;
-    const toastsCount = useUIStore.getState().toasts.length;
-    
-    return {
-      initialized: appState.isInitialized,
-      performance: appState.performance,
-      dataSize: {
-        quotes: quotesCount,
-        toasts: toastsCount,
-      },
-      lastSync: appState.lastSync,
-      environment: appState.environment,
-    };
-  },
-};
-
-// Re-export store instances for advanced use cases
-import { useAuthStore } from './auth/authStore';
-import { useQuotesStore } from './quotes/quotesStore';
-import { useUIStore } from './ui/uiStore';
-import { useAppStore } from './app/appStore';
-import { useOrganizationStore } from './organization/organizationStore';
-
-export const stores = {
-  auth: useAuthStore,
-  quotes: useQuotesStore,
-  ui: useUIStore,
-  app: useAppStore,
-  organization: useOrganizationStore,
-};
+  useQuotes,
+  useQuote,
+  useCreateQuote,
+  useUpdateQuote,
+  useDeleteQuote,
+} from '@/hooks/queries/useQuotes';

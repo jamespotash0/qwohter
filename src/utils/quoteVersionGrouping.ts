@@ -5,7 +5,7 @@
  * Example: P1001, P1001.1, P1001.2 all group under "P1001"
  */
 
-import type { Quote } from '@/stores/quotes/quotesStore';
+import type { Quote } from '@/services/quotesService';
 import type { QuoteStatus } from '@/lib/types/quotes/quote';
 
 export interface QuoteVersionGroup {

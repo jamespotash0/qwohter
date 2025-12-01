@@ -1,17 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, AlertCircle, LogOut, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { stripeService } from '@/services/stripeService';
-import { useOrganizationStore } from '@/stores/organization/organizationStore';
-import { useAuthStore } from '@/stores/auth/authStore';
-import { useQuotesStore } from '@/stores/quotes/quotesStore';
-import { useBoardStore } from '@/stores/board/boardStore';
-import { useRemindersStore } from '@/stores/reminders/remindersStore';
-import { useAppStore } from '@/stores/app/appStore';
-import { supabase } from '@/integrations/supabase/client';
+import { useSignOut, useUser } from '@/auth';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useRealtimeSubscription } from '@/lib/realtimeSubscriptions';
+import { useSubscriptionStatus } from '@/hooks/queries/useSubscription';
+import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
 
 interface SubscriptionPaywallProps {
   organizationId: string;
@@ -19,280 +16,88 @@ interface SubscriptionPaywallProps {
 }
 
 /**
- * Paywall component that checks subscription status
+ * Paywall component that checks subscription status using React Query
  * Blocks access if subscription is invalid and shows upgrade prompt
+ *
+ * Auth v3.0.0 compliant:
+ * - Uses React Query for data fetching and caching
+ * - Centralized real-time subscriptions
+ * - Automatic cache invalidation
+ * - No manual localStorage management
  */
 export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
   organizationId,
   children,
 }) => {
   const navigate = useNavigate();
-  const signOut = useAuthStore((state) => state.signOut);
-  const isLoggingOut = useAuthStore((state) => state.isLoggingOut);
+  const queryClient = useQueryClient();
+  const { mutate: signOut, isPending: isLoggingOut } = useSignOut();
+  const user = useUser();
 
-  // Get user role to determine paywall display
-  const currentUserRole = useOrganizationStore((state) => state.currentUserRole);
-  const isOwner = currentUserRole === 'Owner';
+  // Get user role from React Query (auth v3.0.0)
+  const { role } = useCurrentOrganization(user?.id || '', !!user?.id);
+  const isOwner = role === 'Owner';
 
-  // Get cached subscription status from store
-  const cachedStatus = useOrganizationStore((state) => state.subscriptionStatus);
-  const setSubscriptionStatus = useOrganizationStore((state) => state.setSubscriptionStatus);
+  // Get subscription status from React Query (auth v3.0.0)
+  const { data: subscription, isLoading } = useSubscriptionStatus(organizationId, !!organizationId);
 
-  // Try to get from localStorage if Zustand store is empty (e.g., after page reload)
-  const getInitialStatus = () => {
-    if (cachedStatus) return cachedStatus;
+  // Set up centralized realtime subscription
+  useRealtimeSubscription(
+    'subscriptions',
+    ['subscriptions', organizationId],
+    { filter: `organization_id=eq.${organizationId}` },
+    !!organizationId
+  );
 
-    try {
-      const stored = localStorage.getItem(`subscription_${organizationId}`);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        // Check if cache is less than 5 minutes old
-        const cacheAge = Date.now() - (parsed.timestamp || 0);
-        if (cacheAge < 5 * 60 * 1000) { // 5 minutes
-          return { hasAccess: parsed.hasAccess, reason: parsed.reason };
-        }
-      }
-    } catch (e) {
-      console.error('Failed to parse cached subscription:', e);
-    }
-    return null;
-  };
-
-  const initialStatus = getInitialStatus();
-
-  // Validate-first approach: ALWAYS validate before showing UI
-  // - Show loading spinner until validation completes (~200ms)
-  // - Show definitive UI (never wrong, never flashes)
-  // - Realtime handles all future updates (instant, no revalidation needed)
-  // - Simple, secure, no false UI ever
-  const [loading, setLoading] = useState(true); // Always validate first
-  const [hasAccess, setHasAccess] = useState(false); // Fail closed by default
-  const [blockReason, setBlockReason] = useState<string>('');
-  const [inGracePeriod, setInGracePeriod] = useState(false);
-  const [graceDaysRemaining, setGraceDaysRemaining] = useState<number>(0);
-
-  console.log('🎫 Paywall initialized:', {
-    initialStatus,
-    loading,
-    hasAccess,
-    blockReason
-  });
-
+  // Show toast when subscription status changes via real-time
   useEffect(() => {
-    // VALIDATE-FIRST APPROACH: Simple, secure, never shows wrong UI
-    // 1. Always validate subscription on mount (200ms)
-    // 2. Show loading spinner during validation (clear feedback)
-    // 3. Show definitive UI after validation (never wrong)
-    // 4. Realtime handles all future changes (instant, no revalidation)
+    if (!organizationId || !subscription) return;
 
-    console.log('🔄 Validating subscription before showing UI...');
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (
+        event?.type === 'updated' &&
+        event?.query.queryKey[0] === 'subscription' &&
+        event?.query.queryKey[1] === 'status' &&
+        event?.query.queryKey[2] === organizationId
+      ) {
+        const newData = event.query.state.data as typeof subscription;
+        const statusChanged = newData?.hasAccess !== subscription?.hasAccess;
 
-    // ALWAYS validate first - show loading until complete
-    checkSubscription();
+        if (statusChanged) {
+          console.log('✨ Subscription status changed:', {
+            from: subscription?.hasAccess,
+            to: newData?.hasAccess
+          });
 
-    // Set up realtime subscription to detect subscription changes
-    const channel = supabase
-      .channel(`subscription-changes-${organizationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'subscriptions',
-          filter: `organization_id=eq.${organizationId}`,
-        },
-        async (payload) => {
-          console.log('🔔 Subscription changed, rechecking access:', payload);
-
-          // Get the new subscription status
-          const { isValid, reason, inGracePeriod: isGrace, graceDaysRemaining: graceDays } = await stripeService.hasValidSubscription(organizationId);
-
-          // Check if status actually changed (to avoid unnecessary reloads)
-          const statusChanged = isValid !== hasAccess;
-
-          if (statusChanged) {
-            console.log('✨ Subscription status changed:', { from: hasAccess, to: isValid });
-
-            // Update state immediately
-            setHasAccess(isValid);
-            setBlockReason(reason || '');
-            setInGracePeriod(isGrace || false);
-            setGraceDaysRemaining(graceDays || 0);
-
-            // Update cache
-            setSubscriptionStatus({
-              hasAccess: isValid,
-              reason: reason || '',
-            });
-            localStorage.setItem(`subscription_${organizationId}`, JSON.stringify({
-              hasAccess: isValid,
-              reason: reason || '',
-              timestamp: Date.now(),
-            }));
-
-            // Show toast and reload for critical changes
-            if (isValid && !hasAccess) {
-              // Inactive → Active: Show success message and reload
-              toast.success('Subscription activated! Reloading...', { duration: 2000 });
-              setTimeout(() => {
-                window.location.reload();
-              }, 2000);
-            } else if (!isValid && hasAccess) {
-              // Active → Inactive: Show warning and reload immediately
-              toast.error('Subscription expired. Redirecting...', { duration: 1500 });
-              setTimeout(() => {
-                window.location.reload();
-              }, 1500);
-            }
+          // Show toast and reload on status change
+          if (newData?.hasAccess && !subscription?.hasAccess) {
+            toast.success('Subscription activated! Reloading...', { duration: 2000 });
+            setTimeout(() => window.location.reload(), 2000);
+          } else if (!newData?.hasAccess && subscription?.hasAccess) {
+            toast.error('Subscription expired. Redirecting...', { duration: 1500 });
+            setTimeout(() => window.location.reload(), 1500);
           }
-          // Removed recursive checkSubscription() call that was causing race conditions
         }
-      )
-      .subscribe((status) => {
-        console.log('📡 Realtime connection status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Realtime connected and listening for subscription changes');
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('❌ Realtime connection failed:', status);
-        }
-      });
-
-    // Also listen for organization deletion
-    const orgDeletionChannel = supabase
-      .channel(`org-deletion-paywall-${organizationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'organizations',
-          filter: `id=eq.${organizationId}`,
-        },
-        async (payload) => {
-          console.log('🗑️ Organization deleted - signing out:', payload);
-
-          // Clear organization cache
-          localStorage.removeItem('org_cached_organization');
-          localStorage.removeItem('org_cached_user_role');
-          localStorage.removeItem('org_cached_membership');
-          localStorage.removeItem('org_cached_members');
-          localStorage.removeItem(`subscription_${organizationId}`);
-
-          // Force logout and redirect
-          await supabase.auth.signOut();
-          window.location.href = '/sign-in';
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-      supabase.removeChannel(orgDeletionChannel);
-    };
-  }, [organizationId]);
-
-  const checkSubscription = async () => {
-    try {
-      // Always show loading while validating
-      setLoading(true);
-
-      // First, check if organization still exists
-      const { data: orgCheck, error: orgError } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('id', organizationId)
-        .maybeSingle();
-
-      // If organization doesn't exist, log out immediately
-      if (!orgCheck || orgError) {
-        console.log('🗑️ Organization no longer exists - logging out');
-
-        // Clear all caches
-        localStorage.removeItem('org_cached_organization');
-        localStorage.removeItem('org_cached_user_role');
-        localStorage.removeItem('org_cached_membership');
-        localStorage.removeItem('org_cached_members');
-        localStorage.removeItem(`subscription_${organizationId}`);
-
-        // Force logout
-        await supabase.auth.signOut();
-        window.location.href = '/sign-in';
-        return;
       }
+    });
 
-      const { isValid, reason, inGracePeriod: isGrace, graceDaysRemaining: graceDays } = await stripeService.hasValidSubscription(organizationId);
+    return unsubscribe;
+  }, [organizationId, subscription, queryClient]);
 
-      console.log('💳 Subscription check result:', { isValid, reason, inGracePeriod: isGrace, graceDaysRemaining: graceDays, organizationId });
+  const handleLogout = () => {
+    // Clear React Query cache
+    queryClient.clear();
 
-      setHasAccess(isValid);
-      setBlockReason(reason || '');
-      setInGracePeriod(isGrace || false);
-      setGraceDaysRemaining(graceDays || 0);
-
-      console.log('💳 State updated:', { hasAccess: isValid, blockReason: reason, inGracePeriod: isGrace, graceDaysRemaining: graceDays });
-
-      // Cache the result in Zustand store
-      setSubscriptionStatus({
-        hasAccess: isValid,
-        reason: reason || '',
-      });
-
-      // Also persist to localStorage with timestamp
-      localStorage.setItem(`subscription_${organizationId}`, JSON.stringify({
-        hasAccess: isValid,
-        reason: reason || '',
-        timestamp: Date.now(),
-      }));
-    } catch (error) {
-      console.error('Error checking subscription:', error);
-      setHasAccess(false);
-      setBlockReason('Unable to verify subscription status');
-
-      // Cache the error state
-      setSubscriptionStatus({
-        hasAccess: false,
-        reason: 'Unable to verify subscription status',
-      });
-    } finally {
-      setLoading(false);
-    }
+    // Sign out using auth hook
+    signOut(undefined, {
+      onSuccess: () => {
+        navigate('/sign-in', { replace: true });
+      }
+    });
   };
 
-  const handleLogout = async () => {
-    const startTime = Date.now();
-    const MIN_LOGOUT_TIME = 800; // 800ms minimum for smooth UX
-
-    // Set logging out state IMMEDIATELY to show loading overlay
-    useAuthStore.getState()._setLoggingOut(true);
-
-    // Wait a frame to ensure UI updates (loading overlay shows)
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-
-    // Reset all stores to clear UI
-    useQuotesStore.getState().reset();
-    useBoardStore.getState().reset();
-    useOrganizationStore.getState().reset();
-    useRemindersStore.getState().reset();
-    useAppStore.getState().reset();
-
-    // Sign out (this will clear auth state)
-    await signOut();
-
-    // Ensure minimum display time for loading spinner (smooth UX)
-    const elapsedTime = Date.now() - startTime;
-    const remainingTime = Math.max(0, MIN_LOGOUT_TIME - elapsedTime);
-    if (remainingTime > 0) {
-      await new Promise(resolve => setTimeout(resolve, remainingTime));
-    }
-
-    // Navigate to sign-in (stores handle cleanup, no reload needed)
-    navigate('/sign-in', { replace: true });
-  };
-
-  // Show full-screen loading spinner while checking subscription
-  // Note: isLoggingOut is handled by MainLayout's overlay, so we don't need to check it here
-  if (loading) {
-    console.log('⏳ Showing loading spinner...');
+  // Show loading spinner while checking subscription
+  if (isLoading) {
     return (
       <div className="h-screen w-full bg-[var(--content-bg)] flex items-center justify-center">
         <div className="text-center">
@@ -303,10 +108,8 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
     );
   }
 
-  console.log('🚦 Paywall check:', { hasAccess, blockReason, loading });
-
-  if (!hasAccess) {
-    console.log('🚫 Blocking access - showing paywall');
+  // Block access if no subscription
+  if (!subscription?.hasAccess) {
     // Non-owner users see simplified message
     if (!isOwner) {
       return (
@@ -350,19 +153,9 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
               }`}>
                 <AlertCircle className={`w-8 h-8 ${isInGracePeriod ? 'text-red-600' : 'text-orange-600'}`} />
               </div>
-              <CardTitle className="text-2xl text-gray-900">
-                {isInGracePeriod
-                  ? '🚨 GRACE PERIOD - Action Required!'
-                  : isTrialExpired
-                  ? 'Your Trial Has Ended'
-                  : 'Subscription Required'}
-              </CardTitle>
-              <CardDescription className="text-gray-600 mt-2 text-base">
-                {isInGracePeriod
-                  ? 'Your trial has expired! Add a payment method NOW or lose access in a few days.'
-                  : isTrialExpired
-                  ? 'Good news — your work is saved! Continue right where you left off.'
-                  : (blockReason || 'A valid subscription is required to access this feature')}
+              <CardTitle className="text-2xl text-gray-900">Subscription Required</CardTitle>
+              <CardDescription className="text-gray-600 mt-2">
+                {subscription?.reason || 'A valid subscription is required to access this feature'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 pt-2">
@@ -451,5 +244,6 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
     );
   }
 
+  // Has access - render children
   return <>{children}</>;
 };

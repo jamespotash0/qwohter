@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeInput, validateSecurity, authRateLimiter } from '@/utils/security';
-import { useUser } from '@/stores/auth/authStore';
-import { useOrganizations } from '@/hooks/useOrganizations';
+import { useUser } from '@/auth';
+import { useCurrentOrganization } from '@/hooks/queries';
 import { toast } from 'sonner';
 
 /**
@@ -10,7 +10,7 @@ import { toast } from 'sonner';
  */
 export const useSecureActions = () => {
   const user = useUser();
-  const { currentUserRole, currentOrganization } = useOrganizations();
+  const { organization: currentOrganization, role: currentUserRole } = useCurrentOrganization(user?.id);
 
   /**
    * Secure quote creation with validation
@@ -170,40 +170,6 @@ export const useSecureActions = () => {
     }
   }, [user, currentOrganization, currentUserRole]);
 
-  /**
-   * Secure organization code retrieval
-   */
-  const getOrganizationCodeSecurely = useCallback(async () => {
-    if (!user?.id) {
-      throw new Error('User not authenticated');
-    }
-
-    // Validate admin role
-    if (!validateSecurity.adminRole(currentUserRole ?? null)) {
-      throw new Error('Access denied: Admin privileges required');
-    }
-
-    try {
-      // Get user's organization with code
-      if (!currentOrganization?.id) {
-        throw new Error('User not assigned to organization');
-      }
-      const { data: orgData, error } = await supabase
-        .from('organizations')
-        .select('organization_code')
-        .eq('id', currentOrganization.id)
-        .single();
-
-      if (error || !orgData) {
-        throw new Error('Failed to fetch organization code');
-      }
-
-      return orgData.organization_code;
-    } catch (error) {
-      console.error('Failed to get organization code:', error);
-      throw error;
-    }
-  }, [user, currentOrganization, currentUserRole]);
 
   /**
    * Secure file upload validation
@@ -242,7 +208,6 @@ export const useSecureActions = () => {
     createQuoteSecurely,
     updateQuoteSecurely,
     performAdminAction,
-    getOrganizationCodeSecurely,
     validateFileUpload,
   };
 };

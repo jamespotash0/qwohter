@@ -1,6 +1,6 @@
 import React from 'react';
 import { Table, flexRender } from '@tanstack/react-table';
-import { Quote } from "@/stores/quotes/quotesStore";
+import type { Quote } from "@/services/quotesService";
 
 interface TableBodyProps {
   table: Table<Quote>;

@@ -1,7 +1,25 @@
 import { useEffect, useState, useRef } from 'react';
 import { PageContent } from '@/components/common/layout';
-import { useBoardStore, Project, ProjectPriority } from '@/stores/board/boardStore';
-import { supabase } from '@/integrations/supabase/client';
+import { Project, ProjectPriority } from '@/services/boardService';
+import { type TimelineMilestone } from '@/lib/timelineMilestones';
+import { TimelineVisualizer } from '@/components/features/board/TimelineVisualizer';
+import { ProjectAttachments } from '@/components/features/board/ProjectAttachments';
+import { AIMilestoneSuggestions } from '@/components/features/board/AIMilestoneSuggestions';
+import { ProjectTasks } from '@/components/features/board/ProjectTasks';
+import { useProjectAttachments } from '@/hooks/useProjectAttachments';
+import { AIMilestoneService } from '@/services/aiMilestoneService';
+import {
+  useProjects,
+  useWorkflowColumns,
+  useUpdateProject,
+  useDeleteProject,
+  useCreateWorkflowColumn,
+  useUpdateWorkflowColumn,
+  useDeleteWorkflowColumn,
+  useMoveBoardItem,
+} from '@/hooks/queries/useBoard';
+import { useUser } from '@/auth';
+import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
 import { animate } from 'animejs';
 import {
   Plus as PlusIcon,
@@ -33,13 +51,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { formatDateEST } from '@/utils/dateUtils';
+import { Button } from '@/components/ui/button';
+import { File as FileIcon } from '@phosphor-icons/react';
+import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 
 const COLUMN_COLORS = [
   { name: 'Slate', value: '#94A3B8', icon: '⚪' },
@@ -60,17 +75,22 @@ const COLUMN_COLORS = [
 // ];
 
 export default function Board() {
-  const {
-    projects,
-    workflowColumns,
-    updateProject,
-    updateWorkflowColumn,
-    deleteWorkflowColumn,
-    createWorkflowColumn,
-    deleteProject,
-    initializeBoard,
-    subscribeToChanges
-  } = useBoardStore();
+  // Get user and organization
+  const user = useUser();
+  const { organization } = useCurrentOrganization(user?.id || '');
+  const organizationId = organization?.id || '';
+
+  // Fetch data using React Query (includes automatic realtime subscriptions)
+  const { data: projects = [], isLoading: projectsLoading } = useProjects(organizationId, !!organizationId);
+  const { data: workflowColumns = [], isLoading: columnsLoading } = useWorkflowColumns(organizationId, !!organizationId);
+
+  // Mutations
+  const { mutate: updateProject } = useUpdateProject(organizationId);
+  const { mutate: deleteProject } = useDeleteProject(organizationId);
+  const { mutate: createWorkflowColumn } = useCreateWorkflowColumn(organizationId);
+  const { mutate: updateWorkflowColumn } = useUpdateWorkflowColumn(organizationId);
+  const { mutate: deleteWorkflowColumn } = useDeleteWorkflowColumn(organizationId);
+  const { mutate: moveBoardItem } = useMoveBoardItem(organizationId);
 
   const [draggedProject, setDraggedProject] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
@@ -84,53 +104,94 @@ export default function Board() {
   const [isAddingColumn, setIsAddingColumn] = useState(false);
   const [newColumnName, setNewColumnName] = useState('');
   const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(new Set());
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const columnRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const isAnimatingRef = useRef(false);
   const lastColumnDropTarget = useRef<{ columnId: string; side: 'left' | 'right' } | null>(null);
 
-  useEffect(() => {
-    console.log('📋 Board page mounted - initializing board and setting up subscriptions');
+  // AI Milestone Suggestions state
+  const [showAISuggestions, setShowAISuggestions] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<TimelineMilestone[]>([]);
+  const [aiReasoning, setAiReasoning] = useState<string>('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
-    // Initialize board data (fetches projects and columns)
-    initializeBoard();
+  // Delete confirmation state
+  const [deleteProjectDialog, setDeleteProjectDialog] = useState<{ open: boolean; project: Project | null }>({
+    open: false,
+    project: null,
+  });
 
-    // Get organization ID and setup realtime subscriptions
-    const setupRealtimeSubscriptions = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return undefined;
+  // Derive selected project from projects array to ensure we always have fresh data
+  const selectedProject = selectedProjectId
+    ? projects.find(p => p.id === selectedProjectId) || null
+    : null;
 
-      const { data: membership } = await supabase
-        .from('memberships')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .single();
+  // Fetch project attachments for selected project
+  const { attachments, refetch: refetchAttachments } = useProjectAttachments(selectedProject?.id);
 
-      if (membership?.organization_id) {
-        // Subscribe to real-time changes
-        const unsubscribe = subscribeToChanges(membership.organization_id);
-        return unsubscribe;
+  // React Query automatically handles:
+  // - Data fetching via useProjects/useWorkflowColumns
+  // - Realtime subscriptions (built into hooks)
+  // - Cleanup on unmount
+  // No manual initialization needed!
+
+  const toggleSection = (sectionId: string) => {
+    setCollapsedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sectionId)) {
+        newSet.delete(sectionId);
+      } else {
+        newSet.add(sectionId);
       }
-      return undefined;
-    };
+      return newSet;
+    });
+  };
 
-    const subscriptionPromise = setupRealtimeSubscriptions();
+  const handleRequestAISuggestions = async () => {
+    if (!selectedProject?.quote) {
+      alert('No quote data found for this project. AI suggestions require quote information.');
+      return;
+    }
 
-    // Cleanup subscriptions on unmount
-    return () => {
-      console.log('🧹 Board page unmounting - cleaning up subscriptions');
-      subscriptionPromise.then(unsubscribe => {
-        if (unsubscribe) unsubscribe();
-      });
-    };
-  }, []); // Empty dependency array - only run on mount/unmount
+    setIsGeneratingAI(true);
+    try {
+      const result = await AIMilestoneService.generateMilestones(
+        selectedProject.quote,
+        selectedProject.created_at
+      );
+      setAiSuggestions(result.milestones);
+      setAiReasoning(result.reasoning);
+      setShowAISuggestions(true);
+    } catch (error) {
+      console.error('Failed to generate AI suggestions:', error);
+      alert('Failed to generate milestone suggestions. Please check your API key and try again.');
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
 
-  const handleDragStart = async (e: React.DragEvent, projectId: string) => {
+  const handleAddAIMilestones = (selectedMilestones: TimelineMilestone[]) => {
+    if (!selectedProject) return;
+
+    const existingMilestones = selectedProject.timeline_milestones || [];
+    const updatedMilestones = [...existingMilestones, ...selectedMilestones];
+
+    updateProject({
+      id: selectedProject.id,
+      updates: { timeline_milestones: updatedMilestones }
+    });
+
+    setShowAISuggestions(false);
+    setAiSuggestions([]);
+  };
+
+  const handleDragStart = (e: React.DragEvent, projectId: string) => {
     setDraggedProject(projectId);
     e.dataTransfer.effectAllowed = 'move';
 
     // Set board_order to null when picking up the card
-    await updateProject(projectId, { board_order: null as any });
+    updateProject({ id: projectId, updates: { board_order: null } });
   };
 
   const handleDragOver = (e: React.DragEvent, columnName: string) => {
@@ -273,7 +334,7 @@ export default function Board() {
 
     // STEP 6: Execute all updates
     for (const { id, updates: projectUpdates } of updates) {
-      await updateProject(id, projectUpdates);
+      updateProject({ id, updates: projectUpdates });
     }
 
     setDraggedProject(null);
@@ -454,11 +515,9 @@ export default function Board() {
     isAnimatingRef.current = false;
 
     // Now update database - this will trigger store update
-    await Promise.all(
-      updates.map(({ id, order }) =>
-        updateWorkflowColumn(id, { column_order: order })
-      )
-    );
+    updates.forEach(({ id, order }) => {
+      updateWorkflowColumn({ id, updates: { column_order: order } });
+    });
   };
 
   const getProjectsByStatus = (status: string) => {
@@ -482,7 +541,7 @@ export default function Board() {
     }).format(amount);
   };
 
-  const getPriorityColor = (priority?: ProjectPriority) => {
+  const getPriorityColor = (priority?: ProjectPriority | null) => {
     switch (priority) {
       case 'Highest':
         return 'bg-red-100 text-red-700 border-red-300';
@@ -505,16 +564,16 @@ export default function Board() {
     setEditingColumnName(currentName);
   };
 
-  const handleSaveColumnName = async (columnId: string) => {
+  const handleSaveColumnName = (columnId: string) => {
     if (!editingColumnName.trim()) return;
 
     const oldName = workflowColumns.find(c => c.id === columnId)?.name;
-    await updateWorkflowColumn(columnId, { name: editingColumnName });
+    updateWorkflowColumn({ id: columnId, updates: { name: editingColumnName } });
 
     if (oldName) {
       const projectsToUpdate = projects.filter(p => p.workflow_status === oldName);
       for (const project of projectsToUpdate) {
-        await updateProject(project.id, { workflow_status: editingColumnName });
+        updateProject({ id: project.id, updates: { workflow_status: editingColumnName } });
       }
     }
 
@@ -522,7 +581,7 @@ export default function Board() {
     setEditingColumnName('');
   };
 
-  const handleDeleteColumn = async (columnId: string) => {
+  const handleDeleteColumn = (columnId: string) => {
     console.log('🗑️ handleDeleteColumn called for columnId:', columnId);
     const column = workflowColumns.find(c => c.id === columnId);
     console.log('📋 Column found:', column);
@@ -535,21 +594,17 @@ export default function Board() {
     }
 
     console.log('✅ Calling deleteWorkflowColumn...');
-    try {
-      await deleteWorkflowColumn(columnId);
-      console.log('✅ deleteWorkflowColumn completed successfully');
-    } catch (error) {
-      console.error('❌ deleteWorkflowColumn failed:', error);
-    }
+    deleteWorkflowColumn(columnId);
+    console.log('✅ deleteWorkflowColumn called');
   };
 
-  const handleAddColumn = async () => {
+  const handleAddColumn = () => {
     if (!newColumnName.trim()) return;
 
     const maxOrder = Math.max(...workflowColumns.map(c => c.column_order), -1);
     const randomColor = COLUMN_COLORS[Math.floor(Math.random() * COLUMN_COLORS.length)]?.value;
 
-    await createWorkflowColumn({
+    createWorkflowColumn({
       name: newColumnName,
       color: randomColor as any,
       column_order: maxOrder + 1,
@@ -560,8 +615,8 @@ export default function Board() {
     setNewColumnName('');
   };
 
-  const handleChangeColumnColor = async (columnId: string, color: string) => {
-    await updateWorkflowColumn(columnId, { color });
+  const handleChangeColumnColor = (columnId: string, color: string) => {
+    updateWorkflowColumn({ id: columnId, updates: { color } });
   };
 
   const toggleColumnCollapse = (columnId: string) => {
@@ -627,7 +682,7 @@ export default function Board() {
                   )}
 
                   <div
-                    className={`flex-shrink-0 transition-all duration-300 ease-in-out rounded-lg flex flex-col h-full ${
+                    className={`flex-shrink-0 transition-all duration-300 ease-in-out rounded-lg flex flex-col max-h-[calc(100vh-10rem)] ${
                       isCollapsed ? 'w-12' : 'w-72'
                     } ${draggedColumnId === column.id ? 'opacity-40 bg-gray-200 border-2 border-dashed border-gray-400' : 'bg-gray-50'} ${
                       dragOverColumn === column.name && !draggedColumnId ? 'ring-2 ring-blue-400 bg-blue-50 p-2' : 'p-0'
@@ -636,6 +691,11 @@ export default function Board() {
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, column.name)}
                   >
+                  {/* Colored Banner */}
+                  <div
+                    className="h-1.5 rounded-t-lg flex-shrink-0"
+                    style={{ backgroundColor: column.color }}
+                  />
                   {/* Column Header */}
                   <div className="mb-3 flex items-center justify-between px-2 py-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -674,20 +734,18 @@ export default function Board() {
                             </PopoverContent>
                           </Popover>
 
-                          {/* Drag handle - only show for non-default columns */}
-                          {!column.is_default && (
-                            <div
-                              draggable
-                              onDragStart={(e) => {
-                                e.stopPropagation();
-                                handleColumnDragStart(e, column.id);
-                              }}
-                              className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing"
-                              title="Drag to reorder column"
-                            >
-                              <DragIcon className="w-4 h-4 text-gray-400" />
-                            </div>
-                          )}
+                          {/* Drag handle */}
+                          <div
+                            draggable
+                            onDragStart={(e) => {
+                              e.stopPropagation();
+                              handleColumnDragStart(e, column.id);
+                            }}
+                            className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing"
+                            title="Drag to reorder column"
+                          >
+                            <DragIcon className="w-4 h-4 text-gray-400" />
+                          </div>
 
                           {isEditing ? (
                             <div className="flex items-center gap-1 flex-1">
@@ -724,11 +782,6 @@ export default function Board() {
                               <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600 font-normal shrink-0">
                                 {columnProjects.length}
                               </Badge>
-                              {column.is_default && (
-                                <Badge className="text-xs px-1.5 py-0 h-4 bg-white border border-white text-blue-700 font-normal pointer-events-none">
-                                  Default
-                                </Badge>
-                              )}
                             </>
                           )}
 
@@ -746,19 +799,14 @@ export default function Board() {
                                 <PencilSimpleIcon className="w-4 h-4" />
                                 Rename
                               </DropdownMenuItem>
-                              {/* Only show delete for non-default columns */}
-                              {!column.is_default && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => handleDeleteColumn(column.id)}
-                                    className="flex items-center gap-2 text-red-600 focus:text-red-600"
-                                  >
-                                    <TrashIcon className="w-4 h-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </>
-                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteColumn(column.id)}
+                                className="flex items-center gap-2 text-red-600 focus:text-red-600"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                                Delete
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </>
@@ -794,7 +842,7 @@ export default function Board() {
                   {/* Column Cards */}
                   {!isCollapsed && (
                     <div
-                      className="space-y-1.5 px-2 pb-2 overflow-y-auto h-[calc(100vh-13rem)]"
+                      className="space-y-1.5 px-2 pb-2 flex-1 overflow-y-auto"
                       onDragOver={(e) => {
                         // Only handle at container level if empty, otherwise cards handle it
                         if (columnProjects.length === 0) {
@@ -815,12 +863,12 @@ export default function Board() {
                       }}
                     >
                       {columnProjects.map((project) => {
-                        const quote = project.quotes;
-                        const clientName = quote?.job_details?.client_name || 'No Client';
+                        const quote = project.quote;
+                        const clientName = quote?.job_details?.client_name || '';
                         const clientCompany = quote?.job_details?.client_company || '';
                         const clientAddress = quote?.job_details?.client_address || '';
                         // const jobLocation = quote?.job_details?.job_location || '';
-                        const total = quote?.price_details?.grand_total;
+                        const total = quote?.price_details?.final_selling_price;
                         // const avatarColor = getAvatarColor(project.id);
 
                         return (
@@ -841,7 +889,7 @@ export default function Board() {
                                 // Prevent column drag when clicking on card
                                 e.stopPropagation();
                               }}
-                              onClick={() => setSelectedProject(project)}
+                              onClick={() => setSelectedProjectId(project.id)}
                               className={`bg-white rounded-lg border border-gray-200 p-2.5 cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col min-h-[120px] relative ${
                                 draggedProject === project.id ? 'opacity-50' : ''
                               }`}
@@ -859,7 +907,7 @@ export default function Board() {
                                     className="text-red-600 cursor-pointer"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      deleteProject(project.id);
+                                      setDeleteProjectDialog({ open: true, project });
                                     }}
                                   >
                                     <TrashIcon className="w-4 h-4 mr-2" />
@@ -914,14 +962,14 @@ export default function Board() {
                                         {(['Highest', 'High', 'Medium', 'Low', 'Lowest'] as ProjectPriority[]).map((priority) => (
                                           <button
                                             key={priority}
-                                            onClick={() => updateProject(project.id, { priority })}
+                                            onClick={() => updateProject({ id: project.id, updates: { priority } })}
                                             className={`w-full text-left px-2 py-1 text-xs rounded capitalize border ${getPriorityColor(priority)} hover:opacity-80`}
                                           >
                                             {priority}
                                           </button>
                                         ))}
                                         <button
-                                          onClick={() => updateProject(project.id, { priority: undefined })}
+                                          onClick={() => updateProject({ id: project.id, updates: { priority: null } })}
                                           className="w-full text-left px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                         >
                                           Clear Priority
@@ -945,11 +993,11 @@ export default function Board() {
                                         <Input
                                           type="date"
                                           value={project.completion_date || ''}
-                                          onChange={(e) => updateProject(project.id, { completion_date: e.target.value })}
+                                          onChange={(e) => updateProject({ id: project.id, updates: { completion_date: e.target.value } })}
                                           className="text-sm"
                                         />
                                         <button
-                                          onClick={() => updateProject(project.id, { completion_date: undefined })}
+                                          onClick={() => updateProject({ id: project.id, updates: { completion_date: null } })}
                                           className="w-full px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                         >
                                           Clear Date
@@ -957,13 +1005,6 @@ export default function Board() {
                                       </div>
                                     </PopoverContent>
                                   </Popover>
-                                )}
-
-                                {total && (
-                                  <div className="flex items-center gap-1">
-                                    <CurrencyDollarIcon className="w-3 h-3" />
-                                    <span>{formatCurrency(total)}</span>
-                                  </div>
                                 )}
                               </div>
 
@@ -981,14 +1022,14 @@ export default function Board() {
                                         {(['Highest', 'High', 'Medium', 'Low', 'Lowest'] as ProjectPriority[]).map((priority) => (
                                           <button
                                             key={priority}
-                                            onClick={() => updateProject(project.id, { priority })}
+                                            onClick={() => updateProject({ id: project.id, updates: { priority } })}
                                             className={`w-full text-left px-2 py-1 text-xs rounded capitalize border ${getPriorityColor(priority)} hover:opacity-80`}
                                           >
                                             {priority}
                                           </button>
                                         ))}
                                         <button
-                                          onClick={() => updateProject(project.id, { priority: undefined })}
+                                          onClick={() => updateProject({ id: project.id, updates: { priority: null } })}
                                           className="w-full text-left px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded"
                                         >
                                           Clear Priority
@@ -1009,7 +1050,7 @@ export default function Board() {
                                       <Input
                                         type="date"
                                         value={project.completion_date || ''}
-                                        onChange={(e) => updateProject(project.id, { completion_date: e.target.value })}
+                                        onChange={(e) => updateProject({ id: project.id, updates: { completion_date: e.target.value } })}
                                         className="text-sm"
                                         autoFocus
                                       />
@@ -1046,7 +1087,7 @@ export default function Board() {
 
           {/* Add New Column */}
           {isAddingColumn ? (
-            <div className="flex-shrink-0 w-80 bg-gray-50 rounded-lg p-3">
+            <div className="flex-shrink-0 w-72 bg-gray-50 rounded-lg p-3">
               <div className="flex items-center gap-2">
                 <Input
                   value={newColumnName}
@@ -1074,10 +1115,10 @@ export default function Board() {
               </div>
             </div>
           ) : (
-            <div className="flex-shrink-0 w-80">
+            <div className="flex-shrink-0 w-72">
               <button
                 onClick={() => setIsAddingColumn(true)}
-                className="w-50 px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-2 border-2 border-dashed border-gray-300 hover:border-gray-400"
+                className="w-full px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-2 border-2 border-dashed border-gray-300 hover:border-gray-400"
               >
                 <PlusIcon className="w-4 h-4" />
                 Add Column
@@ -1087,33 +1128,54 @@ export default function Board() {
         </div>
       )}
 
-      {/* Quote Details Dialog */}
-      <Dialog open={!!selectedProject} onOpenChange={(open) => !open && setSelectedProject(null)}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">
-              {selectedProject?.quotes?.project_name || 'Project Details'}
-            </DialogTitle>
-          </DialogHeader>
+      {/* Simplified Sidebar */}
+      {selectedProject && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-40"
+            onClick={() => setSelectedProjectId(null)}
+          />
 
-          {selectedProject && (
-            <div className="space-y-6">
-              {/* Header Info */}
-              <div className="grid grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="text-sm text-gray-600">Proposal Number</p>
-                  <p className="font-medium">{selectedProject.quotes?.proposal_number || 'N/A'}</p>
+          <div className="fixed top-0 right-0 h-full w-[600px] bg-white shadow-2xl z-50 overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Project Name:</span>
+                  <span className="text-base font-semibold text-gray-900">
+                    {selectedProject.quote?.project_name || 'Untitled Project'}
+                  </span>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Status</p>
-                  <Badge variant="secondary">{selectedProject.workflow_status}</Badge>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Proposal #:</span>
+                  <span className="text-sm text-gray-700">
+                    {selectedProject.quote?.proposal_number || 'N/A'}
+                  </span>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Priority</p>
+              </div>
+              <button
+                onClick={() => setSelectedProjectId(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <XIcon className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-4 space-y-5">
+              {/* Status Section - No card background */}
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-500">Status:</span>
+                  <span className="text-sm text-gray-900">{selectedProject.workflow_status}</span>
+                </div>
+                <span className="text-gray-300">|</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-500">Priority:</span>
                   <select
                     value={selectedProject.priority || ''}
-                    onChange={(e) => updateProject(selectedProject.id, { priority: e.target.value as ProjectPriority || undefined })}
-                    className={`w-full text-sm px-2 py-1 rounded border ${getPriorityColor(selectedProject.priority)} font-medium capitalize`}
+                    onChange={(e) => updateProject({ id: selectedProject.id, updates: { priority: (e.target.value as ProjectPriority) || null } })}
+                    className={`text-xs px-2 py-1 rounded border ${getPriorityColor(selectedProject.priority)} capitalize cursor-pointer w-24`}
                   >
                     <option value="">None</option>
                     <option value="Lowest">Lowest</option>
@@ -1123,84 +1185,190 @@ export default function Board() {
                     <option value="Highest">Highest</option>
                   </select>
                 </div>
+                <span className="text-gray-300">|</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-500">Completion:</span>
+                  <Input
+                    type="date"
+                    value={selectedProject.completion_date || ''}
+                    onChange={(e) => updateProject({ id: selectedProject.id, updates: { completion_date: e.target.value || null } })}
+                    className="text-xs h-7 w-32"
+                  />
+                </div>
               </div>
 
-              {/* Completion Date */}
+              {/* Project Summary */}
               <div>
-                <label className="text-sm text-gray-600 block mb-2">Completion Date</label>
-                <Input
-                  type="date"
-                  value={selectedProject.completion_date || ''}
-                  onChange={(e) => updateProject(selectedProject.id, { completion_date: e.target.value })}
-                  className="max-w-xs"
-                />
+                <button
+                  onClick={() => toggleSection('summary')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
+                >
+                  <span>Project Summary</span>
+                  {collapsedSections.has('summary') ? (
+                    <CaretRightIcon className="w-4 h-4" />
+                  ) : (
+                    <CaretDownIcon className="w-4 h-4" />
+                  )}
+                </button>
+                {!collapsedSections.has('summary') && (
+                  <div className="space-y-2 text-sm">
+                  {selectedProject.quote?.job_details?.client_name && (
+                    <div className="flex gap-3">
+                      <span className="text-gray-500 min-w-[100px]">Client:</span>
+                      <span className="text-gray-900">{selectedProject.quote.job_details.client_name}</span>
+                    </div>
+                  )}
+                  {selectedProject.quote?.job_details?.client_company && (
+                    <div className="flex gap-3">
+                      <span className="text-gray-500 min-w-[100px]">Company:</span>
+                      <span className="text-gray-900">{selectedProject.quote.job_details.client_company}</span>
+                    </div>
+                  )}
+                  {selectedProject.quote?.job_details?.job_location && (
+                    <div className="flex gap-3">
+                      <span className="text-gray-500 min-w-[100px]">Job Location:</span>
+                      <span className="text-gray-900">{selectedProject.quote.job_details.job_location}</span>
+                    </div>
+                  )}
+                  {selectedProject.quote?.wall_details?.wall_type && (
+                    <div className="flex gap-3">
+                      <span className="text-gray-500 min-w-[100px]">Wall Type:</span>
+                      <span className="text-gray-900">
+                        {selectedProject.quote.wall_details.wall_type}
+                        {selectedProject.quote.wall_details.series && ` - ${selectedProject.quote.wall_details.series}`}
+                        {selectedProject.quote.wall_details.model && ` (${selectedProject.quote.wall_details.model})`}
+                      </span>
+                    </div>
+                  )}
+                  {selectedProject.quote?.price_details?.final_selling_price && (
+                    <div className="flex gap-3">
+                      <span className="text-gray-500 min-w-[100px]">Total Price:</span>
+                      <span className="text-gray-900 font-semibold text-blue-600">
+                        {formatCurrency(selectedProject.quote.price_details.final_selling_price)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Quick Actions - Only show if quote exists */}
+                  {selectedProject.quote?.proposal_number && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full h-8 text-xs justify-start"
+                        onClick={() => {
+                          window.location.href = `/editor/${selectedProject.quote.proposal_number}`;
+                        }}
+                      >
+                        <FileIcon className="w-3.5 h-3.5 mr-1.5" />
+                        View Quote
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                )}
               </div>
 
-              {/* Client & Job Details */}
-              {selectedProject.quotes?.job_details && (
-                <div>
-                  <h3 className="font-semibold mb-3">Client & Job Details</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Client Name</p>
-                      <p className="font-medium">{selectedProject.quotes.job_details.client_name || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Company</p>
-                      <p className="font-medium">{selectedProject.quotes.job_details.client_company || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Location</p>
-                      <p className="font-medium">{selectedProject.quotes.job_details.job_location || 'N/A'}</p>
-                    </div>
-                    {selectedProject.quotes.job_details.client_address && (
-                      <div>
-                        <p className="text-sm text-gray-600">Address</p>
-                        <p className="font-medium">{selectedProject.quotes.job_details.client_address}</p>
-                      </div>
-                    )}
-                    {selectedProject.quotes.job_details.date && (
-                      <div>
-                        <p className="text-sm text-gray-600">Date</p>
-                        <p className="font-medium">{selectedProject.quotes.job_details.date}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* Project Timeline */}
+              <div>
+                <button
+                  onClick={() => toggleSection('timeline')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
+                >
+                  <span>Project Timeline</span>
+                  {collapsedSections.has('timeline') ? (
+                    <CaretRightIcon className="w-4 h-4" />
+                  ) : (
+                    <CaretDownIcon className="w-4 h-4" />
+                  )}
+                </button>
+                {!collapsedSections.has('timeline') && (
+                  <TimelineVisualizer
+                    milestones={selectedProject.timeline_milestones || []}
+                    wonDate={selectedProject.created_at}
+                    onMilestoneUpdate={(updatedMilestones) => {
+                      updateProject({
+                        id: selectedProject.id,
+                        updates: { timeline_milestones: updatedMilestones }
+                      });
+                    }}
+                    onRequestAISuggestions={handleRequestAISuggestions}
+                    isGeneratingAI={isGeneratingAI}
+                  />
+                )}
+              </div>
 
-              {/* Price Details */}
-              {selectedProject.quotes?.price_details && (
-                <div>
-                  <h3 className="font-semibold mb-3">Pricing</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span className="font-medium">{formatCurrency(selectedProject.quotes.price_details.subtotal)}</span>
-                    </div>
-                    {selectedProject.quotes.price_details.tax && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Tax</span>
-                        <span className="font-medium">{formatCurrency(selectedProject.quotes.price_details.tax)}</span>
-                      </div>
-                    )}
-                    {selectedProject.quotes.price_details.discount && (
-                      <div className="flex justify-between text-green-600">
-                        <span>Discount</span>
-                        <span className="font-medium">-{formatCurrency(selectedProject.quotes.price_details.discount)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                      <span>Total</span>
-                      <span>{formatCurrency(selectedProject.quotes.price_details.grand_total)}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Project Tasks */}
+              <div>
+                <button
+                  onClick={() => toggleSection('tasks')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
+                >
+                  <span>Tasks</span>
+                  {collapsedSections.has('tasks') ? (
+                    <CaretRightIcon className="w-4 h-4" />
+                  ) : (
+                    <CaretDownIcon className="w-4 h-4" />
+                  )}
+                </button>
+                {!collapsedSections.has('tasks') && (
+                  <ProjectTasks
+                    projectId={selectedProject.id}
+                    organizationId={organizationId}
+                    projectName={selectedProject.quote?.project_name || 'Project'}
+                  />
+                )}
+              </div>
+
+              {/* Documents/Links */}
+              <div>
+                <button
+                  onClick={() => toggleSection('documents')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
+                >
+                  <span>Documents</span>
+                  {collapsedSections.has('documents') ? (
+                    <CaretRightIcon className="w-4 h-4" />
+                  ) : (
+                    <CaretDownIcon className="w-4 h-4" />
+                  )}
+                </button>
+                {!collapsedSections.has('documents') && (
+                  <ProjectAttachments
+                    projectId={selectedProject.id}
+                    attachments={attachments}
+                    onAttachmentsChange={refetchAttachments}
+                  />
+                )}
+              </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </div>
+        </>
+      )}
+
+      {/* AI Milestone Suggestions Dialog */}
+      <AIMilestoneSuggestions
+        suggestions={aiSuggestions}
+        reasoning={aiReasoning}
+        isOpen={showAISuggestions}
+        onClose={() => setShowAISuggestions(false)}
+        onAddMilestones={handleAddAIMilestones}
+      />
+
+      {/* Delete Project Confirmation Dialog */}
+      <ConfirmDeleteDialog
+        open={deleteProjectDialog.open}
+        onOpenChange={(open) => setDeleteProjectDialog({ open, project: open ? deleteProjectDialog.project : null })}
+        onConfirm={() => {
+          if (deleteProjectDialog.project) {
+            deleteProject(deleteProjectDialog.project.id);
+            setDeleteProjectDialog({ open: false, project: null });
+          }
+        }}
+        title="Delete Project"
+        description="This action cannot be undone. All tasks, attachments, and milestones associated with this project will be permanently removed."
+        itemName={deleteProjectDialog.project?.quote?.project_name || 'Untitled Project'}
+      />
     </PageContent>
   );
 }

@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
-import { useQuotesStore } from "@/stores/quotes/quotesStore";
-import { useOrganizationSettings } from "@/hooks/useCompanySettings";
+import { useCreateQuote, useUpdateQuote } from "@/hooks/queries/useQuotes";
+import { useCurrentOrganization } from "@/hooks/queries";
+import { useUser } from "@/auth";
 import { QuoteCreatorWizardProps } from './types/wizardTypes';
 import { useWizardState } from './hooks/useWizardState';
 import { useWizardValidation } from './hooks/useWizardValidation';
@@ -12,14 +13,23 @@ import { StepNavigation } from './components/StepNavigation';
 import { StepContent } from './components/StepContent';
 import { NavigationFooter } from './components/NavigationFooter';
 
-const QuoteCreatorWizard = ({ 
-  quoteName, 
-  onBackToDashboard, 
-  onQuoteNameChange, 
-  existingQuote 
+const QuoteCreatorWizard = ({
+  quoteName,
+  onBackToDashboard,
+  onQuoteNameChange,
+  existingQuote
 }: QuoteCreatorWizardProps) => {
-  const createQuote = useQuotesStore((state) => state.createQuote);
-  const updateQuote = useQuotesStore((state) => state.updateQuote);
+  const { mutateAsync: createQuoteMutation } = useCreateQuote();
+  const { mutateAsync: updateQuoteMutation } = useUpdateQuote();
+
+  // Wrappers for backward compatibility
+  const createQuote = async (quoteData: any) => {
+    return await createQuoteMutation(quoteData);
+  };
+
+  const updateQuote = async (id: string, updates: any) => {
+    return await updateQuoteMutation({ id, updates });
+  };
   const [activeStep, setActiveStep] = useState(0);
   const [editingQuoteName, setEditingQuoteName] = useState(false);
   const [localQuoteName, setLocalQuoteName] = useState(quoteName);
@@ -54,7 +64,19 @@ const QuoteCreatorWizard = ({
   }, [quoteName]);
 
   // Get organization settings for conditional fax validation
-  const { organization } = useOrganizationSettings();
+  const user = useUser();
+  const { organization } = useCurrentOrganization(user?.id || '');
+
+  // Set organization name in contactInfo when organization loads
+  useEffect(() => {
+    if (organization && !contactInfo.organizationName) {
+      console.log('[QuoteCreatorWizard] Setting organizationName from organization:', organization.name);
+      setContactInfo(prev => ({
+        ...prev,
+        organizationName: organization.name
+      }));
+    }
+  }, [organization, contactInfo.organizationName]);
 
   // Use the validation hook
   const {
@@ -151,20 +173,56 @@ const QuoteCreatorWizard = ({
           delivery_details: deliveryLabor.delivery,
           labor_details: deliveryLabor.labor,
           proposal_number: jobDetails.proposalNumber,
+          quote_source: contactInfo.quoteSource,
           status: quoteStatus as any
         });
         toast.success("Quote updated successfully!");
       } else {
         await createQuote({
-          quoteName: localQuoteName,
-          contactInfo,
-          jobDetails,
-          walls,
-          pocketDoors,
-          supportStructure,
-          deliveryLabor,
-          pricing,
-          status: quoteStatus
+          project_name: localQuoteName,
+          quote_details: contactInfo,
+          job_details: {
+            job_location: jobDetails.jobLocation,
+            client_name: jobDetails.billedTo.name,
+            client_company: jobDetails.billedTo.company,
+            client_address: jobDetails.billedTo.address,
+            date: jobDetails.date
+          },
+          wall_details: walls,
+          price_details: {
+            kwik_wall_materials_cost: pricing.kwik_wall_materials_cost || 0,
+            misc_materials_cost: pricing.misc_materials_cost || 0,
+            delivery_cost_track: pricing.delivery_cost_track || 0,
+            delivery_cost_panel: pricing.delivery_cost_panel || 0,
+            track_equipment_costs: pricing.track_equipment_costs || 0,
+            track_labor_cost: pricing.track_labor_cost || 0,
+            panel_equipment_costs: pricing.panel_equipment_costs || 0,
+            panel_labor_cost: pricing.panel_labor_cost || 0,
+            track_freight_factory: pricing.track_freight_factory || 0,
+            panel_freight_factory: pricing.panel_freight_factory || 0,
+            local_handling_costs: pricing.local_handling_costs || 0,
+            materials_markup_percentage: pricing.materials_markup_percentage || 0,
+            shipping_markup_percentage: pricing.shipping_markup_percentage || 0,
+            unseen_costs: pricing.unseen_costs || 0,
+            unseen_costs_percentage: pricing.unseen_costs_percentage || 10,
+            unseen_costs_locked: pricing.unseen_costs_locked !== false,
+            cost_subtotal: pricing.cost_subtotal || 0,
+            base_selling_price: pricing.base_selling_price || 0,
+            shipping_cost_subtotal: pricing.shipping_cost_subtotal || 0,
+            shipping_selling_price: pricing.shipping_selling_price || 0,
+            final_selling_price: pricing.final_selling_price || 0,
+            base_selling_gross_profit_percentage: pricing.base_selling_gross_profit_percentage || 0,
+            shipping_selling_gross_profit_percentage: pricing.shipping_selling_gross_profit_percentage || 0,
+            final_selling_gross_profit_percentage: pricing.final_selling_gross_profit_percentage || 0,
+            final_selling_price_profit_amount: pricing.final_selling_price_profit_amount || 0,
+            payment_upon_drawings: pricing.payment_upon_drawings,
+            payment_upon_track_installation: pricing.payment_upon_track_installation,
+          },
+          delivery_details: deliveryLabor.delivery,
+          labor_details: deliveryLabor.labor,
+          status: quoteStatus,
+          proposal_number: jobDetails.proposalNumber,
+          quote_source: contactInfo.quoteSource || ""
         });
         toast.success("Quote created successfully!");
       }
@@ -224,20 +282,56 @@ const QuoteCreatorWizard = ({
           delivery_details: deliveryLabor.delivery,
           labor_details: deliveryLabor.labor,
           proposal_number: jobDetails.proposalNumber || "",
+          quote_source: contactInfo.quoteSource || "",
           status: "Incomplete"
         });
         toast.success("Quote saved as incomplete!");
       } else {
         await createQuote({
-          quoteName: localQuoteName,
-          contactInfo,
-          jobDetails,
-          walls,
-          pocketDoors,
-          supportStructure,
-          deliveryLabor,
-          pricing,
-          status: "Incomplete"
+          project_name: localQuoteName,
+          quote_details: contactInfo,
+          job_details: {
+            job_location: jobDetails.jobLocation || "",
+            client_name: jobDetails.billedTo?.name || "",
+            client_company: jobDetails.billedTo?.company || "",
+            client_address: jobDetails.billedTo?.address || "",
+            date: jobDetails.date || ""
+          },
+          wall_details: walls,
+          price_details: {
+            kwik_wall_materials_cost: pricing.kwik_wall_materials_cost || 0,
+            misc_materials_cost: pricing.misc_materials_cost || 0,
+            delivery_cost_track: pricing.delivery_cost_track || 0,
+            delivery_cost_panel: pricing.delivery_cost_panel || 0,
+            track_equipment_costs: pricing.track_equipment_costs || 0,
+            track_labor_cost: pricing.track_labor_cost || 0,
+            panel_equipment_costs: pricing.panel_equipment_costs || 0,
+            panel_labor_cost: pricing.panel_labor_cost || 0,
+            track_freight_factory: pricing.track_freight_factory || 0,
+            panel_freight_factory: pricing.panel_freight_factory || 0,
+            local_handling_costs: pricing.local_handling_costs || 0,
+            materials_markup_percentage: pricing.materials_markup_percentage || 0,
+            shipping_markup_percentage: pricing.shipping_markup_percentage || 0,
+            unseen_costs: pricing.unseen_costs || 0,
+            unseen_costs_percentage: pricing.unseen_costs_percentage || 10,
+            unseen_costs_locked: pricing.unseen_costs_locked !== false,
+            cost_subtotal: pricing.cost_subtotal || 0,
+            base_selling_price: pricing.base_selling_price || 0,
+            shipping_cost_subtotal: pricing.shipping_cost_subtotal || 0,
+            shipping_selling_price: pricing.shipping_selling_price || 0,
+            final_selling_price: pricing.final_selling_price || 0,
+            base_selling_gross_profit_percentage: pricing.base_selling_gross_profit_percentage || 0,
+            shipping_selling_gross_profit_percentage: pricing.shipping_selling_gross_profit_percentage || 0,
+            final_selling_gross_profit_percentage: pricing.final_selling_gross_profit_percentage || 0,
+            final_selling_price_profit_amount: pricing.final_selling_price_profit_amount || 0,
+            payment_upon_drawings: pricing.payment_upon_drawings || "",
+            payment_upon_track_installation: pricing.payment_upon_track_installation || "",
+          },
+          delivery_details: deliveryLabor.delivery,
+          labor_details: deliveryLabor.labor,
+          status: "Incomplete",
+          quote_source: contactInfo.quoteSource || "",
+          proposal_number: jobDetails.proposalNumber || ""
         });
         toast.success("Quote saved as incomplete!");
       }

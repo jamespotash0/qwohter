@@ -6,6 +6,7 @@
  */
 
 import { sanitizeInput } from "@/utils/security";
+import { isMembershipActive, isMembershipPending, hasAdminPrivileges, isRoleOwner } from "./statusHelpers";
 
 export type Role = 'Admin' | 'Member' | 'Owner';
 
@@ -25,48 +26,6 @@ export interface TeamOperationResult {
  * Team management helper functions
  */
 export const teamManagementHelpers = {
-  /**
-   * Get organization code for admin users
-   */
-  getOrganizationCode: async (
-    _userId: string, 
-    currentOrganization: any, 
-    currentUserRole: string | null
-  ): Promise<string | null> => {
-    try {
-      // For now, use the existing organization hook until RPC function is deployed
-      // This is secure because the useOrganizations hook uses RLS policies
-      if (currentOrganization?.organization_code) {
-        // Only return code if user has admin privileges (checked by UI state)
-        if (['admin', 'owner'].includes(currentUserRole || '')) {
-          return currentOrganization.organization_code;
-        }
-      }
-      return null;
-    } catch (error) {
-      console.error('Error fetching organization code:', error);
-      return null;
-    }
-  },
-
-  /**
-   * Copy organization code to clipboard
-   */
-  copyOrganizationCode: async (orgCode: string): Promise<TeamOperationResult> => {
-    try {
-      await navigator.clipboard.writeText(orgCode);
-      return {
-        success: true,
-        data: { message: 'Organization code copied to clipboard' }
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: 'Failed to copy organization code'
-      };
-    }
-  },
-
   /**
    * Invite a new member to the organization
    */
@@ -161,8 +120,9 @@ export const teamManagementHelpers = {
    * Calculate team statistics from members array
    */
   calculateTeamStats: (members: any[]) => {
-    const activeMembersCount = members.filter(m => m.status === 'Active' || m.status === 'active').length;
-    const pendingMembersCount = members.filter(m => m.status === 'Pending' || m.status === 'pending').length;
+    // Use case-insensitive status helpers
+    const activeMembersCount = members.filter(m => isMembershipActive(m.status)).length; //membership_status
+    const pendingMembersCount = members.filter(m => isMembershipPending(m.status)).length; //membership_status
     const totalMembersCount = members.length;
     
     const roleDistribution = members.reduce((acc, member) => {
@@ -194,12 +154,12 @@ export const teamManagementHelpers = {
     }
 
     // Only admins and owners can manage members
-    if (!['Admin', 'Owner'].includes(currentUserRole || '')) {
+    if (!hasAdminPrivileges(currentUserRole)) {
       return false;
     }
 
     // Can't modify owner roles
-    if (targetMemberRole === 'Owner' && action.includes('role')) {
+    if (isRoleOwner(targetMemberRole) && action.includes('role')) {
       return false;
     }
 

@@ -15,7 +15,7 @@ npm run test                   # Unit tests
 npm run test:coverage          # Coverage report
 ```
 
-## Version Management
+## Version Management & Stale Client Protection
 
 **⚠️ IMPORTANT: Version is automatically managed - DO NOT manually edit `public/version.json`**
 
@@ -24,6 +24,23 @@ npm run test:coverage          # Coverage report
 2. **Format**: `v1.0.{buildNumber}` where buildNumber auto-increments
 3. **Build Time**: Timestamp is automatically added
 4. **Vercel Integration**: When you push to Vercel, it automatically builds and increments the version
+
+### Stale Client Protection (Active Since v3.0.0):
+The app now automatically detects and recovers from stale client issues:
+
+**What it prevents:**
+- Users running old JavaScript after new deployments
+- "No Organization Available" errors from schema changes
+- API incompatibilities between old client and new server
+- Breaking errors when users keep app open for days
+
+**How it works:**
+- ✅ Checks for new version every 5 minutes ([useVersionCheck](src/hooks/useVersionCheck.ts))
+- ✅ Shows user-friendly update notification with auto-reload
+- ✅ Automatic error recovery for stale client patterns
+- ✅ Sentry logging for monitoring deployment impact
+
+**See:** [STALE_CLIENT_SOLUTION.md](STALE_CLIENT_SOLUTION.md) for complete technical details
 
 ### Version File in Git:
 Currently `public/version.json` IS tracked in Git. Here's how it works:

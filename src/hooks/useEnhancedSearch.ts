@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import Fuse from 'fuse.js';
 import type { FuseResultMatch, IFuseOptions } from 'fuse.js';
-import { Quote } from '@/stores/quotes/quotesStore';
+import type { Quote } from '@/services/quotesService';
 
 export interface SearchResult {
   item: Quote;

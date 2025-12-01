@@ -1,0 +1,119 @@
+/**
+ * Visual indicators for semantic markup in quote templates
+ *
+ * These styles provide subtle visual cues to distinguish:
+ * - Dynamic values (blue underline)
+ * - Conditional text (orange underline)
+ * - User-edited content (solid underline)
+ */
+
+/* Dynamic values - blue dashed underline */
+[data-type="dynamic"] {
+  border-bottom: 1px dashed var(--marker-dynamic-color);
+  cursor: help;
+  position: relative;
+  padding-bottom: 1px;
+}
+
+/* Conditional text - orange dashed underline */
+[data-type="conditional"] {
+  border-bottom: 1px dashed var(--marker-conditional-color);
+  cursor: help;
+  position: relative;
+  padding-bottom: 1px;
+}
+
+/* User-edited content - solid underline */
+[data-user-edited="true"] {
+  border-bottom-style: solid;
+}
+
+/* Hover effect for marked elements */
+[data-type="dynamic"]:hover {
+  background-color: color-mix(in srgb, var(--marker-dynamic-color) calc(var(--marker-hover-opacity) * 100%), transparent);
+  border-radius: 2px;
+}
+
+[data-type="conditional"]:hover {
+  background-color: color-mix(in srgb, var(--marker-conditional-color) calc(var(--marker-hover-opacity) * 100%), transparent);
+  border-radius: 2px;
+}
+
+/* Tooltip on hover (optional - shows data binding info) */
+[data-type]::after {
+  content: attr(data-value) attr(data-conditional);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: var(--marker-tooltip-bg);
+  color: var(--marker-tooltip-text);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 1000;
+  margin-bottom: 4px;
+}
+
+[data-type]:hover::after {
+  opacity: 1;
+}
+
+/* Badge for user-edited indicator */
+[data-user-edited="true"]::before {
+  content: "✏";
+  display: inline-block;
+  margin-right: 2px;
+  font-size: 10px;
+  color: var(--marker-conditional-color);
+  vertical-align: super;
+}
+
+/* Print styles - hide visual indicators when printing */
+@media print {
+  [data-type] {
+    border-bottom: none !important;
+    background-color: transparent !important;
+  }
+
+  [data-type]::after,
+  [data-user-edited="true"]::before {
+    display: none !important;
+  }
+}
+
+/* View-only mode - hide visual indicators */
+.quote-viewer [data-type] {
+  border-bottom: none;
+  cursor: default;
+}
+
+.quote-viewer [data-type]::after,
+.quote-viewer [data-user-edited="true"]::before {
+  display: none;
+}
+
+.quote-viewer [data-type]:hover {
+  background-color: transparent;
+}
+
+/* Editor mode - show visual indicators */
+.quote-editor [data-type] {
+  /* Styles are applied by default (above) */
+}
+
+/* Accessibility - ensure text remains readable */
+[data-type] {
+  text-decoration-skip-ink: auto;
+  text-decoration-thickness: 1px;
+}
+
+/*
+ * Dark mode support is now handled automatically via CSS variables
+ * defined in dark-mode.css using the .dark class selector.
+ * No media query needed - theme switching is controlled by JavaScript.
+ */

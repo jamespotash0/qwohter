@@ -8,7 +8,7 @@
  * - Quote source performance
  */
 
-import { Quote } from '@/stores/quotes/quotesStore';
+import type { Quote } from '@/services/quotesService';
 import { startOfWeek, startOfMonth, startOfYear, endOfWeek, endOfMonth, endOfYear, addDays, getDay, format, subWeeks, subMonths, subYears, getDaysInMonth } from 'date-fns';
 
 export type TimePeriod = 'weekly' | 'monthly' | 'yearly';
@@ -33,7 +33,7 @@ export interface MetricWithTrend {
 export interface QuoteSourceMetrics {
   source: string;
   quoteCount: number;
-  revenue: number;
+  averageValue: number;
   wonCount: number;
   conversionRate: number;
   referralType?: string; // For referral breakdowns (contractor, architect, manufacturer)
@@ -396,7 +396,12 @@ export const calculateMetricWithTrend = (
  * Calculate quote source metrics
  */
 export const calculateSourceMetrics = (quotes: Quote[]): QuoteSourceMetrics[] => {
-  const sourceMap = new Map<string, QuoteSourceMetrics>();
+  const sourceMap = new Map<string, {
+    source: string;
+    quoteCount: number;
+    totalValue: number;
+    wonCount: number;
+  }>();
 
   // Only consider submitted/won/rejected quotes and main versions only
   const relevantQuotes = quotes.filter((q) =>
@@ -411,31 +416,33 @@ export const calculateSourceMetrics = (quotes: Quote[]): QuoteSourceMetrics[] =>
       sourceMap.set(source, {
         source,
         quoteCount: 0,
-        revenue: 0,
+        totalValue: 0,
         wonCount: 0,
-        conversionRate: 0,
       });
     }
 
     const metrics = sourceMap.get(source)!;
     metrics.quoteCount++;
+    metrics.totalValue += quote.total_value || 0;
 
     if (quote.status === 'Won') {
       metrics.wonCount++;
-      metrics.revenue += quote.total_value || 0;
     }
   });
 
-  // Calculate conversion rates
-  const metricsArray = Array.from(sourceMap.values());
-  metricsArray.forEach((metrics) => {
-    metrics.conversionRate = metrics.quoteCount > 0
+  // Calculate conversion rates and average values
+  const metricsArray = Array.from(sourceMap.values()).map(metrics => ({
+    source: metrics.source,
+    quoteCount: metrics.quoteCount,
+    averageValue: metrics.quoteCount > 0 ? metrics.totalValue / metrics.quoteCount : 0,
+    wonCount: metrics.wonCount,
+    conversionRate: metrics.quoteCount > 0
       ? (metrics.wonCount / metrics.quoteCount) * 100
-      : 0;
-  });
+      : 0,
+  }));
 
-  // Sort by revenue (highest first)
-  return metricsArray.sort((a, b) => b.revenue - a.revenue);
+  // Sort by average value (highest first)
+  return metricsArray.sort((a, b) => b.averageValue - a.averageValue);
 };
 
 /**

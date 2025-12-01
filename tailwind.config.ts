@@ -19,6 +19,17 @@ export default {
 		},
 		extend: {
 			colors: {
+				// Main brand colors from landing page
+				coral: '#EE6C4D',        // Primary accent
+				'coral-dark': '#D85B3E', // Hover/darker coral
+				offwhite: '#F7F2E9',     // Light background/beige
+				white: '#FFFFFF',        // Pure white
+				'near-white': '#FFFFFE', // Almost white
+				black: '#000000',        // Pure black
+				charcoal: '#171717',     // Near black
+				'dark-gray': '#343432',  // Dark text on light bg
+				'light-gray': '#B8B7B6', // Muted/secondary text
+
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
@@ -66,7 +77,8 @@ export default {
 			},
 			fontFamily: {
 				serif: ['var(--font-serif)'],
-				sans: ['var(--font-sans)'],
+				sans: ['Urbanist', 'var(--font-sans)', 'sans-serif'],
+				urbanist: ['Urbanist', 'sans-serif'],
 				inter: ['Inter', 'sans-serif']
 			},
 			boxShadow: {

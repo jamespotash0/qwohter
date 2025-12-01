@@ -1,23 +1,22 @@
 
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useUser } from "@/auth";
 
 const Index = (): React.ReactElement | null => {
   const navigate = useNavigate();
 
+  // ✅ v3.0.0: Use new auth hook
+  const user = useUser();
+
   useEffect(() => {
-    // Check if user is already logged in
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate("/dashboard");
-      } else {
-        navigate("/auth");
-      }
-    };
-    checkUser();
-  }, [navigate]);
+    // Redirect based on auth status
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      navigate("/auth");
+    }
+  }, [user, navigate]);
 
   return null;
 };

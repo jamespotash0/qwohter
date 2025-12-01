@@ -2,9 +2,6 @@
 Roadmap
 
 ## Finish adding and completing Stripe Payment (seat-based-pricing branch)
-
-## Finish Refactoring of Auth via (fixed-race-condition branch) - Completed
-
 ## Add in Forms so we can convert to pure company agnostic, form based quotes -> Need to complete full scale design of forms [use images to help via the design] (form-builder-system)
 
 ## Add in Templates for customizable pdf downloads -> Need to add full referencing off templates 
@@ -17,7 +14,5 @@ Roadmap
 
 ## Add AI text-to-sql to get Natural Language information from AI about your quotes
 
-
-Issues to Fix 
-
-## Fix analytics to make sure it actually tracks things properly and has a good UI/UX (handling of versioning properly) [analytics should work for any company, via any forms, so need to generalize it]
+## Refactor Proposals table to support new generalized form-builder and template generator
+## Update Analytics to Support New Proposals Table

@@ -3,7 +3,7 @@ import { ErrorBoundary, QuoteErrorBoundary } from "@/components/ErrorBoundary";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
-import { useAuthStore } from "@/stores/auth/authStore";
+import { useUser, useAuthStatus } from "@/auth";
 import { supabase } from "@/integrations/supabase/client";
 
 // Lazy load pages for better performance
@@ -11,8 +11,9 @@ import React from "react";
 
 // Protected auth route wrapper - redirects to dashboard if already logged in AND completed onboarding
 const AuthRoute = ({ children }: { children: React.ReactNode }) => {
-  const user = useAuthStore((state) => state.user);
-  const isInitialized = useAuthStore((state) => state.isInitialized);
+  // ✅ v3.0.0: Use new auth hooks
+  const user = useUser();
+  const { isInitialized } = useAuthStatus();
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = React.useState<boolean | null>(null);
 
   // IMPORTANT: Check if user has completed onboarding (BEFORE any early returns!)
@@ -27,9 +28,9 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
       try {
         const { data: membership } = await supabase
           .from('memberships')
-          .select('id, status')
+          .select('id, status') //membership_status
           .eq('user_id', user.id)
-          .eq('status', 'Active')
+          .eq('status', 'Active') //membership_status
           .maybeSingle();
 
         setHasCompletedOnboarding(!!membership);
@@ -63,21 +64,20 @@ const AuthRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 // Public pages
-const Landing = lazy(() => import("@/pages/LandingEnhanced"));
-const DemoContact = lazy(() => import("@/pages/DemoContact"));
+const Landing = lazy(() => import("@/pages/LandingPage"));
+const Demo = lazy(() => import("@/pages/Demo"));
+const ContactUs = lazy(() => import("@/pages/ContactUs"));
 
 // Authentication pages
 const Auth = lazy(() => import("@/pages/Auth"));
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
-const PendingApproval = lazy(() => import("@/pages/PendingApproval"));
 const AccessDenied = lazy(() => import("@/pages/AccessDenied"));
 const AccountInactive = lazy(() => import("@/pages/AccountInactive"));
 
 // Main application pages - import eagerly to prevent navigation flicker
 import Dashboard from "@/pages/Dashboard";
 import Analytics from "@/pages/Analytics";
-import Team from "@/pages/Team";
 import Settings from "@/pages/Settings";
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
@@ -91,8 +91,12 @@ const QuoteEditIncomplete = lazy(() => import("@/pages/QuoteEditIncomplete"));
 // const Forms = lazy(() => import("@/pages/Forms"));
 // const FormBuilderV2 = lazy(() => import("@/pages/FormBuilderV2"));
 
-// Board page
+// Board pages
 const Board = lazy(() => import("@/pages/Board"));
+const TaskBoard = lazy(() => import("@/pages/TaskBoard"));
+
+// Contacts page
+const Contacts = lazy(() => import("@/pages/Contacts"));
 
 // Loading component
 const PageLoader = () => (
@@ -121,14 +125,16 @@ export const AppRouter = () => (
           <Route path="/" element={<Landing />} />
 
           {/* Demo contact page (public) */}
-          <Route path="/demo-contact" element={<DemoContact />} />
+          <Route path="/demo" element={<Demo />} />
+
+          {/* Contact us page (public) */}
+          <Route path="/contact-us" element={<ContactUs />} />
 
           {/* Authentication routes - redirect to dashboard if already logged in */}
           <Route path="/sign-in" element={<AuthRoute><Auth /></AuthRoute>} />
           <Route path="/create-account" element={<AuthRoute><Auth /></AuthRoute>} />
           <Route path="/forgot-password" element={<AuthRoute><ForgotPassword /></AuthRoute>} />
           <Route path="/reset-password" element={<AuthRoute><ResetPassword /></AuthRoute>} />
-          <Route path="/pending-approval" element={<PendingApproval />} />
           <Route path="/access-denied" element={<AccessDenied />} />
           <Route path="/account-inactive" element={<AccountInactive />} />
 
@@ -142,6 +148,10 @@ export const AppRouter = () => (
 
           {/* Board workflow */}
           <Route path="/board" element={<Board />} />
+          <Route path="/task-board" element={<TaskBoard />} />
+
+          {/* Contacts CRM */}
+          <Route path="/contacts" element={<Contacts />} />
 
           {/* Analytics and reporting */}
           <Route path="/analytics" element={<Analytics />} />

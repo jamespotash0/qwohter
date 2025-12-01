@@ -6,7 +6,7 @@
 import { organizationSettingsService } from '@/services/companySettingsService';
 import { LogoUploadResult } from '@/services/LogoUploadService';
 import { NavigateFunction } from 'react-router-dom';
-import { createTrialSubscription } from '@/services/stripeService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface HandleCompanyInfoSubmitParams {
   userId: string | null;
@@ -40,7 +40,7 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
     setLoading,
     toast,
     clearAuthState,
-    redirectAfterAuth,
+    navigate,
   } = params;
 
   if (!userId || !companyPhone || !companyAddress || !companyWebsite || !quoteStartingPoint) return;
@@ -52,6 +52,12 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
 
   setLoading(true);
   try {
+    // Small delay to ensure membership is committed
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Refresh session to ensure RLS policies recognize the new membership
+    await supabase.auth.refreshSession();
+
     // Use the organization settings service to update company info
     await organizationSettingsService.updateCompanyInfo({
       phone_number: companyPhone,
@@ -63,37 +69,17 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
       found_via: foundVia,
     });
 
-    console.log('Company info saved, now creating trial subscription...');
+    console.log('✅ Company info saved successfully');
 
-    // Automatically enroll in 14-day Stripe trial
-    if (organizationId) {
-      const trialResult = await createTrialSubscription(organizationId);
+    toast({
+      title: 'Setup complete!',
+      description: 'Welcome to your 14-day free trial. Enjoy full access to all features!',
+    });
 
-      if (trialResult.success) {
-        console.log('Trial subscription created successfully:', trialResult.data);
-        toast({
-          title: 'Welcome to Qwohter!',
-          description: 'Your 14-day free trial has started. No credit card required!',
-        });
-      } else {
-        console.error('Trial creation failed:', trialResult.error);
-        // Don't block onboarding if trial fails - user can activate later
-        toast({
-          title: 'Setup Complete',
-          description: 'You can activate your trial from the billing page.',
-        });
-      }
-    } else {
-      console.warn('No organizationId available for trial enrollment');
-      toast({
-        title: 'Company information saved!',
-        description: 'Please activate your trial from the billing page.',
-      });
-    }
-
-    // Clear auth state and redirect to dashboard
+    // Clear auth state and navigate to dashboard
+    // User was already auto-enrolled in free trial during org creation
     clearAuthState();
-    redirectAfterAuth();
+    navigate('/dashboard');
   } catch (error: any) {
     toast({
       title: 'Company Info Error',
@@ -115,9 +101,12 @@ export const handleCompanyInfoSkip = (params: HandleCompanyInfoSkipParams) => {
   const { toast, clearAuthState, navigate } = params;
 
   toast({
-    title: 'Setup completed!',
-    description: 'You can add company information later in Settings.',
+    title: 'Setup complete!',
+    description: 'Welcome to your 14-day free trial. You can add company details later in Settings.',
   });
+
+  // Clear auth state and navigate to dashboard
+  // User was already auto-enrolled in free trial during org creation
   clearAuthState();
   navigate('/dashboard');
 };

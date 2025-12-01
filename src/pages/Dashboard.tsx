@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { parseLocalDate } from "@/lib/utils";
 import { PageContent } from "@/components/common/layout";
+import { useRealtimeSubscription } from "@/lib/realtimeSubscriptions";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   CurrencyDollar,
@@ -32,10 +34,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { useOrganizations } from "@/hooks/useOrganizations";
-import { useQuotesStore } from "@/stores/quotes/quotesStore";
-import { useOrganizationStore } from "@/stores/organization/organizationStore";
-import { useAuthStore } from "@/stores/auth/authStore";
+import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
+import { useQuotes } from "@/hooks/queries/useQuotes";
+import { useUser, useProfile } from "@/auth";
 import { quoteActivityService, type QuoteActivity } from "@/services/quoteActivityService";
 import { AddReminderModal } from "@/components/features/reminders/AddReminderModal";
 import { reminderService, type Reminder } from "@/services/reminderService";
@@ -55,19 +56,19 @@ import { stripeService } from "@/services/stripeService";
 const Dashboard = () => {
   const navigate = useNavigate();
 
-  // Use auth store instead of local state
-  const user = useAuthStore((state) => state.user);
-  const profile = useAuthStore((state) => state.profile);
+  // Use auth and React Query hooks
+  const user = useUser();
+  const { data: profile } = useProfile(user?.id);
+
+  // React Query hooks for organization and quotes
+  const { organization: currentOrganization, isLoading: orgLoading } = useCurrentOrganization(user?.id);
+  const organizationId = currentOrganization?.id || null;
+  const { data: quotes = [], isLoading: quotesLoading } = useQuotes(user?.id);
+
+  console.log('[Dashboard] Using organization:', { id: organizationId, name: currentOrganization?.name });
 
   const [recentActivities, setRecentActivities] = useState<QuoteActivity[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
-
-  // Get organization ID from the store instead of separate localStorage cache
-  const currentOrganization = useOrganizationStore((state) => state.currentOrganization);
-  const organizationId = currentOrganization?.id || null;
-  const members = useOrganizationStore((state) => state.members);
-
-  console.log('[Dashboard] Using organization:', { id: organizationId, name: currentOrganization?.name });
   const [showAddReminderModal, setShowAddReminderModal] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -82,101 +83,6 @@ const Dashboard = () => {
     }
   });
 
-  // Trial status state
-  const [trialStatus, setTrialStatus] = useState<{
-    isOnTrial: boolean;
-    daysRemaining: number;
-    trialEnd: string | null;
-    hasPaymentMethod: boolean;
-    inGracePeriod?: boolean;
-    graceDaysRemaining?: number;
-  } | null>(null);
-  const [showTrialCard, setShowTrialCard] = useState(false);
-  const [showExpiryModal, setShowExpiryModal] = useState(false);
-
-  const quotes = useQuotesStore((state) => state.quotes);
-  const quotesLoading = useQuotesStore((state) => state.isLoading);
-  const fetchQuotes = useQuotesStore((state) => state.fetchQuotes);
-
-  useOrganizations();
-
-  // Fetch trial status (including grace period)
-  useEffect(() => {
-    const checkTrialStatus = async () => {
-      if (!organizationId) return;
-
-      const { data: subscription } = await stripeService.getSubscription(organizationId);
-
-      if (subscription) {
-        const status = subscription.stripe_subscription_status?.toLowerCase();
-        const isOnTrial = status === 'trialing';
-        const trialEnd = subscription.trial_end;
-        const hasPaymentMethod = subscription.has_payment_method || false;
-
-        if (isOnTrial && trialEnd) {
-          const now = new Date();
-          const trialEndDate = new Date(trialEnd);
-          const isTrialExpired = now > trialEndDate;
-
-          let statusData: typeof trialStatus = null;
-
-          if (!isTrialExpired) {
-            // Still in active trial
-            const daysLeft = stripeService.getDaysRemaining(trialEnd);
-            if (daysLeft !== null) {
-              statusData = {
-                isOnTrial: true,
-                daysRemaining: daysLeft,
-                trialEnd,
-                hasPaymentMethod,
-                inGracePeriod: false,
-              };
-            }
-          } else {
-            // Trial expired - check grace period
-            const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
-            const inGracePeriod = now <= gracePeriodEnd;
-
-            if (inGracePeriod && !hasPaymentMethod) {
-              const graceDaysLeft = Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-              statusData = {
-                isOnTrial: true,
-                daysRemaining: 0, // Trial days = 0
-                trialEnd,
-                hasPaymentMethod,
-                inGracePeriod: true,
-                graceDaysRemaining: Math.max(0, graceDaysLeft),
-              };
-            }
-          }
-
-          if (statusData) {
-            setTrialStatus(statusData);
-
-            // Check if card has been dismissed
-            const dismissedUntil = localStorage.getItem('trial_card_dismissed_until');
-            const nowTimestamp = Date.now();
-            const shouldShow = !dismissedUntil || nowTimestamp > parseInt(dismissedUntil);
-            setShowTrialCard(shouldShow);
-
-            // Show expiry modal at 3-day mark (only during trial, not grace period)
-            if (!statusData.inGracePeriod && statusData.daysRemaining === 3) {
-              setShowExpiryModal(true);
-            }
-          } else {
-            setTrialStatus(null);
-            setShowTrialCard(false);
-          }
-        } else {
-          setTrialStatus(null);
-          setShowTrialCard(false);
-        }
-      }
-    };
-
-    checkTrialStatus();
-  }, [organizationId]);
-
   // Update cache when profile loads (sidebar already does this, but just in case)
   useEffect(() => {
     if (profile && profile.id && JSON.stringify(profile) !== JSON.stringify(cachedProfile)) {
@@ -188,76 +94,61 @@ const Dashboard = () => {
   // Always prefer cached data to prevent flashing
   const effectiveProfile = cachedProfile || (profile?.id ? profile : null);
 
-  // Organization ID is now pulled directly from the store above, no need for separate fetch
+  // React Query automatically fetches quotes - no manual fetching needed!
 
-  // Fetch quotes when we have organization ID
-  useEffect(() => {
-    // Only fetch if user is authenticated and we have an organization ID
-    if (user && organizationId) {
-      fetchQuotes(organizationId);
-    }
-  }, [user, organizationId, fetchQuotes]);
-
-  // Fetch recent activities from database and subscribe to real-time updates
-  useEffect(() => {
-    const fetchRecentActivities = async () => {
-      if (!user || !organizationId) {
-        console.log('[Dashboard] Skipping activities fetch - no user or org');
-        setActivitiesLoading(false);
-        return;
-      }
-
-      console.log('[Dashboard] Fetching activities for org:', organizationId);
-      setActivitiesLoading(true);
-      const { data, error } = await quoteActivityService.getRecentActivities({
-        organizationId,
-        limit: 100
-      });
-
-      console.log('[Dashboard] Activities fetch result:', { data, error, count: data?.length });
-
-      if (data) {
-        setRecentActivities(data);
-      }
+  // Function to fetch recent activities (used by initial load and real-time updates)
+  const fetchRecentActivities = async () => {
+    if (!user || !organizationId) {
+      console.log('[Dashboard] Skipping activities fetch - no user or org');
       setActivitiesLoading(false);
-    };
+      return;
+    }
 
+    console.log('[Dashboard] Fetching activities for org:', organizationId);
+    setActivitiesLoading(true);
+    const { data, error } = await quoteActivityService.getRecentActivities({
+      organizationId,
+      limit: 100
+    });
+
+    console.log('[Dashboard] Activities fetch result:', { data, error, count: data?.length });
+
+    if (data) {
+      setRecentActivities(data);
+    }
+    setActivitiesLoading(false);
+  };
+
+  // Fetch recent activities on mount and when user/org changes
+  useEffect(() => {
     fetchRecentActivities();
+  }, [user, organizationId]);
 
-    // Subscribe to real-time quote_activities updates
+  // Set up centralized realtime subscription for quote_activities
+  useRealtimeSubscription(
+    'quote_activities',
+    ['quote_activities', organizationId || ''],
+    {
+      filter: `organization_id=eq.${organizationId}`,
+      events: ['INSERT'] // Only listen to INSERT events for activities
+    },
+    !!(user && organizationId)
+  );
+
+  // Watch for quote_activities changes via query invalidation
+  const queryClient = useQueryClient();
+  useEffect(() => {
     if (!user || !organizationId) return;
 
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event?.query.queryKey[0] === 'quote_activities' && event?.query.queryKey[1] === organizationId) {
+        // Refetch recent activities when real-time detects changes
+        fetchRecentActivities();
+      }
+    });
 
-    const channel = supabase
-      .channel('quote-activities-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'quote_activities',
-          filter: `organization_id=eq.${organizationId}`
-        },
-        (payload) => {
-
-          if (payload.new) {
-            setRecentActivities((prev) => {
-              // Add new activity to the beginning, keep only latest 100
-              const newActivity = payload.new as QuoteActivity;
-              const updated = [newActivity, ...prev];
-              return updated.slice(0, 100);
-            });
-          }
-        }
-      )
-      .subscribe((status) => {
-      });
-
-    // Cleanup: unsubscribe on unmount
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, organizationId]);
+    return unsubscribe;
+  }, [user, organizationId, queryClient]);
 
   // Fetch reminders and subscribe to real-time updates
   useEffect(() => {
@@ -283,7 +174,7 @@ const Dashboard = () => {
         const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
         const filteredReminders = data.filter(reminder => {
-          if (reminder.status === 'Completed') {
+          if (reminder.reminder_status === 'Completed') { //reminder_status formerly status
             // Use updated_at as the completion date
             const completedDate = new Date(reminder.updated_at);
             return completedDate > threeDaysAgo;
@@ -297,53 +188,47 @@ const Dashboard = () => {
     };
 
     fetchReminders();
+  }, [user, organizationId]);
 
-    // Subscribe to real-time reminders updates
+  // Set up centralized realtime subscription for reminders
+  useRealtimeSubscription(
+    'reminders',
+    ['reminders', organizationId || ''],
+    { filter: `organization_id=eq.${organizationId}` },
+    !!(user && organizationId)
+  );
+
+  // Watch for reminders changes via query invalidation
+  useEffect(() => {
     if (!user || !organizationId) return;
 
+    const unsubscribe = queryClient.getQueryCache().subscribe(async (event) => {
+      if (event?.query.queryKey[0] === 'reminders' && event?.query.queryKey[1] === organizationId) {
+        // Refetch all reminders to ensure we have complete data with joins
+        const { data } = await reminderService.getReminders({
+          organizationId,
+          includeCompleted: true
+        });
+        if (data) {
+          // Filter out completed reminders older than 3 days
+          const now = new Date();
+          const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
-    const channel = supabase
-      .channel('reminders-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'reminders',
-          filter: `organization_id=eq.${organizationId}`
-        },
-        async (payload) => {
-
-          // Refetch all reminders to ensure we have complete data with joins
-          const { data } = await reminderService.getReminders({
-            organizationId,
-            includeCompleted: true
+          const filteredReminders = data.filter(reminder => {
+            if (reminder.reminder_status === 'Completed') {
+              const completedDate = new Date(reminder.updated_at);
+              return completedDate > threeDaysAgo;
+            }
+            return true;
           });
-          if (data) {
-            // Filter out completed reminders older than 3 days
-            const now = new Date();
-            const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
-            const filteredReminders = data.filter(reminder => {
-              if (reminder.status === 'Completed') {
-                const completedDate = new Date(reminder.updated_at);
-                return completedDate > threeDaysAgo;
-              }
-              return true;
-            });
-
-            setReminders(filteredReminders);
-          }
+          setReminders(filteredReminders);
         }
-      )
-      .subscribe((status) => {
-      });
+      }
+    });
 
-    // Cleanup: unsubscribe on unmount
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, organizationId]);
+    return unsubscribe;
+  }, [user, organizationId, queryClient]);
 
   // Reminder action handlers
   const handleCompleteReminder = async (reminderId: string, quoteId?: string, quoteNumber?: string, projectName?: string) => {
@@ -353,7 +238,7 @@ const Dashboard = () => {
     const reminder = reminders.find(r => r.id === reminderId);
 
     const { error } = await reminderService.completeReminder(reminderId, {
-      status: 'Completed',
+      reminder_status: 'Completed', //reminder_status formerly status
       completed_by: user.id,
     });
 
@@ -391,7 +276,7 @@ const Dashboard = () => {
       const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
       const filteredReminders = data.filter(reminder => {
-        if (reminder.status === 'Completed') {
+        if (reminder.reminder_status === 'Completed') { //reminder_status formerly status
           const completedDate = new Date(reminder.updated_at);
           return completedDate > threeDaysAgo;
         }
@@ -444,7 +329,7 @@ const Dashboard = () => {
       const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
       const filteredReminders = data.filter(reminder => {
-        if (reminder.status === 'Completed') {
+        if (reminder.reminder_status === 'Completed') { //reminder_status
           const completedDate = new Date(reminder.updated_at);
           return completedDate > threeDaysAgo;
         }
@@ -470,14 +355,14 @@ const Dashboard = () => {
     const wonQuoteGroupsThisMonth = quoteGroups.filter(group => {
       const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
       if (!wonVersion) return false;
-      const wonDate = new Date(wonVersion.won_at);
+      const wonDate = new Date(wonVersion.won_at!);
       return wonDate >= thisMonth;
     });
 
     const wonQuoteGroupsLastMonth = quoteGroups.filter(group => {
       const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
       if (!wonVersion) return false;
-      const wonDate = new Date(wonVersion.won_at);
+      const wonDate = new Date(wonVersion.won_at!);
       return wonDate >= lastMonth && wonDate <= lastMonthEnd;
     });
 
@@ -507,9 +392,8 @@ const Dashboard = () => {
     const wonThisMonth = wonQuoteGroupsThisMonth.length;
     const rejectedThisMonth = quoteGroups.filter(group => {
       const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
-      if (!rejectedVersion) return false;
-      const rejectedDate = rejectedVersion.rejected_at ? new Date(rejectedVersion.rejected_at) : null;
-      if (!rejectedDate) return false;
+      if (!rejectedVersion || !rejectedVersion.rejected_at) return false;
+      const rejectedDate = new Date(rejectedVersion.rejected_at);
       return rejectedDate >= thisMonth && !group.versions.some(v => v.status === 'Won');
     }).length;
     const decidedThisMonth = wonThisMonth + rejectedThisMonth;
@@ -519,9 +403,8 @@ const Dashboard = () => {
     const wonLastMonth = wonQuoteGroupsLastMonth.length;
     const rejectedLastMonth = quoteGroups.filter(group => {
       const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
-      if (!rejectedVersion) return false;
-      const rejectedDate = rejectedVersion.rejected_at ? new Date(rejectedVersion.rejected_at) : null;
-      if (!rejectedDate) return false;
+      if (!rejectedVersion || !rejectedVersion.rejected_at) return false;
+      const rejectedDate = new Date(rejectedVersion.rejected_at);
       return rejectedDate >= lastMonth && rejectedDate <= lastMonthEnd && !group.versions.some(v => v.status === 'Won');
     }).length;
     const decidedLastMonth = wonLastMonth + rejectedLastMonth;
@@ -530,8 +413,8 @@ const Dashboard = () => {
     // Calculate overdue reminders (not completed/dismissed and past due date)
     const today = new Date();
     const overdueReminders = reminders.filter(r => {
-      if (r.status === 'Completed' || r.status === 'Dismissed') return false;
-      const dueDate = new Date(r.due_date);
+      if (r.reminder_status === 'Completed' || r.reminder_status === 'Dismissed') return false; //reminder_status formerly status
+      const dueDate = parseLocalDate(r.due_date);
       return dueDate < today;
     }).length;
 
@@ -942,7 +825,7 @@ const Dashboard = () => {
               <div className="space-y-3">
                 <Button
                   onClick={() => setShowNewQuoteDialog(true)}
-                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white"
+                  className="w-full h-12 flex items-center justify-start gap-4 px-6 bg-coral hover:bg-coral-dark text-white"
                 >
                   <Plus className="w-5 h-5" />
                   <span className="font-medium">Create New Quote</span>
@@ -979,7 +862,7 @@ const Dashboard = () => {
                   <Button
                     size="sm"
                     onClick={() => setShowAddReminderModal(true)}
-                    className="h-8 px-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700"
+                    className="h-8 px-3 bg-dark-gray hover:bg-charcoal"
                   >
                     <Plus className="w-4 h-4 mr-1" />
                     Add
@@ -1005,7 +888,7 @@ const Dashboard = () => {
                 ) : (
                   <div className="space-y-2 flex-1 overflow-y-auto pr-2 -mr-2">
                     {reminders.map((reminder) => {
-                      const dueDate = new Date(reminder.due_date);
+                      const dueDate = parseLocalDate(reminder.due_date);
                       const isOverdue = isPast(dueDate) && !isToday(dueDate);
                       const isDueToday = isToday(dueDate);
                       const isDueTomorrow = isTomorrow(dueDate);
@@ -1024,8 +907,8 @@ const Dashboard = () => {
                             return 'text-gray-600 bg-gray-50';
                         }
                       };
-
-                      const isCompleted = reminder.status === 'Completed';
+ 
+                      const isCompleted = reminder.reminder_status === 'Completed'; //reminder_status formerly status
 
                       return (
                         <div
@@ -1271,7 +1154,7 @@ const Dashboard = () => {
               const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000));
 
               const filteredReminders = data.filter(reminder => {
-                if (reminder.status === 'Completed') {
+                if (reminder.reminder_status === 'Completed') { //reminder_status formerly status
                   const completedDate = new Date(reminder.updated_at);
                   return completedDate > threeDaysAgo;
                 }
