@@ -882,8 +882,6 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                       <Loader2 className="w-4 h-4 animate-spin mr-2" />
                       Processing...
                     </>
-                  ) : subscription?.stripe_subscription_status?.toLowerCase() === 'trialing' ? (
-                    'Upgrade Plan'
                   ) : (
                     'Manage Plan'
                   )}

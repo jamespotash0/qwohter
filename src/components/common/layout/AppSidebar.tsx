@@ -721,7 +721,7 @@ export function AppSidebar({
               size="sm"
               className="w-full mt-2 h-7 text-xs bg-white/20 hover:bg-white/30 text-white border-0"
             >
-              Upgrade Plan
+              Manage Plan
             </Button>
           </div>
         </div>
