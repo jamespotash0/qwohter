@@ -41,13 +41,15 @@ interface Invoice {
   billing_reason?: string; // subscription_cycle, subscription_create, subscription_update, etc.
 }
 
-// Filter invoices to only show cycle invoices (not prorations/updates)
+// Filter invoices to only show meaningful billing events
+// Excludes: $0 invoices (trial periods), prorations, and updates
 const filterCycleInvoices = (invoices: Invoice[]): Invoice[] => {
   return invoices.filter(invoice =>
-    invoice.billing_reason === 'subscription_cycle' ||
-    invoice.billing_reason === 'subscription_create' ||
-    invoice.billing_reason === 'unknown' || // Include legacy invoices without billing_reason
-    !invoice.billing_reason
+    invoice.amount > 0 && // Exclude $0 invoices (trial periods)
+    (invoice.billing_reason === 'subscription_cycle' ||
+     invoice.billing_reason === 'subscription_create' ||
+     invoice.billing_reason === 'unknown' || // Include legacy invoices without billing_reason
+     !invoice.billing_reason)
   );
 };
 
