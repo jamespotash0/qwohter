@@ -586,30 +586,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   };
 
   const handleManageBilling = async () => {
-    if (!organization?.id) return;
-
-    try {
-      setIsCancelling(true); // Reuse cancelling state for loading
-
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pause-subscription`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({
-          subscriptionId: subscription.stripe_subscription_id,
-        }),
-      });
-      // User will be redirected to Stripe Customer Portal
-    } catch (error: any) {
-      console.error('Error opening billing portal:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to open billing portal. Please try again.",
-        variant: "destructive",
-      });
-    }
+    // Open Stripe Customer Portal for managing payment methods
+    await handleOpenPortal();
   };
 
   // const handlePauseSubscription = async () => {
@@ -862,19 +840,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                   </div>
                 </div>
                 <Button
-                  onClick={() => {
-                    const isTrialing = subscription?.stripe_subscription_status?.toLowerCase() === 'trialing';
-                    if (isTrialing) {
-                      // For trial users, redirect to Stripe checkout with their current plan
-                      const currentPlan = plans.find(p => p.id === subscription?.plan_id);
-                      if (currentPlan) {
-                        handleUpgradePlan(currentPlan);
-                      }
-                    } else {
-                      // For active paid users, open manage dialog
-                      setShowCancelDialog(true);
-                    }
-                  }}
+                  onClick={() => setShowCancelDialog(true)}
                   variant="outline"
                   className="shrink-0 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
                   disabled={!hasPermission || processingPlan !== null}
