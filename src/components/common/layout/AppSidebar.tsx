@@ -436,14 +436,58 @@ export function AppSidebar({
                 if (hasSubItems) {
                   const isExpanded = expandedItems.includes(item.title);
 
+                  // Collapsed view - use dropdown menu
+                  if (isCollapsed) {
+                    return (
+                      <SidebarMenuItem
+                        key={item.title}
+                        className="animate-in fade-in zoom-in-95 duration-200"
+                        style={{
+                          animationDelay: `${index * 40}ms`,
+                          animationFillMode: 'backwards'
+                        }}
+                      >
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <SidebarMenuButton
+                              className="h-10 flex items-center justify-center w-full px-0 group/item cursor-pointer text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)] transition-all duration-300 ease-out"
+                              style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
+                            >
+                              <Icon
+                                size={18}
+                                weight="regular"
+                                className="text-[var(--sidebar-icon-default)] group-hover/item:text-[var(--sidebar-icon-hover)] transition-all duration-300"
+                              />
+                            </SidebarMenuButton>
+                          </DropdownMenuTrigger>
+                            <DropdownMenuContent side="right" align="start" className="w-[180px]">
+                              {item.subItems?.map((subItem) => {
+                                const SubIcon = subItem.icon;
+                                const isSubActive = location.pathname === subItem.path;
+                                return (
+                                  <DropdownMenuItem
+                                    key={subItem.path}
+                                    onClick={() => handleNavigate(subItem.path, subItem.title)}
+                                    className={`cursor-pointer ${isSubActive ? 'bg-gray-100 hover:bg-gray-100' : ''}`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      {SubIcon && <SubIcon size={16} weight={isSubActive ? 'fill' : 'regular'} />}
+                                      <span className={isSubActive ? 'font-medium' : ''}>{subItem.title}</span>
+                                    </div>
+                                  </DropdownMenuItem>
+                                );
+                              })}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </SidebarMenuItem>
+                    );
+                  }
+
+                  // Expanded view - toggleable accordion
                   return (
                     <div key={item.title}>
                       <SidebarMenuItem
-                        className={`${
-                          isCollapsed
-                            ? 'animate-in fade-in zoom-in-95 duration-200'
-                            : 'animate-in fade-in slide-in-from-left-3 duration-300'
-                        }`}
+                        className="animate-in fade-in slide-in-from-left-3 duration-300"
                         style={{
                           animationDelay: `${index * 40}ms`,
                           animationFillMode: 'backwards'
@@ -451,9 +495,7 @@ export function AppSidebar({
                       >
                         {/* Clickable row - toggles expand, never shows active state */}
                         <button
-                          className={`h-10 w-full flex items-center relative group/item overflow-hidden cursor-pointer ${
-                            isCollapsed ? 'justify-center px-0' : 'ml-[-2px] mr-[-10px] pl-[8px] pr-[2px]'
-                          } text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)] transition-all duration-300 ease-out`}
+                          className="h-10 w-full flex items-center relative group/item overflow-hidden cursor-pointer ml-[-2px] mr-[-10px] pl-[8px] pr-[2px] text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)] transition-all duration-300 ease-out"
                           style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
                           onClick={() => toggleExpanded(item.title)}
                         >
@@ -464,28 +506,24 @@ export function AppSidebar({
                               weight="regular"
                               className="text-[var(--sidebar-icon-default)] group-hover/item:text-[var(--sidebar-icon-hover)] transition-all duration-300"
                             />
-                            {!isCollapsed && (
-                              <span className="font-inter font-normal tracking-tight transition-all duration-300 whitespace-nowrap">
-                                {item.title}
-                              </span>
-                            )}
+                            <span className="font-inter font-normal tracking-tight transition-all duration-300 whitespace-nowrap">
+                              {item.title}
+                            </span>
                           </div>
 
                           {/* Caret indicator */}
-                          {!isCollapsed && (
-                            <div className="px-2.5 flex items-center justify-center">
-                              <CaretDown
-                                size={14}
-                                weight="bold"
-                                className={`text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                              />
-                            </div>
-                          )}
+                          <div className="px-2.5 flex items-center justify-center">
+                            <CaretDown
+                              size={14}
+                              weight="bold"
+                              className={`text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                            />
+                          </div>
                         </button>
                       </SidebarMenuItem>
 
                       {/* Expandable sub-items */}
-                      {!isCollapsed && isExpanded && (
+                      {isExpanded && (
                         <div className="ml-6 mt-1 space-y-0.5 animate-in slide-in-from-top-2 fade-in duration-200">
                           {item.subItems?.map((subItem) => {
                             const SubIcon = subItem.icon;
@@ -524,32 +562,6 @@ export function AppSidebar({
                         </div>
                       )}
 
-                      {/* Collapsed view - show dropdown on click */}
-                      {isCollapsed && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <div className="absolute inset-0 cursor-pointer" style={{ marginTop: '-40px' }} />
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent side="right" align="start" className="w-[180px]">
-                            {item.subItems?.map((subItem) => {
-                              const SubIcon = subItem.icon;
-                              const isSubActive = location.pathname === subItem.path;
-                              return (
-                                <DropdownMenuItem
-                                  key={subItem.path}
-                                  onClick={() => handleNavigate(subItem.path, subItem.title)}
-                                  className={`cursor-pointer ${isSubActive ? 'bg-gray-100 hover:bg-gray-100' : ''}`}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    {SubIcon && <SubIcon size={16} weight={isSubActive ? 'fill' : 'regular'} />}
-                                    <span className={isSubActive ? 'font-medium' : ''}>{subItem.title}</span>
-                                  </div>
-                                </DropdownMenuItem>
-                              );
-                            })}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
                     </div>
                   );
                 }
