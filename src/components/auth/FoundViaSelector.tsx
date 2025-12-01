@@ -18,21 +18,10 @@ export interface FoundViaSelectorProps {
 
 const FOUND_VIA_OPTIONS = [
   { value: 'Google Search', label: 'Google Search' },
-  { value: 'Social Media', label: 'Social Media' },
-  { value: 'Referral from Friend/Colleague', label: 'Referral from Friend/Colleague' },
-  { value: 'Industry Website', label: 'Industry Website' },
-  { value: 'Trade Show/Conference', label: 'Trade Show/Conference' },
-  { value: 'Online Advertisement', label: 'Online Advertisement' },
-  { value: 'YouTube', label: 'YouTube' },
+  { value: 'Referral', label: 'Referral' },
   { value: 'LinkedIn', label: 'LinkedIn' },
-  { value: 'Facebook', label: 'Facebook' },
-  { value: 'Instagram', label: 'Instagram' },
-  { value: 'Email Newsletter', label: 'Email Newsletter' },
-  { value: 'Blog Article', label: 'Blog Article' },
-  { value: 'Podcast', label: 'Podcast' },
-  { value: 'Webinar', label: 'Webinar' },
-  { value: 'Existing Customer', label: 'Existing Customer' },
-  { value: 'Partner Recommendation', label: 'Partner Recommendation' },
+  { value: 'Trade Show', label: 'Trade Show' },
+  { value: 'Online Ad', label: 'Online Ad' },
   { value: 'Other', label: 'Other' }
 ];
 
