@@ -451,7 +451,8 @@ export const TimelineVisualizer: React.FC<TimelineVisualizerProps> = ({
               onClick={onRequestAISuggestions}
               size="sm"
               variant="outline"
-              disabled={isGeneratingAI}
+              disabled={true}
+              // disabled={isGeneratingAI}
               className="flex-1 text-purple-600 hover:text-purple-700 hover:bg-purple-50 disabled:opacity-50"
             >
               <Sparkles className="w-4 h-4 mr-1" />

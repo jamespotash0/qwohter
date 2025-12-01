@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageContent, ContentCard } from "@/components/common/layout";
 import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
+import { ImportQuoteDialog } from "@/components/features/quotes/import";
 import { CreateInvoiceDialog } from "@/components/features/integrations/CreateInvoiceDialog";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/auth";
@@ -43,6 +44,7 @@ const Quotes = () => {
 
   const [deleteQuoteId, setDeleteQuoteId] = useState<string | null>(null);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [invoiceQuote, setInvoiceQuote] = useState<Quote | null>(null);
 
@@ -602,6 +604,7 @@ const Quotes = () => {
           onCreateVersion={handleCreateVersion}
           onCreateInvoice={handleCreateInvoice}
           onCreateQuote={() => setShowNewQuoteDialog(true)}
+          onImportQuote={() => setShowImportDialog(true)}
           // onSetReminder={handleSetReminder}
           onArchiveQuote={showArchived ? undefined : handleArchiveQuote}
           onUnarchiveQuote={showArchived ? handleUnarchiveQuote : undefined}
@@ -685,6 +688,12 @@ const Quotes = () => {
         open={showNewQuoteDialog}
         onOpenChange={setShowNewQuoteDialog}
         onCreateQuote={handleCreateQuote}
+      />
+
+      {/* Import Quote Dialog */}
+      <ImportQuoteDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
       />
 
       {/* Create Invoice Dialog */}

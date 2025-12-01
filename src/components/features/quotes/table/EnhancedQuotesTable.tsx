@@ -43,7 +43,8 @@ import {
   Bell,
   ChevronRight,
   Kanban,
-  Star
+  Star,
+  FileUp
 } from 'lucide-react';
 
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,7 @@ interface EnhancedQuotesTableProps {
   onCreateVersion?: (id: string) => void;
   onCreateInvoice?: (quote: Quote) => void;
   onCreateQuote?: () => void;
+  onImportQuote?: () => void;
   onArchiveQuote?: (id: string) => void;
   onUnarchiveQuote?: (id: string) => void;
   isArchiveView?: boolean;
@@ -183,6 +185,7 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
   onCreateInvoice,
   onSetReminder,
   onCreateQuote,
+  onImportQuote,
   onArchiveQuote,
   onUnarchiveQuote,
   isArchiveView = false,
@@ -544,8 +547,14 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
         // For standalone quotes, show the full proposal number
         const displayNumber = hasMultipleVersions ? baseNumber : proposalNumber;
 
+        // Check if this quote was imported
+        const isImported = quote.quote_details?.quoteSource === 'Imported';
+
         return (
           <div className="flex items-center gap-1.5 group/versions">
+            {isImported && (
+              <FileUp className="w-3.5 h-3.5 text-orange-500" title="Imported quote" />
+            )}
             <div className="font-mono text-[13px] text-gray-900">
               {displayNumber}
             </div>
@@ -1192,17 +1201,35 @@ export const EnhancedQuotesTable: React.FC<EnhancedQuotesTableProps> = ({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Create Quote Button - Just a plus icon */}
-            {onCreateQuote && (
-              <Button
-                onClick={onCreateQuote}
-                variant="outline"
-                size="sm"
-                className="w-10 h-10 p-0 bg-[var(--sidebar-icon-active)] hover:bg-[var(--sidebar-icon-hover)] text-white hover:text-white border-[var(--sidebar-icon-active)] hover:border-[var(--sidebar-icon-hover)] dark:bg-[var(--sidebar-icon-active)] dark:hover:bg-[var(--brand-orange-700)]"
-                title="Create New Quote"
-              >
-                <Plus className="w-5 h-5 text-white" />
-              </Button>
+            {/* Create Quote Dropdown */}
+            {(onCreateQuote || onImportQuote) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-10 px-3 bg-[var(--sidebar-icon-active)] hover:bg-[var(--sidebar-icon-hover)] text-white hover:text-white border-[var(--sidebar-icon-active)] hover:border-[var(--sidebar-icon-hover)] dark:bg-[var(--sidebar-icon-active)] dark:hover:bg-[var(--brand-orange-700)]"
+                    title="Add Quote"
+                  >
+                    <Plus className="w-5 h-5 text-white" />
+                    <ChevronDown className="w-4 h-4 ml-1 text-white" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {onCreateQuote && (
+                    <DropdownMenuItem onClick={onCreateQuote} className="cursor-pointer">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create New
+                    </DropdownMenuItem>
+                  )}
+                  {onImportQuote && (
+                    <DropdownMenuItem onClick={onImportQuote} className="cursor-pointer">
+                      <FileUp className="w-4 h-4 mr-2" />
+                      Import from File
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
               </div>
             );

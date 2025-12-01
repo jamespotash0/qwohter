@@ -42,6 +42,8 @@ export interface CreateQuoteData {
   status?: string;
   customization?: Record<string, any>;
   quote_source?: string;
+  proposal_number?: string;
+  created_at?: string; // For imported quotes - use the original quote date
 }
 
 export interface UpdateQuoteData {
