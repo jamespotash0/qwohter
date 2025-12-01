@@ -47,6 +47,7 @@ import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
 import { TrialStatusCard } from "@/components/trial/TrialStatusCard";
 import { TrialExpiryModal } from "@/components/trial/TrialExpiryModal";
 import { stripeService } from "@/services/stripeService";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Dashboard - Executive Overview
@@ -73,6 +74,14 @@ const Dashboard = () => {
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
+  const [showTrialCard, setShowTrialCard] = useState(true);
+  const [trialStatus, setTrialStatus] = useState<{
+    daysRemaining: number;
+    trialEnd: string | null;
+    hasPaymentMethod: boolean;
+    inGracePeriod: boolean;
+    graceDaysRemaining: number;
+  } | null>(null);
   const [cachedProfile, setCachedProfile] = useState<any>(() => {
     // Read from localStorage cache (same as sidebar)
     try {
@@ -90,6 +99,57 @@ const Dashboard = () => {
       localStorage.setItem('sidebar_cached_profile', JSON.stringify(profile));
     }
   }, [profile, cachedProfile]);
+
+  // Fetch trial status from subscription
+  useEffect(() => {
+    const fetchTrialStatus = async () => {
+      if (!organizationId) {
+        setTrialStatus(null);
+        return;
+      }
+
+      try {
+        const { data: subscription } = await supabase
+          .from('subscriptions')
+          .select('stripe_subscription_status, trial_end, has_payment_method')
+          .eq('organization_id', organizationId)
+          .single() as { data: { stripe_subscription_status: string | null; trial_end: string | null; has_payment_method: boolean | null } | null };
+
+        if (!subscription) {
+          setTrialStatus(null);
+          return;
+        }
+
+        const isTrialing = subscription.stripe_subscription_status?.toLowerCase() === 'trialing';
+        const trialEnd = subscription.trial_end;
+
+        if (!isTrialing || !trialEnd) {
+          setTrialStatus(null);
+          return;
+        }
+
+        const now = new Date();
+        const trialEndDate = new Date(trialEnd);
+        const daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const inGracePeriod = daysRemaining < 0;
+        const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
+        const graceDaysRemaining = Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        setTrialStatus({
+          daysRemaining: Math.max(0, daysRemaining),
+          trialEnd,
+          hasPaymentMethod: subscription.has_payment_method || false,
+          inGracePeriod,
+          graceDaysRemaining: Math.max(0, graceDaysRemaining),
+        });
+      } catch (error) {
+        console.error('Error fetching trial status:', error);
+        setTrialStatus(null);
+      }
+    };
+
+    fetchTrialStatus();
+  }, [organizationId]);
 
   // Always prefer cached data to prevent flashing
   const effectiveProfile = cachedProfile || (profile?.id ? profile : null);

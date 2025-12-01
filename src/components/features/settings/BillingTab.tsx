@@ -658,16 +658,16 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   //   try {
   //     setIsReactivating(true);
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resume-subscription`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({
-          subscriptionId: subscription.stripe_subscription_id,
-        }),
-      });
+  //     const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resume-subscription`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         'Authorization': `Bearer ${session?.access_token}`,
+  //       },
+  //       body: JSON.stringify({
+  //         subscriptionId: subscription.stripe_subscription_id,
+  //       }),
+  //     });
 
   //     const data = await response.json();
 
@@ -983,6 +983,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                     //   : (planIntervals[plan.id] || 'Monthly');
                     // const currentInterval = subscription?.billing_interval?.toLowerCase() === 'yearly' ? 'Yearly' : 'Monthly';
                     // const isIntervalChanged = isCurrent && planIntervals[plan.id] && selectedInterval !== currentInterval;
+                    // Since only monthly billing exists, interval never changes
+                    const isIntervalChanged = false;
 
                     if (isCurrent && !isIntervalChanged) {
                       // Current plan with same interval - show "Current Plan" or "Free Trial"

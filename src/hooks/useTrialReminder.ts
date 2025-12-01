@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { useOrganizationStore } from '@/stores/organization/organizationStore';
+import { useCurrentOrganization } from '@/hooks/queries';
+import { useUser } from '@/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
@@ -12,7 +13,8 @@ import type { Database } from '@/integrations/supabase/types';
  * - Button to update payment method (opens Stripe portal)
  */
 export function useTrialReminder() {
-  const { currentOrganization } = useOrganizationStore();
+  const user = useUser();
+  const { organization: currentOrganization } = useCurrentOrganization(user?.id || '');
   const { toast } = useToast();
 
   useEffect(() => {

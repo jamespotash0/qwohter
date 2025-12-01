@@ -83,7 +83,7 @@
     "js-levenshtein": "^1.1.6",
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
-    "libphonenumber-js": "^1.12.29",
+    "libphonenumber-js": "^1.12.30",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.462.0",
     "mammoth": "^1.11.0",

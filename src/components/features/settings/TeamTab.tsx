@@ -23,23 +23,34 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { MoreVertical, Trash2, Crown, AlertTriangle, RotateCcw, Plus, X } from "lucide-react";
 import type { Role } from "@/utils/teamManagementHelpers";
 import { cleanupExpiredTokens } from "@/utils/inviteTokens";
+import { InviteBillingConfirmDialog } from "./InviteBillingConfirmDialog";
 
-interface PendingInvite {
+interface InviteRow {
+  id: string;
   email: string;
-  role: 'Admin' | 'Member';
-  department: string;
+  role: string | undefined;
+  department: string | undefined;
 }
 
+const createEmptyInviteRow = (): InviteRow => ({
+  id: crypto.randomUUID(),
+  email: '',
+  role: undefined,
+  department: undefined,
+});
+
 export function TeamTab() {
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<string | undefined>(undefined);
-  const [inviteDepartment, setInviteDepartment] = useState<string | undefined>(undefined);
-  const [pendingInvitesList, setPendingInvitesList] = useState<PendingInvite[]>([]);
+  const [inviteRows, setInviteRows] = useState<InviteRow[]>([createEmptyInviteRow()]);
   const [removeDialog, setRemoveDialog] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: "", memberName: "" });
   const [transferDialog, setTransferDialog] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: "", memberName: "" });
   const [inviteSentDialog, setInviteSentDialog] = useState<{ open: boolean; emails: string[] }>({ open: false, emails: [] });
-  const [isSendingBatch, setIsSendingBatch] = useState(false);
-  const [isSendingSingle, setIsSendingSingle] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+
+  // Billing confirmation dialog state
+  const [billingConfirmDialog, setBillingConfirmDialog] = useState<{
+    open: boolean;
+    invites: Array<{ email: string; role: 'Admin' | 'Member'; department?: string }>;
+  }>({ open: false, invites: [] });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -95,100 +106,110 @@ export function TeamTab() {
     cleanup();
   }, [organizationId, queryClient]);
 
-  const handleAddToList = () => {
-    if (!inviteEmail || !inviteRole || !inviteDepartment) return;
-    if (inviteRole === 'placeholder' || inviteDepartment === 'placeholder') return;
+  // Row management handlers
+  const updateInviteRow = (id: string, field: keyof InviteRow, value: string | undefined) => {
+    setInviteRows(rows => rows.map(row =>
+      row.id === id ? { ...row, [field]: value } : row
+    ));
+  };
 
-    // Check if email already in list
-    if (pendingInvitesList.some(invite => invite.email === inviteEmail)) {
+  const addInviteRow = () => {
+    setInviteRows(rows => [...rows, createEmptyInviteRow()]);
+  };
+
+  const removeInviteRow = (id: string) => {
+    setInviteRows(rows => {
+      if (rows.length === 1) {
+        // Keep at least one row, just clear it
+        return [createEmptyInviteRow()];
+      }
+      return rows.filter(row => row.id !== id);
+    });
+  };
+
+  // Get valid invites from all rows
+  const getValidInvites = () => {
+    return inviteRows
+      .filter(row => row.email && row.role && row.department)
+      .map(row => ({
+        email: row.email,
+        role: (row.role === 'Owner' || row.role === 'Admin' ? 'Admin' : 'Member') as 'Admin' | 'Member',
+        department: row.department
+      }));
+  };
+
+  const hasValidInvites = getValidInvites().length > 0;
+
+  // Show billing confirmation dialog for invites
+  const handleSendInvites = () => {
+    const validInvites = getValidInvites();
+    if (validInvites.length === 0) return;
+
+    // Check for duplicate emails within the list
+    const emails = validInvites.map(i => i.email);
+    const uniqueEmails = new Set(emails);
+    if (uniqueEmails.size !== emails.length) {
       toast({
-        title: "Duplicate email",
-        description: "This email is already in the invite list",
+        title: "Duplicate emails",
+        description: "Please remove duplicate email addresses",
         variant: "destructive",
       });
       return;
     }
 
-    // Add to pending list
-    setPendingInvitesList([...pendingInvitesList, {
-      email: inviteEmail,
-      role: inviteRole === 'Owner' || inviteRole === 'Admin' ? 'Admin' : 'Member',
-      department: inviteDepartment
-    }]);
-
-    // Clear form and reset to placeholder
-    setInviteEmail("");
-    setInviteRole(undefined);
-    setInviteDepartment(undefined);
+    // Show billing confirmation dialog
+    setBillingConfirmDialog({
+      open: true,
+      invites: validInvites,
+    });
   };
 
-  const handleSendSingleInvite = async () => {
-    if (!inviteEmail || !inviteRole || !inviteDepartment) return;
-    if (inviteRole === 'placeholder' || inviteDepartment === 'placeholder') return;
+  // Actually send invites after billing confirmation
+  const handleConfirmInvites = async (invitesToSend: Array<{ email: string; role: 'Admin' | 'Member'; department?: string }>) => {
+    if (invitesToSend.length === 0) return;
 
-    setIsSendingSingle(true);
-    try {
-      await inviteMemberMutation({
-        email: inviteEmail,
-        role: inviteRole === 'Owner' || inviteRole === 'Admin' ? 'Admin' : 'Member',
-        department: inviteDepartment
-      });
+    setIsSending(true);
 
-      // Show success dialog
-      setInviteSentDialog({ open: true, emails: [inviteEmail] });
-
-      // Clear form and reset to placeholder
-      setInviteEmail("");
-      setInviteRole(undefined);
-      setInviteDepartment(undefined);
-    } catch (error: any) {
-      // Error handling is done in the mutation
-      console.error('Failed to send invite:', error);
-    } finally {
-      setIsSendingSingle(false);
-    }
-  };
-
-  const handleRemoveFromList = (email: string) => {
-    setPendingInvitesList(pendingInvitesList.filter(invite => invite.email !== email));
-  };
-
-  const handleSendAllInvites = async () => {
-    if (pendingInvitesList.length === 0) return;
-
-    setIsSendingBatch(true);
     const successfulEmails: string[] = [];
     const failedEmails: string[] = [];
 
-    for (const invite of pendingInvitesList) {
-      try {
-        await inviteMemberMutation({
-          email: invite.email,
-          role: invite.role,
-          department: invite.department
-        });
-        successfulEmails.push(invite.email);
-      } catch (error: any) {
-        failedEmails.push(invite.email);
+    try {
+      for (const invite of invitesToSend) {
+        try {
+          await inviteMemberMutation({
+            email: invite.email,
+            role: invite.role,
+            department: invite.department
+          });
+          successfulEmails.push(invite.email);
+        } catch (error: any) {
+          failedEmails.push(invite.email);
+        }
       }
-    }
 
-    setIsSendingBatch(false);
+      // Close billing dialog
+      setBillingConfirmDialog({ open: false, invites: [] });
 
-    // Clear the list
-    setPendingInvitesList([]);
+      // Show success dialog if any succeeded
+      if (successfulEmails.length > 0) {
+        setInviteSentDialog({ open: true, emails: successfulEmails });
+      }
 
-    // Show results
-    if (successfulEmails.length > 0) {
-      setInviteSentDialog({ open: true, emails: successfulEmails });
-    }
+      // Show error toast if any failed
+      if (failedEmails.length > 0) {
+        toast({
+          title: `Failed to send ${failedEmails.length} invitation(s)`,
+          description: `Could not send invites to: ${failedEmails.join(', ')}`,
+          variant: "destructive",
+        });
+      }
 
-    if (failedEmails.length > 0) {
-      toast({
-        title: `Failed to send ${failedEmails.length} invitation(s)`,
-        description: `Could not send invites to: ${failedEmails.join(', ')}`,
-        variant: "destructive",
-      });
+      // Reset to single empty row
+      setInviteRows([createEmptyInviteRow()]);
+    } catch (error: any) {
+      console.error('Failed to send invites:', error);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -356,127 +377,101 @@ export function TeamTab() {
 
   return (
     <div className="w-full max-w-5xl min-w-[640px]">
-      {/* Team Members Header & Invite Section */}
+      {/* Invite New Members Section */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Team Members</h2>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Invite New Members</h2>
         <div className="h-px bg-gray-200 dark:bg-gray-700 mb-6"></div>
 
         <div className="mb-6">
+          {/* Column Headers */}
           <div className="flex gap-2 mb-2">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Email Address
               </label>
             </div>
             <div className="w-44">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Department
               </label>
             </div>
             <div className="w-44">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Role
               </label>
             </div>
-            <div className="w-[88px]"></div>
+            <div className="w-9"></div>
           </div>
-          <div className="flex gap-2">
-            <Input
-              type="email"
-              placeholder="john@emailaddress.com"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              className="flex-1 placeholder:text-gray-400"
-            />
-            <Select value={inviteDepartment} onValueChange={setInviteDepartment}>
-              <SelectTrigger className="w-44 [&>span[data-placeholder]]:text-gray-400">
-                <SelectValue placeholder="Department" />
-              </SelectTrigger>
-              <SelectContent className="w-48 max-h-80 [&>*]:scroll-smooth">
-                <SelectItem value="Customer Success">Customer Success</SelectItem>
-                <SelectItem value="Engineering">Engineering</SelectItem>
-                <SelectItem value="Executive">Executive</SelectItem>
-                <SelectItem value="Finance">Finance</SelectItem>
-                <SelectItem value="HR">HR</SelectItem>
-                <SelectItem value="IT">IT</SelectItem>
-                <SelectItem value="Marketing">Marketing</SelectItem>
-                <SelectItem value="Operations">Operations</SelectItem>
-                <SelectItem value="Product">Product</SelectItem>
-                <SelectItem value="Sales">Sales</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={inviteRole} onValueChange={(value) => setInviteRole(value as Role)}>
-              <SelectTrigger className="w-44 [&>span[data-placeholder]]:text-gray-400">
-                <SelectValue placeholder="Role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Member">Member</SelectItem>
-                <SelectItem value="Admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={handleSendSingleInvite}
-              disabled={!inviteEmail || !inviteDepartment || !inviteRole || isSendingSingle}
-              className="bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white px-6"
+
+          {/* Invite Rows */}
+          <div className="space-y-2">
+            {inviteRows.map((row) => (
+              <div key={row.id} className="flex gap-2 items-center">
+                <Input
+                  type="email"
+                  placeholder="john@emailaddress.com"
+                  value={row.email}
+                  onChange={(e) => updateInviteRow(row.id, 'email', e.target.value)}
+                  className="flex-1 placeholder:text-gray-400"
+                />
+                <Select value={row.department} onValueChange={(value) => updateInviteRow(row.id, 'department', value)}>
+                  <SelectTrigger className="w-44 [&>span[data-placeholder]]:text-gray-400">
+                    <SelectValue placeholder="Department" />
+                  </SelectTrigger>
+                  <SelectContent className="w-48 max-h-80 [&>*]:scroll-smooth">
+                    <SelectItem value="Customer Success">Customer Success</SelectItem>
+                    <SelectItem value="Engineering">Engineering</SelectItem>
+                    <SelectItem value="Executive">Executive</SelectItem>
+                    <SelectItem value="Finance">Finance</SelectItem>
+                    <SelectItem value="HR">HR</SelectItem>
+                    <SelectItem value="IT">IT</SelectItem>
+                    <SelectItem value="Marketing">Marketing</SelectItem>
+                    <SelectItem value="Operations">Operations</SelectItem>
+                    <SelectItem value="Product">Product</SelectItem>
+                    <SelectItem value="Sales">Sales</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={row.role} onValueChange={(value) => updateInviteRow(row.id, 'role', value as Role)}>
+                  <SelectTrigger className="w-44 [&>span[data-placeholder]]:text-gray-400">
+                    <SelectValue placeholder="Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Member">Member</SelectItem>
+                    <SelectItem value="Admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeInviteRow(row.id)}
+                  className="h-9 w-9 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          {/* Add More & Invite Buttons */}
+          <div className="mt-3 flex items-center justify-between">
+            <button
+              onClick={addInviteRow}
+              className="text-sm text-gray-600 dark:text-gray-400 hover:text-[var(--sidebar-icon-active)] flex items-center gap-1"
             >
-              {isSendingSingle ? 'Sending...' : 'Invite'}
+              <Plus className="w-4 h-4" />
+              Add more
+            </button>
+            <Button
+              onClick={handleSendInvites}
+              disabled={!hasValidInvites || isSending}
+              className="bg-green-600 hover:bg-green-700 text-white px-6"
+            >
+              {isSending ? 'Sending...' : 'Invite'}
             </Button>
           </div>
-
-          {/* Add to Batch Button */}
-          <button
-            onClick={handleAddToList}
-            disabled={!inviteEmail || !inviteDepartment || !inviteRole}
-            className="mt-2 text-sm text-gray-600 dark:text-gray-400 hover:text-[var(--sidebar-icon-active)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-          >
-            <Plus className="w-4 h-4" />
-            Add another to batch send
-          </button>
         </div>
-
-        {/* Pending Invites to Send */}
-        {pendingInvitesList.length > 0 && (
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {pendingInvitesList.length} pending invite{pendingInvitesList.length !== 1 ? 's' : ''}
-              </p>
-              <Button
-                onClick={handleSendAllInvites}
-                disabled={isSendingBatch}
-                className="bg-green-600 hover:bg-green-700 text-white px-4"
-              >
-                {isSendingBatch ? 'Sending...' : `Send ${pendingInvitesList.length} Invite${pendingInvitesList.length !== 1 ? 's' : ''}`}
-              </Button>
-            </div>
-            <div className="border border-gray-200 dark:border-gray-700 rounded-lg divide-y divide-gray-200 dark:divide-gray-700">
-              {pendingInvitesList.map((invite, index) => (
-                <div key={index} className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-800/50">
-                  <div className="flex items-center gap-4 flex-1">
-                    <span className="text-sm font-medium text-gray-900 dark:text-white min-w-[200px]">
-                      {invite.email}
-                    </span>
-                    <span className="text-sm text-gray-600 dark:text-gray-400 min-w-[120px]">
-                      {invite.department}
-                    </span>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
-                      {invite.role}
-                    </span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveFromList(invite.email)}
-                    className="text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <div className="h-px bg-gray-200 dark:bg-gray-700"></div>
       </div>
 
       {/* Pending Invitations */}
@@ -584,6 +579,7 @@ export function TeamTab() {
 
       {/* Members Table */}
       <div className="mb-8">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Team Members</h2>
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-800">
@@ -861,6 +857,17 @@ export function TeamTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Billing Confirmation Dialog */}
+      <InviteBillingConfirmDialog
+        open={billingConfirmDialog.open}
+        onOpenChange={(open) => setBillingConfirmDialog({ ...billingConfirmDialog, open })}
+        initialInvites={billingConfirmDialog.invites}
+        onConfirm={handleConfirmInvites}
+        onCancel={() => setBillingConfirmDialog({ open: false, invites: [] })}
+        isLoading={isSending}
+        pricePerUser={20}
+      />
 
       {/* Invite Sent Dialog */}
       <Dialog open={inviteSentDialog.open} onOpenChange={(open) => setInviteSentDialog({ ...inviteSentDialog, open })}>
