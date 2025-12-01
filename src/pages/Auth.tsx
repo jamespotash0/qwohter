@@ -192,24 +192,35 @@ const Auth = () => {
         if (!session || (savedState.userId && session.user.id !== savedState.userId)) {
           console.log('Session invalid or user mismatch, clearing saved state');
           clearAuthState();
-          return;
+          // Don't return here - check for temp signup data below
+        } else {
+          console.log('Session valid, restoring auth state');
+
+          if (savedState.email) formState.setEmail(savedState.email);
+          if (savedState.userId) authFlow.setUserId(savedState.userId);
+          if (savedState.fullName) formState.setFullName(savedState.fullName);
+          if (savedState.orgChoice) authFlow.setOrgChoice(savedState.orgChoice as any);
+          if (savedState.orgName) formState.setOrgName(savedState.orgName);
+
+          if (savedState.step && savedState.step !== 'auth') {
+            authFlow.setStep(savedState.step as any);
+          }
+          return; // State restored from session, we're done
         }
+      }
 
-        console.log('Session valid, restoring auth state');
-
-        if (savedState.email) formState.setEmail(savedState.email);
-        if (savedState.userId) authFlow.setUserId(savedState.userId);
-        if (savedState.fullName) formState.setFullName(savedState.fullName);
-        if (savedState.orgChoice) authFlow.setOrgChoice(savedState.orgChoice as any);
-        if (savedState.orgName) formState.setOrgName(savedState.orgName);
-
-        if (savedState.step && savedState.step !== 'auth') {
-          authFlow.setStep(savedState.step as any);
-        }
+      // No valid session-based state - check for temp signup data
+      // This handles the case where user refreshed during OTP verification
+      const tempData = tempSignupService.get();
+      if (tempData && tempData.otpSent) {
+        console.log('Found temp signup data with OTP sent, restoring to OTP verification step');
+        formState.setEmail(tempData.email);
+        formState.setFullName(tempData.fullName);
+        authFlow.setStep('verify-otp');
+        // Save state so we can track the flow
+        saveAuthState({ step: 'verify-otp', email: tempData.email, fullName: tempData.fullName });
       } else {
-        // No saved state found - but don't clear tempSignup data yet
-        // It has its own 2-hour expiry and is needed for resending OTP
-        console.log('No saved state found, but keeping temp signup data for OTP resend');
+        console.log('No restorable state found');
       }
     };
 

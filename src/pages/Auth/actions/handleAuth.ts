@@ -88,10 +88,19 @@ export const handleAuth = async (params: HandleAuthParams) => {
         console.log('SignUp successful, setting step to verify-otp');
         setStep('verify-otp');
         saveAuthState({ step: 'verify-otp', email, fullName: combinedFullName });
-        toast({
-          title: 'Verification code sent!',
-          description: 'Please check your email and enter the 6-digit code.',
-        });
+
+        // Show different message if this was a resend to an unconfirmed user
+        if (result.data?.isResend) {
+          toast({
+            title: 'Verification code resent!',
+            description: 'We found your pending account. Check your email for a new code.',
+          });
+        } else {
+          toast({
+            title: 'Verification code sent!',
+            description: 'Please check your email and enter the 6-digit code.',
+          });
+        }
       }
     } else {
       // Handle sign-in
@@ -103,7 +112,16 @@ export const handleAuth = async (params: HandleAuthParams) => {
         console.log('Auth form: signin success with nextStep:', result.nextStep);
 
         // Handle different nextStep outcomes
-        if (result.nextStep === 'complete') {
+        if (result.nextStep === 'verify-otp') {
+          // Unconfirmed user trying to sign in - redirect to OTP verification
+          console.log('Auth form: unconfirmed user, redirecting to OTP verification');
+          setStep('verify-otp');
+          saveAuthState({ step: 'verify-otp', email });
+          toast({
+            title: 'Verification required',
+            description: 'Please check your email for a verification code to complete sign-in.',
+          });
+        } else if (result.nextStep === 'complete') {
           console.log('Auth form: User onboarding complete, redirecting to dashboard');
           toast({
             title: 'Welcome back!',

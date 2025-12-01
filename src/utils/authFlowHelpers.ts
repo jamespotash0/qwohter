@@ -61,9 +61,29 @@ export const authFlowHelpers = {
         }
 
         if (error.message === 'Email not confirmed') {
+          // User exists but hasn't verified email - try to resend OTP
+          console.log('User email not confirmed, attempting to resend OTP');
+          const resendResult = await authService.resendOtp(email);
+
+          if (!resendResult.error) {
+            console.log('Resent OTP to unconfirmed user from sign-in');
+            // Store minimal data for OTP verification
+            // Note: We don't have fullName, but we can update it later if needed
+            tempSignupService.store({ email, password, fullName: '' });
+            tempSignupService.markOtpSent();
+
+            return {
+              success: true,
+              data: { email, isResend: true, fromSignIn: true },
+              nextStep: 'verify-otp'
+            };
+          }
+
+          // If resend failed (rate limited), show helpful message
+          console.log('Resend OTP failed:', resendResult.error);
           return {
             success: false,
-            error: "Please check your email and click the verification link before signing in."
+            error: "Your email hasn't been verified yet. Please go to Create Account to complete verification."
           };
         }
 
@@ -129,6 +149,8 @@ export const authFlowHelpers = {
 
         if (existingProfile) {
           console.log('User already exists in profiles:', existingProfile);
+          // User has a profile, which means they completed OTP verification
+          // They should sign in instead
           return {
             success: false,
             error: "An account with this email already exists. Please sign in instead. If you're having trouble accessing your account, please contact support."
@@ -189,6 +211,25 @@ export const authFlowHelpers = {
             error.message.includes('already exists') ||
             error.message.includes('duplicate') ||
             error.message.includes('already been registered')) {
+          // This might be an unconfirmed user - try to resend OTP
+          console.log('User already exists error, attempting to resend OTP for unconfirmed user');
+          const resendResult = await authService.resendOtp(email);
+
+          if (!resendResult.error) {
+            console.log('Resent OTP to existing unconfirmed user');
+            // Store their data so they can complete verification
+            tempSignupService.store({ email, password, fullName });
+            tempSignupService.markOtpSent();
+
+            return {
+              success: true,
+              data: { email, isResend: true },
+              nextStep: 'verify-otp'
+            };
+          }
+
+          // If resend failed, user is likely confirmed
+          console.log('Resend OTP failed:', resendResult.error);
           return {
             success: false,
             error: "An account with this email already exists. Please sign in instead. If you believe this is an error, please contact support."
@@ -218,6 +259,26 @@ export const authFlowHelpers = {
       // Check if user already exists (Supabase returns user with empty identities array for existing users)
       if (user && (!user.identities || user.identities.length === 0)) {
         console.log('SignUp detected existing user (empty identities)');
+
+        // This might be an unconfirmed user who needs to complete OTP verification
+        // Try to resend OTP and allow them to continue
+        const resendResult = await authService.resendOtp(email);
+
+        if (!resendResult.error) {
+          console.log('Resent OTP to existing unconfirmed user');
+          // Store their data so they can complete verification
+          tempSignupService.store({ email, password, fullName });
+          tempSignupService.markOtpSent();
+
+          return {
+            success: true,
+            data: { email, isResend: true },
+            nextStep: 'verify-otp'
+          };
+        }
+
+        // If resend failed, user is likely confirmed - tell them to sign in
+        console.log('Resend OTP failed, user is likely confirmed:', resendResult.error);
         tempSignupService.clear();
         return {
           success: false,
@@ -289,16 +350,17 @@ export const authFlowHelpers = {
       if (verifyUser) {
         console.log('Email verified successfully for user:', verifyUser.id);
 
-        // Update profile with full name (user was created by signUp, profile created by trigger)
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            full_name: tempData.fullName
-          })
-          .eq('id', verifyUser.id);
+        // Update profile with full name (only if we have one - sign-in flow may not have fullName)
+        if (tempData.fullName) {
+          // @ts-ignore - Supabase types issue with update
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .update({ full_name: tempData.fullName })
+            .eq('id', verifyUser.id);
 
-        if (profileError) {
-          console.error('Error updating profile with full name:', profileError);
+          if (profileError) {
+            console.error('Error updating profile with full name:', profileError);
+          }
         }
 
         // Clear temporary data
