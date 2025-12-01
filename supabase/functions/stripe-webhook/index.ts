@@ -437,6 +437,26 @@ serve(async (req) => {
         break;
       }
 
+      case 'setup_intent.succeeded': {
+        // Customer Portal uses SetupIntents to add payment methods
+        const setupIntent = event.data.object as Stripe.SetupIntent;
+        const customerId = setupIntent.customer as string;
+
+        if (customerId) {
+          // Mark that customer has payment method
+          await supabase
+            .from('subscriptions')
+            .update({
+              has_payment_method: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('stripe_customer_id', customerId);
+
+          console.log('SetupIntent succeeded - payment method added for customer:', customerId);
+        }
+        break;
+      }
+
       case 'payment_method.detached': {
         const paymentMethod = event.data.object as Stripe.PaymentMethod;
         const customerId = paymentMethod.customer as string;
