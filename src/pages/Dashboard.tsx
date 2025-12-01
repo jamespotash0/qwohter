@@ -44,7 +44,6 @@ import { formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
 import { toast } from "sonner";
 import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
 import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
-import { TrialStatusCard } from "@/components/trial/TrialStatusCard";
 import { TrialExpiryModal } from "@/components/trial/TrialExpiryModal";
 import { stripeService } from "@/services/stripeService";
 import { supabase } from "@/integrations/supabase/client";
@@ -74,7 +73,7 @@ const Dashboard = () => {
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
-  const [showTrialCard, setShowTrialCard] = useState(true);
+  const [showExpiryModal, setShowExpiryModal] = useState(false);
   const [trialStatus, setTrialStatus] = useState<{
     daysRemaining: number;
     trialEnd: string | null;
@@ -739,20 +738,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Trial Status Card - Shown only during trial (replaces Revenue card position) */}
-      {showTrialCard && trialStatus && (
-        <div className="mb-8">
-          <TrialStatusCard
-            daysRemaining={trialStatus.daysRemaining}
-            trialEnd={trialStatus.trialEnd || ''}
-            hasPaymentMethod={trialStatus.hasPaymentMethod}
-            inGracePeriod={trialStatus.inGracePeriod}
-            graceDaysRemaining={trialStatus.graceDaysRemaining}
-            onDismiss={() => setShowTrialCard(false)}
-          />
-        </div>
-      )}
-
       {/* Key Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {quotesLoading ? (
@@ -774,9 +759,8 @@ const Dashboard = () => {
           </>
         ) : (
           <>
-            {/* Total Revenue - Hidden during trial, shown after */}
-            {!(showTrialCard && trialStatus) && (
-              <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+            {/* Total Revenue */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
                   <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800">
@@ -805,7 +789,6 @@ const Dashboard = () => {
                 </div>
               </CardContent>
             </Card>
-            )}
 
             {/* Active Quotes */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
@@ -1247,7 +1230,7 @@ const Dashboard = () => {
           metrics={{
             quotesCreated: quotes.length,
             totalRevenue: metrics.totalRevenue,
-            teamMembers: members?.length || 0,
+            teamMembers: 1,
           }}
         />
       )}

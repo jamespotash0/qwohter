@@ -1,5 +1,8 @@
+// @ts-ignore - Deno import
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+// @ts-ignore - Deno import
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
+// @ts-ignore - Deno import
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
@@ -7,23 +10,21 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-//@ts-ignore
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    //@ts-ignore
+    // @ts-ignore
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
       apiVersion: '2023-10-16',
     });
-    //@ts-ignore
+    // @ts-ignore
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    //@ts-ignore
+    // @ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    //@ts-ignore
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
 
     // Verify authentication
     const authHeader = req.headers.get('Authorization');
@@ -34,13 +35,15 @@ serve(async (req) => {
       );
     }
 
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // Extract token from "Bearer <token>"
+    const token = authHeader.replace('Bearer ', '');
 
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    // Use service role client to verify the JWT token
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !user) {
+      console.error('Auth error:', authError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized - invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -56,10 +59,8 @@ serve(async (req) => {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
     // Verify user has access to this organization
-    const { data: membership } = await supabase
+    const { data: membership } = await supabaseAdmin
       .from('memberships')
       .select('role')
       .eq('organization_id', organizationId)
@@ -83,7 +84,7 @@ serve(async (req) => {
     }
 
     // Get organization's Stripe customer ID
-    const { data: subscription } = await supabase
+    const { data: subscription } = await supabaseAdmin
       .from('subscriptions')
       .select('stripe_customer_id')
       .eq('organization_id', organizationId)

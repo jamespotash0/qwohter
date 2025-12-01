@@ -1024,11 +1024,11 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                         </div>
                       );
                     } else {
-                      // Other plans or current plan with interval changed - show Switch Plan or Choose Plan
+                      // Show Upgrade Plan or Manage based on subscription status
                       return (
                         <Button
                           className="w-full bg-[#EE6C4D] hover:bg-[#d85a3d] text-white flex items-center justify-center gap-2"
-                          onClick={() => handleUpgradePlan(plan)}
+                          onClick={() => subscription?.is_active ? handleOpenPortal() : handleUpgradePlan(plan)}
                           disabled={isProcessing}
                         >
                           {isProcessing ? (
@@ -1036,20 +1036,12 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                               <Loader2 className="w-4 h-4 animate-spin" />
                               <span>Processing...</span>
                             </>
-                          ) : subscription?.cancel_at_period_end ? (
-                            // If current subscription is canceled, show "Switch Plan"
-                            <>
-                              <ArrowLeftRight className="w-4 h-4" />
-                              <span>Switch Plan</span>
-                            </>
-                          ) : subscription ? (
-                            // If subscription is active, show "Switch plan"
-                            <>
-                              <ArrowLeftRight className="w-4 h-4" />
-                              <span>Switch plan</span>
-                            </>
+                          ) : subscription?.is_active ? (
+                            // If subscription is active, show "Manage Plan"
+                            <span>Manage Plan</span>
                           ) : (
-                            <span>Choose plan</span>
+                            // No active subscription, show "Upgrade Plan"
+                            <span>Upgrade Plan</span>
                           )}
                         </Button>
                       );

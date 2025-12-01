@@ -716,7 +716,7 @@ export function AppSidebar({
               {trialDaysRemaining} {trialDaysRemaining === 1 ? 'day' : 'days'} remaining
             </p>
             <Button
-              onClick={() => navigate('/settings?tab=billing&upgrade=true')}
+              onClick={() => navigate('/settings?tab=billing')}
               variant="ghost"
               size="sm"
               className="w-full mt-2 h-7 text-xs bg-white/20 hover:bg-white/30 text-white border-0"

@@ -1,8 +1,8 @@
-//@ts-ignore
+// @ts-ignore - Deno import
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-//@ts-ignore
+// @ts-ignore - Deno import
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
-//@ts-ignore
+// @ts-ignore - Deno import
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
@@ -16,7 +16,6 @@ const corsHeaders = {
  * Creates actual Stripe subscription with trial_period_days: 14
  * No payment method required upfront
  */
-//@ts-ignore
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -24,16 +23,14 @@ serve(async (req) => {
   }
 
   try {
-    //@ts-ignore
+    // @ts-ignore
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
       apiVersion: '2023-10-16',
     });
-    //@ts-ignore
+    // @ts-ignore
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    //@ts-ignore
+    // @ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    //@ts-ignore
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
 
     // Verify authentication
     const authHeader = req.headers.get('Authorization');
@@ -44,13 +41,13 @@ serve(async (req) => {
       );
     }
 
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    // Extract token and verify with service role client
+    const token = authHeader.replace('Bearer ', '');
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !user) {
+      console.error('Auth error:', authError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized - invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

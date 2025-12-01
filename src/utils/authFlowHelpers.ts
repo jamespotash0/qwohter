@@ -501,21 +501,41 @@ export const authFlowHelpers = {
       // Log success
       await OrganizationCreationLimiter.logCreationAttempt(userId, 'Success');
 
-      // ✨ Auto-enroll new organization in 14-day free trial
-      console.log('🎁 Auto-enrolling organization in free trial:', organizationId);
+      // ✨ Auto-enroll new organization in 14-day free trial via Stripe
+      console.log('🎁 Auto-enrolling organization in Stripe trial:', organizationId);
       console.log('🔍 Current user ID:', userId);
 
       // Small delay to ensure membership is fully committed
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      const { stripeService } = await import('@/services/stripeService');
-      const trialResult = await stripeService.enrollInFreeTrial(organizationId);
+      // Get user email for Stripe customer creation
+      const authUser = await authService.getCurrentUser();
+      const userEmail = authUser?.email;
 
-      if (trialResult.success) {
-        console.log('✅ Free trial enrollment successful');
-      } else {
-        console.error('❌ Free trial enrollment failed:', trialResult.error);
-        console.error('⚠️ This may indicate an RLS policy issue or missing Team plan');
+      // Call Edge Function to create real Stripe subscription with trial
+      const { data: trialData, error: trialError } = await supabase.functions.invoke(
+        'create-trial-subscription',
+        {
+          body: {
+            organizationId,
+            userEmail,
+            userName: choice.orgName,
+          },
+        }
+      );
+
+      if (trialError) {
+        console.error('❌ Stripe trial enrollment failed:', trialError);
+        console.error('⚠️ Edge Function error - user may need to manually start trial');
+        // Don't block onboarding if trial enrollment fails
+      } else if (trialData?.success) {
+        console.log('✅ Stripe trial enrollment successful:', {
+          subscriptionId: trialData.subscriptionId,
+          customerId: trialData.customerId,
+          trialEnd: trialData.trialEnd,
+        });
+      } else if (trialData?.error) {
+        console.error('❌ Trial enrollment error:', trialData.error);
         // Don't block onboarding if trial enrollment fails
       }
 

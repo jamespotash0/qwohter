@@ -36,8 +36,9 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const signature = req.headers.get('Stripe-Signature');
-    //@ts-ignore
-    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';
+    // @ts-ignore
+    // Use production webhook secret first, fallback to CLI secret for local dev
+    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || Deno.env.get('STRIPE_CLI_WEBHOOK_SECRET') || '';
 
     // Get raw body for signature verification
     const body = await req.text();
