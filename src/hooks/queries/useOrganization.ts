@@ -24,6 +24,7 @@ import {
   type SubscriptionStatus,
 } from '@/services/organizationService';
 import { teamInvitationService } from '@/services/teamInvitationService';
+import { stripeService } from '@/services/stripeService';
 
 // ============================================================================
 // Query Hooks
@@ -401,11 +402,18 @@ export function useRemoveMember(organizationId: string) {
 
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Member removed successfully');
       queryClient.invalidateQueries({
         queryKey: queryKeys.organization.members(organizationId),
       });
+
+      // Sync seat count with Stripe (handles both local-only trial and paid subscriptions)
+      const syncResult = await stripeService.syncSeatCount(organizationId, 'remove');
+      if (!syncResult.success) {
+        console.warn('Seat sync failed:', syncResult.error);
+        // Don't show error to user - the scheduled sync will catch it
+      }
     },
     onError: (error: Error) => {
       toast.error(`Failed to remove member: ${error.message}`);
@@ -469,11 +477,20 @@ export function useUpdateMemberStatus(organizationId: string) {
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, { status }) => { //membership_status
+    onSuccess: async (_, { status }) => { //membership_status
       toast.success(`Status updated to ${status}`); //membership_status
       queryClient.invalidateQueries({
         queryKey: queryKeys.organization.members(organizationId),
       });
+
+      // Sync seat count with Stripe when status changes
+      // Active = add seat, Suspended = remove seat
+      const action = status === 'Active' ? 'add' : 'remove';
+      const syncResult = await stripeService.syncSeatCount(organizationId, action);
+      if (!syncResult.success) {
+        console.warn('Seat sync failed:', syncResult.error);
+        // Don't show error to user - the scheduled sync will catch it
+      }
     },
     onError: (error: Error) => {
       toast.error(`Failed to update status: ${error.message}`);

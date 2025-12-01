@@ -38,7 +38,18 @@ interface Invoice {
   period_start: string;
   period_end: string;
   amount_refunded?: number;
+  billing_reason?: string; // subscription_cycle, subscription_create, subscription_update, etc.
 }
+
+// Filter invoices to only show cycle invoices (not prorations/updates)
+const filterCycleInvoices = (invoices: Invoice[]): Invoice[] => {
+  return invoices.filter(invoice =>
+    invoice.billing_reason === 'subscription_cycle' ||
+    invoice.billing_reason === 'subscription_create' ||
+    invoice.billing_reason === 'unknown' || // Include legacy invoices without billing_reason
+    !invoice.billing_reason
+  );
+};
 
 interface SubscriptionPlan {
   id: string;
@@ -717,10 +728,11 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   };
 
   const toggleSelectAll = () => {
-    if (selectedInvoices.length === invoices.length) {
+    const filteredInvoices = filterCycleInvoices(invoices);
+    if (selectedInvoices.length === filteredInvoices.length) {
       setSelectedInvoices([]);
     } else {
-      setSelectedInvoices(invoices.map(inv => inv.id));
+      setSelectedInvoices(filteredInvoices.map(inv => inv.id));
     }
   };
 
@@ -1103,7 +1115,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                 <tr>
                   <th className="px-4 py-3 text-left w-12">
                     <Checkbox
-                      checked={selectedInvoices.length === invoices.length && invoices.length > 0}
+                      checked={selectedInvoices.length === filterCycleInvoices(invoices).length && filterCycleInvoices(invoices).length > 0}
                       onCheckedChange={toggleSelectAll}
                       className="data-[state=checked]:bg-[#EE6C4D] data-[state=checked]:border-[#EE6C4D]"
                     />
@@ -1126,8 +1138,8 @@ export const BillingTab: React.FC<BillingTabProps> = ({
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                {invoices.length > 0 ? (
-                  invoices.map((invoice) => (
+                {filterCycleInvoices(invoices).length > 0 ? (
+                  filterCycleInvoices(invoices).map((invoice) => (
                     <tr key={invoice.id}>
                       <td className="px-4 py-4">
                         <Checkbox

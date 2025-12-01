@@ -727,6 +727,29 @@ export function AppSidebar({
         </div>
       )}
 
+      {/* Grace Period Warning - more urgent styling */}
+      {inGracePeriod && !isCollapsed && (
+        <div className="px-4 pb-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-3 text-white shadow-md border border-red-400">
+            <div className="flex items-center gap-2 mb-1">
+              <Clock className="w-4 h-4 animate-pulse" />
+              <span className="text-sm font-semibold">Trial Expired!</span>
+            </div>
+            <p className="text-xs opacity-90">
+              Grace period: {graceDaysRemaining} {graceDaysRemaining === 1 ? 'day' : 'days'} left
+            </p>
+            <Button
+              onClick={() => navigate('/settings?tab=billing&upgrade=true')}
+              variant="ghost"
+              size="sm"
+              className="w-full mt-2 h-7 text-xs bg-white/30 hover:bg-white/40 text-white border-0 font-semibold"
+            >
+              Add Payment Method
+            </Button>
+          </div>
+        </div>
+      )}
+
       <SidebarFooter className="pl-2 pr-5 pb-4 pt-2 transition-all duration-300">
         {!isLoggingOut && (
           <>

@@ -790,15 +790,21 @@ export function TeamTab() {
           <DialogHeader>
             <DialogTitle>Remove Team Member</DialogTitle>
             <DialogDescription asChild>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <p>Are you sure you want to remove <span className="font-semibold">{removeDialog.memberName}</span> from the organization?</p>
                 <p className="text-sm">This action will:</p>
                 <ul className="text-sm list-disc list-inside space-y-1 ml-2">
-                  <li>Deactivate their account and revoke access</li>
+                  <li>Revoke their access immediately</li>
                   <li>Preserve their quotes and data</li>
                   <li>Display their name as "Deactivated User" on quotes</li>
-                  <li>Allow reactivation later if needed</li>
                 </ul>
+
+                {/* Billing Impact Notice */}
+                <div className="flex items-start gap-2 p-2.5 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800 mt-2">
+                  <span className="text-sm text-green-800 dark:text-green-200">
+                    Your monthly bill will <span className="font-semibold">decrease by $20</span>. Any unused time will be credited to your next invoice.
+                  </span>
+                </div>
               </div>
             </DialogDescription>
           </DialogHeader>

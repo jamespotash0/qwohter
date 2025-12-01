@@ -141,8 +141,12 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
     }
 
     // Owner users see full paywall with billing options
-    const isTrialExpired = blockReason?.toLowerCase().includes('trial');
-    const isInGracePeriod = blockReason?.toLowerCase().includes('grace');
+    const blockReason = subscription?.reason || '';
+    const isTrialExpired = blockReason.toLowerCase().includes('trial');
+    const isInGracePeriod = blockReason.toLowerCase().includes('grace');
+    const isPaymentFailed = blockReason.toLowerCase().includes('payment') ||
+                            blockReason.toLowerCase().includes('past_due') ||
+                            blockReason.toLowerCase().includes('failed');
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 dark:bg-black/40">
@@ -159,8 +163,20 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 pt-2">
+              {/* Payment failure warning */}
+              {isPaymentFailed && (
+                <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4">
+                  <h3 className="text-sm font-bold text-red-900 mb-2">
+                    ⚠️ Payment Failed
+                  </h3>
+                  <p className="text-sm text-red-800 font-medium">
+                    We couldn't process your payment. Please update your payment method to restore access.
+                  </p>
+                </div>
+              )}
+
               {/* Grace period warning */}
-              {isInGracePeriod && (
+              {isInGracePeriod && !isPaymentFailed && (
                 <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4">
                   <h3 className="text-sm font-bold text-red-900 mb-2">
                     ⚠️ URGENT: Access Ending Soon
@@ -208,7 +224,9 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
               )}
 
               <p className="text-sm text-gray-600 text-center">
-                {isInGracePeriod
+                {isPaymentFailed
+                  ? 'Update your payment method to restore access immediately.'
+                  : isInGracePeriod
                   ? 'Add payment now to keep your data and continue working.'
                   : isTrialExpired
                   ? 'Choose a plan to continue where you left off.'
@@ -218,13 +236,19 @@ export const SubscriptionPaywall: React.FC<SubscriptionPaywallProps> = ({
               <Button
                 onClick={() => navigate('/settings?tab=billing')}
                 className={`w-full h-12 text-base font-semibold ${
-                  isInGracePeriod
+                  isPaymentFailed || isInGracePeriod
                     ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 animate-pulse'
                     : 'bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700'
                 }`}
               >
                 <CreditCard className="w-5 h-5 mr-2" />
-                {isInGracePeriod ? 'Add Payment NOW' : isTrialExpired ? 'Choose Your Plan' : 'Go to Billing Settings'}
+                {isPaymentFailed
+                  ? 'Update Payment Method'
+                  : isInGracePeriod
+                  ? 'Add Payment NOW'
+                  : isTrialExpired
+                  ? 'Choose Your Plan'
+                  : 'Go to Billing Settings'}
               </Button>
 
               <div className="pt-2 border-t border-gray-200">
