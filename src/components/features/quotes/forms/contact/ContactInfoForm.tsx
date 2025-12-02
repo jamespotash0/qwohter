@@ -178,20 +178,6 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
 
   return (
     <div className="p-1">
-      {/* Add Contact Button */}
-      <div className="mb-4 flex justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setShowContactDialog(true)}
-          className="flex items-center gap-2"
-        >
-          <UserPlus className="w-4 h-4" />
-          Add New Contact
-        </Button>
-      </div>
-
       {/* Three-row layout as requested */}
       <div className="space-y-6">
         {/* Row 1: Contact Name and Contact Email */}

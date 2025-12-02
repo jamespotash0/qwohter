@@ -94,7 +94,7 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
       title: title.trim(),
       priority,
       due_date: dueDate || undefined,
-      assigned_to: assigneeId || undefined,
+      assigned_to: assigneeId && assigneeId !== 'unassigned' ? assigneeId : undefined,
     });
 
     setTitle('');
@@ -240,7 +240,7 @@ export function ProjectTasks({ projectId, organizationId, projectName }: Project
                   <SelectValue placeholder="Select team member..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">
+                  <SelectItem value="unassigned">
                     <span className="text-gray-500">Unassigned</span>
                   </SelectItem>
                   {activeMembers.map((member) => (
