@@ -218,6 +218,25 @@ export const BillingTab: React.FC<BillingTabProps> = ({
     }
   }, [searchParams, subscription, plans]);
 
+  // Handle portal return - refresh data when returning from Stripe Customer Portal
+  useEffect(() => {
+    const portalReturn = searchParams.get('portal_return');
+    if (portalReturn === 'true' && organization?.id) {
+      // Remove portal_return param from URL
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('portal_return');
+      setSearchParams(newParams);
+
+      // Close the manage dialog if open
+      setShowCancelDialog(false);
+
+      // Reload billing data after a short delay to allow webhook to process
+      setTimeout(() => {
+        loadBillingData();
+      }, 1500);
+    }
+  }, [searchParams, organization?.id]);
+
   // Set up centralized realtime subscriptions
   useRealtimeSubscription(
     'subscription_plans',
@@ -408,7 +427,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         },
         body: JSON.stringify({
           organizationId: organization.id,
-          returnUrl: `${window.location.origin}/settings?tab=billing`,
+          returnUrl: `${window.location.origin}/settings?tab=billing&portal_return=true`,
         }),
       });
 
