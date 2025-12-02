@@ -99,7 +99,7 @@ export class ProductsService {
   }
 
   /**
-   * Get the next available display ID (finds first unused number)
+   * Get the next available display ID (max + 1, no gap filling)
    */
   private async getNextDisplayId(organizationId: string): Promise<string> {
     const { data } = await supabase
@@ -113,24 +113,17 @@ export class ProductsService {
       return '1';
     }
 
-    // Get all numeric display IDs
+    // Get max numeric display ID and add 1
     const numericIds = products
       .map((p) => parseInt(p.display_id || '', 10))
-      .filter((n) => !isNaN(n))
-      .sort((a, b) => a - b);
+      .filter((n) => !isNaN(n));
 
     if (numericIds.length === 0) {
       return '1';
     }
 
-    // Find first gap in the sequence
-    for (let i = 1; i <= numericIds.length + 1; i++) {
-      if (!numericIds.includes(i)) {
-        return String(i);
-      }
-    }
-
-    return String(numericIds.length + 1);
+    const maxId = Math.max(...numericIds);
+    return String(maxId + 1);
   }
 
   /**

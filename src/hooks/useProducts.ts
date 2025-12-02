@@ -108,12 +108,19 @@ export const useCreateProduct = (organizationId: string) => {
 
       // Optimistically add to list
       if (previousProducts) {
-        const nextNumber = previousProducts.length + 1;
+        // Calculate next display_id the same way as server (max numeric + 1)
+        const numericIds = previousProducts
+          .map((p) => parseInt(p.display_id || '', 10))
+          .filter((n) => !isNaN(n));
+        const nextDisplayId = numericIds.length > 0
+          ? String(Math.max(...numericIds) + 1)
+          : '1';
+
         const optimisticProduct: Product = {
           id: `temp-${Date.now()}`,
           organization_id: organizationId,
-          product_number: nextNumber,
-          display_id: newProductInput.display_id || String(nextNumber),
+          product_number: previousProducts.length + 1,
+          display_id: newProductInput.display_id || nextDisplayId,
           name: newProductInput.name,
           amount: newProductInput.amount ?? null,
           amount_unit: newProductInput.amount_unit || 'Flat',
@@ -124,7 +131,7 @@ export const useCreateProduct = (organizationId: string) => {
           model: null,
           specifications: {},
           options: {},
-          sort_order: 0,
+          sort_order: previousProducts.length,
           created_by: null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
