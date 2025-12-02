@@ -98,6 +98,9 @@ const TaskBoard = lazy(() => import("@/pages/TaskBoard"));
 // Contacts page
 const Contacts = lazy(() => import("@/pages/Contacts"));
 
+// Products page
+const Products = lazy(() => import("@/pages/Products"));
+
 // Loading component
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -152,6 +155,9 @@ export const AppRouter = () => (
 
           {/* Contacts CRM */}
           <Route path="/contacts" element={<Contacts />} />
+
+          {/* Products catalog */}
+          <Route path="/products" element={<Products />} />
 
           {/* Analytics and reporting */}
           <Route path="/analytics" element={<Analytics />} />
