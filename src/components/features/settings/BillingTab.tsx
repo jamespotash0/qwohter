@@ -133,6 +133,7 @@ export const BillingTab: React.FC<BillingTabProps> = ({
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   // const [showCompareModal, setShowCompareModal] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isReactivating, setIsReactivating] = useState(false);
   const hasPermission = hasOwnerPermissions(userRole);
@@ -1173,203 +1174,184 @@ export const BillingTab: React.FC<BillingTabProps> = ({
         </div>
       </div>
 
-      {/* Manage Plan Dialog - Redesigned */}
+      {/* Manage Plan Dialog */}
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <DialogContent className="sm:max-w-[480px] p-0 gap-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-4">
-            <DialogTitle className="text-2xl font-bold">Manage Plan</DialogTitle>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">Manage Plan</DialogTitle>
           </DialogHeader>
 
-          <div className="px-6 pb-6">
-            {/* Current Plan Info - Only show if subscription exists */}
+          <div className="space-y-4 pt-2">
+            {/* Plan Summary */}
             {subscription && (
-              <>
-                {/* Plan Info Card */}
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-800/30 rounded-xl p-5 mb-6 border border-gray-200 dark:border-gray-700">
-                  <div className="space-y-4">
-                    {/* Plan Name */}
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Current Plan</p>
-                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {plans.find(p => p.id === subscription.plan_id)?.display_name || 'Unknown'}
-                      </h3>
-                    </div>
-
-                    {/* Divider */}
-                    <div className="border-t border-gray-200 dark:border-gray-700"></div>
-
-                    {/* Plan Details Grid - 3 columns */}
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Status</p>
-                        <p className={`text-lg font-bold ${
-                          subscription.stripe_subscription_status?.toLowerCase() === 'paused'
-                            ? 'text-gray-500 dark:text-gray-400'
-                            : subscription.pause_at_period_end
-                            ? 'text-blue-600 dark:text-blue-400'
-                            : subscription.cancel_at_period_end
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-green-600 dark:text-green-400'
-                        }`}>
-                          {subscription.stripe_subscription_status?.toLowerCase() === 'paused'
-                            ? 'Paused'
-                            : subscription.pause_at_period_end
-                            ? 'Pausing'
-                            : subscription.cancel_at_period_end ? 'Canceling' : 'Active'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Team Size</p>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">{userCount} {userCount === 1 ? 'user' : 'users'}</p>
-                      </div>
-                      {subscription.current_period_end && (
-                        <div>
-                          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                            {subscription.cancel_at_period_end ? 'Ends On' : 'Renews On'}
-                          </p>
-                          <p className="text-lg font-bold text-gray-900 dark:text-white">
-                            {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+              <div className="flex items-center gap-4 text-sm">
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">Plan: </span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {plans.find(p => p.id === subscription.plan_id)?.display_name || 'Team'}
+                    {subscription.stripe_subscription_status?.toLowerCase() === 'trialing' && ' (Free Trial)'}
+                  </span>
                 </div>
-              </>
+                <span className="text-gray-300 dark:text-gray-600">•</span>
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400">Users: </span>
+                  <span className="font-medium text-gray-900 dark:text-white">{userCount}</span>
+                </div>
+              </div>
             )}
 
-            {/* COMMENTED OUT: Pause/Resume functionality temporarily disabled */}
-            {/* {subscription?.stripe_subscription_status?.toLowerCase() === 'paused' ? (
-              // Resume paused subscription
-              <>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Your subscription is currently paused. Resume to regain access to your account.
-                </p>
-                <div className="flex justify-end gap-2 mt-6">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCancelDialog(false)}
-                    disabled={isReactivating}
-                  >
-                    Close
-                  </Button>
-                  <Button
-                    onClick={handleResumeSubscription}
-                    disabled={isReactivating}
-                    className="bg-[#EE6C4D] hover:bg-[#d85a3d] text-white"
-                  >
-                    {isReactivating ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        <span>Resuming...</span>
-                      </>
-                    ) : (
-                      <span>Resume</span>
-                    )}
-                  </Button>
-                </div>
-              </>
-            ) : subscription?.pause_at_period_end ? (
-              // Un-pause scheduled pause
-              <>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Your subscription will pause on {new Date(subscription.current_period_end).toLocaleDateString()}. Resume to cancel the scheduled pause.
-                </p>
-                <div className="flex justify-end gap-2 mt-6">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowCancelDialog(false)}
-                    disabled={isReactivating}
-                  >
-                    Close
-                  </Button>
-                  <Button
-                    onClick={handleResumeSubscription}
-                    disabled={isReactivating}
-                    className="bg-[#EE6C4D] hover:bg-[#d85a3d] text-white"
-                  >
-                    {isReactivating ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        <span>Canceling Pause...</span>
-                      </>
-                    ) : (
-                      <span>Unpause</span>
-                    )}
-                  </Button>
-                </div>
-              </>
-            ) : */ subscription?.cancel_at_period_end ? (
-              // Reactivate view
-              <div className="space-y-5">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Your subscription is scheduled to end on <span className="font-semibold">{new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>. Reactivate to continue your service.
-                </p>
-                <div className="space-y-3">
+            {/* Trial-specific messaging */}
+            {subscription?.stripe_subscription_status?.toLowerCase() === 'trialing' && (
+              <div className="space-y-3">
+                {!subscription.has_payment_method ? (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Add a payment method before your trial ends on{' '}
+                    <span className="font-medium">
+                      {subscription.trial_end
+                        ? new Date(subscription.trial_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+                        : 'the trial end date'}
+                    </span>{' '}
+                    to continue using the service. You can add payment anytime during your trial.
+                  </p>
+                ) : (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Your trial ends on{' '}
+                    <span className="font-medium">
+                      {subscription.trial_end
+                        ? new Date(subscription.trial_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+                        : 'the trial end date'}
+                    </span>.
+                    You have a payment method on file and will be billed automatically.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Canceled subscription messaging */}
+            {subscription?.cancel_at_period_end && (
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Your subscription ends on{' '}
+                <span className="font-medium">
+                  {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </span>.
+                Reactivate to continue your service.
+              </p>
+            )}
+
+            {/* Active paid subscription messaging */}
+            {subscription &&
+             subscription.stripe_subscription_status?.toLowerCase() !== 'trialing' &&
+             !subscription.cancel_at_period_end && (
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Your subscription renews on{' '}
+                <span className="font-medium">
+                  {new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                </span>.
+              </p>
+            )}
+
+            {/* Action Buttons */}
+            <div className="space-y-2 pt-2">
+              {subscription?.cancel_at_period_end ? (
+                // Reactivate view
+                <>
                   <Button
                     onClick={handleReactivateSubscription}
                     disabled={isReactivating}
-                    className="w-full bg-[#EE6C4D] hover:bg-[#d85a3d] text-white h-11 text-base font-semibold shadow-sm"
+                    className="w-full bg-[#EE6C4D] hover:bg-[#d85a3d] text-white"
                   >
                     {isReactivating ? (
                       <>
-                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                        <span>Reactivating...</span>
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        Reactivating...
                       </>
                     ) : (
-                      <span>Reactivate Subscription</span>
+                      'Reactivate Subscription'
                     )}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={handleManageBilling}
                     disabled={!hasPermission}
-                    className="w-full h-11 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    className="w-full"
                   >
                     Update Payment Method
                   </Button>
-                </div>
-              </div>
-            ) : (
-              // Active subscription - COMMENTED OUT: Pause functionality temporarily disabled
-              // Now only showing cancel option
-              <div className="space-y-5">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {subscription?.stripe_subscription_status?.toLowerCase() === 'trialing'
-                    ? 'You can cancel your free trial at any time. Your access will continue until the end of the trial period.'
-                    : 'You can cancel your subscription at any time. Your access will continue until the end of the current billing period.'}
-                </p>
-                <div className="space-y-3">
+                </>
+              ) : (
+                // Active subscription or trial
+                <>
                   <Button
-                    variant="outline"
                     onClick={handleManageBilling}
                     disabled={!hasPermission}
-                    className="w-full h-11 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+                    className="w-full bg-[#EE6C4D] hover:bg-[#d85a3d] text-white"
                   >
-                    Update Payment Method
+                    {subscription?.has_payment_method ? 'Update Payment Method' : 'Add Payment Method'}
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={handleCancelSubscription}
+                    onClick={() => setShowCancelConfirmation(true)}
                     disabled={isCancelling}
-                    className="w-full h-11 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10"
+                    className="w-full text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10"
                   >
-                    {isCancelling ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                        <span>Canceling...</span>
-                      </>
-                    ) : (
-                      <span>
-                        {subscription?.stripe_subscription_status?.toLowerCase() === 'trialing'
-                          ? 'Cancel Free Trial'
-                          : 'Cancel Subscription'}
-                      </span>
-                    )}
+                    Cancel Subscription
                   </Button>
-                </div>
-              </div>
-            )}
+                </>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={showCancelConfirmation} onOpenChange={setShowCancelConfirmation}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">Cancel Subscription</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Are you sure you want to cancel your subscription?
+            </p>
+
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              You will continue to have access until{' '}
+              <span className="font-medium text-gray-900 dark:text-white">
+                {subscription?.stripe_subscription_status?.toLowerCase() === 'trialing' && subscription?.trial_end
+                  ? new Date(subscription.trial_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                  : subscription?.current_period_end
+                    ? new Date(subscription.current_period_end).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                    : 'the end of your billing period'}
+              </span>.
+            </p>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowCancelConfirmation(false)}
+                className="flex-1"
+              >
+                Keep Subscription
+              </Button>
+              <Button
+                onClick={async () => {
+                  await handleCancelSubscription();
+                  setShowCancelConfirmation(false);
+                }}
+                disabled={isCancelling}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              >
+                {isCancelling ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Canceling...
+                  </>
+                ) : (
+                  'Yes, Cancel'
+                )}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
