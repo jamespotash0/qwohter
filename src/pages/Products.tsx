@@ -32,6 +32,7 @@ import {
   useUpdateProduct,
   useDeleteProduct,
   useBulkCreateProducts,
+  useReorderProducts,
 } from '@/hooks/useProducts';
 import { useCurrentOrganization } from '@/hooks/queries';
 import { useUser } from '@/auth';
@@ -48,6 +49,7 @@ export default function ProductsPage() {
   const updateProduct = useUpdateProduct(organizationId || '');
   const deleteProduct = useDeleteProduct(organizationId || '');
   const bulkCreate = useBulkCreateProducts(organizationId || '');
+  const reorderProducts = useReorderProducts(organizationId || '');
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,11 +106,18 @@ export default function ProductsPage() {
         productId,
         input: {
           ...input,
-          price: input.price ?? null,
+          amount: input.amount ?? null,
         },
       });
     },
     [updateProduct]
+  );
+
+  const handleReorder = useCallback(
+    (productIds: string[]) => {
+      reorderProducts.mutate(productIds);
+    },
+    [reorderProducts]
   );
 
   const handleDeleteRequest = useCallback((productId: string) => {
@@ -138,7 +147,7 @@ export default function ProductsPage() {
       return; // No data rows
     }
 
-    // Parse CSV (simple parser - assumes: name,category,price)
+    // Parse CSV (simple parser - assumes: name,category,amount)
     const parsedProducts: CreateProductInput[] = [];
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i];
@@ -148,7 +157,7 @@ export default function ProductsPage() {
         parsedProducts.push({
           name: values[0],
           category: values[1] || undefined,
-          price: values[2] ? parseFloat(values[2]) : undefined,
+          amount: values[2] ? parseFloat(values[2]) : undefined,
         });
       }
     }
@@ -175,7 +184,8 @@ export default function ProductsPage() {
     createProduct.isPending ||
     updateProduct.isPending ||
     deleteProduct.isPending ||
-    bulkCreate.isPending;
+    bulkCreate.isPending ||
+    reorderProducts.isPending;
 
   return (
     <PageContent
@@ -249,6 +259,7 @@ export default function ProductsPage() {
         onCreate={handleCreate}
         onEdit={handleEdit}
         onDelete={handleDeleteRequest}
+        onReorder={handleReorder}
         isLoading={isLoading}
         isSaving={isSaving}
       />

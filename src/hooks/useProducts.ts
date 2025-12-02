@@ -108,13 +108,15 @@ export const useCreateProduct = (organizationId: string) => {
 
       // Optimistically add to list
       if (previousProducts) {
+        const nextNumber = previousProducts.length + 1;
         const optimisticProduct: Product = {
           id: `temp-${Date.now()}`,
           organization_id: organizationId,
-          product_number: previousProducts.length + 1,
-          display_id: newProductInput.display_id || null,
+          product_number: nextNumber,
+          display_id: newProductInput.display_id || String(nextNumber),
           name: newProductInput.name,
-          price: newProductInput.price ?? null,
+          amount: newProductInput.amount ?? null,
+          amount_unit: newProductInput.amount_unit || 'Flat',
           category: newProductInput.category || null,
           manufacturer: null,
           product_type: null,
@@ -201,11 +203,6 @@ export const useUpdateProduct = (organizationId: string) => {
       });
       queryClient.invalidateQueries({
         queryKey: productQueryKeys.detail(updatedProduct.id),
-      });
-
-      toast({
-        title: 'Product Updated',
-        description: `${updatedProduct.name} has been updated.`,
       });
     },
     onError: (error: Error, _variables, context) => {
@@ -305,6 +302,61 @@ export const useBulkCreateProducts = (organizationId: string) => {
     onError: (error: Error) => {
       toast({
         title: 'Import Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+/**
+ * Reorder products with optimistic update
+ */
+export const useReorderProducts = (organizationId: string) => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (productIds: string[]) =>
+      productsService.reorderProducts(productIds),
+    onMutate: async (productIds) => {
+      await queryClient.cancelQueries({
+        queryKey: productQueryKeys.list(organizationId),
+      });
+
+      const previousProducts = queryClient.getQueryData<Product[]>(
+        productQueryKeys.list(organizationId)
+      );
+
+      // Optimistically reorder products
+      if (previousProducts) {
+        const reorderedProducts = productIds
+          .map((id) => previousProducts.find((p) => p.id === id))
+          .filter((p): p is Product => p !== undefined)
+          .map((p, index) => ({ ...p, sort_order: index }));
+
+        queryClient.setQueryData<Product[]>(
+          productQueryKeys.list(organizationId),
+          reorderedProducts
+        );
+      }
+
+      return { previousProducts };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: productQueryKeys.list(organizationId),
+      });
+    },
+    onError: (error: Error, _productIds, context) => {
+      if (context?.previousProducts) {
+        queryClient.setQueryData(
+          productQueryKeys.list(organizationId),
+          context.previousProducts
+        );
+      }
+      toast({
+        title: 'Error Reordering Products',
         description: error.message,
         variant: 'destructive',
       });

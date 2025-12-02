@@ -20,7 +20,7 @@ export class ProductsService {
       .from('products')
       .select('*')
       .eq('organization_id', organizationId)
-      .order('product_number', { ascending: true });
+      .order('sort_order', { ascending: true });
 
     if (error) {
       console.error('Failed to fetch products:', error);
@@ -99,6 +99,41 @@ export class ProductsService {
   }
 
   /**
+   * Get the next available display ID (finds first unused number)
+   */
+  private async getNextDisplayId(organizationId: string): Promise<string> {
+    const { data } = await supabase
+      .from('products')
+      .select('display_id')
+      .eq('organization_id', organizationId);
+
+    const products = data as { display_id: string | null }[] | null;
+
+    if (!products || products.length === 0) {
+      return '1';
+    }
+
+    // Get all numeric display IDs
+    const numericIds = products
+      .map((p) => parseInt(p.display_id || '', 10))
+      .filter((n) => !isNaN(n))
+      .sort((a, b) => a - b);
+
+    if (numericIds.length === 0) {
+      return '1';
+    }
+
+    // Find first gap in the sequence
+    for (let i = 1; i <= numericIds.length + 1; i++) {
+      if (!numericIds.includes(i)) {
+        return String(i);
+      }
+    }
+
+    return String(numericIds.length + 1);
+  }
+
+  /**
    * Create a new product
    */
   async createProduct(
@@ -116,14 +151,21 @@ export class ProductsService {
     // Get next available product number (fills gaps)
     const nextProductNumber = await this.getNextProductNumber(organizationId);
 
+    // Use provided display_id or find next available one
+    let displayId = input.display_id;
+    if (!displayId) {
+      displayId = await this.getNextDisplayId(organizationId);
+    }
+
     const insertData = {
       organization_id: organizationId,
       created_by: user.id,
       product_number: nextProductNumber,
       name: input.name,
-      price: input.price ?? null,
+      amount: input.amount ?? null,
+      amount_unit: input.amount_unit || 'Flat',
       category: input.category || null,
-      display_id: input.display_id || null,
+      display_id: displayId,
       manufacturer: input.manufacturer || null,
       product_type: input.product_type || null,
       series: input.series || null,
@@ -286,6 +328,32 @@ export class ProductsService {
     }
 
     return (data as Product[]) || [];
+  }
+
+  /**
+   * Reorder products by updating sort_order
+   */
+  async reorderProducts(
+    productIds: string[]
+  ): Promise<void> {
+    // Update each product's sort_order based on its position in the array
+    const updates = productIds.map((id, index) => ({
+      id,
+      sort_order: index,
+      updated_at: new Date().toISOString(),
+    }));
+
+    for (const update of updates) {
+      const { error } = await supabase
+        .from('products')
+        .update({ sort_order: update.sort_order, updated_at: update.updated_at } as never)
+        .eq('id', update.id);
+
+      if (error) {
+        console.error('Failed to reorder product:', error);
+        throw new Error(`Failed to reorder products: ${error.message}`);
+      }
+    }
   }
 }
 

@@ -30,7 +30,8 @@ export interface Product {
   product_number: number;
   display_id: string | null;
   name: string;
-  price: number | null;
+  amount: number | null;
+  amount_unit: AmountUnit;
   category: string | null;
   manufacturer: string | null;
   product_type: string | null;
@@ -49,7 +50,8 @@ export interface Product {
  */
 export interface CreateProductInput {
   name: string;
-  price?: number | null;
+  amount?: number | null;
+  amount_unit?: AmountUnit;
   category?: string;
   display_id?: string;
   manufacturer?: string;
@@ -65,7 +67,8 @@ export interface CreateProductInput {
  */
 export interface UpdateProductInput {
   name?: string;
-  price?: number | null;
+  amount?: number | null;
+  amount_unit?: AmountUnit;
   category?: string | null;
   display_id?: string | null;
   manufacturer?: string | null;
@@ -98,6 +101,20 @@ export const PRODUCT_CATEGORIES = [
 export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
 
 /**
+ * Amount unit types for products
+ */
+export const AMOUNT_UNITS = [
+  { value: 'Flat', label: 'Flat', shortLabel: '' },
+  { value: 'Per Hour', label: 'Per Hour', shortLabel: '/hr' },
+  { value: 'Per Day', label: 'Per Day', shortLabel: '/day' },
+  { value: 'Per Unit', label: 'Per Unit', shortLabel: '/unit' },
+  { value: 'Per Sq Ft', label: 'Per Sq Ft', shortLabel: '/sqft' },
+  { value: 'Per Linear Ft', label: 'Per Linear Ft', shortLabel: '/lf' },
+] as const;
+
+export type AmountUnit = (typeof AMOUNT_UNITS)[number]['value'];
+
+/**
  * Get display ID for a product
  * Returns custom display_id if set, otherwise formats product_number
  */
@@ -109,15 +126,15 @@ export const getProductDisplayId = (product: Product): string => {
 };
 
 /**
- * Format price for display - empty if null
+ * Format amount for display - empty if null
  */
-export const formatProductPrice = (price: number | null): string => {
-  if (price === null) {
+export const formatProductAmount = (amount: number | null): string => {
+  if (amount === null) {
     return '';
   }
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
-  }).format(price);
+  }).format(amount);
 };
