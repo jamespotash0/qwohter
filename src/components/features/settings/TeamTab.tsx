@@ -44,6 +44,7 @@ export function TeamTab() {
   const [removeDialog, setRemoveDialog] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: "", memberName: "" });
   const [transferDialog, setTransferDialog] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: "", memberName: "" });
   const [inviteSentDialog, setInviteSentDialog] = useState<{ open: boolean; emails: string[] }>({ open: false, emails: [] });
+  const [revokeDialog, setRevokeDialog] = useState<{ open: boolean; token: string; email: string }>({ open: false, token: "", email: "" });
   const [isSending, setIsSending] = useState(false);
 
   // Billing confirmation dialog state
@@ -213,9 +214,10 @@ export function TeamTab() {
     }
   };
 
-  const handleRevokeInvite = async (token: string) => {
+  const handleRevokeInvite = async () => {
     try {
-      await revokeInviteMutation(token);
+      await revokeInviteMutation(revokeDialog.token);
+      setRevokeDialog({ open: false, token: "", email: "" });
     } catch (error: any) {
       toast({
         title: "Failed to revoke invitation",
@@ -562,7 +564,7 @@ export function TeamTab() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleRevokeInvite(invite.token)}
+                          onClick={() => setRevokeDialog({ open: true, token: invite.token, email: invite.email })}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                         >
                           Revoke
@@ -930,6 +932,48 @@ export function TeamTab() {
               className="bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white px-8"
             >
               Got it
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revoke Invitation Dialog */}
+      <Dialog open={revokeDialog.open} onOpenChange={(open) => setRevokeDialog({ ...revokeDialog, open })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revoke Invitation</DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Are you sure you want to revoke the invitation for{' '}
+                  <span className="font-semibold">{revokeDialog.email}</span>?
+                </p>
+                <p className="text-sm">This will:</p>
+                <ul className="text-sm list-disc list-inside space-y-1 ml-2">
+                  <li>Immediately invalidate their invitation link</li>
+                  <li>Prevent them from joining with this invitation</li>
+                  <li>Keep the invitation record for 30 days</li>
+                </ul>
+                <div className="flex items-start gap-2 p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 mt-2">
+                  <span className="text-sm text-blue-800 dark:text-blue-200">
+                    You can resend a new invitation to this email at any time.
+                  </span>
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRevokeDialog({ open: false, token: "", email: "" })}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRevokeInvite}
+            >
+              Revoke Invitation
             </Button>
           </DialogFooter>
         </DialogContent>
