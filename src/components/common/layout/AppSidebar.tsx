@@ -1,5 +1,5 @@
 import { Clock, Check, ChevronDown, LogOut } from "lucide-react";
-import { House, FileText, ChartBar, Users, List, Gear, Kanban, Sidebar as SidebarIcon, Lock, SquaresFour, Article, Buildings, AddressBook } from "@phosphor-icons/react";
+import { House, FileText, ChartBar, Gear, Kanban, Sidebar as SidebarIcon, Lock, SquaresFour, Article, Buildings, AddressBook, CheckSquare, CaretDown, Stack } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -8,19 +8,37 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Skeleton } from "@/components/ui/skeleton";
 // import { Card, CardContent } from "@/components/ui/card";
 import { QwohterLogo } from "@/components/common/QwohterLogo";
-import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
 import { useCurrentOrganization, useOrganizationMembers } from "@/hooks/queries/useOrganization";
 import { useUser, useProfile, useAuthStatus, useSignOut } from "@/auth";
 import { stripeService } from "@/services/stripeService";
+import { switchOrganization } from "@/services/organizationService";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef } from "react";
+import { TrialProgressRing } from "@/components/trial/TrialProgressRing";
 
 interface AppSidebarProps {
   user: string;
   onLogout: () => void;
 }
 
-const menuItems = [
+interface SubMenuItem {
+  title: string;
+  path: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon?: React.ComponentType<any>;
+}
+
+interface MenuItem {
+  title: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon: React.ComponentType<any>;
+  path: string;
+  roles: string[];
+  disabled?: boolean;
+  subItems?: SubMenuItem[];
+}
+
+const menuItems: MenuItem[] = [
   {
     title: "Dashboard",
     icon: House,
@@ -28,10 +46,14 @@ const menuItems = [
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
   {
-    title: "Project Board",
-    icon: Kanban,
+    title: "Board",
+    icon: Stack,
     path: "/board",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
+    subItems: [
+      { title: "Task Board", path: "/task-board", icon: CheckSquare },
+      { title: "Project Board", path: "/board", icon: Kanban },
+    ],
   },
   {
     title: "Proposals",
@@ -75,6 +97,10 @@ interface UserOrganization {
   id: string;
   name: string;
   role: 'Owner' | 'Admin' | 'Member';
+  logo_data?: {
+    logo_url?: string;
+    logo_public_url?: string;
+  } | null;
 }
 
 export function AppSidebar({
@@ -82,10 +108,22 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [clickedItem, setClickedItem] = useState<string | null>(null);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const previousPathRef = useRef<string>('');
   const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(null);
+  const [inGracePeriod, setInGracePeriod] = useState(false);
+  const [graceDaysRemaining, setGraceDaysRemaining] = useState<number>(0);
   const [userOrganizations, setUserOrganizations] = useState<UserOrganization[]>([]);
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(false);
+
+  // Toggle expanded state for menu items with subItems
+  const toggleExpanded = (title: string) => {
+    setExpandedItems(prev =>
+      prev.includes(title)
+        ? prev.filter(t => t !== title)
+        : [...prev, title]
+    );
+  };
 
   // Use React Query hooks for organization data
   const user = useUser();
@@ -142,12 +180,17 @@ export function AppSidebar({
 
   // Track path changes for animations
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
     if (previousPathRef.current !== location.pathname) {
       previousPathRef.current = location.pathname;
       // Reset clicked item after navigation completes
-      const timer = setTimeout(() => setClickedItem(null), 500);
-      return () => clearTimeout(timer);
+      timer = setTimeout(() => setClickedItem(null), 500);
     }
+    return () => {
+      if (timer !== null) {
+        clearTimeout(timer);
+      }
+    };
   }, [location.pathname]);
 
   // Fetch all user organizations on mount
@@ -163,7 +206,8 @@ export function AppSidebar({
             role,
             organizations (
               id,
-              name
+              name,
+              logo_data
             )
           `)
           .eq('user_id', user.id)
@@ -177,6 +221,7 @@ export function AppSidebar({
             id: m.organizations.id,
             name: m.organizations.name,
             role: m.role as 'Owner' | 'Admin' | 'Member',
+            logo_data: m.organizations.logo_data,
           })) || [];
 
         setUserOrganizations(orgs);
@@ -190,7 +235,7 @@ export function AppSidebar({
     fetchUserOrganizations();
   }, [user?.id]);
 
-  // Check for trial status
+  // Check for trial status and grace period
   useEffect(() => {
     const checkTrialStatus = async () => {
       if (!currentOrganization?.id) return;
@@ -198,11 +243,42 @@ export function AppSidebar({
       const { data: subscription } = await stripeService.getSubscription(currentOrganization.id);
 
       const status = subscription?.stripe_subscription_status?.toLowerCase();
-      if (status === 'trialing' && subscription?.current_period_end) {
-        const daysLeft = stripeService.getDaysRemaining(subscription.current_period_end);
-        setTrialDaysRemaining(daysLeft);
+      if (status === 'trialing' && subscription?.trial_end) {
+        const trialEndDate = new Date(subscription.trial_end);
+        const now = new Date();
+        const daysLeft = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (daysLeft >= 0) {
+          // Active trial
+          setTrialDaysRemaining(daysLeft);
+          setInGracePeriod(false);
+          setGraceDaysRemaining(0);
+        } else if (!subscription.has_payment_method) {
+          // Trial expired, check grace period (3 days)
+          const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
+          const graceDays = Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (graceDays > 0) {
+            // In grace period
+            setTrialDaysRemaining(null);
+            setInGracePeriod(true);
+            setGraceDaysRemaining(graceDays);
+          } else {
+            // Grace period expired
+            setTrialDaysRemaining(null);
+            setInGracePeriod(false);
+            setGraceDaysRemaining(0);
+          }
+        } else {
+          // Has payment method
+          setTrialDaysRemaining(null);
+          setInGracePeriod(false);
+          setGraceDaysRemaining(0);
+        }
       } else {
         setTrialDaysRemaining(null);
+        setInGracePeriod(false);
+        setGraceDaysRemaining(0);
       }
     };
 
@@ -217,44 +293,14 @@ export function AppSidebar({
   };
 
   const handleSwitchOrganization = async (orgId: string) => {
-    if (orgId === currentOrganization?.id) return;
+    if (orgId === currentOrganization?.id || !user?.id) return;
 
-    try {
-      // Fetch the full organization data with the selected org
-      const { data: membershipData, error } = await supabase
-        .from('memberships')
-        .select(`
-          role,
-          joined_at,
-          organizations (
-            id,
-            name,
-            created_at,
-            updated_at,
-            phone_number,
-            fax_number,
-            company_address,
-            website,
-            industry,
-            found_via,
-            quote_start_number,
-            logo_data
-          )
-        `)
-        .eq('user_id', user?.id)
-        .eq('organization_id', orgId)
-        .eq('status', 'Active') //membership_status
-        .single();
+    const result = await switchOrganization(user.id, orgId);
 
-      if (error) throw error;
-
-      if (membershipData?.organizations) {
-        // Refresh the page to reload all organization-specific data with the new organization
-        // React Query will automatically fetch the new organization data
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Failed to switch organization:', error);
+    if (result.success) {
+      // Refresh the page to reload all organization-specific data
+      // React Query will automatically fetch the new organization data
+      window.location.reload();
     }
   };
 
@@ -266,7 +312,7 @@ export function AppSidebar({
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Header with Logo and Collapse Toggle */}
-      <SidebarHeader className={`transition-all duration-200 ease-in-out ${isCollapsed ? 'px-0 pt-5 pb-0' : 'px-4 pt-6 pb-1 pl-6'}`}>
+      <SidebarHeader className={`transition-all duration-200 ease-in-out ${isCollapsed ? 'px-0 pt-5 pb-0' : 'pl-5 pr-5 pt-6 pb-1'}`}>
         <div className="flex items-center justify-between">
           {/* Logo or Menu Icon Toggle */}
           <div className={`flex items-center transition-all duration-300 ${isCollapsed ? 'justify-center w-full' : ''}`}>
@@ -301,39 +347,19 @@ export function AppSidebar({
       </SidebarHeader>
 
       {/* Main Navigation */}
-      <SidebarContent className={`px-2 ${isCollapsed ? 'pt-2' : 'pt-4'} pb-6 flex-1 transition-all duration-300`}>
+      <SidebarContent className={`px-2 ${isCollapsed ? 'pt-2' : 'pt-2'} pb-6 flex-1 transition-all duration-300`}>
         <SidebarGroup>
           {/* Organization Switcher */}
           {!isCollapsed ? (
-            <div className="mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="mb-2 animate-in fade-in slide-in-from-top-2 duration-300">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button
-                    className="w-full h-11 px-3 flex items-center justify-between gap-3 shadow-sm transition-colors group focus:outline-none focus-visible:outline-none bg-gray-50 dark:bg-gray-800"
-                    style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = 'var(--sidebar-nav-bg-hover)';
-                    }}
-                    onMouseLeave={(e) => {
-                      const isDark = document.documentElement.classList.contains('dark');
-                      e.currentTarget.style.backgroundColor = isDark ? 'rgb(31, 41, 55)' : 'rgb(249, 250, 251)';
-                    }}
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--sidebar-nav-bg-hover)' }}>
-                        <Buildings size={16} weight="fill" className="text-orange-800 dark:text-orange-700" />
-                      </div>
-                      <p
-                        className={`font-medium text-gray-900 dark:text-gray-100 flex-1 text-left leading-tight whitespace-nowrap overflow-hidden text-ellipsis ${
-                          (currentOrganization?.name || '').length > 25 ? 'text-[10px]' :
-                          (currentOrganization?.name || '').length > 20 ? 'text-[11px]' :
-                          (currentOrganization?.name || '').length > 15 ? 'text-xs' : 'text-sm'
-                        }`}
-                      >
-                        {currentOrganization?.name || 'Select Organization'}
-                      </p>
-                    </div>
-                    <ChevronDown className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors flex-shrink-0" />
+                  <button className="flex items-center gap-2 pl-[6px] py-1 group focus:outline-none focus-visible:outline-none hover:opacity-80 transition-opacity max-w-[182px]">
+                    <Buildings size={16} weight="fill" className="text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                    <span className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate min-w-0 flex-1">
+                      {currentOrganization?.name || 'Select Organization'}
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-[240px]">
@@ -418,32 +444,161 @@ export function AppSidebar({
             </div>
           )}
 
-          <div
-            className={`px-0 pl-0 mb-2 flex items-center transition-all duration-300 ${
-              isCollapsed ? 'justify-center' : 'justify-between'
-            }`}
-          >
-            {!isCollapsed && (
-              <p className="text-xs font-inter font-medium text-[var(--sidebar-section-label)] uppercase tracking-wide animate-in fade-in slide-in-from-left-2 duration-300">
-                Menu
-              </p>
-            )}
-            <div className="transition-all duration-300 hover:scale-110 active:scale-95">
-              <ThemeToggleButton />
+          {!isCollapsed && (
+            <div className="flex justify-center mb-2">
+              <div className="w-[95%] h-px bg-gray-200 dark:bg-gray-700" />
             </div>
-          </div>
+          )}
 
           <SidebarGroupContent>
             <SidebarMenu className={`space-y-0 ${isCollapsed ? 'space-y-1' : 'space-y-0'}`}>
               {menuItems
                 .filter(item => !currentUserRole || item.roles.includes(currentUserRole))
                 .map((item, index) => {
-                const isActive = location.pathname === item.path;
+                const isActive = location.pathname === item.path ||
+                  (item.subItems?.some(sub => location.pathname === sub.path) ?? false);
                 const Icon = item.icon;
                 const isDisabled = item.disabled || false;
+                const hasSubItems = item.subItems && item.subItems.length > 0;
 
                 const isClicked = clickedItem === item.title;
 
+                // Render expandable menu for items with subItems
+                // Click toggles expand - parent item never shows active state
+                if (hasSubItems) {
+                  const isExpanded = expandedItems.includes(item.title);
+
+                  // Collapsed view - use dropdown menu
+                  if (isCollapsed) {
+                    return (
+                      <SidebarMenuItem
+                        key={item.title}
+                        className="animate-in fade-in zoom-in-95 duration-200"
+                        style={{
+                          animationDelay: `${index * 40}ms`,
+                          animationFillMode: 'backwards'
+                        }}
+                      >
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <SidebarMenuButton
+                              className="h-10 flex items-center justify-center w-full px-0 group/item cursor-pointer text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)] transition-all duration-300 ease-out"
+                              style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
+                            >
+                              <Icon
+                                size={18}
+                                weight="regular"
+                                className="text-[var(--sidebar-icon-default)] group-hover/item:text-[var(--sidebar-icon-hover)] transition-all duration-300"
+                              />
+                            </SidebarMenuButton>
+                          </DropdownMenuTrigger>
+                            <DropdownMenuContent side="right" align="start" className="w-[180px]">
+                              {item.subItems?.map((subItem) => {
+                                const SubIcon = subItem.icon;
+                                const isSubActive = location.pathname === subItem.path;
+                                return (
+                                  <DropdownMenuItem
+                                    key={subItem.path}
+                                    onClick={() => handleNavigate(subItem.path, subItem.title)}
+                                    className={`cursor-pointer ${isSubActive ? 'bg-gray-100 hover:bg-gray-100' : ''}`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      {SubIcon && <SubIcon size={16} weight={isSubActive ? 'fill' : 'regular'} />}
+                                      <span className={isSubActive ? 'font-medium' : ''}>{subItem.title}</span>
+                                    </div>
+                                  </DropdownMenuItem>
+                                );
+                              })}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </SidebarMenuItem>
+                    );
+                  }
+
+                  // Expanded view - toggleable accordion
+                  return (
+                    <div key={item.title}>
+                      <SidebarMenuItem
+                        className="animate-in fade-in slide-in-from-left-3 duration-300"
+                        style={{
+                          animationDelay: `${index * 40}ms`,
+                          animationFillMode: 'backwards'
+                        }}
+                      >
+                        {/* Clickable row - toggles expand, never shows active state */}
+                        <button
+                          className="h-10 w-full flex items-center relative group/item overflow-hidden cursor-pointer ml-[-2px] mr-[-10px] pl-[8px] pr-[2px] text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)] transition-all duration-300 ease-out"
+                          style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
+                          onClick={() => toggleExpanded(item.title)}
+                        >
+                          {/* Icon */}
+                          <div className="flex items-center gap-3 flex-1">
+                            <Icon
+                              size={18}
+                              weight="regular"
+                              className="text-[var(--sidebar-icon-default)] group-hover/item:text-[var(--sidebar-icon-hover)] transition-all duration-300"
+                            />
+                            <span className="font-inter font-normal tracking-tight transition-all duration-300 whitespace-nowrap">
+                              {item.title}
+                            </span>
+                          </div>
+
+                          {/* Caret indicator */}
+                          <div className="px-2.5 flex items-center justify-center">
+                            <CaretDown
+                              size={14}
+                              weight="bold"
+                              className={`text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                            />
+                          </div>
+                        </button>
+                      </SidebarMenuItem>
+
+                      {/* Expandable sub-items */}
+                      {isExpanded && (
+                        <div className="ml-6 mt-1 space-y-0.5 animate-in slide-in-from-top-2 fade-in duration-200">
+                          {item.subItems?.map((subItem) => {
+                            const SubIcon = subItem.icon;
+                            const isSubActive = location.pathname === subItem.path;
+                            return (
+                              <SidebarMenuItem key={subItem.path}>
+                                <SidebarMenuButton
+                                  className={`h-9 flex items-center pl-2 pr-3 group/subitem ${
+                                    isSubActive
+                                      ? 'text-[var(--sidebar-nav-text-active)] bg-[var(--sidebar-nav-bg-active)] hover:bg-[var(--sidebar-nav-bg-active)] hover:text-[var(--sidebar-nav-text-active)]'
+                                      : 'text-[var(--sidebar-nav-text)] hover:text-[var(--sidebar-nav-text-hover)] hover:bg-[var(--sidebar-nav-bg-hover)]'
+                                  } transition-all duration-200`}
+                                  style={{ borderRadius: 'var(--sidebar-nav-border-radius)' }}
+                                  onClick={(e) => handleNavigate(subItem.path, subItem.title, e)}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    {SubIcon && (
+                                      <SubIcon
+                                        size={16}
+                                        weight={isSubActive ? 'fill' : 'regular'}
+                                        className={`transition-all duration-200 ${
+                                          isSubActive
+                                            ? 'text-[var(--sidebar-icon-active)]'
+                                            : 'text-[var(--sidebar-icon-default)] group-hover/subitem:text-[var(--sidebar-icon-hover)]'
+                                        }`}
+                                      />
+                                    )}
+                                    <span className={`text-sm ${isSubActive ? 'font-medium' : ''}`}>
+                                      {subItem.title}
+                                    </span>
+                                  </div>
+                                </SidebarMenuButton>
+                              </SidebarMenuItem>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                    </div>
+                  );
+                }
+
+                // Regular menu item (no subItems)
                 return (
                   <SidebarMenuItem
                     key={item.title}
@@ -458,8 +613,8 @@ export function AppSidebar({
                     }}
                   >
                     <SidebarMenuButton
-                      className={`h-11 flex items-center relative group/item overflow-hidden ${
-                        isCollapsed ? 'justify-center w-full px-0' : 'px-3'
+                      className={`h-10 flex items-center relative group/item overflow-hidden ${
+                        isCollapsed ? 'justify-center w-full px-0' : 'ml-[-2px] mr-[-10px] pl-[8px] pr-[13px]'
                       } ${
                         isDisabled
                           ? 'text-[var(--sidebar-nav-text)] opacity-50 cursor-not-allowed'
@@ -559,18 +714,41 @@ export function AppSidebar({
               {trialDaysRemaining} {trialDaysRemaining === 1 ? 'day' : 'days'} remaining
             </p>
             <Button
-              onClick={() => navigate('/settings?tab=billing&upgrade=true')}
+              onClick={() => navigate('/settings?tab=billing')}
               variant="ghost"
               size="sm"
               className="w-full mt-2 h-7 text-xs bg-white/20 hover:bg-white/30 text-white border-0"
             >
-              Upgrade Plan
+              Manage Plan
             </Button>
           </div>
         </div>
       )}
 
-      <SidebarFooter className="p-2 pb-4 transition-all duration-300">
+      {/* Grace Period Warning - more urgent styling */}
+      {inGracePeriod && !isCollapsed && (
+        <div className="px-4 pb-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-3 text-white shadow-md border border-red-400">
+            <div className="flex items-center gap-2 mb-1">
+              <Clock className="w-4 h-4 animate-pulse" />
+              <span className="text-sm font-semibold">Trial Expired!</span>
+            </div>
+            <p className="text-xs opacity-90">
+              Grace period: {graceDaysRemaining} {graceDaysRemaining === 1 ? 'day' : 'days'} left
+            </p>
+            <Button
+              onClick={() => navigate('/settings?tab=billing&upgrade=true')}
+              variant="ghost"
+              size="sm"
+              className="w-full mt-2 h-7 text-xs bg-white/30 hover:bg-white/40 text-white border-0 font-semibold"
+            >
+              Add Payment Method
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <SidebarFooter className="pl-2 pr-5 pb-4 pt-2 transition-all duration-300">
         {!isLoggingOut && (
           <>
             {!shouldShowProfile ? (
@@ -595,7 +773,7 @@ export function AppSidebar({
             ) : !isCollapsed ? (
               <div className="space-y-3 animate-in fade-in duration-300 delay-150">
               {/* User Profile Section */}
-                <div className="flex items-center justify-between p-3 rounded-xl group transition-all duration-200">
+                <div className="flex items-center justify-between pl-3 pr-0 py-3 rounded-xl group transition-all duration-200">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <Avatar className="h-9 w-9 ring-2 ring-[var(--sidebar-user-avatar-bg)] transition-all duration-300">
                       <AvatarFallback className="bg-[var(--sidebar-user-avatar-bg)] text-white text-sm font-semibold">

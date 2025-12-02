@@ -1,0 +1,3 @@
+# Auto-resolve lockfile conflicts by keeping ours
+# After merge, run `npm install` to regenerate properly
+package-lock.json merge=ours

@@ -237,19 +237,42 @@ export const markTokenAsUsed = async (token: string): Promise<boolean> => {
 };
 
 /**
- * Clean up expired tokens (should be run periodically)
+ * Clean up expired and old revoked tokens
+ * - Deletes expired tokens
+ * - Deletes revoked tokens older than 30 days
  */
 export const cleanupExpiredTokens = async (): Promise<number> => {
-  const { data, error } = await supabase
+  let totalDeleted = 0;
+
+  // 1. Delete expired tokens
+  const { data: expiredData, error: expiredError } = await supabase
     .from('invite_tokens')
     .delete()
     .lt('expires_at', new Date().toISOString())
     .select('id');
 
-  if (error) {
-    console.error('Error cleaning up expired tokens:', error);
-    return 0;
+  if (expiredError) {
+    console.error('Error cleaning up expired tokens:', expiredError);
+  } else {
+    totalDeleted += expiredData?.length || 0;
   }
 
-  return data?.length || 0;
+  // 2. Delete revoked tokens older than 30 days
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const { data: revokedData, error: revokedError } = await supabase
+    .from('invite_tokens')
+    .delete()
+    .not('revoked_at', 'is', null)
+    .lt('revoked_at', thirtyDaysAgo.toISOString())
+    .select('id');
+
+  if (revokedError) {
+    console.error('Error cleaning up old revoked tokens:', revokedError);
+  } else {
+    totalDeleted += revokedData?.length || 0;
+  }
+
+  return totalDeleted;
 };

@@ -8,6 +8,7 @@ import { SubscriptionPaywall } from '@/components/common/SubscriptionPaywall';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
 import { versionCheckService } from '@/services/versionCheckService';
 import { toast } from 'sonner';
+import { useTrialReminder } from '@/hooks/useTrialReminder';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -36,11 +37,18 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
   // Get current organization for paywall from React Query
   const { organization: currentOrganization } = useCurrentOrganization(user?.id || '');
 
+  // Trial reminder system - shows daily payment method reminder
+  useTrialReminder();
+
   // Membership status tracking
   const [membershipStatus, setMembershipStatus] = useState<string | null>(null);
   const [checkingMembership, setCheckingMembership] = useState(false);
 
   // Check if current route should show sidebar
+  // Wizard pages (/quotes/new, /quotes/edit-incomplete) are full-screen without sidebar
+  const isWizardPage = location.pathname === '/quotes/new' ||
+    location.pathname.startsWith('/quotes/edit-incomplete/');
+
   const shouldShowSidebar = ![
     '/',
     '/sign-in',
@@ -52,10 +60,9 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
     '/account-inactive',
     '/demo',
     '/contact-us'
-  ].includes(location.pathname) && !location.pathname.startsWith('/editor/');
-
-  // Check if we're on a full-screen wizard page (no padding/max-width)
-  const isFullScreenPage = ['/proposals/new'].includes(location.pathname);
+  ].includes(location.pathname) &&
+    !location.pathname.startsWith('/editor/') &&
+    !isWizardPage;
 
   // Check membership status for protected routes
   useEffect(() => {
@@ -217,6 +224,20 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
       // Render editor with auth but no layout wrapper
       return <>{children}</>;
     }
+    // Wizard pages need auth check but no sidebar (full-screen experience)
+    if (isWizardPage) {
+      // Check auth for wizard
+      if (isInitialized && !user) {
+        navigate('/sign-in');
+        return null;
+      }
+      // Render wizard full-screen without sidebar
+      return (
+        <div className="h-screen w-full overflow-auto bg-[var(--content-bg)]">
+          {children}
+        </div>
+      );
+    }
     // Other public routes render directly
     return <>{children}</>;
   }
@@ -265,19 +286,12 @@ const MainLayoutContent: React.FC<{ children: React.ReactNode }> = ({ children }
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Main Content */}
           <main className="flex-1 overflow-hidden">
-            {isFullScreenPage ? (
-              // Full-screen layout for wizards (no padding, no max-width)
-              <div className="h-full overflow-auto">
+            {/* Standard layout with padding and max-width */}
+            <div className={`h-full pt-6 pb-8 space-y-4 overflow-auto ${sidebarOpen ? 'px-8 lg:px-12' : 'px-6 lg:px-10'}`}>
+              <div className="max-w-[1350px] mx-auto w-full">
                 {content}
               </div>
-            ) : (
-              // Standard layout with padding and max-width (original)
-              <div className={`h-full pt-6 pb-8 space-y-4 overflow-auto ${sidebarOpen ? 'px-8 lg:px-12' : 'px-6 lg:px-10'}`}>
-                <div className="max-w-[1350px] mx-auto w-full">
-                  {content}
-                </div>
-              </div>
-            )}
+            </div>
           </main>
         </div>
       </div>
@@ -288,6 +302,10 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const location = useLocation();
 
   // Check if current route should show sidebar
+  // Wizard pages are full-screen without sidebar
+  const isWizardPage = location.pathname === '/quotes/new' ||
+    location.pathname.startsWith('/quotes/edit-incomplete/');
+
   const shouldShowSidebar = ![
     '/',
     '/sign-in',
@@ -299,7 +317,9 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     '/account-inactive',
     '/demo',
     '/contact-us'
-  ].includes(location.pathname) && !location.pathname.startsWith('/editor/');
+  ].includes(location.pathname) &&
+    !location.pathname.startsWith('/editor/') &&
+    !isWizardPage;
 
   // Wrap with SidebarProvider only for protected routes
   if (shouldShowSidebar) {

@@ -103,7 +103,7 @@ serve(async (req) => {
     );
 
     // Transform invoices to match expected format
-    const transformedInvoices = invoices.data.map((invoice: { lines: { data: any[]; }; id: any; invoice_pdf: any; created: number; amount_paid: any; status: any; period_start: any; period_end: any; amount_refunded?: any; }) => {
+    const transformedInvoices = invoices.data.map((invoice: { lines: { data: any[]; }; id: any; invoice_pdf: any; created: number; amount_paid: any; status: any; period_start: any; period_end: any; amount_refunded?: any; billing_reason?: string; }) => {
       // Get plan name from line items
       const lineItem = invoice.lines.data[0];
       const productId = lineItem?.price?.product as string;
@@ -119,6 +119,7 @@ serve(async (req) => {
         period_start: new Date((invoice.period_start || invoice.created) * 1000).toISOString(),
         period_end: new Date((invoice.period_end || invoice.created) * 1000).toISOString(),
         amount_refunded: invoice.amount_refunded ? (invoice.amount_refunded / 100) : 0, // Convert cents to dollars
+        billing_reason: invoice.billing_reason || 'unknown', // subscription_cycle, subscription_create, subscription_update, etc.
       };
     });
 

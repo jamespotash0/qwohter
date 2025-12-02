@@ -7,6 +7,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
+import type { TimelineMilestone } from '@/lib/timelineMilestones';
 
 // ============================================================================
 // Types
@@ -14,6 +15,7 @@ import type { Database } from '@/integrations/supabase/types';
 
 export type Project = Database['public']['Tables']['projects']['Row'] & {
   quote?: Database['public']['Tables']['quotes']['Row'] | null;
+  timeline_milestones?: TimelineMilestone[];
 };
 
 export type WorkflowColumn = Database['public']['Tables']['project_workflow_columns']['Row'];
@@ -33,6 +35,7 @@ export interface UpdateBoardItemData {
   board_order?: number | null;
   priority?: ProjectPriority | null;
   completion_date?: string | null;
+  timeline_milestones?: TimelineMilestone[];
   updated_at?: string;
 }
 
@@ -69,6 +72,8 @@ export async function fetchBoardItems(organizationId: string): Promise<Project[]
         quote_details,
         job_details,
         price_details,
+        delivery_details,
+        wall_details,
         status,
         is_main_version
       )
@@ -105,6 +110,8 @@ export async function fetchBoardItemById(itemId: string): Promise<Project> {
         quote_details,
         job_details,
         price_details,
+        delivery_details,
+        wall_details,
         status,
         is_main_version
       )

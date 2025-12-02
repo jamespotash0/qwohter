@@ -8,8 +8,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Bell, Calendar as CalendarIcon, X } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { useQuotes, useCurrentOrganization } from '@/hooks/queries';
+import { cn, parseLocalDate } from '@/lib/utils';
+import { useQuotes } from '@/hooks/queries/useQuotes';
 import { reminderService, type ReminderType } from '@/services/reminderService';
 import { quoteActivityService } from '@/services/quoteActivityService';
 import { toast } from 'sonner';
@@ -35,7 +35,6 @@ interface Reminder {
 export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCreated }: AddReminderModalProps) => {
   // Get user, organization, and quotes using hooks
   const user = useUser();
-  const { organization } = useCurrentOrganization(user?.id || '', !!user?.id);
   const { data: quotes = [] } = useQuotes(user?.id);
 
   const [reminderType, setReminderType] = useState<string>('');
@@ -65,7 +64,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
         setNotes(editingReminder.description || '');
 
         // Parse date and time from due_date
-        const dueDateTime = new Date(editingReminder.due_date);
+        const dueDateTime = parseLocalDate(editingReminder.due_date);
         setDate(dueDateTime);
 
         // Format time as HH:mm

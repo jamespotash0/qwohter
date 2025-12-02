@@ -1,6 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { PageContent } from '@/components/common/layout';
 import { Project, ProjectPriority } from '@/services/boardService';
+import { type TimelineMilestone } from '@/lib/timelineMilestones';
+import { TimelineVisualizer } from '@/components/features/board/TimelineVisualizer';
+import { ProjectAttachments } from '@/components/features/board/ProjectAttachments';
+import { AIMilestoneSuggestions } from '@/components/features/board/AIMilestoneSuggestions';
+import { ProjectTasks } from '@/components/features/board/ProjectTasks';
+import { useProjectAttachments } from '@/hooks/useProjectAttachments';
+import { AIMilestoneService } from '@/services/aiMilestoneService';
 import {
   useProjects,
   useWorkflowColumns,
@@ -47,6 +54,7 @@ import {
 import { formatDateEST } from '@/utils/dateUtils';
 import { Button } from '@/components/ui/button';
 import { File as FileIcon } from '@phosphor-icons/react';
+import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 
 const COLUMN_COLORS = [
   { name: 'Slate', value: '#94A3B8', icon: '⚪' },
@@ -96,16 +104,87 @@ export default function Board() {
   const [isAddingColumn, setIsAddingColumn] = useState(false);
   const [newColumnName, setNewColumnName] = useState('');
   const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(new Set());
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const columnRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const isAnimatingRef = useRef(false);
   const lastColumnDropTarget = useRef<{ columnId: string; side: 'left' | 'right' } | null>(null);
+
+  // AI Milestone Suggestions state
+  const [showAISuggestions, setShowAISuggestions] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<TimelineMilestone[]>([]);
+  const [aiReasoning, setAiReasoning] = useState<string>('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+
+  // Delete confirmation state
+  const [deleteProjectDialog, setDeleteProjectDialog] = useState<{ open: boolean; project: Project | null }>({
+    open: false,
+    project: null,
+  });
+
+  // Derive selected project from projects array to ensure we always have fresh data
+  const selectedProject = selectedProjectId
+    ? projects.find(p => p.id === selectedProjectId) || null
+    : null;
+
+  // Fetch project attachments for selected project
+  const { attachments, refetch: refetchAttachments } = useProjectAttachments(selectedProject?.id);
 
   // React Query automatically handles:
   // - Data fetching via useProjects/useWorkflowColumns
   // - Realtime subscriptions (built into hooks)
   // - Cleanup on unmount
   // No manual initialization needed!
+
+  const toggleSection = (sectionId: string) => {
+    setCollapsedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sectionId)) {
+        newSet.delete(sectionId);
+      } else {
+        newSet.add(sectionId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleRequestAISuggestions = async () => {
+    if (!selectedProject?.quote) {
+      alert('No quote data found for this project. AI suggestions require quote information.');
+      return;
+    }
+
+    setIsGeneratingAI(true);
+    try {
+      const result = await AIMilestoneService.generateMilestones(
+        selectedProject.quote,
+        selectedProject.created_at
+      );
+      setAiSuggestions(result.milestones);
+      setAiReasoning(result.reasoning);
+      setShowAISuggestions(true);
+    } catch (error) {
+      console.error('Failed to generate AI suggestions:', error);
+      alert('Failed to generate milestone suggestions. Please check your API key and try again.');
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
+  const handleAddAIMilestones = (selectedMilestones: TimelineMilestone[]) => {
+    if (!selectedProject) return;
+
+    const existingMilestones = selectedProject.timeline_milestones || [];
+    const updatedMilestones = [...existingMilestones, ...selectedMilestones];
+
+    updateProject({
+      id: selectedProject.id,
+      updates: { timeline_milestones: updatedMilestones }
+    });
+
+    setShowAISuggestions(false);
+    setAiSuggestions([]);
+  };
 
   const handleDragStart = (e: React.DragEvent, projectId: string) => {
     setDraggedProject(projectId);
@@ -603,7 +682,7 @@ export default function Board() {
                   )}
 
                   <div
-                    className={`flex-shrink-0 transition-all duration-300 ease-in-out rounded-lg flex flex-col h-full ${
+                    className={`flex-shrink-0 transition-all duration-300 ease-in-out rounded-lg flex flex-col max-h-[calc(100vh-10rem)] ${
                       isCollapsed ? 'w-12' : 'w-72'
                     } ${draggedColumnId === column.id ? 'opacity-40 bg-gray-200 border-2 border-dashed border-gray-400' : 'bg-gray-50'} ${
                       dragOverColumn === column.name && !draggedColumnId ? 'ring-2 ring-blue-400 bg-blue-50 p-2' : 'p-0'
@@ -612,6 +691,11 @@ export default function Board() {
                     onDragLeave={handleDragLeave}
                     onDrop={(e) => handleDrop(e, column.name)}
                   >
+                  {/* Colored Banner */}
+                  <div
+                    className="h-1.5 rounded-t-lg flex-shrink-0"
+                    style={{ backgroundColor: column.color }}
+                  />
                   {/* Column Header */}
                   <div className="mb-3 flex items-center justify-between px-2 py-2">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -650,20 +734,18 @@ export default function Board() {
                             </PopoverContent>
                           </Popover>
 
-                          {/* Drag handle - only show for non-default columns */}
-                          {!column.is_default && (
-                            <div
-                              draggable
-                              onDragStart={(e) => {
-                                e.stopPropagation();
-                                handleColumnDragStart(e, column.id);
-                              }}
-                              className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing"
-                              title="Drag to reorder column"
-                            >
-                              <DragIcon className="w-4 h-4 text-gray-400" />
-                            </div>
-                          )}
+                          {/* Drag handle */}
+                          <div
+                            draggable
+                            onDragStart={(e) => {
+                              e.stopPropagation();
+                              handleColumnDragStart(e, column.id);
+                            }}
+                            className="p-0.5 hover:bg-gray-100 rounded transition-colors flex-shrink-0 cursor-grab active:cursor-grabbing"
+                            title="Drag to reorder column"
+                          >
+                            <DragIcon className="w-4 h-4 text-gray-400" />
+                          </div>
 
                           {isEditing ? (
                             <div className="flex items-center gap-1 flex-1">
@@ -700,11 +782,6 @@ export default function Board() {
                               <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-600 font-normal shrink-0">
                                 {columnProjects.length}
                               </Badge>
-                              {column.is_default && (
-                                <Badge className="text-xs px-1.5 py-0 h-4 bg-white border border-white text-blue-700 font-normal pointer-events-none">
-                                  Default
-                                </Badge>
-                              )}
                             </>
                           )}
 
@@ -722,19 +799,14 @@ export default function Board() {
                                 <PencilSimpleIcon className="w-4 h-4" />
                                 Rename
                               </DropdownMenuItem>
-                              {/* Only show delete for non-default columns */}
-                              {!column.is_default && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => handleDeleteColumn(column.id)}
-                                    className="flex items-center gap-2 text-red-600 focus:text-red-600"
-                                  >
-                                    <TrashIcon className="w-4 h-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </>
-                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteColumn(column.id)}
+                                className="flex items-center gap-2 text-red-600 focus:text-red-600"
+                              >
+                                <TrashIcon className="w-4 h-4" />
+                                Delete
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </>
@@ -770,7 +842,7 @@ export default function Board() {
                   {/* Column Cards */}
                   {!isCollapsed && (
                     <div
-                      className="space-y-1.5 px-2 pb-2 overflow-y-auto h-[calc(100vh-13rem)]"
+                      className="space-y-1.5 px-2 pb-2 flex-1 overflow-y-auto"
                       onDragOver={(e) => {
                         // Only handle at container level if empty, otherwise cards handle it
                         if (columnProjects.length === 0) {
@@ -817,7 +889,7 @@ export default function Board() {
                                 // Prevent column drag when clicking on card
                                 e.stopPropagation();
                               }}
-                              onClick={() => setSelectedProject(project)}
+                              onClick={() => setSelectedProjectId(project.id)}
                               className={`bg-white rounded-lg border border-gray-200 p-2.5 cursor-pointer hover:shadow-md transition-all duration-200 flex flex-col min-h-[120px] relative ${
                                 draggedProject === project.id ? 'opacity-50' : ''
                               }`}
@@ -835,7 +907,7 @@ export default function Board() {
                                     className="text-red-600 cursor-pointer"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      deleteProject(project.id);
+                                      setDeleteProjectDialog({ open: true, project });
                                     }}
                                   >
                                     <TrashIcon className="w-4 h-4 mr-2" />
@@ -1015,7 +1087,7 @@ export default function Board() {
 
           {/* Add New Column */}
           {isAddingColumn ? (
-            <div className="flex-shrink-0 w-80 bg-gray-50 rounded-lg p-3">
+            <div className="flex-shrink-0 w-72 bg-gray-50 rounded-lg p-3">
               <div className="flex items-center gap-2">
                 <Input
                   value={newColumnName}
@@ -1043,10 +1115,10 @@ export default function Board() {
               </div>
             </div>
           ) : (
-            <div className="flex-shrink-0 w-80">
+            <div className="flex-shrink-0 w-72">
               <button
                 onClick={() => setIsAddingColumn(true)}
-                className="w-50 px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-2 border-2 border-dashed border-gray-300 hover:border-gray-400"
+                className="w-full px-4 py-2 text-left text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors flex items-center gap-2 border-2 border-dashed border-gray-300 hover:border-gray-400"
               >
                 <PlusIcon className="w-4 h-4" />
                 Add Column
@@ -1061,12 +1133,12 @@ export default function Board() {
         <>
           <div
             className="fixed inset-0 bg-black/50 z-40"
-            onClick={() => setSelectedProject(null)}
+            onClick={() => setSelectedProjectId(null)}
           />
 
           <div className="fixed top-0 right-0 h-full w-[600px] bg-white shadow-2xl z-50 overflow-y-auto">
             {/* Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+            <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
               <div className="flex-1">
                 <div className="flex items-baseline gap-2">
                   <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Project Name:</span>
@@ -1082,7 +1154,7 @@ export default function Board() {
                 </div>
               </div>
               <button
-                onClick={() => setSelectedProject(null)}
+                onClick={() => setSelectedProjectId(null)}
                 className="p-2 hover:bg-gray-100 rounded-lg"
               >
                 <XIcon className="w-5 h-5 text-gray-500" />
@@ -1103,7 +1175,7 @@ export default function Board() {
                   <select
                     value={selectedProject.priority || ''}
                     onChange={(e) => updateProject({ id: selectedProject.id, updates: { priority: (e.target.value as ProjectPriority) || null } })}
-                    className={`text-xs px-2 py-1 rounded border ${getPriorityColor(selectedProject.priority)} capitalize cursor-pointer`}
+                    className={`text-xs px-2 py-1 rounded border ${getPriorityColor(selectedProject.priority)} capitalize cursor-pointer w-24`}
                   >
                     <option value="">None</option>
                     <option value="Lowest">Lowest</option>
@@ -1113,23 +1185,33 @@ export default function Board() {
                     <option value="Highest">Highest</option>
                   </select>
                 </div>
+                <span className="text-gray-300">|</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-500">Completion:</span>
+                  <Input
+                    type="date"
+                    value={selectedProject.completion_date || ''}
+                    onChange={(e) => updateProject({ id: selectedProject.id, updates: { completion_date: e.target.value || null } })}
+                    className="text-xs h-7 w-32"
+                  />
+                </div>
               </div>
 
-              {/* Completion Date */}
+              {/* Project Summary */}
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Completion Date</label>
-                <Input
-                  type="date"
-                  value={selectedProject.completion_date || ''}
-                  onChange={(e) => updateProject({ id: selectedProject.id, updates: { completion_date: e.target.value || null } })}
-                  className="text-sm max-w-xs"
-                />
-              </div>
-
-              {/* Quick Summary */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">Project Summary</h3>
-                <div className="space-y-2 text-sm">
+                <button
+                  onClick={() => toggleSection('summary')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
+                >
+                  <span>Project Summary</span>
+                  {collapsedSections.has('summary') ? (
+                    <CaretRightIcon className="w-4 h-4" />
+                  ) : (
+                    <CaretDownIcon className="w-4 h-4" />
+                  )}
+                </button>
+                {!collapsedSections.has('summary') && (
+                  <div className="space-y-2 text-sm">
                   {selectedProject.quote?.job_details?.client_name && (
                     <div className="flex gap-3">
                       <span className="text-gray-500 min-w-[100px]">Client:</span>
@@ -1142,22 +1224,10 @@ export default function Board() {
                       <span className="text-gray-900">{selectedProject.quote.job_details.client_company}</span>
                     </div>
                   )}
-                  {selectedProject.quote?.job_details?.client_address && (
+                  {selectedProject.quote?.job_details?.job_location && (
                     <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Address:</span>
-                      <span className="text-gray-900">{selectedProject.quote.job_details.client_address}</span>
-                    </div>
-                  )}
-                  {selectedProject.quote?.quote_details?.contactEmail && (
-                    <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Email:</span>
-                      <span className="text-gray-900">{selectedProject.quote.quote_details.contactEmail}</span>
-                    </div>
-                  )}
-                  {selectedProject.quote?.quote_details?.phone && (
-                    <div className="flex gap-3">
-                      <span className="text-gray-500 min-w-[100px]">Phone:</span>
-                      <span className="text-gray-900">{selectedProject.quote.quote_details.phone}</span>
+                      <span className="text-gray-500 min-w-[100px]">Job Location:</span>
+                      <span className="text-gray-900">{selectedProject.quote.job_details.job_location}</span>
                     </div>
                   )}
                   {selectedProject.quote?.wall_details?.wall_type && (
@@ -1178,41 +1248,127 @@ export default function Board() {
                       </span>
                     </div>
                   )}
+
+                  {/* Quick Actions - Only show if quote exists */}
+                  {selectedProject.quote?.proposal_number && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full h-8 text-xs justify-start"
+                        onClick={() => {
+                          window.location.href = `/editor/${selectedProject.quote.proposal_number}`;
+                        }}
+                      >
+                        <FileIcon className="w-3.5 h-3.5 mr-1.5" />
+                        View Quote
+                      </Button>
+                    </div>
+                  )}
                 </div>
+                )}
+              </div>
+
+              {/* Project Timeline */}
+              <div>
+                <button
+                  onClick={() => toggleSection('timeline')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
+                >
+                  <span>Project Timeline</span>
+                  {collapsedSections.has('timeline') ? (
+                    <CaretRightIcon className="w-4 h-4" />
+                  ) : (
+                    <CaretDownIcon className="w-4 h-4" />
+                  )}
+                </button>
+                {!collapsedSections.has('timeline') && (
+                  <TimelineVisualizer
+                    milestones={selectedProject.timeline_milestones || []}
+                    wonDate={selectedProject.created_at}
+                    onMilestoneUpdate={(updatedMilestones) => {
+                      updateProject({
+                        id: selectedProject.id,
+                        updates: { timeline_milestones: updatedMilestones }
+                      });
+                    }}
+                    onRequestAISuggestions={handleRequestAISuggestions}
+                    isGeneratingAI={isGeneratingAI}
+                  />
+                )}
+              </div>
+
+              {/* Project Tasks */}
+              <div>
+                <button
+                  onClick={() => toggleSection('tasks')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
+                >
+                  <span>Tasks</span>
+                  {collapsedSections.has('tasks') ? (
+                    <CaretRightIcon className="w-4 h-4" />
+                  ) : (
+                    <CaretDownIcon className="w-4 h-4" />
+                  )}
+                </button>
+                {!collapsedSections.has('tasks') && (
+                  <ProjectTasks
+                    projectId={selectedProject.id}
+                    organizationId={organizationId}
+                    projectName={selectedProject.quote?.project_name || 'Project'}
+                  />
+                )}
               </div>
 
               {/* Documents/Links */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">Documents</h3>
-                <div className="space-y-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      window.location.href = `/quotes/${selectedProject.quote_id}`;
-                    }}
-                  >
-                    <FileIcon className="w-4 h-4 mr-2" />
-                    View Full Quote
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      console.log('View pricing breakdown');
-                    }}
-                  >
-                    <CurrencyDollarIcon className="w-4 h-4 mr-2" />
-                    View Pricing Breakdown
-                  </Button>
-                </div>
+                <button
+                  onClick={() => toggleSection('documents')}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors mb-2 border border-gray-200"
+                >
+                  <span>Documents</span>
+                  {collapsedSections.has('documents') ? (
+                    <CaretRightIcon className="w-4 h-4" />
+                  ) : (
+                    <CaretDownIcon className="w-4 h-4" />
+                  )}
+                </button>
+                {!collapsedSections.has('documents') && (
+                  <ProjectAttachments
+                    projectId={selectedProject.id}
+                    attachments={attachments}
+                    onAttachmentsChange={refetchAttachments}
+                  />
+                )}
               </div>
             </div>
           </div>
         </>
       )}
+
+      {/* AI Milestone Suggestions Dialog */}
+      <AIMilestoneSuggestions
+        suggestions={aiSuggestions}
+        reasoning={aiReasoning}
+        isOpen={showAISuggestions}
+        onClose={() => setShowAISuggestions(false)}
+        onAddMilestones={handleAddAIMilestones}
+      />
+
+      {/* Delete Project Confirmation Dialog */}
+      <ConfirmDeleteDialog
+        open={deleteProjectDialog.open}
+        onOpenChange={(open) => setDeleteProjectDialog({ open, project: open ? deleteProjectDialog.project : null })}
+        onConfirm={() => {
+          if (deleteProjectDialog.project) {
+            deleteProject(deleteProjectDialog.project.id);
+            setDeleteProjectDialog({ open: false, project: null });
+          }
+        }}
+        title="Delete Project"
+        description="This action cannot be undone. All tasks, attachments, and milestones associated with this project will be permanently removed."
+        itemName={deleteProjectDialog.project?.quote?.project_name || 'Untitled Project'}
+      />
     </PageContent>
   );
 }

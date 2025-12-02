@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageContent, ContentCard } from "@/components/common/layout";
-// import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
+import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
+import { ImportQuoteDialog } from "@/components/features/quotes/import";
 import { CreateInvoiceDialog } from "@/components/features/integrations/CreateInvoiceDialog";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@/auth";
@@ -15,6 +16,7 @@ import { FileText, Plus, Sparkles, DollarSign, Clock, CheckCircle } from "lucide
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatDateEST } from "@/utils/dateUtils";
+import { DebugGrid } from "@/components/common/DebugGrid";
 
 /**
  * Streamlined Quotes Page using AppLayout
@@ -42,6 +44,7 @@ const Quotes = () => {
 
   const [deleteQuoteId, setDeleteQuoteId] = useState<string | null>(null);
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [invoiceQuote, setInvoiceQuote] = useState<Quote | null>(null);
 
@@ -442,6 +445,7 @@ const Quotes = () => {
 
   return (
     <PageContent title="Proposals" subtitle="Manage and track all your project proposals" showPageHeader={true}>
+      <DebugGrid />
       {/* Loading State - Show while fetching fresh data from database */}
       {quotesLoading ? (
         <div className="flex flex-col items-center justify-center py-20">
@@ -600,6 +604,7 @@ const Quotes = () => {
           onCreateVersion={handleCreateVersion}
           onCreateInvoice={handleCreateInvoice}
           onCreateQuote={() => setShowNewQuoteDialog(true)}
+          onImportQuote={() => setShowImportDialog(true)}
           // onSetReminder={handleSetReminder}
           onArchiveQuote={showArchived ? undefined : handleArchiveQuote}
           onUnarchiveQuote={showArchived ? handleUnarchiveQuote : undefined}
@@ -683,7 +688,13 @@ const Quotes = () => {
         open={showNewQuoteDialog}
         onOpenChange={setShowNewQuoteDialog}
         onCreateQuote={handleCreateQuote}
-      /> */}
+      />
+
+      {/* Import Quote Dialog */}
+      <ImportQuoteDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+      />
 
       {/* Create Invoice Dialog */}
       <CreateInvoiceDialog

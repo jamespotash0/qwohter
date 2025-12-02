@@ -23,10 +23,8 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     //@ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    //@ts-ignore
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
 
-    // Verify authentication using anon key
+    // Verify authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
@@ -35,13 +33,15 @@ serve(async (req) => {
       );
     }
 
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // Extract token from "Bearer <token>"
+    const token = authHeader.replace('Bearer ', '');
 
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    // Use service role client to verify the JWT token
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !user) {
+      console.error('Auth error:', authError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized - invalid token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -131,6 +131,7 @@ serve(async (req) => {
         plan_id: planId,
       },
       subscription_data: {
+        trial_period_days: 14, // Set trial at subscription level (recommended by Stripe)
         metadata: {
           organization_id: organizationId,
           plan_id: planId,

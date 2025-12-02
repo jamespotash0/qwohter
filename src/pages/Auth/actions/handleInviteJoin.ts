@@ -17,6 +17,7 @@ import {
 import { NavigateFunction } from 'react-router-dom';
 import { QueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryClient';
+import { stripeService } from '@/services/stripeService';
 
 interface HandleInviteJoinParams {
   userId: string | null;
@@ -343,6 +344,20 @@ export const handleInviteJoin = async (params: HandleInviteJoinParams) => {
     } catch (error) {
       console.error('Error marking token as used:', error);
       // Don't fail the join process if token marking fails
+    }
+
+    // Sync seat count with Stripe (new Active member = add seat)
+    try {
+      const syncResult = await stripeService.syncSeatCount(orgData.id, 'add');
+      if (syncResult.success) {
+        console.log('✅ Seat count synced successfully');
+      } else {
+        console.warn('⚠️ Seat sync warning:', syncResult.error);
+        // Don't fail - the scheduled sync will catch it
+      }
+    } catch (error) {
+      console.error('Seat sync error:', error);
+      // Don't fail the join process if seat sync fails
     }
 
     // Log successful attempt

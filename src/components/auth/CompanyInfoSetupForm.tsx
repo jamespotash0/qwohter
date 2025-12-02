@@ -8,7 +8,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { PhoneInput } from "@/components/ui/phone-input";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
 import { LogoUploadResult, LogoUploadService } from "@/services/LogoUploadService";
@@ -64,7 +63,6 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
   onSubmit,
   onSkip
 }) => {
-  const [includeFax, setIncludeFax] = useState(false);
   const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
   const [touched, setTouched] = useState<{[key: string]: boolean}>({});
   const [uploadedFileName, setUploadedFileName] = useState<string>('');
@@ -136,9 +134,9 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
     onQuoteStartingPointChange(formatQuoteStartingPoint(value));
   };
 
-  // Check if form has validation errors
+  // Check if form has validation errors - only Quote Starting Number and Found Via are required
   const hasValidationErrors = Object.values(validationErrors).some(error => error !== undefined);
-  const hasRequiredFieldsEmpty = !phone.trim() || !address.trim() || !website.trim() || !quoteStartingPoint.trim() || !industry.trim() || !foundVia.trim();
+  const hasRequiredFieldsEmpty = !quoteStartingPoint.trim() || !foundVia.trim();
   const isFormInvalid = hasValidationErrors || hasRequiredFieldsEmpty;
   return (
     <div className="space-y-4">
@@ -214,9 +212,8 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
             id="phone"
             value={phone}
             onChange={handlePhoneChange}
-            label="Phone Number"
+            label="Phone Number (Optional)"
             placeholder="Enter your business phone number"
-            required
             disabled={loading}
             error={touched.phone ? validationErrors.phone : undefined}
             showValidation={false}
@@ -224,35 +221,14 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
         </div>
 
         {/* Fax Number */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="fax" className="text-gray-700 font-medium text-sm">
-              Fax Number (Optional)
-            </Label>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="includeFax"
-                checked={includeFax}
-                onCheckedChange={(checked) => {
-                  setIncludeFax(checked as boolean);
-                  if (!checked) {
-                    onFaxChange(''); // Clear fax when unchecked
-                  }
-                }}
-                className="size-4 !rounded-[4px] border border-gray-300 data-[state=checked]:bg-slate-600 data-[state=checked]:border-slate-600"
-              />
-              <Label htmlFor="includeFax" className="text-xs text-gray-600 cursor-pointer">
-                Enable
-              </Label>
-            </div>
-          </div>
+        <div>
           <PhoneInput
             id="fax"
             value={fax}
             onChange={handleFaxChange}
-            label=""
-            placeholder={includeFax ? "Enter your business fax number" : "Fax disabled"}
-            disabled={loading || !includeFax}
+            label="Fax Number (Optional)"
+            placeholder="Enter your business fax number"
+            disabled={loading}
             error={touched.fax ? validationErrors.fax : undefined}
             showValidation={false}
           />
@@ -279,11 +255,11 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
         <div className="space-y-2">
           <MapboxInput
             id="address"
-            label="Address *"
+            label="Address (Optional)"
             value={address}
             onChange={onAddressChange}
             placeholder="Start typing your business address..."
-            required={true}
+            required={false}
             className="bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500"
           />
           <p className="text-xs text-gray-400">
@@ -293,13 +269,12 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
 
         {/* Website */}
         <div className="space-y-2">
-          <Label htmlFor="website" className="text-gray-700 font-medium text-sm">Website <span className="text-red-500">*</span></Label>
+          <Label htmlFor="website" className="text-gray-700 font-medium text-sm">Website (Optional)</Label>
           <Input
             id="website"
             value={website}
             onChange={handleWebsiteChange}
             placeholder="https://www.yourcompany.com"
-            required
             className={`bg-white border-gray-300 h-12 placeholder:text-gray-400 focus:border-orange-500 focus:ring-orange-500 ${
               touched.website && validationErrors.website ? 'border-red-500 focus:border-red-500' : ''
             }`}
@@ -314,7 +289,7 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
         <IndustrySelector
           value={industry}
           onChange={onIndustryChange}
-          required
+          required={false}
           disabled={loading}
         />
 
@@ -326,20 +301,11 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
           disabled={loading}
         />
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onSkip}
-            className="flex-1 h-12 text-base"
-            disabled={loading}
-          >
-            Skip for now
-          </Button>
+        {/* Action Button */}
+        <div className="pt-6">
           <Button
             type="submit"
-            className="flex-1 h-12 text-base bg-slate-600 hover:bg-slate-700 text-white font-semibold transition-colors"
+            className="w-full h-12 text-base bg-slate-600 hover:bg-slate-700 text-white font-semibold transition-colors"
             disabled={loading || isFormInvalid}
           >
             {loading ? "Saving..." : "Complete Setup"}
@@ -347,9 +313,9 @@ export const CompanyInfoSetupForm: React.FC<CompanyInfoSetupFormProps> = ({
         </div>
       </form>
 
-      {/* Skip Note */}
+      {/* Note */}
       <p className="text-xs text-gray-400 text-center">
-        You can add or update this information later in Settings
+        You can update this information later in Settings
       </p>
     </div>
   );

@@ -20,7 +20,9 @@ interface AuthFlowState {
   setUserId: (id: string | null) => void;
   userIdRef: React.MutableRefObject<string | null>;
 
-  // Organization choice
+  // Organization state
+  organizationId: string | null;
+  setOrganizationId: (id: string | null) => void;
   orgChoice: OrgChoice;
   setOrgChoice: (choice: OrgChoice) => void;
 
@@ -44,6 +46,7 @@ export const useAuthFlow = (): AuthFlowState => {
 
   const [step, setStep] = useState<AuthStep>('auth');
   const [userId, setUserId] = useState<string | null>(null);
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [orgChoice, setOrgChoice] = useState<OrgChoice>(null);
   const [loading, setLoading] = useState(false);
   const [submissionInProgress, setSubmissionInProgress] = useState(false);
@@ -72,6 +75,8 @@ export const useAuthFlow = (): AuthFlowState => {
     userId,
     setUserId,
     userIdRef,
+    organizationId,
+    setOrganizationId,
     orgChoice,
     setOrgChoice,
     loading,

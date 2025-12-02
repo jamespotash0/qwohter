@@ -258,21 +258,21 @@ export const LogoUpload: React.FC<LogoUploadProps> = ({
               </div>
             </div>
           ) : hasCurrentLogo && !uploadState.uploadedFile ? (
-            // Uploaded Logo State - Circular Profile
+            // Uploaded Logo State - Rectangular container for logos
             <div className="space-y-4 group">
-              <div className="w-14 h-14 mx-auto border-2 border-gray-200 dark:border-gray-700 rounded-full overflow-hidden bg-white dark:bg-gray-800 relative cursor-pointer"
+              <div className="w-24 h-16 mx-auto border-2 border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800 relative cursor-pointer"
                    onClick={handleBrowseClick}>
                 <img
                   src={currentLogoUrl}
                   alt="Company logo"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain p-1"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.style.display = 'none';
                   }}
                 />
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                  <Upload className="w-3.5 h-3.5 text-white" />
+                  <Upload className="w-4 h-4 text-white" />
                 </div>
               </div>
               <div className="space-y-2 pt-2">

@@ -92,8 +92,9 @@ const Forms = lazy(() => import("@/pages/Forms"));
 const FormBuilderV3 = lazy(() => import("@/pages/FormBuilderV3"));
 const TemplatesPage = lazy(() => import("@/pages/TemplatesPage"));
 
-// Board page
+// Board pages
 const Board = lazy(() => import("@/pages/Board"));
+const TaskBoard = lazy(() => import("@/pages/TaskBoard"));
 
 // Contacts page
 const Contacts = lazy(() => import("@/pages/Contacts"));
@@ -160,6 +161,7 @@ export const AppRouter = () => (
 
           {/* Board workflow */}
           <Route path="/board" element={<Board />} />
+          <Route path="/task-board" element={<TaskBoard />} />
 
           {/* Contacts CRM */}
           <Route path="/contacts" element={<Contacts />} />

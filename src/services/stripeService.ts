@@ -9,7 +9,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-
+import type { Database } from '@/integrations/supabase/types';
 // Type definitions
 interface SubscriptionPlan {
   id: string;
@@ -39,6 +39,9 @@ interface Subscription {
   stripe_subscription_id: string | null;
   stripe_subscription_status: string | null;
   current_period_end: string | null;
+  trial_start: string | null;
+  trial_end: string | null;
+  has_payment_method: boolean;
   is_active: boolean;
   has_used_trial: boolean;
   access_blocked: boolean;
@@ -192,6 +195,7 @@ export const updateSubscription = async (
 /**
  * Check if organization has valid subscription
  * Uses local cache for fast access control decisions
+ * Includes 3-day grace period after trial expiration
  */
 export const hasValidSubscription = async (organizationId: string) => {
   const { data: subscription, error } = await getSubscription(organizationId);
@@ -200,6 +204,7 @@ export const hasValidSubscription = async (organizationId: string) => {
     return {
       isValid: false,
       reason: 'No subscription found',
+      inGracePeriod: false,
     };
   }
 
@@ -208,6 +213,7 @@ export const hasValidSubscription = async (organizationId: string) => {
     return {
       isValid: false,
       reason: subscription.access_blocked_reason || 'Access blocked',
+      inGracePeriod: false,
     };
   }
 
@@ -243,12 +249,64 @@ export const hasValidSubscription = async (organizationId: string) => {
       reason: subscription.stripe_subscription_status
         ? `Subscription status: ${subscription.stripe_subscription_status}`
         : 'No subscription status set',
+      inGracePeriod: false,
     };
+  }
+
+  // Check trial expiration with 3-DAY GRACE PERIOD
+  // If on trial, expired, and no payment method - check grace period
+  if (status === 'trialing') {
+    const trialEnd = subscription.trial_end;
+    const hasPaymentMethod = subscription.has_payment_method;
+
+    if (trialEnd) {
+      const now = new Date();
+      const trialEndDate = new Date(trialEnd);
+      const isExpired = trialEndDate < now;
+
+      console.log('🆓 Trial check:', {
+        trialEnd,
+        now: now.toISOString(),
+        isExpired,
+        hasPaymentMethod,
+      });
+
+      if (isExpired && !hasPaymentMethod) {
+        // Trial expired without payment - check grace period (3 days)
+        const gracePeriodEnd = new Date(trialEndDate.getTime() + (3 * 24 * 60 * 60 * 1000));
+        const inGracePeriod = now <= gracePeriodEnd;
+        const graceDaysRemaining = Math.ceil((gracePeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        console.log('⏰ Grace period check:', {
+          gracePeriodEnd: gracePeriodEnd.toISOString(),
+          inGracePeriod,
+          graceDaysRemaining: Math.max(0, graceDaysRemaining),
+        });
+
+        if (inGracePeriod) {
+          console.log('✅ In grace period - allowing access');
+          return {
+            isValid: true,
+            reason: '',
+            inGracePeriod: true,
+            graceDaysRemaining: Math.max(0, graceDaysRemaining),
+          };
+        } else {
+          console.log('❌ Grace period expired');
+          return {
+            isValid: false,
+            reason: 'Your free trial and grace period have expired. Please add a payment method to continue.',
+            inGracePeriod: false,
+          };
+        }
+      }
+    }
   }
 
   return {
     isValid: true,
     reason: null,
+    inGracePeriod: false,
   };
 };
 
@@ -256,6 +314,7 @@ export const hasValidSubscription = async (organizationId: string) => {
  * Block organization access (manual override)
  */
 export const blockAccess = async (organizationId: string, reason: string) => {
+  
   const { error } = await supabase
     .from('subscriptions')
     .update({
@@ -515,6 +574,129 @@ export const getInvoices = async (organizationId: string) => {
 // TRIAL PERIOD HELPERS
 // ============================================================================
 
+// ============================================================================
+// SEAT MANAGEMENT
+// ============================================================================
+
+interface SyncSeatCountResult {
+  success: boolean;
+  error: string | null;
+  previousQuantity?: number;
+  newQuantity?: number;
+  proratedAmount?: number;
+}
+
+/**
+ * Sync seat count with Stripe
+ *
+ * Calls the manage-seats edge function to update Stripe subscription quantity.
+ * Only syncs if there's an active Stripe subscription (not during local-only trial).
+ *
+ * @param organizationId - The organization ID
+ * @param action - 'add' | 'remove' | 'update'
+ * @param quantity - Required if action is 'update', ignored otherwise
+ * @param triggeredByUserId - User who triggered the action (for audit)
+ */
+export const syncSeatCount = async (
+  organizationId: string,
+  action: 'add' | 'remove' | 'update',
+  quantity?: number,
+  triggeredByUserId?: string
+): Promise<SyncSeatCountResult> => {
+  try {
+    // Get subscription to check if Stripe sync is needed
+    const { data: subscription } = await getSubscription(organizationId);
+
+    // If no Stripe subscription ID, just update local count (local-only trial)
+    if (!subscription?.stripe_subscription_id) {
+      console.log('📊 No Stripe subscription - updating local seat count only');
+
+      // Count active members for local update
+      const { count, error: countError } = await supabase
+        .from('memberships')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .eq('status', 'Active');
+
+      if (countError) {
+        console.error('Failed to count active members:', countError);
+        return { success: false, error: countError.message };
+      }
+
+      // Update local subscription record
+      const { error: updateError } = await supabase
+        .from('subscriptions')
+        .update({
+          number_of_active_users: count || 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('organization_id', organizationId);
+
+      if (updateError) {
+        console.error('Failed to update local seat count:', updateError);
+        return { success: false, error: updateError.message };
+      }
+
+      return {
+        success: true,
+        error: null,
+        newQuantity: count || 1,
+      };
+    }
+
+    // Has Stripe subscription - call edge function
+    console.log('📊 Syncing seats with Stripe:', { organizationId, action, quantity });
+
+    const { data: sessionData } = await supabase.auth.getSession();
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-seats`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionData?.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          action,
+          organizationId,
+          quantity,
+          triggeredByUserId,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Seat sync failed:', data);
+      return {
+        success: false,
+        error: data.error || 'Failed to sync seats',
+      };
+    }
+
+    console.log('✅ Seat sync successful:', data);
+    return {
+      success: true,
+      error: null,
+      previousQuantity: data.previousQuantity,
+      newQuantity: data.newQuantity,
+      proratedAmount: data.proratedAmount,
+    };
+  } catch (error) {
+    console.error('Seat sync error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+};
+
+// ============================================================================
+// TRIAL PERIOD HELPERS
+// ============================================================================
+
 /**
  * Get days remaining for current subscription/trial period
  * Returns null if no subscription or no end date
@@ -533,12 +715,17 @@ export const getDaysRemaining = (currentPeriodEnd: string | null): number | null
 };
 
 /**
- * Auto-enroll organization in 14-day free trial
- * Called during signup to give immediate access
- * This creates a local subscription record with 'trialing' status
- * User must choose a paid plan before trial ends
+ * Create local-only trial subscription (no Stripe involvement)
+ * Called automatically during signup to create a 14-day free trial
+ *
+ * Creates LOCAL subscription record with:
+ * - stripe_subscription_status: 'Trialing'
+ * - trial_start/trial_end dates (14 days)
+ * - No Stripe customer or subscription IDs
+ *
+ * Stripe subscription is only created when user adds payment method via upgrade flow
  */
-export const enrollInFreeTrial = async (organizationId: string): Promise<{ success: boolean; error: string | null }> => {
+export const createTrialSubscription = async (organizationId: string): Promise<{ success: boolean; error: string | null; data?: any }> => {
   try {
     console.log('📋 enrollInFreeTrial called for organization:', organizationId);
 
@@ -574,15 +761,23 @@ export const enrollInFreeTrial = async (organizationId: string): Promise<{ succe
       trial_end: trialEndDate.toISOString()
     });
 
-    // Create subscription record with trialing status
+    // Create subscription record with trialing status (LOCAL-ONLY - no Stripe until upgrade)
     const { error: subscriptionError } = await supabase
       .from('subscriptions')
       .insert({
         organization_id: organizationId,
         plan_id: teamPlan.id,
         stripe_subscription_status: 'Trialing',
+        // Trial dates - used for trial progress tracking
+        trial_start: trialStartDate.toISOString(),
+        trial_end: trialEndDate.toISOString(),
+        // Current period mirrors trial dates during trial
         current_period_start: trialStartDate.toISOString(),
         current_period_end: trialEndDate.toISOString(),
+        // No Stripe IDs until user upgrades/adds payment method
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+        has_payment_method: false,
         is_active: true,
         access_blocked: false,
         number_of_active_users: 1,
@@ -618,13 +813,14 @@ export const enrollInFreeTrial = async (organizationId: string): Promise<{ succe
     console.log('🎉 Successfully enrolled organization in 14-day free trial');
     return { success: true, error: null };
   } catch (error) {
-    console.error('Error enrolling in free trial:', error);
+    console.error('Error creating trial subscription:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to enroll in free trial'
+      error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 };
+
 
 // ============================================================================
 // EXPORT SERVICE OBJECT
@@ -648,6 +844,9 @@ export const stripeService = {
   // Pricing
   calculateSubscriptionQuantity,
 
+  // Seat Management
+  syncSeatCount,
+
   // Stripe Checkout
   createCheckoutSession,
   createPortalSession,
@@ -656,7 +855,8 @@ export const stripeService = {
   getInvoices,
 
   // Trial Period Helpers
-  // Note: 14-day free trial auto-enrollment on signup
+  // Note: 14-day free trial auto-enrollment on signup (LOCAL-ONLY until upgrade)
   getDaysRemaining,
-  enrollInFreeTrial,
+  createTrialSubscription,
+  enrollInFreeTrial: createTrialSubscription, // Alias for backward compatibility
 };

@@ -7,9 +7,11 @@ import { organizationSettingsService } from '@/services/companySettingsService';
 import { LogoUploadResult } from '@/services/LogoUploadService';
 import { NavigateFunction } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import * as authService from '@/auth/services/authService';
 
 interface HandleCompanyInfoSubmitParams {
   userId: string | null;
+  organizationId: string | null;
   companyPhone: string;
   companyFax: string;
   companyAddress: string;
@@ -24,11 +26,11 @@ interface HandleCompanyInfoSubmitParams {
 }
 
 export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitParams & {
-  setStep?: (step: 'trial-activation') => void;
   navigate: NavigateFunction;
 }) => {
   const {
     userId,
+    organizationId,
     companyPhone,
     companyFax,
     companyAddress,
@@ -42,11 +44,13 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
     navigate,
   } = params;
 
-  if (!userId || !companyPhone || !companyAddress || !companyWebsite || !quoteStartingPoint) return;
+  // Only quoteStartingPoint and foundVia are required (validated in form)
+  if (!userId || !quoteStartingPoint || !foundVia) return;
 
   console.log('=== Company Info Submit ===');
   console.log('Industry:', industry);
   console.log('Found Via:', foundVia);
+  console.log('Organization ID:', organizationId);
 
   setLoading(true);
   try {
@@ -59,7 +63,7 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
     // Use the organization settings service to update company info
     await organizationSettingsService.updateCompanyInfo({
       phone_number: companyPhone,
-      fax_number: companyFax, // Can be empty string, handled by the service
+      fax_number: companyFax,
       company_address: companyAddress,
       website: companyWebsite,
       quote_start_number: quoteStartingPoint,
@@ -69,15 +73,42 @@ export const handleCompanyInfoSubmit = async (params: HandleCompanyInfoSubmitPar
 
     console.log('✅ Company info saved successfully');
 
-    toast({
-      title: 'Setup complete!',
-      description: 'Welcome to your 14-day free trial. Enjoy full access to all features!',
-    });
+    // ✨ Auto-enroll organization in 14-day free trial via Stripe
+    if (organizationId) {
+      console.log('🎁 Auto-enrolling organization in Stripe trial:', organizationId);
 
-    // Clear auth state and navigate to dashboard
-    // User was already auto-enrolled in free trial during org creation
+      const authUser = await authService.getCurrentUser();
+      const userEmail = authUser?.email;
+
+      const { data: trialData, error: trialError } = await supabase.functions.invoke(
+        'create-trial-subscription',
+        {
+          body: {
+            organizationId,
+            userEmail,
+            userName: userEmail,
+          },
+        }
+      );
+
+      if (trialError) {
+        console.error('❌ Stripe trial enrollment failed:', trialError);
+        // Don't block - continue to dashboard
+      } else if (trialData?.success) {
+        console.log('✅ Stripe trial enrollment successful:', {
+          subscriptionId: trialData.subscriptionId,
+          customerId: trialData.customerId,
+          trialEnd: trialData.trialEnd,
+        });
+      } else if (trialData?.error) {
+        console.error('❌ Trial enrollment error:', trialData.error);
+        // Don't block - continue to dashboard
+      }
+    }
+
+    // Clear auth state and navigate to dashboard with welcome flag
     clearAuthState();
-    navigate('/dashboard');
+    navigate('/dashboard?welcome=true');
   } catch (error: any) {
     toast({
       title: 'Company Info Error',
@@ -96,17 +127,12 @@ interface HandleCompanyInfoSkipParams {
 }
 
 export const handleCompanyInfoSkip = (params: HandleCompanyInfoSkipParams) => {
-  const { toast, clearAuthState, navigate } = params;
+  const { clearAuthState, navigate } = params;
 
-  toast({
-    title: 'Setup complete!',
-    description: 'Welcome to your 14-day free trial. You can add company details later in Settings.',
-  });
-
-  // Clear auth state and navigate to dashboard
+  // Clear auth state and navigate to dashboard with welcome flag
   // User was already auto-enrolled in free trial during org creation
   clearAuthState();
-  navigate('/dashboard');
+  navigate('/dashboard?welcome=true');
 };
 
 interface HandleLogoUploadParams {

@@ -15,6 +15,7 @@ interface HandleOrganizationSubmitParams {
   foundVia: string;
   submissionInProgress: boolean;
   setSubmissionInProgress: (inProgress: boolean) => void;
+  setOrganizationId: (id: string | null) => void;
   setStep: (step: 'auth' | 'verify-otp' | 'organization' | 'company-info') => void;
   setLoading: (loading: boolean) => void;
   navigate: NavigateFunction;
@@ -30,6 +31,7 @@ export const handleOrganizationSubmit = async (params: HandleOrganizationSubmitP
     foundVia,
     submissionInProgress,
     setSubmissionInProgress,
+    setOrganizationId,
     setStep,
     setLoading,
     toast,

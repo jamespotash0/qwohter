@@ -7,7 +7,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mail, Check, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 
 interface OtpVerificationFormProps {
   otpCode: string;
@@ -186,9 +186,6 @@ export const OtpVerificationForm: React.FC<OtpVerificationFormProps> = ({
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center mb-6">
-        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <Mail className="text-slate-700 h-6 w-6" />
-        </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Check your inbox!</h1>
         <p className="text-gray-600 text-sm mb-2">We've sent a 6-digit verification code to</p>
 

@@ -1,11 +1,14 @@
+//@ts-ignore
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+//@ts-ignore
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
+//@ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, stripe-signature',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, Stripe-Signature',
 };
 //@ts-ignore
 serve(async (req) => {
@@ -16,26 +19,40 @@ serve(async (req) => {
 
   try {
     //@ts-ignore
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY') || Deno.env.get('STRIPE_SECRET_KEY_TEST') || '';
+    //@ts-ignore
+    const stripe = new Stripe(stripeKey, {
       apiVersion: '2023-10-16',
+      httpClient: Stripe.createFetchHttpClient(),
     });
+
+    // Create crypto provider for Web Crypto API (required for Deno)
+    const cryptoProvider = Stripe.createSubtleCryptoProvider();
+
     //@ts-ignore
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     //@ts-ignore
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const signature = req.headers.get('stripe-signature');
-    //@ts-ignore
-    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';
+    const signature = req.headers.get('Stripe-Signature');
+    // @ts-ignore
+    // Use production webhook secret first, fallback to CLI secret for local dev
+    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || Deno.env.get('STRIPE_CLI_WEBHOOK_SECRET') || '';
 
     // Get raw body for signature verification
     const body = await req.text();
 
-    // Verify webhook signature
+    // Verify webhook signature using async method with crypto provider
     let event: Stripe.Event;
     try {
-      event = stripe.webhooks.constructEvent(body, signature!, webhookSecret);
+      event = await stripe.webhooks.constructEventAsync(
+        body,
+        signature!,
+        webhookSecret,
+        undefined,
+        cryptoProvider
+      );
     } catch (err) {
       console.error('Webhook signature verification failed:', err.message);
       return new Response(
@@ -72,6 +89,9 @@ serve(async (req) => {
         let subscriptionStatus = 'Active';
         let billingInterval = 'Monthly';
 
+        // Get quantity (number of seats)
+        let quantity = 1; // Default to 1 seat
+
         if (stripeSubscriptionId) {
           try {
             const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
@@ -87,7 +107,10 @@ serve(async (req) => {
             const interval = stripeSubscription.items.data[0]?.price?.recurring?.interval;
             billingInterval = interval === 'year' ? 'Yearly' : 'Monthly';
 
-            console.log('Retrieved subscription details:', { currentPeriodStart, currentPeriodEnd, subscriptionStatus, billingInterval });
+            // Get quantity (number of seats) from the subscription item
+            quantity = stripeSubscription.items.data[0]?.quantity || 1;
+
+            console.log('Retrieved subscription details:', { currentPeriodStart, currentPeriodEnd, subscriptionStatus, billingInterval, quantity });
           } catch (err) {
             console.error('Failed to retrieve Stripe subscription:', err);
           }
@@ -112,13 +135,14 @@ serve(async (req) => {
               current_period_end: currentPeriodEnd,
               cancel_at_period_end: cancelAtPeriodEnd,
               billing_interval: billingInterval,
+              number_of_active_users: quantity,
               is_active: true,
               plan_id: planId,
               updated_at: new Date().toISOString(),
             })
             .eq('id', existingSubscription.id);
 
-          console.log('Updated existing subscription:', existingSubscription.id);
+          console.log('Updated existing subscription:', existingSubscription.id, 'with quantity:', quantity);
         } else {
           // Create new subscription
           await supabase
@@ -130,13 +154,14 @@ serve(async (req) => {
               stripe_subscription_id: stripeSubscriptionId,
               stripe_subscription_status: subscriptionStatus,
               billing_interval: billingInterval,
+              number_of_active_users: quantity,
               current_period_start: currentPeriodStart,
               current_period_end: currentPeriodEnd,
               cancel_at_period_end: cancelAtPeriodEnd,
               is_active: true,
             });
 
-          console.log('Created new subscription for org:', organizationId);
+          console.log('Created new subscription for org:', organizationId, 'with number of users:', quantity);
         }
 
         break;
@@ -151,6 +176,13 @@ serve(async (req) => {
         const isPaused = subscription.pause_collection !== null && subscription.pause_collection !== undefined;
         const displayStatus = isPaused ? 'Paused' : status.charAt(0).toUpperCase() + status.slice(1);
 
+        // Get customer payment methods
+        const paymentMethods = await stripe.paymentMethods.list({
+          customer: subscription.customer as string,
+          type: 'card',
+        });
+        const hasPaymentMethod = paymentMethods.data.length > 0;
+
         // Update subscription status and billing period
         await supabase
           .from('subscriptions')
@@ -158,13 +190,16 @@ serve(async (req) => {
             stripe_subscription_status: displayStatus,
             current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            trial_start: subscription.trial_start ? new Date(subscription.trial_start * 1000).toISOString() : null,
+            trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+            has_payment_method: hasPaymentMethod,
             cancel_at_period_end: subscription.cancel_at_period_end || false,
             is_active: ['active', 'trialing'].includes(status) && !isPaused,
             updated_at: new Date().toISOString(),
           })
           .eq('stripe_subscription_id', stripeSubscriptionId);
 
-        console.log('Updated subscription status:', stripeSubscriptionId, displayStatus, 'isPaused:', isPaused);
+        console.log('Updated subscription status:', stripeSubscriptionId, displayStatus, 'isPaused:', isPaused, 'hasPayment:', hasPaymentMethod);
         break;
       }
 
@@ -382,6 +417,66 @@ serve(async (req) => {
       case 'charge.refunded': {
         const charge = event.data.object as Stripe.Charge;
         console.log('Charge refunded:', charge.id);
+        break;
+      }
+
+      case 'payment_method.attached': {
+        const paymentMethod = event.data.object as Stripe.PaymentMethod;
+        const customerId = paymentMethod.customer as string;
+
+        // Mark that customer has payment method
+        await supabase
+          .from('subscriptions')
+          .update({
+            has_payment_method: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_customer_id', customerId);
+
+        console.log('Payment method attached for customer:', customerId);
+        break;
+      }
+
+      case 'setup_intent.succeeded': {
+        // Customer Portal uses SetupIntents to add payment methods
+        const setupIntent = event.data.object as Stripe.SetupIntent;
+        const customerId = setupIntent.customer as string;
+
+        if (customerId) {
+          // Mark that customer has payment method
+          await supabase
+            .from('subscriptions')
+            .update({
+              has_payment_method: true,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('stripe_customer_id', customerId);
+
+          console.log('SetupIntent succeeded - payment method added for customer:', customerId);
+        }
+        break;
+      }
+
+      case 'payment_method.detached': {
+        const paymentMethod = event.data.object as Stripe.PaymentMethod;
+        const customerId = paymentMethod.customer as string;
+
+        // Check if customer has any remaining payment methods
+        const paymentMethods = await stripe.paymentMethods.list({
+          customer: customerId,
+          type: 'card',
+        });
+        const hasPaymentMethod = paymentMethods.data.length > 0;
+
+        await supabase
+          .from('subscriptions')
+          .update({
+            has_payment_method: hasPaymentMethod,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_customer_id', customerId);
+
+        console.log('Payment method detached for customer:', customerId, 'remaining:', hasPaymentMethod);
         break;
       }
 

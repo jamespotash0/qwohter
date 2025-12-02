@@ -40,26 +40,23 @@ export function combineContactOptions(
     });
 
   // Add contacts (customer/prospects without accounts)
-  contacts.forEach((contact) => {
-    // Skip contacts that are linked to team members (avoid duplicates)
-    // They're already in the members list via user_id
-    if (contact.user_id) {
-      return;
-    }
+  // Only include contacts marked as "in organization"
+  contacts
+    .filter((contact) => contact.is_in_organization && !contact.user_id)
+    .forEach((contact) => {
+      // Use first email from the emails array
+      const primaryEmail = contact.emails[0] || '';
+      // Extract phone number from phone object
+      const primaryPhone = contact.phones?.[0]?.number;
 
-    // Use first email from the emails array
-    const primaryEmail = contact.emails[0] || '';
-    // Extract phone number from phone object
-    const primaryPhone = contact.phones?.[0]?.number;
-
-    options.push({
-      id: contact.id,
-      name: contact.full_name,
-      email: primaryEmail,
-      type: 'contact',
-      phone: primaryPhone,
+      options.push({
+        id: contact.id,
+        name: contact.full_name,
+        email: primaryEmail,
+        type: 'contact',
+        phone: primaryPhone,
+      });
     });
-  });
 
   // Sort alphabetically by name
   return options.sort((a, b) => a.name.localeCompare(b.name));
@@ -67,17 +64,19 @@ export function combineContactOptions(
 
 /**
  * Get unique contact names from a list of contact options
+ * Filters out empty/falsy names to prevent SelectItem errors
  */
 export function getUniqueContactNames(options: ContactOption[]): string[] {
-  const names = new Set(options.map((opt) => opt.name));
+  const names = new Set(options.map((opt) => opt.name).filter(Boolean));
   return Array.from(names).sort();
 }
 
 /**
  * Get unique contact emails from a list of contact options
+ * Filters out empty/falsy emails to prevent SelectItem errors
  */
 export function getUniqueContactEmails(options: ContactOption[]): string[] {
-  const emails = new Set(options.map((opt) => opt.email));
+  const emails = new Set(options.map((opt) => opt.email).filter(Boolean));
   return Array.from(emails).sort();
 }
 

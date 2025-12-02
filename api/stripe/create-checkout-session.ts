@@ -146,6 +146,9 @@ export default async function handler(req: any, res: any) {
           quantity, // THIS IS THE KEY: Pass the calculated user count
         },
       ],
+      subscription_data: {
+        trial_period_days: 14, // Set trial at subscription level (not on price)
+      },
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: {
