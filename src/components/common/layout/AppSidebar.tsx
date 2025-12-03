@@ -1,5 +1,7 @@
-import { Clock, Check, ChevronDown, LogOut } from "lucide-react";
-import { House, FileText, ChartBar, Gear, Kanban, Sidebar as SidebarIcon, Lock, SquaresFour, Article, Buildings, AddressBook, CheckSquare, CaretDown, Stack } from "@phosphor-icons/react";
+import { Clock, Check,
+  // ChevronDown, LogOut} 
+} from "lucide-react";
+import { House, FileText, ChartBar, Gear, Kanban, Package, Sidebar as SidebarIcon, ArrowDownIcon, Lock, SignOutIcon, SquaresFour, Article, Buildings, AddressBook, CheckSquare, CaretDown, Stack } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -59,6 +61,12 @@ const menuItems: MenuItem[] = [
     title: "Proposals",
     icon: FileText,
     path: "/quotes",
+    roles: ['Owner', 'Admin', 'Member'], // Available to all
+  },
+  {
+    title: "Products",
+    icon: Package,
+    path: "/products",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
   {
@@ -359,7 +367,7 @@ export function AppSidebar({
                     <span className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate min-w-0 flex-1">
                       {currentOrganization?.name || 'Select Organization'}
                     </span>
-                    <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                    <ArrowDownIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-[240px]">
@@ -803,7 +811,7 @@ export function AppSidebar({
                     }}
                     title="Logout"
                   >
-                    <LogOut className="h-4 w-4 text-red-600 dark:text-red-400 group-hover/logout:scale-110 transition-all duration-200" />
+                    <SignOutIcon className="h-4 w-4 text-red-600 dark:text-red-400 group-hover/logout:scale-110 transition-all duration-200" />
                   </Button>
                 </div>
               </div>
@@ -833,7 +841,7 @@ export function AppSidebar({
                     }}
                     title="Logout"
                   >
-                    <LogOut className="h-4 w-4 text-red-600 dark:text-red-400 group-hover/logout:scale-110 transition-all duration-200" />
+                    <SignOutIcon className="h-4 w-4 text-red-600 dark:text-red-400 group-hover/logout:scale-110 transition-all duration-200" />
                   </Button>
                 </div>
               </div>
