@@ -9,7 +9,6 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import * as authService from '@/auth/services/authService';
 import * as Sentry from '@sentry/react';
-import { quoteActivityService } from './quoteActivityService';
 // ============================================================================
 // Types
 // ============================================================================
@@ -321,17 +320,6 @@ export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
 
         const createdQuote = data as Quote;
 
-        // Log quote creation activity
-        await quoteActivityService.logCreation({
-          quoteId: createdQuote.id,
-          quoteNumber: createdQuote.proposal_number,
-          projectName: createdQuote.project_name || 'Untitled',
-          userId: session.user.id,
-          userName: createdByName,
-          organizationId: membershipData.organization_id,
-          status: createdQuote.status
-        });
-
         span.setStatus({ code: 1 }); // Success
         span.setAttribute('quote.id', createdQuote.id);
         return createdQuote;
@@ -375,9 +363,6 @@ export async function updateQuote(
     },
     async (span) => {
       try {
-        // Get user context for activity logging
-        const session = await authService.getSession();
-
         const { data, error } = await supabase
           .from('quotes')
           .update(updates)
@@ -397,42 +382,6 @@ export async function updateQuote(
         }
 
         const updatedQuote = data as Quote;
-
-        // Log activity if user is authenticated (skip for system updates)
-        if (session?.user) {
-          // Get user's name from profile
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', session.user.id)
-            .maybeSingle();
-
-          const userName = (profileData as any)?.full_name || session.user.email || 'Unknown';
-          const changedFields = Object.keys(updates);
-
-          // Don't log activity for certain updates:
-          // - Silent updates (like date_last_downloaded)
-          // - Status changes (handled by updateQuoteStatus function)
-          // - Archive changes (handled by archiveQuote/unarchiveQuote functions)
-          const isSilentUpdate =
-            changedFields.length === 1 &&
-            changedFields[0] === 'date_last_downloaded';
-
-          const isStatusChange = updates.status !== undefined;
-          const isArchiveChange = updates.archived !== undefined;
-
-          if (!isSilentUpdate && !isStatusChange && !isArchiveChange) {
-            await quoteActivityService.logUpdate({
-              quoteId: updatedQuote.id,
-              quoteNumber: updatedQuote.proposal_number,
-              projectName: updatedQuote.project_name || 'Untitled',
-              userId: session.user.id,
-              userName: userName,
-              organizationId: updatedQuote.organization_id,
-              changedFields: changedFields
-            });
-          }
-        }
 
         span.setStatus({ code: 1 }); // Success
         return updatedQuote;
@@ -464,35 +413,6 @@ export async function deleteQuote(quoteId: string): Promise<void> {
     },
     async (span) => {
       try {
-        // Get user context for activity logging
-        const session = await authService.getSession();
-
-        // Fetch quote data before deletion for activity logging
-        const quoteToDelete = await fetchQuoteById(quoteId);
-
-        // Log deletion activity BEFORE deleting the quote
-        // (must be before deletion due to foreign key constraint)
-        if (session?.user) {
-          // Get user's name from profile
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', session.user.id)
-            .maybeSingle();
-
-          const userName = (profileData as any)?.full_name || session.user.email || 'Unknown';
-
-          await quoteActivityService.logDeletion({
-            quoteId: quoteToDelete.id,
-            quoteNumber: quoteToDelete.proposal_number,
-            projectName: quoteToDelete.project_name || 'Untitled',
-            userId: session.user.id,
-            userName: userName,
-            organizationId: quoteToDelete.organization_id
-          });
-        }
-
-        // Now delete the quote
         const { error } = await supabase
           .from('quotes')
           .delete()
@@ -522,68 +442,14 @@ export async function deleteQuote(quoteId: string): Promise<void> {
  * Archive a quote
  */
 export async function archiveQuote(quoteId: string): Promise<Quote> {
-  // Get user context for activity logging
-  const session = await authService.getSession();
-
-  const updatedQuote = await updateQuote(quoteId, { archived: true });
-
-  // Log archive activity if user is authenticated
-  if (session?.user) {
-    // Get user's name from profile
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', session.user.id)
-      .maybeSingle();
-
-    const userName = (profileData as any)?.full_name || session.user.email || 'Unknown';
-
-    await quoteActivityService.logActivity({
-      quoteId: updatedQuote.id,
-      quoteNumber: updatedQuote.proposal_number,
-      projectName: updatedQuote.project_name || 'Untitled',
-      userId: session.user.id,
-      userName: userName,
-      organizationId: updatedQuote.organization_id,
-      activityType: 'Archived'
-    });
-  }
-
-  return updatedQuote;
+  return updateQuote(quoteId, { archived: true });
 }
 
 /**
  * Unarchive a quote
  */
 export async function unarchiveQuote(quoteId: string): Promise<Quote> {
-  // Get user context for activity logging
-  const session = await authService.getSession();
-
-  const updatedQuote = await updateQuote(quoteId, { archived: false });
-
-  // Log unarchive activity if user is authenticated
-  if (session?.user) {
-    // Get user's name from profile
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', session.user.id)
-      .maybeSingle();
-
-    const userName = (profileData as any)?.full_name || session.user.email || 'Unknown';
-
-    await quoteActivityService.logActivity({
-      quoteId: updatedQuote.id,
-      quoteNumber: updatedQuote.proposal_number,
-      projectName: updatedQuote.project_name || 'Untitled',
-      userId: session.user.id,
-      userName: userName,
-      organizationId: updatedQuote.organization_id,
-      activityType: 'Unarchived'
-    });
-  }
-
-  return updatedQuote;
+  return updateQuote(quoteId, { archived: false });
 }
 
 /**
@@ -602,10 +468,7 @@ export async function updateQuoteStatus(
   quoteId: string,
   status: string
 ): Promise<Quote> {
-  // Get user context for activity logging
-  const session = await authService.getSession();
-
-  // Fetch old quote to get the old status
+  // Fetch old quote to get the old status (needed for clearing conflicting timestamps)
   const oldQuote = await fetchQuoteById(quoteId);
   const oldStatus = oldQuote.status || 'Draft';
 
@@ -633,32 +496,7 @@ export async function updateQuoteStatus(
       break;
   }
 
-  const updatedQuote = await updateQuote(quoteId, updates);
-
-  // Log status change activity if user is authenticated
-  if (session?.user) {
-    // Get user's name from profile
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', session.user.id)
-      .maybeSingle();
-
-    const userName = (profileData as any)?.full_name || session.user.email || 'Unknown';
-
-    await quoteActivityService.logStatusChange({
-      quoteId: updatedQuote.id,
-      quoteNumber: updatedQuote.proposal_number,
-      projectName: updatedQuote.project_name || 'Untitled',
-      userId: session.user.id,
-      userName: userName,
-      organizationId: updatedQuote.organization_id,
-      oldStatus: oldStatus,
-      newStatus: status
-    });
-  }
-
-  return updatedQuote;
+  return updateQuote(quoteId, updates);
 }
 
 /**

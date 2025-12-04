@@ -28,7 +28,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
  * Subscription types (string type for flexibility)
  */
 export type SubscriptionType = string;
-// export type SubscriptionType = 'quotes' | 'members' | 'subscriptions' | 'activities';
+// export type SubscriptionType = 'quotes' | 'members' | 'subscriptions';
 
 /**
  * Payload from Supabase realtime
@@ -92,7 +92,7 @@ class SubscriptionManager {
    * }, [organizationId]);
    * ```
    *
-   * Usage (with built-in handlers for quotes/members/subscriptions/activities):
+   * Usage (with built-in handlers for quotes/members/subscriptions):
    * ```tsx
    * useEffect(() => {
    *   const unsubscribe = subscriptionManager.subscribe(
@@ -241,10 +241,6 @@ class SubscriptionManager {
         this.handleSubscriptionEvent(resourceId, eventType, newRecord, oldRecord);
         break;
 
-      case 'activities':
-        this.handleActivitiesEvent(resourceId, eventType, newRecord, oldRecord);
-        break;
-
       default:
         console.warn(`⚠️ No handler for subscription type '${type}'. Consider providing an onUpdate callback.`);
     }
@@ -329,27 +325,6 @@ class SubscriptionManager {
       } else if (newRecord.status === 'canceled' || newRecord.status === 'unpaid') {
         console.log('Subscription ended');
       }
-    }
-  }
-
-  /**
-   * Handle activities realtime events
-   */
-  private handleActivitiesEvent(
-    organizationId: string,
-    eventType: string,
-    newRecord: any,
-    oldRecord: any
-  ) {
-    if (eventType === 'INSERT') {
-      // Prepend new activity to cache
-      const queryKey = queryKeys.dashboard.activities(organizationId);
-
-      queryClient.setQueryData(queryKey, (old: any[] = []) => {
-        const exists = old.some((a) => a.id === newRecord.id);
-        if (exists) return old;
-        return [newRecord, ...old];
-      });
     }
   }
 

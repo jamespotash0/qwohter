@@ -7,22 +7,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   CurrencyDollar,
-  TrendUp,
   ChartLineUp,
   CheckCircle,
-  XCircle,
   Bell,
-  Archive,
-  CheckSquare,
   PencilSimple,
   Trash,
   BellRinging,
   Plus,
-  Checks,
   Clock,
   UploadSimple,
   FileText,
-  BoxArrowUp,
   DotsThreeVertical
 } from '@phosphor-icons/react';
 import { Button } from "@/components/ui/button";
@@ -37,7 +31,6 @@ import {
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useQuotes } from "@/hooks/queries/useQuotes";
 import { useUser, useProfile } from "@/auth";
-import { quoteActivityService, type QuoteActivity } from "@/services/quoteActivityService";
 import { AddReminderModal } from "@/components/features/reminders/AddReminderModal";
 import { reminderService, type Reminder } from "@/services/reminderService";
 import { formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
@@ -51,7 +44,7 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Dashboard - Executive Overview
  *
- * Shows key metrics, quick actions, reminders, and recent activity
+ * Shows key metrics, quick actions, reminders
  */
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -68,8 +61,6 @@ const Dashboard = () => {
 
   console.log('[Dashboard] Using organization:', { id: organizationId, name: currentOrganization?.name });
 
-  const [recentActivities, setRecentActivities] = useState<QuoteActivity[]>([]);
-  const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [showAddReminderModal, setShowAddReminderModal] = useState(false);
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -173,59 +164,7 @@ const Dashboard = () => {
 
   // React Query automatically fetches quotes - no manual fetching needed!
 
-  // Function to fetch recent activities (used by initial load and real-time updates)
-  const fetchRecentActivities = async () => {
-    if (!user || !organizationId) {
-      console.log('[Dashboard] Skipping activities fetch - no user or org');
-      setActivitiesLoading(false);
-      return;
-    }
-
-    console.log('[Dashboard] Fetching activities for org:', organizationId);
-    setActivitiesLoading(true);
-    const { data, error } = await quoteActivityService.getRecentActivities({
-      organizationId,
-      limit: 100
-    });
-
-    console.log('[Dashboard] Activities fetch result:', { data, error, count: data?.length });
-
-    if (data) {
-      setRecentActivities(data);
-    }
-    setActivitiesLoading(false);
-  };
-
-  // Fetch recent activities on mount and when user/org changes
-  useEffect(() => {
-    fetchRecentActivities();
-  }, [user, organizationId]);
-
-  // Set up centralized realtime subscription for quote_activities
-  useRealtimeSubscription(
-    'quote_activities',
-    ['quote_activities', organizationId || ''],
-    {
-      filter: `organization_id=eq.${organizationId}`,
-      events: ['INSERT'] // Only listen to INSERT events for activities
-    },
-    !!(user && organizationId)
-  );
-
-  // Watch for quote_activities changes via query invalidation
   const queryClient = useQueryClient();
-  useEffect(() => {
-    if (!user || !organizationId) return;
-
-    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
-      if (event?.query.queryKey[0] === 'quote_activities' && event?.query.queryKey[1] === organizationId) {
-        // Refetch recent activities when real-time detects changes
-        fetchRecentActivities();
-      }
-    });
-
-    return unsubscribe;
-  }, [user, organizationId, queryClient]);
 
   // Fetch reminders and subscribe to real-time updates
   useEffect(() => {
@@ -308,14 +247,11 @@ const Dashboard = () => {
   }, [user, organizationId, queryClient]);
 
   // Reminder action handlers
-  const handleCompleteReminder = async (reminderId: string, quoteId?: string, quoteNumber?: string, projectName?: string) => {
+  const handleCompleteReminder = async (reminderId: string) => {
     if (!user?.id || !organizationId) return;
 
-    // Get the reminder details before completing
-    const reminder = reminders.find(r => r.id === reminderId);
-
     const { error } = await reminderService.completeReminder(reminderId, {
-      reminder_status: 'Completed', //reminder_status formerly status
+      reminder_status: 'Completed',
       completed_by: user.id,
     });
 
@@ -325,22 +261,6 @@ const Dashboard = () => {
     }
 
     toast.success('Reminder marked as completed');
-
-    // Log activity (always, even without quote)
-    await quoteActivityService.logActivity({
-      quoteId: quoteId || null,
-      quoteNumber: quoteNumber || 'N/A',
-      projectName: projectName || reminder?.title || 'General Reminder',
-      userId: user.id,
-      userName: effectiveProfile?.full_name || 'Unknown User',
-      activityType: 'Reminder_Set',
-      activityDetails: {
-        action: 'completed',
-        reminderTitle: reminder?.title,
-        reminderType: reminder?.reminder_type
-      },
-      organizationId: organizationId,
-    });
 
     // Refresh reminders list
     const { data } = await reminderService.getReminders({
@@ -364,11 +284,8 @@ const Dashboard = () => {
     }
   };
 
-  const handleDeleteReminder = async (reminderId: string, quoteId?: string, quoteNumber?: string, projectName?: string) => {
+  const handleDeleteReminder = async (reminderId: string) => {
     if (!user?.id || !organizationId) return;
-
-    // Get the reminder details before deleting
-    const reminder = reminders.find(r => r.id === reminderId);
 
     const { success } = await reminderService.deleteReminder(reminderId);
 
@@ -378,22 +295,6 @@ const Dashboard = () => {
     }
 
     toast.success('Reminder deleted');
-
-    // Log activity (always, even without quote)
-    await quoteActivityService.logActivity({
-      quoteId: quoteId || null,
-      quoteNumber: quoteNumber || 'N/A',
-      projectName: projectName || reminder?.title || 'General Reminder',
-      userId: user.id,
-      userName: effectiveProfile?.full_name || 'Unknown User',
-      activityType: 'Reminder_Set',
-      activityDetails: {
-        action: 'deleted',
-        reminderTitle: reminder?.title,
-        reminderType: reminder?.reminder_type
-      },
-      organizationId: organizationId,
-    });
 
     // Refresh reminders list
     const { data } = await reminderService.getReminders({
@@ -508,101 +409,6 @@ const Dashboard = () => {
     };
   }, [quotes, reminders]);
 
-
-  // Format activities from database for display
-  const recentActivity = useMemo(() => {
-    return recentActivities.map(activity => {
-      const projectName = activity.project_name || 'Untitled';
-      const userName = activity.user_name || 'Unknown';
-      const quoteNumber = activity.quote_number;
-
-      let message = '';
-      let eventText = '';
-      let type = 'Created';
-
-      if (activity.activity_type === 'Created') {
-        const status = activity.activity_details?.status || 'Draft';
-        message = `${userName} created a new ${status} Quote called ${projectName} (#${quoteNumber})`;
-        eventText = 'Created';
-        type = 'Created';
-      } else if (activity.activity_type === 'Status_Changed') {
-        const newStatus = activity.activity_details?.new_status || 'Unknown';
-        message = `${userName} marked ${projectName} (#${quoteNumber}) as ${newStatus}`;
-        eventText = newStatus;
-
-        // Map status to type for icon coloring
-        if (newStatus === 'Won') type = 'Won';
-        else if (newStatus === 'Rejected') type = 'Lost';
-        else if (newStatus === 'Submitted') type = 'Submitted';
-        else if (newStatus === 'Pending') type = 'Pending';
-        else if (newStatus === 'Completed') type = 'Completed';
-        else if (newStatus === 'Incomplete') type = 'Incomplete';
-      } else if (activity.activity_type === 'Archived') {
-        message = `${userName} Archived ${projectName} (#${quoteNumber})`;
-        eventText = 'Archived';
-        type = 'Archived';
-      } else if (activity.activity_type === 'Unarchived') {
-        message = `${userName} Unarchived ${projectName} (#${quoteNumber})`;
-        eventText = 'Unarchived';
-        type = 'Unarchived';
-      } else if (activity.activity_type === 'Updated') {
-        const changedFields = activity.activity_details?.changed_fields || [];
-        // Format field names: capitalize and replace underscores with spaces
-        const formattedFields = changedFields.map((field: string) =>
-          field.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
-        );
-        const fieldList = formattedFields.length > 0
-          ? ` ${formattedFields.join(', ')}`
-          : '';
-        message = `${userName} updated ${projectName} ${quoteNumber}${fieldList}`;
-        eventText = 'Updated';
-        type = 'Updated';
-      } else if (activity.activity_type === 'Deleted') {
-        message = `${userName} deleted ${projectName} (#${quoteNumber})`;
-        eventText = 'Deleted';
-        type = 'Deleted';
-      } else if (activity.activity_type === 'Reminder_Set') {
-        const followUpDate = activity.activity_details?.follow_up_date;
-        let timeDescription = '';
-
-        if (followUpDate) {
-          const targetDate = new Date(followUpDate);
-          const now = new Date();
-          const timeDiff = targetDate.getTime() - now.getTime();
-          const isOverdue = timeDiff < 0;
-          const absTimeDiff = Math.abs(timeDiff);
-
-          const days = Math.floor(absTimeDiff / (1000 * 3600 * 24));
-          const hours = Math.floor((absTimeDiff % (1000 * 3600 * 24)) / (1000 * 3600));
-          const minutes = Math.floor((absTimeDiff % (1000 * 3600)) / (1000 * 60));
-          const seconds = Math.floor((absTimeDiff % (1000 * 60)) / 1000);
-
-          if (days > 0) {
-            timeDescription = `${days}d ${isOverdue ? 'Overdue' : 'Remaining'}`;
-          } else if (hours > 0) {
-            timeDescription = `${hours}h ${minutes}m ${isOverdue ? 'Overdue' : 'Remaining'}`;
-          } else if (minutes > 0) {
-            timeDescription = `${minutes}m ${seconds}s ${isOverdue ? 'Overdue' : 'Remaining'}`;
-          } else {
-            timeDescription = `${seconds}s ${isOverdue ? 'Overdue' : 'Remaining'}`;
-          }
-        }
-
-        message = `${userName} set reminder for ${projectName} (#${quoteNumber})${timeDescription ? ` - ${timeDescription}` : ''}`;
-        eventText = 'Reminder Set';
-        type = 'Reminder';
-      }
-
-      return {
-        id: activity.id,
-        type,
-        timestamp: activity.created_at,
-        message,
-        eventText
-      };
-    });
-  }, [recentActivities]);
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -612,30 +418,16 @@ const Dashboard = () => {
     }).format(amount);
   };
 
-  // Real-time update ticker - updates every second to keep timestamps fresh
+  // Real-time clock for dashboard header
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 1000); // Update every second
+    }, 1000);
 
     return () => clearInterval(timer);
   }, []);
-
-  const getTimeAgo = (date: string) => {
-    const past = new Date(date);
-    const diffMs = currentTime.getTime() - past.getTime();
-    const diffSecs = Math.floor(diffMs / 1000);
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffSecs < 60) return `${diffSecs} second${diffSecs !== 1 ? 's' : ''} ago`;
-    if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-    return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-  };
 
   // Quote of the Day - Fetch from API or use fallback
   const [dailyQuote, setDailyQuote] = useState<{ text: string; author: string }>({
@@ -888,7 +680,7 @@ const Dashboard = () => {
 
       {/* Main Content Grid */}
       <div className="space-y-8">
-        {/* Main Layout: Left Column (Quick Actions + Reminders & Alerts) and Right Column (Recent Activity) */}
+        {/* Main Layout: Left Column (Quick Actions + Reminders & Alerts) */}
         <div className="grid grid-cols-1 lg:grid-cols-[520px_600px] xl:grid-cols-[540px_1fr] gap-8 items-start">
           {/* Left Column */}
           <div className="space-y-8 flex flex-col">
@@ -1074,12 +866,7 @@ const Dashboard = () => {
                                         Edit
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
-                                        onClick={() => handleCompleteReminder(
-                                          reminder.id,
-                                          reminder.quote_id,
-                                          reminder.quote_number,
-                                          reminder.project_name || undefined
-                                        )}
+                                        onClick={() => handleCompleteReminder(reminder.id)}
                                       >
                                         <CheckCircle className="w-4 h-4 mr-2" />
                                         Complete
@@ -1087,12 +874,7 @@ const Dashboard = () => {
                                     </>
                                   )}
                                   <DropdownMenuItem
-                                    onClick={() => handleDeleteReminder(
-                                      reminder.id,
-                                      reminder.quote_id,
-                                      reminder.quote_number,
-                                      reminder.project_name || undefined
-                                    )}
+                                    onClick={() => handleDeleteReminder(reminder.id)}
                                     className="text-red-600"
                                   >
                                     <Trash className="w-4 h-4 mr-2" />
@@ -1126,94 +908,26 @@ const Dashboard = () => {
             </Card>
           </div>
 
-          {/* Right Column - Recent Activity */}
+          {/* Right Column - Notifications (Coming Soon) */}
           <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 flex flex-col self-start" style={{ height: '900px' }}>
             <CardHeader className="pb-4 flex-shrink-0">
               <CardTitle className="flex items-center gap-2 text-[var(--content-header-text)]">
-                <Clock className="w-5 h-5" />
-                Recent Activity
+                <Bell className="w-5 h-5" />
+                Notifications
               </CardTitle>
             </CardHeader>
             <CardContent className="relative pb-4 flex-1 flex flex-col overflow-hidden">
-              {activitiesLoading ? (
-                <div className="space-y-2 flex-1 overflow-y-auto">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
-                      <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
-                      <div className="flex-1 space-y-2">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-3 w-1/2" />
-                      </div>
-                    </div>
-                  ))}
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <Bell className="w-12 h-12 text-[var(--content-muted-text)] mx-auto mb-3 opacity-50" />
+                  <p className="text-[var(--content-muted-text)]">
+                    No notifications
+                  </p>
+                  <p className="text-sm text-[var(--content-muted-text)] mt-1">
+                    Notifications will appear here
+                  </p>
                 </div>
-              ) : recentActivity.length > 0 ? (
-                <div className="space-y-2 flex-1 overflow-y-auto pr-2">
-                  {recentActivity.map((activity) => {
-                    const getActivityIcon = () => {
-                      switch (activity.type) {
-                        case 'Created':
-                          return <Plus className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
-                        case 'Won':
-                          return <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />;
-                        case 'Lost':
-                          return <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />;
-                        case 'Submitted':
-                          return <UploadSimple className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
-                        case 'Pending':
-                          return <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />;
-                        case 'Updated':
-                          return <PencilSimple className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
-                        case 'Archived':
-                          return <Archive className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
-                        case 'Unarchived':
-                          return <BoxArrowUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
-                        case 'Deleted':
-                          return <Trash className="w-4 h-4 text-red-600 dark:text-red-400" />;
-                        case 'Reminder':
-                          return <BellRinging className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
-                        case 'Completed':
-                          return <Checks className="w-4 h-4 text-green-600 dark:text-green-400" />;
-                        default:
-                          return <FileText className="w-4 h-4 text-gray-600 dark:text-gray-400" />;
-                      }
-                    };
-
-                    return (
-                      <div
-                        key={activity.id}
-                        className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50"
-                      >
-                        <div className="p-2 rounded-full bg-gray-100 dark:bg-gray-700 flex-shrink-0">
-                          {getActivityIcon()}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-3">
-                            <p className="text-sm text-[var(--content-text)] break-words flex-1">
-                              {activity.message}
-                            </p>
-                            <p className="text-xs text-[var(--content-muted-text)] sm:flex-shrink-0 sm:whitespace-nowrap">
-                              {getTimeAgo(activity.timestamp)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="text-center">
-                    <Clock className="w-12 h-12 text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] mx-auto mb-3 opacity-50" />
-                    <p className="text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)]">
-                      No recent activity
-                    </p>
-                    <p className="text-sm text-[var(--content-muted-text)] dark:text-[var(--content-muted-text)] mt-1">
-                      Activities will appear here
-                    </p>
-                  </div>
-                </div>
-              )}
+              </div>
             </CardContent>
           </Card>
         </div>

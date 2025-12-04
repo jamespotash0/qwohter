@@ -151,8 +151,6 @@ export const queryKeys = {
   // Dashboard
   dashboard: {
     all: ['dashboard'] as const,
-    activities: (organizationId: string, limit?: number) =>
-      [...queryKeys.dashboard.all, 'activities', organizationId, limit] as const,
     stats: (organizationId: string) =>
       [...queryKeys.dashboard.all, 'stats', organizationId] as const,
   },
@@ -249,17 +247,12 @@ export const invalidateQueries = {
 
   /**
    * Invalidate dashboard data
-   * Use after: any quote/activity change
+   * Use after: any quote change
    */
   dashboard: (organizationId: string) => {
-    return Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.activities(organizationId)
-      }),
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.dashboard.stats(organizationId)
-      }),
-    ]);
+    return queryClient.invalidateQueries({
+      queryKey: queryKeys.dashboard.stats(organizationId)
+    });
   },
 
   /**
@@ -426,11 +419,6 @@ persistQueryClient({
 
       // Don't persist user sessions (security - prevent session fixation)
       if (queryKey === 'user' && query.queryKey[1] === 'session') {
-        return false;
-      }
-
-      // Don't persist realtime data (will be stale by nature)
-      if (queryKey === 'dashboard' && query.queryKey[1] === 'activities') {
         return false;
       }
 
