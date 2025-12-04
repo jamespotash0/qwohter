@@ -280,28 +280,42 @@ export function EditorToolbar({ readOnly = false, formFields, formName }: Editor
 
       <Separator orientation="vertical" className="h-6 mx-1" />
 
-      {/* Insert Variable */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1.5 px-3 text-sm font-medium"
-            title="Insert Variable"
-            type="button"
-          >
-            <Variable className="h-4 w-4" />
-            Insert Variable
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-80 p-0" align="start">
-          <VariableInsertMenu
-            onSelect={handleInsertVariable}
-            formFields={formFields}
-            formName={formName}
-          />
-        </PopoverContent>
-      </Popover>
+      {/* Insert Variable - only enabled when a form is linked */}
+      {formFields && formFields.length > 0 ? (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 px-3 text-sm font-medium"
+              title="Insert Variable"
+              type="button"
+            >
+              <Variable className="h-4 w-4" />
+              Insert Variable
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 p-0" align="start">
+            <VariableInsertMenu
+              onSelect={handleInsertVariable}
+              formFields={formFields}
+              formName={formName}
+            />
+          </PopoverContent>
+        </Popover>
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1.5 px-3 text-sm font-medium opacity-50"
+          title="Link a form to insert variables"
+          type="button"
+          disabled
+        >
+          <Variable className="h-4 w-4" />
+          Insert Variable
+        </Button>
+      )}
     </div>
   );
 }

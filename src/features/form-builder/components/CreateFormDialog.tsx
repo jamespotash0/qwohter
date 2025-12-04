@@ -136,7 +136,11 @@ export function CreateFormDialog({
                 </SelectContent>
               </Select>
               <p className="text-xs text-gray-500">
-                Categorizes this form template
+                Links to the document numbering sequence configured in{' '}
+                <span className="font-medium">Settings → Document Sequences</span>.
+              </p>
+              <p className="text-xs text-amber-600 mt-1">
+                Cannot be changed once a proposal is created using this form.
               </p>
             </div>
 
@@ -151,7 +155,7 @@ export function CreateFormDialog({
                 <span className="text-gray-900">→</span>
                 <span className="px-3 py-1.5 rounded bg-gray-200 text-gray-900 whitespace-nowrap">Submitted</span>
                 <span className="text-gray-900">→</span>
-                <span className="px-3 py-1.5 rounded bg-gray-200 text-gray-900 whitespace-nowrap">Accepted</span>
+                <span className="px-3 py-1.5 rounded bg-gray-200 text-gray-900 whitespace-nowrap">Won</span>
                 <span className="text-gray-900">/</span>
                 <span className="px-3 py-1.5 rounded bg-gray-200 text-gray-900 whitespace-nowrap">Rejected</span>
                 <span className="text-gray-900">→</span>

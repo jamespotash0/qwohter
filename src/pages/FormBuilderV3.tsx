@@ -41,11 +41,11 @@ import { Tabs, TabsList } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/auth';
 import { useForm, useCreateForm, useUpdateForm } from '@/hooks/queries';
+import { useFormHasProposals } from '@/hooks/queries/useProposals';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
 import { FormComponents } from '@/features/form-builder/components/FormComponents';
 // import { DotGridCanvas } from '@/features/form-builder/components/DotGridCanvas';
 import { PropertiesPanel } from '@/features/form-builder/components/PropertiesPanel';
-import { FormPdfTemplatesSection } from '@/features/form-builder/components/FormPdfTemplatesSection';
 import { FormDocumentTemplatesSection } from '@/features/form-builder/components/FormDocumentTemplatesSection';
 import type { EnhancedFormField, EnhancedFormTab, FormComponentsItem } from '@/features/form-builder/types/enhanced';
 
@@ -358,6 +358,13 @@ export default function FormBuilderV3() {
 
   const createFormMutation = useCreateForm();
   const updateFormMutation = useUpdateForm();
+
+  // Check if form has proposals (determines if document_type can be changed)
+  const isExistingForm = formId && formId !== 'new';
+  const { data: hasProposals = false } = useFormHasProposals(
+    isExistingForm ? formId : undefined,
+    organizationId
+  );
 
   // Form state
   const [formName, setFormName] = useState(existingForm?.name || 'Untitled Form');
@@ -832,10 +839,21 @@ export default function FormBuilderV3() {
 
                   {/* Document Type Selector */}
                   <div className="space-y-2">
-                    <Label htmlFor="form-type" className="text-sm font-medium">
-                      Document Type
-                    </Label>
-                    <Select value={documentType} onValueChange={setDocumentType}>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="form-type" className="text-sm font-medium">
+                        Document Type
+                      </Label>
+                      {hasProposals && (
+                        <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                          Read-only
+                        </span>
+                      )}
+                    </div>
+                    <Select
+                      value={documentType}
+                      onValueChange={setDocumentType}
+                      disabled={hasProposals}
+                    >
                       <SelectTrigger id="form-type" className="h-9">
                         <SelectValue placeholder="Select document type" />
                       </SelectTrigger>
@@ -846,7 +864,13 @@ export default function FormBuilderV3() {
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-gray-500">
-                      Type of document this form generates
+                      {hasProposals ? (
+                        <span className="text-amber-600">
+                          Locked — proposals exist using this form
+                        </span>
+                      ) : (
+                        <>Links to document number sequence for <span className="font-medium">{documentType === 'Service_Request' ? 'Service Request' : documentType}</span></>
+                      )}
                     </p>
                   </div>
 
@@ -868,14 +892,6 @@ export default function FormBuilderV3() {
                       onCheckedChange={setAllowSaveIncomplete}
                     />
                   </div>
-
-                  <Separator />
-
-                  {/* PDF Templates */}
-                  <FormPdfTemplatesSection
-                    formId={formId !== 'new' ? formId : undefined}
-                    organizationId={organizationId}
-                  />
 
                   <Separator />
 

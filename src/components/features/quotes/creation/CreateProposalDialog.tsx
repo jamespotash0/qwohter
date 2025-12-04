@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useForms } from "@/hooks/queries";
+import { useFormDocumentTemplates } from "@/hooks/queries/useDocumentTemplates";
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useUser } from "@/auth";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
@@ -32,13 +33,6 @@ interface CreateProposalDialogProps {
   onOpenChange: (open: boolean) => void;
   onCreateQuote: (data: ProposalInitialData) => void;
 }
-
-// Available PDF templates
-const PDF_TEMPLATES = [
-  { value: "generic_wall", label: "Generic Wall Template", description: "Standard wall quote template" },
-  { value: "base", label: "Base Template", description: "Simple base template" },
-  { value: "smart", label: "Smart Quote Template", description: "Intelligent template with auto-calculations" },
-] as const;
 
 const CreateProposalDialog = ({
   open,
@@ -66,6 +60,41 @@ const CreateProposalDialog = ({
   const user = useUser();
   const { organizationId } = useCurrentOrganization(user?.id || "");
   const { data: forms = [], isLoading: formsLoading } = useForms(organizationId || "");
+
+  // Fetch linked templates for selected form
+  const { data: linkedTemplates = [], isLoading: templatesLoading } = useFormDocumentTemplates(
+    selectedFormId || undefined
+  );
+
+  // Find the default form (only if explicitly marked as default)
+  const defaultForm = useMemo(() => {
+    return forms.find((f: { is_default?: boolean }) => f.is_default);
+  }, [forms]);
+
+  // Pre-select default form when dialog opens (only if there's an actual default)
+  useEffect(() => {
+    if (open && defaultForm && !selectedFormId) {
+      setSelectedFormId(defaultForm.id);
+    }
+  }, [open, defaultForm, selectedFormId]);
+
+  // Reset template when form changes, then auto-select default if available
+  useEffect(() => {
+    setSelectedTemplate("");
+  }, [selectedFormId]);
+
+  // Auto-select default template when templates are loaded
+  useEffect(() => {
+    if (linkedTemplates.length > 0 && !selectedTemplate) {
+      // Find template marked as default (on document_templates table)
+      const defaultTemplate = linkedTemplates.find(
+        (link) => link.document_template?.is_default
+      );
+      if (defaultTemplate) {
+        setSelectedTemplate(defaultTemplate.document_template_id);
+      }
+    }
+  }, [linkedTemplates, selectedTemplate]);
 
   // Check if form is valid (required fields filled)
   const isFormValid = proposalName.trim() && clientCompany.trim() && jobLocation.trim() && selectedFormId && selectedTemplate;
@@ -216,11 +245,21 @@ const CreateProposalDialog = ({
                   ) : forms.length === 0 ? (
                     <SelectItem value="none" disabled>No forms available</SelectItem>
                   ) : (
-                    forms.map((form) => (
-                      <SelectItem key={form.id} value={form.id}>
-                        {form.name}
-                      </SelectItem>
-                    ))
+                    // Sort forms so default appears first
+                    [...forms]
+                      .sort((a, b) => {
+                        const aDefault = (a as { is_default?: boolean }).is_default ? 1 : 0;
+                        const bDefault = (b as { is_default?: boolean }).is_default ? 1 : 0;
+                        return bDefault - aDefault;
+                      })
+                      .map((form) => (
+                        <SelectItem key={form.id} value={form.id}>
+                          {form.name}
+                          {(form as { is_default?: boolean }).is_default && (
+                            <span className="ml-2 text-xs text-blue-500">(Default)</span>
+                          )}
+                        </SelectItem>
+                      ))
                   )}
                 </SelectContent>
               </Select>
@@ -228,31 +267,57 @@ const CreateProposalDialog = ({
 
             <div className="space-y-2">
               <Label htmlFor="template" className="text-sm font-medium text-slate-700">
-                PDF Template <span className="text-red-500">*</span>
+                Document Template <span className="text-red-500">*</span>
               </Label>
               <Select
                 value={selectedTemplate}
                 onValueChange={setSelectedTemplate}
-                disabled={!selectedFormId}
+                disabled={!selectedFormId || linkedTemplates.length === 0}
               >
                 <SelectTrigger
                   id="template"
                   className={`h-11 rounded-lg bg-white border-slate-200 data-[placeholder]:text-slate-400 ${
-                    !selectedFormId ? 'opacity-50 cursor-not-allowed' : ''
+                    !selectedFormId || linkedTemplates.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >
-                  <SelectValue placeholder={selectedFormId ? "Select a PDF template" : "Select form first"} />
+                  <SelectValue
+                    placeholder={
+                      !selectedFormId
+                        ? "Select form first"
+                        : templatesLoading
+                          ? "Loading..."
+                          : linkedTemplates.length === 0
+                            ? "No templates linked"
+                            : "Select a template"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent className="bg-white">
-                  {PDF_TEMPLATES.map((template) => (
-                    <SelectItem key={template.value} value={template.value}>
-                      {template.label}
-                    </SelectItem>
-                  ))}
+                  {/* Sort templates so default appears first */}
+                  {[...linkedTemplates]
+                    .sort((a, b) => {
+                      const aDefault = a.document_template?.is_default ? 1 : 0;
+                      const bDefault = b.document_template?.is_default ? 1 : 0;
+                      return bDefault - aDefault;
+                    })
+                    .map((link) => (
+                      <SelectItem
+                        key={link.document_template_id}
+                        value={link.document_template_id}
+                      >
+                        {link.document_template?.name || 'Unnamed Template'}
+                        {link.document_template?.is_default && (
+                          <span className="ml-2 text-xs text-amber-600">(Default)</span>
+                        )}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               {!selectedFormId && (
                 <p className="text-xs text-slate-400">Select a form template first</p>
+              )}
+              {selectedFormId && linkedTemplates.length === 0 && !templatesLoading && (
+                <p className="text-xs text-amber-500">No document templates linked to this form</p>
               )}
             </div>
           </div>

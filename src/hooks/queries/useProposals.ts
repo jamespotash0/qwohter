@@ -75,6 +75,23 @@ export function useProposal(proposalId: string | undefined, enabled: boolean = t
   });
 }
 
+/**
+ * Hook: Check if any proposals exist for a form
+ * Used to determine if document_type can be changed
+ */
+export function useFormHasProposals(formId: string | undefined, organizationId: string | undefined) {
+  return useQuery({
+    queryKey: [...proposalQueryKeys.all, 'hasProposals', formId],
+    queryFn: async () => {
+      if (!formId || !organizationId) return false;
+      const proposals = await fetchProposals(organizationId, { form_id: formId });
+      return proposals.length > 0;
+    },
+    enabled: !!formId && !!organizationId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - this doesn't change often
+  });
+}
+
 // ============================================================================
 // Mutation Hooks
 // ============================================================================

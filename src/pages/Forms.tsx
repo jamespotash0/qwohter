@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { PageContent } from '@/components/common/layout';
 import { useCurrentOrganization, useForms, useDeleteForm, useCopyForm, useUpdateForm, useCreateForm, useOrganizationMembers, type Form } from '@/hooks/queries';
 import { useUser } from '@/auth';
 import { useTemplates, useSearchTemplates, useCopyTemplate, usePrefetchTemplate } from '@/hooks/queries/useTemplates';
+import { useFormTemplateCounts, useFormDocumentTemplates } from '@/hooks/queries/useDocumentTemplates';
 import { Template } from '@/services/templateService';
 import { TemplateCard } from '@/features/form-builder/components/TemplateCard';
 import { TemplatePreview } from '@/features/form-builder/components/TemplatePreview';
@@ -18,10 +19,10 @@ import {
   SquaresFour,
   Star,
   Stack,
-  User,
-  CalendarBlank,
-  MagnifyingGlass
+  MagnifyingGlass,
+  Link as LinkIcon
 } from '@phosphor-icons/react';
+import { Clock } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +32,18 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { CreateFormDialog } from '@/features/form-builder/components/CreateFormDialog';
 
@@ -72,6 +85,10 @@ export default function Forms() {
   const createFormMutation = useCreateForm();
   const copyTemplateMutation = useCopyTemplate();
   const prefetchTemplate = usePrefetchTemplate();
+
+  // Fetch linked document template counts for all forms
+  const formIds = useMemo(() => forms.map(f => f.id), [forms]);
+  const { data: templateCountsMap } = useFormTemplateCounts(formIds);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -202,14 +219,14 @@ export default function Forms() {
               <Button
                 variant="outline"
                 onClick={() => navigate('/forms/library')}
-                className="flex items-center gap-2"
+                className="flex items-center gap-1.5 h-9 text-sm"
               >
                 <Stack className="w-4 h-4" />
                 Library
               </Button>
               <Button
                 onClick={() => setShowCreateDialog(true)}
-                className="flex items-center gap-2 bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white shadow-sm"
+                className="flex items-center gap-1.5 h-9 text-sm bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white shadow-sm"
               >
                 <Plus className="w-4 h-4" weight="bold" />
                 New Form
@@ -287,12 +304,13 @@ export default function Forms() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-[1600px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredForms.map(form => (
                 <FormCard
                   key={form.id}
                   form={form}
                   members={members}
+                  linkedTemplateCount={templateCountsMap?.[form.id] || 0}
                   onEdit={() => navigate(`/forms/builder-v3/${form.id}`)}
                   onDuplicate={(e) => handleDuplicate(form.id, form.name, e)}
                   onDelete={() => handleDelete(form.id, form.name)}
@@ -371,6 +389,7 @@ export default function Forms() {
 interface FormCardProps {
   form: Form;
   members: any[];
+  linkedTemplateCount: number;
   onEdit: () => void;
   onDuplicate: (e?: React.MouseEvent) => void;
   onDelete: () => void;
@@ -378,21 +397,40 @@ interface FormCardProps {
   onUpdateName: (name: string) => void;
 }
 
-function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, onUpdateName }: FormCardProps) {
-  const totalFields = form.tabs.reduce((acc, tab) => acc + tab.fields.length, 0);
+// Helper to check if a field is a styling element (not a data field)
+const isStylingField = (field: { type?: string }) =>
+  field.type === 'section' || field.type === 'text_content';
+
+function FormCard({ form, members, linkedTemplateCount, onEdit, onDuplicate, onDelete, onSetDefault, onUpdateName }: FormCardProps) {
+  // Filter out styling fields (section headers, text content) from count
+  const dataFields = form.tabs.flatMap(tab => tab.fields.filter(f => !isStylingField(f)));
+  const totalFields = dataFields.length;
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(form.name);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedDescription, setEditedDescription] = useState(form.description || '');
+  const [showTabsDialog, setShowTabsDialog] = useState(false);
+  const [showFieldsDialog, setShowFieldsDialog] = useState(false);
+  const [showTemplatesDialog, setShowTemplatesDialog] = useState(false);
   const isDefault = (form as any).is_default;
   const updateFormMutation = useUpdateForm();
+
+  // Fetch linked templates for this form (for tooltip display)
+  const { data: linkedTemplates = [] } = useFormDocumentTemplates(form.id);
 
   // Get creator name from members
   const creator = members.find(m => m.user_id === form.created_by);
   const creatorName = creator?.full_name || 'Unknown';
 
-  // Format creation date
-  const createdDate = new Date(form.created_at).toLocaleDateString('en-US', {
+  // Get initials from creator name (e.g., "John Doe" -> "JD")
+  const creatorInitials = creatorName
+    .split(' ')
+    .map((word: string) => word.charAt(0).toUpperCase())
+    .slice(0, 2)
+    .join('');
+
+  // Format last updated date
+  const updatedDate = new Date(form.updated_at || form.created_at).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric'
@@ -444,25 +482,16 @@ function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, 
   };
 
   return (
-    <div className="relative w-full max-w-sm">
+    <div className="relative w-full">
       {/* Default Star Badge - positioned outside card to avoid overflow clipping */}
       {isDefault && (
-        <div className="absolute -top-2 -left-2 z-20">
-          <div className="w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center shadow-lg">
-            <Star className="w-5 h-5 text-white" weight="fill" />
+        <div className="absolute -top-1.5 -left-1.5 z-20">
+          <div className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center shadow-md">
+            <Star className="w-3 h-3 text-white" weight="fill" />
           </div>
         </div>
       )}
-      <div className="bg-white rounded-sm shadow-md hover:shadow-xl transition-all duration-300 group relative overflow-hidden border border-gray-300"
-        style={{
-          background: 'linear-gradient(to bottom, #ffffff 0%, #fafafa 100%)',
-        }}
-      >
-        {/* Folded Corner (Dog-ear) */}
-        <div className="absolute top-0 right-0 w-0 h-0 border-l-[30px] border-l-transparent border-t-[30px] border-t-gray-300 opacity-80 group-hover:border-t-[var(--sidebar-icon-active)] transition-colors duration-300">
-          <div className="absolute -top-[30px] -right-[1px] w-0 h-0 border-l-[29px] border-l-transparent border-t-[29px] border-t-white"></div>
-        </div>
-
+      <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 group relative overflow-hidden border border-gray-200">
         {/* Dropdown Menu */}
         <div className="absolute top-2 right-2 z-10">
           <DropdownMenu>
@@ -505,8 +534,8 @@ function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, 
 
         {/* Content - Clickable to Edit */}
         <div onClick={onEdit} className="cursor-pointer">
-          {/* Document Header with Icon */}
-          <div className="px-5 pt-4 pb-3 border-b-2 border-gray-200/60">
+          {/* Document Header - pr-10 leaves space for dropdown menu */}
+          <div className="px-4 pr-10 pt-4 pb-2">
             <div className="flex items-start gap-3">
               {/* Name and Description */}
               <div className="flex-1 min-w-0 pt-0.5">
@@ -523,9 +552,10 @@ function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, 
                       onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
-                    <div className="flex items-start gap-1">
+                    <div className="flex items-start gap-1 min-w-0">
                       <h3
-                        className="text-base font-bold text-gray-900 line-clamp-2 leading-tight"
+                        className="text-base font-bold text-gray-900 leading-tight truncate"
+                        title={form.name}
                         onDoubleClick={(e) => {
                           e.stopPropagation();
                           setIsEditingName(true);
@@ -547,7 +577,7 @@ function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, 
                 </div>
 
                 {/* Editable Description */}
-                <div className="flex items-start gap-0.5">
+                <div className="flex items-start gap-0.5 min-w-0">
                   {isEditingDescription ? (
                     <textarea
                       value={editedDescription}
@@ -563,7 +593,8 @@ function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, 
                   ) : (
                     <>
                       <p
-                        className="text-xs text-gray-600 line-clamp-2 leading-relaxed"
+                        className="text-xs text-gray-600 leading-relaxed truncate"
+                        title={form.description || 'No description'}
                         onDoubleClick={(e) => {
                           e.stopPropagation();
                           setIsEditingDescription(true);
@@ -587,53 +618,191 @@ function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, 
             </div>
           </div>
 
-          {/* Document Body - Simulated Lines */}
-          <div className="px-5 py-4 space-y-2">
-            {/* Decorative document lines */}
-            <div className="space-y-1.5">
-              <div className="h-1.5 bg-gray-200/50 rounded-full w-full"></div>
-              <div className="h-1.5 bg-gray-200/50 rounded-full w-5/6"></div>
-              <div className="h-1.5 bg-gray-200/50 rounded-full w-4/6"></div>
-            </div>
-          </div>
-
           {/* Stats Footer */}
-          <div className="px-5 py-3 bg-gradient-to-t from-gray-100/80 to-transparent border-t border-gray-200/60 space-y-2">
-            {/* Row 1: Tabs and Fields */}
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5 text-gray-700">
-                  <Stack className="w-4 h-4 text-blue-600" weight="duotone" />
-                  <span className="font-semibold text-gray-900">{form.tabs.length}</span>
-                  <span className="text-gray-500">tabs</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-gray-700">
-                  <SquaresFour className="w-4 h-4 text-green-600" weight="duotone" />
-                  <span className="font-semibold text-gray-900">{totalFields}</span>
-                  <span className="text-gray-500">fields</span>
-                </div>
-              </div>
+          <div className="px-4 py-3 bg-gray-50/50 space-y-2">
+            {/* Row 1: Tabs, Fields, and Linked Templates */}
+            <div className="flex items-center gap-3 text-[11px]">
+              {/* Tabs with Tooltip */}
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 text-gray-700 cursor-pointer hover:text-blue-600 transition-colors">
+                      <Stack className="w-3.5 h-3.5 text-blue-600" weight="duotone" />
+                      <span className="font-semibold text-gray-900">{form.tabs.length}</span>
+                      <span className="text-gray-500">tabs</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[180px]">
+                    <ul className="text-xs space-y-0.5">
+                      {form.tabs.slice(0, 5).map((tab, idx) => (
+                        <li key={idx} className="truncate text-gray-700">
+                          {tab.name || `Tab ${idx + 1}`}
+                        </li>
+                      ))}
+                      {form.tabs.length > 5 && (
+                        <li
+                          className="text-blue-500 cursor-pointer hover:underline"
+                          onClick={(e) => { e.stopPropagation(); setShowTabsDialog(true); }}
+                        >
+                          +{form.tabs.length - 5} more
+                        </li>
+                      )}
+                    </ul>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-              {/* Document Type Badge */}
-              <div className="px-2.5 py-1 rounded-md text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                {documentTypeDisplay}
-              </div>
+              {/* Fields with Tooltip */}
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 text-gray-700 cursor-pointer hover:text-green-600 transition-colors">
+                      <SquaresFour className="w-3.5 h-3.5 text-green-600" weight="duotone" />
+                      <span className="font-semibold text-gray-900">{totalFields}</span>
+                      <span className="text-gray-500">fields</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[200px]">
+                    <ul className="text-xs space-y-0.5">
+                      {dataFields.slice(0, 6).map((field, idx) => (
+                        <li key={idx} className="truncate text-gray-700">
+                          {field.label || field.name || 'Untitled'}
+                        </li>
+                      ))}
+                      {totalFields > 6 && (
+                        <li
+                          className="text-green-500 cursor-pointer hover:underline"
+                          onClick={(e) => { e.stopPropagation(); setShowFieldsDialog(true); }}
+                        >
+                          +{totalFields - 6} more
+                        </li>
+                      )}
+                    </ul>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              {linkedTemplateCount > 0 && (
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-1 text-gray-700 cursor-pointer hover:text-purple-600 transition-colors">
+                        <LinkIcon className="w-3.5 h-3.5 text-purple-600" weight="duotone" />
+                        <span className="font-semibold text-gray-900">{linkedTemplateCount}</span>
+                        <span className="text-gray-500">template{linkedTemplateCount !== 1 ? 's' : ''}</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[200px]">
+                      <ul className="text-xs space-y-0.5">
+                        {linkedTemplates.slice(0, 4).map((lt) => (
+                          <li key={lt.document_template_id} className="truncate text-gray-700">
+                            {lt.document_template?.name || 'Unknown'}
+                          </li>
+                        ))}
+                        {linkedTemplates.length > 4 && (
+                          <li
+                            className="text-purple-500 cursor-pointer hover:underline"
+                            onClick={(e) => { e.stopPropagation(); setShowTemplatesDialog(true); }}
+                          >
+                            +{linkedTemplates.length - 4} more
+                          </li>
+                        )}
+                      </ul>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
 
-            {/* Row 2: Creator and Date */}
-            <div className="flex items-center justify-between text-xs text-gray-600">
-              <div className="flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-gray-500" weight="duotone" />
-                <span className="truncate max-w-[120px]" title={creatorName}>{creatorName}</span>
+            {/* Row 2: Creator Avatar, Document Type, and Date */}
+            <div className="flex items-center justify-between text-[10px] text-gray-500">
+              <div className="flex items-center gap-2">
+                {/* Creator Avatar with Tooltip */}
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-[8px] font-semibold text-white cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all">
+                        {creatorInitials}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p className="text-xs text-gray-700">{creatorName}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                {/* Document Type Badge */}
+                <div className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                  {documentTypeDisplay}
+                </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <CalendarBlank className="w-3.5 h-3.5 text-gray-500" weight="duotone" />
-                <span>{createdDate}</span>
+              <div className="flex items-center gap-1">
+                <Clock className="w-3 h-3 text-gray-400" />
+                <span>{updatedDate}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Tabs Dialog */}
+      <Dialog open={showTabsDialog} onOpenChange={setShowTabsDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>All Tabs ({form.tabs.length})</DialogTitle>
+          </DialogHeader>
+          <ul className="space-y-1 max-h-[300px] overflow-y-auto">
+            {form.tabs.map((tab, idx) => (
+              <li key={idx} className="text-sm text-gray-700 py-1 px-2 rounded hover:bg-gray-50">
+                {tab.name || `Tab ${idx + 1}`}
+              </li>
+            ))}
+          </ul>
+        </DialogContent>
+      </Dialog>
+
+      {/* Fields Dialog */}
+      <Dialog open={showFieldsDialog} onOpenChange={setShowFieldsDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>All Fields ({totalFields})</DialogTitle>
+          </DialogHeader>
+          <ul className="space-y-1 max-h-[300px] overflow-y-auto">
+            {form.tabs.map((tab, tabIdx) => {
+              const tabDataFields = tab.fields.filter(f => !isStylingField(f));
+              if (tabDataFields.length === 0) return null;
+              return (
+                <li key={tabIdx}>
+                  <div className="text-xs font-medium text-gray-500 py-1 px-2 bg-gray-50 rounded">
+                    {tab.name || `Tab ${tabIdx + 1}`}
+                  </div>
+                  <ul className="ml-2">
+                    {tabDataFields.map((field, fieldIdx) => (
+                      <li key={fieldIdx} className="text-sm text-gray-700 py-1 px-2 rounded hover:bg-gray-50">
+                        {field.label || field.name || 'Untitled'}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </DialogContent>
+      </Dialog>
+
+      {/* Templates Dialog */}
+      <Dialog open={showTemplatesDialog} onOpenChange={setShowTemplatesDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Linked Templates ({linkedTemplates.length})</DialogTitle>
+          </DialogHeader>
+          <ul className="space-y-1 max-h-[300px] overflow-y-auto">
+            {linkedTemplates.map((lt) => (
+              <li key={lt.document_template_id} className="text-sm text-gray-700 py-1 px-2 rounded hover:bg-gray-50">
+                {lt.document_template?.name || 'Unknown'}
+              </li>
+            ))}
+          </ul>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

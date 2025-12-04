@@ -15,7 +15,7 @@ export type ProposalActivityType =
   | 'Archived'
   | 'Unarchived'
   | 'Submitted'
-  | 'Accepted'
+  | 'Won'
   | 'Rejected';
 
 export const proposalActivityService = {
@@ -173,7 +173,7 @@ export const proposalActivityService = {
   }) {
     return this.logActivity({
       ...params,
-      activityType: 'Accepted'
+      activityType: 'Won'
     });
   },
 

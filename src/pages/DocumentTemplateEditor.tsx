@@ -11,7 +11,9 @@ import {
   useDocumentTemplate,
   useCreateDocumentTemplate,
   useUpdateDocumentTemplate,
+  useTemplateForms,
   useLinkDocumentTemplate,
+  useUnlinkDocumentTemplate,
 } from '@/hooks/queries/useDocumentTemplates';
 import type { PageSettings } from '@/hooks/queries/useDocumentTemplates';
 import { useForms, useForm } from '@/hooks/queries/useForms';
@@ -49,7 +51,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, Settings, Save, Loader2, FileText, Link } from 'lucide-react';
+import { ArrowLeft, Settings, Save, Loader2, Link, Pencil } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 
 // ============================================================================
@@ -99,6 +112,7 @@ export default function DocumentTemplateEditor() {
   const createMutation = useCreateDocumentTemplate();
   const updateMutation = useUpdateDocumentTemplate();
   const linkMutation = useLinkDocumentTemplate();
+  const unlinkMutation = useUnlinkDocumentTemplate();
 
   // Local State
   const [formData, setFormData] = useState<TemplateFormData>({
@@ -111,10 +125,21 @@ export default function DocumentTemplateEditor() {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(formId);
+  const [isLinking, setIsLinking] = useState(false);
+  const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState(false);
+
+  // Inline name editing state
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState('');
 
   // Forms queries
   const { data: forms = [] } = useForms(organization?.id, !!organization?.id);
   const { data: selectedForm } = useForm(selectedFormId || '', !!selectedFormId);
+
+  // Fetch linked forms for this template (reverse lookup)
+  const { data: linkedForms = [] } = useTemplateForms(
+    !isNew && templateId ? templateId : undefined
+  );
 
   // Extract form fields as variables
   const formFields = useMemo((): FormFieldVariable[] => {
@@ -160,6 +185,15 @@ export default function DocumentTemplateEditor() {
     }
   }, [isNew]);
 
+  // Initialize selectedFormId from linked forms (for existing templates)
+  useEffect(() => {
+    const firstLinkedForm = linkedForms[0];
+    if (firstLinkedForm && !formId) {
+      // If there's a linked form, use it (typically only one per template)
+      setSelectedFormId(firstLinkedForm.form_id);
+    }
+  }, [linkedForms, formId]);
+
   // Track unsaved changes
   const handleContentChange = useCallback((newContent: PlateElement[]) => {
     setContent(newContent);
@@ -175,6 +209,72 @@ export default function DocumentTemplateEditor() {
       setIsDirty(true);
     },
     []
+  );
+
+  // Inline name editing handlers
+  const handleStartEditingName = useCallback(() => {
+    setEditedName(formData.name);
+    setIsEditingName(true);
+  }, [formData.name]);
+
+  const handleNameSave = useCallback(() => {
+    const trimmedName = editedName.trim();
+    if (trimmedName && trimmedName !== formData.name) {
+      setFormData((prev) => ({ ...prev, name: trimmedName }));
+      setIsDirty(true);
+    }
+    setIsEditingName(false);
+  }, [editedName, formData.name]);
+
+  const handleNameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleNameSave();
+    } else if (e.key === 'Escape') {
+      setIsEditingName(false);
+    }
+  }, [handleNameSave]);
+
+  // Handle form linking - immediately updates the database
+  const handleFormLinkChange = useCallback(
+    async (newFormId: string | null) => {
+      // For new templates, just update state (will be linked on first save)
+      if (isNew) {
+        setSelectedFormId(newFormId);
+        return;
+      }
+
+      // For existing templates, immediately update the database
+      const currentFormId = selectedFormId;
+      if (currentFormId === newFormId) return;
+
+      setIsLinking(true);
+      try {
+        // Unlink old form if there was one
+        if (currentFormId) {
+          await unlinkMutation.mutateAsync({
+            formId: currentFormId,
+            documentTemplateId: templateId!,
+          });
+        }
+
+        // Link new form if one is selected
+        if (newFormId) {
+          await linkMutation.mutateAsync({
+            formId: newFormId,
+            documentTemplateId: templateId!,
+          });
+        }
+
+        setSelectedFormId(newFormId);
+        toast.success(newFormId ? 'Form linked successfully' : 'Form unlinked');
+      } catch (error) {
+        console.error('Failed to update form link:', error);
+        toast.error('Failed to update form link');
+      } finally {
+        setIsLinking(false);
+      }
+    },
+    [isNew, selectedFormId, templateId, linkMutation, unlinkMutation]
   );
 
   // Save template
@@ -204,18 +304,12 @@ export default function DocumentTemplateEditor() {
           created_by: user.id,
         });
 
-        // Link to selected form if one is chosen
+        // Link the selected form to this template (only for new templates)
         if (selectedFormId) {
-          try {
-            await linkMutation.mutateAsync({
-              formId: selectedFormId,
-              documentTemplateId: newTemplate.id,
-              isDefault: true,
-            });
-          } catch (linkError) {
-            // Link may already exist or fail - don't block the save
-            console.warn('Could not link template to form:', linkError);
-          }
+          await linkMutation.mutateAsync({
+            formId: selectedFormId,
+            documentTemplateId: newTemplate.id,
+          });
         }
 
         toast.success('Template created successfully');
@@ -224,6 +318,7 @@ export default function DocumentTemplateEditor() {
         // Navigate to edit mode
         navigate(`/document-templates/${newTemplate.id}`, { replace: true });
       } else {
+        // For existing templates, form linking is handled immediately via handleFormLinkChange
         await updateMutation.mutateAsync({
           templateId: templateId!,
           updates: {
@@ -234,20 +329,6 @@ export default function DocumentTemplateEditor() {
             page_settings: formData.pageSettings,
           },
         });
-
-        // Link to selected form if one is chosen (handles duplicates gracefully)
-        if (selectedFormId) {
-          try {
-            await linkMutation.mutateAsync({
-              formId: selectedFormId,
-              documentTemplateId: templateId!,
-              isDefault: false,
-            });
-          } catch (linkError) {
-            // Link may already exist - that's fine
-            console.warn('Could not link template to form:', linkError);
-          }
-        }
 
         toast.success('Template saved successfully');
         setIsDirty(false);
@@ -263,10 +344,10 @@ export default function DocumentTemplateEditor() {
     templateId,
     organization?.id,
     user?.id,
+    selectedFormId,
     createMutation,
     updateMutation,
     linkMutation,
-    selectedFormId,
     navigate,
   ]);
 
@@ -310,47 +391,112 @@ export default function DocumentTemplateEditor() {
     <div className="flex flex-col h-screen bg-gray-100">
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 bg-white border-b">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 group/header">
           <Button variant="ghost" size="sm" onClick={handleBack}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
           <div className="h-6 w-px bg-gray-200" />
-          <Input
-            value={formData.name}
-            onChange={(e) => handleFormChange('name', e.target.value)}
-            placeholder="Untitled Template"
-            className="text-lg font-semibold border-0 shadow-none focus-visible:ring-0 max-w-[300px]"
-          />
-          <div className="h-6 w-px bg-gray-200" />
-          {/* Form Selector for Variables & Linking */}
-          <div className="flex items-center gap-2">
-            <Select
-              value={selectedFormId || ''}
-              onValueChange={(value) => {
-                setSelectedFormId(value || null);
-                setIsDirty(true);
-              }}
-            >
-              <SelectTrigger className="w-[200px] h-9">
-                <FileText className="h-4 w-4 mr-2 text-gray-500" />
-                <SelectValue placeholder="Link to form..." />
-              </SelectTrigger>
-              <SelectContent>
-                {forms.map((form) => (
-                  <SelectItem key={form.id} value={form.id}>
-                    {form.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedFormId && (
-              <span className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                <Link className="h-3 w-3" />
-                Linked
-              </span>
-            )}
-          </div>
+
+          {/* Inline Editable Name */}
+          {isEditingName ? (
+            <Input
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              onBlur={handleNameSave}
+              onKeyDown={handleNameKeyDown}
+              placeholder="Untitled Template"
+              className="text-lg font-semibold h-9 px-2 max-w-[300px] bg-amber-50 border-amber-300 focus-visible:ring-amber-400"
+              autoFocus
+            />
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <h1
+                className="text-lg font-semibold text-gray-900 cursor-pointer hover:text-gray-700 max-w-[300px] truncate"
+                onDoubleClick={handleStartEditingName}
+                title={formData.name || 'Untitled Template'}
+              >
+                {formData.name || 'Untitled Template'}
+              </h1>
+              <button
+                onClick={handleStartEditingName}
+                className="p-1 hover:bg-gray-100 rounded opacity-0 group-hover/header:opacity-100 transition-opacity"
+                title="Edit name"
+              >
+                <Pencil className="h-3.5 w-3.5 text-gray-400" />
+              </button>
+            </div>
+          )}
+
+          {/* Form Link Icon with Popover */}
+          <TooltipProvider delayDuration={300}>
+            <Popover open={isLinkPopoverOpen} onOpenChange={setIsLinkPopoverOpen}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <button
+                      className={`p-1.5 rounded-md transition-colors ${
+                        selectedFormId
+                          ? 'bg-purple-100 text-purple-600 hover:bg-purple-200'
+                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-500'
+                      }`}
+                      disabled={isLinking}
+                    >
+                      {isLinking ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Link className="h-4 w-4" />
+                      )}
+                    </button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {selectedFormId
+                    ? forms.find(f => f.id === selectedFormId)?.name || 'Loading...'
+                    : 'No form linked'
+                  }
+                </TooltipContent>
+              </Tooltip>
+              <PopoverContent align="start" className="w-52 p-1.5">
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide px-2 py-1">Linked Form</p>
+                  <button
+                    onClick={() => {
+                      handleFormLinkChange(null);
+                      setIsLinkPopoverOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded transition-colors ${
+                      !selectedFormId
+                        ? 'bg-purple-50 text-purple-700'
+                        : 'text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${!selectedFormId ? 'bg-purple-500' : 'bg-gray-300'}`} />
+                    None
+                  </button>
+                  {forms.map((form) => (
+                    <button
+                      key={form.id}
+                      onClick={() => {
+                        handleFormLinkChange(form.id);
+                        setIsLinkPopoverOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded transition-colors ${
+                        form.id === selectedFormId
+                          ? 'bg-purple-50 text-purple-700'
+                          : 'text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                        form.id === selectedFormId ? 'bg-purple-500' : 'bg-gray-300'
+                      }`} />
+                      <span className="truncate">{form.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </TooltipProvider>
         </div>
 
         <div className="flex items-center gap-2">

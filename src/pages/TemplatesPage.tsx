@@ -5,7 +5,7 @@
  * Allows users to browse existing templates and create new ones.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   MagnifyingGlass,
@@ -16,18 +16,24 @@ import {
   PencilSimple,
   CopySimple,
   Trash,
-  User,
-  CalendarBlank,
   FileText,
-  ClockCounterClockwise,
+  Link as LinkIcon,
+  Star,
+  SquaresFour,
 } from '@phosphor-icons/react';
+import { Clock } from 'lucide-react';
 import {
   useDocumentTemplates,
   useCreateDocumentTemplate,
   useDeleteDocumentTemplate,
   useUpdateDocumentTemplate,
+  useTemplateLinkedForms,
+  useSetDefaultDocumentTemplate,
+  useLinkDocumentTemplate,
   type DocumentTemplate,
+  type TemplateLinkedFormInfo,
 } from '@/hooks/queries/useDocumentTemplates';
+import { CreateTemplateDialog } from '@/features/document-builder/components/CreateTemplateDialog';
 import { useUser } from '@/auth';
 import { useCurrentOrganization, useOrganizationMembers } from '@/hooks/queries/useOrganization';
 import { Button } from '@/components/ui/button';
@@ -42,6 +48,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function TemplatesPage() {
   const navigate = useNavigate();
@@ -54,6 +76,9 @@ export default function TemplatesPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [librarySearchQuery, setLibrarySearchQuery] = useState('');
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<DocumentTemplate | null>(null);
 
   // Fetch user's custom document templates (organization-specific)
   const { data: templates = [], isLoading: isLoadingTemplates } = useDocumentTemplates(
@@ -72,6 +97,12 @@ export default function TemplatesPage() {
   const createTemplateMutation = useCreateDocumentTemplate();
   const deleteTemplateMutation = useDeleteDocumentTemplate();
   const updateTemplateMutation = useUpdateDocumentTemplate();
+  const setDefaultMutation = useSetDefaultDocumentTemplate();
+  const linkMutation = useLinkDocumentTemplate();
+
+  // Fetch linked form info (id + name) for all templates (batch fetch for efficiency)
+  const templateIds = useMemo(() => templates.map(t => t.id), [templates]);
+  const { data: linkedFormsMap = {} } = useTemplateLinkedForms(templateIds);
 
   // Filter templates by search query
   const filteredTemplates = templates.filter((template) =>
@@ -87,13 +118,21 @@ export default function TemplatesPage() {
     navigate(`/document-templates/${template.id}`);
   };
 
-  const handleDelete = (template: DocumentTemplate) => {
-    deleteTemplateMutation.mutate(template.id, {
+  const handleDeleteClick = (template: DocumentTemplate) => {
+    setTemplateToDelete(template);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!templateToDelete) return;
+
+    deleteTemplateMutation.mutate(templateToDelete.id, {
       onSuccess: () => {
-        toast.success(`"${template.name}" has been deleted`);
+        toast.success(`"${templateToDelete.name}" has been deleted`);
+        setTemplateToDelete(null);
       },
       onError: (error) => {
         toast.error(`Failed to delete template: ${error.message}`);
+        setTemplateToDelete(null);
       },
     });
   };
@@ -137,27 +176,68 @@ export default function TemplatesPage() {
     );
   };
 
+  const handleSetDefault = (template: DocumentTemplate) => {
+    if (!currentOrganization?.id) {
+      toast.error('Organization not found');
+      return;
+    }
+
+    setDefaultMutation.mutate(
+      { templateId: template.id, organizationId: currentOrganization.id },
+      {
+        onSuccess: () => {
+          toast.success(`"${template.name}" is now the default template`);
+        },
+        onError: (error) => {
+          toast.error(`Failed to set default: ${error.message}`);
+        },
+      }
+    );
+  };
+
   const handleAddTemplate = () => {
     if (!currentOrganization?.id || !user?.id) {
       toast.error('Please select an organization first');
       return;
     }
+    setIsCreateDialogOpen(true);
+  };
 
-    createTemplateMutation.mutate(
-      {
+  const handleCreateTemplate = async (data: {
+    name: string;
+    description: string;
+    linkedFormId: string | null;
+  }) => {
+    if (!currentOrganization?.id || !user?.id) {
+      toast.error('Please select an organization first');
+      return;
+    }
+
+    setIsCreating(true);
+
+    try {
+      const newTemplate = await createTemplateMutation.mutateAsync({
         organization_id: currentOrganization.id,
-        name: 'Untitled Template',
+        name: data.name,
+        description: data.description || undefined,
         created_by: user.id,
-      },
-      {
-        onSuccess: (newTemplate) => {
-          navigate(`/document-templates/${newTemplate.id}`);
-        },
-        onError: (error) => {
-          toast.error(`Failed to create template: ${error.message}`);
-        },
+      });
+
+      // Link form if one was selected
+      if (data.linkedFormId) {
+        await linkMutation.mutateAsync({
+          formId: data.linkedFormId,
+          documentTemplateId: newTemplate.id,
+        });
       }
-    );
+
+      setIsCreateDialogOpen(false);
+      navigate(`/document-templates/${newTemplate.id}`);
+    } catch (error) {
+      toast.error(`Failed to create template: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -176,14 +256,14 @@ export default function TemplatesPage() {
               <Button
                 variant="outline"
                 onClick={() => navigate('/templates/library')}
-                className="flex items-center gap-2"
+                className="flex items-center gap-1.5 h-9 text-sm"
               >
                 <Stack className="w-4 h-4" />
                 Library
               </Button>
               <Button
                 onClick={handleAddTemplate}
-                className="flex items-center gap-2 bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white shadow-sm"
+                className="flex items-center gap-1.5 h-9 text-sm bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white shadow-sm"
               >
                 <Plus className="w-4 h-4" weight="bold" />
                 New Template
@@ -229,15 +309,17 @@ export default function TemplatesPage() {
               ))}
             </div>
           ) : filteredTemplates.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-[1600px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredTemplates.map((template) => (
                 <DocumentTemplateCard
                   key={template.id}
                   template={template}
                   members={members}
+                  linkedFormInfo={linkedFormsMap[template.id]}
                   onEdit={() => handleEdit(template)}
                   onDuplicate={() => handleDuplicate(template)}
-                  onDelete={() => handleDelete(template)}
+                  onDelete={() => handleDeleteClick(template)}
+                  onSetDefault={() => handleSetDefault(template)}
                   onUpdateName={(name) => handleUpdateTemplate(template.id, { name })}
                   onUpdateDescription={(description) => handleUpdateTemplate(template.id, { description })}
                 />
@@ -303,7 +385,7 @@ export default function TemplatesPage() {
               ))}
             </div>
           ) : filteredLibraryTemplates.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 max-w-[1600px]">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredLibraryTemplates.map((template) => (
                 <DocumentTemplateCard
                   key={template.id}
@@ -331,6 +413,37 @@ export default function TemplatesPage() {
           )}
         </>
       )}
+
+      {/* Create Template Dialog */}
+      <CreateTemplateDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onSubmit={handleCreateTemplate}
+        isLoading={isCreating}
+        organizationId={currentOrganization?.id}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!templateToDelete} onOpenChange={(open) => !open && setTemplateToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Template</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The template will be permanently deleted.
+              This will unlink the connected form.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageContent>
   );
 }
@@ -341,10 +454,12 @@ export default function TemplatesPage() {
 
 interface DocumentTemplateCardProps {
   template: DocumentTemplate;
-  members?: Array<{ user_id: string; full_name: string }>;
+  members?: Array<{ user_id: string; full_name?: string }>;
+  linkedFormInfo?: TemplateLinkedFormInfo;
   onEdit: () => void;
   onDuplicate: () => void;
   onDelete?: () => void;
+  onSetDefault?: () => void;
   onUpdateName?: (name: string) => void;
   onUpdateDescription?: (description: string) => void;
   isLibrary?: boolean;
@@ -353,13 +468,16 @@ interface DocumentTemplateCardProps {
 function DocumentTemplateCard({
   template,
   members = [],
+  linkedFormInfo,
   onEdit,
   onDuplicate,
   onDelete,
+  onSetDefault,
   onUpdateName,
   onUpdateDescription,
   isLibrary = false,
 }: DocumentTemplateCardProps) {
+  const isDefault = template.is_default;
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(template.name);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -368,6 +486,13 @@ function DocumentTemplateCard({
   // Get creator name from members
   const creator = members.find(m => m.user_id === template.created_by);
   const creatorName = creator?.full_name || 'Unknown';
+
+  // Get initials from creator name (e.g., "John Doe" -> "JD")
+  const creatorInitials = creatorName
+    .split(' ')
+    .map((word: string) => word.charAt(0).toUpperCase())
+    .slice(0, 2)
+    .join('');
 
   // Format last updated date
   const updatedDate = new Date(template.updated_at).toLocaleDateString('en-US', {
@@ -414,15 +539,19 @@ function DocumentTemplateCard({
   };
 
   return (
-    <div className="relative w-full max-w-[260px]">
+    <div className="relative w-full">
+      {/* Default Star Badge - positioned outside card to avoid overflow clipping */}
+      {isDefault && (
+        <div className="absolute -top-1.5 -left-1.5 z-20">
+          <div className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center shadow-md">
+            <Star className="w-3 h-3 text-white" weight="fill" />
+          </div>
+        </div>
+      )}
       <div
-        className="bg-white rounded-md shadow-sm hover:shadow-md transition-all duration-200 group relative overflow-hidden border border-gray-200 cursor-pointer"
+        className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 group relative overflow-hidden border border-gray-200 cursor-pointer"
         onClick={onEdit}
       >
-        {/* Folded Corner (Dog-ear) */}
-        <div className="absolute top-0 right-0 w-0 h-0 border-l-[30px] border-l-transparent border-t-[30px] border-t-gray-300 opacity-80 group-hover:border-t-[var(--sidebar-icon-active)] transition-colors duration-300">
-          <div className="absolute -top-[30px] -right-[1px] w-0 h-0 border-l-[29px] border-l-transparent border-t-[29px] border-t-white"></div>
-        </div>
 
         {/* Dropdown Menu */}
         {!isLibrary && (
@@ -445,6 +574,15 @@ function DocumentTemplateCard({
                   <CopySimple className="w-4 h-4" weight="regular" />
                   Duplicate
                 </DropdownMenuItem>
+                {onSetDefault && !isDefault && (
+                  <DropdownMenuItem
+                    onClick={(e) => { e.stopPropagation(); onSetDefault(); }}
+                    className="flex items-center gap-2"
+                  >
+                    <Star className="w-4 h-4" weight="regular" />
+                    Set as Default
+                  </DropdownMenuItem>
+                )}
                 {onDelete && (
                   <>
                     <DropdownMenuSeparator />
@@ -477,8 +615,8 @@ function DocumentTemplateCard({
           </div>
         )}
 
-        {/* Document Header */}
-        <div className="px-5 pt-4 pb-3 border-b-2 border-gray-200/60">
+        {/* Document Header - pr-10 leaves space for dropdown menu */}
+        <div className="px-4 pr-10 pt-4 pb-2">
           <div className="flex-1 min-w-0 pt-0.5">
             {/* Editable Name */}
             <div className="mb-0.5">
@@ -493,9 +631,10 @@ function DocumentTemplateCard({
                   onClick={(e) => e.stopPropagation()}
                 />
               ) : (
-                <div className="flex items-start gap-1">
+                <div className="flex items-start gap-1 min-w-0">
                   <h3
-                    className="text-base font-bold text-gray-900 line-clamp-2 leading-tight"
+                    className="text-base font-bold text-gray-900 leading-tight truncate"
+                    title={template.name}
                     onDoubleClick={(e) => {
                       if (!isLibrary) {
                         e.stopPropagation();
@@ -521,7 +660,7 @@ function DocumentTemplateCard({
             </div>
 
             {/* Editable Description */}
-            <div className="flex items-start gap-0.5">
+            <div className="flex items-start gap-0.5 min-w-0">
               {isEditingDescription ? (
                 <textarea
                   value={editedDescription}
@@ -537,7 +676,8 @@ function DocumentTemplateCard({
               ) : (
                 <>
                   <p
-                    className="text-xs text-gray-600 line-clamp-2 leading-relaxed"
+                    className="text-xs text-gray-600 leading-relaxed truncate"
+                    title={template.description || 'No description'}
                     onDoubleClick={(e) => {
                       if (!isLibrary) {
                         e.stopPropagation();
@@ -565,25 +705,76 @@ function DocumentTemplateCard({
         </div>
 
         {/* Stats Footer */}
-        <div className="px-5 py-2.5 bg-gradient-to-t from-gray-100/80 to-transparent border-t border-gray-200/60">
-          {/* Row 1: Variables count */}
-          {template.variables && template.variables.length > 0 && (
-            <div
-              className="text-xs text-gray-500 mb-1.5 cursor-help"
-              onClick={(e) => e.stopPropagation()}
-              title={template.variables.map(v => `{{${v}}}`).join('\n')}
-            >
-              {template.variables.length} variable{template.variables.length !== 1 ? 's' : ''}
-            </div>
-          )}
-          {/* Row 2: Creator and Date */}
-          <div className="flex items-center justify-between text-xs text-gray-600">
-            <div className="flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-gray-500" weight="duotone" />
-              <span className="truncate max-w-[100px]" title={creatorName}>{creatorName}</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <ClockCounterClockwise className="w-3.5 h-3.5 text-gray-500" weight="duotone" />
+        <div className="px-4 py-3 bg-gray-50/50 space-y-2">
+          {/* Row 1: Variables count and linked forms */}
+          <div className="flex items-center gap-3 text-[11px]">
+            {template.variables && template.variables.length > 0 && (
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="flex items-center gap-1 text-gray-700 cursor-pointer hover:text-green-600 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <SquaresFour className="w-3.5 h-3.5 text-green-600" weight="duotone" />
+                      <span className="font-semibold text-gray-900">{template.variables.length}</span>
+                      <span className="text-gray-500">variable{template.variables.length !== 1 ? 's' : ''}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[200px]">
+                    <ul className="text-xs space-y-0.5">
+                      {template.variables.slice(0, 6).map((v, idx) => (
+                        <li key={idx} className="truncate text-gray-700">
+                          {`{{${v}}}`}
+                        </li>
+                      ))}
+                      {template.variables.length > 6 && (
+                        <li className="text-green-500">
+                          +{template.variables.length - 6} more
+                        </li>
+                      )}
+                    </ul>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            {linkedFormInfo && (
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className="flex items-center gap-1 text-gray-700 cursor-pointer"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <LinkIcon className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" weight="duotone" />
+                      <span className="text-gray-500 truncate max-w-[100px]">
+                        {linkedFormInfo.form_name}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    <p className="text-xs text-gray-700">{linkedFormInfo.form_name}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+          {/* Row 2: Creator Avatar and Date */}
+          <div className="flex items-center justify-between text-[10px] text-gray-500">
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-[8px] font-semibold text-white cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all">
+                    {creatorInitials}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  <p className="text-xs text-gray-700">{creatorName}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <div className="flex items-center gap-1">
+              <Clock className="w-3 h-3 text-gray-400" />
               <span>{updatedDate}</span>
             </div>
           </div>
