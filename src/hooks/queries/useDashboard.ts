@@ -29,22 +29,6 @@ export interface DashboardStats {
 }
 
 /**
- * Proposal activity type
- */
-export interface ProposalActivity {
-  id: string;
-  proposal_id: string;
-  action_type: string;
-  performed_by: string;
-  performed_by_name?: string;
-  created_at: string;
-  metadata?: any;
-}
-
-/** @deprecated Use ProposalActivity instead */
-export type QuoteActivity = ProposalActivity;
-
-/**
  * Fetch dashboard stats from proposals table
  */
 async function fetchDashboardStats(organizationId: string): Promise<DashboardStats> {
@@ -79,47 +63,6 @@ async function fetchDashboardStats(organizationId: string): Promise<DashboardSta
 }
 
 /**
- * Fetch recent activities
- *
- * TODO: When proposal_activities table is created, update this to use proposals.
- * Currently uses the legacy quote_activities table for backward compatibility.
- */
-async function fetchRecentActivities(
-  organizationId: string,
-  limit: number = 10
-): Promise<ProposalActivity[]> {
-  // TODO: Update to use proposal_activities table when it's created
-  const { data, error } = await supabase
-    .from('quote_activities')
-    .select(`
-      id,
-      quote_id,
-      action_type,
-      performed_by,
-      created_at,
-      metadata,
-      profiles:performed_by (
-        full_name
-      )
-    `)
-    .eq('organization_id', organizationId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (error) throw error;
-
-  return (data || []).map(activity => ({
-    id: activity.id,
-    proposal_id: activity.quote_id, // Map to new field name
-    action_type: activity.action_type,
-    performed_by: activity.performed_by,
-    performed_by_name: (activity.profiles as any)?.full_name,
-    created_at: activity.created_at,
-    metadata: activity.metadata,
-  }));
-}
-
-/**
  * Hook: Use Dashboard Stats
  *
  * Fetches aggregated proposal statistics
@@ -130,23 +73,5 @@ export function useDashboardStats(organizationId: string, enabled: boolean = tru
     queryFn: () => fetchDashboardStats(organizationId),
     enabled: !!organizationId && enabled,
     staleTime: 30 * 1000, // 30 seconds
-  });
-}
-
-/**
- * Hook: Use Recent Activities
- *
- * Fetches recent quote activities for dashboard
- */
-export function useRecentActivities(
-  organizationId: string,
-  limit: number = 10,
-  enabled: boolean = true
-) {
-  return useQuery({
-    queryKey: queryKeys.dashboard.activities(organizationId, limit),
-    queryFn: () => fetchRecentActivities(organizationId, limit),
-    enabled: !!organizationId && enabled,
-    staleTime: 10 * 1000, // 10 seconds - activities change frequently
   });
 }

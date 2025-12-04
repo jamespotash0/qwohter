@@ -221,17 +221,17 @@ const Quotes = () => {
       return updatedDate >= monthStart;
     });
 
-    // Filter main versions that are Pending/Submitted and changed this month
-    const pendingThisMonth = mainVersions.filter(quote => {
-      if (quote.status !== 'Pending' && quote.status !== 'Submitted') return false;
+    // Filter main versions that are Submitted and changed this month
+    const submittedThisMonth = mainVersions.filter(quote => {
+      if (quote.status !== 'Submitted') return false;
       const updatedDate = new Date(quote.updated_at);
       return updatedDate >= monthStart;
     });
 
     // Overall metrics - count based on main version status
     const totalQuotes = mainVersions.length;
-    const pendingQuotes = mainVersions.filter(q =>
-      q.status === 'Pending' || q.status === 'Submitted'
+    const submittedQuotes = mainVersions.filter(q =>
+      q.status === 'Submitted'
     ).length;
     const wonQuotes = mainVersions.filter(q =>
       q.status === 'Won'
@@ -257,8 +257,8 @@ const Quotes = () => {
     return {
       totalQuotes,
       totalQuotesThisMonth: createdThisMonth.length,
-      pendingQuotes,
-      pendingQuotesThisMonth: pendingThisMonth.length,
+      submittedQuotes,
+      submittedQuotesThisMonth: submittedThisMonth.length,
       wonQuotes,
       wonQuotesThisMonth: wonThisMonth.length,
       draftQuotes,
@@ -554,7 +554,7 @@ const Quotes = () => {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Submitted Quotes</h3>
-                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.pendingQuotes}</p>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.submittedQuotes}</p>
                   </div>
                 </div>
               </CardContent>

@@ -108,7 +108,6 @@ interface EnhancedQuotesTableProps {
 const statusColors = {
   Incomplete: "bg-purple-100 text-purple-800",
   Draft: "bg-gray-100 text-gray-800",
-  Pending: "bg-yellow-100 text-yellow-800",
   Submitted: "bg-yellow-100 text-yellow-800",
   Won: "bg-emerald-100 text-emerald-800",
   Rejected: "bg-red-100 text-red-800",

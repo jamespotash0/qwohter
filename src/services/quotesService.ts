@@ -20,13 +20,14 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import * as authService from '@/auth/services/authService';
 import * as Sentry from '@sentry/react';
-import { quoteActivityService } from './quoteActivityService';
 // ============================================================================
 // Types
 // ============================================================================
 
 export type Quote = Database['public']['Tables']['quotes']['Row'] & {
   created_by_name?: string; // Joined from profiles table in queries
+  // Organization name captured at quote creation (added by migration 20251204000004_add_organization_name_to_quotes.sql)
+  organization_name?: string | null; // Denormalized for historical accuracy - doesn't update if org name changes
   // Analytics fields (added by migration 20251009000002_add_analytics_fields_to_quotes.sql)
   // These are denormalized from other fields and maintained by triggers
   total_value?: number | null; // From price_details.final_selling_price
@@ -115,7 +116,7 @@ export async function fetchQuotes(
     let query = supabase
       .from('quotes')
       .select(`
-        id, created_by, created_by_name, organization_id, proposal_number, project_name,
+        id, created_by, created_by_name, organization_id, organization_name, proposal_number, project_name,
         quote_details, job_details, delivery_details, labor_details,
         wall_details, price_details, status, date_last_downloaded,
         document_version, created_at, updated_at, customization,
@@ -143,7 +144,7 @@ export async function fetchQuotes(
     let query = supabase
       .from('quotes')
       .select(`
-        id, created_by, created_by_name, organization_id, proposal_number, project_name,
+        id, created_by, created_by_name, organization_id, organization_name, proposal_number, project_name,
         quote_details, job_details, delivery_details, labor_details,
         wall_details, price_details, status, date_last_downloaded,
         document_version, created_at, updated_at, customization,
@@ -211,38 +212,40 @@ export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
         if (!session?.user) throw new Error('Not authenticated');
 
         // Get user's organization
-        const { data: membershipData, error: membershipError } = await supabase
+        const membershipResult = await supabase
           .from('memberships')
           .select('organization_id')
           .eq('user_id', session.user.id)
           .single();
 
-        if (membershipError) {
+        if (membershipResult.error) {
           span.setStatus({ code: 2, message: 'Membership query failed' });
-          throw membershipError;
+          throw membershipResult.error;
         }
-        if (!membershipData?.organization_id) {
+
+        const organizationId = (membershipResult.data as { organization_id: string } | null)?.organization_id;
+        if (!organizationId) {
           span.setStatus({ code: 2, message: 'No organization found' });
           throw new Error('User not assigned to an organization');
         }
 
-        span.setAttribute('organization.id', membershipData.organization_id);
+        span.setAttribute('organization.id', organizationId);
 
         // Get user's name from profile to set created_by_name
         // Fallback to email if full_name is not set
-        const { data: profileData } = await supabase
+        const profileResult = await supabase
           .from('profiles')
           .select('full_name')
           .eq('id', session.user.id)
           .single();
 
-        const createdByName = profileData?.full_name || session.user.email || 'Unknown';
+        const createdByName = (profileResult.data as { full_name: string } | null)?.full_name || session.user.email || 'Unknown';
 
         // Fetch organization name to ensure it's always available
         const { data: orgData, error: orgError } = await supabase
           .from('organizations')
           .select('name')
-          .eq('id', membershipData.organization_id as string)
+          .eq('id', organizationId)
           .single();
 
         // Track organization name source for debugging
@@ -256,7 +259,7 @@ export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
             errorCode: orgError.code,
             errorMessage: orgError.message,
             errorDetails: orgError.details,
-            organizationId: membershipData.organization_id,
+            organizationId,
             userId: session.user.id,
             userEmail: session.user.email
           });
@@ -266,7 +269,7 @@ export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
             tags: {
               operation: 'createQuote',
               subOperation: 'fetchOrganizationName',
-              organizationId: membershipData.organization_id,
+              organizationId,
             },
             extra: {
               userId: session.user.id,
@@ -280,21 +283,16 @@ export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
           span.setAttribute('org.error_code', orgError.code || 'unknown');
         }
 
-        // Determine organization name with fallback priority
-        if ((quoteData.quote_details as any)?.organizationName) {
-          finalOrgName = (quoteData.quote_details as any).organizationName;
-          orgNameSource = 'frontend';
-        } else if (orgData?.name) {
-          finalOrgName = orgData.name;
+        // Determine organization name - database is the only source
+        const orgName = (orgData as { name: string } | null)?.name;
+        if (orgName) {
+          finalOrgName = orgName;
           orgNameSource = 'database';
         } else {
           orgNameSource = 'fallback';
-          // Log when we have to use fallback
-          console.warn('[createQuote] Using fallback organization name:', {
-            organizationId: membershipData.organization_id,
+          console.warn('[createQuote] Could not fetch organization name from database:', {
+            organizationId,
             userId: session.user.id,
-            frontendProvided: !!(quoteData.quote_details as any)?.organizationName,
-            databaseFetched: !!orgData?.name,
             hadError: !!orgError
           });
         }
@@ -303,17 +301,13 @@ export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
         span.setAttribute('org.name_source', orgNameSource);
         span.setAttribute('org.name', finalOrgName);
 
-        // Ensure quote_details has organization name
-        const quoteDetails = {
-          ...(quoteData.quote_details || {}),
-          organizationName: finalOrgName
-        };
-
-        // Create quote with created_by_name and organizationName explicitly set
+        // Create quote with organization_name captured at creation time
+        // organization_name is a denormalized column for historical record
+        // (won't change if organization renames later)
         const insertData = {
           ...quoteData,
-          quote_details: quoteDetails,
-          organization_id: membershipData.organization_id,
+          organization_id: organizationId,
+          organization_name: finalOrgName, // Captured at creation time
           created_by: session.user.id,
           created_by_name: createdByName,
           is_main_version: true, // ✅ FIX: New quotes are always main versions
@@ -331,17 +325,6 @@ export async function createQuote(quoteData: CreateQuoteData): Promise<Quote> {
         }
 
         const createdQuote = data as Quote;
-
-        // Log quote creation activity
-        await quoteActivityService.logCreation({
-          quoteId: createdQuote.id,
-          quoteNumber: createdQuote.proposal_number,
-          projectName: createdQuote.project_name || 'Untitled',
-          userId: session.user.id,
-          userName: createdByName,
-          organizationId: membershipData.organization_id,
-          status: createdQuote.status
-        });
 
         span.setStatus({ code: 1 }); // Success
         span.setAttribute('quote.id', createdQuote.id);
@@ -386,9 +369,6 @@ export async function updateQuote(
     },
     async (span) => {
       try {
-        // Get user context for activity logging
-        const session = await authService.getSession();
-
         const { data, error } = await supabase
           .from('quotes')
           .update(updates)
@@ -408,42 +388,6 @@ export async function updateQuote(
         }
 
         const updatedQuote = data as Quote;
-
-        // Log activity if user is authenticated (skip for system updates)
-        if (session?.user) {
-          // Get user's name from profile
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', session.user.id)
-            .maybeSingle();
-
-          const userName = (profileData as any)?.full_name || session.user.email || 'Unknown';
-          const changedFields = Object.keys(updates);
-
-          // Don't log activity for certain updates:
-          // - Silent updates (like date_last_downloaded)
-          // - Status changes (handled by updateQuoteStatus function)
-          // - Archive changes (handled by archiveQuote/unarchiveQuote functions)
-          const isSilentUpdate =
-            changedFields.length === 1 &&
-            changedFields[0] === 'date_last_downloaded';
-
-          const isStatusChange = updates.status !== undefined;
-          const isArchiveChange = updates.archived !== undefined;
-
-          if (!isSilentUpdate && !isStatusChange && !isArchiveChange) {
-            await quoteActivityService.logUpdate({
-              quoteId: updatedQuote.id,
-              quoteNumber: updatedQuote.proposal_number,
-              projectName: updatedQuote.project_name || 'Untitled',
-              userId: session.user.id,
-              userName: userName,
-              organizationId: updatedQuote.organization_id,
-              changedFields: changedFields
-            });
-          }
-        }
 
         span.setStatus({ code: 1 }); // Success
         return updatedQuote;
@@ -475,35 +419,6 @@ export async function deleteQuote(quoteId: string): Promise<void> {
     },
     async (span) => {
       try {
-        // Get user context for activity logging
-        const session = await authService.getSession();
-
-        // Fetch quote data before deletion for activity logging
-        const quoteToDelete = await fetchQuoteById(quoteId);
-
-        // Log deletion activity BEFORE deleting the quote
-        // (must be before deletion due to foreign key constraint)
-        if (session?.user) {
-          // Get user's name from profile
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', session.user.id)
-            .maybeSingle();
-
-          const userName = (profileData as any)?.full_name || session.user.email || 'Unknown';
-
-          await quoteActivityService.logDeletion({
-            quoteId: quoteToDelete.id,
-            quoteNumber: quoteToDelete.proposal_number,
-            projectName: quoteToDelete.project_name || 'Untitled',
-            userId: session.user.id,
-            userName: userName,
-            organizationId: quoteToDelete.organization_id
-          });
-        }
-
-        // Now delete the quote
         const { error } = await supabase
           .from('quotes')
           .delete()
@@ -533,68 +448,14 @@ export async function deleteQuote(quoteId: string): Promise<void> {
  * Archive a quote
  */
 export async function archiveQuote(quoteId: string): Promise<Quote> {
-  // Get user context for activity logging
-  const session = await authService.getSession();
-
-  const updatedQuote = await updateQuote(quoteId, { archived: true });
-
-  // Log archive activity if user is authenticated
-  if (session?.user) {
-    // Get user's name from profile
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', session.user.id)
-      .maybeSingle();
-
-    const userName = (profileData as any)?.full_name || session.user.email || 'Unknown';
-
-    await quoteActivityService.logActivity({
-      quoteId: updatedQuote.id,
-      quoteNumber: updatedQuote.proposal_number,
-      projectName: updatedQuote.project_name || 'Untitled',
-      userId: session.user.id,
-      userName: userName,
-      organizationId: updatedQuote.organization_id,
-      activityType: 'Archived'
-    });
-  }
-
-  return updatedQuote;
+  return updateQuote(quoteId, { archived: true });
 }
 
 /**
  * Unarchive a quote
  */
 export async function unarchiveQuote(quoteId: string): Promise<Quote> {
-  // Get user context for activity logging
-  const session = await authService.getSession();
-
-  const updatedQuote = await updateQuote(quoteId, { archived: false });
-
-  // Log unarchive activity if user is authenticated
-  if (session?.user) {
-    // Get user's name from profile
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', session.user.id)
-      .maybeSingle();
-
-    const userName = (profileData as any)?.full_name || session.user.email || 'Unknown';
-
-    await quoteActivityService.logActivity({
-      quoteId: updatedQuote.id,
-      quoteNumber: updatedQuote.proposal_number,
-      projectName: updatedQuote.project_name || 'Untitled',
-      userId: session.user.id,
-      userName: userName,
-      organizationId: updatedQuote.organization_id,
-      activityType: 'Unarchived'
-    });
-  }
-
-  return updatedQuote;
+  return updateQuote(quoteId, { archived: false });
 }
 
 /**
@@ -613,10 +474,7 @@ export async function updateQuoteStatus(
   quoteId: string,
   status: string
 ): Promise<Quote> {
-  // Get user context for activity logging
-  const session = await authService.getSession();
-
-  // Fetch old quote to get the old status
+  // Fetch old quote to get the old status (needed for clearing conflicting timestamps)
   const oldQuote = await fetchQuoteById(quoteId);
   const oldStatus = oldQuote.status || 'Draft';
 
@@ -644,32 +502,7 @@ export async function updateQuoteStatus(
       break;
   }
 
-  const updatedQuote = await updateQuote(quoteId, updates);
-
-  // Log status change activity if user is authenticated
-  if (session?.user) {
-    // Get user's name from profile
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', session.user.id)
-      .maybeSingle();
-
-    const userName = (profileData as any)?.full_name || session.user.email || 'Unknown';
-
-    await quoteActivityService.logStatusChange({
-      quoteId: updatedQuote.id,
-      quoteNumber: updatedQuote.proposal_number,
-      projectName: updatedQuote.project_name || 'Untitled',
-      userId: session.user.id,
-      userName: userName,
-      organizationId: updatedQuote.organization_id,
-      oldStatus: oldStatus,
-      newStatus: status
-    });
-  }
-
-  return updatedQuote;
+  return updateQuote(quoteId, updates);
 }
 
 /**
@@ -858,13 +691,6 @@ export async function createQuoteVersion(
   // Fetch existing quote (RLS ensures user has access)
   const existingQuote = await fetchQuoteById(existingQuoteId);
 
-  // Fetch organization details to ensure organization name is available
-  const { data: orgData } = await supabase
-    .from('organizations')
-    .select('name')
-    .eq('id', existingQuote.organization_id)
-    .maybeSingle();
-
   // Get user's name from profile to set created_by_name
   const { data: profileData } = await supabase
     .from('profiles')
@@ -874,13 +700,7 @@ export async function createQuoteVersion(
 
   const createdByName = (profileData as any)?.full_name || session.user.email || 'Unknown';
 
-  // Ensure quote_details has organization name
-  const quoteDetails = {
-    ...(existingQuote.quote_details as any || {}),
-    organizationName: (existingQuote.quote_details as any)?.organizationName || (orgData as any)?.name || 'Organization Name Not Available'
-  };
-
-  // Create new version with proper user context and organization name
+  // Create new version - organization_name is copied from existing quote
   // RLS policies automatically ensure user has access to this organization
   const { data, error } = await supabase
     .from('quotes')
@@ -897,7 +717,7 @@ export async function createQuoteVersion(
       created_by: session.user.id,
       created_by_name: createdByName,
       organization_id: existingQuote.organization_id,
-      quote_details: quoteDetails,
+      organization_name: (existingQuote as any).organization_name || '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     } as any)

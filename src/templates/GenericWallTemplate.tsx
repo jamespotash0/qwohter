@@ -114,18 +114,7 @@ export class GenericWallTemplate extends BaseQuoteTemplate {
   }
 
   generateProposalIntro(data: QuoteData): string {
-    let organizationName = data.quote_details?.organizationName?.trim() ||
-                           data.quote_details?.organization_name?.trim() ||
-                           data.quote_details?.company_name?.trim() ||
-                           '';
-
-    // Note: Fallback removed - organization name should always come from quote data
-    // If it's missing, it indicates a data integrity issue that should be fixed at the source
-    if (!organizationName) {
-      console.warn('[GenericWallTemplate] No organization name found in quote data');
-      organizationName = 'Organization Name Not Available';
-    }
-
+    const organizationName = (data as any).organization_name || '';
     const walls = data.wall_details?.walls || {};
     const wallCount = Object.keys(walls).length;
 
@@ -147,7 +136,7 @@ export class GenericWallTemplate extends BaseQuoteTemplate {
 
     // Wrap organization name with semantic markup
     const organizationNameMarked = TemplateMarkers.dynamic({
-      path: 'quote_details.organizationName',
+      path: 'organization_name',
       value: organizationName,
       format: 'text'
     });

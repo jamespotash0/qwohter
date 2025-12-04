@@ -43,10 +43,7 @@ export {
 } from './useOrganization';
 
 // Dashboard
-export {
-  useDashboardStats,
-  useRecentActivities,
-} from './useDashboard';
+export { useDashboardStats } from './useDashboard';
 
 // Auth
 export {
@@ -112,7 +109,7 @@ export {
 
 // Types
 export type { UserProfile, Session } from './useAuth';
-export type { DashboardStats, QuoteActivity } from './useDashboard';
+export type { DashboardStats } from './useDashboard';
 export type { Form } from './useForms';
 export type { PdfTemplate, FormPdfTemplate } from './usePdfTemplates';
 export type { DocumentNumberSequence, CreateSequenceData, UpdateSequenceData } from './useDocumentSequences';

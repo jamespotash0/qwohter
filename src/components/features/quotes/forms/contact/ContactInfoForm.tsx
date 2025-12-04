@@ -19,7 +19,6 @@ interface ContactInfoData {
   phone: string;
   fax: string;
   website: string;
-  organizationName?: string;
   quoteSource: string;
 }
 
@@ -53,21 +52,6 @@ const ContactInfoForm = ({ data, onUpdate }: ContactInfoFormProps) => {
     handleChange('contactName', newContact.full_name);
     handleChange('contactEmail', newContact.emails[0] || '');
   };
-
-  // Automatically set organization name when organization loads
-  useEffect(() => {
-    if (organization && !data.organizationName) {
-      console.log('[ContactInfoForm] Setting organizationName:', organization.name);
-      handleChange('organizationName', organization.name);
-    }
-  }, [organization, data.organizationName]);
-
-  // Debug: Log when organization is not available
-  useEffect(() => {
-    if (!organization) {
-      console.warn('[ContactInfoForm] organization is not available');
-    }
-  }, [organization]);
 
   // Get active members from the organization
   const activeMembers = (members || []).filter(member => member.status === 'Active'); //membership_status

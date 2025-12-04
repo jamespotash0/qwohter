@@ -217,7 +217,7 @@ export const calculateTotalRevenue = (quotes: Quote[]): number => {
 /**
  * Calculate win rate (% of decided quotes that were won)
  * Formula: Won / (Won + Rejected) * 100
- * This excludes pending/draft/incomplete quotes - only counts decided outcomes
+ * This excludes draft/incomplete quotes - only counts decided outcomes
  */
 export const calculateWinRate = (quotes: Quote[]): number => {
   const won = quotes.filter((q) => q.status === 'Won').length;

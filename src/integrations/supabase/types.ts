@@ -683,6 +683,45 @@ export interface Database {
           created_at?: string;
         };
       };
+      /**
+       * Proposal Status Transitions table - Audit log for proposal status changes
+       * Automatically populated by database trigger on proposals table
+       */
+      proposal_status_transitions: {
+        Row: {
+          id: string;
+          proposal_id: string;
+          organization_id: string;
+          from_status: string | null;
+          to_status: string;
+          transitioned_by: string | null;
+          transitioned_at: string;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          proposal_id: string;
+          organization_id: string;
+          from_status?: string | null;
+          to_status: string;
+          transitioned_by?: string | null;
+          transitioned_at?: string;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          proposal_id?: string;
+          organization_id?: string;
+          from_status?: string | null;
+          to_status?: string;
+          transitioned_by?: string | null;
+          transitioned_at?: string;
+          notes?: string | null;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

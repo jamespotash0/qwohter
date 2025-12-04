@@ -60,7 +60,7 @@ export function isMembershipValid(status: string | null | undefined): boolean {
 // QUOTE STATUS HELPERS
 // ============================================================================
 
-export type QuoteStatus = 'Won' | 'Rejected' | 'Submitted' | 'Draft' | 'Incomplete' | 'Pending';
+export type QuoteStatus = 'Won' | 'Rejected' | 'Submitted' | 'Draft' | 'Incomplete';
 
 /**
  * Check if quote status is Won (case-insensitive)
@@ -98,13 +98,6 @@ export function isQuoteIncomplete(status: string | null | undefined): boolean {
 }
 
 /**
- * Check if quote status is Pending (case-insensitive)
- */
-export function isQuotePending(status: string | null | undefined): boolean {
-  return status?.toLowerCase() === 'pending';
-}
-
-/**
  * Check if quote is in a final state (Won or Rejected)
  */
 export function isQuoteFinal(status: string | null | undefined): boolean {
@@ -113,11 +106,11 @@ export function isQuoteFinal(status: string | null | undefined): boolean {
 }
 
 /**
- * Check if quote is in progress (Submitted, Draft, Incomplete, Pending)
+ * Check if quote is in progress (Submitted, Draft, Incomplete)
  */
 export function isQuoteInProgress(status: string | null | undefined): boolean {
   const lower = status?.toLowerCase();
-  return lower === 'submitted' || lower === 'draft' || lower === 'incomplete' || lower === 'pending';
+  return lower === 'submitted' || lower === 'draft' || lower === 'incomplete';
 }
 
 /**

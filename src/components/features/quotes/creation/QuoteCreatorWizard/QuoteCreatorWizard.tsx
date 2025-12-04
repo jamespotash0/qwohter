@@ -78,16 +78,9 @@ const QuoteCreatorWizard = ({
   const user = useUser();
   const { organization } = useCurrentOrganization(user?.id || '');
 
-  // Set organization name in contactInfo when organization loads
-  useEffect(() => {
-    if (organization && !contactInfo.organizationName) {
-      console.log('[QuoteCreatorWizard] Setting organizationName from organization:', organization.name);
-      setContactInfo(prev => ({
-        ...prev,
-        organizationName: organization.name
-      }));
-    }
-  }, [organization, contactInfo.organizationName]);
+  // Note: organization_name is now set at the top-level column by quotesService
+  // For existing quotes, it's read from the database via useWizardState
+  // For new quotes, quotesService fetches it from the organizations table
 
   // Use the validation hook
   const {

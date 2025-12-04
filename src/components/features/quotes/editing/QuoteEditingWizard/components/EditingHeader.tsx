@@ -36,7 +36,7 @@ export const EditingHeader = ({
   onQuoteNameSave
 }: EditingHeaderProps) => {
 
-  const validStatuses = ["Draft", "Pending", "Submitted", "Won", "Rejected"];
+  const validStatuses = ["Draft", "Submitted", "Won", "Rejected"];
   return (
     <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-white/20 shadow-lg flex-shrink-0">
       <div className="max-w-full mx-auto px-6 py-3">
@@ -87,7 +87,6 @@ export const EditingHeader = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Draft">Draft</SelectItem>
-                <SelectItem value="Pending">Pending</SelectItem>
                 <SelectItem value="Submitted">Submitted</SelectItem>
                 <SelectItem value="Won">Won</SelectItem>
                 <SelectItem value="Rejected">Rejected</SelectItem>

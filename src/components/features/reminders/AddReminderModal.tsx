@@ -11,9 +11,9 @@ import { format } from 'date-fns';
 import { cn, parseLocalDate } from '@/lib/utils';
 import { useQuotes } from '@/hooks/queries/useQuotes';
 import { reminderService, type ReminderType } from '@/services/reminderService';
-import { quoteActivityService } from '@/services/quoteActivityService';
 import { toast } from 'sonner';
-import { useUser, useProfile } from '@/auth';
+import { useUser } from '@/auth';
+import { supabase } from '@/integrations/supabase/client'
 
 interface AddReminderModalProps {
   open: boolean;
@@ -44,9 +44,6 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
   const [date, setDate] = useState<Date>();
   const [time, setTime] = useState('09:00');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Get user profile from auth store
-  const { data: profile } = useProfile();
 
   // Get active (non-archived) quotes
   const activeQuotes = useMemo(() => {
@@ -166,53 +163,6 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
         setIsSubmitting(false);
         return;
       }
-
-      // Log activity (always, even without quote)
-      if (!editingReminder) {
-        // New reminder - log creation
-        const linkedQuote = quoteReference && quoteReference !== 'none'
-          ? activeQuotes.find(q => q.id === quoteReference)
-          : null;
-
-        await quoteActivityService.logActivity({
-          quoteId: linkedQuote?.id || null,
-          quoteNumber: linkedQuote?.proposal_number || 'N/A',
-          projectName: linkedQuote?.project_name || alertName.trim(),
-          userId: user.id,
-          userName: profile?.full_name || 'Unknown User',
-          activityType: 'Reminder_Set',
-          activityDetails: {
-            action: 'created',
-            reminderTitle: alertName.trim(),
-            reminderType: reminderType,
-            dueDate: dueDateTime.toISOString(),
-          },
-          organizationId: (membership as any).organization_id,
-        });
-      } else {
-        // Updated reminder - log update
-        const linkedQuote = quoteReference && quoteReference !== 'none'
-          ? activeQuotes.find(q => q.id === quoteReference)
-          : null;
-
-        await quoteActivityService.logActivity({
-          quoteId: linkedQuote?.id || null,
-          quoteNumber: linkedQuote?.proposal_number || 'N/A',
-          projectName: linkedQuote?.project_name || alertName.trim(),
-          userId: user.id,
-          userName: profile?.full_name || 'Unknown User',
-          activityType: 'Reminder_Set',
-          activityDetails: {
-            action: 'updated',
-            reminderTitle: alertName.trim(),
-            reminderType: reminderType,
-            dueDate: dueDateTime.toISOString(),
-          },
-          organizationId: (membership as any).organization_id,
-        });
-      }
-
-      // toast.success(`Reminder ${editingReminder ? 'updated' : 'created'} successfully`);
 
       // Reset form
       setAlertName('');

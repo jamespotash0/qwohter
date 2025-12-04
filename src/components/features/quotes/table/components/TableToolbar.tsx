@@ -107,14 +107,6 @@ export const TableToolbar: React.FC<TableToolbarProps> = ({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => {
                 if (onBulkStatusChange) {
-                  onBulkStatusChange(allSelectedIds, 'Pending');
-                  resetSelections();
-                }
-              }}>
-                Set to Pending
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {
-                if (onBulkStatusChange) {
                   onBulkStatusChange(allSelectedIds, 'Submitted');
                   resetSelections();
                 }
