@@ -1,8 +1,19 @@
 /**
- * Quotes Service
+ * @deprecated This service is DEPRECATED. Use proposalsService.ts instead.
  *
- * Centralized service for all quotes-related API calls.
- * Used by React Query hooks for data fetching.
+ * The "quotes" table is being replaced by the "proposals" table which integrates
+ * with the new form-builder system. This file will be removed in a future version.
+ *
+ * Migration:
+ * - OLD: import { fetchQuotes } from '@/services/quotesService'
+ * - NEW: import { fetchProposals } from '@/services/proposalsService'
+ *
+ * See: src/services/proposalsService.ts
+ * See: src/hooks/queries/useProposals.ts
+ *
+ * ============================================================================
+ * DEPRECATED - DO NOT USE FOR NEW FEATURES
+ * ============================================================================
  */
 
 import { supabase } from '@/integrations/supabase/client';

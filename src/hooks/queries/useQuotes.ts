@@ -1,16 +1,19 @@
 /**
- * React Query Hooks for Quotes
+ * @deprecated These hooks are DEPRECATED. Use useProposals.ts instead.
  *
- * These hooks replace the manual Zustand quotesStore with industry-standard
- * React Query patterns. This automatically eliminates race conditions.
+ * The "quotes" table is being replaced by the "proposals" table which integrates
+ * with the new form-builder system. These hooks will be removed in a future version.
  *
- * Benefits:
- * - Automatic request deduplication
- * - Built-in stale-while-revalidate
- * - Optimistic updates with rollback
- * - Cache invalidation
- * - Loading/error states
- * - Realtime integration
+ * Migration:
+ * - OLD: const { data: quotes } = useQuotes(userId)
+ * - NEW: const { data: proposals } = useProposals(organizationId)
+ *
+ * See: src/hooks/queries/useProposals.ts
+ * See: src/services/proposalsService.ts
+ *
+ * ============================================================================
+ * DEPRECATED - DO NOT USE FOR NEW FEATURES
+ * ============================================================================
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

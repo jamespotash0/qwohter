@@ -60,7 +60,7 @@ const menuItems: MenuItem[] = [
   {
     title: "Proposals",
     icon: FileText,
-    path: "/quotes",
+    path: "/proposals",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
   {

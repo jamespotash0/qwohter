@@ -1,3 +1,18 @@
+/**
+ * @deprecated This page is DEPRECATED. Use QuoteCreationWizard instead.
+ *
+ * New proposals should be created via:
+ * - QuoteCreationWizard: Select a form, fill data, creates proposal
+ * - Navigates to: /proposals/:id/edit (ProposalEditor)
+ *
+ * See: src/components/quotes/QuoteCreationWizard.tsx
+ * See: src/pages/ProposalEditor.tsx
+ *
+ * ============================================================================
+ * DEPRECATED - DO NOT USE FOR NEW FEATURES
+ * ============================================================================
+ */
+
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import QuoteCreatorWizard from "@/components/features/quotes/creation/QuoteCreatorWizard";

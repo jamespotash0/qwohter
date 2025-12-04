@@ -45,7 +45,7 @@ export function CompanyInfoDialog({
   });
 
   const [includeFax, setIncludeFax] = useState(false);
-  const [hasExistingQuotes, setHasExistingQuotes] = useState(false);
+  const [hasExistingProposals, setHasExistingProposals] = useState(false);
 
   const [errors, setErrors] = useState<Partial<CompanyInfoFormData>>({});
 
@@ -53,7 +53,7 @@ export function CompanyInfoDialog({
   const formatPhoneNumber = (value: string): string => {
     // Remove all non-numeric characters
     const phoneNumber = value.replace(/\D/g, '');
-    
+
     // Format based on length
     if (phoneNumber.length === 0) return '';
     if (phoneNumber.length <= 3) return `(${phoneNumber}`;
@@ -65,29 +65,29 @@ export function CompanyInfoDialog({
   const formatQuoteStartingPoint = (value: string): string => {
     // Remove spaces and convert to uppercase
     const cleanValue = value.replace(/\s/g, '').toUpperCase();
-    
+
     // Allow alphanumeric characters and hyphens
     const allowedChars = cleanValue.replace(/[^A-Z0-9-]/g, '');
-    
+
     return allowedChars;
   };
 
-  // Check if there are existing quotes
-  const checkForExistingQuotes = async () => {
+  // Check if there are existing proposals
+  const checkForExistingProposals = async () => {
     try {
       const { data, error } = await supabase
-        .from('quotes')
+        .from('proposals')
         .select('id')
         .limit(1);
-      
+
       if (error) {
-        console.error('Error checking for existing quotes:', error);
+        console.error('Error checking for existing proposals:', error);
         return;
       }
-      
-      setHasExistingQuotes(data && data.length > 0);
+
+      setHasExistingProposals(data && data.length > 0);
     } catch (error) {
-      console.error('Error checking for existing quotes:', error);
+      console.error('Error checking for existing proposals:', error);
     }
   };
 
@@ -115,7 +115,7 @@ export function CompanyInfoDialog({
 
   useEffect(() => {
     if (isOpen) {
-      checkForExistingQuotes();
+      checkForExistingProposals();
     }
     
     if (initialData) {
@@ -161,7 +161,7 @@ export function CompanyInfoDialog({
       newErrors.website = "Website is required";
     }
 
-    if (!hasExistingQuotes && !formData.quote_start_number.trim()) {
+    if (!hasExistingProposals && !formData.quote_start_number.trim()) {
       newErrors.quote_start_number = "Quote starting point is required";
     }
 
@@ -316,8 +316,8 @@ export function CompanyInfoDialog({
             <div className="flex items-center gap-1">
               <Label htmlFor="quoteStartingPoint" className="flex items-center gap-2">
                 Quote Starting Number 
-                {!hasExistingQuotes && <span className="text-red-500">*</span>}
-                {hasExistingQuotes && <Lock className="w-4 h-4 text-muted-foreground" />}
+                {!hasExistingProposals && <span className="text-red-500">*</span>}
+                {hasExistingProposals && <Lock className="w-4 h-4 text-muted-foreground" />}
               </Label>
               <TooltipProvider>
                 <Tooltip>
@@ -326,7 +326,7 @@ export function CompanyInfoDialog({
                   </TooltipTrigger>
                   <TooltipContent side="top">
                     <p>
-                      {hasExistingQuotes 
+                      {hasExistingProposals 
                         ? "Cannot be changed - quotes already exist with this numbering system"
                         : "Starting point for your quote numbering system"
                       }
@@ -341,8 +341,8 @@ export function CompanyInfoDialog({
               value={formData.quote_start_number}
               onChange={(e) => handleChange("quote_start_number", e.target.value)}
               placeholder="P10001, 15000, Q-10001"
-              disabled={hasExistingQuotes}
-              className={`h-12 placeholder:text-muted-foreground/60 ${errors.quote_start_number ? "border-destructive" : ""} ${hasExistingQuotes ? "bg-muted cursor-not-allowed" : ""}`}
+              disabled={hasExistingProposals}
+              className={`h-12 placeholder:text-muted-foreground/60 ${errors.quote_start_number ? "border-destructive" : ""} ${hasExistingProposals ? "bg-muted cursor-not-allowed" : ""}`}
             />
             {errors.quote_start_number && (
               <p className="text-sm text-destructive">{errors.quote_start_number}</p>

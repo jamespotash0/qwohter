@@ -1,17 +1,22 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
-export interface ProposalActivity {
-  id: string;
-  proposal_id: string | null;
-  proposal_number: string;
-  project_name: string | null;
-  user_id: string | null;
-  user_name: string;
-  activity_type: 'Created' | 'Status Changed' | 'Updated' | 'Deleted' | 'Reminder Set' | 'Archived' | 'Unarchived' | 'Submitted' | 'Accepted' | 'Rejected';
-  activity_details: Record<string, any> | null;
-  organization_id: string;
-  created_at: string;
-}
+// Use the database type for type safety
+export type ProposalActivity = Database['public']['Tables']['proposal_activities']['Row'];
+export type ProposalActivityInsert = Database['public']['Tables']['proposal_activities']['Insert'];
+
+// Activity type literals for better type checking
+export type ProposalActivityType =
+  | 'Created'
+  | 'Status Changed'
+  | 'Updated'
+  | 'Deleted'
+  | 'Reminder Set'
+  | 'Archived'
+  | 'Unarchived'
+  | 'Submitted'
+  | 'Accepted'
+  | 'Rejected';
 
 export const proposalActivityService = {
   /**
@@ -23,23 +28,25 @@ export const proposalActivityService = {
     projectName: string | null;
     userId: string | null;
     userName: string;
-    activityType: ProposalActivity['activity_type'];
+    activityType: ProposalActivityType;
     activityDetails?: Record<string, any>;
     organizationId: string;
   }): Promise<{ success: boolean; error?: string }> {
     try {
+      const insertData: ProposalActivityInsert = {
+        proposal_id: params.proposalId,
+        proposal_number: params.proposalNumber,
+        project_name: params.projectName,
+        user_id: params.userId,
+        user_name: params.userName,
+        activity_type: params.activityType,
+        activity_details: params.activityDetails || null,
+        organization_id: params.organizationId
+      };
+
       const { error } = await supabase
         .from('proposal_activities')
-        .insert({
-          proposal_id: params.proposalId,
-          proposal_number: params.proposalNumber,
-          project_name: params.projectName,
-          user_id: params.userId,
-          user_name: params.userName,
-          activity_type: params.activityType,
-          activity_details: params.activityDetails || null,
-          organization_id: params.organizationId
-        } as any);
+        .insert(insertData);
 
       if (error) {
         console.error('Failed to log proposal activity:', error);

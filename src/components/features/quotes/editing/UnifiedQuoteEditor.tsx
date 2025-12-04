@@ -1,3 +1,23 @@
+/**
+ * @deprecated This component is DEPRECATED. Use ProposalEditor instead.
+ *
+ * The UnifiedQuoteEditor is being replaced by a new form-builder based system:
+ * - Forms define the data structure (tabs, fields)
+ * - Document templates (Plate.js) define the PDF layout
+ * - ProposalEditor provides side-by-side editing with live preview
+ *
+ * Migration:
+ * - OLD: <UnifiedQuoteEditor quote={quote} />
+ * - NEW: Navigate to /proposals/:id/edit
+ *
+ * See: src/pages/ProposalEditor.tsx
+ * See: src/features/document-builder/
+ *
+ * ============================================================================
+ * DEPRECATED - DO NOT USE FOR NEW FEATURES
+ * ============================================================================
+ */
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {

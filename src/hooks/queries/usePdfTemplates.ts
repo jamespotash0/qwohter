@@ -1,14 +1,18 @@
 /**
- * React Query Hooks for PDF Templates
+ * @deprecated This file is DEPRECATED. Use useDocumentTemplates.ts instead.
  *
- * Server state management for PDF rendering templates.
- * Handles fetching templates available for forms and proposals.
+ * The pdf_templates and form_pdf_templates tables do not exist.
+ * Use document_templates and form_document_templates instead.
  *
- * Usage:
- * ```typescript
- * const { data: templates } = usePdfTemplates();
- * const { data: formTemplates } = useFormPdfTemplates(formId);
- * ```
+ * Migration:
+ * - usePdfTemplates() → useDocumentTemplates()
+ * - useFormPdfTemplates() → useFormDocumentTemplates()
+ * - PdfTemplate → DocumentTemplate
+ *
+ * See: src/hooks/queries/useDocumentTemplates.ts
+ * ============================================================================
+ * DEPRECATED - DO NOT USE
+ * ============================================================================
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

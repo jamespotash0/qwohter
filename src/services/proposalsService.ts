@@ -24,12 +24,13 @@ export interface CreateProposalData {
   project_name?: string;
   client_name?: string;
   client_company?: string;
+  organization_name?: string; // Organization name for display on proposals
   job_location?: string;
   total_value?: number;
   // Additional metadata columns
-  /** @deprecated Use pdf_template_id instead */
+  /** @deprecated Use document_template_id instead */
   template_type?: string; // PDF template type (e.g., 'generic_wall', 'base', 'smart')
-  pdf_template_id?: string; // Reference to pdf_templates table
+  document_template_id?: string; // Reference to document_templates table
   is_on_board?: boolean; // Whether to show on kanban board
   quote_source?: string; // Lead source (e.g., 'Website', 'Referral')
   document_type?: DocumentType; // Type of document (inherited from form)
@@ -282,6 +283,15 @@ export async function createProposal(
   // Determine document type (from form or default to 'Proposal')
   const documentType: DocumentType = formData.document_type || 'Proposal';
 
+  // Fetch organization name for display on proposals
+  const { data: orgData } = await supabase
+    .from('organizations')
+    .select('name')
+    .eq('id', membershipData.organization_id)
+    .single<{ name: string }>();
+
+  const organizationName = proposalData.organization_name || orgData?.name || null;
+
   // Generate the next proposal number (finds highest existing and increments)
   const proposalNumber = await generateNextProposalNumber(membershipData.organization_id);
 
@@ -301,11 +311,12 @@ export async function createProposal(
     project_name: proposalData.project_name || metadata?.proposalName || null,
     client_name: proposalData.client_name || clientInfo?.clientName || null,
     client_company: proposalData.client_company || clientInfo?.clientCompany || null,
+    organization_name: organizationName,
     job_location: proposalData.job_location || clientInfo?.jobLocation || null,
     total_value: proposalData.total_value || null,
-    // Document type and PDF template
+    // Document type and template
     document_type: documentType,
-    pdf_template_id: proposalData.pdf_template_id || null,
+    document_template_id: proposalData.document_template_id || null,
     // Additional metadata columns (template_type kept for backward compatibility)
     template_type: proposalData.template_type || metadata?.template || null,
     is_on_board: proposalData.is_on_board ?? false,
@@ -441,7 +452,7 @@ export async function createProposalVersion(
     parentProposal.organization_id
   );
 
-  // Create the new version
+  // Create the new version (inherits organization_name from parent)
   const insertData = {
     organization_id: parentProposal.organization_id,
     created_by: session.user.id,
@@ -450,6 +461,8 @@ export async function createProposalVersion(
     form_data: proposalData?.form_data || parentProposal.form_data || {},
     status: proposalData?.status || 'Draft',
     parent_proposal_id: parentProposalId,
+    // Inherit organization_name from parent proposal
+    organization_name: parentProposal.organization_name,
   };
 
   const { data, error } = await supabase

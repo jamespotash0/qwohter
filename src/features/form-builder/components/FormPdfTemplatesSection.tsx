@@ -1,4 +1,14 @@
 /**
+ * @deprecated This component is DEPRECATED. Use FormDocumentTemplatesSection instead.
+ *
+ * The pdf_templates and form_pdf_templates tables do not exist.
+ * Use document_templates and form_document_templates instead.
+ *
+ * See: src/features/form-builder/components/FormDocumentTemplatesSection.tsx
+ * ============================================================================
+ * DEPRECATED - DO NOT USE
+ * ============================================================================
+ *
  * Form PDF Templates Section
  * Allows linking/unlinking PDF templates to a form in the Form Builder settings
  */

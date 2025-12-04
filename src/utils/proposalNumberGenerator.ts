@@ -1,3 +1,19 @@
+/**
+ * @deprecated This utility is DEPRECATED. Use proposalsService.generateNextProposalNumber() instead.
+ *
+ * This file uses the old 'quotes' table which is being phased out.
+ * The new system uses the 'proposals' table with React Query.
+ *
+ * Migration:
+ * - OLD: ProposalNumberGenerator.getNextProposalNumber()
+ * - NEW: generateNextProposalNumber(organizationId) from '@/services/proposalsService'
+ *
+ * See: src/services/proposalsService.ts
+ * ============================================================================
+ * DEPRECATED - DO NOT USE
+ * ============================================================================
+ */
+
 import { supabase } from '@/integrations/supabase/client';
 import { organizationSettingsService } from '@/services/companySettingsService';
 

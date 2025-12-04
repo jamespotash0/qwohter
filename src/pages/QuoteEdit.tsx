@@ -1,3 +1,18 @@
+/**
+ * @deprecated This page is DEPRECATED. Use ProposalEditor instead.
+ *
+ * The old quote editing flow using UnifiedQuoteEditor is being replaced by:
+ * - ProposalEditor: Side-by-side form editor with live document preview
+ * - Route: /proposals/:id/edit
+ *
+ * See: src/pages/ProposalEditor.tsx
+ * See: src/features/document-builder/
+ *
+ * ============================================================================
+ * DEPRECATED - DO NOT USE FOR NEW FEATURES
+ * ============================================================================
+ */
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";

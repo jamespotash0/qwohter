@@ -7,7 +7,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { type Form } from '@/stores/forms/formsStore';
 import { useCurrentOrganization, useForms } from '@/hooks/queries';
-import { useFormPdfTemplates, usePdfTemplates, type PdfTemplate } from '@/hooks/queries/usePdfTemplates';
+import {
+  useFormDocumentTemplates,
+  useDocumentTemplates,
+  type DocumentTemplate,
+} from '@/hooks/queries/useDocumentTemplates';
 import { useUser } from '@/auth';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import {
@@ -73,7 +77,7 @@ export function QuoteCreationWizard({ open, onOpenChange }: QuoteCreationWizardP
 
   const [step, setStep] = useState<WizardStep>('select-form');
   const [selectedForm, setSelectedForm] = useState<Form | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<PdfTemplate | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null);
   const [projectName, setProjectName] = useState('');
   const [proposalNumber, setProposalNumber] = useState('');
   const [isLoadingNumber, setIsLoadingNumber] = useState(false);
@@ -83,15 +87,15 @@ export function QuoteCreationWizard({ open, onOpenChange }: QuoteCreationWizardP
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
   const [pendingExitAction, setPendingExitAction] = useState<'close' | 'back' | null>(null);
 
-  // Fetch PDF templates linked to the selected form
-  const { data: formPdfTemplates = [], isLoading: isLoadingTemplates } = useFormPdfTemplates(selectedForm?.id);
-  // Fetch all available PDF templates (for fallback when no form-specific templates exist)
-  const { data: allPdfTemplates = [] } = usePdfTemplates(currentOrganization?.id);
+  // Fetch document templates linked to the selected form
+  const { data: formDocumentTemplates = [], isLoading: isLoadingTemplates } = useFormDocumentTemplates(selectedForm?.id);
+  // Fetch all available document templates (for fallback when no form-specific templates exist)
+  const { data: allDocumentTemplates = [] } = useDocumentTemplates(currentOrganization?.id);
 
   // Use form-specific templates if available, otherwise show all templates
-  const availableTemplates = formPdfTemplates.length > 0
-    ? formPdfTemplates.map(fpt => fpt.pdf_template).filter(Boolean) as PdfTemplate[]
-    : allPdfTemplates;
+  const availableTemplates = formDocumentTemplates.length > 0
+    ? formDocumentTemplates.map(fdt => fdt.document_template).filter(Boolean) as DocumentTemplate[]
+    : allDocumentTemplates;
 
   // Generate proposal number when dialog opens
   useEffect(() => {
@@ -109,7 +113,10 @@ export function QuoteCreationWizard({ open, onOpenChange }: QuoteCreationWizardP
 
   useEffect(() => {
     if (selectedForm && selectedForm.tabs.length > 0) {
-      setActiveTabId(selectedForm.tabs[0].id);
+      const firstTab = selectedForm.tabs[0];
+      if (firstTab) {
+        setActiveTabId(firstTab.id);
+      }
     }
   }, [selectedForm]);
 
@@ -118,7 +125,7 @@ export function QuoteCreationWizard({ open, onOpenChange }: QuoteCreationWizardP
     setSelectedTemplate(null); // Reset template when form changes
   };
 
-  const handleSelectTemplate = (template: PdfTemplate) => {
+  const handleSelectTemplate = (template: DocumentTemplate) => {
     setSelectedTemplate(template);
   };
 
@@ -154,7 +161,7 @@ export function QuoteCreationWizard({ open, onOpenChange }: QuoteCreationWizardP
         form_data: formData,
         project_name: projectName.trim(),
         status: quoteStatus,
-        pdf_template_id: selectedTemplate?.id,
+        document_template_id: selectedTemplate?.id,
       });
 
       toast.success('Proposal created successfully');
@@ -521,7 +528,7 @@ export function QuoteCreationWizard({ open, onOpenChange }: QuoteCreationWizardP
                           )}
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                          {(selectedForm ? availableTemplates : allPdfTemplates).map((template) => {
+                          {(selectedForm ? availableTemplates : allDocumentTemplates).map((template) => {
                             const isSelected = selectedTemplate?.id === template.id;
                             return (
                               <button

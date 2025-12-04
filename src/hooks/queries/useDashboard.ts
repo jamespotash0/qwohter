@@ -1,7 +1,7 @@
 /**
  * React Query Hooks for Dashboard
  *
- * Replaces manual dashboard data fetching
+ * Uses the proposals table (new form-builder system)
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -12,19 +12,28 @@ import { queryKeys } from '@/lib/queryClient';
  * Dashboard stats type
  */
 export interface DashboardStats {
-  totalQuotes: number;
-  submittedQuotes: number;
-  wonQuotes: number;
+  totalProposals: number;
+  draftProposals: number;
+  sentProposals: number;
+  approvedProposals: number;
   totalValue: number;
+  approvalRate: number;
+  /** @deprecated Use totalProposals instead */
+  totalQuotes: number;
+  /** @deprecated Use sentProposals instead */
+  submittedQuotes: number;
+  /** @deprecated Use approvedProposals instead */
+  wonQuotes: number;
+  /** @deprecated Use approvalRate instead */
   winRate: number;
 }
 
 /**
- * Quote activity type
+ * Proposal activity type
  */
-export interface QuoteActivity {
+export interface ProposalActivity {
   id: string;
-  quote_id: string;
+  proposal_id: string;
   action_type: string;
   performed_by: string;
   performed_by_name?: string;
@@ -32,39 +41,54 @@ export interface QuoteActivity {
   metadata?: any;
 }
 
+/** @deprecated Use ProposalActivity instead */
+export type QuoteActivity = ProposalActivity;
+
 /**
- * Fetch dashboard stats
+ * Fetch dashboard stats from proposals table
  */
 async function fetchDashboardStats(organizationId: string): Promise<DashboardStats> {
-  const { data: quotes, error } = await supabase
-    .from('quotes')
+  const { data: proposals, error } = await supabase
+    .from('proposals')
     .select('status, total_value')
     .eq('organization_id', organizationId);
 
   if (error) throw error;
 
-  const totalQuotes = quotes?.length || 0;
-  const submittedQuotes = quotes?.filter(q => q.status === 'Submitted').length || 0;
-  const wonQuotes = quotes?.filter(q => q.status === 'Won').length || 0;
-  const totalValue = quotes?.reduce((sum, q) => sum + (q.total_value || 0), 0) || 0;
-  const winRate = submittedQuotes > 0 ? (wonQuotes / submittedQuotes) * 100 : 0;
+  const totalProposals = proposals?.length || 0;
+  const draftProposals = proposals?.filter(p => p.status === 'Draft').length || 0;
+  const sentProposals = proposals?.filter(p => p.status === 'Sent').length || 0;
+  const approvedProposals = proposals?.filter(p => p.status === 'Approved').length || 0;
+  const totalValue = proposals?.reduce((sum, p) => sum + (p.total_value || 0), 0) || 0;
+  const approvalRate = sentProposals > 0 ? (approvedProposals / sentProposals) * 100 : 0;
 
   return {
-    totalQuotes,
-    submittedQuotes,
-    wonQuotes,
+    // New field names
+    totalProposals,
+    draftProposals,
+    sentProposals,
+    approvedProposals,
     totalValue,
-    winRate,
+    approvalRate,
+    // Deprecated aliases for backward compatibility
+    totalQuotes: totalProposals,
+    submittedQuotes: sentProposals,
+    wonQuotes: approvedProposals,
+    winRate: approvalRate,
   };
 }
 
 /**
  * Fetch recent activities
+ *
+ * TODO: When proposal_activities table is created, update this to use proposals.
+ * Currently uses the legacy quote_activities table for backward compatibility.
  */
 async function fetchRecentActivities(
   organizationId: string,
   limit: number = 10
-): Promise<QuoteActivity[]> {
+): Promise<ProposalActivity[]> {
+  // TODO: Update to use proposal_activities table when it's created
   const { data, error } = await supabase
     .from('quote_activities')
     .select(`
@@ -86,7 +110,7 @@ async function fetchRecentActivities(
 
   return (data || []).map(activity => ({
     id: activity.id,
-    quote_id: activity.quote_id,
+    proposal_id: activity.quote_id, // Map to new field name
     action_type: activity.action_type,
     performed_by: activity.performed_by,
     performed_by_name: (activity.profiles as any)?.full_name,
@@ -98,7 +122,7 @@ async function fetchRecentActivities(
 /**
  * Hook: Use Dashboard Stats
  *
- * Fetches aggregated quote statistics
+ * Fetches aggregated proposal statistics
  */
 export function useDashboardStats(organizationId: string, enabled: boolean = true) {
   return useQuery({

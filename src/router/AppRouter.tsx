@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { ErrorBoundary, QuoteErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+// import { QuoteErrorBoundary } from "@/components/ErrorBoundary"; // DEPRECATED: No longer needed
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Suspense, lazy } from "react";
 import { Loader2 } from "lucide-react";
@@ -81,11 +82,14 @@ import Analytics from "@/pages/Analytics";
 import Settings from "@/pages/Settings";
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
-// Quote-related pages (grouped under quotes namespace)
-const QuotesList = lazy(() => import("@/pages/Quotes"));
-const NewQuote = lazy(() => import("@/pages/NewQuote"));
-const QuoteEdit = lazy(() => import("@/pages/QuoteEdit"));
-const QuoteEditIncomplete = lazy(() => import("@/pages/QuoteEditIncomplete"));
+// Quote-related pages - DEPRECATED (commented out, use Proposals instead)
+// const QuotesList = lazy(() => import("@/pages/Quotes"));
+// const NewQuote = lazy(() => import("@/pages/NewQuote"));
+// const QuoteEdit = lazy(() => import("@/pages/QuoteEdit"));
+// const QuoteEditIncomplete = lazy(() => import("@/pages/QuoteEditIncomplete"));
+
+// Proposals pages (NEW - form-builder system)
+const Proposals = lazy(() => import("@/pages/Proposals"));
 
 // Form Builder pages
 const Forms = lazy(() => import("@/pages/Forms"));
@@ -161,12 +165,12 @@ export const AppRouter = () => (
           {/* Proposal Editor - Full screen side-by-side editor */}
           <Route path="/proposals/:proposalId/edit" element={<ProposalEditor />} />
 
-          {/* Quote creation workflow - Full screen without sidebar */}
-          <Route path="/quotes/new" element={
+          {/* DEPRECATED: Quote creation workflow - use QuoteCreationWizard from /proposals instead */}
+          {/* <Route path="/quotes/new" element={
             <QuoteErrorBoundary>
               <NewQuote />
             </QuoteErrorBoundary>
-          } />
+          } /> */}
 
           {/* Main application routes (protected by MainLayout with sidebar) */}
           <Route path="/*" element={
@@ -193,25 +197,28 @@ export const AppRouter = () => (
                 {/* Team redirect - now part of settings */}
                 <Route path="/team" element={<Navigate to="/settings?tab=team" replace />} />
 
-                {/* Quote management routes (nested structure) */}
-                <Route path="/quotes" element={<QuotesList />} />
+                {/* Proposals - NEW form-builder based system */}
+                <Route path="/proposals" element={<Proposals />} />
 
-                {/* Quote editing - cleaner route */}
-                <Route path="/editor/:proposalNumber" element={
+                {/* DEPRECATED: Quote management routes - use /proposals instead */}
+                {/* <Route path="/quotes" element={<QuotesList />} /> */}
+
+                {/* DEPRECATED: Quote editing - use /proposals/:id/edit instead */}
+                {/* <Route path="/editor/:proposalNumber" element={
                   <QuoteErrorBoundary>
                     <QuoteEdit />
                   </QuoteErrorBoundary>
-                } />
+                } /> */}
 
-                {/* Incomplete quote editing with dedicated wizard */}
-                <Route path="/quotes/edit-incomplete/:proposalNumber" element={
+                {/* DEPRECATED: Incomplete quote editing */}
+                {/* <Route path="/quotes/edit-incomplete/:proposalNumber" element={
                   <QuoteErrorBoundary>
                     <QuoteEditIncomplete />
                   </QuoteErrorBoundary>
-                } />
+                } /> */}
 
-                {/* Future: Quote templates management */}
-                <Route path="/quotes/templates" element={<Navigate to="/settings" replace />} />
+                {/* DEPRECATED: Quote templates management */}
+                {/* <Route path="/quotes/templates" element={<Navigate to="/settings" replace />} /> */}
 
                 {/* Form Builder routes */}
                 <Route path="/forms" element={<Forms />} />
@@ -221,11 +228,11 @@ export const AppRouter = () => (
                 <Route path="/templates" element={<TemplatesPage />} />
                 <Route path="/templates/library" element={<TemplatesPage />} />
 
-                {/* Legacy route redirects for backward compatibility */}
-                <Route path="/newquote" element={<Navigate to="/quotes/new" replace />} />
+                {/* DEPRECATED: Legacy route redirects - old quote system */}
+                {/* <Route path="/newquote" element={<Navigate to="/quotes/new" replace />} />
                 <Route path="/quoteedit/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
                 <Route path="/quotes/edit/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
-                <Route path="/quotes/view/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} />
+                <Route path="/quotes/view/:proposalNumber" element={<Navigate to="/editor/:proposalNumber" replace />} /> */}
 
                 {/* 404 page */}
                 <Route path="*" element={<NotFound />} />

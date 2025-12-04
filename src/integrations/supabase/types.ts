@@ -551,6 +551,138 @@ export interface Database {
           created_at?: string;
         };
       };
+      /**
+       * Proposals table - New form-builder system
+       * Replaces the quotes table for the form-builder based workflow
+       */
+      proposals: {
+        Row: {
+          id: string;
+          organization_id: string;
+          created_by: string;
+          form_id: string;
+          proposal_number: string | null;
+          form_data: Record<string, any> | null;
+          status: string | null;
+          // Direct columns for querying (extracted from form_data)
+          project_name: string | null;
+          client_name: string | null;
+          client_company: string | null;
+          organization_name: string | null;
+          job_location: string | null;
+          total_value: number | null;
+          // Document and template references
+          document_type: string | null;
+          document_template_id: string | null;
+          template_type: string | null;
+          // Board and workflow
+          is_on_board: boolean | null;
+          quote_source: string | null;
+          // Versioning
+          parent_proposal_id: string | null;
+          // Status timestamps
+          submitted_at: string | null;
+          approved_at: string | null;
+          rejected_at: string | null;
+          // Metadata
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          created_by: string;
+          form_id: string;
+          proposal_number?: string | null;
+          form_data?: Record<string, any> | null;
+          status?: string | null;
+          project_name?: string | null;
+          client_name?: string | null;
+          client_company?: string | null;
+          organization_name?: string | null;
+          job_location?: string | null;
+          total_value?: number | null;
+          document_type?: string | null;
+          document_template_id?: string | null;
+          template_type?: string | null;
+          is_on_board?: boolean | null;
+          quote_source?: string | null;
+          parent_proposal_id?: string | null;
+          submitted_at?: string | null;
+          approved_at?: string | null;
+          rejected_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          created_by?: string;
+          form_id?: string;
+          proposal_number?: string | null;
+          form_data?: Record<string, any> | null;
+          status?: string | null;
+          project_name?: string | null;
+          client_name?: string | null;
+          client_company?: string | null;
+          organization_name?: string | null;
+          job_location?: string | null;
+          total_value?: number | null;
+          document_type?: string | null;
+          document_template_id?: string | null;
+          template_type?: string | null;
+          is_on_board?: boolean | null;
+          quote_source?: string | null;
+          parent_proposal_id?: string | null;
+          submitted_at?: string | null;
+          approved_at?: string | null;
+          rejected_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      /**
+       * Proposal Activities table - Activity log for proposals
+       * Replaces quote_activities for the form-builder based workflow
+       */
+      proposal_activities: {
+        Row: {
+          id: string;
+          proposal_id: string | null;
+          proposal_number: string;
+          project_name: string | null;
+          user_id: string | null;
+          user_name: string;
+          activity_type: string;
+          activity_details: Record<string, any> | null;
+          organization_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          proposal_id?: string | null;
+          proposal_number: string;
+          project_name?: string | null;
+          user_id?: string | null;
+          user_name: string;
+          activity_type: string;
+          activity_details?: Record<string, any> | null;
+          organization_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          proposal_id?: string | null;
+          proposal_number?: string;
+          project_name?: string | null;
+          user_id?: string | null;
+          user_name?: string;
+          activity_type?: string;
+          activity_details?: Record<string, any> | null;
+          organization_id?: string;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;

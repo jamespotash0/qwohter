@@ -1,3 +1,23 @@
+/**
+ * @deprecated This template system is DEPRECATED. Use document-builder instead.
+ *
+ * The hardcoded SmartQuoteTemplate is being replaced by:
+ * - Document Templates: User-defined Plate.js rich text templates
+ * - Variable System: Dynamic {{variable}} placeholders
+ * - Form Integration: Templates linked to forms for field mapping
+ *
+ * Migration:
+ * - OLD: SmartQuoteHelper.generateSections(quoteData)
+ * - NEW: Use DocumentPreview with template content and form values
+ *
+ * See: src/features/document-builder/
+ * See: src/hooks/queries/useDocumentTemplates.ts
+ *
+ * ============================================================================
+ * DEPRECATED - DO NOT USE FOR NEW FEATURES
+ * ============================================================================
+ */
+
 import { QuoteData } from './BaseQuoteTemplate';
 
 export interface QuoteSection {
