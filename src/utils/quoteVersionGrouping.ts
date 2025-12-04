@@ -19,7 +19,6 @@ export interface QuoteVersionGroup {
     rejected: number;
     submitted: number;
     draft: number;
-    pending: number;
     incomplete: number;
   };
 }

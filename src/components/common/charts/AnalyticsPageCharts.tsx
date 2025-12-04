@@ -153,8 +153,8 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
         }
       });
 
-      let wonCount = 0, pendingCount = 0, rejectedCount = 0, totalValue = 0;
-      
+      let wonCount = 0, submittedCount = 0, rejectedCount = 0, totalValue = 0;
+
       // Single loop for all calculations
       monthQuotes.forEach(q => {
         switch (q.status) {
@@ -162,8 +162,8 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
             wonCount++;
             totalValue += q.parsedPrice;
             break;
-          case 'Pending':
-            pendingCount++;
+          case 'Submitted':
+            submittedCount++;
             break;
           case 'Rejected':
             rejectedCount++;
@@ -176,7 +176,7 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
         count: monthQuotes.length,
         value: totalValue,
         won: wonCount,
-        pending: pendingCount,
+        submitted: submittedCount,
         rejected: rejectedCount
       };
     });
@@ -466,7 +466,7 @@ export const AnalyticsPageCharts: React.FC<AnalyticsPageChartsProps> = ({ quotes
         {
           data: statusValues,
           backgroundColor: [
-            'rgba(99, 102, 241, 0.92)',   // Indigo - Pending
+            'rgba(99, 102, 241, 0.92)',   
             'rgba(34, 197, 94, 0.92)',    // Green - Won  
             'rgba(245, 101, 101, 0.92)',  // Red - Rejected
             'rgba(251, 146, 60, 0.92)',   // Orange - Draft

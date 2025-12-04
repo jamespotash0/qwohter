@@ -355,7 +355,7 @@ const Dashboard = () => {
     }, 0);
 
     const activeQuotes = quoteGroups.filter(group =>
-      group.versions.some(v => ['Pending', 'Submitted'].includes(v.status || ''))
+      group.versions.some(v => ['Submitted'].includes(v.status || ''))
     ).length;
 
     // Current overall win rate (all time) - count groups not individual quotes

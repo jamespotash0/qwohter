@@ -97,7 +97,7 @@ members.filter(m => m.status === 'Active' || m.status === 'active')
 **What It Does:**
 1. Fixes any lowercase quote statuses: `'won'` → `'Won'`
 2. Adds trigger to auto-capitalize on insert/update
-3. Ensures consistency: `'Won'`, `'Rejected'`, `'Submitted'`, `'Draft'`, `'Incomplete'`, `'Pending'`
+3. Ensures consistency: `'Won'`, `'Rejected'`, `'Submitted'`, `'Draft'`, `'Incomplete'`
 
 **Result:** ✅ All quote status checks will work consistently
 
@@ -123,9 +123,8 @@ isQuoteRejected(status)
 isQuoteSubmitted(status)
 isQuoteDraft(status)
 isQuoteIncomplete(status)
-isQuotePending(status)
 isQuoteFinal(status)       // Won OR Rejected
-isQuoteInProgress(status)  // Submitted, Draft, Incomplete, Pending
+isQuoteInProgress(status)  // Submitted, Draft, Incomplete
 isQuoteEditable(status)    // Draft OR Incomplete
 
 // Subscription helpers

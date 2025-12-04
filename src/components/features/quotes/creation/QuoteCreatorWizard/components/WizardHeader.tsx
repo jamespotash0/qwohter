@@ -78,7 +78,6 @@ export const WizardHeader = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Draft">Draft</SelectItem>
-                <SelectItem value="Pending">Pending</SelectItem>
                 <SelectItem value="Submitted">Submitted</SelectItem>
                 <SelectItem value="Won">Won</SelectItem>
                 <SelectItem value="Rejected">Rejected</SelectItem>

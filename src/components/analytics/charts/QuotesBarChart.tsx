@@ -21,14 +21,14 @@ export interface QuotesBarChartProps {
     name: string;
     won: number;
     lost: number;
-    pending: number;
+    submitted: number;
   }>;
 }
 
 const COLORS = {
   won: '#10B981', // Green
   lost: '#EF4444', // Red
-  pending: '#F59E0B', // Amber
+  submitted: '#F59E0B', // Amber
 };
 
 export const QuotesBarChart = ({ data }: QuotesBarChartProps) => {
@@ -66,7 +66,7 @@ export const QuotesBarChart = ({ data }: QuotesBarChartProps) => {
         />
         <Bar dataKey="won" fill={COLORS.won} name="Won" radius={[4, 4, 0, 0]} />
         <Bar dataKey="lost" fill={COLORS.lost} name="Lost" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="pending" fill={COLORS.pending} name="Pending" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="submitted" fill={COLORS.submitted} name="Submitted" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
