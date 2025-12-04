@@ -2,12 +2,13 @@
  * Proposals Service
  *
  * Centralized service for all proposals-related API calls.
- * Integrates with the database function for auto-incrementing proposal numbers.
+ * Handles proposal creation with auto-incrementing proposal numbers.
  */
 
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import * as authService from '@/auth/services/authService';
+import type { DocumentType } from '@/stores/forms/formsStore';
 
 // ============================================================================
 // Types
@@ -19,6 +20,19 @@ export interface CreateProposalData {
   form_id: string; // Which form template was used
   form_data?: Record<string, any>; // Form submission data (JSONB)
   status?: string;
+  // Direct columns for querying/filtering (optional - extracted from form_data if not provided)
+  project_name?: string;
+  client_name?: string;
+  client_company?: string;
+  job_location?: string;
+  total_value?: number;
+  // Additional metadata columns
+  /** @deprecated Use pdf_template_id instead */
+  template_type?: string; // PDF template type (e.g., 'generic_wall', 'base', 'smart')
+  pdf_template_id?: string; // Reference to pdf_templates table
+  is_on_board?: boolean; // Whether to show on kanban board
+  quote_source?: string; // Lead source (e.g., 'Website', 'Referral')
+  document_type?: DocumentType; // Type of document (inherited from form)
 }
 
 export interface UpdateProposalData {
@@ -40,50 +54,52 @@ export interface ProposalVersionInfo {
 // ============================================================================
 
 /**
- * Generate the next proposal number for a form
+ * Generate the next proposal number for an organization
  *
- * This calls the database function `generate_next_proposal_number()` which:
- * - Parses the form's starting_proposal_number (e.g., "SR-1005", "Q1200")
- * - Finds the highest number used for proposals from this form
- * - Increments by 1 and returns the next number with proper zero-padding
+ * Finds the highest proposal number in the proposals table and increments by 1.
+ * Format: P{number} (e.g., P1001, P1002, P1003)
  *
- * Example:
- * - Form has starting_proposal_number: "SR-1005"
- * - No proposals created yet → returns "SR-1005"
- * - After 1st proposal → returns "SR-1006"
- * - After 2nd proposal → returns "SR-1007"
- *
- * @param formId - UUID of the form template
- * @param startingNumber - Starting proposal number from the form (e.g., "Q1200", "SR-1005")
- * @returns The next proposal number to use
+ * @param organizationId - Organization ID to scope the query
+ * @returns The next proposal number (e.g., "P1001")
  */
 export async function generateNextProposalNumber(
-  formId: string,
-  startingNumber: string
+  organizationId: string
 ): Promise<string> {
-  if (!formId) {
-    throw new Error('Form ID is required');
-  }
-  if (!startingNumber) {
-    throw new Error('Starting proposal number is required');
+  if (!organizationId) {
+    throw new Error('Organization ID is required');
   }
 
-  const { data, error } = await supabase.rpc('generate_next_proposal_number', {
-    p_form_id: formId,
-    p_starting_number: startingNumber,
-  } as any);
+  // Query proposals table to find the highest number
+  const { data: proposals } = await supabase
+    .from('proposals')
+    .select('proposal_number')
+    .eq('organization_id', organizationId)
+    .not('proposal_number', 'is', null);
 
-  if (error) {
-    console.error('Error generating proposal number:', error);
-    throw new Error(`Failed to generate proposal number: ${error.message}`);
+  // Extract numeric parts and find the maximum
+  let maxNumber = 1000; // Start from 1000 if no existing proposals
+
+  if (proposals) {
+    for (const proposal of proposals) {
+      if (!proposal.proposal_number) continue;
+      // Match patterns like "P1001", "P1002", etc. (ignore versions like "P1001.2")
+      const match = proposal.proposal_number.match(/^P(\d+)$/i);
+      if (match && match[1]) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNumber) {
+          maxNumber = num;
+        }
+      }
+    }
   }
 
-  if (!data) {
-    throw new Error('No proposal number returned from database function');
-  }
-
-  return data;
+  // Return the next number
+  return `P${maxNumber + 1}`;
 }
+
+// ============================================================================
+// Proposal Versioning
+// ============================================================================
 
 /**
  * Generate a version number for a proposal revision
@@ -219,8 +235,8 @@ export async function fetchProposalById(proposalId: string): Promise<Proposal> {
  * Create a new proposal
  *
  * This function:
- * 1. Fetches the form to get its starting_proposal_number and proposal_type
- * 2. Generates the next proposal number using the database function
+ * 1. Fetches the form to get its document_type
+ * 2. Generates the next proposal number (finds highest existing P{num} and increments)
  * 3. Creates the proposal with the generated number
  */
 export async function createProposal(
@@ -247,12 +263,12 @@ export async function createProposal(
     throw new Error('User not assigned to an organization');
   }
 
-  // Fetch the form to get starting_proposal_number
+  // Fetch the form to get document_type
   const { data: formData, error: formError } = await supabase
     .from('forms')
-    .select('starting_proposal_number')
+    .select('document_type')
     .eq('id', proposalData.form_id)
-    .single<{ starting_proposal_number: string }>();
+    .single<{ document_type: DocumentType | null }>();
 
   if (formError) {
     console.error('Error fetching form:', formError);
@@ -263,24 +279,37 @@ export async function createProposal(
     throw new Error('Form not found');
   }
 
-  if (!formData.starting_proposal_number) {
-    throw new Error('Form does not have a starting proposal number configured');
-  }
+  // Determine document type (from form or default to 'Proposal')
+  const documentType: DocumentType = formData.document_type || 'Proposal';
 
-  // Generate the next proposal number
-  const proposalNumber = await generateNextProposalNumber(
-    proposalData.form_id,
-    formData.starting_proposal_number
-  );
+  // Generate the next proposal number (finds highest existing and increments)
+  const proposalNumber = await generateNextProposalNumber(membershipData.organization_id);
 
-  // Create the proposal with the generated number
+  // Extract client info from form_data if not provided directly
+  const clientInfo = proposalData.form_data?._clientInfo;
+  const metadata = proposalData.form_data?._metadata;
+
+  // Create the proposal with the generated number and direct columns
   const insertData = {
     organization_id: membershipData.organization_id,
     created_by: session.user.id,
     form_id: proposalData.form_id,
     proposal_number: proposalNumber,
     form_data: proposalData.form_data || {},
-    status: proposalData.status || 'draft',
+    status: proposalData.status || 'Draft',
+    // Direct columns for querying (extract from form_data._clientInfo or use provided values)
+    project_name: proposalData.project_name || metadata?.proposalName || null,
+    client_name: proposalData.client_name || clientInfo?.clientName || null,
+    client_company: proposalData.client_company || clientInfo?.clientCompany || null,
+    job_location: proposalData.job_location || clientInfo?.jobLocation || null,
+    total_value: proposalData.total_value || null,
+    // Document type and PDF template
+    document_type: documentType,
+    pdf_template_id: proposalData.pdf_template_id || null,
+    // Additional metadata columns (template_type kept for backward compatibility)
+    template_type: proposalData.template_type || metadata?.template || null,
+    is_on_board: proposalData.is_on_board ?? false,
+    quote_source: proposalData.quote_source || metadata?.quoteSource || null,
   };
 
   const { data, error } = await supabase
@@ -419,7 +448,7 @@ export async function createProposalVersion(
     form_id: parentProposal.form_id,
     proposal_number: versionedNumber, // Contains version in the number itself (e.g., "SR-1005.2")
     form_data: proposalData?.form_data || parentProposal.form_data || {},
-    proposal_status: proposalData?.status || 'Draft',
+    status: proposalData?.status || 'Draft',
     parent_proposal_id: parentProposalId,
   };
 

@@ -110,8 +110,7 @@ export default function Forms() {
   const handleCreateForm = async (data: {
     name: string;
     description: string;
-    formType: string;
-    startingProposalNumber: string;
+    documentType: string;
   }) => {
     if (!currentOrganization?.id || !user?.id) {
       toast.error('Missing organization or user information');
@@ -126,8 +125,7 @@ export default function Forms() {
         organization_id: currentOrganization.id,
         created_by: user.id,
         is_archived: false,
-        form_type: data.formType,
-        starting_proposal_number: data.startingProposalNumber,
+        document_type: data.documentType as any,
         tabs: [],
       }, {
         onSuccess: (newForm) => {
@@ -400,10 +398,10 @@ function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, 
     year: 'numeric'
   });
 
-  // Format form type for display
-  const formTypeDisplay = form.form_type
-    ? form.form_type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
-    : 'Custom';
+  // Format document type for display
+  const documentTypeDisplay = form.document_type
+    ? form.document_type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+    : 'Proposal';
 
   const handleNameSave = () => {
     if (editedName.trim() && editedName !== form.name) {
@@ -616,9 +614,9 @@ function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, 
                 </div>
               </div>
 
-              {/* Form Type Badge */}
+              {/* Document Type Badge */}
               <div className="px-2.5 py-1 rounded-md text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
-                {formTypeDisplay}
+                {documentTypeDisplay}
               </div>
             </div>
 

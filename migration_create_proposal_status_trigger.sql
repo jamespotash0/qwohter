@@ -6,7 +6,7 @@
 --
 -- This trigger:
 -- 1. Automatically logs status changes to proposal_status_transitions table
--- 2. Updates timestamp fields (submitted_at, accepted_at, rejected_at, paid_at)
+-- 2. Updates timestamp fields (submitted_at, won_at, rejected_at, paid_at)
 -- 3. Uses case-insensitive status comparisons
 -- ============================================================================
 
@@ -21,8 +21,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $function$
 BEGIN
-  -- Only proceed if proposal_status actually changed
-  IF NEW.proposal_status IS DISTINCT FROM OLD.proposal_status THEN
+  -- Only proceed if status actually changed
+  IF NEW.status IS DISTINCT FROM OLD.status THEN
 
     -- Log the status change to audit table
     INSERT INTO proposal_status_transitions (
@@ -36,24 +36,24 @@ BEGIN
     ) VALUES (
       NEW.id,
       NEW.organization_id,
-      OLD.proposal_status,
-      NEW.proposal_status,
+      OLD.status,
+      NEW.status,
       auth.uid(),
       NOW(),
       CASE
-        WHEN OLD.proposal_status IS NULL THEN 'Proposal created'
-        ELSE 'Status changed from ' || OLD.proposal_status || ' to ' || NEW.proposal_status
+        WHEN OLD.status IS NULL THEN 'Proposal created'
+        ELSE 'Status changed from ' || OLD.status || ' to ' || NEW.status
       END
     );
 
     -- Update timestamp fields based on new status (CASE-INSENSITIVE)
-    IF LOWER(NEW.proposal_status) = 'submitted' AND NEW.submitted_at IS NULL THEN
+    IF LOWER(NEW.status) = 'submitted' AND NEW.submitted_at IS NULL THEN
       NEW.submitted_at = NOW();
-    ELSIF LOWER(NEW.proposal_status) = 'accepted' THEN
-      NEW.accepted_at = NOW();
-    ELSIF LOWER(NEW.proposal_status) = 'rejected' THEN
+    ELSIF LOWER(NEW.status) = 'accepted' THEN
+      NEW.won_at = NOW();
+    ELSIF LOWER(NEW.status) = 'rejected' THEN
       NEW.rejected_at = NOW();
-    ELSIF LOWER(NEW.proposal_status) = 'paid' THEN
+    ELSIF LOWER(NEW.status) = 'paid' THEN
       NEW.paid_at = NOW();
     END IF;
   END IF;
@@ -69,9 +69,9 @@ $function$;
 -- Drop trigger if it exists
 DROP TRIGGER IF EXISTS on_proposal_status_change ON public.proposals;
 
--- Create trigger that fires before UPDATE of proposal_status column
+-- Create trigger that fires before UPDATE of status column
 CREATE TRIGGER on_proposal_status_change
-  BEFORE UPDATE OF proposal_status ON proposals
+  BEFORE UPDATE OF status ON proposals
   FOR EACH ROW
   EXECUTE FUNCTION track_proposal_status_change();
 
@@ -85,7 +85,7 @@ Uses case-insensitive comparisons for status values.
 Mirrors track_quote_status_change() functionality for proposals.';
 
 COMMENT ON TRIGGER on_proposal_status_change ON public.proposals IS
-'Automatically logs status changes and updates timestamp fields when proposal_status changes';
+'Automatically logs status changes and updates timestamp fields when status changes';
 
 -- ============================================================================
 -- VERIFICATION
@@ -134,7 +134,7 @@ LIMIT 5;
 /*
 The trigger automatically sets timestamp fields when status changes to:
 - 'submitted' / 'Submitted' → Sets submitted_at
-- 'accepted' / 'Accepted'   → Sets accepted_at
+- 'accepted' / 'Accepted'   → Sets won_at
 - 'rejected' / 'Rejected'   → Sets rejected_at
 - 'paid' / 'Paid'           → Sets paid_at
 

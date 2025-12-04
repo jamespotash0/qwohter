@@ -65,6 +65,9 @@ export interface FormTab {
   is_default?: boolean; // For Company Info and Project Details tabs
 }
 
+// Valid document types for forms and proposals
+export type DocumentType = 'Proposal' | 'Invoice' | 'Service_Request';
+
 // Form definition
 export interface Form {
   id: string;
@@ -77,8 +80,7 @@ export interface Form {
   updated_at: string;
   is_archived: boolean;
   is_default?: boolean; // Marks this as the default form for quote creation
-  form_type?: string; // Type of form this represents (can be custom or preset like 'quote', 'service_request', etc.)
-  starting_proposal_number?: string; // Starting proposal number that auto-increments (e.g., "Q1200", "ER-2025-001")
+  document_type?: DocumentType; // Type of document this form creates (Proposal, Invoice, Service_Request)
   allow_save_incomplete?: boolean; // Whether users can save this form as incomplete (bypassing validation)
 }
 

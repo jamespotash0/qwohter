@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { PageContent, ContentCard } from "@/components/common/layout";
-import CreateQuoteDialog from "@/components/features/quotes/creation/CreateQuoteDialog";
+import CreateProposalDialog, { type ProposalInitialData } from "@/components/features/quotes/creation/CreateProposalDialog";
 import { ImportQuoteDialog } from "@/components/features/quotes/import";
 import { CreateInvoiceDialog } from "@/components/features/integrations/CreateInvoiceDialog";
 import { useNavigate } from "react-router-dom";
@@ -277,9 +277,21 @@ const Quotes = () => {
     }
   };
 
-  const handleCreateQuote = (proposalName: string, formId: string, template: string) => {
+  const handleCreateQuote = (data: ProposalInitialData) => {
     setShowNewQuoteDialog(false);
-    navigate(`/quotes/new?name=${encodeURIComponent(proposalName)}&formId=${encodeURIComponent(formId)}&template=${encodeURIComponent(template)}`);
+    // Build URL with all client info as query params
+    const params = new URLSearchParams({
+      name: data.proposalName,
+      formId: data.formId,
+      template: data.template,
+      clientName: data.clientName,
+      clientCompany: data.clientCompany,
+      clientAddress: data.clientAddress,
+      jobLocation: data.jobLocation,
+      status: data.status,
+      quoteSource: data.quoteSource,
+    });
+    navigate(`/quotes/new?${params.toString()}`);
   };
 
   const handleCreateVersion = async (quoteId: string) => {
@@ -684,7 +696,7 @@ const Quotes = () => {
       </AlertDialog>
 
       {/* Create Proposal Dialog */}
-      {/* <CreateProposalDialog
+      <CreateProposalDialog
         open={showNewQuoteDialog}
         onOpenChange={setShowNewQuoteDialog}
         onCreateQuote={handleCreateQuote}

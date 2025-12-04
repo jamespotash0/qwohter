@@ -105,7 +105,10 @@
 
     /* App-specific */
     --sidebar-background: hsl(210 20% 98%); /* #F9FAFB */
-    --sidebar-border: hsl(220 13% 91%); /* #E5E7EB */
+    --sidebar-border: hsl(220 13% 91%); /* #E5E7EB */ --brand: oklch(0.623 0.214 259.815);
+  }
+  .dark {
+    --brand: oklch(0.707 0.165 254.624);
   }
 }
 
@@ -168,4 +171,17 @@
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;  /* Chrome, Safari, and Opera */
+}
+
+/*
+ ---break---
+ */
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

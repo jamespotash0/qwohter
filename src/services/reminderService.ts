@@ -21,7 +21,7 @@ export interface Reminder {
   updated_at: string;
   // Joined data
   proposal_number?: string;
-  proposal_name?: string;
+  project_name?: string;
   creator_name?: string;
 }
 
@@ -63,7 +63,7 @@ export const reminderService = {
           *,
           quotes:quote_id (
             proposal_number,
-            proposal_name
+            project_name
           ),
           created_by_profile:created_by (
             full_name
@@ -90,7 +90,7 @@ export const reminderService = {
       const reminders = data.map((reminder: any) => ({
         ...reminder,
         proposal_number: reminder.quotes?.proposal_number,
-        proposal_name: reminder.quotes?.proposal_name,
+        project_name: reminder.quotes?.project_name,
         creator_name: reminder.created_by_profile?.full_name || 'Unknown User',
         // Remove nested objects
         quotes: undefined,
@@ -366,7 +366,7 @@ export const reminderService = {
           *,
           quotes:quote_id (
             proposal_number,
-            proposal_name
+            project_name
           ),
           created_by_profile:created_by (
             full_name
@@ -389,7 +389,7 @@ export const reminderService = {
       const reminders = data.map((reminder: any) => ({
         ...reminder,
         quote_number: reminder.quotes?.proposal_number,
-        project_name: reminder.quotes?.proposal_name,
+        project_name: reminder.quotes?.project_name,
         creator_name: reminder.created_by_profile?.full_name || 'Unknown User',
         // Remove nested objects
         quotes: undefined,

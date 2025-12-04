@@ -45,6 +45,8 @@ import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
 import { FormComponents } from '@/features/form-builder/components/FormComponents';
 // import { DotGridCanvas } from '@/features/form-builder/components/DotGridCanvas';
 import { PropertiesPanel } from '@/features/form-builder/components/PropertiesPanel';
+import { FormPdfTemplatesSection } from '@/features/form-builder/components/FormPdfTemplatesSection';
+import { FormDocumentTemplatesSection } from '@/features/form-builder/components/FormDocumentTemplatesSection';
 import type { EnhancedFormField, EnhancedFormTab, FormComponentsItem } from '@/features/form-builder/types/enhanced';
 
 // Droppable Page Content Component
@@ -359,7 +361,7 @@ export default function FormBuilderV3() {
 
   // Form state
   const [formName, setFormName] = useState(existingForm?.name || 'Untitled Form');
-  const [formType, setFormType] = useState(existingForm?.form_type || 'Custom');
+  const [documentType, setDocumentType] = useState(existingForm?.document_type || 'Proposal');
   const [allowSaveIncomplete, setAllowSaveIncomplete] = useState(existingForm?.allow_save_incomplete ?? true);
   const [currentTab, setCurrentTab] = useState(0);
   const [tabs, setTabs] = useState<EnhancedFormTab[]>(() => {
@@ -399,7 +401,7 @@ export default function FormBuilderV3() {
     if (existingForm) {
       setFormName(existingForm.name);
       // setFormDescription(existingForm.description || '');
-      setFormType(existingForm.form_type || 'Custom');
+      setDocumentType(existingForm.document_type || 'Proposal');
       setAllowSaveIncomplete(existingForm.allow_save_incomplete ?? true);
       if (existingForm.tabs) {
         // Migrate tabs to new 48-column system if needed
@@ -663,7 +665,7 @@ export default function FormBuilderV3() {
       const formData = {
         organization_id: organizationId,
         name: formName,
-        form_type: formType, // Type of document this form generates
+        document_type: documentType, // Type of document this form generates
         tabs: tabs as any[],
         created_by: user.id,
         is_archived: false,
@@ -697,11 +699,13 @@ export default function FormBuilderV3() {
     organizationId,
     user,
     formName,
+    documentType,
     tabs,
     formId,
     createFormMutation,
     updateFormMutation,
     navigate,
+    allowSaveIncomplete,
   ]);
 
   // Add new tab
@@ -826,25 +830,19 @@ export default function FormBuilderV3() {
                   </div>
                   <Separator />
 
-                  {/* Form Type Selector */}
+                  {/* Document Type Selector */}
                   <div className="space-y-2">
                     <Label htmlFor="form-type" className="text-sm font-medium">
-                      Form Type
+                      Document Type
                     </Label>
-                    <Select value={formType} onValueChange={setFormType}>
+                    <Select value={documentType} onValueChange={setDocumentType}>
                       <SelectTrigger id="form-type" className="h-9">
-                        <SelectValue placeholder="Select form type" />
+                        <SelectValue placeholder="Select document type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Quote">Quote</SelectItem>
                         <SelectItem value="Proposal">Proposal</SelectItem>
-                        <SelectItem value="Service Request">Service Request</SelectItem>
                         <SelectItem value="Invoice">Invoice</SelectItem>
-                        <SelectItem value="Estimate">Estimate</SelectItem>
-                        <SelectItem value="Work Order">Work Order</SelectItem>
-                        <SelectItem value="Bid">Bid</SelectItem>
-                        <SelectItem value="Contract">Contract</SelectItem>
-                        <SelectItem value="Custom">Custom</SelectItem>
+                        <SelectItem value="Service_Request">Service Request</SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-gray-500">
@@ -870,6 +868,22 @@ export default function FormBuilderV3() {
                       onCheckedChange={setAllowSaveIncomplete}
                     />
                   </div>
+
+                  <Separator />
+
+                  {/* PDF Templates */}
+                  <FormPdfTemplatesSection
+                    formId={formId !== 'new' ? formId : undefined}
+                    organizationId={organizationId}
+                  />
+
+                  <Separator />
+
+                  {/* Document Templates (Plate.js) */}
+                  <FormDocumentTemplatesSection
+                    formId={formId !== 'new' ? formId : undefined}
+                    organizationId={organizationId}
+                  />
                 </div>
               </PopoverContent>
             </Popover>

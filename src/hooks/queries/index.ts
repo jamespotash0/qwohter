@@ -90,7 +90,29 @@ export {
   useUnsetDefaultForm,
 } from './useForms';
 
+// PDF Templates
+export {
+  usePdfTemplates,
+  usePdfTemplate,
+  useFormPdfTemplates,
+  useLinkPdfTemplate,
+  useUnlinkPdfTemplate,
+} from './usePdfTemplates';
+
+// Document Number Sequences
+export {
+  useDocumentSequences,
+  useDocumentSequence,
+  useCreateDocumentSequence,
+  useUpdateDocumentSequence,
+  useUpsertDocumentSequence,
+  formatDocumentNumberPreview,
+  DEFAULT_PREFIXES,
+} from './useDocumentSequences';
+
 // Types
 export type { UserProfile, Session } from './useAuth';
 export type { DashboardStats, QuoteActivity } from './useDashboard';
 export type { Form } from './useForms';
+export type { PdfTemplate, FormPdfTemplate } from './usePdfTemplates';
+export type { DocumentNumberSequence, CreateSequenceData, UpdateSequenceData } from './useDocumentSequences';

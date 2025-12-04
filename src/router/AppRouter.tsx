@@ -92,6 +92,9 @@ const Forms = lazy(() => import("@/pages/Forms"));
 const FormBuilderV3 = lazy(() => import("@/pages/FormBuilderV3"));
 const TemplatesPage = lazy(() => import("@/pages/TemplatesPage"));
 
+// Document Template pages
+const DocumentTemplateEditor = lazy(() => import("@/pages/DocumentTemplateEditor"));
+
 // Board pages
 const Board = lazy(() => import("@/pages/Board"));
 const TaskBoard = lazy(() => import("@/pages/TaskBoard"));
@@ -148,6 +151,9 @@ export const AppRouter = () => (
 
           {/* Form Builder V3 - Full screen without sidebar */}
           <Route path="/forms/builder-v3/:id" element={<FormBuilderV3 />} />
+
+          {/* Document Template Editor - Full screen without sidebar */}
+          <Route path="/document-templates/:templateId" element={<DocumentTemplateEditor />} />
 
           {/* Quote creation workflow - Full screen without sidebar */}
           <Route path="/quotes/new" element={

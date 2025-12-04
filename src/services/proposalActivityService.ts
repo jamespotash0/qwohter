@@ -4,7 +4,7 @@ export interface ProposalActivity {
   id: string;
   proposal_id: string | null;
   proposal_number: string;
-  proposal_name: string | null;
+  project_name: string | null;
   user_id: string | null;
   user_name: string;
   activity_type: 'Created' | 'Status Changed' | 'Updated' | 'Deleted' | 'Reminder Set' | 'Archived' | 'Unarchived' | 'Submitted' | 'Accepted' | 'Rejected';
@@ -20,7 +20,7 @@ export const proposalActivityService = {
   async logActivity(params: {
     proposalId: string | null;
     proposalNumber: string;
-    proposalName: string | null;
+    projectName: string | null;
     userId: string | null;
     userName: string;
     activityType: ProposalActivity['activity_type'];
@@ -33,7 +33,7 @@ export const proposalActivityService = {
         .insert({
           proposal_id: params.proposalId,
           proposal_number: params.proposalNumber,
-          proposal_name: params.proposalName,
+          project_name: params.projectName,
           user_id: params.userId,
           user_name: params.userName,
           activity_type: params.activityType,
@@ -59,7 +59,7 @@ export const proposalActivityService = {
   async logCreation(params: {
     proposalId: string;
     proposalNumber: string;
-    proposalName: string;
+    projectName: string;
     userId: string;
     userName: string;
     organizationId: string;
@@ -78,7 +78,7 @@ export const proposalActivityService = {
   async logStatusChange(params: {
     proposalId: string;
     proposalNumber: string;
-    proposalName: string;
+    projectName: string;
     userId: string;
     userName: string;
     organizationId: string;
@@ -88,7 +88,7 @@ export const proposalActivityService = {
     return this.logActivity({
       proposalId: params.proposalId,
       proposalNumber: params.proposalNumber,
-      proposalName: params.proposalName,
+      projectName: params.projectName,
       userId: params.userId,
       userName: params.userName,
       organizationId: params.organizationId,
@@ -106,7 +106,7 @@ export const proposalActivityService = {
   async logUpdate(params: {
     proposalId: string;
     proposalNumber: string;
-    proposalName: string;
+    projectName: string;
     userId: string;
     userName: string;
     organizationId: string;
@@ -125,7 +125,7 @@ export const proposalActivityService = {
   async logDeletion(params: {
     proposalId: string;
     proposalNumber: string;
-    proposalName: string;
+    projectName: string;
     userId: string;
     userName: string;
     organizationId: string;
@@ -142,7 +142,7 @@ export const proposalActivityService = {
   async logSubmission(params: {
     proposalId: string;
     proposalNumber: string;
-    proposalName: string;
+    projectName: string;
     userId: string;
     userName: string;
     organizationId: string;
@@ -159,7 +159,7 @@ export const proposalActivityService = {
   async logAcceptance(params: {
     proposalId: string;
     proposalNumber: string;
-    proposalName: string;
+    projectName: string;
     userId: string;
     userName: string;
     organizationId: string;
@@ -176,7 +176,7 @@ export const proposalActivityService = {
   async logRejection(params: {
     proposalId: string;
     proposalNumber: string;
-    proposalName: string;
+    projectName: string;
     userId: string;
     userName: string;
     organizationId: string;
@@ -185,7 +185,7 @@ export const proposalActivityService = {
     return this.logActivity({
       proposalId: params.proposalId,
       proposalNumber: params.proposalNumber,
-      proposalName: params.proposalName,
+      projectName: params.projectName,
       userId: params.userId,
       userName: params.userName,
       organizationId: params.organizationId,
@@ -200,7 +200,7 @@ export const proposalActivityService = {
   async logReminderSet(params: {
     proposalId: string;
     proposalNumber: string;
-    proposalName: string;
+    projectName: string;
     userId: string;
     userName: string;
     organizationId: string;
@@ -209,7 +209,7 @@ export const proposalActivityService = {
     return this.logActivity({
       proposalId: params.proposalId,
       proposalNumber: params.proposalNumber,
-      proposalName: params.proposalName,
+      projectName: params.projectName,
       userId: params.userId,
       userName: params.userName,
       organizationId: params.organizationId,

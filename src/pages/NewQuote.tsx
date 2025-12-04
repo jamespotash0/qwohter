@@ -19,6 +19,20 @@ const NewQuote = () => {
   const template = searchParams.get('template');
   const proposalName = searchParams.get('name') || "";
 
+  // Client info from URL params
+  const clientInfo = {
+    clientName: searchParams.get('clientName') || "",
+    clientCompany: searchParams.get('clientCompany') || "",
+    clientAddress: searchParams.get('clientAddress') || "",
+    jobLocation: searchParams.get('jobLocation') || "",
+  };
+
+  // Initial status from URL params
+  const initialStatus = searchParams.get('status') || "Draft";
+
+  // Quote source from URL params
+  const quoteSource = searchParams.get('quoteSource') || "";
+
   // Check if we're editing a draft quote
   const editProposalNumber = searchParams.get('edit');
   const existingQuote = editProposalNumber ? quotes.find(q => q.proposal_number === editProposalNumber) : null;
@@ -74,6 +88,9 @@ const NewQuote = () => {
         formId={formId}
         proposalName={proposalName}
         template={template || "generic_wall"}
+        clientInfo={clientInfo}
+        initialStatus={initialStatus}
+        quoteSource={quoteSource}
         onBack={handleBackToDashboard}
       />
     );

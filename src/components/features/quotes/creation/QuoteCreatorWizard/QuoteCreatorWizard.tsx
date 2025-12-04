@@ -1,5 +1,15 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { useCreateQuote, useUpdateQuote } from "@/hooks/queries/useQuotes";
 import { useCurrentOrganization } from "@/hooks/queries";
@@ -34,6 +44,7 @@ const QuoteCreatorWizard = ({
   const [editingQuoteName, setEditingQuoteName] = useState(false);
   const [localQuoteName, setLocalQuoteName] = useState(quoteName);
   const [pricingTouchedFields, setPricingTouchedFields] = useState<Set<string>>(new Set());
+  const [showExitConfirmation, setShowExitConfirmation] = useState(false);
 
   // Use the state management hook
   const {
@@ -89,6 +100,11 @@ const QuoteCreatorWizard = ({
     isPricingValid,
     // isQuoteStatusValid
   } = useWizardValidation(contactInfo, jobDetails, walls, deliveryLabor, pricing, quoteStatus, organization || undefined, pricingTouchedFields);
+
+  // Handle back button - always show confirmation
+  const handleBackAttempt = () => {
+    setShowExitConfirmation(true);
+  };
 
   // Create wizard steps with validation states
   const steps = createWizardSteps(
@@ -364,7 +380,7 @@ const QuoteCreatorWizard = ({
               quoteStatus={quoteStatus}
               completedSteps={completedSteps}
               totalSteps={steps.length}
-              onBackToDashboard={onBackToDashboard}
+              onBackToDashboard={handleBackAttempt}
               onQuoteNameChange={setLocalQuoteName}
               onEditingQuoteNameChange={setEditingQuoteName}
               onQuoteStatusChange={setQuoteStatus}
@@ -421,6 +437,32 @@ const QuoteCreatorWizard = ({
           onSave={handleSave}
         />
       </div>
+
+      {/* Exit Confirmation Dialog */}
+      <AlertDialog open={showExitConfirmation} onOpenChange={setShowExitConfirmation}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to exit?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will lose all current data and the quote will not be stored.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowExitConfirmation(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowExitConfirmation(false);
+                onBackToDashboard();
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -12,14 +12,34 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useForm } from "@/hooks/queries";
 import { createProposal } from "@/services/proposalsService";
 import { toast } from "sonner";
+
+export interface ClientInfo {
+  clientName: string;
+  clientCompany: string;
+  clientAddress: string;
+  jobLocation: string;
+}
 
 interface ProposalFormFillerProps {
   formId: string;
   proposalName: string;
   template: string;
+  clientInfo?: ClientInfo;
+  initialStatus?: string;
+  quoteSource?: string;
   onBack: () => void;
 }
 
@@ -27,6 +47,9 @@ export function ProposalFormFiller({
   formId,
   proposalName: initialProposalName,
   template,
+  clientInfo,
+  initialStatus = "Draft",
+  quoteSource = "",
   onBack,
 }: ProposalFormFillerProps) {
   const navigate = useNavigate();
@@ -36,9 +59,15 @@ export function ProposalFormFiller({
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [currentTab, setCurrentTab] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [status, setStatus] = useState("draft");
+  const [status, setStatus] = useState(initialStatus);
   const [proposalName, setProposalName] = useState(initialProposalName);
   const [isEditingName, setIsEditingName] = useState(false);
+  const [showExitConfirmation, setShowExitConfirmation] = useState(false);
+
+  // Handle back button - always show confirmation
+  const handleBackAttempt = () => {
+    setShowExitConfirmation(true);
+  };
 
   // Update a single field value
   const updateField = (fieldId: string, value: any) => {
@@ -89,14 +118,21 @@ export function ProposalFormFiller({
     setIsSubmitting(true);
 
     try {
-      // Prepare proposal data with metadata
+      // Prepare proposal data with metadata and client info
       const proposalDataWithMetadata = {
         ...formData,
         _metadata: {
           proposalName,
           template,
           formName: form.name,
+          quoteSource,
         },
+        _clientInfo: clientInfo ? {
+          clientName: clientInfo.clientName,
+          clientCompany: clientInfo.clientCompany,
+          clientAddress: clientInfo.clientAddress,
+          jobLocation: clientInfo.jobLocation,
+        } : undefined,
       };
 
       // Create proposal using proposalsService
@@ -104,6 +140,13 @@ export function ProposalFormFiller({
         form_id: formId,
         form_data: proposalDataWithMetadata,
         status: status,
+        // Direct columns for faster querying
+        project_name: proposalName,
+        client_name: clientInfo?.clientName,
+        client_company: clientInfo?.clientCompany,
+        job_location: clientInfo?.jobLocation,
+        template_type: template,
+        quote_source: quoteSource || undefined,
       });
 
       toast.success(`Proposal ${proposal.proposal_number} created successfully!`);
@@ -129,13 +172,27 @@ export function ProposalFormFiller({
           proposalName,
           template,
           formName: form.name,
+          quoteSource,
         },
+        _clientInfo: clientInfo ? {
+          clientName: clientInfo.clientName,
+          clientCompany: clientInfo.clientCompany,
+          clientAddress: clientInfo.clientAddress,
+          jobLocation: clientInfo.jobLocation,
+        } : undefined,
       };
 
       const proposal = await createProposal({
         form_id: formId,
         form_data: proposalDataWithMetadata,
-        status: "draft",
+        status: "Draft",
+        // Direct columns for faster querying
+        project_name: proposalName,
+        client_name: clientInfo?.clientName,
+        client_company: clientInfo?.clientCompany,
+        job_location: clientInfo?.jobLocation,
+        template_type: template,
+        quote_source: quoteSource || undefined,
       });
 
       toast.success(`Proposal ${proposal.proposal_number} saved as draft!`);
@@ -187,6 +244,7 @@ export function ProposalFormFiller({
   const currentTabData = form.tabs[currentTab];
 
   return (
+    <>
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
       {/* Top Header */}
       <div className="w-full bg-white border-b border-slate-200 flex-shrink-0">
@@ -195,7 +253,7 @@ export function ProposalFormFiller({
           <Button
             variant="ghost"
             size="sm"
-            onClick={onBack}
+            onClick={handleBackAttempt}
             className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -295,11 +353,12 @@ export function ProposalFormFiller({
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="submitted">Submitted</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="Draft">Draft</SelectItem>
+                  <SelectItem value="Incomplete">Incomplete</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Submitted">Submitted</SelectItem>
+                  <SelectItem value="Won">Won</SelectItem>
+                  <SelectItem value="Rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -430,5 +489,32 @@ export function ProposalFormFiller({
         </div>
       </div>
     </div>
+
+      {/* Exit Confirmation Dialog */}
+      <AlertDialog open={showExitConfirmation} onOpenChange={setShowExitConfirmation}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to exit?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You will lose all current data and the quote will not be stored.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowExitConfirmation(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowExitConfirmation(false);
+                onBack();
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

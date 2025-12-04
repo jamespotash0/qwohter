@@ -145,14 +145,13 @@ export async function copyTemplateToOrganization(
     created_by: session.user.id,
     name: params.customName || template.name,
     description: params.customDescription || template.description,
-    form_type: template.form_type,
+    document_type: template.document_type,
     tabs: template.tabs,
     metadata: template.metadata,
     is_archived: false,
     is_default: false,
     is_template: false, // Regular form, not a template
     copied_from_form_id: template.id,
-    starting_proposal_number: template.starting_proposal_number,
     allow_save_incomplete: template.allow_save_incomplete,
   };
 
