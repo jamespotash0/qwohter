@@ -95,6 +95,9 @@ const TemplatesPage = lazy(() => import("@/pages/TemplatesPage"));
 // Document Template pages
 const DocumentTemplateEditor = lazy(() => import("@/pages/DocumentTemplateEditor"));
 
+// Proposal Editor (side-by-side with document preview)
+const ProposalEditor = lazy(() => import("@/pages/ProposalEditor"));
+
 // Board pages
 const Board = lazy(() => import("@/pages/Board"));
 const TaskBoard = lazy(() => import("@/pages/TaskBoard"));
@@ -154,6 +157,9 @@ export const AppRouter = () => (
 
           {/* Document Template Editor - Full screen without sidebar */}
           <Route path="/document-templates/:templateId" element={<DocumentTemplateEditor />} />
+
+          {/* Proposal Editor - Full screen side-by-side editor */}
+          <Route path="/proposals/:proposalId/edit" element={<ProposalEditor />} />
 
           {/* Quote creation workflow - Full screen without sidebar */}
           <Route path="/quotes/new" element={

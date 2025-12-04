@@ -159,7 +159,7 @@ export function QuoteCreationWizard({ open, onOpenChange }: QuoteCreationWizardP
 
       toast.success('Proposal created successfully');
       onOpenChange(false);
-      navigate(`/quotes/${proposal.id}`);
+      navigate(`/proposals/${proposal.id}/edit`);
     } catch (error) {
       toast.error('Failed to create proposal');
       console.error('Error creating proposal:', error);

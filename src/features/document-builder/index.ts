@@ -8,6 +8,7 @@ export { DocumentEditor } from './components/DocumentEditor';
 export type { PlateElement } from './components/DocumentEditor';
 export { EditorToolbar } from './components/EditorToolbar';
 export { VariableInsertMenu } from './components/VariableInsertMenu';
+export { DocumentPreview } from './components/DocumentPreview';
 
 // Variable utilities
 export {
