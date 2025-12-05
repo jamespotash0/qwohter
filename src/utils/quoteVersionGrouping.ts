@@ -133,7 +133,7 @@ export function groupQuotesByVersion(quotes: Quote[]): QuoteVersionGroup[] {
 export function getVersionDisplayInfo(group: QuoteVersionGroup) {
   const { statusSummary } = group;
 
-  // Priority: Won > Submitted > Rejected > Draft > Incomplete
+  // Priority: Won/Rejected > Submitted > Draft > Incomplete
   if (statusSummary.won > 0) {
     return {
       status: 'Won' as QuoteStatus,
@@ -143,21 +143,21 @@ export function getVersionDisplayInfo(group: QuoteVersionGroup) {
     };
   }
 
-  if (statusSummary.submitted > 0) {
-    return {
-      status: 'Submitted' as QuoteStatus,
-      label: statusSummary.submitted === 1 ? 'Submitted' : `${statusSummary.submitted} Submitted`,
-      color: 'default' as const,
-      icon: '→'
-    };
-  }
-
   if (statusSummary.rejected > 0) {
     return {
       status: 'Rejected' as QuoteStatus,
       label: statusSummary.rejected === 1 ? 'Rejected' : `${statusSummary.rejected} Rejected`,
       color: 'destructive' as const,
       icon: '✕'
+    };
+  }
+
+  if (statusSummary.submitted > 0) {
+    return {
+      status: 'Submitted' as QuoteStatus,
+      label: statusSummary.submitted === 1 ? 'Submitted' : `${statusSummary.submitted} Submitted`,
+      color: 'default' as const,
+      icon: '→'
     };
   }
 
@@ -190,6 +190,7 @@ export function getVersionStatusBadges(group: QuoteVersionGroup) {
     color: string;
   }> = [];
 
+  // Priority order: Won/Rejected > Submitted > Draft > Incomplete
   if (group.statusSummary.won > 0) {
     badges.push({
       status: 'Won',
@@ -199,21 +200,21 @@ export function getVersionStatusBadges(group: QuoteVersionGroup) {
     });
   }
 
-  if (group.statusSummary.submitted > 0) {
-    badges.push({
-      status: 'Submitted',
-      count: group.statusSummary.submitted,
-      label: `${group.statusSummary.submitted} Submitted`,
-      color: 'default'
-    });
-  }
-
   if (group.statusSummary.rejected > 0) {
     badges.push({
       status: 'Rejected',
       count: group.statusSummary.rejected,
       label: `${group.statusSummary.rejected} Rejected`,
       color: 'destructive'
+    });
+  }
+
+  if (group.statusSummary.submitted > 0) {
+    badges.push({
+      status: 'Submitted',
+      count: group.statusSummary.submitted,
+      label: `${group.statusSummary.submitted} Submitted`,
+      color: 'default'
     });
   }
 
