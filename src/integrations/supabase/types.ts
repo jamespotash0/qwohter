@@ -580,6 +580,10 @@ export interface Database {
           quote_source: string | null;
           // Versioning
           parent_proposal_id: string | null;
+          is_main_version: boolean | null;
+          // Archive
+          archived: boolean | null;
+          archived_at: string | null;
           // Status timestamps
           submitted_at: string | null;
           approved_at: string | null;
@@ -608,6 +612,9 @@ export interface Database {
           is_on_board?: boolean | null;
           quote_source?: string | null;
           parent_proposal_id?: string | null;
+          is_main_version?: boolean | null;
+          archived?: boolean | null;
+          archived_at?: string | null;
           submitted_at?: string | null;
           approved_at?: string | null;
           rejected_at?: string | null;
@@ -634,6 +641,9 @@ export interface Database {
           is_on_board?: boolean | null;
           quote_source?: string | null;
           parent_proposal_id?: string | null;
+          is_main_version?: boolean | null;
+          archived?: boolean | null;
+          archived_at?: string | null;
           submitted_at?: string | null;
           approved_at?: string | null;
           rejected_at?: string | null;

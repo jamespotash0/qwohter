@@ -1,2 +1,3 @@
 export { default as CreateQuoteDialog } from './CreateProposalDialog';
-export { default as QuoteCreatorWizard } from './QuoteCreatorWizard';
+export { default as CreateProposalDialog } from './CreateProposalDialog';
+export { ProposalFormFiller } from './ProposalFormFiller';

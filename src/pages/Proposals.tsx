@@ -1,76 +1,31 @@
 /**
  * Proposals Page
- * Table view for managing proposals created from custom forms
- * Uses the proposals table (new form-builder system)
+ * Enhanced table view matching the Quotes page design
  */
 
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/auth';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
-import { useProposals, useDeleteProposal, type Proposal } from '@/hooks/queries/useProposals';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
-  Plus,
-  Search,
-  MoreVertical,
-  Edit,
-  Trash2,
-  FileText,
-  Clock,
-  CheckCircle,
-  TrendingUp,
-  DollarSign,
-  Loader2,
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { format } from 'date-fns';
+  useProposals,
+  useDeleteProposal,
+  useUpdateProposalStatus,
+  useArchiveProposal,
+  useUnarchiveProposal,
+  useSetMainVersion,
+  useCreateProposalVersion,
+  type Proposal,
+} from '@/hooks/queries/useProposals';
+import { FileText, Clock, CheckCircle, DollarSign, Plus, Sparkles, Upload } from 'lucide-react';
 import { toast } from 'sonner';
-import { QuoteCreationWizard } from '@/components/quotes/QuoteCreationWizard';
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-const STATUS_COLORS: Record<string, string> = {
-  Draft: 'bg-gray-100 text-gray-700 border-gray-200',
-  Incomplete: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  Complete: 'bg-blue-100 text-blue-700 border-blue-200',
-  Sent: 'bg-purple-100 text-purple-700 border-purple-200',
-  Approved: 'bg-green-100 text-green-700 border-green-200',
-  Rejected: 'bg-red-100 text-red-700 border-red-200',
-};
-
-// ============================================================================
-// Component
-// ============================================================================
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { PageContent, ContentCard } from '@/components/common/layout';
+import { EnhancedProposalsTable } from '@/components/features/proposals/table/EnhancedProposalsTable';
+import CreateProposalDialog, { type ProposalInitialData } from '@/components/features/quotes/creation/CreateProposalDialog';
+import { ImportProposalDialog } from '@/components/features/proposals/import';
+import { groupProposalsByVersion } from '@/utils/proposalVersionGrouping';
 
 export default function Proposals() {
   const navigate = useNavigate();
@@ -78,361 +33,390 @@ export default function Proposals() {
   const { organization } = useCurrentOrganization(user?.id || '', !!user?.id);
 
   // Data fetching
-  const { data: proposals = [], isLoading } = useProposals(organization?.id);
+  const { data: allProposals = [], isLoading } = useProposals(organization?.id);
+
+  // Mutation hooks
   const deleteMutation = useDeleteProposal();
+  const updateStatusMutation = useUpdateProposalStatus();
+  const archiveMutation = useArchiveProposal();
+  const unarchiveMutation = useUnarchiveProposal();
+  const setMainVersionMutation = useSetMainVersion();
+  const createVersionMutation = useCreateProposalVersion();
 
   // Local state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [createWizardOpen, setCreateWizardOpen] = useState(false);
-  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
-  // Filter proposals
-  const filteredProposals = useMemo(() => {
-    return proposals.filter((proposal) => {
-      const matchesSearch =
-        proposal.project_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        proposal.proposal_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        proposal.client_name?.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchesStatus = statusFilter === 'all' || proposal.status === statusFilter;
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [proposals, searchQuery, statusFilter]);
+  // Filter proposals by archived status
+  const activeProposals = useMemo(() => allProposals.filter(p => !p.archived), [allProposals]);
+  const archivedProposals = useMemo(() => allProposals.filter(p => p.archived), [allProposals]);
+  const displayedProposals = showArchived ? archivedProposals : activeProposals;
 
   // Calculate stats
-  const stats = useMemo(() => ({
-    total: proposals.length,
-    draft: proposals.filter((p) => p.status === 'Draft').length,
-    complete: proposals.filter((p) => p.status === 'Complete').length,
-    sent: proposals.filter((p) => p.status === 'Sent').length,
-    approved: proposals.filter((p) => p.status === 'Approved').length,
-  }), [proposals]);
+  const stats = useMemo(() => {
+    const proposals = activeProposals;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const createdThisMonth = proposals.filter(p => new Date(p.created_at) >= monthStart);
+    const approvedThisMonth = proposals.filter(p =>
+      p.status === 'Approved' && new Date(p.updated_at) >= monthStart
+    );
+
+    const totalValue = proposals
+      .filter(p => p.status === 'Draft' || p.status === 'Complete' || p.status === 'Sent')
+      .reduce((sum, p) => sum + (p.total_value || 0), 0);
+
+    return {
+      total: proposals.length,
+      totalThisMonth: createdThisMonth.length,
+      sent: proposals.filter(p => p.status === 'Sent').length,
+      approved: proposals.filter(p => p.status === 'Approved').length,
+      approvedThisMonth: approvedThisMonth.length,
+      totalValue,
+    };
+  }, [activeProposals]);
 
   // Handlers
-  const handleDelete = async () => {
-    if (!selectedProposalId) return;
+  const handleEditProposal = (proposal: Proposal) => {
+    navigate(`/proposals/${proposal.id}/edit`);
+  };
 
+  const handleDeleteProposal = async (id: string) => {
     try {
-      await deleteMutation.mutateAsync(selectedProposalId);
-      toast.success('Proposal deleted successfully');
-      setDeleteDialogOpen(false);
-      setSelectedProposalId(null);
-    } catch (error) {
+      const groups = groupProposalsByVersion(allProposals);
+      const proposal = allProposals.find(p => p.id === id);
+      if (!proposal) {
+        await deleteMutation.mutateAsync(id);
+        return;
+      }
+
+      const group = groups.find(g => g.versions.some(v => v.id === id));
+      if (group && group.hasMultipleVersions && group.mainVersion.id === id) {
+        await Promise.all(group.versions.map(v => deleteMutation.mutateAsync(v.id)));
+        toast.success('Proposal and all versions deleted');
+      } else {
+        await deleteMutation.mutateAsync(id);
+        toast.success('Proposal deleted');
+      }
+    } catch {
       toast.error('Failed to delete proposal');
     }
   };
 
-  const openDeleteDialog = (proposalId: string) => {
-    setSelectedProposalId(proposalId);
-    setDeleteDialogOpen(true);
+  const handleStatusChange = (id: string, status: string) => {
+    updateStatusMutation.mutate({ proposalId: id, status }, {
+      onSuccess: () => toast.success(`Status updated to ${status}`),
+      onError: () => toast.error('Failed to update status'),
+    });
   };
 
-  const handleRowClick = (proposal: Proposal) => {
-    navigate(`/proposals/${proposal.id}/edit`);
+  const handleArchiveProposal = async (id: string) => {
+    try {
+      const groups = groupProposalsByVersion(allProposals);
+      const proposal = allProposals.find(p => p.id === id);
+      if (!proposal) return;
+
+      const group = groups.find(g => g.versions.some(v => v.id === id));
+      if (group && group.hasMultipleVersions && group.mainVersion.id === id) {
+        await Promise.all(group.versions.map(v => archiveMutation.mutateAsync(v.id)));
+        toast.success('Proposal and all versions archived');
+      } else {
+        await archiveMutation.mutateAsync(id);
+        toast.success('Proposal archived');
+      }
+    } catch {
+      toast.error('Failed to archive proposal');
+    }
   };
 
-  const handleEditClick = (e: React.MouseEvent, proposalId: string) => {
-    e.stopPropagation();
-    navigate(`/proposals/${proposalId}/edit`);
+  const handleUnarchiveProposal = async (id: string) => {
+    try {
+      await unarchiveMutation.mutateAsync(id);
+      toast.success('Proposal restored');
+    } catch {
+      toast.error('Failed to restore proposal');
+    }
+  };
+
+  const handleCreateVersion = async (id: string) => {
+    try {
+      const newVersion = await createVersionMutation.mutateAsync(id);
+      toast.success(`Version ${newVersion.proposal_number} created`);
+      navigate(`/proposals/${newVersion.id}/edit`);
+    } catch {
+      toast.error('Failed to create version');
+    }
+  };
+
+  const handleSetMainVersion = (proposalId: string, baseNumber: string) => {
+    setMainVersionMutation.mutate({ proposalId, baseProposalNumber: baseNumber }, {
+      onSuccess: () => toast.success('Main version updated'),
+      onError: () => toast.error('Failed to set main version'),
+    });
+  };
+
+  const handleBulkDelete = async (ids: string[]) => {
+    try {
+      await Promise.all(ids.map(id => deleteMutation.mutateAsync(id)));
+      toast.success(`${ids.length} proposal(s) deleted`);
+    } catch {
+      toast.error('Failed to delete some proposals');
+    }
+  };
+
+  const handleBulkStatusChange = (ids: string[], status: string) => {
+    Promise.all(ids.map(id => updateStatusMutation.mutateAsync({ proposalId: id, status })))
+      .then(() => toast.success(`${ids.length} proposal(s) updated to ${status}`))
+      .catch(() => toast.error('Failed to update some proposals'));
+  };
+
+  const handleExportCSV = (data: Proposal[]) => {
+    const headers = ['Proposal #', 'Project Name', 'Client', 'Status', 'Total Value', 'Created'];
+    const rows = data.map(p => [
+      p.proposal_number || '',
+      p.project_name || '',
+      p.client_name || p.client_company || '',
+      p.status || 'Draft',
+      p.total_value?.toString() || '0',
+      p.created_at ? new Date(p.created_at).toLocaleDateString() : '',
+    ]);
+
+    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `proposals-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('CSV exported');
+  };
+
+  const handleExportPDF = (data: Proposal[]) => {
+    toast.info(`PDF export for ${data.length} proposals - coming soon`);
+  };
+
+  // Handle creating a new proposal from dialog
+  const handleCreateProposal = async (data: ProposalInitialData) => {
+    setCreateWizardOpen(false);
+    try {
+      // Create the proposal with the collected data
+      const { createProposal } = await import('@/services/proposalsService');
+      const proposal = await createProposal({
+        form_id: data.formId,
+        document_template_id: data.template,
+        project_name: data.proposalName,
+        client_name: data.clientName,
+        client_company: data.clientCompany,
+        job_location: data.jobLocation,
+        status: data.status,
+        quote_source: data.quoteSource,
+        form_data: {
+          client_address: data.clientAddress,
+        },
+      });
+      toast.success('Proposal created successfully');
+      navigate(`/proposals/${proposal.id}/edit`);
+    } catch (error) {
+      console.error('Failed to create proposal:', error);
+      toast.error('Failed to create proposal');
+    }
   };
 
   return (
-    <div className="h-full w-full overflow-auto bg-background">
-      <div className="max-w-7xl mx-auto p-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Proposals</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage proposals created from your custom forms
+    <PageContent title="Proposals" subtitle="Manage proposals from your custom forms" showPageHeader={true}>
+      {/* Loading State */}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="w-12 h-12 border-4 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-[var(--content-muted-text)]">Loading proposals...</p>
+        </div>
+      ) : !isLoading && allProposals.length === 0 ? (
+        <ContentCard>
+          <div className="flex flex-col items-center justify-center py-16 px-6">
+            <div className="relative mb-6">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 flex items-center justify-center">
+                <FileText className="w-12 h-12 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-lg">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+            </div>
+
+            <h3 className="text-2xl font-semibold text-[var(--content-header-text)] mb-2">
+              No proposals yet
+            </h3>
+
+            <p className="text-[var(--content-muted-text)] text-center max-w-md mb-8">
+              Start creating professional proposals using your custom forms. Track submissions, manage approvals, and win more business.
             </p>
-          </div>
-          <Button
-            size="lg"
-            onClick={() => setCreateWizardOpen(true)}
-            className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Create Proposal
-          </Button>
-        </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0 }}
-          >
-            <div className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-                  <p className="text-xs text-muted-foreground">Total</p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <div className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-gray-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.draft}</p>
-                  <p className="text-xs text-muted-foreground">Drafts</p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <div className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.complete}</p>
-                  <p className="text-xs text-muted-foreground">Complete</p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <div className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.sent}</p>
-                  <p className="text-xs text-muted-foreground">Sent</p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <div className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{stats.approved}</p>
-                  <p className="text-xs text-muted-foreground">Approved</p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search proposals..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <div className="flex gap-2 overflow-x-auto">
-            {['all', 'Draft', 'Complete', 'Sent', 'Approved', 'Rejected'].map((status) => (
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button
-                key={status}
-                variant={statusFilter === status ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setStatusFilter(status)}
-                className="whitespace-nowrap"
-              >
-                {status === 'all' ? 'All' : status}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        {/* Loading State */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground mr-2" />
-            <span className="text-muted-foreground">Loading proposals...</span>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!isLoading && filteredProposals.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center py-16"
-          >
-            <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <FileText className="w-12 h-12 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">No proposals yet</h3>
-            <p className="text-muted-foreground text-center max-w-md mb-6">
-              {searchQuery
-                ? 'No proposals match your search. Try a different query.'
-                : 'Get started by creating your first proposal from a form template.'}
-            </p>
-            {!searchQuery && (
-              <Button
-                size="lg"
                 onClick={() => setCreateWizardOpen(true)}
-                className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                className="bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white px-6 py-2.5"
               >
                 <Plus className="w-5 h-5 mr-2" />
                 Create Your First Proposal
               </Button>
-            )}
-          </motion.div>
-        )}
+              <Button
+                variant="outline"
+                onClick={() => setShowImportDialog(true)}
+                className="px-6 py-2.5"
+              >
+                <Upload className="w-5 h-5 mr-2" />
+                Import Proposal
+              </Button>
+            </div>
 
-        {/* Proposals Table */}
-        {!isLoading && filteredProposals.length > 0 && (
-          <div className="rounded-lg border bg-card overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="font-semibold">Proposal #</TableHead>
-                  <TableHead className="font-semibold">Project Name</TableHead>
-                  <TableHead className="font-semibold">Client</TableHead>
-                  <TableHead className="font-semibold">Status</TableHead>
-                  <TableHead className="font-semibold">Created</TableHead>
-                  <TableHead className="text-right font-semibold">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <AnimatePresence>
-                  {filteredProposals.map((proposal, index) => (
-                    <motion.tr
-                      key={proposal.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ delay: index * 0.02 }}
-                      className="group hover:bg-muted/30 transition-colors cursor-pointer"
-                      onClick={() => handleRowClick(proposal)}
-                    >
-                      <TableCell className="font-mono font-medium">
-                        {proposal.proposal_number || '—'}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {proposal.project_name || 'Untitled'}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {proposal.client_name || proposal.client_company || '—'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={`${STATUS_COLORS[proposal.status || 'Draft']} border`}
-                        >
-                          {proposal.status || 'Draft'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {proposal.created_at
-                          ? format(new Date(proposal.created_at), 'MMM d, yyyy')
-                          : '—'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem
-                              className="cursor-pointer"
-                              onClick={(e) => handleEditClick(e, proposal.id)}
-                            >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit Proposal
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="cursor-pointer text-destructive focus:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openDeleteDialog(proposal.id);
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete Proposal
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </motion.tr>
-                  ))}
-                </AnimatePresence>
-              </TableBody>
-            </Table>
+            <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl">
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-3">
+                  <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h4 className="font-medium text-sm text-[var(--content-header-text)] mb-1">Custom Forms</h4>
+                <p className="text-xs text-[var(--content-muted-text)]">Build proposals from your templates</p>
+              </div>
+
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-3">
+                  <Sparkles className="w-6 h-6 text-green-600 dark:text-green-400" />
+                </div>
+                <h4 className="font-medium text-sm text-[var(--content-header-text)] mb-1">Smart Tracking</h4>
+                <p className="text-xs text-[var(--content-muted-text)]">Monitor status and approvals</p>
+              </div>
+
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mx-auto mb-3">
+                  <Plus className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                </div>
+                <h4 className="font-medium text-sm text-[var(--content-header-text)] mb-1">Version Control</h4>
+                <p className="text-xs text-[var(--content-muted-text)]">Create and manage revisions</p>
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+        </ContentCard>
+      ) : (
+        <>
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {/* Total Proposals */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800">
+                    <FileText className="w-6 h-6 text-blue-600 dark:text-blue-300" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Total Proposals</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{stats.total}</p>
+                    {stats.totalThisMonth > 0 && (
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                        +{stats.totalThisMonth} this month
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Proposal</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this proposal? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive hover:bg-destructive/90"
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            {/* Sent Proposals */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-900 dark:to-yellow-800">
+                    <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-300" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Sent Proposals</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{stats.sent}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-      {/* Quote Creation Wizard */}
-      <QuoteCreationWizard
+            {/* Approved Proposals */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900 dark:to-green-800">
+                    <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-300" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Approved</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{stats.approved}</p>
+                    {stats.approvedThisMonth > 0 && (
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                        +{stats.approvedThisMonth} this month
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Total Active Value */}
+            <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
+              <CardContent className="p-6">
+                <div className="flex items-center">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
+                    <DollarSign className="w-6 h-6 text-purple-600 dark:text-purple-300" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Total Active Value</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">
+                      {new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: 'USD',
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                      }).format(stats.totalValue)}
+                    </p>
+                    <p className="text-xs text-[var(--content-muted-text)] mt-1">
+                      Outstanding Proposals Only
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Proposals Table */}
+          <EnhancedProposalsTable
+            proposals={displayedProposals}
+            onEditProposal={handleEditProposal}
+            onDeleteProposal={handleDeleteProposal}
+            onStatusChange={handleStatusChange}
+            onCreateVersion={handleCreateVersion}
+            onCreateProposal={() => setCreateWizardOpen(true)}
+            onArchiveProposal={showArchived ? undefined : handleArchiveProposal}
+            onUnarchiveProposal={showArchived ? handleUnarchiveProposal : undefined}
+            showArchived={showArchived}
+            archivedCount={archivedProposals.length}
+            onToggleArchive={() => setShowArchived(!showArchived)}
+            onBulkDelete={handleBulkDelete}
+            onBulkStatusChange={handleBulkStatusChange}
+            onExportCSV={handleExportCSV}
+            onExportPDF={handleExportPDF}
+            onSetMainVersion={handleSetMainVersion}
+          />
+        </>
+      )}
+
+      {/* Proposal Creation Dialog */}
+      <CreateProposalDialog
         open={createWizardOpen}
         onOpenChange={setCreateWizardOpen}
+        onCreateQuote={handleCreateProposal}
       />
-    </div>
+
+      {/* Import Proposal Dialog */}
+      <ImportProposalDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+      />
+    </PageContent>
   );
 }

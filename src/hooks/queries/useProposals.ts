@@ -19,6 +19,10 @@ import {
   updateProposal,
   deleteProposal,
   updateProposalStatus,
+  archiveProposal,
+  unarchiveProposal,
+  setMainVersion,
+  createProposalVersion,
   type Proposal,
   type CreateProposalData,
   type UpdateProposalData,
@@ -178,6 +182,80 @@ export function useUpdateProposalStatus() {
       queryClient.invalidateQueries({
         queryKey: proposalQueryKeys.detail(data.id),
       });
+      queryClient.invalidateQueries({
+        queryKey: proposalQueryKeys.lists(),
+      });
+    },
+  });
+}
+
+/**
+ * Hook: Archive a proposal
+ */
+export function useArchiveProposal() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: archiveProposal,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: proposalQueryKeys.lists(),
+      });
+    },
+  });
+}
+
+/**
+ * Hook: Unarchive a proposal
+ */
+export function useUnarchiveProposal() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: unarchiveProposal,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: proposalQueryKeys.lists(),
+      });
+    },
+  });
+}
+
+/**
+ * Hook: Set a proposal as the main version
+ */
+export function useSetMainVersion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      proposalId,
+      baseProposalNumber,
+    }: {
+      proposalId: string;
+      baseProposalNumber: string;
+    }) => {
+      return setMainVersion(proposalId, baseProposalNumber);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: proposalQueryKeys.lists(),
+      });
+    },
+  });
+}
+
+/**
+ * Hook: Create a new version of a proposal
+ */
+export function useCreateProposalVersion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (parentProposalId: string) => {
+      return createProposalVersion(parentProposalId);
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: proposalQueryKeys.lists(),
       });

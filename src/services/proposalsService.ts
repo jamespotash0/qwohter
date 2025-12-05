@@ -383,6 +383,82 @@ export async function deleteProposal(proposalId: string): Promise<void> {
 }
 
 /**
+ * Archive a proposal
+ */
+export async function archiveProposal(proposalId: string): Promise<Proposal> {
+  const { data, error } = await supabase
+    .from('proposals')
+    .update({
+      archived: true,
+      archived_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', proposalId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error archiving proposal:', error);
+    throw new Error(`Failed to archive proposal: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Unarchive a proposal
+ */
+export async function unarchiveProposal(proposalId: string): Promise<Proposal> {
+  const { data, error } = await supabase
+    .from('proposals')
+    .update({
+      archived: false,
+      archived_at: null,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', proposalId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error unarchiving proposal:', error);
+    throw new Error(`Failed to unarchive proposal: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Set a proposal as the main version in its version group
+ */
+export async function setMainVersion(
+  proposalId: string,
+  baseProposalNumber: string
+): Promise<void> {
+  // First, unset all main versions for this base number
+  const { error: resetError } = await supabase
+    .from('proposals')
+    .update({ is_main_version: false })
+    .like('proposal_number', `${baseProposalNumber}%`);
+
+  if (resetError) {
+    console.error('Error resetting main versions:', resetError);
+    throw new Error(`Failed to reset main versions: ${resetError.message}`);
+  }
+
+  // Then set the new main version
+  const { error: setError } = await supabase
+    .from('proposals')
+    .update({ is_main_version: true })
+    .eq('id', proposalId);
+
+  if (setError) {
+    console.error('Error setting main version:', setError);
+    throw new Error(`Failed to set main version: ${setError.message}`);
+  }
+}
+
+/**
  * Update proposal status
  */
 export async function updateProposalStatus(
