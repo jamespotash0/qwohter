@@ -19,6 +19,8 @@ export const PerWallPocketDoorsForm: React.FC<PerWallPocketDoorsFormProps> = ({
     switch (foldType) {
       case "Bi-Fold":
         return ["Bulb Seal"];
+      case "Tri-Fold":
+        return ["Bulb Seal", "Expander", "Lap Trim"];
       case "Single":
         return ["Bulb Seal", "Expander"];
       case "Double":
@@ -118,6 +120,7 @@ export const PerWallPocketDoorsForm: React.FC<PerWallPocketDoorsFormProps> = ({
                       <SelectContent>
                         <SelectItem value="None">None</SelectItem>
                         <SelectItem value="Bi-Fold">Bi-Fold</SelectItem>
+                        <SelectItem value="Tri-Fold">Tri-Fold</SelectItem>
                         <SelectItem value="Single">Single</SelectItem>
                         <SelectItem value="Double">Double</SelectItem>
                       </SelectContent>
