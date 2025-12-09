@@ -28,6 +28,7 @@ import CreateProposalDialog, { type ProposalInitialData } from '@/components/fea
 import { ImportProposalDialog } from '@/components/features/proposals/import';
 import { groupProposalsByVersion } from '@/utils/proposalVersionGrouping';
 import { formatDateEST } from '@/utils/dateUtils';
+import { createProposal, type CreateProposalData } from '@/services/proposalsService';
 
 export default function Proposals() {
   const navigate = useNavigate();
@@ -312,12 +313,17 @@ export default function Proposals() {
     try {
       // Create the proposal with the collected data
       // document_type is inherited from the form automatically
-      const { createProposal } = await import('@/services/proposalsService');
-      const proposal = await createProposal({
+      const proposalData: CreateProposalData = {
         form_id: data.formId,
         project_name: data.projectName,
         status: 'Draft',
-      });
+        // Add optional custom proposal number if provided
+        proposal_number: data.proposalNumber || undefined,
+        // Add optional custom date if provided
+        created_at: data.proposalDate || undefined,
+      };
+
+      const proposal = await createProposal(proposalData);
       toast.success('Proposal created successfully');
       // Navigate to the form filler to complete the proposal
       navigate(`/proposals/${proposal.id}/edit`);

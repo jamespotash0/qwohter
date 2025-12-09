@@ -43,6 +43,7 @@ import { useUser } from '@/auth';
 import { useForm, useCreateForm, useUpdateForm } from '@/hooks/queries';
 import { useFormHasProposals } from '@/hooks/queries/useProposals';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
+import { getAllNumberingConfigs, type OrganizationNumberingConfig } from '@/services/numberingConfigService';
 import { FormComponents } from '@/features/form-builder/components/FormComponents';
 // import { DotGridCanvas } from '@/features/form-builder/components/DotGridCanvas';
 import { PropertiesPanel } from '@/features/form-builder/components/PropertiesPanel';
@@ -366,6 +367,33 @@ export default function FormBuilderV3() {
     organizationId
   );
 
+  // Fetch configured document types from organization's numbering config
+  const [numberingConfig, setNumberingConfig] = useState<OrganizationNumberingConfig | null>(null);
+  const [loadingConfig, setLoadingConfig] = useState(true);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      if (!organizationId) {
+        setLoadingConfig(false);
+        return;
+      }
+      try {
+        const config = await getAllNumberingConfigs(organizationId);
+        setNumberingConfig(config);
+      } catch (error) {
+        console.error('Failed to fetch numbering config:', error);
+      } finally {
+        setLoadingConfig(false);
+      }
+    };
+    fetchConfig();
+  }, [organizationId]);
+
+  // Get configured document types (only types with numbering set up)
+  const configuredDocumentTypes = numberingConfig
+    ? Object.keys(numberingConfig)
+    : [];
+
   // Form state
   const [formName, setFormName] = useState(existingForm?.name || 'Untitled Form');
   const [documentType, setDocumentType] = useState(existingForm?.document_type || 'Proposal');
@@ -418,6 +446,16 @@ export default function FormBuilderV3() {
       }
     }
   }, [existingForm]);
+
+  // Auto-select first configured document type for new forms
+  useEffect(() => {
+    if (!existingForm && configuredDocumentTypes.length > 0) {
+      // Only set if current type is not in configured list
+      if (!configuredDocumentTypes.includes(documentType)) {
+        setDocumentType(configuredDocumentTypes[0]);
+      }
+    }
+  }, [existingForm, configuredDocumentTypes, documentType]);
 
   // UI state
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
@@ -845,28 +883,46 @@ export default function FormBuilderV3() {
                         </span>
                       )}
                     </div>
-                    <Select
-                      value={documentType}
-                      onValueChange={setDocumentType}
-                      disabled={hasProposals}
-                    >
-                      <SelectTrigger id="form-type" className="h-9">
-                        <SelectValue placeholder="Select document type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Proposal">Proposal</SelectItem>
-                        <SelectItem value="Invoice">Invoice</SelectItem>
-                        <SelectItem value="Service_Request">Service Request</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {loadingConfig ? (
+                      <div className="h-9 flex items-center text-xs text-gray-400">
+                        Loading document types...
+                      </div>
+                    ) : configuredDocumentTypes.length === 0 ? (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+                        <p className="text-xs text-amber-700 font-medium mb-1">No document types configured</p>
+                        <p className="text-xs text-amber-600">
+                          Set up document numbering in{' '}
+                          <a href="/settings?tab=organization" className="underline hover:text-amber-800">
+                            Settings → Organization
+                          </a>
+                        </p>
+                      </div>
+                    ) : (
+                      <Select
+                        value={documentType}
+                        onValueChange={setDocumentType}
+                        disabled={hasProposals}
+                      >
+                        <SelectTrigger id="form-type" className="h-9">
+                          <SelectValue placeholder="Select document type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {configuredDocumentTypes.map((type) => (
+                            <SelectItem key={type} value={type}>
+                              {type.replace(/_/g, ' ')}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                     <p className="text-xs text-gray-500">
                       {hasProposals ? (
                         <span className="text-amber-600">
                           Locked — proposals exist using this form
                         </span>
-                      ) : (
-                        <>Links to document number sequence for <span className="font-medium">{documentType === 'Service_Request' ? 'Service Request' : documentType}</span></>
-                      )}
+                      ) : configuredDocumentTypes.length > 0 ? (
+                        <>Links to document number sequence for <span className="font-medium">{documentType.replace(/_/g, ' ')}</span></>
+                      ) : null}
                     </p>
                   </div>
 

@@ -512,7 +512,7 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
                     placeholder="Leave blank to auto-generate"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Leave empty for auto-generated (P1001, P1002...)
+                    Leave empty for auto-generated based on document type
                   </p>
                 </div>
 

@@ -8,7 +8,24 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import * as authService from '@/auth/services/authService';
-import type { DocumentType } from '@/stores/forms/formsStore';
+import {
+  getNextProposalNumber as getNextFromConfig,
+  incrementLastNumber,
+  type NumberingConfig,
+} from './numberingConfigService';
+
+// Document type is now a string (custom types per organization)
+export type DocumentType = string;
+
+// Re-export numbering config types and functions for convenience
+export { type NumberingConfig } from './numberingConfigService';
+export {
+  getNumberingConfig,
+  setNumberingConfig,
+  initializeNumberingConfig,
+  getDefaultConfigSuggestion,
+  getAllNumberingConfigs,
+} from './numberingConfigService';
 
 // ============================================================================
 // Types
@@ -68,36 +85,81 @@ export interface ProposalVersionInfo {
 // ============================================================================
 
 /**
+ * Get the default prefix for a document type (fallback when no config exists)
+ * For custom document types, uses first letter uppercase
+ */
+export function getDocumentTypePrefix(documentType: DocumentType | null | undefined): string {
+  if (!documentType) return 'P';
+
+  // Common type prefixes
+  const commonPrefixes: Record<string, string> = {
+    'Quote': 'Q',
+    'Bid': 'B',
+    'Estimate': 'E',
+    'Service Request': 'SR',
+    'Service_Request': 'SR',
+    'Proposal': 'P',
+    'Invoice': 'INV',
+    'Work Order': 'WO',
+  };
+
+  return commonPrefixes[documentType] || documentType.charAt(0).toUpperCase();
+}
+
+/**
+ * Result of getting the next proposal number
+ */
+export interface NextProposalNumberResult {
+  number: string;           // The formatted number (e.g., "P-1001")
+  nextNumeric: number;      // The numeric part (e.g., 1001)
+  config: NumberingConfig;  // The config used
+  isConfigured: boolean;    // Whether org has custom config for this doc type
+}
+
+/**
  * Generate the next proposal number for an organization
  *
- * Finds the highest proposal number in the proposals table and increments by 1.
- * Format: P{number} (e.g., P1001, P1002, P1003)
+ * Uses the organization's numbering config if available.
+ * Falls back to default prefixes if no config exists.
  *
  * @param organizationId - Organization ID to scope the query
- * @returns The next proposal number (e.g., "P1001")
+ * @param documentType - Document type to determine format
+ * @returns Next proposal number info, or null if setup is needed
  */
 export async function generateNextProposalNumber(
-  organizationId: string
+  organizationId: string,
+  documentType?: DocumentType | null
 ): Promise<string> {
   if (!organizationId) {
     throw new Error('Organization ID is required');
   }
 
-  // Query proposals table to find the highest number
+  const docType = documentType || 'Proposal';
+
+  // Try to get from config first
+  const configResult = await getNextFromConfig(organizationId, docType);
+
+  if (configResult) {
+    return configResult.number;
+  }
+
+  // Fallback: use default prefix and scan existing proposals
+  const prefix = getDocumentTypePrefix(documentType);
+  const prefixEscaped = prefix.replace(/[-]/g, '\\-');
+  const prefixPattern = new RegExp(`^${prefixEscaped}(\\d+)$`, 'i');
+
   const { data: proposals } = await supabase
     .from('proposals')
     .select('proposal_number')
     .eq('organization_id', organizationId)
     .not('proposal_number', 'is', null);
 
-  // Extract numeric parts and find the maximum
-  let maxNumber = 1000; // Start from 1000 if no existing proposals
+  let maxNumber = 1000;
 
   if (proposals) {
     for (const proposal of proposals) {
       if (!proposal.proposal_number) continue;
-      // Match patterns like "P1001", "P1002", etc. (ignore versions like "P1001.2")
-      const match = proposal.proposal_number.match(/^P(\d+)$/i);
+      const match = proposal.proposal_number.match(prefixPattern);
       if (match && match[1]) {
         const num = parseInt(match[1], 10);
         if (num > maxNumber) {
@@ -107,8 +169,78 @@ export async function generateNextProposalNumber(
     }
   }
 
-  // Return the next number
-  return `P${maxNumber + 1}`;
+  return `${prefix}${maxNumber + 1}`;
+}
+
+/**
+ * Preview the next proposal number with full details
+ * Used by the UI to show users what number will be assigned
+ *
+ * @returns Full result with config info, or null if no config exists
+ */
+export async function getNextProposalNumberPreview(
+  organizationId: string,
+  documentType?: DocumentType | null
+): Promise<NextProposalNumberResult | null> {
+  if (!organizationId) return null;
+
+  const docType = documentType || 'Proposal';
+  const configResult = await getNextFromConfig(organizationId, docType);
+
+  if (configResult) {
+    return {
+      number: configResult.number,
+      nextNumeric: configResult.nextNumeric,
+      config: configResult.config,
+      isConfigured: true,
+    };
+  }
+
+  // No config - return fallback preview
+  const prefix = getDocumentTypePrefix(documentType);
+  const prefixEscaped = prefix.replace(/[-]/g, '\\-');
+  const prefixPattern = new RegExp(`^${prefixEscaped}(\\d+)$`, 'i');
+
+  const { data: proposals } = await supabase
+    .from('proposals')
+    .select('proposal_number')
+    .eq('organization_id', organizationId)
+    .not('proposal_number', 'is', null);
+
+  let maxNumber = 1000;
+
+  if (proposals) {
+    for (const proposal of proposals) {
+      if (!proposal.proposal_number) continue;
+      const match = proposal.proposal_number.match(prefixPattern);
+      if (match && match[1]) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNumber) {
+          maxNumber = num;
+        }
+      }
+    }
+  }
+
+  const nextNumeric = maxNumber + 1;
+
+  return {
+    number: `${prefix}${nextNumeric}`,
+    nextNumeric,
+    config: { prefix, lastNumber: maxNumber, padding: 0 },
+    isConfigured: false,
+  };
+}
+
+/**
+ * Update the organization's numbering config after creating a proposal
+ */
+export async function updateNumberingAfterCreate(
+  organizationId: string,
+  documentType: DocumentType,
+  usedNumber: number
+): Promise<void> {
+  await incrementLastNumber(organizationId, documentType, usedNumber);
 }
 
 // ============================================================================
@@ -305,9 +437,9 @@ export async function createProposal(
 
   const organizationName = proposalData.organization_name || orgData?.name || null;
 
-  // Use provided proposal number or generate the next one
+  // Use provided proposal number or generate the next one (document-type aware)
   const proposalNumber = proposalData.proposal_number ||
-    await generateNextProposalNumber(membershipData.organization_id);
+    await generateNextProposalNumber(membershipData.organization_id, documentType);
 
   // Extract client info from form_data if not provided directly
   const clientInfo = proposalData.form_data?._clientInfo;

@@ -9,6 +9,7 @@ import MapboxInput from "@/components/common/inputs/MapboxInput";
 import { LogoUpload } from "@/components/common/uploads/LogoUpload";
 import { LogoUploadResult } from "@/services/LogoUploadService";
 import { useUser } from "@/auth";
+import { DocumentNumberingSection } from "./DocumentNumberingSection";
 
 interface OrganizationTabProps {
   organization: any;
@@ -535,6 +536,14 @@ export const OrganizationTab: React.FC<OrganizationTabProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Document Numbering Section */}
+        {organization?.id && (
+          <DocumentNumberingSection
+            organizationId={organization.id}
+            hasEditPermission={hasEditPermission}
+          />
+        )}
       </div>
     </div>
   );

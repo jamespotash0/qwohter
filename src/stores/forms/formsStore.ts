@@ -65,8 +65,8 @@ export interface FormTab {
   is_default?: boolean; // For Company Info and Project Details tabs
 }
 
-// Valid document types for forms and proposals
-export type DocumentType = 'Proposal' | 'Quote' | 'Bid' | 'Estimate' | 'Service_Request';
+// Document type is now a string to support custom document types per organization
+export type DocumentType = string;
 
 // Presentation template structure for document generation
 export interface PresentationTemplate {

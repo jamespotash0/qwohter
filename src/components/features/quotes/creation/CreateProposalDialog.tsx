@@ -10,9 +10,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useForms } from "@/hooks/queries";
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useUser } from "@/auth";
+import {
+  getNextProposalNumberPreview,
+  type DocumentType,
+  type NextProposalNumberResult,
+} from "@/services/proposalsService";
 
 // Helper to format document type for display
 const formatDocumentType = (type: string | null | undefined): string => {
@@ -23,6 +29,8 @@ const formatDocumentType = (type: string | null | undefined): string => {
 export interface ProposalInitialData {
   projectName: string;
   formId: string;
+  proposalNumber?: string; // Optional custom number (if not using auto-generated)
+  proposalDate?: string; // Optional custom date (ISO string)
 }
 
 interface CreateProposalDialogProps {
@@ -40,6 +48,13 @@ const CreateProposalDialog = ({
   const [projectName, setProjectName] = useState("");
   const [selectedFormId, setSelectedFormId] = useState<string>("");
 
+  // Smart numbering state
+  const [useAutoNumber, setUseAutoNumber] = useState(true);
+  const [customProposalNumber, setCustomProposalNumber] = useState("");
+  const [proposalDate, setProposalDate] = useState("");
+  const [numberPreview, setNumberPreview] = useState<NextProposalNumberResult | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+
   // Fetch user, organization and forms
   const user = useUser();
   const { organizationId } = useCurrentOrganization(user?.id || "");
@@ -55,6 +70,11 @@ const CreateProposalDialog = ({
     return forms.find((f: { id: string }) => f.id === selectedFormId);
   }, [forms, selectedFormId]);
 
+  // Get the document type from the selected form
+  const selectedDocumentType = useMemo(() => {
+    return (selectedForm as { document_type?: DocumentType })?.document_type || null;
+  }, [selectedForm]);
+
   // Pre-select default form when dialog opens
   useEffect(() => {
     if (open && defaultForm && !selectedFormId) {
@@ -68,15 +88,52 @@ const CreateProposalDialog = ({
     }
   }, [open, defaultForm, forms, selectedFormId]);
 
+  // Fetch the next proposal number preview when form changes
+  useEffect(() => {
+    const fetchNextNumber = async () => {
+      if (!organizationId || !selectedFormId) {
+        setNumberPreview(null);
+        return;
+      }
+
+      setLoadingPreview(true);
+      try {
+        const result = await getNextProposalNumberPreview(organizationId, selectedDocumentType);
+        setNumberPreview(result);
+      } catch (error) {
+        console.error('Failed to fetch next number preview:', error);
+        setNumberPreview(null);
+      } finally {
+        setLoadingPreview(false);
+      }
+    };
+
+    if (open) {
+      fetchNextNumber();
+    }
+  }, [organizationId, selectedFormId, selectedDocumentType, open]);
+
   // Check if form is valid
-  const isFormValid = projectName.trim() && selectedFormId;
+  const isFormValid = projectName.trim() && selectedFormId && (useAutoNumber || customProposalNumber.trim());
 
   const handleCreate = () => {
     if (isFormValid) {
-      onCreateProposal({
+      const data: ProposalInitialData = {
         projectName: projectName.trim(),
         formId: selectedFormId,
-      });
+      };
+
+      // Add custom proposal number if not using auto
+      if (!useAutoNumber && customProposalNumber.trim()) {
+        data.proposalNumber = customProposalNumber.trim();
+      }
+
+      // Add custom date if provided
+      if (proposalDate) {
+        data.proposalDate = new Date(proposalDate + 'T00:00:00').toISOString();
+      }
+
+      onCreateProposal(data);
       resetForm();
       onOpenChange(false);
     }
@@ -85,6 +142,10 @@ const CreateProposalDialog = ({
   const resetForm = () => {
     setProjectName("");
     setSelectedFormId("");
+    setUseAutoNumber(true);
+    setCustomProposalNumber("");
+    setProposalDate("");
+    setNumberPreview(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -168,6 +229,65 @@ const CreateProposalDialog = ({
                 Document type: {formatDocumentType((selectedForm as { document_type?: string }).document_type)}
               </p>
             )}
+          </div>
+
+          {/* Proposal Number - Smart numbering */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium text-slate-700">
+                {formatDocumentType(selectedDocumentType) || 'Proposal'} Number
+              </Label>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">Auto</span>
+                <Switch
+                  checked={useAutoNumber}
+                  onCheckedChange={setUseAutoNumber}
+                  className="data-[state=checked]:bg-blue-600"
+                />
+              </div>
+            </div>
+
+            {useAutoNumber ? (
+              <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                <span className="text-sm text-slate-600">Next:</span>
+                {loadingPreview ? (
+                  <span className="text-sm text-slate-400">Loading...</span>
+                ) : numberPreview ? (
+                  <span className="font-mono text-sm font-semibold text-blue-600">{numberPreview.number}</span>
+                ) : (
+                  <span className="text-sm text-slate-400">Select a form first</span>
+                )}
+              </div>
+            ) : (
+              <Input
+                value={customProposalNumber}
+                onChange={e => setCustomProposalNumber(e.target.value)}
+                placeholder={`e.g., ${numberPreview?.number || 'P1001'}`}
+                className="h-11 rounded-lg border-slate-200 font-mono"
+              />
+            )}
+            <p className="text-xs text-slate-500">
+              {useAutoNumber
+                ? 'Number will be auto-assigned based on your existing proposals'
+                : 'Enter a custom number (useful for continuing an existing sequence)'}
+            </p>
+          </div>
+
+          {/* Proposal Date (optional) */}
+          <div className="space-y-2">
+            <Label htmlFor="proposalDate" className="text-sm font-medium text-slate-700">
+              Date <span className="text-slate-400 font-normal">(optional)</span>
+            </Label>
+            <Input
+              id="proposalDate"
+              type="date"
+              value={proposalDate}
+              onChange={e => setProposalDate(e.target.value)}
+              className="h-11 rounded-lg border-slate-200"
+            />
+            <p className="text-xs text-slate-500">
+              Leave empty to use today's date
+            </p>
           </div>
         </div>
 
