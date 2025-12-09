@@ -369,7 +369,6 @@ export default function FormBuilderV3() {
   // Form state
   const [formName, setFormName] = useState(existingForm?.name || 'Untitled Form');
   const [documentType, setDocumentType] = useState(existingForm?.document_type || 'Proposal');
-  const [allowSaveIncomplete, setAllowSaveIncomplete] = useState(existingForm?.allow_save_incomplete ?? true);
   const [currentTab, setCurrentTab] = useState(0);
   const [tabs, setTabs] = useState<EnhancedFormTab[]>(() => {
     if (existingForm?.tabs) {
@@ -409,7 +408,6 @@ export default function FormBuilderV3() {
       setFormName(existingForm.name);
       // setFormDescription(existingForm.description || '');
       setDocumentType(existingForm.document_type || 'Proposal');
-      setAllowSaveIncomplete(existingForm.allow_save_incomplete ?? true);
       if (existingForm.tabs) {
         // Migrate tabs to new 48-column system if needed
         const migratedTabs = (existingForm.tabs as EnhancedFormTab[]).map(tab => ({
@@ -677,7 +675,6 @@ export default function FormBuilderV3() {
         created_by: user.id,
         is_archived: false,
         is_default: false,
-        allow_save_incomplete: allowSaveIncomplete,
       };
 
       if (formId && formId !== 'new') {
@@ -712,7 +709,6 @@ export default function FormBuilderV3() {
     createFormMutation,
     updateFormMutation,
     navigate,
-    allowSaveIncomplete,
   ]);
 
   // Add new tab
@@ -872,25 +868,6 @@ export default function FormBuilderV3() {
                         <>Links to document number sequence for <span className="font-medium">{documentType === 'Service_Request' ? 'Service Request' : documentType}</span></>
                       )}
                     </p>
-                  </div>
-
-                  <Separator />
-
-                  {/* Allow Save as Incomplete */}
-                  <div className="flex items-center justify-between space-x-2">
-                    <div className="flex-1">
-                      <Label htmlFor="allow-save-incomplete" className="text-sm font-medium">
-                        Allow Save as Incomplete
-                      </Label>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Users can save the form without completing required fields
-                      </p>
-                    </div>
-                    <Switch
-                      id="allow-save-incomplete"
-                      checked={allowSaveIncomplete}
-                      onCheckedChange={setAllowSaveIncomplete}
-                    />
                   </div>
 
                   <Separator />

@@ -152,7 +152,6 @@ export async function copyTemplateToOrganization(
     is_default: false,
     is_template: false, // Regular form, not a template
     copied_from_form_id: template.id,
-    allow_save_incomplete: template.allow_save_incomplete,
   };
 
   const { data, error } = await supabase

@@ -66,7 +66,22 @@ export interface FormTab {
 }
 
 // Valid document types for forms and proposals
-export type DocumentType = 'Proposal' | 'Invoice' | 'Service_Request';
+export type DocumentType = 'Proposal' | 'Quote' | 'Bid' | 'Estimate' | 'Service_Request';
+
+// Presentation template structure for document generation
+export interface PresentationTemplate {
+  version: number;
+  layout: string;
+  sections: PresentationSection[];
+}
+
+export interface PresentationSection {
+  id: string;
+  type: 'header' | 'content' | 'table' | 'footer' | 'signature';
+  content?: string; // HTML/markdown with {{placeholder}} syntax
+  order: number;
+  settings?: Record<string, any>;
+}
 
 // Form definition
 export interface Form {
@@ -80,8 +95,8 @@ export interface Form {
   updated_at: string;
   is_archived: boolean;
   is_default?: boolean; // Marks this as the default form for quote creation
-  document_type?: DocumentType; // Type of document this form creates (Proposal, Invoice, Service_Request)
-  allow_save_incomplete?: boolean; // Whether users can save this form as incomplete (bypassing validation)
+  document_type?: DocumentType; // Type of document this form creates (Proposal, Quote, Bid, Estimate, Service_Request)
+  presentation_template?: PresentationTemplate | null; // Template for document generation with {{placeholder}} syntax
 }
 
 // Re-export React Query hooks for backward compatibility

@@ -14,12 +14,21 @@ import type { DocumentType } from '@/stores/forms/formsStore';
 // Types
 // ============================================================================
 
-export type Proposal = Database['public']['Tables']['proposals']['Row'];
+// Base type from database schema
+type ProposalRow = Database['public']['Tables']['proposals']['Row'];
+
+// Extended proposal type with is_complete (added via migration)
+export type Proposal = ProposalRow & {
+  is_complete?: boolean;
+};
 
 export interface CreateProposalData {
   form_id: string; // Which form template was used
   form_data?: Record<string, any>; // Form submission data (JSONB)
   status?: string;
+  // Override auto-generation for imports
+  proposal_number?: string; // If provided, use this instead of auto-generating
+  created_at?: string; // If provided, use this as the creation date (ISO string)
   // Direct columns for querying/filtering (optional - extracted from form_data if not provided)
   project_name?: string;
   client_name?: string;
@@ -28,10 +37,9 @@ export interface CreateProposalData {
   job_location?: string;
   total_value?: number;
   // Additional metadata columns
-  /** @deprecated Use document_template_id instead */
-  template_type?: string; // PDF template type (e.g., 'generic_wall', 'base', 'smart')
-  document_template_id?: string; // Reference to document_templates table
+  template_type?: string; // Legacy field for backward compatibility
   is_on_board?: boolean; // Whether to show on kanban board
+  is_complete?: boolean; // Whether the proposal is marked as finished or unfinished
   quote_source?: string; // Lead source (e.g., 'Website', 'Referral')
   document_type?: DocumentType; // Type of document (inherited from form)
 }
@@ -39,8 +47,13 @@ export interface CreateProposalData {
 export interface UpdateProposalData {
   form_data?: Record<string, any>;
   status?: string;
+  project_name?: string;
+  client_name?: string;
+  client_company?: string;
+  job_location?: string;
+  total_value?: number;
   submitted_at?: string;
-  approved_at?: string;
+  won_at?: string;
   rejected_at?: string;
 }
 
@@ -292,15 +305,16 @@ export async function createProposal(
 
   const organizationName = proposalData.organization_name || orgData?.name || null;
 
-  // Generate the next proposal number (finds highest existing and increments)
-  const proposalNumber = await generateNextProposalNumber(membershipData.organization_id);
+  // Use provided proposal number or generate the next one
+  const proposalNumber = proposalData.proposal_number ||
+    await generateNextProposalNumber(membershipData.organization_id);
 
   // Extract client info from form_data if not provided directly
   const clientInfo = proposalData.form_data?._clientInfo;
   const metadata = proposalData.form_data?._metadata;
 
   // Create the proposal with the generated number and direct columns
-  const insertData = {
+  const insertData: Record<string, any> = {
     organization_id: membershipData.organization_id,
     created_by: session.user.id,
     form_id: proposalData.form_id,
@@ -314,14 +328,18 @@ export async function createProposal(
     organization_name: organizationName,
     job_location: proposalData.job_location || clientInfo?.jobLocation || null,
     total_value: proposalData.total_value || null,
-    // Document type and template
+    // Document type (inherited from form)
     document_type: documentType,
-    document_template_id: proposalData.document_template_id || null,
-    // Additional metadata columns (template_type kept for backward compatibility)
+    // Legacy metadata column for backward compatibility
     template_type: proposalData.template_type || metadata?.template || null,
     is_on_board: proposalData.is_on_board ?? false,
     quote_source: proposalData.quote_source || metadata?.quoteSource || null,
   };
+
+  // If a custom created_at is provided (for imports), use it
+  if (proposalData.created_at) {
+    insertData.created_at = proposalData.created_at;
+  }
 
   const { data, error } = await supabase
     .from('proposals')
@@ -348,12 +366,14 @@ export async function updateProposal(
   proposalId: string,
   updates: UpdateProposalData
 ): Promise<Proposal> {
-  const { data, error } = await supabase
+  const updatePayload = { ...updates, updated_at: new Date().toISOString() };
+
+  const { data, error } = await (supabase
     .from('proposals')
-    .update({ ...updates, updated_at: new Date().toISOString() })
+    .update(updatePayload)
     .eq('id', proposalId)
     .select()
-    .single();
+    .single() as any);
 
   if (error) {
     console.error('Error updating proposal:', error);
@@ -364,7 +384,7 @@ export async function updateProposal(
     throw new Error('Failed to update proposal: No data returned');
   }
 
-  return data;
+  return data as Proposal;
 }
 
 /**
@@ -473,8 +493,8 @@ export async function updateProposalStatus(
     case 'submitted':
       updates.submitted_at = now;
       break;
-    case 'approved':
-      updates.approved_at = now;
+    case 'won':
+      updates.won_at = now;
       break;
     case 'rejected':
       updates.rejected_at = now;
@@ -594,4 +614,168 @@ export async function getProposalVersions(proposalId: string): Promise<Proposal[
   }
 
   return data || [];
+}
+
+/**
+ * Delete an entire version group (all versions of a proposal)
+ *
+ * @param baseProposalNumber - Base proposal number (e.g., "P1001" without version suffix)
+ * @param organizationId - Organization ID
+ * @returns Number of proposals deleted
+ */
+export async function deleteVersionGroup(
+  baseProposalNumber: string,
+  organizationId: string
+): Promise<number> {
+  // Find all proposals with this base number
+  const { data: proposals, error: fetchError } = await supabase
+    .from('proposals')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .like('proposal_number', `${baseProposalNumber}%`);
+
+  if (fetchError) {
+    console.error('Error fetching version group:', fetchError);
+    throw new Error(`Failed to fetch version group: ${fetchError.message}`);
+  }
+
+  const typedProposals = proposals as Array<{ id: string }> | null;
+
+  if (!typedProposals || typedProposals.length === 0) {
+    return 0;
+  }
+
+  const idsToDelete = typedProposals.map(p => p.id);
+
+  const { error: deleteError } = await supabase
+    .from('proposals')
+    .delete()
+    .in('id', idsToDelete);
+
+  if (deleteError) {
+    console.error('Error deleting version group:', deleteError);
+    throw new Error(`Failed to delete version group: ${deleteError.message}`);
+  }
+
+  return idsToDelete.length;
+}
+
+/**
+ * Delete a single version and handle main version promotion
+ *
+ * If deleting the main version, promotes the most recent remaining version to main.
+ * If this is the only version, simply deletes it.
+ *
+ * @param proposalId - UUID of the proposal to delete
+ * @returns Info about what was deleted and promoted
+ */
+export async function deleteVersionWithPromotion(
+  proposalId: string
+): Promise<{ deleted: boolean; promotedId?: string }> {
+  // Fetch the proposal to delete
+  const proposal = await fetchProposalById(proposalId);
+
+  if (!proposal.proposal_number || !proposal.organization_id) {
+    throw new Error('Proposal has no proposal number or organization');
+  }
+
+  const versionInfo = parseProposalNumber(proposal.proposal_number);
+  const isMainVersion = proposal.is_main_version === true;
+
+  // Get all versions in the group
+  const { data: allVersions, error: fetchError } = await supabase
+    .from('proposals')
+    .select('*')
+    .eq('organization_id', proposal.organization_id)
+    .like('proposal_number', `${versionInfo.mainNumber}%`)
+    .order('created_at', { ascending: false });
+
+  if (fetchError) {
+    console.error('Error fetching versions:', fetchError);
+    throw new Error(`Failed to fetch versions: ${fetchError.message}`);
+  }
+
+  const typedVersions = (allVersions || []) as Proposal[];
+  const otherVersions = typedVersions.filter(v => v.id !== proposalId);
+
+  // Delete the proposal
+  const { error: deleteError } = await supabase
+    .from('proposals')
+    .delete()
+    .eq('id', proposalId);
+
+  if (deleteError) {
+    console.error('Error deleting proposal:', deleteError);
+    throw new Error(`Failed to delete proposal: ${deleteError.message}`);
+  }
+
+  // If this was the main version and there are other versions, promote the most recent
+  if (isMainVersion && otherVersions.length > 0) {
+    const newMainVersion = otherVersions[0]!; // Most recent (ordered by created_at desc)
+
+    // Use setMainVersion to properly promote
+    try {
+      await setMainVersion(newMainVersion.id, versionInfo.mainNumber);
+    } catch (promoteError) {
+      console.error('Error promoting new main version:', promoteError);
+      // Don't throw here - deletion succeeded, promotion is best-effort
+    }
+
+    return { deleted: true, promotedId: newMainVersion.id };
+  }
+
+  return { deleted: true };
+}
+
+/**
+ * Get version group info for a proposal
+ *
+ * @param proposalId - UUID of any proposal in the version chain
+ * @returns Version group information
+ */
+export async function getVersionGroupInfo(proposalId: string): Promise<{
+  baseNumber: string;
+  totalVersions: number;
+  isMainVersion: boolean;
+  mainVersionId: string | null;
+  versions: Array<{ id: string; proposalNumber: string; isMain: boolean }>;
+}> {
+  const proposal = await fetchProposalById(proposalId);
+
+  if (!proposal.proposal_number || !proposal.organization_id) {
+    throw new Error('Proposal has no proposal number or organization');
+  }
+
+  const versionInfo = parseProposalNumber(proposal.proposal_number);
+
+  const { data: allVersions, error } = await supabase
+    .from('proposals')
+    .select('id, proposal_number, is_main_version')
+    .eq('organization_id', proposal.organization_id)
+    .like('proposal_number', `${versionInfo.mainNumber}%`)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching version group:', error);
+    throw new Error(`Failed to fetch version group: ${error.message}`);
+  }
+
+  type VersionRow = { id: string; proposal_number: string | null; is_main_version: boolean | null };
+  const typedVersions = (allVersions || []) as VersionRow[];
+
+  const versions = typedVersions.map(v => ({
+    id: v.id,
+    proposalNumber: v.proposal_number || '',
+    isMain: v.is_main_version === true,
+  }));
+
+  const mainVersion = versions.find(v => v.isMain);
+
+  return {
+    baseNumber: versionInfo.mainNumber,
+    totalVersions: versions.length,
+    isMainVersion: proposal.is_main_version === true,
+    mainVersionId: mainVersion?.id || null,
+    versions,
+  };
 }

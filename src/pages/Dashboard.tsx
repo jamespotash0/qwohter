@@ -35,7 +35,7 @@ import { AddReminderModal } from "@/components/features/reminders/AddReminderMod
 import { reminderService, type Reminder } from "@/services/reminderService";
 import { formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
 import { toast } from "sonner";
-import CreateQuoteDialog from "@/components/features/quotes/creation/CreateProposalDialog";
+import CreateProposalDialog, { type ProposalInitialData } from "@/components/features/quotes/creation/CreateProposalDialog";
 import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
 import { TrialExpiryModal } from "@/components/trial/TrialExpiryModal";
 import { stripeService } from "@/services/stripeService";
@@ -969,12 +969,25 @@ const Dashboard = () => {
       />
 
       {/* Create Quote Dialog */}
-      <CreateQuoteDialog
+      <CreateProposalDialog
         open={showNewQuoteDialog}
         onOpenChange={setShowNewQuoteDialog}
-        onCreateQuote={(quoteName) => {
+        onCreateProposal={async (data: ProposalInitialData) => {
           setShowNewQuoteDialog(false);
-          navigate(`/quotes/new?name=${encodeURIComponent(quoteName)}`);
+          try {
+            // document_type is inherited from the form automatically
+            const { createProposal } = await import('@/services/proposalsService');
+            const proposal = await createProposal({
+              form_id: data.formId,
+              project_name: data.projectName,
+              status: 'Draft',
+            });
+            toast.success('Created successfully');
+            navigate(`/proposals/${proposal.id}/edit`);
+          } catch (error) {
+            console.error('Failed to create:', error);
+            toast.error('Failed to create');
+          }
         }}
       />
 

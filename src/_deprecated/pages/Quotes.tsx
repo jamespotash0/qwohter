@@ -277,21 +277,22 @@ const Quotes = () => {
     }
   };
 
-  const handleCreateQuote = (data: ProposalInitialData) => {
+  const handleCreateQuote = async (data: ProposalInitialData) => {
     setShowNewQuoteDialog(false);
-    // Build URL with all client info as query params
-    const params = new URLSearchParams({
-      name: data.proposalName,
-      formId: data.formId,
-      template: data.template,
-      clientName: data.clientName,
-      clientCompany: data.clientCompany,
-      clientAddress: data.clientAddress,
-      jobLocation: data.jobLocation,
-      status: data.status,
-      quoteSource: data.quoteSource,
-    });
-    navigate(`/quotes/new?${params.toString()}`);
+    try {
+      // Create the proposal with the collected data
+      const { createProposal } = await import('@/services/proposalsService');
+      const proposal = await createProposal({
+        form_id: data.formId,
+        project_name: data.projectName,
+        document_type: data.documentType,
+        status: 'Draft',
+      });
+      // Navigate to the form filler to complete the proposal
+      navigate(`/proposals/${proposal.id}/edit`);
+    } catch (error) {
+      console.error('Failed to create:', error);
+    }
   };
 
   const handleCreateVersion = async (quoteId: string) => {
@@ -699,7 +700,7 @@ const Quotes = () => {
       <CreateProposalDialog
         open={showNewQuoteDialog}
         onOpenChange={setShowNewQuoteDialog}
-        onCreateQuote={handleCreateQuote}
+        onCreateProposal={handleCreateQuote}
       />
 
       {/* Import Quote Dialog */}

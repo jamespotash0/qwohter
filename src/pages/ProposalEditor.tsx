@@ -161,6 +161,7 @@ export default function ProposalEditor() {
         proposalId,
         updates: {
           form_data: formData,
+          project_name: projectName,
         },
       });
 
@@ -170,7 +171,7 @@ export default function ProposalEditor() {
       console.error('Failed to save proposal:', error);
       toast.error('Failed to save proposal');
     }
-  }, [proposalId, formData, updateMutation]);
+  }, [proposalId, formData, projectName, updateMutation]);
 
   // Navigation with unsaved changes check
   const handleNavigate = useCallback(
@@ -193,7 +194,7 @@ export default function ProposalEditor() {
   }, [pendingNavigation, navigate]);
 
   const handleBack = useCallback(() => {
-    handleNavigate('/quotes');
+    handleNavigate('/proposals');
   }, [handleNavigate]);
 
   // Zoom handlers
@@ -306,7 +307,7 @@ export default function ProposalEditor() {
           <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Proposal not found</h2>
           <p className="text-gray-600 mb-4">The proposal you're looking for doesn't exist.</p>
-          <Button onClick={() => navigate('/quotes')}>Back to Quotes</Button>
+          <Button onClick={() => navigate('/proposals')}>Back to Proposals</Button>
         </div>
       </div>
     );

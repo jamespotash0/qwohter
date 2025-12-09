@@ -79,6 +79,21 @@ export interface FormTab {
   fields: FormField[];
 }
 
+// Presentation template types for document generation
+export interface PresentationSection {
+  id: string;
+  type: 'header' | 'content' | 'table' | 'footer' | 'signature';
+  content?: string; // HTML/markdown with {{placeholder}} syntax
+  order: number;
+  settings?: Record<string, any>;
+}
+
+export interface PresentationTemplate {
+  version: number;
+  layout: string;
+  sections: PresentationSection[];
+}
+
 export interface Form {
   id: string;
   name: string;
@@ -93,6 +108,7 @@ export interface Form {
   createdAt?: string;
   updatedAt?: string;
   isActive?: boolean;
+  presentation_template?: PresentationTemplate | null; // Template for document generation
 }
 
 export interface FormData {

@@ -15,17 +15,19 @@ import {
   useUnarchiveProposal,
   useSetMainVersion,
   useCreateProposalVersion,
+  useDeleteVersionGroup,
+  useDeleteVersionWithPromotion,
   type Proposal,
 } from '@/hooks/queries/useProposals';
-import { FileText, Clock, CheckCircle, DollarSign, Plus, Sparkles, Upload } from 'lucide-react';
+import { FileText, Clock, CheckCircle, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { PageContent, ContentCard } from '@/components/common/layout';
+import { PageContent } from '@/components/common/layout';
 import { EnhancedProposalsTable } from '@/components/features/proposals/table/EnhancedProposalsTable';
 import CreateProposalDialog, { type ProposalInitialData } from '@/components/features/quotes/creation/CreateProposalDialog';
 import { ImportProposalDialog } from '@/components/features/proposals/import';
 import { groupProposalsByVersion } from '@/utils/proposalVersionGrouping';
+import { formatDateEST } from '@/utils/dateUtils';
 
 export default function Proposals() {
   const navigate = useNavigate();
@@ -37,6 +39,8 @@ export default function Proposals() {
 
   // Mutation hooks
   const deleteMutation = useDeleteProposal();
+  const deleteVersionGroupMutation = useDeleteVersionGroup();
+  const deleteVersionWithPromotionMutation = useDeleteVersionWithPromotion();
   const updateStatusMutation = useUpdateProposalStatus();
   const archiveMutation = useArchiveProposal();
   const unarchiveMutation = useUnarchiveProposal();
@@ -53,27 +57,31 @@ export default function Proposals() {
   const archivedProposals = useMemo(() => allProposals.filter(p => p.archived), [allProposals]);
   const displayedProposals = showArchived ? archivedProposals : activeProposals;
 
-  // Calculate stats
+  // Calculate stats from main versions only (for version groups)
   const stats = useMemo(() => {
-    const proposals = activeProposals;
+    // Group proposals by version and count only main versions for accurate stats
+    const groups = groupProposalsByVersion(activeProposals);
+    const mainVersions = groups.map(g => g.mainVersion);
+
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const createdThisMonth = proposals.filter(p => new Date(p.created_at) >= monthStart);
-    const approvedThisMonth = proposals.filter(p =>
-      p.status === 'Approved' && new Date(p.updated_at) >= monthStart
+    const createdThisMonth = mainVersions.filter(p => new Date(p.created_at) >= monthStart);
+    const wonThisMonth = mainVersions.filter(p =>
+      p.status === 'Won' && new Date(p.updated_at) >= monthStart
     );
 
-    const totalValue = proposals
-      .filter(p => p.status === 'Draft' || p.status === 'Complete' || p.status === 'Sent')
+    // Total value from main versions (only active: Draft, Incomplete, Submitted)
+    const totalValue = mainVersions
+      .filter(p => p.status === 'Draft' || p.status === 'Incomplete' || p.status === 'Submitted')
       .reduce((sum, p) => sum + (p.total_value || 0), 0);
 
     return {
-      total: proposals.length,
-      totalThisMonth: createdThisMonth.length,
-      sent: proposals.filter(p => p.status === 'Sent').length,
-      approved: proposals.filter(p => p.status === 'Approved').length,
-      approvedThisMonth: approvedThisMonth.length,
+      totalProposals: mainVersions.length,
+      totalProposalsThisMonth: createdThisMonth.length,
+      submitted: mainVersions.filter(p => p.status === 'Submitted').length,
+      won: mainVersions.filter(p => p.status === 'Won').length,
+      wonThisMonth: wonThisMonth.length,
       totalValue,
     };
   }, [activeProposals]);
@@ -83,25 +91,41 @@ export default function Proposals() {
     navigate(`/proposals/${proposal.id}/edit`);
   };
 
+  // Delete a single proposal (no versions)
   const handleDeleteProposal = async (id: string) => {
     try {
-      const groups = groupProposalsByVersion(allProposals);
-      const proposal = allProposals.find(p => p.id === id);
-      if (!proposal) {
-        await deleteMutation.mutateAsync(id);
-        return;
-      }
-
-      const group = groups.find(g => g.versions.some(v => v.id === id));
-      if (group && group.hasMultipleVersions && group.mainVersion.id === id) {
-        await Promise.all(group.versions.map(v => deleteMutation.mutateAsync(v.id)));
-        toast.success('Proposal and all versions deleted');
-      } else {
-        await deleteMutation.mutateAsync(id);
-        toast.success('Proposal deleted');
-      }
+      await deleteMutation.mutateAsync(id);
+      toast.success('Proposal deleted');
     } catch {
       toast.error('Failed to delete proposal');
+    }
+  };
+
+  // Delete entire version group (all versions)
+  const handleDeleteVersionGroup = async (baseNumber: string) => {
+    if (!organization?.id) return;
+    try {
+      const count = await deleteVersionGroupMutation.mutateAsync({
+        baseProposalNumber: baseNumber,
+        organizationId: organization.id,
+      });
+      toast.success(`Deleted ${count} version${count > 1 ? 's' : ''} of ${baseNumber}`);
+    } catch {
+      toast.error('Failed to delete version group');
+    }
+  };
+
+  // Delete single version with main version promotion
+  const handleDeleteVersion = async (id: string) => {
+    try {
+      const result = await deleteVersionWithPromotionMutation.mutateAsync(id);
+      if (result.promotedId) {
+        toast.success('Version deleted. A new main version has been promoted.');
+      } else {
+        toast.success('Version deleted');
+      }
+    } catch {
+      toast.error('Failed to delete version');
     }
   };
 
@@ -173,29 +197,113 @@ export default function Proposals() {
   };
 
   const handleExportCSV = (data: Proposal[]) => {
-    const headers = ['Proposal #', 'Project Name', 'Client', 'Status', 'Total Value', 'Created'];
-    const rows = data.map(p => [
-      p.proposal_number || '',
-      p.project_name || '',
-      p.client_name || p.client_company || '',
-      p.status || 'Draft',
-      p.total_value?.toString() || '0',
-      p.created_at ? new Date(p.created_at).toLocaleDateString() : '',
-    ]);
+    // Helper to escape CSV fields with commas, quotes, or newlines
+    const escapeCsvField = (field: string | number | null | undefined): string => {
+      const str = String(field ?? '');
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
 
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const formatCurrency = (amount: number): string => {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2
+      }).format(amount);
+    };
+
+    const headers = ['Proposal #', 'Project Name', 'Client Name', 'Total', 'Status', 'Source', 'Created'];
+
+    const rows = data.map(p => {
+      return [
+        p.proposal_number || '',
+        p.project_name || 'Untitled Project',
+        p.client_name || p.client_company || 'Untitled Client',
+        formatCurrency(p.total_value || 0),
+        p.status || 'Draft',
+        p.quote_source || '',
+        formatDateEST(p.created_at, { year: 'numeric', month: 'short', day: 'numeric' }),
+      ].map(escapeCsvField).join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `proposals-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
+    link.setAttribute('href', url);
+    link.setAttribute('download', `proposals-export-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    toast.success('CSV exported');
+    toast.success('CSV exported successfully');
   };
 
-  const handleExportPDF = (data: Proposal[]) => {
-    toast.info(`PDF export for ${data.length} proposals - coming soon`);
+  const handleExportPDF = async (data: Proposal[]) => {
+    try {
+      const { jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default;
+
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text('Proposals Export', 14, 15);
+      doc.setFontSize(10);
+      doc.text(`Exported on: ${formatDateEST(new Date().toISOString(), {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })}`, 14, 25);
+
+      const formatCurrency = (amount: number): string => {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+          minimumFractionDigits: 2
+        }).format(amount);
+      };
+
+      const tableData = data.map(p => [
+        p.proposal_number || '',
+        p.project_name || 'Untitled Project',
+        p.client_name || p.client_company || 'Untitled Client',
+        formatCurrency(p.total_value || 0),
+        p.status || 'Draft',
+        p.quote_source || '',
+        formatDateEST(p.created_at, { year: 'numeric', month: 'short', day: 'numeric' }),
+      ]);
+
+      autoTable(doc, {
+        head: [['Proposal #', 'Project Name', 'Client', 'Total', 'Status', 'Source', 'Created']],
+        body: tableData,
+        startY: 35,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: {
+          fillColor: [63, 81, 181],
+          textColor: [255, 255, 255],
+          fontSize: 9,
+          fontStyle: 'bold'
+        },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        columnStyles: {
+          0: { cellWidth: 22 },
+          1: { cellWidth: 35 },
+          2: { cellWidth: 30 },
+          3: { cellWidth: 22, halign: 'right' },
+          4: { cellWidth: 20 },
+          5: { cellWidth: 25 },
+          6: { cellWidth: 25 }
+        }
+      });
+
+      doc.save(`proposals-export-${new Date().toISOString().split('T')[0]}.pdf`);
+      toast.success('PDF exported successfully');
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      toast.error('Failed to export PDF');
+    }
   };
 
   // Handle creating a new proposal from dialog
@@ -203,21 +311,15 @@ export default function Proposals() {
     setCreateWizardOpen(false);
     try {
       // Create the proposal with the collected data
+      // document_type is inherited from the form automatically
       const { createProposal } = await import('@/services/proposalsService');
       const proposal = await createProposal({
         form_id: data.formId,
-        document_template_id: data.template,
-        project_name: data.proposalName,
-        client_name: data.clientName,
-        client_company: data.clientCompany,
-        job_location: data.jobLocation,
-        status: data.status,
-        quote_source: data.quoteSource,
-        form_data: {
-          client_address: data.clientAddress,
-        },
+        project_name: data.projectName,
+        status: 'Draft',
       });
       toast.success('Proposal created successfully');
+      // Navigate to the form filler to complete the proposal
       navigate(`/proposals/${proposal.id}/edit`);
     } catch (error) {
       console.error('Failed to create proposal:', error);
@@ -233,76 +335,10 @@ export default function Proposals() {
           <div className="w-12 h-12 border-4 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin mb-4"></div>
           <p className="text-[var(--content-muted-text)]">Loading proposals...</p>
         </div>
-      ) : !isLoading && allProposals.length === 0 ? (
-        <ContentCard>
-          <div className="flex flex-col items-center justify-center py-16 px-6">
-            <div className="relative mb-6">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 flex items-center justify-center">
-                <FileText className="w-12 h-12 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shadow-lg">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-            </div>
-
-            <h3 className="text-2xl font-semibold text-[var(--content-header-text)] mb-2">
-              No proposals yet
-            </h3>
-
-            <p className="text-[var(--content-muted-text)] text-center max-w-md mb-8">
-              Start creating professional proposals using your custom forms. Track submissions, manage approvals, and win more business.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                onClick={() => setCreateWizardOpen(true)}
-                className="bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white px-6 py-2.5"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Create Your First Proposal
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowImportDialog(true)}
-                className="px-6 py-2.5"
-              >
-                <Upload className="w-5 h-5 mr-2" />
-                Import Proposal
-              </Button>
-            </div>
-
-            <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl">
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-3">
-                  <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <h4 className="font-medium text-sm text-[var(--content-header-text)] mb-1">Custom Forms</h4>
-                <p className="text-xs text-[var(--content-muted-text)]">Build proposals from your templates</p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-3">
-                  <Sparkles className="w-6 h-6 text-green-600 dark:text-green-400" />
-                </div>
-                <h4 className="font-medium text-sm text-[var(--content-header-text)] mb-1">Smart Tracking</h4>
-                <p className="text-xs text-[var(--content-muted-text)]">Monitor status and approvals</p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mx-auto mb-3">
-                  <Plus className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-                </div>
-                <h4 className="font-medium text-sm text-[var(--content-header-text)] mb-1">Version Control</h4>
-                <p className="text-xs text-[var(--content-muted-text)]">Create and manage revisions</p>
-              </div>
-            </div>
-          </div>
-        </ContentCard>
       ) : (
         <>
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {/* Total Proposals */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
@@ -311,10 +347,10 @@ export default function Proposals() {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Total Proposals</h3>
-                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{stats.total}</p>
-                    {stats.totalThisMonth > 0 && (
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{stats.totalProposals}</p>
+                    {stats.totalProposalsThisMonth > 0 && (
                       <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                        +{stats.totalThisMonth} this month
+                        +{stats.totalProposalsThisMonth} this month
                       </p>
                     )}
                   </div>
@@ -322,7 +358,6 @@ export default function Proposals() {
               </CardContent>
             </Card>
 
-            {/* Sent Proposals */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
@@ -330,14 +365,13 @@ export default function Proposals() {
                     <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-300" />
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Sent Proposals</h3>
-                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{stats.sent}</p>
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Submitted</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{stats.submitted}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Approved Proposals */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
@@ -345,11 +379,11 @@ export default function Proposals() {
                     <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-300" />
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Approved</h3>
-                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{stats.approved}</p>
-                    {stats.approvedThisMonth > 0 && (
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Won</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{stats.won}</p>
+                    {stats.wonThisMonth > 0 && (
                       <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                        +{stats.approvedThisMonth} this month
+                        +{stats.wonThisMonth} this month
                       </p>
                     )}
                   </div>
@@ -357,7 +391,6 @@ export default function Proposals() {
               </CardContent>
             </Card>
 
-            {/* Total Active Value */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
@@ -383,14 +416,17 @@ export default function Proposals() {
             </Card>
           </div>
 
-          {/* Proposals Table */}
+          {/* Proposals Table (handles its own empty state) */}
           <EnhancedProposalsTable
             proposals={displayedProposals}
             onEditProposal={handleEditProposal}
             onDeleteProposal={handleDeleteProposal}
+            onDeleteVersionGroup={handleDeleteVersionGroup}
+            onDeleteVersion={handleDeleteVersion}
             onStatusChange={handleStatusChange}
             onCreateVersion={handleCreateVersion}
             onCreateProposal={() => setCreateWizardOpen(true)}
+            onImportProposal={() => setShowImportDialog(true)}
             onArchiveProposal={showArchived ? undefined : handleArchiveProposal}
             onUnarchiveProposal={showArchived ? handleUnarchiveProposal : undefined}
             showArchived={showArchived}
@@ -405,14 +441,12 @@ export default function Proposals() {
         </>
       )}
 
-      {/* Proposal Creation Dialog */}
       <CreateProposalDialog
         open={createWizardOpen}
         onOpenChange={setCreateWizardOpen}
-        onCreateQuote={handleCreateProposal}
+        onCreateProposal={handleCreateProposal}
       />
 
-      {/* Import Proposal Dialog */}
       <ImportProposalDialog
         open={showImportDialog}
         onOpenChange={setShowImportDialog}

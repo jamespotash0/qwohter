@@ -552,6 +552,54 @@ export interface Database {
         };
       };
       /**
+       * Forms table - Form template definitions
+       * Stores form structure (tabs, fields) and presentation template
+       */
+      forms: {
+        Row: {
+          id: string;
+          organization_id: string;
+          name: string;
+          description: string | null;
+          tabs: Record<string, any>[]; // Array of FormTab objects
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+          is_archived: boolean;
+          is_default: boolean | null;
+          document_type: string | null; // 'Proposal' | 'Quote' | 'Bid' | 'Estimate' | 'Service_Request'
+          presentation_template: Record<string, any> | null; // PresentationTemplate JSONB
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          name: string;
+          description?: string | null;
+          tabs: Record<string, any>[];
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+          is_archived?: boolean;
+          is_default?: boolean | null;
+          document_type?: string | null;
+          presentation_template?: Record<string, any> | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          name?: string;
+          description?: string | null;
+          tabs?: Record<string, any>[];
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+          is_archived?: boolean;
+          is_default?: boolean | null;
+          document_type?: string | null;
+          presentation_template?: Record<string, any> | null;
+        };
+      };
+      /**
        * Proposals table - New form-builder system
        * Replaces the quotes table for the form-builder based workflow
        */
@@ -573,7 +621,6 @@ export interface Database {
           total_value: number | null;
           // Document and template references
           document_type: string | null;
-          document_template_id: string | null;
           template_type: string | null;
           // Board and workflow
           is_on_board: boolean | null;
@@ -584,9 +631,11 @@ export interface Database {
           // Archive
           archived: boolean | null;
           archived_at: string | null;
+          // Completion tracking
+          is_complete: boolean | null;
           // Status timestamps
           submitted_at: string | null;
-          approved_at: string | null;
+          won_at: string | null;
           rejected_at: string | null;
           // Metadata
           created_at: string;
@@ -607,7 +656,6 @@ export interface Database {
           job_location?: string | null;
           total_value?: number | null;
           document_type?: string | null;
-          document_template_id?: string | null;
           template_type?: string | null;
           is_on_board?: boolean | null;
           quote_source?: string | null;
@@ -615,8 +663,9 @@ export interface Database {
           is_main_version?: boolean | null;
           archived?: boolean | null;
           archived_at?: string | null;
+          is_complete?: boolean | null;
           submitted_at?: string | null;
-          approved_at?: string | null;
+          won_at?: string | null;
           rejected_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -636,7 +685,6 @@ export interface Database {
           job_location?: string | null;
           total_value?: number | null;
           document_type?: string | null;
-          document_template_id?: string | null;
           template_type?: string | null;
           is_on_board?: boolean | null;
           quote_source?: string | null;
@@ -644,8 +692,9 @@ export interface Database {
           is_main_version?: boolean | null;
           archived?: boolean | null;
           archived_at?: string | null;
+          is_complete?: boolean | null;
           submitted_at?: string | null;
-          approved_at?: string | null;
+          won_at?: string | null;
           rejected_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -730,6 +779,54 @@ export interface Database {
           transitioned_at?: string;
           notes?: string | null;
           created_at?: string;
+        };
+      };
+      /**
+       * Proposal Documents table - File attachments for proposals
+       * Actual files stored in Supabase Storage, this table stores metadata
+       */
+      proposal_documents: {
+        Row: {
+          id: string;
+          proposal_id: string;
+          organization_id: string;
+          file_name: string;
+          storage_path: string;
+          file_size: number | null;
+          mime_type: string | null;
+          tab_key: string | null;
+          description: string | null;
+          uploaded_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          proposal_id: string;
+          organization_id: string;
+          file_name: string;
+          storage_path: string;
+          file_size?: number | null;
+          mime_type?: string | null;
+          tab_key?: string | null;
+          description?: string | null;
+          uploaded_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          proposal_id?: string;
+          organization_id?: string;
+          file_name?: string;
+          storage_path?: string;
+          file_size?: number | null;
+          mime_type?: string | null;
+          tab_key?: string | null;
+          description?: string | null;
+          uploaded_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
         };
       };
     };

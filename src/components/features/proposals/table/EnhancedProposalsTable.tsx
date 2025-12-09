@@ -15,10 +15,12 @@ import {
   SortingState,
   VisibilityState,
   PaginationState,
+  ColumnResizeMode,
+  ColumnSizingState,
 } from '@tanstack/react-table';
 import {
   ChevronDown, ChevronUp, ArrowUpDown, MoreHorizontal,
-  Edit3, Trash2, Copy, Archive, ArchiveRestore, ChevronRight, Star, Search, X
+  Edit3, Trash2, Copy, Archive, ArchiveRestore, ChevronRight, Star, Search, X, AlertTriangle, Plus, Upload, FileText
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -30,6 +32,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger
+} from "@/components/ui/tooltip";
 import type { Proposal } from "@/services/proposalsService";
 import { ProposalsTableToolbar } from './components/ProposalsTableToolbar';
 import { groupProposalsByVersion, getBaseProposalNumber, type ProposalVersionGroup } from '@/utils/proposalVersionGrouping';
@@ -39,13 +44,26 @@ import { formatDateEST } from '@/utils/dateUtils';
 // Types & Constants
 // ============================================================================
 
+export type DeleteType = 'single' | 'version' | 'group';
+
+export interface DeleteInfo {
+  id: string;
+  type: DeleteType;
+  baseNumber: string;
+  versionCount: number;
+  isMainVersion: boolean;
+}
+
 interface EnhancedProposalsTableProps {
   proposals: Proposal[];
   onEditProposal: (proposal: Proposal) => void;
   onDeleteProposal: (id: string) => void;
+  onDeleteVersionGroup?: (baseNumber: string) => void;
+  onDeleteVersion?: (id: string) => void;
   onStatusChange: (id: string, status: string) => void;
   onCreateVersion?: (id: string) => void;
   onCreateProposal?: () => void;
+  onImportProposal?: () => void;
   onArchiveProposal?: (id: string) => void;
   onUnarchiveProposal?: (id: string) => void;
   showArchived?: boolean;
@@ -60,9 +78,9 @@ interface EnhancedProposalsTableProps {
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: 'bg-gray-100 text-gray-800',
-  Complete: 'bg-blue-100 text-blue-800',
-  Sent: 'bg-purple-100 text-purple-800',
-  Approved: 'bg-emerald-100 text-emerald-800',
+  Incomplete: 'bg-yellow-100 text-yellow-800',
+  Submitted: 'bg-purple-100 text-purple-800',
+  Won: 'bg-emerald-100 text-emerald-800',
   Rejected: 'bg-red-100 text-red-800',
 };
 
@@ -88,9 +106,12 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
   proposals,
   onEditProposal,
   onDeleteProposal,
+  onDeleteVersionGroup,
+  onDeleteVersion,
   onStatusChange,
   onCreateVersion,
   onCreateProposal,
+  onImportProposal,
   onArchiveProposal,
   onUnarchiveProposal,
   showArchived = false,
@@ -106,14 +127,16 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [versionSelection, setVersionSelection] = useState<Record<string, boolean>>({});
   const [dataDensity, setDataDensity] = useState<'compact' | 'comfortable' | 'spacious'>('comfortable');
   const [columnVisibilityOpen, setColumnVisibilityOpen] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteInfo, setDeleteInfo] = useState<DeleteInfo | null>(null);
   const [mainVersions, setMainVersions] = useState<Record<string, string>>({});
+  const columnResizeMode: ColumnResizeMode = 'onChange';
 
   // Group proposals by version
   const proposalGroups = useMemo(() => groupProposalsByVersion(proposals), [proposals]);
@@ -238,11 +261,27 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
       id: 'project_name',
       header: () => <span>Project</span>,
       cell: ({ row }) => {
-        const projectName = row.original.project_name || 'Untitled';
-        const jobLocation = row.original.job_location || '';
+        const proposal = row.original;
+        const projectName = proposal.project_name || 'Untitled';
+        const jobLocation = proposal.job_location || '';
+        const isComplete = proposal.is_complete ?? false;
         return (
           <div className="space-y-0 min-w-0">
-            <div className="text-[13px] text-gray-900 dark:text-gray-100 truncate" title={projectName}>{projectName}</div>
+            <div className="flex items-center gap-1.5">
+              {!isComplete && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Unfinished</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              <span className="text-[13px] text-gray-900 dark:text-gray-100 truncate" title={projectName}>{projectName}</span>
+            </div>
             {jobLocation && (
               <div className="text-xs text-gray-500 truncate" title={jobLocation}>{jobLocation}</div>
             )}
@@ -298,7 +337,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {['Draft', 'Complete', 'Sent', 'Approved', 'Rejected'].map(s => (
+              {['Draft', 'Incomplete', 'Submitted', 'Won', 'Rejected'].map(s => (
                 <SelectItem key={s} value={s}>{s}</SelectItem>
               ))}
             </SelectContent>
@@ -366,7 +405,19 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                 )
               )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setDeleteConfirmId(proposal.id)} className="text-red-600 focus:text-red-600">
+              <DropdownMenuItem
+                onClick={() => {
+                  const baseNumber = getBaseProposalNumber(proposal.proposal_number || '');
+                  setDeleteInfo({
+                    id: proposal.id,
+                    type: hasMultipleVersions ? 'group' : 'single',
+                    baseNumber,
+                    versionCount: groupInfo?.versions.length || 1,
+                    isMainVersion: proposal.is_main_version === true,
+                  });
+                }}
+                className="text-red-600 focus:text-red-600"
+              >
                 <Trash2 className="mr-2 h-4 w-4" />
                 {hasMultipleVersions ? 'Delete All Versions' : 'Delete'}
               </DropdownMenuItem>
@@ -382,10 +433,11 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
   const table = useReactTable({
     data: displayProposals,
     columns,
-    state: { sorting, globalFilter, columnVisibility, rowSelection, pagination },
+    state: { sorting, globalFilter, columnVisibility, columnSizing, rowSelection, pagination },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     onColumnVisibilityChange: setColumnVisibility,
+    onColumnSizingChange: setColumnSizing,
     onRowSelectionChange: setRowSelection,
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
@@ -393,6 +445,8 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     enableRowSelection: true,
+    enableColumnResizing: true,
+    columnResizeMode,
   });
 
   const rowHeight = dataDensity === 'compact' ? 'h-9' : dataDensity === 'comfortable' ? 'h-11' : 'h-14';
@@ -439,6 +493,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
             versionSelection={versionSelection}
             setVersionSelection={setVersionSelection}
             onCreateProposal={onCreateProposal}
+            onImportProposal={onImportProposal}
             onBulkDelete={onBulkDelete}
             onBulkStatusChange={onBulkStatusChange}
             onCreateVersion={onCreateVersion}
@@ -449,20 +504,31 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
 
         {/* Table Area */}
         <div className="relative">
-          <div className="overflow-y-auto max-h-[600px] scroll-smooth">
-            <table className="w-full border-collapse font-table" style={{ fontFamily: 'var(--font-table)', tableLayout: 'fixed' }}>
+          <div className="overflow-x-auto overflow-y-auto max-h-[600px] scroll-smooth">
+            <table
+              className="w-full border-collapse font-table"
+              style={{
+                fontFamily: 'var(--font-table)',
+                width: table.getCenterTotalSize(),
+                minWidth: '100%',
+              }}
+            >
               <thead className="bg-[#EE6C4D]/10 border-b border-[#EE6C4D]/20 sticky top-0 z-10">
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
+                    {headerGroup.headers.map((header, headerIndex) => {
                       const isSelectColumn = header.id === 'select';
                       const isProposalColumn = header.id === 'proposal_number';
+                      const isActionsColumn = header.id === 'actions';
+                      const isLastColumn = headerIndex === headerGroup.headers.length - 1;
                       const columnPadding = isSelectColumn ? 'pl-3 pr-1' : isProposalColumn ? 'pl-1 pr-3' : 'px-3';
+                      const canResize = header.column.getCanResize() && !isSelectColumn && !isActionsColumn;
+                      const columnBorder = !isLastColumn ? 'border-r border-gray-200 dark:border-gray-700' : '';
 
                       return (
                         <th
                           key={header.id}
-                          className={`relative ${columnPadding} py-1 text-left text-xs font-medium text-gray-500 ${headerHeight}`}
+                          className={`relative ${columnPadding} py-1 text-left text-xs font-medium text-gray-500 ${headerHeight} group ${columnBorder}`}
                           style={{ width: header.getSize() }}
                         >
                           {header.isPlaceholder ? null : (
@@ -484,6 +550,16 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                               )}
                             </div>
                           )}
+                          {/* Column Resize Handle */}
+                          {canResize && (
+                            <div
+                              onMouseDown={header.getResizeHandler()}
+                              onTouchStart={header.getResizeHandler()}
+                              className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none opacity-0 group-hover:opacity-100 transition-opacity ${
+                                header.column.getIsResizing() ? 'bg-blue-500 opacity-100' : 'bg-gray-300 hover:bg-gray-400'
+                              }`}
+                            />
+                          )}
                         </th>
                       );
                     })}
@@ -491,7 +567,35 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                 ))}
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {table.getRowModel().rows.map(row => {
+                {table.getRowModel().rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={columns.length} className="py-20">
+                      <div className="flex flex-col items-center justify-center text-center">
+                        <FileText className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-4" />
+                        <p className="text-base font-semibold text-[var(--content-header-text)] mb-1">
+                          No proposals...
+                        </p>
+                        <p className="text-sm text-[var(--content-muted-text)] mb-5">
+                          Start visualizing your proposal pipeline. Add or import a new proposal.
+                        </p>
+                        <div className="flex gap-3">
+                          {onImportProposal && (
+                            <Button variant="outline" size="default" onClick={onImportProposal}>
+                              <Upload className="w-4 h-4 mr-2" />
+                              Import
+                            </Button>
+                          )}
+                          {onCreateProposal && (
+                            <Button size="default" onClick={onCreateProposal} className="bg-[var(--sidebar-icon-active)] hover:bg-[var(--brand-orange-700)] text-white">
+                              <Plus className="w-4 h-4 mr-2" />
+                              New Proposal
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : table.getRowModel().rows.map(row => {
                   const proposal = row.original;
                   const versionGroup = proposalToGroupMap.get(proposal.id);
                   const baseNumber = getBaseProposalNumber(proposal.proposal_number || '');
@@ -501,12 +605,14 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                     <React.Fragment key={row.id}>
                       {/* Main Row */}
                       <tr className={`group transition-colors ${rowHeight} hover:bg-gray-50/50 dark:hover:bg-[var(--content-table-row-hover)]`}>
-                        {row.getVisibleCells().map((cell) => {
+                        {row.getVisibleCells().map((cell, cellIndex) => {
                           const isSelectColumn = cell.column.id === 'select';
                           const isProposalColumn = cell.column.id === 'proposal_number';
+                          const isLastColumn = cellIndex === row.getVisibleCells().length - 1;
                           const columnPadding = isSelectColumn ? 'pl-3 pr-1' : isProposalColumn ? 'pl-1 pr-3' : 'px-3';
+                          const columnBorder = !isLastColumn ? 'border-r border-gray-100 dark:border-gray-700' : '';
                           return (
-                            <td key={cell.id} className={`${columnPadding} ${paddingY} text-xs`} style={{ width: cell.column.getSize() }}>
+                            <td key={cell.id} className={`${columnPadding} ${paddingY} text-xs ${columnBorder}`} style={{ width: cell.column.getSize() }}>
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </td>
                           );
@@ -517,7 +623,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                       {isExpanded && versionGroup && versionGroup.hasMultipleVersions && (
                         versionGroup.versions.map((version) => (
                           <tr key={`${row.id}-version-${version.id}`} className="bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-100/50 dark:hover:bg-gray-700/50">
-                            <td className="pl-3 pr-1 py-1">
+                            <td className="pl-3 pr-1 py-1 border-r border-gray-100 dark:border-gray-700">
                               <input
                                 type="checkbox"
                                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
@@ -525,7 +631,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                                 onChange={(e) => setVersionSelection(prev => ({ ...prev, [version.id]: e.target.checked }))}
                               />
                             </td>
-                            <td className="pl-1 pr-3 py-1">
+                            <td className="pl-1 pr-3 py-1 border-r border-gray-100 dark:border-gray-700">
                               <div className="flex items-center gap-1.5">
                                 <span className="text-gray-300 text-xs">└</span>
                                 <span className="font-mono text-xs text-gray-500">{version.proposal_number}</span>
@@ -546,28 +652,42 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-1">
-                              <div className="text-[13px] text-gray-700 dark:text-gray-300 truncate">{version.project_name || '—'}</div>
+                            <td className="px-3 py-1 border-r border-gray-100 dark:border-gray-700">
+                              <div className="flex items-center gap-1.5">
+                                {!(version.is_complete ?? false) && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <AlertTriangle className="w-3 h-3 text-red-500 flex-shrink-0" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Unfinished</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                                <span className="text-[13px] text-gray-700 dark:text-gray-300 truncate">{version.project_name || '—'}</span>
+                              </div>
                             </td>
-                            <td className="px-3 py-1 text-[13px] text-gray-700 dark:text-gray-300 truncate">
+                            <td className="px-3 py-1 text-[13px] text-gray-700 dark:text-gray-300 truncate border-r border-gray-100 dark:border-gray-700">
                               {version.client_name || version.client_company || '—'}
                             </td>
-                            <td className="px-3 py-1 text-[13px] text-gray-700 dark:text-gray-300">
+                            <td className="px-3 py-1 text-[13px] text-gray-700 dark:text-gray-300 border-r border-gray-100 dark:border-gray-700">
                               {formatCurrency(version.total_value || 0)}
                             </td>
-                            <td className="px-3 py-1">
+                            <td className="px-3 py-1 border-r border-gray-100 dark:border-gray-700">
                               <Select value={version.status || 'Draft'} onValueChange={(value) => onStatusChange(version.id, value)}>
                                 <SelectTrigger className={`w-24 h-6 border-0 text-xs px-2 ${STATUS_COLORS[version.status || 'Draft']}`}>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {['Draft', 'Complete', 'Sent', 'Approved', 'Rejected'].map(s => (
+                                  {['Draft', 'Incomplete', 'Submitted', 'Won', 'Rejected'].map(s => (
                                     <SelectItem key={s} value={s}>{s}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
                             </td>
-                            <td className="px-3 py-1 text-[13px] text-gray-700 dark:text-gray-300">
+                            <td className="px-3 py-1 text-[13px] text-gray-700 dark:text-gray-300 border-r border-gray-100 dark:border-gray-700">
                               {formatDateEST(version.created_at)}
                             </td>
                             <td className="px-3 py-1">
@@ -582,8 +702,19 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                                     <Edit3 className="mr-2 h-4 w-4" /> Edit
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => setDeleteConfirmId(version.id)} className="text-red-600">
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      setDeleteInfo({
+                                        id: version.id,
+                                        type: 'version',
+                                        baseNumber: versionGroup.baseNumber,
+                                        versionCount: versionGroup.versions.length,
+                                        isMainVersion: version.is_main_version === true,
+                                      });
+                                    }}
+                                    className="text-red-600"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Version
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -611,15 +742,58 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
       </div>
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
+      <AlertDialog open={!!deleteInfo} onOpenChange={() => setDeleteInfo(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Proposal</AlertDialogTitle>
-            <AlertDialogDescription>Are you sure you want to delete this proposal? This action cannot be undone.</AlertDialogDescription>
+            <AlertDialogTitle>
+              {deleteInfo?.type === 'group'
+                ? `Delete All ${deleteInfo.versionCount} Versions`
+                : deleteInfo?.type === 'version'
+                ? 'Delete Version'
+                : 'Delete Proposal'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteInfo?.type === 'group' ? (
+                <>
+                  This will permanently delete <strong>{deleteInfo.baseNumber}</strong> and all {deleteInfo.versionCount} versions.
+                  This action cannot be undone.
+                </>
+              ) : deleteInfo?.type === 'version' ? (
+                deleteInfo.isMainVersion ? (
+                  <>
+                    This is the <strong>main version</strong>. Deleting it will promote the next most recent version to main.
+                    Are you sure you want to continue?
+                  </>
+                ) : (
+                  <>
+                    This will delete this version only. The main version and other versions will remain.
+                    This action cannot be undone.
+                  </>
+                )
+              ) : (
+                'Are you sure you want to delete this proposal? This action cannot be undone.'
+              )}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (deleteConfirmId) { onDeleteProposal(deleteConfirmId); setDeleteConfirmId(null); } }} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => {
+                if (!deleteInfo) return;
+
+                if (deleteInfo.type === 'group' && onDeleteVersionGroup) {
+                  onDeleteVersionGroup(deleteInfo.baseNumber);
+                } else if (deleteInfo.type === 'version' && onDeleteVersion) {
+                  onDeleteVersion(deleteInfo.id);
+                } else {
+                  onDeleteProposal(deleteInfo.id);
+                }
+                setDeleteInfo(null);
+              }}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleteInfo?.type === 'group' ? 'Delete All' : 'Delete'}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

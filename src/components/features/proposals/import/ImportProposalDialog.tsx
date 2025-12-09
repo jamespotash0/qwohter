@@ -283,9 +283,9 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
       const { extractedData, manual } = state;
 
       // Build proposal data
-      const proposalData = {
+      // Note: document_type is inherited from the form automatically
+      const proposalData: Record<string, any> = {
         form_id: manual.formId,
-        document_template_id: manual.templateId,
         project_name: manual.projectName.trim(),
         status: manual.status,
         client_name: extractedData.client.name || '',
@@ -304,6 +304,17 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
           import_date: new Date().toISOString(),
         },
       };
+
+      // Add optional proposal number if provided
+      if (manual.proposalNumber.trim()) {
+        proposalData.proposal_number = manual.proposalNumber.trim();
+      }
+
+      // Add custom created_at if a date is specified
+      if (manual.proposalDate) {
+        // Convert date string to ISO timestamp at start of day
+        proposalData.created_at = new Date(manual.proposalDate + 'T00:00:00').toISOString();
+      }
 
       const newProposal = await createProposal(proposalData);
 
@@ -482,6 +493,45 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+
+              {/* Proposal Number & Date */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="proposalNumber">Proposal Number</Label>
+                  <Input
+                    id="proposalNumber"
+                    value={state.manual.proposalNumber}
+                    onChange={(e) =>
+                      setState((prev) => ({
+                        ...prev,
+                        manual: { ...prev.manual, proposalNumber: e.target.value },
+                      }))
+                    }
+                    placeholder="Leave blank to auto-generate"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Leave empty for auto-generated (P1001, P1002...)
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="proposalDate">Proposal Date</Label>
+                  <Input
+                    id="proposalDate"
+                    type="date"
+                    value={state.manual.proposalDate}
+                    onChange={(e) =>
+                      setState((prev) => ({
+                        ...prev,
+                        manual: { ...prev.manual, proposalDate: e.target.value },
+                      }))
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Used as the created date in the table
+                  </p>
                 </div>
               </div>
 

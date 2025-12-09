@@ -147,10 +147,11 @@ export function ProposalFormFiller({
         job_location: clientInfo?.jobLocation,
         template_type: template,
         quote_source: quoteSource || undefined,
+        document_type: form.document_type || undefined,
       });
 
       toast.success(`Proposal ${proposal.proposal_number} created successfully!`);
-      navigate("/quotes");
+      navigate("/proposals");
     } catch (error) {
       console.error("Error creating proposal:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to create proposal";
@@ -193,10 +194,11 @@ export function ProposalFormFiller({
         job_location: clientInfo?.jobLocation,
         template_type: template,
         quote_source: quoteSource || undefined,
+        document_type: form.document_type || undefined,
       });
 
       toast.success(`Proposal ${proposal.proposal_number} saved as draft!`);
-      navigate("/quotes");
+      navigate("/proposals");
     } catch (error) {
       console.error("Error saving draft:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to save draft";
@@ -236,7 +238,7 @@ export function ProposalFormFiller({
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <p className="text-red-500">Failed to load form</p>
-        <Button onClick={onBack}>Back to Quotes</Button>
+        <Button onClick={onBack}>Back to Proposals</Button>
       </div>
     );
   }
@@ -257,7 +259,7 @@ export function ProposalFormFiller({
             className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Quotes
+            Back to Proposals
           </Button>
 
           {/* Center - Editable Proposal name */}
@@ -296,18 +298,16 @@ export function ProposalFormFiller({
               <span>{completedTabs}/{form.tabs.length}</span>
             </div>
 
-            {/* Save as Draft button - only show if form allows incomplete saves */}
-            {form.allow_save_incomplete !== false && (
-              <Button
-                variant="outline"
-                onClick={handleSaveAsDraft}
-                size="sm"
-                disabled={isSubmitting}
-                className="px-3 py-2 rounded-lg border hover:bg-slate-50 transition-all duration-200 text-slate-600"
-              >
-                Save as Draft
-              </Button>
-            )}
+            {/* Save as Draft button */}
+            <Button
+              variant="outline"
+              onClick={handleSaveAsDraft}
+              size="sm"
+              disabled={isSubmitting}
+              className="px-3 py-2 rounded-lg border hover:bg-slate-50 transition-all duration-200 text-slate-600"
+            >
+              Save as Draft
+            </Button>
 
             {/* Save Proposal button */}
             <Button

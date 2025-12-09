@@ -23,6 +23,8 @@ import {
   unarchiveProposal,
   setMainVersion,
   createProposalVersion,
+  deleteVersionGroup,
+  deleteVersionWithPromotion,
   type Proposal,
   type CreateProposalData,
   type UpdateProposalData,
@@ -163,7 +165,7 @@ export function useDeleteProposal() {
 }
 
 /**
- * Hook: Update proposal status
+ * Hook: Update proposal status with optimistic updates
  */
 export function useUpdateProposalStatus() {
   const queryClient = useQueryClient();
@@ -178,10 +180,38 @@ export function useUpdateProposalStatus() {
     }) => {
       return updateProposalStatus(proposalId, status);
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({
-        queryKey: proposalQueryKeys.detail(data.id),
-      });
+    // Optimistic update for instant UI feedback
+    onMutate: async ({ proposalId, status }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: proposalQueryKeys.lists() });
+
+      // Snapshot the previous value
+      const previousLists = queryClient.getQueriesData({ queryKey: proposalQueryKeys.lists() });
+
+      // Optimistically update to the new value
+      queryClient.setQueriesData(
+        { queryKey: proposalQueryKeys.lists() },
+        (old: Proposal[] | undefined) => {
+          if (!old) return old;
+          return old.map((proposal) =>
+            proposal.id === proposalId ? { ...proposal, status } : proposal
+          );
+        }
+      );
+
+      // Return context with the snapshotted value
+      return { previousLists };
+    },
+    // If mutation fails, roll back to the previous value
+    onError: (_err, _variables, context) => {
+      if (context?.previousLists) {
+        context.previousLists.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+    // Always refetch after error or success to ensure server state
+    onSettled: () => {
       queryClient.invalidateQueries({
         queryKey: proposalQueryKeys.lists(),
       });
@@ -254,6 +284,48 @@ export function useCreateProposalVersion() {
   return useMutation({
     mutationFn: async (parentProposalId: string) => {
       return createProposalVersion(parentProposalId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: proposalQueryKeys.lists(),
+      });
+    },
+  });
+}
+
+/**
+ * Hook: Delete an entire version group (all versions)
+ */
+export function useDeleteVersionGroup() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      baseProposalNumber,
+      organizationId,
+    }: {
+      baseProposalNumber: string;
+      organizationId: string;
+    }) => {
+      return deleteVersionGroup(baseProposalNumber, organizationId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: proposalQueryKeys.lists(),
+      });
+    },
+  });
+}
+
+/**
+ * Hook: Delete a single version with automatic main version promotion
+ */
+export function useDeleteVersionWithPromotion() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (proposalId: string) => {
+      return deleteVersionWithPromotion(proposalId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
