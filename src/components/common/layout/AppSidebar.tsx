@@ -1,7 +1,7 @@
 import { Clock, Check,
   // ChevronDown, LogOut} 
 } from "lucide-react";
-import { House, FileText, ChartBar, Gear, Kanban, Package, Sidebar as SidebarIcon, ArrowDownIcon, Lock, SignOutIcon, SquaresFour, Article, Buildings, AddressBook, CheckSquare, CaretDown, Stack } from "@phosphor-icons/react";
+import { House, FileText, ChartBar, Gear, Kanban, Package, Sidebar as SidebarIcon, ArrowDownIcon, Lock, SignOutIcon, SquaresFour, Buildings, AddressBook, CheckSquare, CaretDown, Stack } from "@phosphor-icons/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader, SidebarTrigger, SidebarFooter, useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -16,7 +16,7 @@ import { stripeService } from "@/services/stripeService";
 import { switchOrganization } from "@/services/organizationService";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect, useRef } from "react";
-import { TrialProgressRing } from "@/components/trial/TrialProgressRing";
+// import { TrialProgressRing } from "@/components/trial/TrialProgressRing";
 
 interface AppSidebarProps {
   user: string;
@@ -79,12 +79,6 @@ const menuItems: MenuItem[] = [
     title: "Forms",
     icon: SquaresFour,
     path: "/forms",
-    roles: ['Owner', 'Admin', 'Member'],
-  },
-  {
-    title: "Templates",
-    icon: Article,
-    path: "/templates",
     roles: ['Owner', 'Admin', 'Member'],
   },
   {

@@ -54,7 +54,6 @@ export interface CreateProposalData {
   job_location?: string;
   total_value?: number;
   // Additional metadata columns
-  template_type?: string; // Legacy field for backward compatibility
   is_on_board?: boolean; // Whether to show on kanban board
   is_complete?: boolean; // Whether the proposal is marked as finished or unfinished
   quote_source?: string; // Lead source (e.g., 'Website', 'Referral')
@@ -462,8 +461,6 @@ export async function createProposal(
     total_value: proposalData.total_value || null,
     // Document type (inherited from form)
     document_type: documentType,
-    // Legacy metadata column for backward compatibility
-    template_type: proposalData.template_type || metadata?.template || null,
     is_on_board: proposalData.is_on_board ?? false,
     quote_source: proposalData.quote_source || metadata?.quoteSource || null,
   };
@@ -643,7 +640,6 @@ export async function updateProposalStatus(
  * 1. Fetches the parent proposal
  * 2. Generates the next version number (e.g., SR-1005 → SR-1005.2)
  * 3. Creates a new proposal with the versioned number
- * 4. Links it to the parent via parent_proposal_id
  *
  * Example usage:
  * - Client receives proposal SR-1005 and requests changes
@@ -688,7 +684,6 @@ export async function createProposalVersion(
     proposal_number: versionedNumber, // Contains version in the number itself (e.g., "SR-1005.2")
     form_data: proposalData?.form_data || parentProposal.form_data || {},
     status: proposalData?.status || 'Draft',
-    parent_proposal_id: parentProposalId,
     // Inherit organization_name from parent proposal
     organization_name: parentProposal.organization_name,
   };

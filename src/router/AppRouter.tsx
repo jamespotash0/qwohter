@@ -94,7 +94,7 @@ const Proposals = lazy(() => import("@/pages/Proposals"));
 // Form Builder pages
 const Forms = lazy(() => import("@/pages/Forms"));
 const FormBuilderV3 = lazy(() => import("@/pages/FormBuilderV3"));
-const TemplatesPage = lazy(() => import("@/pages/TemplatesPage"));
+const FormBuilderV4 = lazy(() => import("@/pages/FormBuilderV4"));
 
 // Document Template pages
 const DocumentTemplateEditor = lazy(() => import("@/pages/DocumentTemplateEditor"));
@@ -158,6 +158,10 @@ export const AppRouter = () => (
 
           {/* Form Builder V3 - Full screen without sidebar */}
           <Route path="/forms/builder-v3/:id" element={<FormBuilderV3 />} />
+
+          {/* Proposal Builder V4 - Full screen Apple-level design */}
+          <Route path="/proposals/builder" element={<FormBuilderV4 />} />
+          <Route path="/proposals/builder/:id" element={<FormBuilderV4 />} />
 
           {/* Document Template Editor - Full screen without sidebar */}
           <Route path="/document-templates/:templateId" element={<DocumentTemplateEditor />} />
@@ -223,10 +227,6 @@ export const AppRouter = () => (
                 {/* Form Builder routes */}
                 <Route path="/forms" element={<Forms />} />
                 <Route path="/forms/library" element={<Forms />} />
-
-                {/* Template routes */}
-                <Route path="/templates" element={<TemplatesPage />} />
-                <Route path="/templates/library" element={<TemplatesPage />} />
 
                 {/* DEPRECATED: Legacy route redirects - old quote system */}
                 {/* <Route path="/newquote" element={<Navigate to="/quotes/new" replace />} />

@@ -31,7 +31,6 @@ export const ROUTES = {
   QUOTES_NEW: '/quotes/new',
   QUOTES_EDIT: '/quotes/edit',
   QUOTES_VIEW: '/quotes/view',
-  QUOTES_TEMPLATES: '/quotes/templates',
   
   // Legacy redirects
   // LEGACY_NEW_QUOTE: '/newquote',

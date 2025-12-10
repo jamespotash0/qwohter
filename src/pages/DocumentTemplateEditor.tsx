@@ -372,7 +372,7 @@ export default function DocumentTemplateEditor() {
   }, [pendingNavigation, navigate]);
 
   const handleBack = useCallback(() => {
-    const backPath = formId ? `/forms/${formId}` : '/templates';
+    const backPath = formId ? `/forms/${formId}` : '/forms';
     handleNavigate(backPath);
   }, [formId, handleNavigate]);
 

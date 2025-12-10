@@ -25,7 +25,6 @@ import {
   getHighestProposalNumber,
   type NumberingConfig,
   type OrganizationNumberingConfig,
-  SUGGESTED_DOCUMENT_TYPES,
 } from '@/services/numberingConfigService';
 
 interface DocumentNumberingSectionProps {
@@ -133,11 +132,6 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
 
   const configuredTypes = Object.keys(configs || {});
 
-  // Get suggested types that haven't been configured yet
-  const availableSuggestions = SUGGESTED_DOCUMENT_TYPES.filter(
-    t => !configuredTypes.includes(t)
-  );
-
   // Check if a document type is in use (has proposals)
   const isInUse = (docType: string): boolean => {
     return (usageCounts[docType] || 0) > 0;
@@ -176,8 +170,10 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
     setEditDocType('');
   };
 
-  const handleSave = async (docType: string) => {
-    if (!docType.trim()) {
+  const handleSave = async (originalDocType: string) => {
+    const newDocType = editDocType.trim();
+
+    if (!newDocType) {
       toast({ title: "Error", description: "Document type name is required", variant: "destructive" });
       return;
     }
@@ -199,11 +195,26 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
         padding: parseInt(editPadding, 10) || 0,
       };
 
-      const success = await setNumberingConfig(organizationId, docType.trim(), config);
+      // Check if document type name was changed (rename scenario)
+      const isRename = originalDocType && originalDocType !== newDocType;
+
+      if (isRename) {
+        // Delete old config first, then create new one
+        await removeNumberingConfig(organizationId, originalDocType);
+      }
+
+      const success = await setNumberingConfig(organizationId, newDocType, config);
       if (success) {
-        setConfigs(prev => ({ ...prev, [docType.trim()]: config }));
-        const action = replacingType ? 'replaced' : 'created';
-        toast({ title: "Saved", description: `${docType} sequence ${action}.` });
+        setConfigs(prev => {
+          const updated = { ...prev };
+          if (isRename) {
+            delete updated[originalDocType];
+          }
+          updated[newDocType] = config;
+          return updated;
+        });
+        const action = addingNew ? 'created' : (isRename ? 'renamed' : 'updated');
+        toast({ title: "Saved", description: `${newDocType} sequence ${action}.` });
         cancelEdit();
       }
     } catch (error) {
@@ -254,27 +265,20 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
   }
 
   // Render the edit/replace form inputs
-  const renderEditForm = (docType: string, isNew: boolean) => (
+  const renderEditForm = (docType: string, isNew: boolean, typeInUse: boolean = false) => (
     <div className="flex flex-col gap-4 w-full">
       <div className="flex items-center gap-3 flex-wrap">
-        {/* Document Type Name */}
-        {isNew ? (
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-gray-500">Document Type</label>
-            <Input
-              value={editDocType}
-              onChange={(e) => setEditDocType(e.target.value)}
-              placeholder="e.g., Proposal"
-              className="w-48 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
-              list="doc-type-suggestions"
-            />
-            <datalist id="doc-type-suggestions">
-              {availableSuggestions.map(type => (
-                <option key={type} value={type} />
-              ))}
-            </datalist>
-          </div>
-        ) : null}
+        {/* Document Type Name - always shown, disabled if in use */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-gray-500">Document Type</label>
+          <Input
+            value={editDocType}
+            onChange={(e) => setEditDocType(e.target.value)}
+            placeholder="e.g., Proposal"
+            disabled={typeInUse}
+            className={`w-48 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 ${typeInUse ? 'opacity-50 cursor-not-allowed' : ''}`}
+          />
+        </div>
 
         {/* Prefix */}
         <div className="flex flex-col gap-1">
@@ -291,7 +295,7 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
         <div className="flex flex-col gap-1">
           <label className="text-xs text-gray-500">Sep</label>
           <Select value={editSeparator1 || "none"} onValueChange={(v) => setEditSeparator1(v === "none" ? "" : v)}>
-            <SelectTrigger className="w-16 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600">
+            <SelectTrigger className="w-24 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600">
               <SelectValue placeholder="-" />
             </SelectTrigger>
             <SelectContent className="bg-white">
@@ -301,7 +305,7 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
           </Select>
         </div>
 
-        {/* Series - This is the main incrementing number (e.g., 14 in ES-14) */}
+        {/* Starting Sequence Number - This is the main incrementing number (e.g., 14 in ES-14) */}
         <div className="flex flex-col gap-1">
           <label className="text-xs text-gray-500">Series</label>
           <Input
@@ -309,7 +313,7 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
             value={editStartNumber}
             onChange={(e) => setEditStartNumber(e.target.value)}
             placeholder="1"
-            className="w-28 h-9 font-mono bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
+            className="w-28 h-9 bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600"
             min={1}
           />
         </div>
@@ -321,7 +325,7 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
             value={editBaseNumber}
             onChange={(e) => setEditBaseNumber(e.target.value)}
             placeholder=""
-            className="w-24 h-9 font-mono bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+            className="w-28 h-9 font-mono bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
           />
         </div>
 
@@ -333,7 +337,7 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
             onValueChange={(v) => setEditSeparator2(v === "none" ? "" : v)}
             disabled={!editBaseNumber}
           >
-            <SelectTrigger className={`w-16 h-9 ${editBaseNumber ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-50 cursor-not-allowed'}`}>
+            <SelectTrigger className={`w-24 h-9 ${editBaseNumber ? 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-50 cursor-not-allowed'}`}>
               <SelectValue placeholder="-" />
             </SelectTrigger>
             <SelectContent className="bg-white">
@@ -391,7 +395,7 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            onClick={() => handleSave(isNew ? editDocType : docType)}
+            onClick={() => handleSave(docType)}
             disabled={saving}
             className="h-9 px-4 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
           >
@@ -429,24 +433,7 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
             <div key={docType} className="flex items-start justify-between py-6 px-6 rounded-lg">
               {isReplacing ? (
                 <div className="w-full">
-                  <div className="flex items-center gap-2 mb-3">
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                      {docType}
-                    </h3>
-                    {inUse && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Lock className="w-3.5 h-3.5 text-gray-400" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Used by {proposalCount} proposal(s) - type name locked</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )}
-                  </div>
-                  {renderEditForm(docType, false)}
+                  {renderEditForm(docType, false, inUse)}
                 </div>
               ) : (
                 <>
@@ -469,11 +456,11 @@ export const DocumentNumberingSection: React.FC<DocumentNumberingSectionProps> =
                       )}
                     </div>
                     <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                      Next number
+                      Starting Sequence Number
                     </p>
                   </div>
                   <div className="flex items-center gap-3 min-w-[280px] justify-end">
-                    <span className="text-sm text-gray-700 dark:text-gray-300 font-mono">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
                       {displayNumber}
                     </span>
                     {hasEditPermission && (

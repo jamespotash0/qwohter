@@ -1,10 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { PageContent } from '@/components/common/layout';
 import { useCurrentOrganization, useForms, useDeleteForm, useCopyForm, useUpdateForm, useCreateForm, useOrganizationMembers, type Form } from '@/hooks/queries';
 import { useUser } from '@/auth';
 import { useTemplates, useSearchTemplates, useCopyTemplate, usePrefetchTemplate } from '@/hooks/queries/useTemplates';
-import { useFormTemplateCounts, useFormDocumentTemplates } from '@/hooks/queries/useDocumentTemplates';
 import { Template } from '@/services/templateService';
 import { TemplateCard } from '@/features/form-builder/components/TemplateCard';
 import { TemplatePreview } from '@/features/form-builder/components/TemplatePreview';
@@ -19,8 +18,7 @@ import {
   SquaresFour,
   Star,
   Stack,
-  MagnifyingGlass,
-  Link as LinkIcon
+  MagnifyingGlass
 } from '@phosphor-icons/react';
 import { Clock } from 'lucide-react';
 import {
@@ -86,10 +84,6 @@ export default function Forms() {
   const copyTemplateMutation = useCopyTemplate();
   const prefetchTemplate = usePrefetchTemplate();
 
-  // Fetch linked document template counts for all forms
-  const formIds = useMemo(() => forms.map(f => f.id), [forms]);
-  const { data: templateCountsMap } = useFormTemplateCounts(formIds);
-
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
@@ -148,7 +142,7 @@ export default function Forms() {
         onSuccess: (newForm) => {
           setShowCreateDialog(false);
           // Navigate to form builder with the new form
-          navigate(`/forms/builder-v3/${newForm.id}`);
+          navigate(`/proposals/builder/${newForm.id}`);
         }
       });
     } catch (error) {
@@ -189,7 +183,7 @@ export default function Forms() {
           setPreviewTemplate(null);
           // Navigate to form builder to edit the new form
           setTimeout(() => {
-            navigate(`/forms/builder-v3/${newForm.id}`);
+            navigate(`/proposals/builder/${newForm.id}`);
           }, 500);
         },
         onError: (error) => {
@@ -251,6 +245,7 @@ export default function Forms() {
         onOpenChange={setShowCreateDialog}
         onSubmit={handleCreateForm}
         isLoading={createFormMutation.isPending}
+        organizationId={currentOrganization?.id}
       />
 
       {!isLibraryView ? (
@@ -310,8 +305,7 @@ export default function Forms() {
                   key={form.id}
                   form={form}
                   members={members}
-                  linkedTemplateCount={templateCountsMap?.[form.id] || 0}
-                  onEdit={() => navigate(`/forms/builder-v3/${form.id}`)}
+                  onEdit={() => navigate(`/proposals/builder/${form.id}`)}
                   onDuplicate={(e) => handleDuplicate(form.id, form.name, e)}
                   onDelete={() => handleDelete(form.id, form.name)}
                   onSetDefault={() => handleSetDefault(form.id, !!(form as any).is_default)}
@@ -389,7 +383,6 @@ export default function Forms() {
 interface FormCardProps {
   form: Form;
   members: any[];
-  linkedTemplateCount: number;
   onEdit: () => void;
   onDuplicate: (e?: React.MouseEvent) => void;
   onDelete: () => void;
@@ -397,26 +390,13 @@ interface FormCardProps {
   onUpdateName: (name: string) => void;
 }
 
-// Helper to check if a field is a styling element (not a data field)
-const isStylingField = (field: { type?: string }) =>
-  field.type === 'section' || field.type === 'text_content';
-
-function FormCard({ form, members, linkedTemplateCount, onEdit, onDuplicate, onDelete, onSetDefault, onUpdateName }: FormCardProps) {
-  // Filter out styling fields (section headers, text content) from count
-  const dataFields = form.tabs.flatMap(tab => tab.fields.filter(f => !isStylingField(f)));
-  const totalFields = dataFields.length;
+function FormCard({ form, members, onEdit, onDuplicate, onDelete, onSetDefault, onUpdateName }: FormCardProps) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState(form.name);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedDescription, setEditedDescription] = useState(form.description || '');
-  const [showTabsDialog, setShowTabsDialog] = useState(false);
-  const [showFieldsDialog, setShowFieldsDialog] = useState(false);
-  const [showTemplatesDialog, setShowTemplatesDialog] = useState(false);
   const isDefault = (form as any).is_default;
   const updateFormMutation = useUpdateForm();
-
-  // Fetch linked templates for this form (for tooltip display)
-  const { data: linkedTemplates = [] } = useFormDocumentTemplates(form.id);
 
   // Get creator name from members
   const creator = members.find(m => m.user_id === form.created_by);
@@ -576,144 +556,53 @@ function FormCard({ form, members, linkedTemplateCount, onEdit, onDuplicate, onD
                   )}
                 </div>
 
-                {/* Editable Description */}
-                <div className="flex items-start gap-0.5 min-w-0">
-                  {isEditingDescription ? (
-                    <textarea
-                      value={editedDescription}
-                      onChange={(e) => setEditedDescription(e.target.value)}
-                      onBlur={handleDescriptionSave}
-                      onKeyDown={handleDescriptionKeyDown}
-                      className="w-full text-xs text-gray-600 px-2 py-1 border border-gray-300 rounded resize-none bg-yellow-50"
-                      rows={2}
-                      placeholder="Add description..."
-                      autoFocus
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  ) : (
-                    <>
-                      <p
-                        className="text-xs text-gray-600 leading-relaxed truncate"
-                        title={form.description || 'No description'}
-                        onDoubleClick={(e) => {
-                          e.stopPropagation();
-                          setIsEditingDescription(true);
-                        }}
-                      >
-                        {form.description || 'No description'}
-                      </p>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsEditingDescription(true);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-200 rounded transition-opacity flex-shrink-0"
-                      >
-                        <PencilSimple className="w-3 h-3 text-gray-600" weight="regular" />
-                      </button>
-                    </>
-                  )}
-                </div>
+                {/* Editable Description - only show if description exists or editing */}
+                {(form.description || isEditingDescription) && (
+                  <div className="flex items-start gap-0.5 min-w-0">
+                    {isEditingDescription ? (
+                      <textarea
+                        value={editedDescription}
+                        onChange={(e) => setEditedDescription(e.target.value)}
+                        onBlur={handleDescriptionSave}
+                        onKeyDown={handleDescriptionKeyDown}
+                        className="w-full text-xs text-gray-600 px-2 py-1 border border-gray-300 rounded resize-none bg-yellow-50"
+                        rows={2}
+                        placeholder="Add description..."
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <>
+                        <p
+                          className="text-xs text-gray-600 leading-relaxed truncate"
+                          title={form.description}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            setIsEditingDescription(true);
+                          }}
+                        >
+                          {form.description}
+                        </p>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsEditingDescription(true);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-gray-200 rounded transition-opacity flex-shrink-0"
+                        >
+                          <PencilSimple className="w-3 h-3 text-gray-600" weight="regular" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* Stats Footer */}
-          <div className="px-4 py-3 bg-gray-50/50 space-y-2">
-            {/* Row 1: Tabs, Fields, and Linked Templates */}
-            <div className="flex items-center gap-3 text-[11px]">
-              {/* Tabs with Tooltip */}
-              <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 text-gray-700 cursor-pointer hover:text-blue-600 transition-colors">
-                      <Stack className="w-3.5 h-3.5 text-blue-600" weight="duotone" />
-                      <span className="font-semibold text-gray-900">{form.tabs.length}</span>
-                      <span className="text-gray-500">tabs</span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[180px]">
-                    <ul className="text-xs space-y-0.5">
-                      {form.tabs.slice(0, 5).map((tab, idx) => (
-                        <li key={idx} className="truncate text-gray-700">
-                          {tab.name || `Tab ${idx + 1}`}
-                        </li>
-                      ))}
-                      {form.tabs.length > 5 && (
-                        <li
-                          className="text-blue-500 cursor-pointer hover:underline"
-                          onClick={(e) => { e.stopPropagation(); setShowTabsDialog(true); }}
-                        >
-                          +{form.tabs.length - 5} more
-                        </li>
-                      )}
-                    </ul>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              {/* Fields with Tooltip */}
-              <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1 text-gray-700 cursor-pointer hover:text-green-600 transition-colors">
-                      <SquaresFour className="w-3.5 h-3.5 text-green-600" weight="duotone" />
-                      <span className="font-semibold text-gray-900">{totalFields}</span>
-                      <span className="text-gray-500">fields</span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[200px]">
-                    <ul className="text-xs space-y-0.5">
-                      {dataFields.slice(0, 6).map((field, idx) => (
-                        <li key={idx} className="truncate text-gray-700">
-                          {field.label || field.name || 'Untitled'}
-                        </li>
-                      ))}
-                      {totalFields > 6 && (
-                        <li
-                          className="text-green-500 cursor-pointer hover:underline"
-                          onClick={(e) => { e.stopPropagation(); setShowFieldsDialog(true); }}
-                        >
-                          +{totalFields - 6} more
-                        </li>
-                      )}
-                    </ul>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              {linkedTemplateCount > 0 && (
-                <TooltipProvider delayDuration={200}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center gap-1 text-gray-700 cursor-pointer hover:text-purple-600 transition-colors">
-                        <LinkIcon className="w-3.5 h-3.5 text-purple-600" weight="duotone" />
-                        <span className="font-semibold text-gray-900">{linkedTemplateCount}</span>
-                        <span className="text-gray-500">template{linkedTemplateCount !== 1 ? 's' : ''}</span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-[200px]">
-                      <ul className="text-xs space-y-0.5">
-                        {linkedTemplates.slice(0, 4).map((lt) => (
-                          <li key={lt.document_template_id} className="truncate text-gray-700">
-                            {lt.document_template?.name || 'Unknown'}
-                          </li>
-                        ))}
-                        {linkedTemplates.length > 4 && (
-                          <li
-                            className="text-purple-500 cursor-pointer hover:underline"
-                            onClick={(e) => { e.stopPropagation(); setShowTemplatesDialog(true); }}
-                          >
-                            +{linkedTemplates.length - 4} more
-                          </li>
-                        )}
-                      </ul>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-
-            {/* Row 2: Creator Avatar, Document Type, and Date */}
+          <div className="px-4 py-3 bg-gray-50/50">
+            {/* Creator Avatar, Document Type, and Date */}
             <div className="flex items-center justify-between text-[10px] text-gray-500">
               <div className="flex items-center gap-2">
                 {/* Creator Avatar with Tooltip */}
@@ -743,66 +632,6 @@ function FormCard({ form, members, linkedTemplateCount, onEdit, onDuplicate, onD
         </div>
       </div>
 
-      {/* Tabs Dialog */}
-      <Dialog open={showTabsDialog} onOpenChange={setShowTabsDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>All Tabs ({form.tabs.length})</DialogTitle>
-          </DialogHeader>
-          <ul className="space-y-1 max-h-[300px] overflow-y-auto">
-            {form.tabs.map((tab, idx) => (
-              <li key={idx} className="text-sm text-gray-700 py-1 px-2 rounded hover:bg-gray-50">
-                {tab.name || `Tab ${idx + 1}`}
-              </li>
-            ))}
-          </ul>
-        </DialogContent>
-      </Dialog>
-
-      {/* Fields Dialog */}
-      <Dialog open={showFieldsDialog} onOpenChange={setShowFieldsDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>All Fields ({totalFields})</DialogTitle>
-          </DialogHeader>
-          <ul className="space-y-1 max-h-[300px] overflow-y-auto">
-            {form.tabs.map((tab, tabIdx) => {
-              const tabDataFields = tab.fields.filter(f => !isStylingField(f));
-              if (tabDataFields.length === 0) return null;
-              return (
-                <li key={tabIdx}>
-                  <div className="text-xs font-medium text-gray-500 py-1 px-2 bg-gray-50 rounded">
-                    {tab.name || `Tab ${tabIdx + 1}`}
-                  </div>
-                  <ul className="ml-2">
-                    {tabDataFields.map((field, fieldIdx) => (
-                      <li key={fieldIdx} className="text-sm text-gray-700 py-1 px-2 rounded hover:bg-gray-50">
-                        {field.label || field.name || 'Untitled'}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              );
-            })}
-          </ul>
-        </DialogContent>
-      </Dialog>
-
-      {/* Templates Dialog */}
-      <Dialog open={showTemplatesDialog} onOpenChange={setShowTemplatesDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Linked Templates ({linkedTemplates.length})</DialogTitle>
-          </DialogHeader>
-          <ul className="space-y-1 max-h-[300px] overflow-y-auto">
-            {linkedTemplates.map((lt) => (
-              <li key={lt.document_template_id} className="text-sm text-gray-700 py-1 px-2 rounded hover:bg-gray-50">
-                {lt.document_template?.name || 'Unknown'}
-              </li>
-            ))}
-          </ul>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

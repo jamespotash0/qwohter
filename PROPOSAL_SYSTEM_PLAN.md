@@ -199,11 +199,13 @@ you're always editing a copy of the default.
 │  PROPOSAL #1042 - Johnson Residence                    [Draft ▾] [Save]│
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
-│  ┌──────┐ ┌──────────┐ ┌─────────┐ ┌────────┐ ┌──────────┐ ┌──────────┐│
-│  │ Info │ │ Products │ │ Pricing │ │ Terms  │ │Documents │ │Presentatn││
-│  └──────┘ └──────────┘ └─────────┘ └────────┘ └──────────┘ └──────────┘│
+│  ┌──────┐ ┌──────────┐ ┌─────────┐ ┌───────┐ ┌───────────┐ ┌────────┐  │
+│  │ Info │ │ Products │ │ Pricing │ │ Terms │ │Lead Times │ │  Misc  │  │
+│  └──────┘ └──────────┘ └─────────┘ └───────┘ └───────────┘ └────────┘  │
 │                                                                         │
-│  [+ Add Tab]  ← Custom tabs appear between Documents and Presentation   │
+│  ┌──────────┐ ┌──────────────┐                                         │
+│  │Documents │ │ Presentation │                                         │
+│  └──────────┘ └──────────────┘                                         │
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
 │  │                                                                 │   │
@@ -212,6 +214,16 @@ you're always editing a copy of the default.
 │  └─────────────────────────────────────────────────────────────────┘   │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
+
+TAB ORDER:
+1. Info          - Project/client metadata (quartet layout)
+2. Products      - Product line items and AI extraction
+3. Pricing       - Cost sections with calculations (horizontal subsections)
+4. Terms         - Payment/delivery terms (horizontal subsections)
+5. Lead Times    - Project phases with durations (NEW)
+6. Miscellaneous - Custom references and notes (NEW)
+7. Documents     - File uploads
+8. Presentation  - Output configuration
 ```
 
 ---
@@ -219,34 +231,70 @@ you're always editing a copy of the default.
 ## Tab 1: Info
 
 ### Purpose
-Capture all project and client metadata.
+Capture all project and client metadata in a sleek, Apple-level design.
 
-### Sections
+### Layout: Quartet of Boxes
+
+The Info tab uses a 2x2 grid layout ("quartet") for clean visual organization:
 
 ```
-PROJECT DETAILS
-├── Project Name*
-├── Proposal Number (auto-generated, editable)
-├── Date Created (auto)
-├── Quote Status [Draft | Pending | Approved | Rejected]
-└── Quote Source [Referral | Website | Cold Call | Repeat | Other]
-
-CLIENT INFORMATION
-├── Client Name*
-├── Company Name
-├── Address (with autocomplete)
-├── Phone Number
-└── Email
-
-JOB DETAILS
-├── Job Location (can differ from client address)
-├── Job Type [Prevailing Wage | Standard]
-└── Job Description (optional textarea)
+┌─────────────────────────────────────────────────────────────────────────┐
+│  INFO                                                                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌─────────────────────────────┐  ┌─────────────────────────────────┐   │
+│  │ PROJECT DETAILS             │  │ CREATED BY                      │   │
+│  │                             │  │                                 │   │
+│  │ Project Name*               │  │ [Dropdown: Name]                │   │
+│  │ Date                        │  │ Email (auto-filled from user)   │   │
+│  │ Proposal Number (auto)      │  │                                 │   │
+│  │ Quote Status [Draft|...]    │  │ DateTime Created (auto)         │   │
+│  │ Quote Source [Referral|...] │  │                                 │   │
+│  └─────────────────────────────┘  └─────────────────────────────────┘   │
+│                                                                          │
+│  ┌─────────────────────────────┐  ┌─────────────────────────────────┐   │
+│  │ CLIENT INFORMATION          │  │ JOB DETAILS                     │   │
+│  │                             │  │                                 │   │
+│  │ Client Name*                │  │ Job Location                    │   │
+│  │ Company Name                │  │ Job Type [Union | Non-Union]    │   │
+│  │ Address (autocomplete)      │  │ Estimated Due Date              │   │
+│  │ Phone Number                │  │ Notes (optional textarea)       │   │
+│  │                             │  │                                 │   │
+│  └─────────────────────────────┘  └─────────────────────────────────┘   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Field Completion Tracking
-- Required fields marked with *
-- Visual indicator for incomplete sections
+### Box Descriptions
+
+**Top Left - Project Details:**
+- Project Name* (required)
+- Date (proposal date)
+- Proposal Number (auto-generated based on org numbering config)
+- Quote Status dropdown [Draft | Pending | Approved | Rejected]
+- Quote Source dropdown [Referral | Website | Cold Call | Repeat | Other]
+
+**Top Right - Created By:**
+- Who's quoting dropdown (org members with name/email)
+- DateTime created (auto, read-only)
+
+**Bottom Left - Client Information:**
+- Client Name* (required)
+- Company Name
+- Address (with autocomplete)
+- Phone Number
+
+**Bottom Right - Job Details:**
+- Job Location (can differ from client address)
+- Job Type [Union | Non-Union] (was Prevailing Wage | Standard)
+- Estimated Due Date (date picker)
+- Notes (optional textarea)
+
+### Design Requirements
+- Clean, minimal borders - Apple-level aesthetic
+- Cards with subtle shadows, not heavy borders
+- Consistent padding and spacing
+- Labels above inputs, not inline
 - Auto-save on field blur
 
 ---
@@ -389,69 +437,204 @@ grandTotal = sum(sections.subtotal)
 
 ---
 
-## Tab 4: Miscellaneous / Terms
+## Tab 4: Terms
 
 ### Purpose
-Additional terms, timelines, and notes.
+Simple pricing and delivery terms with horizontal subsection navigation.
 
-### Sections
+### Layout: Horizontal Subsections
+
+Terms uses a simplified horizontal nav for subsections - clean, minimal, Apple-style.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  TERMS & CONDITIONS                                                     │
+│  TERMS                                                                   │
 ├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  ▼ PAYMENT TERMS                                                        │
-│    ┌──────────────────────────────────────────────────────────────────┐│
-│    │ Payment Schedule:                                                ││
-│    │ ┌────────────────────────────────────────────────────────────┐  ││
-│    │ │ [30%] upon [Contract Signing        ▾]                     │  ││
-│    │ │ [40%] upon [Track Installation      ▾]                     │  ││
-│    │ │ [30%] upon [Project Completion      ▾]                     │  ││
-│    │ │                                          [+ Add Milestone] │  ││
-│    │ └────────────────────────────────────────────────────────────┘  ││
-│    │                                                                  ││
-│    │ Payment Methods: ☑ Check  ☑ Wire  ☑ Credit Card  ☐ Cash        ││
-│    │ Net Terms: [Net 30 ▾]                                           ││
-│    └──────────────────────────────────────────────────────────────────┘│
-│                                                                         │
-│  ▼ PROJECT TIMELINE                                                     │
-│    ┌──────────────────────────────────────────────────────────────────┐│
-│    │ Phase                    Duration                                ││
-│    │ [Shop Drawings        ] [2 weeks    ]                           ││
-│    │ [Manufacturing        ] [4 weeks    ]                           ││
-│    │ [Track Installation   ] [2 days     ]                           ││
-│    │ [Panel Installation   ] [4 days     ]                           ││
-│    │                                          [+ Add Phase]          ││
-│    └──────────────────────────────────────────────────────────────────┘│
-│                                                                         │
-│  ▼ EXCLUSIONS                                                           │
-│    ┌──────────────────────────────────────────────────────────────────┐│
-│    │ ☑ Electrical work                                               ││
-│    │ ☑ Structural modifications                                      ││
-│    │ ☑ Permits and inspections                                       ││
-│    │ ☐ Site cleanup                                                   ││
-│    │ [+ Add Exclusion: ________________]                              ││
-│    └──────────────────────────────────────────────────────────────────┘│
-│                                                                         │
-│  ▼ WARRANTY                                                             │
-│    ┌──────────────────────────────────────────────────────────────────┐│
-│    │ Product Warranty: [5 years ▾]                                    ││
-│    │ Labor Warranty: [1 year ▾]                                       ││
-│    │ Additional Notes: [________________________]                     ││
-│    └──────────────────────────────────────────────────────────────────┘│
-│                                                                         │
-│  ▼ NOTES                                                                │
-│    ┌──────────────────────────────────────────────────────────────────┐│
-│    │ [Rich text area for additional notes...]                        ││
-│    └──────────────────────────────────────────────────────────────────┘│
-│                                                                         │
+│                                                                          │
+│  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐               │
+│  │ Pricing Terms  │ │ Delivery Terms │ │ Exclusions     │               │
+│  └────────────────┘ └────────────────┘ └────────────────┘               │
+│                                                                          │
+│  ─────────────────────────────────────────────────────────────────────  │
+│                                                                          │
+│  (Active subsection content appears below)                               │
+│                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Subsection: Pricing Terms
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Payment Schedule:                                                       │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │ [30%] upon [Contract Signing        ▾]                             │ │
+│  │ [40%] upon [Track Installation      ▾]                             │ │
+│  │ [30%] upon [Project Completion      ▾]                             │ │
+│  │                                            [+ Add Milestone]       │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                                                                          │
+│  Payment Methods: ☑ Check  ☑ Wire  ☑ Credit Card  ☐ Cash                │
+│  Net Terms: [Net 30 ▾]                                                   │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### Subsection: Delivery Terms
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Delivery Method: [On-site Delivery ▾]                                   │
+│  Delivery Notes: [_________________________________]                     │
+│                                                                          │
+│  Warranty:                                                               │
+│  Product Warranty: [5 years ▾]                                           │
+│  Labor Warranty: [1 year ▾]                                              │
+│  Additional Notes: [________________________]                            │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### Subsection: Exclusions
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│  ☑ Electrical work                                                       │
+│  ☑ Structural modifications                                              │
+│  ☑ Permits and inspections                                               │
+│  ☐ Site cleanup                                                          │
+│  [+ Add Exclusion: ________________]                                     │
+│                                                                          │
+│  General Notes:                                                          │
+│  [Rich text area for additional notes...]                                │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### Design Requirements
+- Horizontal subsection tabs (pill buttons or underlined tabs)
+- Only one subsection visible at a time
+- Clean card-based layout for content
+- Minimal visual clutter
+
 ---
 
-## Tab 5: Documents
+## Tab 5: Lead Times
+
+### Purpose
+Track project phases with durations and reference dates. Essential for project scheduling and client expectations.
+
+### Layout
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  LEAD TIMES                                                [+ Add Item] │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │ Phase Name          Duration        Unit         Reference Date   │  │
+│  ├───────────────────────────────────────────────────────────────────┤  │
+│  │ Shop Drawings       [2    ]         [Weeks ▾]    [From: Order]    │  │
+│  │ Manufacturing       [4    ]         [Weeks ▾]    [From: Approval] │  │
+│  │ Shipping            [5    ]         [Days  ▾]    [From: Mfg Done] │  │
+│  │ Track Installation  [2    ]         [Days  ▾]    [From: Delivery] │  │
+│  │ Panel Installation  [4    ]         [Days  ▾]    [From: Track]    │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+│                                                                          │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │ TOTAL ESTIMATED: ~6 weeks 4 days from order placement             │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Line Item Fields
+- **Phase Name**: Text input for phase/milestone name
+- **Duration**: Numeric input
+- **Unit**: Dropdown [Days | Weeks | Months]
+- **Reference Date**: Dropdown for what this duration is measured from
+  - From: Order Placement
+  - From: Approval
+  - From: Previous Phase
+  - From: Specific Date
+  - Custom text
+
+### Features
+- Drag to reorder phases
+- Auto-calculate total estimated timeline
+- Optional: Timeline visualization (Gantt-lite)
+- Copy from template (save/load common lead time templates)
+
+### Design Requirements
+- Clean table layout with minimal borders
+- Inline editing (click to edit)
+- Duration unit selector as compact dropdown
+- Reference dates as contextual dropdowns
+
+---
+
+## Tab 6: Miscellaneous
+
+### Purpose
+Custom references, notes, and any additional information that doesn't fit elsewhere.
+
+### Layout
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  MISCELLANEOUS                                          [+ Add Section] │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ▼ REFERENCE NUMBERS                                                     │
+│    ┌──────────────────────────────────────────────────────────────────┐ │
+│    │ Label                         Value                              │ │
+│    ├──────────────────────────────────────────────────────────────────┤ │
+│    │ [PO Number           ]        [PO-2024-1234    ]                 │ │
+│    │ [Job Number          ]        [J-456           ]                 │ │
+│    │ [Contract Number     ]        [C-789           ]                 │ │
+│    │                                           [+ Add Reference]      │ │
+│    └──────────────────────────────────────────────────────────────────┘ │
+│                                                                          │
+│  ▼ CUSTOM FIELDS                                                         │
+│    ┌──────────────────────────────────────────────────────────────────┐ │
+│    │ [Field Label    ]    [Field Value                            ]   │ │
+│    │                                           [+ Add Custom Field]   │ │
+│    └──────────────────────────────────────────────────────────────────┘ │
+│                                                                          │
+│  ▼ INTERNAL NOTES                                                        │
+│    ┌──────────────────────────────────────────────────────────────────┐ │
+│    │ [Rich text area - not shown in final proposal output...]        │ │
+│    │                                                                  │ │
+│    └──────────────────────────────────────────────────────────────────┘ │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Sections
+
+**Reference Numbers:**
+- Key-value pairs for common reference numbers
+- Common labels: PO Number, Job Number, Contract Number, RFQ Number
+- Fully customizable labels
+
+**Custom Fields:**
+- Arbitrary label-value pairs
+- For any additional data the organization needs to track
+
+**Internal Notes:**
+- Rich text area for internal team notes
+- Not included in client-facing output
+- Marked clearly as "Internal Only"
+
+### Features
+- Collapsible sections
+- Add custom sections
+- Import from previous proposals
+- Templates for common reference sets
+
+### Design Requirements
+- Clean key-value layout
+- Subtle section headers
+- "Internal Only" badge for notes section
+- Minimal visual clutter
+
+---
+
+## Tab 7: Documents
 
 ### Purpose
 Store all project-related files in one location.
@@ -501,7 +684,7 @@ Store all project-related files in one location.
 
 ---
 
-## Tab 6: Presentation
+## Tab 8: Presentation
 
 ### Purpose
 Configure how the proposal is presented and distributed. This is where you build the document template by selecting which fields from other tabs to include.
@@ -680,25 +863,32 @@ interface Proposal {
   is_complete: boolean;  // false shows hazard icon in proposals table
 }
 
-// Tab 1: Info
+// Tab 1: Info (Quartet Layout)
 interface ProposalInfo {
-  // Project
+  // Top Left - Project Details
   project_name: string;
-  date_created: string;
+  proposal_date: string;
+  proposal_number: string;  // Auto-generated
   quote_status: 'draft' | 'pending' | 'approved' | 'rejected';
   quote_source: 'referral' | 'website' | 'cold_call' | 'repeat' | 'other';
 
-  // Client
+  // Top Right - Created By
+  created_by_user_id: string;  // Org member dropdown
+  created_by_name: string;     // Auto-filled from user
+  created_by_email: string;    // Auto-filled from user
+  date_time_created: string;   // Auto, read-only
+
+  // Bottom Left - Client Information
   client_name: string;
   client_company?: string;
   client_address?: Address;
   client_phone?: string;
-  client_email?: string;
 
-  // Job
+  // Bottom Right - Job Details
   job_location?: Address;
-  job_type: 'prevailing' | 'standard';
-  job_description?: string;
+  job_type: 'union' | 'non_union';  // Was prevailing/standard
+  estimated_due_date?: string;
+  job_notes?: string;
 }
 
 // Tab 2: Products
@@ -779,12 +969,42 @@ interface PaymentMilestone {
   trigger: string;
 }
 
-interface TimelinePhase {
-  phase: string;
-  duration: string;
+// Tab 5: Lead Times
+interface ProposalLeadTimes {
+  phases: LeadTimePhase[];
+  total_estimated_duration?: string;  // Calculated
 }
 
-// Tab 6: Presentation Config
+interface LeadTimePhase {
+  id: string;
+  phase_name: string;
+  duration: number;
+  duration_unit: 'days' | 'weeks' | 'months';
+  reference_type: 'order_placement' | 'approval' | 'previous_phase' | 'specific_date' | 'custom';
+  reference_text?: string;  // For custom references
+  order: number;
+}
+
+// Tab 6: Miscellaneous
+interface ProposalMiscellaneous {
+  reference_numbers: ReferenceNumber[];
+  custom_fields: CustomField[];
+  internal_notes?: string;  // Not included in client output
+}
+
+interface ReferenceNumber {
+  id: string;
+  label: string;   // e.g., "PO Number", "Job Number"
+  value: string;   // e.g., "PO-2024-1234"
+}
+
+interface CustomField {
+  id: string;
+  label: string;
+  value: string;
+}
+
+// Tab 8: Presentation Config
 interface PresentationConfig {
   template_zones: TemplateZone[];
   format: 'pdf' | 'text' | 'email' | 'print';
@@ -807,10 +1027,12 @@ interface TemplateZone {
 // Form Data - unified structure for all tab values
 // Uses {{tab_id.field_id}} pattern for variable references
 interface FormData {
-  info: Record<string, any>;
-  products: Record<string, any>;
-  pricing: Record<string, any>;
-  terms: Record<string, any>;
+  info: ProposalInfo;
+  products: ProposalProducts;
+  pricing: ProposalPricing;
+  terms: ProposalTerms;
+  lead_times: ProposalLeadTimes;
+  miscellaneous: ProposalMiscellaneous;
   documents: Record<string, any>;
   [customTabId: string]: Record<string, any>;  // Custom tabs
 }
@@ -931,10 +1153,12 @@ src/
 │       │   ├── ProposalTabs.tsx      # Tab navigation (top bar)
 │       │   │
 │       │   ├── tabs/
-│       │   │   ├── InfoTab.tsx
+│       │   │   ├── InfoTab.tsx           # Quartet layout
 │       │   │   ├── ProductsTab.tsx
-│       │   │   ├── PricingTab.tsx
-│       │   │   ├── TermsTab.tsx
+│       │   │   ├── PricingTab.tsx        # Horizontal subsections
+│       │   │   ├── TermsTab.tsx          # Horizontal subsections
+│       │   │   ├── LeadTimesTab.tsx      # NEW - Phase durations
+│       │   │   ├── MiscellaneousTab.tsx  # NEW - Custom references
 │       │   │   ├── DocumentsTab.tsx
 │       │   │   └── PresentationTab.tsx
 │       │   │
@@ -1008,6 +1232,8 @@ export const ProposalOverlay: React.FC<ProposalOverlayProps> = ({
         {activeTab === 'products' && <ProductsTab />}
         {activeTab === 'pricing' && <PricingTab />}
         {activeTab === 'terms' && <TermsTab />}
+        {activeTab === 'lead_times' && <LeadTimesTab />}
+        {activeTab === 'miscellaneous' && <MiscellaneousTab />}
         {activeTab === 'documents' && <DocumentsTab />}
         {activeTab === 'presentation' && <PresentationTab />}
       </div>
@@ -1104,13 +1330,14 @@ ALREADY IN _deprecated/ (Confirm removal safe)
 - [ ] Build ProposalHeader with status/save
 - [ ] Build ProposalTabs navigation (renders tabs from form schema)
 
-### Phase 2: Info Tab
-- [ ] Build InfoTab component with all sections
-- [ ] Project details form
-- [ ] Client information form
-- [ ] Job details form
+### Phase 2: Info Tab (Quartet Layout)
+- [ ] Build InfoTab component with 2x2 grid layout
+- [ ] Top Left: Project Details box (name, date, proposal#, status, source)
+- [ ] Top Right: Created By box (user dropdown, email, datetime)
+- [ ] Bottom Left: Client Information box (name, company, address, phone)
+- [ ] Bottom Right: Job Details box (location, type, due date, notes)
 - [ ] Auto-save on blur
-- [ ] Completion tracking
+- [ ] Apple-level styling (subtle shadows, minimal borders)
 
 ### Phase 3: Products Tab
 - [ ] Build ProductsTab component
@@ -1119,8 +1346,8 @@ ALREADY IN _deprecated/ (Confirm removal safe)
 - [ ] Cascading product support
 - [ ] (Later) AI extraction integration
 
-### Phase 4: Pricing Tab
-- [ ] Build PricingTab component
+### Phase 4: Pricing Tab (Horizontal Subsections)
+- [ ] Build PricingTab component with horizontal subsection nav
 - [ ] PricingSection collapsible component
 - [ ] PricingLineItem with calculations
 - [ ] Add/remove sections
@@ -1128,22 +1355,36 @@ ALREADY IN _deprecated/ (Confirm removal safe)
 - [ ] Real-time grand total
 - [ ] Sell rule dropdown
 
-### Phase 5: Terms Tab
-- [ ] Build TermsTab component
-- [ ] PaymentSchedule builder
-- [ ] Timeline builder
-- [ ] Exclusions checklist
-- [ ] Warranty settings
-- [ ] Notes textarea
+### Phase 5: Terms Tab (Horizontal Subsections)
+- [ ] Build TermsTab component with horizontal subsection nav
+- [ ] Subsection: Pricing Terms (payment schedule, methods, net terms)
+- [ ] Subsection: Delivery Terms (delivery method, warranty)
+- [ ] Subsection: Exclusions (checklist, general notes)
+- [ ] Clean pill-button or underlined tab design
 
-### Phase 6: Documents Tab
+### Phase 6: Lead Times Tab (NEW)
+- [ ] Build LeadTimesTab component
+- [ ] Phase list with duration/unit/reference
+- [ ] Drag to reorder phases
+- [ ] Auto-calculate total estimated timeline
+- [ ] Duration unit selector (days/weeks/months)
+- [ ] Reference date dropdown
+
+### Phase 7: Miscellaneous Tab (NEW)
+- [ ] Build MiscellaneousTab component
+- [ ] Reference numbers section (PO, Job, Contract numbers)
+- [ ] Custom fields section (label-value pairs)
+- [ ] Internal notes section (marked "not in output")
+- [ ] Collapsible sections
+
+### Phase 8: Documents Tab
 - [ ] Build DocumentsTab component
 - [ ] File upload with drag-drop
 - [ ] File categorization
 - [ ] File list with preview
 - [ ] Supabase storage integration
 
-### Phase 7: Presentation Tab
+### Phase 9: Presentation Tab
 - [ ] Build PresentationTab component
 - [ ] Template zone configuration
 - [ ] Field selector from available data (using {{tab_id.field_id}} pattern)
@@ -1151,7 +1392,7 @@ ALREADY IN _deprecated/ (Confirm removal safe)
 - [ ] Output format selection (PDF, text, email)
 - [ ] Preview generation
 
-### Phase 8: Polish & Integration
+### Phase 10: Polish & Integration
 - [ ] Status workflow (draft → sent → approved)
 - [ ] Proposal list/table view
 - [ ] Search and filter proposals
@@ -1163,6 +1404,36 @@ ALREADY IN _deprecated/ (Confirm removal safe)
 ---
 
 ## Design Guidelines
+
+### Apple-Level Design Principles
+
+The Form Builder should embody a sleek, modern, and simple aesthetic. **No tacky AI design slop.**
+
+**Core Principles:**
+1. **Minimalism** - Every element must serve a purpose. Remove visual clutter.
+2. **Whitespace** - Generous padding and margins create breathing room.
+3. **Subtle Depth** - Use soft shadows instead of heavy borders.
+4. **Consistency** - Uniform spacing, sizing, and styling throughout.
+5. **Clarity** - Information hierarchy is immediately obvious.
+
+**Visual Characteristics:**
+- Cards with subtle `shadow-sm` or `shadow-md`, not thick borders
+- Rounded corners (`rounded-lg` or `rounded-xl`)
+- Clean typography with proper font weights
+- Muted colors for backgrounds, accent for key actions
+- Smooth transitions and micro-interactions
+- Labels above inputs, never inline
+- Generous internal padding (p-4 to p-6)
+- Consistent gap spacing (gap-4, gap-6)
+
+**What to AVOID:**
+- Heavy black borders
+- Gradient backgrounds (unless very subtle)
+- Drop shadows that are too dark or large
+- Cluttered layouts with too many elements
+- Inconsistent spacing or sizing
+- Generic "AI-generated" aesthetic
+- Over-designed icons or graphics
 
 ### Color Usage (From existing design system)
 
@@ -1247,4 +1518,5 @@ ALREADY IN _deprecated/ (Confirm removal safe)
 ---
 
 *Plan created: December 8, 2024*
-*Status: Awaiting review*
+*Updated: December 9, 2024 - Added Lead Times tab, Miscellaneous tab, quartet layout for Info, horizontal subsections for Terms/Pricing, Apple-level design guidelines*
+*Status: Ready for implementation*
