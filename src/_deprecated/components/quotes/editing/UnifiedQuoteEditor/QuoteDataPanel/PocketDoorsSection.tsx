@@ -27,6 +27,8 @@ export const PocketDoorsSection: React.FC<PocketDoorsSectionProps> = ({
     switch (foldType) {
       case "Bi-Fold":
         return ["Bulb Seal"];
+      case "Tri-Fold":
+        return ["Bulb Seal", "Expander", "Lap Trim"];
       case "Single":
         return ["Bulb Seal", "Expander"];
       case "Double":
@@ -102,6 +104,7 @@ export const PocketDoorsSection: React.FC<PocketDoorsSectionProps> = ({
                     <SelectContent className="text-left">
                       <SelectItem value="None">None</SelectItem>
                       <SelectItem value="Bi-Fold">Bi-Fold</SelectItem>
+                      <SelectItem value="Tri-Fold">Tri-Fold</SelectItem>
                       <SelectItem value="Single">Single</SelectItem>
                       <SelectItem value="Double">Double</SelectItem>
                     </SelectContent>
