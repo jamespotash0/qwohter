@@ -24,6 +24,7 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { EditorMode } from '../ProposalEditor';
+import { extractProductsFromFile } from '@/services/productExtraction';
 
 interface ProductsTabProps {
   mode: EditorMode;
@@ -35,6 +36,36 @@ interface Product {
   quantity: number;
   unit: string;
   description?: string;
+  rawData?: {
+    manufacturer?: string | null;
+    productType?: string | null;
+    productCategory?: string | null;
+    series?: string | null;
+    model?: string | null;
+    dimensions?: {
+      height?: string | null;
+      width?: string | null;
+      length?: string | null;
+      thickness?: string | null;
+    };
+    performanceRatings?: {
+      stc?: number | null;
+      fireRating?: string | null;
+      acousticRating?: string | null;
+    };
+    appearance?: {
+      color?: string | null;
+      finish?: string | null;
+      trim?: string | null;
+    };
+    materials?: {
+      core?: string | null;
+      face?: string | null;
+      frame?: string | null;
+    };
+    certifications?: string[];
+    specifications?: Record<string, any>;
+  };
 }
 
 const UNITS = [
@@ -57,6 +88,11 @@ export function ProductsTab({ mode }: ProductsTabProps) {
   // Start with empty products array
   const [products, setProducts] = useState<Product[]>([]);
   const [extracting, setExtracting] = useState(false);
+
+  // Helper function to determine if a product has rich metadata
+  const isComplexProduct = useCallback((product: Product): boolean => {
+    return !!(product.rawData && Object.keys(product.rawData).length > 0);
+  }, []);
 
   // Add new product
   const addProduct = useCallback(() => {
@@ -111,32 +147,15 @@ export function ProductsTab({ mode }: ProductsTabProps) {
     setExtracting(true);
 
     try {
-      // TODO: Implement actual AI extraction
-      // This would call an API endpoint that uses AI to extract product data from the file
+      // Use the real AI extraction service
+      const extractedProducts = await extractProductsFromFile(file);
 
-      // Simulate AI extraction delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Mock extracted products
-      const extractedProducts: Product[] = [
-        {
-          id: Math.random().toString(36).substr(2, 9),
-          name: 'Product A (Extracted)',
-          quantity: 10,
-          unit: 'ea',
-          description: 'Extracted from document',
-        },
-        {
-          id: Math.random().toString(36).substr(2, 9),
-          name: 'Product B (Extracted)',
-          quantity: 5,
-          unit: 'box',
-          description: 'Extracted from document',
-        },
-      ];
-
-      setProducts(prev => [...prev, ...extractedProducts]);
-      toast.success(`Extracted ${extractedProducts.length} products from ${file.name}`);
+      if (extractedProducts.length === 0) {
+        toast.warning(`No products found in ${file.name}`);
+      } else {
+        setProducts(prev => [...prev, ...extractedProducts]);
+        toast.success(`Extracted ${extractedProducts.length} product${extractedProducts.length === 1 ? '' : 's'} from ${file.name}`);
+      }
 
       // Reset file input
       if (fileInputRef.current) {
@@ -144,7 +163,8 @@ export function ProductsTab({ mode }: ProductsTabProps) {
       }
     } catch (error) {
       console.error('AI extraction error:', error);
-      toast.error('Failed to extract products from file');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to extract products: ${errorMessage}`);
     } finally {
       setExtracting(false);
     }
@@ -244,53 +264,212 @@ export function ProductsTab({ mode }: ProductsTabProps) {
             </div>
           </div>
 
-          {/* Extracted Products Cards */}
-          {products.length > 0 && (
-            <div className="space-y-3">
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Extracted Products ({products.length})
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {products.map((product) => (
-                  <div
-                    key={product.id}
-                    className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                        <h5 className="font-semibold text-gray-900 dark:text-gray-100">
-                          {product.name || 'Untitled Product'}
-                        </h5>
-                      </div>
-                      <button
-                        onClick={() => removeProduct(product.id)}
-                        className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded"
-                      >
-                        <Trash className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Quantity:</span>
-                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {product.quantity} {product.unit}
-                        </span>
-                      </div>
-                      {product.description && (
-                        <div>
-                          <span className="text-gray-600 dark:text-gray-400">Description:</span>
-                          <p className="text-gray-900 dark:text-gray-100 mt-1">
-                            {product.description}
-                          </p>
+          {/* Extracted Products - Smart Display */}
+          {products.length > 0 && (() => {
+            const complexProducts = products.filter(isComplexProduct);
+            const simpleProducts = products.filter(p => !isComplexProduct(p));
+
+            return (
+              <div className="space-y-6">
+                {/* Complex Products - Card View */}
+                {complexProducts.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Detailed Products ({complexProducts.length})
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {complexProducts.map((product) => (
+                        <div
+                          key={product.id}
+                          className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 transition-colors"
+                        >
+                          {/* Product Header */}
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Package className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                <h5 className="font-semibold text-gray-900 dark:text-gray-100">
+                                  {product.name}
+                                </h5>
+                              </div>
+                              {/* Product Hierarchy */}
+                              {(product.rawData?.manufacturer || product.rawData?.series) && (
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  {[product.rawData.manufacturer, product.rawData.series].filter(Boolean).join(' • ')}
+                                  {product.rawData.model && (
+                                    <span className="ml-1">({product.rawData.model})</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => removeProduct(product.id)}
+                              className="p-1 text-gray-400 hover:text-red-500 transition-colors rounded"
+                            >
+                              <Trash className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          {/* Product Details */}
+                          <div className="space-y-2 text-xs">
+                            {/* Quantity */}
+                            <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700">
+                              <span className="text-gray-600 dark:text-gray-400">Quantity:</span>
+                              <span className="font-medium text-gray-900 dark:text-gray-100">
+                                {product.quantity} {product.unit}
+                              </span>
+                            </div>
+
+                            {/* Category */}
+                            {(product.rawData?.productType || product.rawData?.productCategory) && (
+                              <div className="flex justify-between py-1 border-b border-gray-100 dark:border-gray-700">
+                                <span className="text-gray-600 dark:text-gray-400">Category:</span>
+                                <span className="text-gray-900 dark:text-gray-100">
+                                  {[product.rawData.productType, product.rawData.productCategory].filter(Boolean).join(' / ')}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Dimensions */}
+                            {product.rawData?.dimensions && Object.values(product.rawData.dimensions).some(v => v) && (
+                              <div className="py-1 border-b border-gray-100 dark:border-gray-700">
+                                <span className="text-gray-600 dark:text-gray-400">Dimensions:</span>
+                                <div className="text-gray-900 dark:text-gray-100 mt-1">
+                                  {Object.entries(product.rawData.dimensions)
+                                    .filter(([_, v]) => v)
+                                    .map(([k, v]) => `${k.charAt(0).toUpperCase()}: ${v}`)
+                                    .join(', ')}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Performance Ratings */}
+                            {product.rawData?.performanceRatings && Object.values(product.rawData.performanceRatings).some(v => v) && (
+                              <div className="py-1 border-b border-gray-100 dark:border-gray-700">
+                                <span className="text-gray-600 dark:text-gray-400">Performance:</span>
+                                <div className="text-gray-900 dark:text-gray-100 mt-1">
+                                  {product.rawData.performanceRatings.stc && `STC ${product.rawData.performanceRatings.stc}`}
+                                  {product.rawData.performanceRatings.fireRating && ` • Fire: ${product.rawData.performanceRatings.fireRating}`}
+                                  {product.rawData.performanceRatings.acousticRating && ` • ${product.rawData.performanceRatings.acousticRating}`}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Appearance */}
+                            {product.rawData?.appearance && Object.values(product.rawData.appearance).some(v => v) && (
+                              <div className="py-1 border-b border-gray-100 dark:border-gray-700">
+                                <span className="text-gray-600 dark:text-gray-400">Appearance:</span>
+                                <div className="text-gray-900 dark:text-gray-100 mt-1">
+                                  {Object.entries(product.rawData.appearance)
+                                    .filter(([_, v]) => v)
+                                    .map(([k, v]) => `${k.charAt(0).toUpperCase() + k.slice(1)}: ${v}`)
+                                    .join(', ')}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Materials */}
+                            {product.rawData?.materials && Object.values(product.rawData.materials).some(v => v) && (
+                              <div className="py-1 border-b border-gray-100 dark:border-gray-700">
+                                <span className="text-gray-600 dark:text-gray-400">Materials:</span>
+                                <div className="text-gray-900 dark:text-gray-100 mt-1">
+                                  {Object.entries(product.rawData.materials)
+                                    .filter(([_, v]) => v)
+                                    .map(([k, v]) => `${k.charAt(0).toUpperCase() + k.slice(1)}: ${v}`)
+                                    .join(', ')}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Certifications */}
+                            {product.rawData?.certifications && product.rawData.certifications.length > 0 && (
+                              <div className="py-1 border-b border-gray-100 dark:border-gray-700">
+                                <span className="text-gray-600 dark:text-gray-400">Certifications:</span>
+                                <div className="text-gray-900 dark:text-gray-100 mt-1">
+                                  {product.rawData.certifications.join(', ')}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Specifications */}
+                            {product.rawData?.specifications && Object.keys(product.rawData.specifications).length > 0 && (
+                              <div className="py-1">
+                                <span className="text-gray-600 dark:text-gray-400">Specifications:</span>
+                                <div className="text-gray-900 dark:text-gray-100 mt-1 space-y-0.5">
+                                  {Object.entries(product.rawData.specifications).map(([k, v]) => (
+                                    <div key={k}>{k}: {String(v)}</div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
+                      ))}
                     </div>
                   </div>
-                ))}
+                )}
+
+                {/* Simple Products - Table View */}
+                {simpleProducts.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Simple Products ({simpleProducts.length})
+                    </h4>
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
+                      {/* Table Header */}
+                      <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        <div className="col-span-5">Product Name</div>
+                        <div className="col-span-2">Quantity</div>
+                        <div className="col-span-2">Unit</div>
+                        <div className="col-span-2">Description</div>
+                        <div className="col-span-1"></div>
+                      </div>
+
+                      {/* Product Rows */}
+                      <div>
+                        {simpleProducts.map((product) => (
+                          <div
+                            key={product.id}
+                            className="grid grid-cols-12 gap-3 px-4 py-3 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
+                          >
+                            {/* Product Name */}
+                            <div className="col-span-5 font-medium text-gray-900 dark:text-gray-100">
+                              {product.name}
+                            </div>
+
+                            {/* Quantity */}
+                            <div className="col-span-2 text-gray-700 dark:text-gray-300">
+                              {product.quantity}
+                            </div>
+
+                            {/* Unit */}
+                            <div className="col-span-2 text-gray-700 dark:text-gray-300">
+                              {product.unit}
+                            </div>
+
+                            {/* Description */}
+                            <div className="col-span-2 text-sm text-gray-600 dark:text-gray-400 truncate">
+                              {product.description || '-'}
+                            </div>
+
+                            {/* Delete */}
+                            <div className="col-span-1 flex justify-center">
+                              <button
+                                onClick={() => removeProduct(product.id)}
+                                className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                              >
+                                <Trash className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
