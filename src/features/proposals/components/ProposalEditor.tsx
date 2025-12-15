@@ -5,10 +5,10 @@
  * Info | Products | Pricing | Terms | Lead Times | Misc | Documents | Presentation
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, FloppyDisk, Check, Info } from '@phosphor-icons/react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,7 +44,7 @@ import {
 } from '../context/FormBuilderContext';
 
 // Tab Components
-import { InfoTab } from './tabs/InfoTab';
+import { InfoTab, type InfoTabRef, type InfoTabData } from './tabs/InfoTab';
 import { LeadTimesTab } from './tabs/LeadTimesTab';
 import { MiscellaneousTab } from './tabs/MiscellaneousTab';
 import { PricingTab } from './tabs/PricingTab';
@@ -118,6 +118,9 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
   // Get form builder context
   const { data: builderData, isDirty, loadData, markClean } = useFormBuilder();
 
+  // Ref for InfoTab to get data on save
+  const infoTabRef = useRef<InfoTabRef>(null);
+
   // Form/Proposal name (editable)
   const [formName, setFormName] = useState('New Form Template');
   const [proposalName, setProposalName] = useState(proposalId ? 'Untitled Proposal' : 'New Proposal');
@@ -153,10 +156,13 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
         setProposalName(proposalData.project_name);
         setInitialProposalName(proposalData.project_name);
       }
-      // TODO: Load proposal data into form fields
-      // For now, proposal data will be loaded by individual tabs
+      // Load form_data from proposal into the context
+      if (proposalData.form_data) {
+        const parsedData = parseFormBuilderData(proposalData.form_data);
+        loadData(parsedData);
+      }
     }
-  }, [proposalData, isBuilderMode]);
+  }, [proposalData, isBuilderMode, loadData]);
 
   // Track dirty state when name actually changes from initial value
   useEffect(() => {
@@ -182,6 +188,13 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
       [tabId]: isDirty,
     }));
   }, []);
+
+  // Callback for InfoTab to update project name
+  const handleProjectNameChange = useCallback((name: string) => {
+    if (!isBuilderMode) {
+      setProposalName(name);
+    }
+  }, [isBuilderMode]);
 
   // Create stable callbacks for each tab (memoized to prevent infinite loops)
   const tabCallbacks = useMemo(() => {
@@ -280,15 +293,29 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
           return;
         }
 
-        // Serialize the form builder data for the proposal's data field
-        const serializedData = serializeFormBuilderData(builderData);
+        // Get InfoTab data from ref
+        const infoData = infoTabRef.current?.getData();
+
+        // Serialize the form builder data (terms, pricing, etc.)
+        const serializedBuilderData = serializeFormBuilderData(builderData);
+
+        // Combine info data with other tab data for form_data field
+        const formDataPayload = {
+          ...serializedBuilderData,
+          info: infoData, // Add info tab data
+        };
 
         await updateProposalMutation.mutateAsync({
-          id: proposalId,
+          proposalId: proposalId,
           updates: {
             project_name: trimmedName,
-            // Store form data in the proposal's data field
-            data: serializedData,
+            // Store all form data in the proposal's form_data field
+            form_data: formDataPayload,
+            // Extract key fields for easier querying/display
+            client_name: infoData?.clientName || undefined,
+            client_company: infoData?.clientCompany || undefined,
+            job_location: infoData?.jobLocation || undefined,
+            quote_source: infoData?.quoteSource || undefined,
           },
         });
         toast.success('Proposal saved');
@@ -296,8 +323,6 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
         setNameIsDirty(false);
         setTabDirtyStates({});
       }
-
-      handleClose();
     } catch (error) {
       console.error('Save failed:', error);
       toast.error('Failed to save: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -319,19 +344,16 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
     createFormMutation,
     updateProposalMutation,
     markClean,
-    handleClose,
   ]);
 
-  // Render active tab content
-  const renderTabContent = () => {
-    const tab = TABS.find(t => t.id === activeTab);
-    if (!tab?.component) {
-      // Show appropriate message based on tab type
-      const isUserInputTab = tab?.id === 'documents' || tab?.id === 'products';
+  // Render a single tab's content
+  const renderTabContent = (tab: typeof TABS[number]) => {
+    if (!tab.component) {
+      const isUserInputTab = tab.id === 'documents' || tab.id === 'products';
       return (
         <div className="flex items-center justify-center h-96">
           <div className="text-center text-gray-500">
-            <p className="text-lg font-medium">{tab?.label} Tab</p>
+            <p className="text-lg font-medium">{tab.label} Tab</p>
             <p className="text-sm mt-1">
               {isUserInputTab
                 ? 'User input area - implementation in progress'
@@ -341,19 +363,30 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
         </div>
       );
     }
-    const TabComponent = tab.component;
 
-    // Get the stable callback for this tab
+    const TabComponent = tab.component;
     const onDirtyChange = tabCallbacks[tab.id];
 
-    // Pass proposalData to InfoTab
     if (tab.id === 'info') {
-      return <InfoTab mode={mode} proposalData={proposalData} onDirtyChange={onDirtyChange} />;
+      return (
+        <InfoTab
+          ref={infoTabRef}
+          mode={mode}
+          proposalData={proposalData}
+          onDirtyChange={onDirtyChange}
+          onProjectNameChange={handleProjectNameChange}
+        />
+      );
     }
 
-    // Pass proposalId to DocumentsTab
     if (tab.id === 'documents') {
-      return <DocumentsTab mode={mode} proposalId={proposalId} onDirtyChange={onDirtyChange} />;
+      return (
+        <DocumentsTab
+          mode={mode}
+          proposalId={proposalId}
+          organizationId={currentOrganization?.id}
+        />
+      );
     }
 
     return <TabComponent mode={mode} proposalData={proposalData} onDirtyChange={onDirtyChange} />;
@@ -472,20 +505,17 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
         </nav>
       </header>
 
-      {/* Content Area */}
+      {/* Content Area - All tabs stay mounted, only active one is visible */}
       <main className="flex-1 overflow-auto">
         <div className="px-8 py-6">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
+          {TABS.map((tab) => (
+            <div
+              key={tab.id}
+              className={activeTab === tab.id ? 'block' : 'hidden'}
             >
-              {renderTabContent()}
-            </motion.div>
-          </AnimatePresence>
+              {renderTabContent(tab)}
+            </div>
+          ))}
         </div>
       </main>
 

@@ -71,6 +71,7 @@ export interface UpdateProposalData {
   submitted_at?: string;
   won_at?: string;
   rejected_at?: string;
+  quote_source?: string;
 }
 
 export interface ProposalVersionInfo {

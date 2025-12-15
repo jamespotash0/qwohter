@@ -3,98 +3,110 @@
  *
  * File upload and management for proposals:
  * - Builder Mode: Disabled (no functionality)
- * - Filler Mode: Upload and view documents
+ * - Filler Mode: Upload and view documents stored in Supabase
  */
 
-import { useState, useCallback, useRef } from 'react';
-import { Plus, FilePdf, FileDoc, FileImage, File as FileIcon, Trash, Download } from '@phosphor-icons/react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { Plus, FilePdf, FileDoc, FileImage, File as FileIcon, Trash, Download, Spinner } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { EditorMode } from '../ProposalEditor';
+import {
+  uploadProposalDocument,
+  getProposalDocuments,
+  deleteProposalDocument,
+  formatFileSize,
+  getFileCategory,
+  type ProposalDocument,
+} from '@/services/proposalDocumentsService';
 
 interface DocumentsTabProps {
   mode: EditorMode;
   proposalId?: string;
-}
-
-interface Document {
-  id: string;
-  file_name: string;
-  file_size: number;
-  file_type: string;
-  file_url: string;
-  uploaded_at: string;
-  uploaded_by: string;
+  organizationId?: string;
 }
 
 // File type icon mapping
-const getFileIcon = (fileType: string) => {
-  if (fileType.includes('pdf')) return <FilePdf className="w-5 h-5 text-red-500" />;
-  if (fileType.includes('word') || fileType.includes('doc')) return <FileDoc className="w-5 h-5 text-blue-500" />;
-  if (fileType.includes('image')) return <FileImage className="w-5 h-5 text-green-500" />;
-  return <FileIcon className="w-5 h-5 text-gray-500" />;
+const getFileIcon = (mimeType: string | null) => {
+  const category = getFileCategory(mimeType);
+  switch (category) {
+    case 'pdf':
+      return <FilePdf className="w-5 h-5 text-red-500" />;
+    case 'word':
+      return <FileDoc className="w-5 h-5 text-blue-500" />;
+    case 'image':
+      return <FileImage className="w-5 h-5 text-green-500" />;
+    default:
+      return <FileIcon className="w-5 h-5 text-gray-500" />;
+  }
 };
 
-// Format file size
-const formatFileSize = (bytes: number): string => {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-};
-
-// Format date
+// Format date for display
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
-export function DocumentsTab({ mode, proposalId }: DocumentsTabProps) {
+export function DocumentsTab({ mode, proposalId, organizationId }: DocumentsTabProps) {
   const isBuilderMode = mode === 'builder';
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Mock documents state (will be replaced with React Query)
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const [documents, setDocuments] = useState<ProposalDocument[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Load documents on mount (filler mode only)
+  useEffect(() => {
+    if (!isBuilderMode && proposalId) {
+      loadDocuments();
+    }
+  }, [isBuilderMode, proposalId]);
+
+  const loadDocuments = useCallback(async () => {
+    if (!proposalId) return;
+    setIsLoading(true);
+    try {
+      const docs = await getProposalDocuments(proposalId);
+      setDocuments(docs);
+    } catch (error) {
+      console.error('Failed to load documents:', error);
+      toast.error('Failed to load documents');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [proposalId]);
 
   // Handle file selection
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-
     handleFileUpload(files[0]);
   }, []);
 
   // Handle file upload
   const handleFileUpload = useCallback(async (file: File) => {
-    if (!proposalId) {
-      toast.error('No proposal ID provided');
+    if (!proposalId || !organizationId) {
+      toast.error('Missing proposal or organization information');
       return;
     }
 
-    // Validate file size (50MB max)
-    const MAX_SIZE = 50 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      toast.error(`File too large. Maximum size is ${MAX_SIZE / (1024 * 1024)}MB`);
-      return;
-    }
-
-    setUploading(true);
+    setIsUploading(true);
 
     try {
-      // TODO: Implement actual file upload to Supabase Storage
-      // For now, create mock document
-      const mockDoc: Document = {
-        id: Math.random().toString(36).substr(2, 9),
-        file_name: file.name,
-        file_size: file.size,
-        file_type: file.type,
-        file_url: '#', // Will be replaced with actual URL
-        uploaded_at: new Date().toISOString(),
-        uploaded_by: 'Current User',
-      };
+      const result = await uploadProposalDocument(proposalId, organizationId, file, {
+        tabKey: 'documents',
+      });
 
-      setDocuments(prev => [mockDoc, ...prev]);
+      if (!result.success) {
+        toast.error(result.error || 'Upload failed');
+        return;
+      }
+
+      // Add new document to list
+      if (result.document) {
+        setDocuments(prev => [result.document!, ...prev]);
+      }
       toast.success(`${file.name} uploaded successfully`);
 
       // Reset file input
@@ -105,21 +117,36 @@ export function DocumentsTab({ mode, proposalId }: DocumentsTabProps) {
       console.error('Upload error:', error);
       toast.error('Failed to upload file');
     } finally {
-      setUploading(false);
+      setIsUploading(false);
     }
-  }, [proposalId]);
+  }, [proposalId, organizationId]);
 
   // Handle delete document
-  const handleDelete = useCallback((docId: string) => {
-    // TODO: Implement actual delete with confirmation
-    setDocuments(prev => prev.filter(doc => doc.id !== docId));
-    toast.success('Document deleted');
+  const handleDelete = useCallback(async (docId: string) => {
+    setDeletingId(docId);
+    try {
+      const result = await deleteProposalDocument(docId);
+      if (result.success) {
+        setDocuments(prev => prev.filter(doc => doc.id !== docId));
+        toast.success('Document deleted');
+      } else {
+        toast.error(result.error || 'Failed to delete');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete document');
+    } finally {
+      setDeletingId(null);
+    }
   }, []);
 
   // Handle download document
-  const handleDownload = useCallback((doc: Document) => {
-    // TODO: Implement actual download
-    toast.info(`Downloading ${doc.file_name}...`);
+  const handleDownload = useCallback((doc: ProposalDocument) => {
+    if (doc.download_url) {
+      window.open(doc.download_url, '_blank');
+    } else {
+      toast.error('Download URL not available');
+    }
   }, []);
 
   // Builder mode: Show disabled state
@@ -133,6 +160,15 @@ export function DocumentsTab({ mode, proposalId }: DocumentsTabProps) {
             Documents are uploaded when filling out proposals
           </p>
         </div>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Spinner className="w-8 h-8 animate-spin text-coral" />
       </div>
     );
   }
@@ -154,17 +190,26 @@ export function DocumentsTab({ mode, proposalId }: DocumentsTabProps) {
             type="file"
             onChange={handleFileSelect}
             className="hidden"
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp"
-            disabled={uploading}
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv"
+            disabled={isUploading}
           />
           <Button
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
+            disabled={isUploading}
             size="sm"
             className="bg-coral hover:bg-coral-hover text-white"
           >
-            <Plus className="w-4 h-4 mr-1" />
-            {uploading ? 'Uploading...' : 'Add File'}
+            {isUploading ? (
+              <>
+                <Spinner className="w-4 h-4 mr-1 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4 mr-1" />
+                Add File
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -187,7 +232,7 @@ export function DocumentsTab({ mode, proposalId }: DocumentsTabProps) {
               <div className="flex items-center gap-3">
                 {/* File Icon */}
                 <div className="flex-shrink-0">
-                  {getFileIcon(doc.file_type)}
+                  {getFileIcon(doc.mime_type)}
                 </div>
 
                 {/* File Info */}
@@ -198,7 +243,7 @@ export function DocumentsTab({ mode, proposalId }: DocumentsTabProps) {
                   <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                     <span>{formatFileSize(doc.file_size)}</span>
                     <span>•</span>
-                    <span>{formatDate(doc.uploaded_at)}</span>
+                    <span>{formatDate(doc.created_at)}</span>
                   </div>
                 </div>
 
@@ -208,15 +253,21 @@ export function DocumentsTab({ mode, proposalId }: DocumentsTabProps) {
                     onClick={() => handleDownload(doc)}
                     className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
                     title="Download"
+                    disabled={!doc.download_url}
                   >
                     <Download className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(doc.id)}
-                    className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                    disabled={deletingId === doc.id}
+                    className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
                     title="Delete"
                   >
-                    <Trash className="w-4 h-4" />
+                    {deletingId === doc.id ? (
+                      <Spinner className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>

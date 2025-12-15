@@ -63,12 +63,13 @@ const menuItems: MenuItem[] = [
     path: "/proposals",
     roles: ['Owner', 'Admin', 'Member'], // Available to all
   },
-  {
-    title: "Products",
-    icon: Package,
-    path: "/products",
-    roles: ['Owner', 'Admin', 'Member'], // Available to all
-  },
+  // Products - HIDDEN for now
+  // {
+  //   title: "Products",
+  //   icon: Package,
+  //   path: "/products",
+  //   roles: ['Owner', 'Admin', 'Member'], // Available to all
+  // },
   {
     title: "Contacts",
     icon: AddressBook,

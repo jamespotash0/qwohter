@@ -11,6 +11,7 @@ import { queryClient } from "@/lib/queryClient";
 import { Analytics } from "@vercel/analytics/react";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { useVersionCheck } from "@/hooks/useVersionCheck";
+import "@/utils/debugImpersonate"; // Registers window.impersonate() in dev
 
 /**
  * Main App component - Industry Standard Architecture
