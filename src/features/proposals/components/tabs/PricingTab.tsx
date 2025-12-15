@@ -18,6 +18,23 @@
 
 import { useState, useMemo } from 'react';
 import { Plus, Trash, CaretDown, CaretRight, DotsSixVertical } from '@phosphor-icons/react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -48,6 +65,7 @@ interface PricingLineItem {
   sellRule: string;
   unitCost: number;
   markupPercent: number;
+  isTaxable: boolean; // Whether this item has sales tax applied
 }
 
 // Pricing section interface
@@ -85,7 +103,7 @@ const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
-// Default sections
+// Default sections - all start empty with no pre-filled line items
 const DEFAULT_SECTIONS: PricingSection[] = [
   {
     id: 'merchandise',
@@ -99,42 +117,27 @@ const DEFAULT_SECTIONS: PricingSection[] = [
     name: 'Delivery & Installation',
     type: 'delivery_install',
     collapsed: false,
-    lineItems: [
-      { id: '1', name: 'D&I Labor', quantity: 2, sellRule: 'per_day', unitCost: 800, markupPercent: 25 },
-      { id: '2', name: 'Equipment', quantity: 1, sellRule: 'flat_rate', unitCost: 400, markupPercent: 0 },
-    ],
-  },
-  {
-    id: 'labor',
-    name: 'Labor',
-    type: 'labor',
-    collapsed: false,
-    lineItems: [
-      { id: '3', name: 'Installer 1', quantity: 24, sellRule: 'per_hour', unitCost: 85, markupPercent: 20 },
-      { id: '4', name: 'Installer 2', quantity: 16, sellRule: 'per_hour', unitCost: 75, markupPercent: 20 },
-    ],
+    lineItems: [],
   },
   {
     id: 'freight',
     name: 'Freight & Shipping',
     type: 'freight',
-    collapsed: true,
-    lineItems: [
-      { id: '5', name: 'Freight', quantity: 1, sellRule: 'flat_rate', unitCost: 950, markupPercent: 25 },
-    ],
+    collapsed: false,
+    lineItems: [],
   },
   {
     id: 'tariffs',
     name: 'Tariffs & Fees',
     type: 'tariffs',
-    collapsed: true,
+    collapsed: false,
     lineItems: [],
   },
   {
     id: 'other',
     name: 'Other Costs',
     type: 'other',
-    collapsed: true,
+    collapsed: false,
     lineItems: [],
   },
 ];
@@ -143,9 +146,116 @@ interface PricingTabProps {
   mode: EditorMode;
 }
 
+// Sortable Section Row Component for Builder Mode
+interface SortableSectionRowProps {
+  section: PricingSection;
+  sectionIndex: number;
+  onUpdateName: (name: string) => void;
+  onToggleCollapse: (checked: boolean) => void;
+  onRemove: () => void;
+}
+
+function SortableSectionRow({
+  section,
+  sectionIndex,
+  onUpdateName,
+  onToggleCollapse,
+  onRemove,
+}: SortableSectionRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: section.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        'grid grid-cols-12 gap-3 px-4 py-3 items-center bg-gray-100/80 dark:bg-gray-700/50',
+        sectionIndex > 0 && 'border-t-2 border-gray-200 dark:border-gray-600'
+      )}
+    >
+      {/* Drag Handle */}
+      <div className="col-span-1 flex justify-center">
+        <button
+          {...attributes}
+          {...listeners}
+          className="p-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing"
+        >
+          <DotsSixVertical className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Section Name (editable) */}
+      <div className="col-span-9">
+        <Input
+          value={section.name}
+          onChange={(e) => onUpdateName(e.target.value)}
+          className="h-8 font-semibold text-gray-900 dark:text-gray-100 border-transparent bg-transparent hover:border-gray-300 focus:border-coral"
+          placeholder="Section name"
+        />
+      </div>
+
+      {/* Collapsed by default checkbox */}
+      <div className="col-span-1">
+        <label className="flex items-center gap-1.5 text-[10px] text-gray-500 whitespace-nowrap cursor-pointer">
+          <input
+            type="checkbox"
+            checked={section.collapsed}
+            onChange={(e) => onToggleCollapse(e.target.checked)}
+            className="rounded border-gray-300 w-3 h-3"
+          />
+          Collapse
+        </label>
+      </div>
+
+      {/* Delete Section */}
+      <div className="col-span-1 flex justify-center">
+        <button
+          onClick={onRemove}
+          className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-white dark:hover:bg-gray-600"
+        >
+          <Trash className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function PricingTab({ mode }: PricingTabProps) {
   const [sections, setSections] = useState<PricingSection[]>(DEFAULT_SECTIONS);
+  const [salesTaxPercent, setSalesTaxPercent] = useState<number>(0);
   const isBuilderMode = mode === 'builder';
+
+  // Drag-and-drop sensors for section reordering
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle section drag end
+  const handleSectionDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sections.findIndex((s) => s.id === active.id);
+    const newIndex = sections.findIndex((s) => s.id === over.id);
+
+    setSections(arrayMove(sections, oldIndex, newIndex));
+  };
 
   const inputClassName = cn(
     'h-9 rounded-lg border-gray-200 dark:border-gray-600',
@@ -163,22 +273,40 @@ export function PricingTab({ mode }: PricingTabProps) {
     'focus:ring-2 focus:ring-coral/20 focus:border-coral'
   );
 
-  // Calculate grand total
-  const grandTotal = useMemo(() => {
+  // Calculate subtotal (before tax)
+  const subtotal = useMemo(() => {
     return sections.reduce((total, section) => total + calculateSubtotal(section.lineItems), 0);
   }, [sections]);
+
+  // Calculate taxable amount (only items marked as taxable)
+  const taxableAmount = useMemo(() => {
+    return sections.reduce((total, section) => {
+      const taxableItems = section.lineItems.filter(item => item.isTaxable);
+      return total + calculateSubtotal(taxableItems);
+    }, 0);
+  }, [sections]);
+
+  // Calculate tax amount
+  const taxAmount = useMemo(() => {
+    return taxableAmount * (salesTaxPercent / 100);
+  }, [taxableAmount, salesTaxPercent]);
+
+  // Calculate grand total (subtotal + tax)
+  const grandTotal = useMemo(() => {
+    return subtotal + taxAmount;
+  }, [subtotal, taxAmount]);
 
   // Calculate total cost, gross profit, and margin percentage
   const { totalCost, grossProfit, grossProfitPercent } = useMemo(() => {
     const cost = sections.reduce((total, section) => total + calculateTotalCost(section.lineItems), 0);
-    const profit = grandTotal - cost;
-    const percent = grandTotal > 0 ? (profit / grandTotal) * 100 : 0;
+    const profit = subtotal - cost; // Profit is before tax
+    const percent = subtotal > 0 ? (profit / subtotal) * 100 : 0;
     return {
       totalCost: cost,
       grossProfit: profit,
       grossProfitPercent: percent,
     };
-  }, [sections, grandTotal]);
+  }, [sections, subtotal]);
 
   // Toggle section collapse
   const toggleSection = (sectionId: string) => {
@@ -203,6 +331,7 @@ export function PricingTab({ mode }: PricingTabProps) {
                   sellRule: 'flat_rate',
                   unitCost: 0,
                   markupPercent: 0,
+                  isTaxable: false,
                 },
               ],
             }
@@ -265,6 +394,26 @@ export function PricingTab({ mode }: PricingTabProps) {
     setSections([...sections, newSection]);
   };
 
+  // Select/Deselect all items as taxable
+  const toggleAllTaxable = () => {
+    // Check if all items are currently taxable
+    const allItems = sections.flatMap(s => s.lineItems);
+    const allTaxable = allItems.length > 0 && allItems.every(item => item.isTaxable);
+
+    // Toggle all to opposite state
+    const newTaxableState = !allTaxable;
+
+    setSections(
+      sections.map(section => ({
+        ...section,
+        lineItems: section.lineItems.map(item => ({
+          ...item,
+          isTaxable: newTaxableState,
+        })),
+      }))
+    );
+  };
+
   // Disabled input styles for builder mode
   const disabledInputClassName = cn(
     inputClassName,
@@ -303,60 +452,32 @@ export function PricingTab({ mode }: PricingTabProps) {
           </div>
 
           {/* Sections with Line Items */}
-          <div>
-            {sections.map((section, sectionIndex) => (
-              <div key={section.id}>
-                {/* Section Divider Row */}
-                <div className={cn(
-                  'grid grid-cols-12 gap-3 px-4 py-3 items-center bg-gray-100/80 dark:bg-gray-700/50',
-                  sectionIndex > 0 && 'border-t-2 border-gray-200 dark:border-gray-600'
-                )}>
-                  {/* Drag Handle */}
-                  <div className="col-span-1 flex justify-center">
-                    <button className="p-1 text-gray-400 hover:text-gray-600 cursor-grab">
-                      <DotsSixVertical className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  {/* Section Name (editable) */}
-                  <div className="col-span-9">
-                    <Input
-                      value={section.name}
-                      onChange={(e) => updateSectionName(section.id, e.target.value)}
-                      className="h-8 font-semibold text-gray-900 dark:text-gray-100 border-transparent bg-transparent hover:border-gray-300 focus:border-coral"
-                      placeholder="Section name"
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleSectionDragEnd}
+          >
+            <SortableContext
+              items={sections.map((s) => s.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div>
+                {sections.map((section, sectionIndex) => (
+                  <div key={section.id}>
+                    {/* Section Divider Row - Sortable */}
+                    <SortableSectionRow
+                      section={section}
+                      sectionIndex={sectionIndex}
+                      onUpdateName={(name) => updateSectionName(section.id, name)}
+                      onToggleCollapse={(checked) => {
+                        setSections(
+                          sections.map((s) =>
+                            s.id === section.id ? { ...s, collapsed: checked } : s
+                          )
+                        );
+                      }}
+                      onRemove={() => removeSection(section.id)}
                     />
-                  </div>
-
-                  {/* Collapsed by default checkbox */}
-                  <div className="col-span-1">
-                    <label className="flex items-center gap-1.5 text-[10px] text-gray-500 whitespace-nowrap cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={section.collapsed}
-                        onChange={(e) => {
-                          setSections(
-                            sections.map((s) =>
-                              s.id === section.id ? { ...s, collapsed: e.target.checked } : s
-                            )
-                          );
-                        }}
-                        className="rounded border-gray-300 w-3 h-3"
-                      />
-                      Collapse
-                    </label>
-                  </div>
-
-                  {/* Delete Section */}
-                  <div className="col-span-1 flex justify-center">
-                    <button
-                      onClick={() => removeSection(section.id)}
-                      className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-white dark:hover:bg-gray-600"
-                    >
-                      <Trash className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
 
                 {/* Line Items for this section */}
                 {section.lineItems.map((item) => (
@@ -473,9 +594,11 @@ export function PricingTab({ mode }: PricingTabProps) {
               </div>
             ))}
           </div>
-        </div>
+        </SortableContext>
+      </DndContext>
+    </div>
 
-        {/* Add Section Button */}
+    {/* Add Section Button */}
         <div className="flex justify-center">
           <Button variant="outline" onClick={addSection} className="rounded-lg">
             <Plus className="w-4 h-4 mr-2" />
@@ -486,244 +609,312 @@ export function PricingTab({ mode }: PricingTabProps) {
     );
   }
 
-  // ========== FILLER MODE: Enter actual values ==========
+  // ========== FILLER MODE: Unified table with data entry ==========
   return (
     <div className="space-y-6">
-      {/* Header with Grand Total and Gross Profit */}
-      <div className="flex items-center justify-between">
+      {/* Unified Table */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
+        {/* Table Header */}
+        <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <div className="col-span-3">Name</div>
+          <div className="col-span-1 text-center">Qty</div>
+          <div className="col-span-2">Sell Rule</div>
+          <div className="col-span-2 text-right">Unit Cost</div>
+          <div className="col-span-1 text-center">Markup</div>
+          <div className="col-span-1 text-center">Tax</div>
+          <div className="col-span-1 text-right">Sell Price</div>
+          <div className="col-span-1"></div>
+        </div>
+
+        {/* Sections with Line Items */}
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Pricing</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Cost breakdown by category
-          </p>
-        </div>
-        <div className="flex items-center gap-8">
-          <div className="text-right">
-            <p className="text-sm text-gray-500 dark:text-gray-400">Gross Profit</p>
-            <p className={`text-xl font-semibold ${grossProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-              {formatCurrency(grossProfit)}
-              <span className="text-sm font-normal ml-1.5">
-                ({grossProfitPercent.toFixed(1)}%)
-              </span>
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-500 dark:text-gray-400">Grand Total</p>
-            <p className="text-2xl font-bold text-coral">{formatCurrency(grandTotal)}</p>
-          </div>
-        </div>
-      </div>
+          {sections.map((section) => {
+            const subtotal = calculateSubtotal(section.lineItems);
 
-      {/* Pricing Sections */}
-      <div className="space-y-4">
-        {sections.map((section) => {
-          const subtotal = calculateSubtotal(section.lineItems);
-          const hasItems = section.lineItems.length > 0;
-
-          return (
-            <div
-              key={section.id}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden"
-            >
-              {/* Section Header */}
-              <button
-                onClick={() => toggleSection(section.id)}
-                className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  {section.collapsed ? (
-                    <CaretRight className="w-4 h-4 text-gray-400" />
-                  ) : (
-                    <CaretDown className="w-4 h-4 text-gray-400" />
-                  )}
-                  <span className="font-medium text-gray-900 dark:text-gray-100">
-                    {section.name}
-                  </span>
-                  {hasItems && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      ({section.lineItems.length} item{section.lineItems.length !== 1 ? 's' : ''})
+            return (
+              <div key={section.id}>
+                {/* Section Divider Row */}
+                <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-100/50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-600 items-center">
+                  <div className="col-span-11">
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {section.name}
                     </span>
-                  )}
-                </div>
-                <span
-                  className={cn(
-                    'font-semibold',
-                    subtotal > 0 ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'
-                  )}
-                >
-                  {formatCurrency(subtotal)}
-                </span>
-              </button>
-
-              {/* Section Content */}
-              {!section.collapsed && (
-                <div className="px-5 pb-5 border-t border-gray-100 dark:border-gray-700/50">
-                  {/* Table Header */}
-                  {hasItems && (
-                    <div className="grid grid-cols-12 gap-3 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      <div className="col-span-3">Name</div>
-                      <div className="col-span-1 text-center">Qty</div>
-                      <div className="col-span-2">Sell Rule</div>
-                      <div className="col-span-2 text-right">Unit Cost</div>
-                      <div className="col-span-1 text-center">Markup</div>
-                      <div className="col-span-2 text-right">Sell Price</div>
-                      <div className="col-span-1"></div>
-                    </div>
-                  )}
-
-                  {/* Line Items */}
-                  <div className="space-y-2">
-                    {section.lineItems.map((item) => {
-                      const sellPrice = calculateSellPrice(item);
-
-                      return (
-                        <div
-                          key={item.id}
-                          className="grid grid-cols-12 gap-3 items-center py-2 hover:bg-gray-50 dark:hover:bg-gray-700/20 rounded-lg px-1 -mx-1 transition-colors"
-                        >
-                          {/* Name */}
-                          <div className="col-span-3">
-                            <Input
-                              value={item.name}
-                              onChange={(e) =>
-                                updateLineItem(section.id, item.id, { name: e.target.value })
-                              }
-                              placeholder="Item name"
-                              className={inputClassName}
-                            />
-                          </div>
-
-                          {/* Quantity */}
-                          <div className="col-span-1">
-                            <Input
-                              type="number"
-                              min={0}
-                              value={item.quantity}
-                              onChange={(e) =>
-                                updateLineItem(section.id, item.id, {
-                                  quantity: parseFloat(e.target.value) || 0,
-                                })
-                              }
-                              className={cn(numberInputClassName, 'text-center')}
-                            />
-                          </div>
-
-                          {/* Sell Rule */}
-                          <div className="col-span-2">
-                            <Select
-                              value={item.sellRule}
-                              onValueChange={(v) =>
-                                updateLineItem(section.id, item.id, { sellRule: v })
-                              }
-                            >
-                              <SelectTrigger className={selectTriggerClassName}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {SELL_RULES.map((rule) => (
-                                  <SelectItem key={rule.value} value={rule.value}>
-                                    {rule.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Unit Cost */}
-                          <div className="col-span-2">
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-                                $
-                              </span>
-                              <Input
-                                type="number"
-                                min={0}
-                                step={0.01}
-                                value={item.unitCost}
-                                onChange={(e) =>
-                                  updateLineItem(section.id, item.id, {
-                                    unitCost: parseFloat(e.target.value) || 0,
-                                  })
-                                }
-                                className={cn(numberInputClassName, 'pl-7 text-right')}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Markup % */}
-                          <div className="col-span-1">
-                            <div className="relative">
-                              <Input
-                                type="number"
-                                min={0}
-                                max={999}
-                                value={item.markupPercent}
-                                onChange={(e) =>
-                                  updateLineItem(section.id, item.id, {
-                                    markupPercent: parseFloat(e.target.value) || 0,
-                                  })
-                                }
-                                className={cn(numberInputClassName, 'text-center pr-6')}
-                              />
-                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-                                %
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Sell Price (calculated) */}
-                          <div className="col-span-2 text-right">
-                            <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
-                              {formatCurrency(sellPrice)}
-                            </span>
-                          </div>
-
-                          {/* Delete */}
-                          <div className="col-span-1 flex justify-center">
-                            <button
-                              onClick={() => removeLineItem(section.id, item.id)}
-                              className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                            >
-                              <Trash className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
                   </div>
+                  <div className="col-span-1 text-right">
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {formatCurrency(subtotal)}
+                    </span>
+                  </div>
+                </div>
 
-                  {/* Add Line Item */}
-                  <div className="pt-3 mt-3 border-t border-gray-100 dark:border-gray-700/50">
+                {/* Line Items for this section */}
+                {section.lineItems.map((item) => {
+                  const sellPrice = calculateSellPrice(item);
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="grid grid-cols-12 gap-3 px-4 py-2.5 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
+                    >
+                      {/* Name */}
+                      <div className="col-span-3">
+                        <Input
+                          value={item.name}
+                          onChange={(e) =>
+                            updateLineItem(section.id, item.id, { name: e.target.value })
+                          }
+                          placeholder="Item name"
+                          className={inputClassName}
+                        />
+                      </div>
+
+                      {/* Quantity */}
+                      <div className="col-span-1">
+                        <Input
+                          type="number"
+                          min={0}
+                          value={item.quantity === 0 ? '' : item.quantity}
+                          onChange={(e) =>
+                            updateLineItem(section.id, item.id, {
+                              quantity: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                          placeholder="0"
+                          className={cn(numberInputClassName, 'text-center')}
+                        />
+                      </div>
+
+                      {/* Sell Rule */}
+                      <div className="col-span-2">
+                        <Select
+                          value={item.sellRule}
+                          onValueChange={(v) =>
+                            updateLineItem(section.id, item.id, { sellRule: v })
+                          }
+                        >
+                          <SelectTrigger className={selectTriggerClassName}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SELL_RULES.map((rule) => (
+                              <SelectItem key={rule.value} value={rule.value}>
+                                {rule.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Unit Cost */}
+                      <div className="col-span-2">
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                            $
+                          </span>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={item.unitCost === 0 ? '' : item.unitCost}
+                            onChange={(e) =>
+                              updateLineItem(section.id, item.id, {
+                                unitCost: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                            placeholder="0.00"
+                            className={cn(numberInputClassName, 'pl-7 text-right')}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Markup % */}
+                      <div className="col-span-1">
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={999}
+                            value={item.markupPercent === 0 ? '' : item.markupPercent}
+                            onChange={(e) =>
+                              updateLineItem(section.id, item.id, {
+                                markupPercent: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                            placeholder="0"
+                            className={cn(numberInputClassName, 'text-center pr-6')}
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                            %
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Tax Checkbox */}
+                      <div className="col-span-1 flex justify-center">
+                        <input
+                          type="checkbox"
+                          checked={item.isTaxable}
+                          onChange={(e) =>
+                            updateLineItem(section.id, item.id, {
+                              isTaxable: e.target.checked,
+                            })
+                          }
+                          className="w-4 h-4 rounded border-gray-300 text-coral focus:ring-coral focus:ring-offset-0 cursor-pointer"
+                        />
+                      </div>
+
+                      {/* Sell Price (calculated) */}
+                      <div className="col-span-1 text-right">
+                        <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
+                          {formatCurrency(sellPrice)}
+                        </span>
+                      </div>
+
+                      {/* Delete */}
+                      <div className="col-span-1 flex justify-center">
+                        <button
+                          onClick={() => removeLineItem(section.id, item.id)}
+                          className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          <Trash className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Add Line Item Row */}
+                <div className="grid grid-cols-12 gap-3 px-4 py-2 items-center border-t border-gray-100 dark:border-gray-700/50">
+                  <div className="col-span-12">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => addLineItem(section.id)}
-                      className="text-coral hover:text-coral-hover hover:bg-coral/5"
+                      className="text-coral hover:text-coral-hover hover:bg-coral/5 h-8"
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       Add Line Item
                     </Button>
                   </div>
-
-                  {/* Section note for merchandise */}
-                  {section.type === 'merchandise' && section.lineItems.length === 0 && (
-                    <div className="text-sm text-gray-500 dark:text-gray-400 italic py-4 text-center">
-                      Products will appear here when added from the Products tab
-                    </div>
-                  )}
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              </div>
+            );
+          })}
+        </div>
 
-      {/* Add Custom Section */}
-      <div className="flex justify-center">
-        <Button variant="outline" onClick={addSection} className="rounded-lg">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Section
-        </Button>
+        {/* Tax Summary Section */}
+        <div className="border-t-2 border-gray-300 dark:border-gray-600">
+          {/* Sales Tax Input Row */}
+          <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700/30 items-center">
+            <div className="col-span-3">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Sales Tax %
+              </label>
+            </div>
+            <div className="col-span-2">
+              <div className="relative">
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.01}
+                  value={salesTaxPercent === 0 ? '' : salesTaxPercent}
+                  onChange={(e) => setSalesTaxPercent(parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className={cn(numberInputClassName, 'text-center pr-6')}
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                  %
+                </span>
+              </div>
+            </div>
+            <div className="col-span-7 flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleAllTaxable}
+                className="text-coral hover:text-coral-hover hover:bg-coral/5"
+              >
+                Select All Taxable
+              </Button>
+            </div>
+          </div>
+
+          {/* Subtotal Row */}
+          <div className="grid grid-cols-12 gap-3 px-4 py-2.5 items-center">
+            <div className="col-span-9"></div>
+            <div className="col-span-2 text-right">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Subtotal (incl. margin):
+              </span>
+            </div>
+            <div className="col-span-1 text-right">
+              <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
+                {formatCurrency(subtotal)}
+              </span>
+            </div>
+          </div>
+
+          {/* Gross Profit Row */}
+          <div className="grid grid-cols-12 gap-3 px-4 py-2.5 items-center">
+            <div className="col-span-9"></div>
+            <div className="col-span-2 text-right">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Gross Profit:
+              </span>
+            </div>
+            <div className="col-span-1 text-right">
+              <span className={`font-mono text-sm ${grossProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                {formatCurrency(grossProfit)} ({grossProfitPercent.toFixed(1)}%)
+              </span>
+            </div>
+          </div>
+
+          {/* Taxable Amount Row */}
+          <div className="grid grid-cols-12 gap-3 px-4 py-2.5 items-center">
+            <div className="col-span-9"></div>
+            <div className="col-span-2 text-right">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Taxable Amount:
+              </span>
+            </div>
+            <div className="col-span-1 text-right">
+              <span className="font-mono text-sm text-gray-600 dark:text-gray-400">
+                {formatCurrency(taxableAmount)}
+              </span>
+            </div>
+          </div>
+
+          {/* Tax Amount Row */}
+          <div className="grid grid-cols-12 gap-3 px-4 py-2.5 items-center">
+            <div className="col-span-9"></div>
+            <div className="col-span-2 text-right">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                Tax ({salesTaxPercent}%):
+              </span>
+            </div>
+            <div className="col-span-1 text-right">
+              <span className="font-mono text-sm text-gray-600 dark:text-gray-400">
+                {formatCurrency(taxAmount)}
+              </span>
+            </div>
+          </div>
+
+          {/* Grand Total Row */}
+          <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-coral/5 dark:bg-coral/10 items-center">
+            <div className="col-span-9"></div>
+            <div className="col-span-2 text-right">
+              <span className="text-base font-bold text-gray-900 dark:text-gray-100">
+                Grand Total:
+              </span>
+            </div>
+            <div className="col-span-1 text-right">
+              <span className="font-mono text-lg font-bold text-coral">
+                {formatCurrency(grandTotal)}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

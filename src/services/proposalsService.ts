@@ -360,7 +360,7 @@ export async function fetchProposals(
 export async function fetchProposalById(proposalId: string): Promise<Proposal> {
   const { data, error } = await supabase
     .from('proposals')
-    .select('*')
+    .select('*, created_by_name')
     .eq('id', proposalId)
     .single();
 
@@ -373,7 +373,14 @@ export async function fetchProposalById(proposalId: string): Promise<Proposal> {
     throw new Error('Proposal not found');
   }
 
-  return data;
+  // Map created_by_name to creator_name for consistency with the UI
+  // Cast to any to access created_by_name which may not be in the type definition yet
+  const proposalWithCreator = {
+    ...data,
+    creator_name: (data as any).created_by_name || null,
+  };
+
+  return proposalWithCreator as any;
 }
 
 /**

@@ -51,64 +51,13 @@ interface LeadTimeSection {
   phases: LeadTimePhase[];
 }
 
-// Default sections for builder mode
-const BUILDER_DEFAULT_SECTIONS: LeadTimeSection[] = [
-  {
-    id: 'pre_production',
-    name: 'Pre-Production',
-    collapsed: false,
-    phases: [
-      { id: '1', phaseName: 'Shop Drawings', duration: '', estCompletionDate: '' },
-      { id: '2', phaseName: 'Approvals', duration: '', estCompletionDate: '' },
-    ],
-  },
-  {
-    id: 'production',
-    name: 'Production',
-    collapsed: false,
-    phases: [
-      { id: '3', phaseName: 'Manufacturing', duration: '', estCompletionDate: '' },
-    ],
-  },
-  {
-    id: 'delivery_install',
-    name: 'Delivery & Installation',
-    collapsed: false,
-    phases: [
-      { id: '4', phaseName: 'Shipping', duration: '', estCompletionDate: '' },
-      { id: '5', phaseName: 'Installation', duration: '', estCompletionDate: '' },
-    ],
-  },
-];
-
-// Default sections for filler mode (with sample values)
+// Default: Single example section for both builder and filler modes
 const DEFAULT_SECTIONS: LeadTimeSection[] = [
   {
-    id: 'pre_production',
-    name: 'Pre-Production',
+    id: 'section_1',
+    name: 'Project Timeline',
     collapsed: false,
-    phases: [
-      { id: '1', phaseName: 'Shop Drawings', duration: '2 weeks', estCompletionDate: '' },
-      { id: '2', phaseName: 'Approvals', duration: '1 week', estCompletionDate: '' },
-    ],
-  },
-  {
-    id: 'production',
-    name: 'Production',
-    collapsed: false,
-    phases: [
-      { id: '3', phaseName: 'Manufacturing', duration: '4-6 weeks', estCompletionDate: '' },
-    ],
-  },
-  {
-    id: 'delivery_install',
-    name: 'Delivery & Installation',
-    collapsed: false,
-    phases: [
-      { id: '4', phaseName: 'Shipping', duration: '5-7 days', estCompletionDate: '' },
-      { id: '5', phaseName: 'Track Installation', duration: '2 days', estCompletionDate: '' },
-      { id: '6', phaseName: 'Panel Installation', duration: '3-4 days', estCompletionDate: '' },
-    ],
+    phases: [],
   },
 ];
 
@@ -218,9 +167,7 @@ interface LeadTimesTabProps {
 
 export function LeadTimesTab({ mode }: LeadTimesTabProps) {
   const isBuilderMode = mode === 'builder';
-  const [sections, setSections] = useState<LeadTimeSection[]>(
-    isBuilderMode ? BUILDER_DEFAULT_SECTIONS : DEFAULT_SECTIONS
-  );
+  const [sections, setSections] = useState<LeadTimeSection[]>(DEFAULT_SECTIONS);
 
   // DnD sensors
   const sensors = useSensors(
@@ -474,167 +421,106 @@ export function LeadTimesTab({ mode }: LeadTimesTabProps) {
     );
   }
 
-  // ========== FILLER MODE: Collapsible sections with values ==========
+  // ========== FILLER MODE: Unified table with data entry ==========
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Lead Times
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Project phases and durations
-          </p>
+      {/* Unified Table */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
+        {/* Table Header */}
+        <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-600 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <div className="col-span-5">Phase Name</div>
+          <div className="col-span-3">Duration</div>
+          <div className="col-span-3">Est. Completion</div>
+          <div className="col-span-1"></div>
         </div>
-        {totalPhases > 0 && (
-          <div className="flex items-center gap-2 text-coral bg-coral/5 dark:bg-coral/10 px-4 py-2 rounded-xl border border-coral/20">
-            <Clock className="w-5 h-5" />
-            <span className="font-medium">{totalPhases} phases</span>
-          </div>
-        )}
-      </div>
 
-      {/* Sections */}
-      <div className="space-y-4">
-        {sections.map((section) => {
-          const hasPhases = section.phases.length > 0;
-
-          return (
-            <div
-              key={section.id}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden"
-            >
-              {/* Section Header */}
-              <button
-                onClick={() => toggleSection(section.id)}
-                className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  {section.collapsed ? (
-                    <CaretRight className="w-4 h-4 text-gray-400" />
-                  ) : (
-                    <CaretDown className="w-4 h-4 text-gray-400" />
-                  )}
-                  <span className="font-medium text-gray-900 dark:text-gray-100">
+        {/* Sections with Phases */}
+        <div>
+          {sections.map((section) => (
+            <div key={section.id}>
+              {/* Section Divider Row */}
+              <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-gray-100/50 dark:bg-gray-700/30 border-t border-gray-200 dark:border-gray-600 items-center">
+                <div className="col-span-12">
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">
                     {section.name}
                   </span>
-                  {hasPhases && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      ({section.phases.length} phase{section.phases.length !== 1 ? 's' : ''})
-                    </span>
-                  )}
                 </div>
-              </button>
+              </div>
 
-              {/* Section Content */}
-              {!section.collapsed && (
-                <div className="px-5 pb-5 border-t border-gray-100 dark:border-gray-700/50">
-                  {/* Table Header */}
-                  {hasPhases && (
-                    <div className="grid grid-cols-12 gap-3 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      <div className="col-span-5">Phase Name</div>
-                      <div className="col-span-3">Duration</div>
-                      <div className="col-span-3">Est. Completion</div>
-                      <div className="col-span-1"></div>
-                    </div>
-                  )}
+              {/* Phases for this section */}
+              {section.phases.map((phase) => (
+                <div
+                  key={phase.id}
+                  className="grid grid-cols-12 gap-3 px-4 py-2.5 items-center border-t border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/20"
+                >
+                  {/* Phase Name */}
+                  <div className="col-span-5">
+                    <Input
+                      value={phase.phaseName}
+                      onChange={(e) =>
+                        updatePhase(section.id, phase.id, { phaseName: e.target.value })
+                      }
+                      placeholder="Phase name"
+                      className={inputClassName}
+                    />
+                  </div>
 
-                  {/* Phases */}
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleDragEnd(section.id)}
-                  >
-                    <SortableContext
-                      items={section.phases.map((p) => p.id)}
-                      strategy={verticalListSortingStrategy}
+                  {/* Duration */}
+                  <div className="col-span-3">
+                    <Input
+                      type="text"
+                      value={phase.duration}
+                      onChange={(e) =>
+                        updatePhase(section.id, phase.id, { duration: e.target.value })
+                      }
+                      placeholder="e.g., 2-3 weeks"
+                      className={inputClassName}
+                    />
+                  </div>
+
+                  {/* Est. Completion Date */}
+                  <div className="col-span-3">
+                    <Input
+                      type="date"
+                      value={phase.estCompletionDate}
+                      onChange={(e) =>
+                        updatePhase(section.id, phase.id, {
+                          estCompletionDate: e.target.value,
+                        })
+                      }
+                      className={inputClassName}
+                    />
+                  </div>
+
+                  {/* Delete */}
+                  <div className="col-span-1 flex justify-center">
+                    <button
+                      onClick={() => removePhase(section.id, phase.id)}
+                      className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
-                      <div className="space-y-2">
-                        {section.phases.map((phase) => (
-                          <div
-                            key={phase.id}
-                            className="grid grid-cols-12 gap-3 items-center py-2 hover:bg-gray-50 dark:hover:bg-gray-700/20 rounded-lg px-1 -mx-1 transition-colors"
-                          >
-                            {/* Phase Name */}
-                            <div className="col-span-5">
-                              <Input
-                                value={phase.phaseName}
-                                onChange={(e) =>
-                                  updatePhase(section.id, phase.id, { phaseName: e.target.value })
-                                }
-                                placeholder="Phase name"
-                                className={inputClassName}
-                              />
-                            </div>
-
-                            {/* Duration */}
-                            <div className="col-span-3">
-                              <Input
-                                type="text"
-                                value={phase.duration}
-                                onChange={(e) =>
-                                  updatePhase(section.id, phase.id, { duration: e.target.value })
-                                }
-                                placeholder="e.g., 2-3 weeks"
-                                className={inputClassName}
-                              />
-                            </div>
-
-                            {/* Est. Completion Date */}
-                            <div className="col-span-3">
-                              <Input
-                                type="date"
-                                value={phase.estCompletionDate}
-                                onChange={(e) =>
-                                  updatePhase(section.id, phase.id, {
-                                    estCompletionDate: e.target.value,
-                                  })
-                                }
-                                className={inputClassName}
-                              />
-                            </div>
-
-                            {/* Delete */}
-                            <div className="col-span-1 flex justify-center">
-                              <button
-                                onClick={() => removePhase(section.id, phase.id)}
-                                className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
-                              >
-                                <Trash className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </SortableContext>
-                  </DndContext>
-
-                  {/* Add Phase */}
-                  <div className="pt-3 mt-3 border-t border-gray-100 dark:border-gray-700/50">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => addPhase(section.id)}
-                      className="text-coral hover:text-coral-hover hover:bg-coral/5"
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Phase
-                    </Button>
+                      <Trash className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              ))}
 
-      {/* Add Section */}
-      <div className="flex justify-center">
-        <Button variant="outline" onClick={addSection} className="rounded-lg">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Section
-        </Button>
+              {/* Add Phase Row */}
+              <div className="grid grid-cols-12 gap-3 px-4 py-2 items-center border-t border-gray-100 dark:border-gray-700/50">
+                <div className="col-span-12">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => addPhase(section.id)}
+                    className="text-coral hover:text-coral-hover hover:bg-coral/5 h-8"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Phase
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

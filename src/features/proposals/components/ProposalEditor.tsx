@@ -5,7 +5,7 @@
  * Info | Products | Pricing | Terms | Lead Times | Misc | Documents | Presentation
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, FloppyDisk, Check, Info } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -18,8 +18,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useForm, useUpdateForm, useCreateForm } from '@/hooks/queries/useForms';
+import { useProposal, useUpdateProposal } from '@/hooks/queries/useProposals';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
 import { useUser } from '@/auth';
 
@@ -38,8 +49,8 @@ import { LeadTimesTab } from './tabs/LeadTimesTab';
 import { MiscellaneousTab } from './tabs/MiscellaneousTab';
 import { PricingTab } from './tabs/PricingTab';
 import { TermsTab } from './tabs/TermsTab';
-// import { ProductsTab } from './tabs/ProductsTab';
-// import { DocumentsTab } from './tabs/DocumentsTab';
+import { DocumentsTab } from './tabs/DocumentsTab';
+import { ProductsTab } from './tabs/ProductsTab';
 // import { PresentationTab } from './tabs/PresentationTab';
 
 // Editor mode determines the behavior of tabs
@@ -48,6 +59,8 @@ export type EditorMode = 'builder' | 'filler';
 // Common props interface for all tab components
 export interface TabComponentProps {
   mode: EditorMode;
+  onDirtyChange?: (isDirty: boolean) => void;
+  proposalData?: any;
 }
 
 // Tab component type
@@ -56,12 +69,12 @@ type TabComponent = React.ComponentType<TabComponentProps> | null;
 // Tab definitions
 const TABS: { id: string; label: string; component: TabComponent }[] = [
   { id: 'info', label: 'Info', component: InfoTab },
-  { id: 'products', label: 'Products', component: null },
+  { id: 'products', label: 'Products', component: ProductsTab },
   { id: 'pricing', label: 'Pricing', component: PricingTab },
   { id: 'terms', label: 'Terms', component: TermsTab },
   { id: 'lead_times', label: 'Lead Times', component: LeadTimesTab },
   { id: 'miscellaneous', label: 'Misc', component: MiscellaneousTab },
-  { id: 'documents', label: 'Documents', component: null },
+  { id: 'documents', label: 'Documents', component: DocumentsTab },
   { id: 'presentation', label: 'Presentation', component: null },
 ];
 
@@ -92,9 +105,15 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
   // Fetch form data if formId is provided
   const { data: formData } = useForm(formId || '', !!formId);
 
+  // Fetch proposal data if proposalId is provided
+  const { data: proposalData } = useProposal(proposalId || '', !!proposalId);
+
   // Form mutation hooks
   const updateFormMutation = useUpdateForm();
   const createFormMutation = useCreateForm();
+
+  // Proposal mutation hooks
+  const updateProposalMutation = useUpdateProposal();
 
   // Get form builder context
   const { data: builderData, isDirty, loadData, markClean } = useFormBuilder();
@@ -103,12 +122,21 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
   const [formName, setFormName] = useState('New Form Template');
   const [proposalName, setProposalName] = useState(proposalId ? 'Untitled Proposal' : 'New Proposal');
   const [nameIsDirty, setNameIsDirty] = useState(false);
+  const [initialFormName, setInitialFormName] = useState('New Form Template');
+  const [initialProposalName, setInitialProposalName] = useState('Untitled Proposal');
+
+  // Track dirty state for each tab
+  const [tabDirtyStates, setTabDirtyStates] = useState<Record<string, boolean>>({});
+
+  // Confirmation dialog for unsaved changes
+  const [showExitConfirmation, setShowExitConfirmation] = useState(false);
 
   // Update form name and load builder data when form data is loaded
   useEffect(() => {
     if (formData) {
       if (formData.name) {
         setFormName(formData.name);
+        setInitialFormName(formData.name); // Track initial value
       }
       // Load the builder data from the form's metadata field
       if (formData.metadata && isBuilderMode) {
@@ -118,18 +146,74 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
     }
   }, [formData, loadData, isBuilderMode]);
 
-  // Track dirty state when name changes
+  // Update proposal name and load proposal data when proposal data is loaded
   useEffect(() => {
-    if (formData?.name && formName !== formData.name) {
-      setNameIsDirty(true);
+    if (proposalData && !isBuilderMode) {
+      if (proposalData.project_name) {
+        setProposalName(proposalData.project_name);
+        setInitialProposalName(proposalData.project_name);
+      }
+      // TODO: Load proposal data into form fields
+      // For now, proposal data will be loaded by individual tabs
     }
-  }, [formName, formData?.name]);
+  }, [proposalData, isBuilderMode]);
 
-  // Combined dirty state
-  const combinedIsDirty = nameIsDirty || isDirty;
+  // Track dirty state when name actually changes from initial value
+  useEffect(() => {
+    if (isBuilderMode) {
+      if (formName !== initialFormName) {
+        setNameIsDirty(true);
+      } else {
+        setNameIsDirty(false);
+      }
+    } else {
+      if (proposalName !== initialProposalName) {
+        setNameIsDirty(true);
+      } else {
+        setNameIsDirty(false);
+      }
+    }
+  }, [formName, initialFormName, proposalName, initialProposalName, isBuilderMode]);
 
-  // Handle back/close navigation
+  // Callback for tabs to report dirty state changes
+  const handleTabDirtyChange = useCallback((tabId: string, isDirty: boolean) => {
+    setTabDirtyStates(prev => ({
+      ...prev,
+      [tabId]: isDirty,
+    }));
+  }, []);
+
+  // Create stable callbacks for each tab (memoized to prevent infinite loops)
+  const tabCallbacks = useMemo(() => {
+    const callbacks: Record<string, (isDirty: boolean) => void> = {};
+    TABS.forEach(tab => {
+      callbacks[tab.id] = (isDirty: boolean) => handleTabDirtyChange(tab.id, isDirty);
+    });
+    return callbacks;
+  }, [handleTabDirtyChange]);
+
+  // Combined dirty state (includes name changes, FormBuilder context, and any tab changes)
+  const hasAnyTabDirty = Object.values(tabDirtyStates).some(dirty => dirty);
+  const combinedIsDirty = nameIsDirty || isDirty || hasAnyTabDirty;
+
+  // Handle back/close navigation with unsaved changes check
   const handleClose = useCallback(() => {
+    // If there are unsaved changes, show confirmation dialog
+    if (combinedIsDirty) {
+      setShowExitConfirmation(true);
+      return;
+    }
+
+    // No unsaved changes, close immediately
+    if (onClose) {
+      onClose();
+    } else {
+      navigate(-1);
+    }
+  }, [combinedIsDirty, navigate, onClose]);
+
+  // Force close without confirmation (used when user confirms)
+  const forceClose = useCallback(() => {
     if (onClose) {
       onClose();
     } else {
@@ -188,10 +272,29 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
         }
         markClean();
         setNameIsDirty(false);
+        setTabDirtyStates({});
       } else {
         // Filler mode: save proposal values
-        // This would save to the proposals table
+        if (!proposalId || !proposalData) {
+          toast.error('No proposal to update');
+          return;
+        }
+
+        // Serialize the form builder data for the proposal's data field
+        const serializedData = serializeFormBuilderData(builderData);
+
+        await updateProposalMutation.mutateAsync({
+          id: proposalId,
+          updates: {
+            project_name: trimmedName,
+            // Store form data in the proposal's data field
+            data: serializedData,
+          },
+        });
         toast.success('Proposal saved');
+        markClean();
+        setNameIsDirty(false);
+        setTabDirtyStates({});
       }
 
       handleClose();
@@ -209,9 +312,12 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
     proposalName,
     formId,
     formData,
+    proposalId,
+    proposalData,
     builderData,
     updateFormMutation,
     createFormMutation,
+    updateProposalMutation,
     markClean,
     handleClose,
   ]);
@@ -220,17 +326,37 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
   const renderTabContent = () => {
     const tab = TABS.find(t => t.id === activeTab);
     if (!tab?.component) {
+      // Show appropriate message based on tab type
+      const isUserInputTab = tab?.id === 'documents' || tab?.id === 'products';
       return (
         <div className="flex items-center justify-center h-96">
           <div className="text-center text-gray-500">
             <p className="text-lg font-medium">{tab?.label} Tab</p>
-            <p className="text-sm mt-1">Coming soon...</p>
+            <p className="text-sm mt-1">
+              {isUserInputTab
+                ? 'User input area - implementation in progress'
+                : 'Coming soon...'}
+            </p>
           </div>
         </div>
       );
     }
     const TabComponent = tab.component;
-    return <TabComponent mode={mode} />;
+
+    // Get the stable callback for this tab
+    const onDirtyChange = tabCallbacks[tab.id];
+
+    // Pass proposalData to InfoTab
+    if (tab.id === 'info') {
+      return <InfoTab mode={mode} proposalData={proposalData} onDirtyChange={onDirtyChange} />;
+    }
+
+    // Pass proposalId to DocumentsTab
+    if (tab.id === 'documents') {
+      return <DocumentsTab mode={mode} proposalId={proposalId} onDirtyChange={onDirtyChange} />;
+    }
+
+    return <TabComponent mode={mode} proposalData={proposalData} onDirtyChange={onDirtyChange} />;
   };
 
   return (
@@ -247,32 +373,48 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
               <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-200 transition-colors" />
             </button>
 
-            <div className="flex items-center gap-1.5">
-              {/* Editable Form/Proposal Name */}
-              <Input
-                value={isBuilderMode ? formName : proposalName}
-                onChange={(e) => isBuilderMode ? setFormName(e.target.value) : setProposalName(e.target.value)}
-                className="text-xl font-semibold bg-transparent border-0 border-b-2 border-transparent hover:border-gray-200 focus:border-coral rounded-none px-0 h-auto py-1 focus:ring-0 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
-                placeholder={isBuilderMode ? 'Form name...' : 'Proposal name...'}
-              />
-
+            <div className="flex items-center gap-2">
               {/* Builder Mode Info Tooltip */}
               {isBuilderMode && (
                 <TooltipProvider delayDuration={0}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button className="p-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
-                        <Info className="w-4 h-4 text-blue-500" />
+                      <button className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                        <Info className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs bg-gray-900 text-white border-0 shadow-xl">
+                    <TooltipContent side="bottom" className="max-w-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 shadow-xl">
                       <p className="font-medium">Form Structure Preview</p>
-                      <p className="text-gray-300 text-xs mt-1">
+                      <p className="text-gray-600 dark:text-gray-400 text-xs mt-1">
                         Define field names and layout here. Values will be entered when creating proposals.
                       </p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+              )}
+
+              {/* Builder Mode: Editable Form Name | Filler Mode: Proposal Number */}
+              {isBuilderMode ? (
+                <Input
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  className="text-xl font-semibold bg-transparent border-0 border-b-2 border-transparent hover:border-gray-200 focus:border-coral rounded-none px-0 h-auto py-1 focus:ring-0 text-gray-900 dark:text-gray-100 placeholder:text-gray-400"
+                  placeholder="Form name..."
+                />
+              ) : (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-base font-medium text-gray-700 dark:text-gray-300">
+                    #{proposalData?.proposal_number || 'Loading...'}
+                  </span>
+                  {proposalData?.created_at && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 space-x-2">
+                      <span>Created: {new Date(proposalData.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      {proposalData?.creator_name && (
+                        <span>• By: {proposalData.creator_name}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -288,16 +430,9 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
               </div>
             )}
             <Button
-              variant="ghost"
-              onClick={handleClose}
-              className="rounded-xl px-5 h-11 text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800"
-            >
-              Cancel
-            </Button>
-            <Button
               onClick={handleSave}
-              disabled={isSaving}
-              className="rounded-xl px-6 h-11 bg-[#ee6c4d] hover:bg-[#e05a3a] text-white shadow-sm transition-all duration-200"
+              disabled={isSaving || !combinedIsDirty}
+              className="rounded-xl px-4 h-11 bg-[#ee6c4d] hover:bg-[#e05a3a] text-white shadow-sm transition-all duration-200"
             >
               {isSaving ? (
                 <div className="flex items-center gap-2">
@@ -310,10 +445,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
                   <span>Saving...</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4" weight="bold" />
-                  <span>Save</span>
-                </div>
+                <span>Save</span>
               )}
             </Button>
           </div>
@@ -356,6 +488,27 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
           </AnimatePresence>
         </div>
       </main>
+
+      {/* Exit Confirmation Dialog */}
+      <AlertDialog open={showExitConfirmation} onOpenChange={setShowExitConfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Are you sure you want to leave? Your changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continue Editing</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={forceClose}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Discard Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

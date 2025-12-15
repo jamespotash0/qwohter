@@ -99,8 +99,11 @@ const FormBuilderV4 = lazy(() => import("@/pages/FormBuilderV4"));
 // Document Template pages
 const DocumentTemplateEditor = lazy(() => import("@/pages/DocumentTemplateEditor"));
 
-// Proposal Editor (side-by-side with document preview)
-const ProposalEditor = lazy(() => import("@/pages/ProposalEditor"));
+// Proposal Editor (side-by-side with document preview) - DEPRECATED
+// const ProposalEditor = lazy(() => import("@/pages/ProposalEditor"));
+
+// Proposal Filler (NEW V4 - filler mode)
+const ProposalFiller = lazy(() => import("@/pages/ProposalFiller"));
 
 // Board pages
 const Board = lazy(() => import("@/pages/Board"));
@@ -166,8 +169,11 @@ export const AppRouter = () => (
           {/* Document Template Editor - Full screen without sidebar */}
           <Route path="/document-templates/:templateId" element={<DocumentTemplateEditor />} />
 
-          {/* Proposal Editor - Full screen side-by-side editor */}
-          <Route path="/proposals/:proposalId/edit" element={<ProposalEditor />} />
+          {/* Proposal Filler - NEW V4 filler mode for entering proposal data */}
+          <Route path="/proposals/:proposalId/edit" element={<ProposalFiller />} />
+
+          {/* DEPRECATED: Old Proposal Editor - side-by-side editor */}
+          {/* <Route path="/proposals/:proposalId/edit-old" element={<ProposalEditor />} /> */}
 
           {/* DEPRECATED: Quote creation workflow - use QuoteCreationWizard from /proposals instead */}
           {/* <Route path="/quotes/new" element={
