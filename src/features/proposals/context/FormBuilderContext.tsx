@@ -131,6 +131,39 @@ export interface ProductsData {
   items: Product[];
 }
 
+// ============ Presentation Tab Data ============
+// Slate/Plate.js node structure for rich text content
+export interface PresentationTextNode {
+  text: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+}
+
+export interface PresentationVariableNode {
+  type: 'variable';
+  variableKey: string;
+  variableLabel: string;
+  children: [{ text: '' }];
+}
+
+export interface PresentationElement {
+  type: 'paragraph' | 'heading-one' | 'heading-two' | 'heading-three' | 'bulleted-list' | 'numbered-list' | 'list-item' | 'table' | 'table-row' | 'table-cell' | 'variable';
+  children: (PresentationTextNode | PresentationVariableNode | PresentationElement)[];
+  align?: 'left' | 'center' | 'right';
+}
+
+export interface PresentationSection {
+  id: string;
+  title: string;
+  content: PresentationElement[];
+  collapsed?: boolean;
+}
+
+export interface PresentationData {
+  sections: PresentationSection[];
+}
+
 // ============ Complete Form Structure ============
 export interface FormBuilderData {
   terms: TermsData;
@@ -138,6 +171,7 @@ export interface FormBuilderData {
   leadTimes: LeadTimesData;
   miscellaneous: MiscellaneousData;
   products: ProductsData;
+  presentation: PresentationData;
 }
 
 // Default empty state for builder mode
@@ -160,6 +194,9 @@ const DEFAULT_BUILDER_DATA: FormBuilderData = {
   products: {
     items: [],
   },
+  presentation: {
+    sections: [],
+  },
 };
 
 // ============ Context Definition ============
@@ -181,6 +218,9 @@ interface FormBuilderContextType {
 
   // Products
   setProductsData: (data: ProductsData) => void;
+
+  // Presentation
+  setPresentationData: (data: PresentationData) => void;
 
   // Load/reset
   loadData: (data: FormBuilderData) => void;
@@ -225,6 +265,11 @@ export function FormBuilderProvider({ children, initialData }: FormBuilderProvid
     setIsDirty(true);
   }, []);
 
+  const setPresentationData = useCallback((presentationData: PresentationData) => {
+    setData(prev => ({ ...prev, presentation: presentationData }));
+    setIsDirty(true);
+  }, []);
+
   const loadData = useCallback((newData: FormBuilderData) => {
     setData(newData);
     setIsDirty(false);
@@ -249,6 +294,7 @@ export function FormBuilderProvider({ children, initialData }: FormBuilderProvid
         setLeadTimesData,
         setMiscellaneousData,
         setProductsData,
+        setPresentationData,
         loadData,
         resetData,
         markClean,
@@ -279,6 +325,7 @@ export function serializeFormBuilderData(data: FormBuilderData): Record<string, 
     leadTimes: data.leadTimes,
     miscellaneous: data.miscellaneous,
     products: data.products,
+    presentation: data.presentation,
   };
 }
 
@@ -298,6 +345,7 @@ export function parseFormBuilderData(tabsData: unknown): FormBuilderData {
     leadTimes: (parsed.leadTimes as LeadTimesData) || DEFAULT_BUILDER_DATA.leadTimes,
     miscellaneous: (parsed.miscellaneous as MiscellaneousData) || DEFAULT_BUILDER_DATA.miscellaneous,
     products: (parsed.products as ProductsData) || DEFAULT_BUILDER_DATA.products,
+    presentation: (parsed.presentation as PresentationData) || DEFAULT_BUILDER_DATA.presentation,
   };
 }
 

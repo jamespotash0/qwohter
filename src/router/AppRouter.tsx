@@ -87,8 +87,7 @@ const Proposals = lazy(() => import("@/pages/Proposals"));
 const Forms = lazy(() => import("@/pages/Forms"));
 const FormBuilderV4 = lazy(() => import("@/pages/FormBuilderV4"));
 
-// Document Template pages
-const DocumentTemplateEditor = lazy(() => import("@/pages/DocumentTemplateEditor"));
+// Document Template pages - DEPRECATED: moved to _deprecated, using Presentations now
 
 // Proposal Filler (NEW V4 - filler mode)
 const ProposalFiller = lazy(() => import("@/pages/ProposalFiller"));
@@ -151,8 +150,7 @@ export const AppRouter = () => (
           <Route path="/proposals/builder" element={<FormBuilderV4 />} />
           <Route path="/proposals/builder/:id" element={<FormBuilderV4 />} />
 
-          {/* Document Template Editor - Full screen without sidebar */}
-          <Route path="/document-templates/:templateId" element={<DocumentTemplateEditor />} />
+          {/* Document Template Editor - DEPRECATED: now using Presentations tab */}
 
           {/* Proposal Filler - NEW V4 filler mode for entering proposal data */}
           <Route path="/proposals/:proposalId/edit" element={<ProposalFiller />} />

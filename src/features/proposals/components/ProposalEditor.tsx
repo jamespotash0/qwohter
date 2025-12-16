@@ -51,7 +51,7 @@ import { PricingTab } from './tabs/PricingTab';
 import { TermsTab } from './tabs/TermsTab';
 import { DocumentsTab } from './tabs/DocumentsTab';
 import { ProductsTab } from './tabs/ProductsTab';
-// import { PresentationTab } from './tabs/PresentationTab';
+import { PresentationTab } from './tabs/PresentationTab';
 
 // Editor mode determines the behavior of tabs
 export type EditorMode = 'builder' | 'filler';
@@ -75,7 +75,7 @@ const TABS: { id: string; label: string; component: TabComponent }[] = [
   { id: 'lead_times', label: 'Lead Times', component: LeadTimesTab },
   { id: 'miscellaneous', label: 'Misc', component: MiscellaneousTab },
   { id: 'documents', label: 'Documents', component: DocumentsTab },
-  { id: 'presentation', label: 'Presentation', component: null },
+  { id: 'presentation', label: 'Presentation', component: PresentationTab },
 ];
 
 type TabId = typeof TABS[number]['id'];
