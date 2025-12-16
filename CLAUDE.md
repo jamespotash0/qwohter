@@ -171,23 +171,40 @@ git push origin main
 User Input → Validation → Store/API → Database (JSONB) → Real-time Updates
 ```
 
-### 2. Quote Structure
+### 2. Proposal System (Primary Data Model)
+
+The app uses a **proposals** table as the primary data model (migrated from legacy quotes system).
+
+**Proposal Statuses:** `Draft`, `Submitted`, `Won`, `Rejected`
+
 ```typescript
-interface QuoteData {
-  quote_details: QuoteDetails;           // Project metadata
-  job_details: JobDetails;               // Job information
-  wall_details: WallDetails;             // Wall specifications
-  price_details: EnhancedPricingData;    // Cost calculations
-  delivery_details: DeliveryDetails;     // Timeline
-  organization_info?: OrganizationInfo;  // Company branding
+// Proposal type from proposalsService.ts
+import type { Proposal } from '@/services/proposalsService';
+
+// Key fields:
+interface Proposal {
+  id: string;
+  proposal_number: string;          // Auto-generated (e.g., "P-001")
+  organization_id: string;
+  form_id: string;                  // Which form template was used
+  form_data: Record<string, any>;   // JSONB - flexible form data
+  status: 'Draft' | 'Submitted' | 'Won' | 'Rejected';
+  project_name?: string;
+  client_name?: string;
+  client_company?: string;
+  job_location?: string;
+  total_value?: number;
+  is_complete?: boolean;            // Finished/unfinished indicator
+  created_at: string;
+  updated_at: string;
 }
 ```
 
 ### 3. Current Active Components
-- **UnifiedQuoteEditor.tsx** - Main editing interface
-- **EnhancedPricingForm.tsx** - Comprehensive pricing system
+- **EnhancedProposalsTable.tsx** - Main proposals listing with search, pagination, filtering
+- **ProposalEditor** - Form-based proposal editing
+- **Analytics.tsx** - Comprehensive analytics dashboard
 - **LogoUpload.tsx** - Company branding system
-- **LivePreviewPanel.tsx** - Real-time quote preview
 
 ## Coding Best Practices
 
@@ -210,13 +227,13 @@ const pricing: any = { ... };
 ```typescript
 // ✅ DO: Proper error handling with types
 try {
-  const result = await quotesService.create(data);
+  const result = await proposalsService.create(data);
   return { success: true, data: result };
 } catch (error) {
-  console.error('Quote creation failed:', error);
-  return { 
-    success: false, 
-    error: error instanceof Error ? error.message : 'Unknown error' 
+  console.error('Proposal creation failed:', error);
+  return {
+    success: false,
+    error: error instanceof Error ? error.message : 'Unknown error'
   };
 }
 
@@ -227,15 +244,15 @@ catch (error: any) { /* ignore */ }
 #### 3. Component Props
 ```typescript
 // ✅ DO: Explicit interface definitions
-interface QuoteFormProps {
-  initialData?: QuoteData;
-  onSave: (data: QuoteData) => Promise<void>;
+interface ProposalFormProps {
+  initialData?: Proposal;
+  onSave: (data: Proposal) => Promise<void>;
   onCancel: () => void;
   disabled?: boolean;
 }
 
 // ❌ DON'T: Inline types or missing optionals
-const QuoteForm = (props: {data: any, onSave: Function}) => { ... }
+const ProposalForm = (props: {data: any, onSave: Function}) => { ... }
 ```
 
 ### React Patterns
@@ -243,34 +260,34 @@ const QuoteForm = (props: {data: any, onSave: Function}) => { ... }
 #### 1. Component Structure
 ```typescript
 // ✅ DO: Consistent component structure
-export const QuoteEditor: React.FC<QuoteEditorProps> = ({
-  quoteId,
+export const ProposalEditor: React.FC<ProposalEditorProps> = ({
+  proposalId,
   onSave,
   onCancel
 }) => {
   // 1. Hooks (useState, useEffect, custom hooks)
   const [loading, setLoading] = useState(false);
-  const { quote, updateQuote } = useQuotes();
-  
+  const { proposal, updateProposal } = useProposals();
+
   // 2. Event handlers
-  const handleSave = useCallback(async (data: QuoteData) => {
+  const handleSave = useCallback(async (data: Proposal) => {
     setLoading(true);
     try {
-      await updateQuote(quoteId, data);
+      await updateProposal(proposalId, data);
       onSave();
     } catch (error) {
       // handle error
     } finally {
       setLoading(false);
     }
-  }, [quoteId, updateQuote, onSave]);
-  
+  }, [proposalId, updateProposal, onSave]);
+
   // 3. Early returns
-  if (!quote) return <LoadingSpinner />;
-  
+  if (!proposal) return <LoadingSpinner />;
+
   // 4. Render
   return (
-    <div className="quote-editor">
+    <div className="proposal-editor">
       {/* component JSX */}
     </div>
   );
@@ -280,19 +297,19 @@ export const QuoteEditor: React.FC<QuoteEditorProps> = ({
 #### 2. Custom Hooks
 ```typescript
 // ✅ DO: Extract business logic to custom hooks
-export const useQuoteValidation = (quoteData: QuoteData) => {
+export const useProposalValidation = (proposal: Proposal) => {
   return useMemo(() => {
     const isValid = !!(
-      quoteData.quote_details?.contactName &&
-      quoteData.price_details?.materials_cost > 0
+      proposal.project_name &&
+      proposal.total_value && proposal.total_value > 0
     );
-    
+
     return { isValid, errors: /* validation errors */ };
-  }, [quoteData]);
+  }, [proposal]);
 };
 
 // ❌ DON'T: Business logic in components
-const QuoteForm = () => {
+const ProposalForm = () => {
   const [isValid, setIsValid] = useState(false);
   // complex validation logic in component
 };
@@ -300,13 +317,10 @@ const QuoteForm = () => {
 
 #### 3. State Management
 ```typescript
-// ✅ DO: Use Zustand for app state, useState for UI state
-// App state (shared across components)
-interface QuotesStore {
-  quotes: Quote[];
-  currentQuote: Quote | null;
-  setCurrentQuote: (quote: Quote) => void;
-}
+// ✅ DO: Use React Query for server state, useState for UI state
+// Server state via React Query hooks
+const { data: proposals } = useProposals(organizationId);
+const { mutate: updateProposal } = useUpdateProposal();
 
 // UI state (component-specific)
 const [isOpen, setIsOpen] = useState(false);
@@ -364,37 +378,37 @@ const parseCurrency = (value: string): number => {
 #### 1. Supabase Operations
 ```typescript
 // ✅ DO: Proper error handling and typing
-export const quotesService = {
-  async create(quoteData: QuoteData): Promise<Quote> {
+export const proposalsService = {
+  async create(proposalData: CreateProposalData): Promise<Proposal> {
     const { data, error } = await supabase
-      .from('quotes')
-      .insert(quoteData)
+      .from('proposals')
+      .insert(proposalData)
       .select()
       .single();
-      
+
     if (error) {
-      console.error('Failed to create quote:', error);
-      throw new Error(`Quote creation failed: ${error.message}`);
+      console.error('Failed to create proposal:', error);
+      throw new Error(`Proposal creation failed: ${error.message}`);
     }
-    
+
     return data;
   },
-  
-  async update(id: string, updates: Partial<QuoteData>): Promise<Quote> {
+
+  async update(id: string, updates: UpdateProposalData): Promise<Proposal> {
     const { data, error } = await supabase
-      .from('quotes')
+      .from('proposals')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single();
-      
+
     if (error) throw new Error(`Update failed: ${error.message}`);
     return data;
   }
 };
 
 // ❌ DON'T: Silent failures or untyped responses
-const result = await supabase.from('quotes').insert(data);
+const result = await supabase.from('proposals').insert(data);
 // No error checking, no typing
 ```
 
@@ -449,26 +463,26 @@ const PricingDisplay = ({ pricing }: { pricing: EnhancedPricingData }) => {
 };
 
 // ✅ DO: Memoize components that receive object props
-const QuoteCard = React.memo(({ quote }: { quote: Quote }) => {
-  return <div>{quote.project_name}</div>;
+const ProposalCard = React.memo(({ proposal }: { proposal: Proposal }) => {
+  return <div>{proposal.project_name}</div>;
 });
 ```
 
 #### 2. API Optimization
 ```typescript
 // ✅ DO: Debounced updates for real-time features
-const useAutoSave = (data: QuoteData, delay = 1000) => {
+const useAutoSave = (proposal: Proposal, delay = 1000) => {
   const debouncedSave = useMemo(
-    () => debounce((data: QuoteData) => {
-      quotesService.update(data.id, data);
+    () => debounce((data: Proposal) => {
+      proposalsService.update(data.id, data);
     }, delay),
     [delay]
   );
-  
+
   useEffect(() => {
-    debouncedSave(data);
+    debouncedSave(proposal);
     return () => debouncedSave.cancel();
-  }, [data, debouncedSave]);
+  }, [proposal, debouncedSave]);
 };
 ```
 
@@ -477,16 +491,16 @@ const useAutoSave = (data: QuoteData, delay = 1000) => {
 #### 1. User-Facing Errors
 ```typescript
 // ✅ DO: Meaningful error messages for users
-const createQuote = async (data: QuoteData) => {
+const createProposal = async (data: CreateProposalData) => {
   try {
-    return await quotesService.create(data);
+    return await proposalsService.create(data);
   } catch (error) {
     const userMessage = error instanceof Error && error.message.includes('permission')
-      ? 'You do not have permission to create quotes'
-      : 'Failed to create quote. Please try again.';
-      
+      ? 'You do not have permission to create proposals'
+      : 'Failed to create proposal. Please try again.';
+
     toast({
-      title: 'Error Creating Quote',
+      title: 'Error Creating Proposal',
       description: userMessage,
       variant: 'destructive'
     });
@@ -521,23 +535,31 @@ const displayValidationErrors = (errors: ValidationError[]) => {
 src/
 ├── components/
 │   ├── features/           # Feature-specific components
-│   │   ├── quotes/
-│   │   ├── pricing/
-│   │   └── settings/
-│   ├── common/            # Reusable components
+│   │   ├── proposals/      # Proposal table, editor, etc.
+│   │   ├── forms/          # Form builder components
+│   │   └── settings/       # Settings components
+│   ├── common/             # Reusable components
 │   │   ├── forms/
 │   │   ├── layout/
 │   │   └── ui/
-│   └── ui/                # shadcn/ui components
-├── hooks/                 # Custom hooks
-├── services/              # API services
-├── stores/                # Zustand stores
-├── lib/                   # Utilities and types
+│   ├── analytics/          # Analytics dashboard components
+│   └── ui/                 # shadcn/ui components
+├── hooks/
+│   └── queries/            # React Query hooks (useProposals, useDashboard, etc.)
+├── services/               # API services (proposalsService, etc.)
+├── utils/                  # Utility functions
+├── lib/                    # Core libraries and types
 │   ├── types/
-│   ├── utils/
-│   └── validations/
-└── pages/                 # Route components
+│   └── queryClient.ts      # React Query client configuration
+├── auth/                   # Authentication (AuthProvider, etc.)
+├── _deprecated/            # Old code kept for reference (quotes system)
+└── pages/                  # Route components
 ```
+
+### Key Services
+- **proposalsService.ts** - CRUD operations for proposals
+- **numberingConfigService.ts** - Auto-incrementing proposal numbers
+- **organizationsService.ts** - Organization management
 
 
 ## Security Requirements
@@ -562,7 +584,13 @@ VITE_SUPABASE_ANON_KEY=your_anon_key
 ```
 
 ## Working Directory
-Main application code is in `/wall-quote-wizard/`. Always work from this directory for npm commands.
+Main application code is in the root directory (`/wallqu-form-builder/`). Always work from this directory for npm commands.
+
+## Legacy Code
+The old quotes system is deprecated and moved to `src/_deprecated/`. Do NOT use:
+- `quotesService` - Use `proposalsService` instead
+- `Quote` type - Use `Proposal` type instead
+- Quote-related components in `_deprecated/`
 
 ---
 

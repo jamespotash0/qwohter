@@ -38,7 +38,6 @@ import { toast } from "sonner";
 import CreateProposalDialog, { type ProposalInitialData } from "@/components/features/proposals/creation/CreateProposalDialog";
 import { groupProposalsByVersion } from "@/utils/proposalVersionGrouping";
 import { TrialExpiryModal } from "@/components/trial/TrialExpiryModal";
-import { stripeService } from "@/services/stripeService";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -251,7 +250,7 @@ const Dashboard = () => {
     if (!user?.id || !organizationId) return;
 
     const { error } = await reminderService.completeReminder(reminderId, {
-      reminder_status: 'Completed',
+      status: 'Completed',
       completed_by: user.id,
     });
 
@@ -773,7 +772,7 @@ const Dashboard = () => {
 
                       const getTypeColor = (type: string) => {
                         switch (type) {
-                          case 'Quote_Follow_Up':
+                          case 'Proposal_Follow_Up':
                             return 'text-blue-600 bg-blue-50';
                           case 'Meeting':
                             return 'text-purple-600 bg-purple-50';
@@ -809,10 +808,10 @@ const Dashboard = () => {
                                 </h4>
                               </div>
 
-                              {/* Quote Reference (no spacing) */}
-                              {reminder.quote_number && (
+                              {/* Proposal Reference (no spacing) */}
+                              {reminder.proposal_number && (
                                 <p className={`text-xs ${isCompleted ? 'text-gray-500' : 'text-gray-600'}`}>
-                                  #{reminder.quote_number}{reminder.project_name ? ` - ${reminder.project_name}` : ''}
+                                  #{reminder.proposal_number}{reminder.project_name ? ` - ${reminder.project_name}` : ''}
                                 </p>
                               )}
 

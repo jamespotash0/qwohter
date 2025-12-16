@@ -9,7 +9,6 @@ import {
 import { useProposals } from "@/hooks/queries/useProposals";
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useUser } from "@/auth";
-import type { Quote } from "@/_deprecated/services/quotesService"; // For analytics type compatibility
 
 // Import new analytics components
 import { KPICard } from "@/components/analytics";
@@ -18,7 +17,7 @@ import {
   generateAnalyticsSummary,
   formatCurrency,
   calculateWinRate,
-  filterMainVersionQuotes,
+  filterMainVersionProposals,
   calculateAveragesOverTime,
   calculateTotalsOverTime,
   calculateWonRejectedOverTime,
@@ -58,7 +57,7 @@ import {
  * - KPI cards with real-time trends
  * - Time period toggles (Weekly/Monthly/Yearly)
  * - Revenue tracking and conversion metrics
- * - Quote source performance
+ * - Proposal source performance
  * - Export and enlarge capabilities
  *
  * Architecture: Uses React Query for data fetching and real-time updates
@@ -87,40 +86,36 @@ const Analytics = () => {
   // Fetch proposals using React Query
   const { data: proposals = [], isLoading: proposalsLoading } = useProposals(currentOrganization?.id);
 
-  // Cast proposals to Quote[] for analytics type compatibility
-  // (Proposal and Quote have compatible fields for analytics calculations)
-  const analyticsData = proposals as unknown as Quote[];
-
   // Filter to main versions only to prevent double-counting across versions
-  const mainVersionQuotes = useMemo(() => {
-    return filterMainVersionQuotes(analyticsData);
-  }, [analyticsData]);
+  const mainVersionProposals = useMemo(() => {
+    return filterMainVersionProposals(proposals);
+  }, [proposals]);
 
   // Generate comprehensive analytics using new calculation utilities
   const analytics = useMemo(() => {
-    const result = generateAnalyticsSummary(mainVersionQuotes, timePeriod);
+    const result = generateAnalyticsSummary(mainVersionProposals, timePeriod);
     return result;
-  }, [mainVersionQuotes, timePeriod]);
+  }, [mainVersionProposals, timePeriod]);
 
   // Individual chart data with their own time periods
   const averagesData = useMemo(() => {
-    const data = calculateAveragesOverTime(mainVersionQuotes, averagesTimePeriod, 12, averagesPeriodOffset);
+    const data = calculateAveragesOverTime(mainVersionProposals, averagesTimePeriod, 12, averagesPeriodOffset);
     return averagesCumulative ? makeAveragesCumulative(data) : data;
-  }, [mainVersionQuotes, averagesTimePeriod, averagesPeriodOffset, averagesCumulative]);
+  }, [mainVersionProposals, averagesTimePeriod, averagesPeriodOffset, averagesCumulative]);
 
   const totalsData = useMemo(() => {
-    const data = calculateTotalsOverTime(mainVersionQuotes, totalsTimePeriod, 12, totalsPeriodOffset);
+    const data = calculateTotalsOverTime(mainVersionProposals, totalsTimePeriod, 12, totalsPeriodOffset);
     return totalsCumulative ? makeTotalsCumulative(data) : data;
-  }, [mainVersionQuotes, totalsTimePeriod, totalsPeriodOffset, totalsCumulative]);
+  }, [mainVersionProposals, totalsTimePeriod, totalsPeriodOffset, totalsCumulative]);
 
   const wonRejectedData = useMemo(() => {
-    const data = calculateWonRejectedOverTime(mainVersionQuotes, wonRejectedTimePeriod, 12, wonRejectedPeriodOffset);
+    const data = calculateWonRejectedOverTime(mainVersionProposals, wonRejectedTimePeriod, 12, wonRejectedPeriodOffset);
     return wonRejectedCumulative ? makeWonRejectedCumulative(data) : data;
-  }, [mainVersionQuotes, wonRejectedTimePeriod, wonRejectedPeriodOffset, wonRejectedCumulative]);
+  }, [mainVersionProposals, wonRejectedTimePeriod, wonRejectedPeriodOffset, wonRejectedCumulative]);
 
   const teamData = useMemo(() => {
-    return calculateUserMetrics(mainVersionQuotes);
-  }, [mainVersionQuotes]);
+    return calculateUserMetrics(mainVersionProposals);
+  }, [mainVersionProposals]);
 
   // Chart color scheme
   const COLORS = {
@@ -161,7 +156,7 @@ const Analytics = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <KPICard
               title="Total Revenue (All Time)"
-              value={formatCurrency(mainVersionQuotes.filter(q => q.status === 'Won').reduce((sum, q) => sum + (q.total_value || 0), 0))}
+              value={formatCurrency(mainVersionProposals.filter(q => q.status === 'Won').reduce((sum, q) => sum + (q.total_value || 0), 0))}
               subtitle="Lifetime earnings"
               icon={DollarSign}
               iconColor="orange"
@@ -181,22 +176,22 @@ const Analytics = () => {
             />
 
             <KPICard
-              title="Quote Win Rate"
-              value={`${calculateWinRate(mainVersionQuotes).toFixed(1)}%`}
+              title="Proposal Win Rate"
+              value={`${calculateWinRate(mainVersionProposals).toFixed(1)}%`}
               subtitle="Won / Decided (Won+Rejected)"
               icon={Target}
               iconColor="blue"
             />
 
             <KPICard
-              title="Total Quotes This Week"
+              title="Total Proposals This Week"
               value={(() => {
                 const now = new Date();
                 const startOfThisWeek = new Date(now);
                 startOfThisWeek.setDate(now.getDate() - now.getDay());
                 startOfThisWeek.setHours(0, 0, 0, 0);
 
-                const thisWeekCount = mainVersionQuotes.filter(q => {
+                const thisWeekCount = mainVersionProposals.filter(q => {
                   const createdDate = new Date(q.created_at);
                   return createdDate >= startOfThisWeek;
                 }).length;
@@ -215,12 +210,12 @@ const Analytics = () => {
                 const startOfLastWeek = new Date(startOfThisWeek);
                 startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
 
-                const thisWeekCount = mainVersionQuotes.filter(q => {
+                const thisWeekCount = mainVersionProposals.filter(q => {
                   const createdDate = new Date(q.created_at);
                   return createdDate >= startOfThisWeek;
                 }).length;
 
-                const lastWeekCount = mainVersionQuotes.filter(q => {
+                const lastWeekCount = mainVersionProposals.filter(q => {
                   const createdDate = new Date(q.created_at);
                   return createdDate >= startOfLastWeek && createdDate < startOfThisWeek;
                 }).length;
@@ -248,9 +243,9 @@ const Analytics = () => {
           {proposals.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Row 1: Average and Total Metrics Over Time */}
-              {/* Average Quote Metrics Over Time */}
+              {/* Average Proposal Metrics Over Time */}
               <EnhancedChartCard
-                title="Average Quote Metrics Over Time"
+                title="Average Proposal Metrics Over Time"
                 subtitle="Track profit, revenue, and value trends"
                 showTimePeriodToggle={true}
                 showCumulativeToggle={true}
@@ -309,7 +304,7 @@ const Analytics = () => {
                           const labelMap: Record<string, string> = {
                             avgGrossProfit: 'Avg Gross Profit',
                             avgRevenue: 'Avg Revenue',
-                            avgValue: 'Avg Quote Value',
+                            avgValue: 'Avg Proposal Value',
                           };
                           return [formatCurrency(value), labelMap[name] || name];
                         }}
@@ -337,7 +332,7 @@ const Analytics = () => {
                         dataKey="avgValue"
                         stroke={COLORS.purple}
                         strokeWidth={2}
-                        name="Avg Quote Value"
+                        name="Avg Proposal Value"
                         dot={false}
                         activeDot={{ r: 5 }}
                       />
@@ -388,14 +383,14 @@ const Analytics = () => {
                           const labelMap: Record<string, string> = {
                             avgGrossProfit: 'Avg Gross Profit',
                             avgRevenue: 'Avg Revenue',
-                            avgValue: 'Avg Quote Value',
+                            avgValue: 'Avg Proposal Value',
                           };
                           return [formatCurrency(value), labelMap[name] || name];
                         }}
                       />
                       <Bar dataKey="avgGrossProfit" fill={COLORS.green} name="Avg Gross Profit" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="avgRevenue" fill={COLORS.blue} name="Avg Revenue" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="avgValue" fill={COLORS.purple} name="Avg Quote Value" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avgValue" fill={COLORS.purple} name="Avg Proposal Value" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   )}
                 </ResponsiveContainer>
@@ -557,7 +552,7 @@ const Analytics = () => {
               {/* Row 2: Product Charts */}
               {/* Product Breakdown */}
               <EnhancedChartCard
-                title="Most Quoted Products"
+                title="Most Proposed Products"
                 subtitle="Product type distribution"
                 onExport={() => handleExport('products')}
                 onExpand={() => handleEnlarge('products')}
@@ -587,7 +582,7 @@ const Analytics = () => {
                         borderRadius: '8px',
                       }}
                     />
-                    <Bar dataKey="quoteCount" name="Quotes" radius={[4, 4, 0, 0]}>
+                    <Bar dataKey="proposalCount" name="Proposals" radius={[4, 4, 0, 0]}>
                       {analytics.productMetrics.map((entry, index) => {
                         const productColors: Record<string, string> = {
                           'Operable Wall': COLORS.blue,
@@ -628,7 +623,7 @@ const Analytics = () => {
                         borderRadius: '8px',
                       }}
                       formatter={(value: number, name: string) => {
-                        if (name === 'Quotes') return [value, 'Quote Count'];
+                        if (name === 'Proposals') return [value, 'Proposal Count'];
                         return [value, name];
                       }}
                       labelFormatter={(label, payload) => {
@@ -639,7 +634,7 @@ const Analytics = () => {
                         return label;
                       }}
                     />
-                    <Bar dataKey="quoteCount" name="Quotes" radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="proposalCount" name="Proposals" radius={[0, 4, 4, 0]}>
                       {analytics.productModelMetrics.map((_, index) => {
                         const modelColors = [
                           COLORS.blue,
@@ -664,7 +659,7 @@ const Analytics = () => {
               {/* Row 3: Won/Rejected and Team Member Charts */}
               {/* Won vs Rejected Over Time */}
               <EnhancedChartCard
-                title="Won vs Rejected Quotes"
+                title="Won vs Rejected Proposals"
                 subtitle="Track outcomes over time"
                 showTimePeriodToggle={true}
                 showCumulativeToggle={true}
@@ -781,10 +776,10 @@ const Analytics = () => {
                 </ResponsiveContainer>
               </EnhancedChartCard>
 
-              {/* Quotes by People */}
+              {/* Proposals by People */}
               <EnhancedChartCard
-                title="Quotes by Team Member"
-                subtitle="Quote volume per person"
+                title="Proposals by Team Member"
+                subtitle="Proposal volume per person"
                 onExport={() => handleExport('by-people')}
                 onExpand={() => handleEnlarge('by-people')}
               >
@@ -815,16 +810,16 @@ const Analytics = () => {
                       formatter={(value: number, name: string) => [value, name]}
                     />
                     <Legend />
-                    <Bar dataKey="quoteCount" fill={COLORS.blue} name="Total Quotes" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="proposalCount" fill={COLORS.blue} name="Total Proposals" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </EnhancedChartCard>
 
-              {/* Row 4: Quote Status Charts */}
-              {/* Quote Status Breakdown */}
+              {/* Row 4: Proposal Status Charts */}
+              {/* Proposal Status Breakdown */}
               <EnhancedChartCard
-                title="Quote Status Breakdown"
+                title="Proposal Status Breakdown"
                 subtitle="Distribution across all statuses"
                 onExport={() => handleExport('status')}
                 onExpand={() => handleEnlarge('status')}
@@ -835,7 +830,6 @@ const Analytics = () => {
                       <PieChart>
                         <Pie
                           data={[
-                            { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
                             { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
                             { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
                             { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
@@ -849,7 +843,6 @@ const Analytics = () => {
                           dataKey="value"
                         >
                           {[
-                            { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
                             { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
                             { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
                             { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
@@ -871,8 +864,7 @@ const Analytics = () => {
                           align="right"
                           layout="vertical"
                           formatter={(value, entry: any) => {
-                            const total = analytics.statusBreakdown.incomplete +
-                                         analytics.statusBreakdown.draft +
+                            const total = analytics.statusBreakdown.draft +
                                          analytics.statusBreakdown.submitted +
                                          analytics.statusBreakdown.won +
                                          analytics.statusBreakdown.rejected;
@@ -887,9 +879,9 @@ const Analytics = () => {
                 </div>
               </EnhancedChartCard>
 
-              {/* Quote Source Performance */}
+              {/* Proposal Source Performance */}
               <EnhancedChartCard
-                title="Quote Source Performance"
+                title="Proposal Source Performance"
                 subtitle="Revenue and conversion by source"
                 onExport={() => handleExport('sources')}
                 onExpand={() => handleEnlarge('sources')}
@@ -901,7 +893,7 @@ const Analytics = () => {
                         <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                           <tr>
                             <th className="px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">Source</th>
-                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Quotes</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Proposals</th>
                             <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Avg Value</th>
                             <th className="px-4 py-3 text-right font-semibold text-gray-700 dark:text-gray-300">Conv. Rate</th>
                           </tr>
@@ -910,7 +902,7 @@ const Analytics = () => {
                           {analytics.sourceMetrics.map((source, idx) => (
                             <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                               <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{source.source}</td>
-                              <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{source.quoteCount}</td>
+                              <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{source.proposalCount}</td>
                               <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-400">{formatCurrency(source.averageValue)}</td>
                               <td className="px-4 py-3 text-right">
                                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -950,10 +942,10 @@ const Analytics = () => {
       {enlargedChart && (
         <Dialog open={!!enlargedChart} onOpenChange={(open) => !open && setEnlargedChart(null)}>
           <DialogContent className="max-w-[95vw] h-[92vh] p-6 flex flex-col overflow-hidden">
-            {/* Average Quote Metrics */}
+            {/* Average Proposal Metrics */}
             {enlargedChart === 'averages' && (
               <EnhancedChartCard
-                title="Average Quote Metrics Over Time"
+                title="Average Proposal Metrics Over Time"
                 subtitle="Track profit, revenue, and value trends"
                 showTimePeriodToggle={true}
                 showCumulativeToggle={true}
@@ -1013,7 +1005,7 @@ const Analytics = () => {
                           const labelMap: Record<string, string> = {
                             avgGrossProfit: 'Avg Gross Profit',
                             avgRevenue: 'Avg Revenue',
-                            avgValue: 'Avg Quote Value',
+                            avgValue: 'Avg Proposal Value',
                           };
                           return [formatCurrency(value), labelMap[name] || name];
                         }}
@@ -1042,7 +1034,7 @@ const Analytics = () => {
                         dataKey="avgValue"
                         stroke={COLORS.purple}
                         strokeWidth={3}
-                        name="Avg Quote Value"
+                        name="Avg Proposal Value"
                         dot={{ r: 4 }}
                         activeDot={{ r: 6 }}
                       />
@@ -1093,7 +1085,7 @@ const Analytics = () => {
                           const labelMap: Record<string, string> = {
                             avgGrossProfit: 'Avg Gross Profit',
                             avgRevenue: 'Avg Revenue',
-                            avgValue: 'Avg Quote Value',
+                            avgValue: 'Avg Proposal Value',
                           };
                           return [formatCurrency(value), labelMap[name] || name];
                         }}
@@ -1101,7 +1093,7 @@ const Analytics = () => {
                       <Legend />
                       <Bar dataKey="avgGrossProfit" fill={COLORS.green} name="Avg Gross Profit" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="avgRevenue" fill={COLORS.blue} name="Avg Revenue" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="avgValue" fill={COLORS.purple} name="Avg Quote Value" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="avgValue" fill={COLORS.purple} name="Avg Proposal Value" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   )}
                 </ResponsiveContainer>
@@ -1269,7 +1261,7 @@ const Analytics = () => {
             {/* Won vs Rejected */}
             {enlargedChart === 'won-rejected' && (
               <EnhancedChartCard
-                title="Won vs Rejected Quotes"
+                title="Won vs Rejected Proposals"
                 subtitle="Track outcomes over time"
                 showTimePeriodToggle={true}
                 showCumulativeToggle={true}
@@ -1391,7 +1383,7 @@ const Analytics = () => {
             {/* Products */}
             {enlargedChart === 'products' && (
               <EnhancedChartCard
-                title="Most Quoted Products"
+                title="Most Proposed Products"
                 subtitle="Product type distribution"
                 onExport={() => handleExport('products')}
                 onExpand={() => setEnlargedChart(null)}
@@ -1423,7 +1415,7 @@ const Analytics = () => {
                       }}
                     />
                     <Legend />
-                    <Bar dataKey="quoteCount" name="Quotes" radius={[4, 4, 0, 0]}>
+                    <Bar dataKey="proposalCount" name="Proposals" radius={[4, 4, 0, 0]}>
                       {analytics.productMetrics.map((entry, index) => {
                         const productColors: Record<string, string> = {
                           'Operable Wall': COLORS.blue,
@@ -1467,7 +1459,7 @@ const Analytics = () => {
                         borderRadius: '8px',
                       }}
                       formatter={(value: number, name: string) => {
-                        if (name === 'Quotes') return [value, 'Quote Count'];
+                        if (name === 'Proposals') return [value, 'Proposal Count'];
                         return [value, name];
                       }}
                       labelFormatter={(label, payload) => {
@@ -1479,7 +1471,7 @@ const Analytics = () => {
                       }}
                     />
                     <Legend />
-                    <Bar dataKey="quoteCount" name="Quotes" radius={[0, 4, 4, 0]}>
+                    <Bar dataKey="proposalCount" name="Proposals" radius={[0, 4, 4, 0]}>
                       {analytics.productModelMetrics.map((_, index) => {
                         const modelColors = [
                           COLORS.blue,
@@ -1505,8 +1497,8 @@ const Analytics = () => {
             {/* By People */}
             {enlargedChart === 'by-people' && (
               <EnhancedChartCard
-                title="Quotes by Team Member"
-                subtitle="Quote volume per person"
+                title="Proposals by Team Member"
+                subtitle="Proposal volume per person"
                 onExport={() => handleExport('by-people')}
                 onExpand={() => setEnlargedChart(null)}
                 isEnlarged={true}
@@ -1538,7 +1530,7 @@ const Analytics = () => {
                       formatter={(value: number, name: string) => [value, name]}
                     />
                     <Legend />
-                    <Bar dataKey="quoteCount" fill={COLORS.blue} name="Total Quotes" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="proposalCount" fill={COLORS.blue} name="Total Proposals" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="wonCount" fill={COLORS.green} name="Won" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -1548,7 +1540,7 @@ const Analytics = () => {
             {/* Status */}
             {enlargedChart === 'status' && (
               <EnhancedChartCard
-                title="Quote Status Breakdown"
+                title="Proposal Status Breakdown"
                 subtitle="Distribution across all statuses"
                 onExport={() => handleExport('status')}
                 onExpand={() => setEnlargedChart(null)}
@@ -1559,7 +1551,6 @@ const Analytics = () => {
                     <PieChart>
                       <Pie
                         data={[
-                          { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
                           { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
                           { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
                           { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
@@ -1574,7 +1565,6 @@ const Analytics = () => {
                         label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
                       >
                         {[
-                          { name: 'Incomplete', value: analytics.statusBreakdown.incomplete, color: '#9CA3AF' },
                           { name: 'Draft', value: analytics.statusBreakdown.draft, color: '#60A5FA' },
                           { name: 'Submitted', value: analytics.statusBreakdown.submitted, color: '#FBBF24' },
                           { name: 'Won', value: analytics.statusBreakdown.won, color: '#10B981' },
@@ -1595,8 +1585,7 @@ const Analytics = () => {
                         verticalAlign="bottom"
                         height={36}
                         formatter={(value, entry: any) => {
-                          const total = analytics.statusBreakdown.incomplete +
-                                       analytics.statusBreakdown.draft +
+                          const total = analytics.statusBreakdown.draft +
                                        analytics.statusBreakdown.submitted +
                                        analytics.statusBreakdown.won +
                                        analytics.statusBreakdown.rejected;
@@ -1614,7 +1603,7 @@ const Analytics = () => {
             {/* Sources */}
             {enlargedChart === 'sources' && (
               <EnhancedChartCard
-                title="Quote Source Performance"
+                title="Proposal Source Performance"
                 subtitle="Revenue and conversion by source"
                 onExport={() => handleExport('sources')}
                 onExpand={() => setEnlargedChart(null)}
@@ -1627,7 +1616,7 @@ const Analytics = () => {
                         <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
                           <tr>
                             <th className="px-6 py-4 text-left font-semibold text-gray-700 dark:text-gray-300">Source</th>
-                            <th className="px-6 py-4 text-right font-semibold text-gray-700 dark:text-gray-300">Quotes</th>
+                            <th className="px-6 py-4 text-right font-semibold text-gray-700 dark:text-gray-300">Proposals</th>
                             <th className="px-6 py-4 text-right font-semibold text-gray-700 dark:text-gray-300">Avg Value</th>
                             <th className="px-6 py-4 text-right font-semibold text-gray-700 dark:text-gray-300">Conv. Rate</th>
                           </tr>
@@ -1636,7 +1625,7 @@ const Analytics = () => {
                           {analytics.sourceMetrics.map((source, idx) => (
                             <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                               <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{source.source}</td>
-                              <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-400">{source.quoteCount}</td>
+                              <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-400">{source.proposalCount}</td>
                               <td className="px-6 py-4 text-right text-gray-600 dark:text-gray-400">{formatCurrency(source.averageValue)}</td>
                               <td className="px-6 py-4 text-right">
                                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${

@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import * as Sentry from '@sentry/react';
 
-export type ReminderType = 'Quote_Follow_Up' | 'General' | 'Meeting' | 'Deadline' | 'Task' | 'Other';
+export type ReminderType = 'Proposal_Follow_Up' | 'General' | 'Meeting' | 'Deadline' | 'Task' | 'Other';
 export type ReminderStatus = 'Pending' | 'Completed' | 'Dismissed';
 
 export interface Reminder {

@@ -235,7 +235,7 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="General">General</SelectItem>
-                  <SelectItem value="Quote_Follow_Up">Quote Follow-Up</SelectItem>
+                  <SelectItem value="Proposal_Follow_Up">Proposal Follow-Up</SelectItem>
                   <SelectItem value="Task">Task</SelectItem>
                   <SelectItem value="Meeting">Meeting</SelectItem>
                   <SelectItem value="Deadline">Deadline</SelectItem>

@@ -10,27 +10,26 @@ import { queryKeys } from '@/lib/queryClient';
 
 /**
  * Dashboard stats type
+ * Proposal statuses: Draft, Submitted, Won, Rejected
  */
 export interface DashboardStats {
   totalProposals: number;
   draftProposals: number;
-  sentProposals: number;
-  approvedProposals: number;
+  submittedProposals: number;
+  wonProposals: number;
+  rejectedProposals: number;
   totalValue: number;
-  approvalRate: number;
-  /** @deprecated Use totalProposals instead */
-  totalQuotes: number;
-  /** @deprecated Use sentProposals instead */
-  submittedQuotes: number;
-  /** @deprecated Use approvedProposals instead */
-  wonQuotes: number;
-  /** @deprecated Use approvalRate instead */
-  winRate: number;
+  winRate: number; // Won / (Won + Rejected) * 100
 }
 
 /**
  * Fetch dashboard stats from proposals table
  */
+type ProposalRow = {
+  status: 'Draft' | 'Submitted' | 'Won' | 'Rejected';
+  total_value: number | null;
+};
+
 async function fetchDashboardStats(organizationId: string): Promise<DashboardStats> {
   const { data: proposals, error } = await supabase
     .from('proposals')
@@ -39,26 +38,27 @@ async function fetchDashboardStats(organizationId: string): Promise<DashboardSta
 
   if (error) throw error;
 
-  const totalProposals = proposals?.length || 0;
-  const draftProposals = proposals?.filter(p => p.status === 'Draft').length || 0;
-  const sentProposals = proposals?.filter(p => p.status === 'Sent').length || 0;
-  const approvedProposals = proposals?.filter(p => p.status === 'Approved').length || 0;
-  const totalValue = proposals?.reduce((sum, p) => sum + (p.total_value || 0), 0) || 0;
-  const approvalRate = sentProposals > 0 ? (approvedProposals / sentProposals) * 100 : 0;
+  const typedProposals = (proposals ?? []) as ProposalRow[];
+
+  const totalProposals = typedProposals?.length || 0;
+  const draftProposals = typedProposals?.filter(p => p.status === 'Draft').length || 0;
+  const submittedProposals = typedProposals?.filter(p => p.status === 'Submitted').length || 0;
+  const wonProposals = typedProposals?.filter(p => p.status === 'Won').length || 0;
+  const rejectedProposals = typedProposals?.filter(p => p.status === 'Rejected').length || 0;
+  const totalValue = typedProposals?.reduce((sum, p) => sum + (p.total_value || 0), 0) || 0;
+
+  // Win rate = Won / (Won + Rejected) * 100
+  const decidedProposals = wonProposals + rejectedProposals;
+  const winRate = decidedProposals > 0 ? (wonProposals / decidedProposals) * 100 : 0;
 
   return {
-    // New field names
     totalProposals,
     draftProposals,
-    sentProposals,
-    approvedProposals,
+    submittedProposals,
+    wonProposals,
+    rejectedProposals,
     totalValue,
-    approvalRate,
-    // Deprecated aliases for backward compatibility
-    totalQuotes: totalProposals,
-    submittedQuotes: sentProposals,
-    wonQuotes: approvedProposals,
-    winRate: approvalRate,
+    winRate,
   };
 }
 
