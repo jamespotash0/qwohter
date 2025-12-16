@@ -3,7 +3,7 @@
  * Feature-rich table matching the EnhancedQuotesTable styling
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   createColumnHelper,
   flexRender,
@@ -126,6 +126,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
   // State
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
+  const [searchInput, setSearchInput] = useState(''); // Local input state for immediate feedback
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const [rowSelection, setRowSelection] = useState({});
@@ -138,6 +139,41 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
   const [mainVersions, setMainVersions] = useState<Record<string, string>>({});
   const [showSuggestions, setShowSuggestions] = useState(false);
   const columnResizeMode: ColumnResizeMode = 'onChange';
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced search - updates globalFilter after user stops typing
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchInput(value); // Update input immediately for responsive UI
+    setShowSuggestions(true);
+
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Debounce the actual filter update (150ms delay)
+    debounceTimerRef.current = setTimeout(() => {
+      setGlobalFilter(value);
+    }, 150);
+  }, []);
+
+  // Clear search handler
+  const clearSearch = useCallback(() => {
+    setSearchInput('');
+    setGlobalFilter('');
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   // Enhanced search with Fuse.js
   const { search, getSearchSuggestions } = useEnhancedProposalSearch(proposals);
@@ -149,11 +185,11 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
     return results.map(r => r.item);
   }, [proposals, globalFilter, search]);
 
-  // Get search suggestions
+  // Get search suggestions (based on searchInput for immediate feedback)
   const searchSuggestions = useMemo(() => {
-    if (!globalFilter.trim() || globalFilter.length < 2) return [];
-    return getSearchSuggestions(globalFilter, 5);
-  }, [globalFilter, getSearchSuggestions]);
+    if (!searchInput.trim() || searchInput.length < 2) return [];
+    return getSearchSuggestions(searchInput, 5);
+  }, [searchInput, getSearchSuggestions]);
 
   // Group proposals by version (using filtered proposals)
   const proposalGroups = useMemo(() => groupProposalsByVersion(filteredProposals), [filteredProposals]);
@@ -488,18 +524,15 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
             <input
               type="text"
               placeholder="Search by name, client, proposal #... (e.g. client:Acme)"
-              value={globalFilter ?? ''}
-              onChange={(e) => {
-                setGlobalFilter(e.target.value);
-                setShowSuggestions(true);
-              }}
+              value={searchInput}
+              onChange={(e) => handleSearchChange(e.target.value)}
               onFocus={() => setShowSuggestions(true)}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
               className="w-full pl-10 pr-20 py-2 text-sm border border-gray-300 dark:border-[var(--input-border)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--sidebar-icon-active)] dark:focus:ring-[var(--sidebar-icon-active)] focus:border-[var(--sidebar-icon-active)] dark:bg-[var(--input-bg)] dark:text-[var(--input-text)]"
             />
             <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex items-center space-x-1 z-10">
-              {globalFilter && (
-                <Button variant="ghost" size="sm" onClick={() => setGlobalFilter('')} className="w-8 h-6 p-0 rounded-full">
+              {searchInput && (
+                <Button variant="ghost" size="sm" onClick={clearSearch} className="w-8 h-6 p-0 rounded-full">
                   <X className="w-3 h-3" />
                 </Button>
               )}
@@ -514,6 +547,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                     className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                     onMouseDown={(e) => {
                       e.preventDefault();
+                      setSearchInput(suggestion);
                       setGlobalFilter(suggestion);
                       setShowSuggestions(false);
                     }}
@@ -631,7 +665,7 @@ export const EnhancedProposalsTable: React.FC<EnhancedProposalsTableProps> = ({
                             <Button
                               variant="outline"
                               size="default"
-                              onClick={() => setGlobalFilter('')}
+                              onClick={clearSearch}
                             >
                               <X className="w-4 h-4 mr-2" />
                               Clear Search

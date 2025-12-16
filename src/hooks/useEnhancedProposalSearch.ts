@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import Fuse from 'fuse.js';
-import type { FuseResultMatch, IFuseOptions } from 'fuse.js';
+import type { FuseResultMatch, IFuseOptions, FuseResult } from 'fuse.js';
 import type { Proposal } from '@/services/proposalsService';
 
 export interface ProposalSearchResult {
@@ -18,29 +18,90 @@ const FIELD_PATTERNS = {
   location: /^(location|address|loc):\s*(.+)/i,
 };
 
+// Base fuse options - defined outside component to avoid recreation
+const BASE_FUSE_OPTIONS: IFuseOptions<Proposal> = {
+  threshold: 0.4,
+  distance: 100,
+  minMatchCharLength: 2,
+  includeScore: true,
+  includeMatches: true,
+  ignoreLocation: false,
+};
+
 const useEnhancedProposalSearch = (proposals: Proposal[]) => {
-  // Configure Fuse.js with weighted fields for proposals
-  const fuseOptions: IFuseOptions<Proposal> = {
-    keys: [
+  // Memoize all Fuse instances upfront to avoid creating them during search
+  const fuseInstances = useMemo(() => {
+    const mainKeys = [
       { name: 'proposal_number', weight: 0.3 },
       { name: 'project_name', weight: 0.25 },
       { name: 'client_name', weight: 0.2 },
       { name: 'client_company', weight: 0.15 },
       { name: 'job_location', weight: 0.1 },
       { name: 'status', weight: 0.05 },
-    ],
-    threshold: 0.4, // 0 = exact match, 1 = match anything
-    distance: 100,
-    minMatchCharLength: 2,
-    includeScore: true,
-    includeMatches: true,
-    ignoreLocation: false,
-  };
+    ];
 
-  // Create Fuse instance
-  const fuse = useMemo(() => new Fuse(proposals, fuseOptions), [proposals]);
+    return {
+      main: new Fuse(proposals, { ...BASE_FUSE_OPTIONS, keys: mainKeys }),
+      proposalNumber: new Fuse(proposals, { ...BASE_FUSE_OPTIONS, keys: ['proposal_number'] }),
+      clientCompany: new Fuse(proposals, { ...BASE_FUSE_OPTIONS, keys: ['client_company'] }),
+      clientName: new Fuse(proposals, { ...BASE_FUSE_OPTIONS, keys: ['client_name'] }),
+      projectName: new Fuse(proposals, { ...BASE_FUSE_OPTIONS, keys: ['project_name'] }),
+      status: new Fuse(proposals, { ...BASE_FUSE_OPTIONS, keys: ['status'] }),
+      jobLocation: new Fuse(proposals, { ...BASE_FUSE_OPTIONS, keys: ['job_location'] }),
+    };
+  }, [proposals]);
 
-  const search = (searchTerm: string): ProposalSearchResult[] => {
+  const parseFieldSpecificSearch = useCallback((searchTerm: string) => {
+    for (const [field, pattern] of Object.entries(FIELD_PATTERNS)) {
+      const match = searchTerm.match(pattern);
+      if (match && match[2]) {
+        return { field, term: match[2].trim() };
+      }
+    }
+    return null;
+  }, []);
+
+  const performFieldSpecificSearch = useCallback((field: string, term: string): ProposalSearchResult[] => {
+    let results: FuseResult<Proposal>[] = [];
+
+    switch (field) {
+      case 'proposal':
+        results = fuseInstances.proposalNumber.search(term);
+        break;
+      case 'client': {
+        const companyResults = fuseInstances.clientCompany.search(term);
+        const nameResults = fuseInstances.clientName.search(term);
+        const combinedResults = [...companyResults, ...nameResults];
+        // Remove duplicates based on proposal ID
+        const seenIds = new Set<string>();
+        results = combinedResults.filter(result => {
+          if (seenIds.has(result.item.id)) return false;
+          seenIds.add(result.item.id);
+          return true;
+        });
+        break;
+      }
+      case 'project':
+        results = fuseInstances.projectName.search(term);
+        break;
+      case 'status':
+        results = fuseInstances.status.search(term);
+        break;
+      case 'location':
+        results = fuseInstances.jobLocation.search(term);
+        break;
+      default:
+        return [];
+    }
+
+    return results.map(result => ({
+      item: result.item,
+      score: result.score,
+      matches: result.matches,
+    }));
+  }, [fuseInstances]);
+
+  const search = useCallback((searchTerm: string): ProposalSearchResult[] => {
     if (!searchTerm.trim()) {
       return proposals.map(proposal => ({ item: proposal }));
     }
@@ -52,116 +113,61 @@ const useEnhancedProposalSearch = (proposals: Proposal[]) => {
     }
 
     // Regular fuzzy search
-    const results = fuse.search(searchTerm);
+    const results = fuseInstances.main.search(searchTerm);
     return results.map(result => ({
       item: result.item,
       score: result.score,
       matches: result.matches,
     }));
-  };
-
-  const parseFieldSpecificSearch = (searchTerm: string) => {
-    for (const [field, pattern] of Object.entries(FIELD_PATTERNS)) {
-      const match = searchTerm.match(pattern);
-      if (match && match[2]) {
-        return { field, term: match[2].trim() };
-      }
-    }
-    return null;
-  };
-
-  const performFieldSpecificSearch = (field: string, term: string): ProposalSearchResult[] => {
-    let searchKey = '';
-
-    switch (field) {
-      case 'proposal':
-        searchKey = 'proposal_number';
-        break;
-      case 'client':
-        // Search both client company and name
-        const companyFuse = new Fuse(proposals, { ...fuseOptions, keys: ['client_company'] });
-        const nameFuse = new Fuse(proposals, { ...fuseOptions, keys: ['client_name'] });
-
-        const clientResults = [
-          ...companyFuse.search(term),
-          ...nameFuse.search(term)
-        ];
-        // Remove duplicates based on proposal ID
-        const uniqueClientResults = clientResults.filter((result, index, self) =>
-          index === self.findIndex(r => r.item.id === result.item.id)
-        );
-        return uniqueClientResults.map(result => ({
-          item: result.item,
-          score: result.score,
-          matches: result.matches,
-        }));
-      case 'project':
-        searchKey = 'project_name';
-        break;
-      case 'status':
-        searchKey = 'status';
-        break;
-      case 'location':
-        searchKey = 'job_location';
-        break;
-      default:
-        return [];
-    }
-
-    const fieldFuse = new Fuse(proposals, { ...fuseOptions, keys: [searchKey] });
-    const results = fieldFuse.search(term);
-    return results.map(result => ({
-      item: result.item,
-      score: result.score,
-      matches: result.matches,
-    }));
-  };
+  }, [proposals, fuseInstances, parseFieldSpecificSearch, performFieldSpecificSearch]);
 
   // Get search suggestions based on existing data
-  const getSearchSuggestions = (searchTerm: string, limit = 5): string[] => {
-    if (!searchTerm.trim()) return [];
+  const getSearchSuggestions = useCallback((searchTerm: string, limit = 5): string[] => {
+    if (!searchTerm.trim() || searchTerm.length < 2) return [];
 
     const suggestions = new Set<string>();
     const lowerTerm = searchTerm.toLowerCase();
 
-    if (searchTerm.length >= 2) {
-      proposals.forEach(proposal => {
-        // Client names/companies
-        if (proposal.client_name?.toLowerCase().includes(lowerTerm)) {
-          suggestions.add(proposal.client_name);
-        }
-        if (proposal.client_company?.toLowerCase().includes(lowerTerm)) {
-          suggestions.add(proposal.client_company);
-        }
+    // Early exit if we have enough suggestions
+    for (const proposal of proposals) {
+      if (suggestions.size >= limit) break;
 
-        // Project names
-        if (proposal.project_name?.toLowerCase().includes(lowerTerm)) {
-          suggestions.add(proposal.project_name);
-        }
+      if (proposal.client_name?.toLowerCase().includes(lowerTerm)) {
+        suggestions.add(proposal.client_name);
+      }
+      if (suggestions.size >= limit) break;
 
-        // Proposal numbers
-        if (proposal.proposal_number?.toLowerCase().includes(lowerTerm)) {
-          suggestions.add(proposal.proposal_number);
-        }
+      if (proposal.client_company?.toLowerCase().includes(lowerTerm)) {
+        suggestions.add(proposal.client_company);
+      }
+      if (suggestions.size >= limit) break;
 
-        // Locations
-        if (proposal.job_location?.toLowerCase().includes(lowerTerm)) {
-          suggestions.add(proposal.job_location);
-        }
-      });
+      if (proposal.project_name?.toLowerCase().includes(lowerTerm)) {
+        suggestions.add(proposal.project_name);
+      }
+      if (suggestions.size >= limit) break;
+
+      if (proposal.proposal_number?.toLowerCase().includes(lowerTerm)) {
+        suggestions.add(proposal.proposal_number);
+      }
+      if (suggestions.size >= limit) break;
+
+      if (proposal.job_location?.toLowerCase().includes(lowerTerm)) {
+        suggestions.add(proposal.job_location);
+      }
     }
 
     return Array.from(suggestions).slice(0, limit);
-  };
+  }, [proposals]);
 
   // Helper to get field search examples
-  const getSearchExamples = (): string[] => [
+  const getSearchExamples = useCallback((): string[] => [
     'proposal:PROP-001',
     'client:Acme Corp',
     'project:Office Renovation',
     'status:Draft',
     'location:New York'
-  ];
+  ], []);
 
   return {
     search,
