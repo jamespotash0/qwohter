@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { type Form } from '@/stores/forms/formsStore';
+import { type Form } from '@/lib/types/forms';
 import { useCurrentOrganization, useForms } from '@/hooks/queries';
 import {
   useFormDocumentTemplates,

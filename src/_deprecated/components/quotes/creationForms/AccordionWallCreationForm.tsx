@@ -1,6 +1,6 @@
 import React from 'react';
 import { WallSpecification } from '@/lib/types';
-import { AccordionWallFormAdapter } from '@/components/features/quotes/shared/components/AccordionWallFormAdapter';
+import { AccordionWallFormAdapter } from '@/_deprecated/components/quotes/shared/components/AccordionWallFormAdapter';
 
 interface AccordionWallCreationFormProps {
   wall: WallSpecification;

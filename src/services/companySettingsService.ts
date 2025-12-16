@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   OrganizationWithCompanyInfo,
   CompanyInfoFormData
-} from '@/lib/types/settings/companySettings';
+} from '@/lib/types/companySettings';
 
 class OrganizationSettingsService {
   async getOrganization(): Promise<OrganizationWithCompanyInfo | null> {

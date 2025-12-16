@@ -37,7 +37,7 @@ export const TrialStatusCard: React.FC<TrialStatusCardProps> = ({
 
   // Features checklist - encourage feature adoption
   const features = [
-    { name: 'Create your first proposal', path: '/quotes/new', completed: false },
+    { name: 'Create your first proposal', path: '/proposals', completed: false },
     { name: 'Customize your company settings', path: '/settings?tab=company', completed: false },
     { name: 'Invite team members', path: '/settings?tab=team', completed: false },
     { name: 'View analytics dashboard', path: '/analytics', completed: false },

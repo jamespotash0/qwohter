@@ -4,7 +4,7 @@
  * Converts app data into QuickBooks XML format
  */
 
-import type { Quote } from '@/services/quotesService';
+import type { Quote } from '@/_deprecated/services/quotesService';
 
 /**
  * Escape XML special characters

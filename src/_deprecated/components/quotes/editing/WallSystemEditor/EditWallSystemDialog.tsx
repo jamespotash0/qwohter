@@ -6,7 +6,7 @@ import { EditWallSystemDialogProps } from './types';
 import { OperableWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/OperableWallEditForm';
 import { GlassWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/GlassWallEditForm';
 import { AccordionWallEditForm } from '../UnifiedQuoteEditor/QuoteDataPanel/WallSystems/AccordionWallEditForm';
-import { validateWallSpecification } from '@/utils/wallValidation';
+import { validateWallSpecification } from '@/_deprecated/utils/wallValidation';
 
 export const EditWallSystemDialog: React.FC<EditWallSystemDialogProps> = ({
   isOpen,

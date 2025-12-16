@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Warning } from '@phosphor-icons/react';
 import { getConfiguredDocumentTypes } from '@/services/numberingConfigService';
-import type { DocumentType } from '@/stores/forms/formsStore';
+import type { DocumentType } from '@/lib/types/forms';
 
 interface CreateFormDialogProps {
   open: boolean;

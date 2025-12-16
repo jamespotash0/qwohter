@@ -1,11 +1,11 @@
-import ContactInfoForm from "@/components/features/quotes/forms/contact/ContactInfoForm";
-import JobDetailsForm from "@/components/features/quotes/forms/contact/JobDetailsForm";
-import WallSpecificationForm from "@/components/features/quotes/forms/walls/WallSpecificationForm";
-import PerWallPocketDoorsForm from "@/components/features/quotes/forms/walls/PerWallPocketDoorsForm";
-import PerWallStructureForm from "@/components/features/quotes/forms/walls/PerWallStructureForm";
-import DeliveryLaborForm from "@/components/features/quotes/forms/delivery/DeliveryLaborForm";
-import EnhancedPricingForm from "@/components/features/quotes/forms/pricing/EnhancedPricingForm";
-import { defaultEnhancedPricing } from "@/lib/types/pricing/enhancedPricing";
+import ContactInfoForm from "@/_deprecated/components/features/quotes/forms/contact/ContactInfoForm";
+import JobDetailsForm from "@/_deprecated/components/features/quotes/forms/contact/JobDetailsForm";
+import WallSpecificationForm from "@/_deprecated/components/quotes/forms/walls/WallSpecificationForm";
+import PerWallPocketDoorsForm from "@/_deprecated/components/quotes/forms/walls/PerWallPocketDoorsForm";
+import PerWallStructureForm from "@/_deprecated/components/quotes/forms/walls/PerWallStructureForm";
+import DeliveryLaborForm from "@/_deprecated/components/features/quotes/forms/delivery/DeliveryLaborForm";
+import EnhancedPricingForm from "@/_deprecated/components/quotes/forms/pricing/EnhancedPricingForm";
+import { defaultEnhancedPricing } from "@/_deprecated/lib/types/pricing/enhancedPricing";
 
 import { ContactInfo, JobDetails, DeliveryLabor, Pricing, QuoteData } from '../types/wizardTypes';
 import { WallDetails } from '@/lib/types';

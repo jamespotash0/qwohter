@@ -2,7 +2,7 @@ import { BaseQuoteTemplate, QuoteData } from './BaseQuoteTemplate';
 import { WallSpecification, isGlassWall, isOperableWall, isAccordionPartition } from '@/lib/types';
 import { AccordionWallSpecification } from '@/lib/types/walls/accordion';
 import { SmartQuoteHelper } from './SmartQuoteTemplate';
-import { TemplateMarkers } from '@/utils/templateMarkers';
+import { TemplateMarkers } from '@/_deprecated/utils/templateMarkers';
 
 export class GenericWallTemplate extends BaseQuoteTemplate {
   

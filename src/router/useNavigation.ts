@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 
 /**
  * Enhanced navigation hook for Qwohter
- * 
+ *
  * Provides type-safe navigation methods for all application routes
  * with additional context and error handling.
  */
@@ -16,41 +16,29 @@ export const useNavigation = () => {
     navigate('/dashboard');
   }, [navigate]);
 
-  const goToQuotes = useCallback(() => {
-    navigate('/quotes');
+  const goToProposals = useCallback(() => {
+    navigate('/proposals');
   }, [navigate]);
 
   const goToAnalytics = useCallback(() => {
     navigate('/analytics');
   }, [navigate]);
 
-  const goToTeam = useCallback(() => {
-    navigate('/team');
-  }, [navigate]);
-
   const goToSettings = useCallback(() => {
     navigate('/settings');
   }, [navigate]);
 
-  // Quote-specific navigation
-  const createNewQuote = useCallback(() => {
-    navigate('/quotes/new');
+  const goToForms = useCallback(() => {
+    navigate('/forms');
   }, [navigate]);
 
-  const editQuote = useCallback((proposalNumber: string) => {
-    if (!proposalNumber) {
-      console.error('Proposal number is required for quote editing');
+  // Proposal-specific navigation
+  const editProposal = useCallback((proposalId: string) => {
+    if (!proposalId) {
+      console.error('Proposal ID is required for proposal editing');
       return;
     }
-    navigate(`/editor/${encodeURIComponent(proposalNumber)}`);
-  }, [navigate]);
-
-  const viewQuote = useCallback((proposalNumber: string) => {
-    if (!proposalNumber) {
-      console.error('Proposal number is required for quote viewing');
-      return;
-    }
-    navigate(`/editor/${encodeURIComponent(proposalNumber)}`);
+    navigate(`/proposals/${encodeURIComponent(proposalId)}/edit`);
   }, [navigate]);
 
   // Utility navigation methods
@@ -73,7 +61,7 @@ export const useNavigation = () => {
   }, [navigate]);
 
   const returnToIntendedDestination = useCallback(() => {
-    const from = (location.state as any)?.from?.pathname || '/dashboard';
+    const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
     navigate(from, { replace: true });
   }, [navigate, location.state]);
 
@@ -82,21 +70,17 @@ export const useNavigation = () => {
     return location.pathname === path;
   }, [location.pathname]);
 
-  const isQuoteRoute = useCallback(() => {
-    return location.pathname.startsWith('/quotes') || location.pathname.startsWith('/editor');
+  const isProposalRoute = useCallback(() => {
+    return location.pathname.startsWith('/proposals');
   }, [location.pathname]);
 
-  const getCurrentQuoteProposalNumber = useCallback((): string | null => {
-    const match = location.pathname.match(/\/editor\/(.+)/);
-    return match ? decodeURIComponent(match[1] as any) : null;
+  const getCurrentProposalId = useCallback((): string | null => {
+    const match = location.pathname.match(/\/proposals\/(.+?)\/edit/);
+    return match ? decodeURIComponent(match[1]) : null;
   }, [location.pathname]);
 
   const isEditMode = useCallback(() => {
-    return location.pathname.startsWith('/editor/');
-  }, [location.pathname]);
-
-  const isViewMode = useCallback(() => {
-    return location.pathname.startsWith('/editor/');
+    return location.pathname.includes('/edit');
   }, [location.pathname]);
 
   // Breadcrumb helper
@@ -108,24 +92,21 @@ export const useNavigation = () => {
       { label: 'Dashboard', path: '/dashboard' }
     ];
 
-    if (segments[0] === 'quotes') {
-      breadcrumbs.push({ label: 'Quotes', path: '/quotes' });
+    if (segments[0] === 'proposals') {
+      breadcrumbs.push({ label: 'Proposals', path: '/proposals' });
 
-      if (segments[1] === 'new') {
-        breadcrumbs.push({ label: 'New Quote', path: '/quotes/new' });
+      if (segments[1] && segments[2] === 'edit') {
+        breadcrumbs.push({
+          label: `Edit Proposal`,
+          path: `/proposals/${segments[1]}/edit`
+        });
       }
-    } else if (segments[0] === 'editor' && segments[1]) {
-      breadcrumbs.push({ label: 'Quotes', path: '/quotes' });
-      breadcrumbs.push({
-        label: `Edit Quote ${decodeURIComponent(segments[1])}`,
-        path: `/editor/${segments[1]}`
-      });
     } else if (segments[0] === 'analytics') {
       breadcrumbs.push({ label: 'Analytics', path: '/analytics' });
-    } else if (segments[0] === 'team') {
-      breadcrumbs.push({ label: 'Team', path: '/team' });
     } else if (segments[0] === 'settings') {
       breadcrumbs.push({ label: 'Settings', path: '/settings' });
+    } else if (segments[0] === 'forms') {
+      breadcrumbs.push({ label: 'Forms', path: '/forms' });
     }
 
     return breadcrumbs;
@@ -134,33 +115,30 @@ export const useNavigation = () => {
   return {
     // Core navigation
     goToDashboard,
-    goToQuotes,
+    goToProposals,
     goToAnalytics,
-    goToTeam,
     goToSettings,
-    
-    // Quote navigation
-    createNewQuote,
-    editQuote,
-    viewQuote,
-    
+    goToForms,
+
+    // Proposal navigation
+    editProposal,
+
     // Utility navigation
     goBack,
     goForward,
     replaceCurrent,
-    
+
     // Authentication
     goToAuth,
     returnToIntendedDestination,
-    
+
     // Route information
     isCurrentRoute,
-    isQuoteRoute,
-    getCurrentQuoteProposalNumber,
+    isProposalRoute,
+    getCurrentProposalId,
     isEditMode,
-    isViewMode,
     getBreadcrumbs,
-    
+
     // Current location info
     currentPath: location.pathname,
     currentSearch: location.search,

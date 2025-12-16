@@ -3,7 +3,7 @@
  * For the next-generation form builder with grid layout, dependencies, and calculations
  */
 
-import { type FormField as BaseFormField, type FormTab } from '@/stores/forms/formsStore';
+import { type FormField as BaseFormField, type FormTab } from '@/lib/types/forms';
 
 /**
  * Enhanced Field with Layout and Visual Properties

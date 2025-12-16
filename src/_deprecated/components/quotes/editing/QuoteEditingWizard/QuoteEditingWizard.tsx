@@ -3,14 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 
-import { useUpdateQuote } from "@/hooks/queries/useQuotes";
+import { useUpdateQuote } from "@/_deprecated/hooks/queries/useQuotes";
 import { QuoteEditingWizardProps } from './types/editingTypes';
 import { useEditingState } from './hooks/useEditingState';
 import { useEditingValidation } from './hooks/useEditingValidation';
 import { createEditingSteps } from './utils/editingSteps';
 import { EditingHeader } from './components/EditingHeader';
 import { EditingStepNavigation } from './components/EditingStepNavigation';
-import { StepContent } from '@/components/features/quotes/creation/QuoteCreatorWizard/components/StepContent';
+import { StepContent } from '@/_deprecated/components/quotes/creation/QuoteCreatorWizard/components/StepContent';
 
 const QuoteEditingWizard = ({
   existingQuote,

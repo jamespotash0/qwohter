@@ -6,9 +6,10 @@ import {
   Target,
   TrendingUp,
 } from "lucide-react";
-import { useQuotes } from "@/hooks/queries/useQuotes";
+import { useProposals } from "@/hooks/queries/useProposals";
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
 import { useUser } from "@/auth";
+import type { Quote } from "@/_deprecated/services/quotesService"; // For analytics type compatibility
 
 // Import new analytics components
 import { KPICard } from "@/components/analytics";
@@ -80,16 +81,20 @@ const Analytics = () => {
   // Get user from new auth system
   const user = useUser();
 
-  // Fetch quotes using React Query (includes automatic realtime subscriptions)
-  const { data: quotes = [], isLoading: quotesLoading } = useQuotes(user?.id);
-
   // Get current organization from React Query
   const { organization: currentOrganization } = useCurrentOrganization(user?.id || '');
 
+  // Fetch proposals using React Query
+  const { data: proposals = [], isLoading: proposalsLoading } = useProposals(currentOrganization?.id);
+
+  // Cast proposals to Quote[] for analytics type compatibility
+  // (Proposal and Quote have compatible fields for analytics calculations)
+  const analyticsData = proposals as unknown as Quote[];
+
   // Filter to main versions only to prevent double-counting across versions
   const mainVersionQuotes = useMemo(() => {
-    return filterMainVersionQuotes(quotes);
-  }, [quotes]);
+    return filterMainVersionQuotes(analyticsData);
+  }, [analyticsData]);
 
   // Generate comprehensive analytics using new calculation utilities
   const analytics = useMemo(() => {
@@ -145,7 +150,7 @@ const Analytics = () => {
       showPageHeader={true}
     >
       {/* Loading State */}
-      {quotesLoading ? (
+      {proposalsLoading ? (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-12 h-12 border-4 border-[#EE6C4D] border-t-transparent rounded-full animate-spin mb-4"></div>
           <p className="text-gray-600 dark:text-gray-400">Loading analytics data...</p>
@@ -240,7 +245,7 @@ const Analytics = () => {
           </div>
 
           {/* Charts Section */}
-          {quotes.length > 0 ? (
+          {proposals.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Row 1: Average and Total Metrics Over Time */}
               {/* Average Quote Metrics Over Time */}
@@ -934,8 +939,8 @@ const Analytics = () => {
           ) : (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 mb-4">No quotes data available</p>
-              <p className="text-sm text-gray-500">Create some quotes to see analytics</p>
+              <p className="text-gray-600 mb-4">No proposals data available</p>
+              <p className="text-sm text-gray-500">Create some proposals to see analytics</p>
             </div>
           )}
         </>

@@ -15,9 +15,9 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import QuoteCreatorWizard from "@/components/features/quotes/creation/QuoteCreatorWizard";
-import { useQuotes } from "@/hooks/queries/useQuotes";
-import { ProposalFormFiller } from "@/components/features/quotes/creation/ProposalFormFiller";
+import QuoteCreatorWizard from "@/_deprecated/components/quotes/creation/QuoteCreatorWizard";
+import { useQuotes } from "@/_deprecated/hooks/queries/useQuotes";
+import { ProposalFormFiller } from "@/_deprecated/components/quotes/creation/ProposalFormFiller";
 import { useUser, useSignOut } from "@/auth";
 
 const NewQuote = () => {

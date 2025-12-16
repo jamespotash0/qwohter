@@ -1,6 +1,6 @@
 import React from 'react';
 import { WallSpecification } from '@/lib/types';
-import { OperableWallFormAdapter } from '@/components/features/quotes/shared/components/OperableWallFormAdapter';
+import { OperableWallFormAdapter } from '@/_deprecated/components/quotes/shared/components/OperableWallFormAdapter';
 import { WallTypeFormProps } from './types';
 
 export const OperableWallEditForm: React.FC<WallTypeFormProps> = ({

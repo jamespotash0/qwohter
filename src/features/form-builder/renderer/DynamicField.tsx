@@ -1,4 +1,4 @@
-import { type FormField } from '@/stores/forms/formsStore';
+import { type FormField } from '@/lib/types/forms';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';

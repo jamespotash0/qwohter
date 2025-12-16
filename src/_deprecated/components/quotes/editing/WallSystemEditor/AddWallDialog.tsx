@@ -7,12 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 // Import the creation forms that include all necessary fields
-import OperableWallCreationForm from '@/components/features/quotes/creationForms/OperableWallCreationForm';
-import GlassWallCreationForm from '@/components/features/quotes/creationForms/GlassWallCreationForm';
-import { AccordionWallCreationForm } from '@/components/features/quotes/creationForms/AccordionWallCreationForm';
+import OperableWallCreationForm from '@/_deprecated/components/quotes/creationForms/OperableWallCreationForm';
+import GlassWallCreationForm from '@/_deprecated/components/quotes/creationForms/GlassWallCreationForm';
+import { AccordionWallCreationForm } from '@/_deprecated/components/quotes/creationForms/AccordionWallCreationForm';
 
 // Import validation
-import { validateWallSpecification } from '@/utils/wallValidation';
+import { validateWallSpecification } from '@/_deprecated/utils/wallValidation';
 import { WallSpecification } from '@/lib/types';
 
 interface AddWallDialogProps {

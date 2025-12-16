@@ -1,7 +1,7 @@
 import { ComponentType } from 'react';
-import type { Quote } from '@/services/quotesService';
+import type { Quote } from '@/_deprecated/services/quotesService';
 import { WallDetails } from '@/lib/types';
-import { ContactInfo, JobDetails, DeliveryLabor, Pricing } from '@/components/features/quotes/creation/QuoteCreatorWizard/types/wizardTypes';
+import { ContactInfo, JobDetails, DeliveryLabor, Pricing } from '@/_deprecated/components/quotes/creation/QuoteCreatorWizard/types/wizardTypes';
 
 export interface EditingStep {
   id: string;

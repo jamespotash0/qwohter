@@ -34,12 +34,12 @@ import {
   MoreVertical,
   EyeOff
 } from 'lucide-react';
-import { generateQuoteText } from '@/components/features/quotes/generation/QuoteTextGenerator';
+import { generateQuoteText } from '@/_deprecated/components/quotes/generation/QuoteTextGenerator';
 import { SmartQuoteHelper, QuoteSection, SmartQuoteData } from '@/templates/SmartQuoteTemplate';
-import { MixedContentEngine, MixedContentSection } from '@/utils/mixedContentEngine';
+import { MixedContentEngine, MixedContentSection } from '@/_deprecated/utils/mixedContentEngine';
 import { QuoteData } from '@/templates/BaseQuoteTemplate';
-import { defaultSectionVisibility, SectionVisibilityConfig } from '@/templates/BaseTemplate/types';
-import type { Quote } from '@/services/quotesService';
+import { defaultSectionVisibility, SectionVisibilityConfig } from '@/_deprecated/templates/BaseTemplate/types';
+import type { Quote } from '@/_deprecated/services/quotesService';
 import { useCurrentOrganization } from '@/hooks/queries';
 import { useUser } from '@/auth';
 import { QuoteDataPanelCore as QuoteDataPanel } from './UnifiedQuoteEditor/QuoteDataPanel/QuoteDataPanelCore';

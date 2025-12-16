@@ -11,7 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { useCreateQuote, useUpdateQuote } from "@/hooks/queries/useQuotes";
+import { useCreateQuote, useUpdateQuote } from "@/_deprecated/hooks/queries/useQuotes";
 import { useCurrentOrganization } from "@/hooks/queries";
 import { useUser } from "@/auth";
 import { QuoteCreatorWizardProps } from './types/wizardTypes';

@@ -24,6 +24,7 @@ export interface Contact {
   addresses?: string[]; // Array of addresses
   notes?: string;
   is_in_organization: boolean; // Whether contact is in the organization
+  user_id?: string; // Links to user account if contact becomes a team member
   created_by: string;
   created_at: string;
   updated_at: string;

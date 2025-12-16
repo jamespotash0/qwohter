@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { CompanyInfoDialog } from "./CompanyInfoDialog";
 import { useUser, useProfile } from "@/auth";
 import { useCurrentOrganization, useUpdateOrganization } from "@/hooks/queries";
-import { extractCompanyInfoForForm } from "@/lib/types/settings/companySettings";
+import { extractCompanyInfoForForm } from "@/lib/types/companySettings";
 
 export function CompanySettingsSection() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);

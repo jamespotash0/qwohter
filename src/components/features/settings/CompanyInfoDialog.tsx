@@ -14,7 +14,7 @@ import { Lock, Info } from "lucide-react";
 import MapboxInput from "@/components/common/inputs/MapboxInput";
 import { LogoUpload } from "@/components/common/uploads/LogoUpload";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { CompanyInfoFormData } from "@/lib/types/settings/companySettings";
+import { CompanyInfoFormData } from "@/lib/types/companySettings";
 import { LogoUploadResult } from "@/services/LogoUploadService";
 import { supabase } from "@/integrations/supabase/client";
 

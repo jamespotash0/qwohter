@@ -46,7 +46,7 @@ export interface DeliveryLabor {
 }
 
 // Use EnhancedPricingData directly instead of duplicate interface
-export type Pricing = import('@/lib/types/pricing/enhancedPricing').EnhancedPricingData;
+export type Pricing = import('@/_deprecated/lib/types/pricing/enhancedPricing').EnhancedPricingData;
 
 export interface WizardStep {
   id: string;

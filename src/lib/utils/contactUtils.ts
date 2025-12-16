@@ -40,7 +40,7 @@ export function combineContactOptions(
     });
 
   // Add contacts (customer/prospects without accounts)
-  // Only include contacts marked as "in organization"
+  // Only include contacts marked as "in organization" and not linked to a user
   contacts
     .filter((contact) => contact.is_in_organization && !contact.user_id)
     .forEach((contact) => {

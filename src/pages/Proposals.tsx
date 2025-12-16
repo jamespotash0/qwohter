@@ -24,7 +24,7 @@ import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageContent } from '@/components/common/layout';
 import { EnhancedProposalsTable } from '@/components/features/proposals/table/EnhancedProposalsTable';
-import CreateProposalDialog, { type ProposalInitialData } from '@/components/features/quotes/creation/CreateProposalDialog';
+import CreateProposalDialog, { type ProposalInitialData } from '@/components/features/proposals/creation/CreateProposalDialog';
 import { ImportProposalDialog } from '@/components/features/proposals/import';
 import { groupProposalsByVersion } from '@/utils/proposalVersionGrouping';
 import { formatDateEST } from '@/utils/dateUtils';
@@ -72,9 +72,9 @@ export default function Proposals() {
       p.status === 'Won' && new Date(p.updated_at) >= monthStart
     );
 
-    // Total value from main versions (only active: Draft, Incomplete, Submitted)
+    // Total value from main versions (only active: Draft, Submitted)
     const totalValue = mainVersions
-      .filter(p => p.status === 'Draft' || p.status === 'Incomplete' || p.status === 'Submitted')
+      .filter(p => p.status === 'Draft' || p.status === 'Submitted')
       .reduce((sum, p) => sum + (p.total_value || 0), 0);
 
     return {

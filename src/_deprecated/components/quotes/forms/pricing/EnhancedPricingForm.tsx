@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { InfoIcon } from "@/components/ui/info-icon";
 import { useEffect, useState, useCallback } from "react";
-import { EnhancedPricingData, defaultEnhancedPricing, calculateEnhancedPricing } from "@/lib/types/pricing/enhancedPricing";
+import { EnhancedPricingData, defaultEnhancedPricing, calculateEnhancedPricing } from "@/_deprecated/lib/types/pricing/enhancedPricing";
 // import { Calculator } from "lucide-react";
 
 interface EnhancedPricingFormProps {

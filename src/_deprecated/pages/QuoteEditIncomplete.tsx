@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuotes } from "@/hooks/queries/useQuotes";
+import { useQuotes } from "@/_deprecated/hooks/queries/useQuotes";
 import { useUser } from "@/auth";
-import QuoteEditingWizard from "@/components/features/quotes/editing/QuoteEditingWizard/QuoteEditingWizard";
+import QuoteEditingWizard from "@/_deprecated/components/quotes/editing/QuoteEditingWizard/QuoteEditingWizard";
 
 const QuoteEditIncomplete = () => {
   const navigate = useNavigate();

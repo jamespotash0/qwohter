@@ -210,7 +210,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
   const { data: members = [] } = useOrganizationMembers(organizationId || '', !!organizationId);
 
   // Contacts integration
-  const { data: contacts = [] } = useContacts(organizationId);
+  const { data: contacts = [] } = useContacts(organizationId ?? undefined);
   const createContactMutation = useCreateContact(organizationId || '');
   const [isCustomClientName, setIsCustomClientName] = useState(false);
 
@@ -301,7 +301,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
   // Set proposal date to today in filler mode
   useEffect(() => {
     if (!isBuilderMode && !proposalDate) {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0] ?? '';
       setProposalDate(today);
     }
   }, [isBuilderMode, proposalDate]);
@@ -388,6 +388,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       }, 100);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [
     initialValuesCaptured,
     projectName,
@@ -516,7 +517,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       const contactId = value.replace('contact:', '');
       const contact = contacts.find((c: Contact) => c.id === contactId);
       if (contact?.emails?.[0]) {
-        setContactEmail(contact.emails[0]);
+        setContactEmail(contact.emails![0]);
       }
     } else {
       // It's a member
@@ -699,9 +700,9 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
                   {contacts
                     .filter((c: Contact) => c.contact_type === 'Employee' && c.emails?.[0])
                     .map((contact: Contact) => (
-                      <SelectItem key={`contact-${contact.id}`} value={contact.emails[0]}>
+                      <SelectItem key={`contact-${contact.id}`} value={contact.emails![0]}>
                         <div className="flex flex-col">
-                          <span>{contact.emails[0]}</span>
+                          <span>{contact.emails![0]}</span>
                         </div>
                       </SelectItem>
                     ))}

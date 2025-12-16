@@ -8,8 +8,6 @@
 /* Import the complete design system */
 @import './styles/design-system.css';
 
-/* Import semantic markup visual indicators for quote templates */
-@import './styles/templateMarkers.css';
 
 /* ============================================
    🍞 TOAST NOTIFICATIONS (SONNER)

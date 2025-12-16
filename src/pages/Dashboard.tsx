@@ -29,14 +29,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { useCurrentOrganization } from "@/hooks/queries/useOrganization";
-import { useQuotes } from "@/hooks/queries/useQuotes";
+import { useProposals } from "@/hooks/queries/useProposals";
 import { useUser, useProfile } from "@/auth";
 import { AddReminderModal } from "@/components/features/reminders/AddReminderModal";
 import { reminderService, type Reminder } from "@/services/reminderService";
 import { formatDistanceToNow, isPast, isToday, isTomorrow } from "date-fns";
 import { toast } from "sonner";
-import CreateProposalDialog, { type ProposalInitialData } from "@/components/features/quotes/creation/CreateProposalDialog";
-import { groupQuotesByVersion } from "@/utils/quoteVersionGrouping";
+import CreateProposalDialog, { type ProposalInitialData } from "@/components/features/proposals/creation/CreateProposalDialog";
+import { groupProposalsByVersion } from "@/utils/proposalVersionGrouping";
 import { TrialExpiryModal } from "@/components/trial/TrialExpiryModal";
 import { stripeService } from "@/services/stripeService";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,10 +54,10 @@ const Dashboard = () => {
   const user = useUser();
   const { data: profile } = useProfile(user?.id);
 
-  // React Query hooks for organization and quotes
+  // React Query hooks for organization and proposals
   const { organization: currentOrganization, isLoading: orgLoading } = useCurrentOrganization(user?.id);
   const organizationId = currentOrganization?.id || null;
-  const { data: quotes = [], isLoading: quotesLoading } = useQuotes(user?.id);
+  const { data: proposals = [], isLoading: proposalsLoading } = useProposals(organizationId || undefined);
 
   console.log('[Dashboard] Using organization:', { id: organizationId, name: currentOrganization?.name });
 
@@ -325,50 +325,50 @@ const Dashboard = () => {
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-    // Group quotes by version to avoid counting duplicates
-    const quoteGroups = groupQuotesByVersion(quotes);
+    // Group proposals by version to avoid counting duplicates
+    const proposalGroups = groupProposalsByVersion(proposals);
 
-    // Track when quote groups were marked as Won using won_at timestamp
+    // Track when proposal groups were marked as Won using won_at timestamp
     // Use the won version if exists, otherwise use latest version
-    const wonQuoteGroupsThisMonth = quoteGroups.filter(group => {
+    const wonProposalGroupsThisMonth = proposalGroups.filter(group => {
       const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
       if (!wonVersion) return false;
       const wonDate = new Date(wonVersion.won_at!);
       return wonDate >= thisMonth;
     });
 
-    const wonQuoteGroupsLastMonth = quoteGroups.filter(group => {
+    const wonProposalGroupsLastMonth = proposalGroups.filter(group => {
       const wonVersion = group.versions.find(v => v.status === 'Won' && v.won_at);
       if (!wonVersion) return false;
       const wonDate = new Date(wonVersion.won_at!);
       return wonDate >= lastMonth && wonDate <= lastMonthEnd;
     });
 
-    const totalRevenue = wonQuoteGroupsThisMonth.reduce((sum, group) => {
+    const totalRevenue = wonProposalGroupsThisMonth.reduce((sum, group) => {
       const wonVersion = group.versions.find(v => v.status === 'Won');
-      return sum + (wonVersion?.price_details?.final_selling_price || 0);
+      return sum + (wonVersion?.total_value || 0);
     }, 0);
 
-    const lastMonthRevenue = wonQuoteGroupsLastMonth.reduce((sum, group) => {
+    const lastMonthRevenue = wonProposalGroupsLastMonth.reduce((sum, group) => {
       const wonVersion = group.versions.find(v => v.status === 'Won');
-      return sum + (wonVersion?.price_details?.final_selling_price || 0);
+      return sum + (wonVersion?.total_value || 0);
     }, 0);
 
-    const activeQuotes = quoteGroups.filter(group =>
+    const activeProposals = proposalGroups.filter(group =>
       group.versions.some(v => ['Submitted'].includes(v.status || ''))
     ).length;
 
-    // Current overall win rate (all time) - count groups not individual quotes
-    const wonQuotes = quoteGroups.filter(g => g.versions.some(v => v.status === 'Won')).length;
-    const rejectedQuotes = quoteGroups.filter(g =>
+    // Current overall win rate (all time) - count groups not individual proposals
+    const wonProposals = proposalGroups.filter(g => g.versions.some(v => v.status === 'Won')).length;
+    const rejectedProposals = proposalGroups.filter(g =>
       g.versions.some(v => v.status === 'Rejected') && !g.versions.some(v => v.status === 'Won')
     ).length;
-    const totalDecidedQuotes = wonQuotes + rejectedQuotes;
-    const winRate = totalDecidedQuotes > 0 ? ((wonQuotes / totalDecidedQuotes) * 100).toFixed(1) : '0';
+    const totalDecidedProposals = wonProposals + rejectedProposals;
+    const winRate = totalDecidedProposals > 0 ? ((wonProposals / totalDecidedProposals) * 100).toFixed(1) : '0';
 
     // This month's win rate
-    const wonThisMonth = wonQuoteGroupsThisMonth.length;
-    const rejectedThisMonth = quoteGroups.filter(group => {
+    const wonThisMonth = wonProposalGroupsThisMonth.length;
+    const rejectedThisMonth = proposalGroups.filter(group => {
       const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
       if (!rejectedVersion || !rejectedVersion.rejected_at) return false;
       const rejectedDate = new Date(rejectedVersion.rejected_at);
@@ -378,8 +378,8 @@ const Dashboard = () => {
     const winRateThisMonth = decidedThisMonth > 0 ? ((wonThisMonth / decidedThisMonth) * 100).toFixed(1) : '0';
 
     // Last month's win rate
-    const wonLastMonth = wonQuoteGroupsLastMonth.length;
-    const rejectedLastMonth = quoteGroups.filter(group => {
+    const wonLastMonth = wonProposalGroupsLastMonth.length;
+    const rejectedLastMonth = proposalGroups.filter(group => {
       const rejectedVersion = group.versions.find(v => v.status === 'Rejected' && v.rejected_at);
       if (!rejectedVersion || !rejectedVersion.rejected_at) return false;
       const rejectedDate = new Date(rejectedVersion.rejected_at);
@@ -399,15 +399,15 @@ const Dashboard = () => {
     return {
       totalRevenue,
       lastMonthRevenue,
-      activeQuotes,
+      activeProposals,
       winRate,
       winRateThisMonth,
       winRateLastMonth,
-      wonQuotes,
-      rejectedQuotes,
+      wonProposals,
+      rejectedProposals,
       overdueReminders
     };
-  }, [quotes, reminders]);
+  }, [proposals, reminders]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -575,7 +575,7 @@ const Dashboard = () => {
 
       {/* Key Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {quotesLoading ? (
+        {proposalsLoading ? (
           <>
             {/* Loading Skeletons for Metrics */}
             {[...Array(4)].map((_, i) => (
@@ -625,7 +625,7 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Active Quotes */}
+            {/* Active Proposals */}
             <Card className="bg-[var(--content-card-bg)] shadow-[var(--content-card-shadow)] border-0 hover:shadow-2xl hover:scale-105 hover:bg-white dark:hover:bg-[var(--content-card-bg)] transition-all duration-300 cursor-pointer">
               <CardContent className="p-6">
                 <div className="flex items-center">
@@ -633,8 +633,8 @@ const Dashboard = () => {
                     <FileText weight="duotone" className="w-6 h-6 text-blue-600 dark:text-blue-300" />
                   </div>
                   <div className="ml-4">
-                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Active Quotes</h3>
-                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.activeQuotes}</p>
+                    <h3 className="text-sm font-medium text-[var(--content-muted-text)]">Active Proposals</h3>
+                    <p className="text-2xl font-bold text-[var(--content-header-text)]">{metrics.activeProposals}</p>
                   </div>
                 </div>
               </CardContent>
@@ -693,7 +693,7 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-            {quotesLoading ? (
+            {proposalsLoading ? (
               <div className="space-y-3">
                 {[...Array(3)].map((_, i) => (
                   <Skeleton key={i} className="w-full h-12" />
@@ -998,7 +998,7 @@ const Dashboard = () => {
           open={showExpiryModal}
           onClose={() => setShowExpiryModal(false)}
           metrics={{
-            quotesCreated: quotes.length,
+            quotesCreated: proposals.length,
             totalRevenue: metrics.totalRevenue,
             teamMembers: 1,
           }}

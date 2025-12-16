@@ -1,5 +1,5 @@
 import { Moon, Sun, Monitor } from "@phosphor-icons/react";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme } from "@/stores";
 
 export function AppearanceTab() {
   const { theme, setTheme } = useTheme();

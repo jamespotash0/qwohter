@@ -2,22 +2,11 @@
  * Central export for all React Query hooks
  *
  * Import all hooks from here for consistency:
- * import { useQuotes, useOrganization, useSubscriptionStatus } from '@/hooks/queries';
+ * import { useOrganization, useSubscriptionStatus } from '@/hooks/queries';
  */
 
-// Quotes
-export {
-  useQuotes,
-  useQuote,
-  useCreateQuote,
-  useUpdateQuote,
-  useDeleteQuote,
-  useUpdateQuoteStatus,
-  useArchiveQuote,
-  useUnarchiveQuote,
-  useSetMainVersion,
-  useCreateQuoteVersion,
-} from './useQuotes';
+// Quotes - DEPRECATED: Use useProposals instead
+// Legacy hooks available at '@/_deprecated/hooks/queries/useQuotes' or via '@/stores'
 
 // Organization
 export {
@@ -87,29 +76,7 @@ export {
   useUnsetDefaultForm,
 } from './useForms';
 
-// PDF Templates
-export {
-  usePdfTemplates,
-  usePdfTemplate,
-  useFormPdfTemplates,
-  useLinkPdfTemplate,
-  useUnlinkPdfTemplate,
-} from './usePdfTemplates';
-
-// Document Number Sequences
-export {
-  useDocumentSequences,
-  useDocumentSequence,
-  useCreateDocumentSequence,
-  useUpdateDocumentSequence,
-  useUpsertDocumentSequence,
-  formatDocumentNumberPreview,
-  DEFAULT_PREFIXES,
-} from './useDocumentSequences';
-
 // Types
 export type { UserProfile, Session } from './useAuth';
 export type { DashboardStats } from './useDashboard';
 export type { Form } from './useForms';
-export type { PdfTemplate, FormPdfTemplate } from './usePdfTemplates';
-export type { DocumentNumberSequence, CreateSequenceData, UpdateSequenceData } from './useDocumentSequences';

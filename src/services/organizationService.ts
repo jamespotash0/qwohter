@@ -6,7 +6,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import type { LogoData } from '@/lib/types/settings/companySettings';
+import type { LogoData } from '@/lib/types/companySettings';
 import * as Sentry from '@sentry/react';
 
 // ============================================================================

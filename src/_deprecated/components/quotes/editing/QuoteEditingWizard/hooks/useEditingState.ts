@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Quote } from '@/services/quotesService';
-import { ContactInfo, JobDetails, DeliveryLabor, Pricing } from '@/components/features/quotes/creation/QuoteCreatorWizard/types/wizardTypes';
+import type { Quote } from '@/_deprecated/services/quotesService';
+import { ContactInfo, JobDetails, DeliveryLabor, Pricing } from '@/_deprecated/components/quotes/creation/QuoteCreatorWizard/types/wizardTypes';
 import { WallDetails, WallSpecification } from '@/lib/types';
-import { defaultEnhancedPricing } from '@/lib/types/pricing/enhancedPricing';
+import { defaultEnhancedPricing } from '@/_deprecated/lib/types/pricing/enhancedPricing';
 import { EditingStateData, ChangeTracker } from '../types/editingTypes';
 
 // Helper function to safely extract nested properties

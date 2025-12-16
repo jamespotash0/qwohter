@@ -1,6 +1,6 @@
 // import React from "react";
 import { WallSpecification, isOperableWall } from "@/lib/types";
-import { OperableWallFormAdapter } from "@/components/features/quotes/shared/components/OperableWallFormAdapter";
+import { OperableWallFormAdapter } from "@/_deprecated/components/quotes/shared/components/OperableWallFormAdapter";
 
 interface OperableWallCreationFormProps {
   wall: WallSpecification;

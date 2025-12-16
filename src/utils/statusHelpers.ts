@@ -57,10 +57,59 @@ export function isMembershipValid(status: string | null | undefined): boolean {
 }
 
 // ============================================================================
-// QUOTE STATUS HELPERS
+// PROPOSAL STATUS HELPERS (New system)
 // ============================================================================
 
-export type QuoteStatus = 'Won' | 'Rejected' | 'Submitted' | 'Draft' | 'Incomplete';
+export type ProposalStatus = 'Won' | 'Rejected' | 'Submitted' | 'Draft';
+
+/**
+ * Check if proposal status is Won (case-insensitive)
+ */
+export function isProposalWon(status: string | null | undefined): boolean {
+  return status?.toLowerCase() === 'won';
+}
+
+/**
+ * Check if proposal status is Rejected (case-insensitive)
+ */
+export function isProposalRejected(status: string | null | undefined): boolean {
+  return status?.toLowerCase() === 'rejected';
+}
+
+/**
+ * Check if proposal status is Submitted (case-insensitive)
+ */
+export function isProposalSubmitted(status: string | null | undefined): boolean {
+  return status?.toLowerCase() === 'submitted';
+}
+
+/**
+ * Check if proposal status is Draft (case-insensitive)
+ */
+export function isProposalDraft(status: string | null | undefined): boolean {
+  return status?.toLowerCase() === 'draft';
+}
+
+/**
+ * Check if proposal is in a final state (Won or Rejected)
+ */
+export function isProposalFinal(status: string | null | undefined): boolean {
+  const lower = status?.toLowerCase();
+  return lower === 'won' || lower === 'rejected';
+}
+
+/**
+ * Check if proposal can be edited (Draft only)
+ */
+export function isProposalEditable(status: string | null | undefined): boolean {
+  return status?.toLowerCase() === 'draft';
+}
+
+// ============================================================================
+// QUOTE STATUS HELPERS (Legacy - aligned with ProposalStatus)
+// ============================================================================
+
+export type QuoteStatus = 'Won' | 'Rejected' | 'Submitted' | 'Draft';
 
 /**
  * Check if quote status is Won (case-insensitive)
@@ -91,13 +140,6 @@ export function isQuoteDraft(status: string | null | undefined): boolean {
 }
 
 /**
- * Check if quote status is Incomplete (case-insensitive)
- */
-export function isQuoteIncomplete(status: string | null | undefined): boolean {
-  return status?.toLowerCase() === 'incomplete';
-}
-
-/**
  * Check if quote is in a final state (Won or Rejected)
  */
 export function isQuoteFinal(status: string | null | undefined): boolean {
@@ -106,19 +148,18 @@ export function isQuoteFinal(status: string | null | undefined): boolean {
 }
 
 /**
- * Check if quote is in progress (Submitted, Draft, Incomplete)
+ * Check if quote is in progress (Submitted or Draft)
  */
 export function isQuoteInProgress(status: string | null | undefined): boolean {
   const lower = status?.toLowerCase();
-  return lower === 'submitted' || lower === 'draft' || lower === 'incomplete';
+  return lower === 'submitted' || lower === 'draft';
 }
 
 /**
- * Check if quote can be edited (Draft or Incomplete)
+ * Check if quote can be edited (Draft only)
  */
 export function isQuoteEditable(status: string | null | undefined): boolean {
-  const lower = status?.toLowerCase();
-  return lower === 'draft' || lower === 'incomplete';
+  return status?.toLowerCase() === 'draft';
 }
 
 // ============================================================================

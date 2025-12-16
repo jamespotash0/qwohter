@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { ContactInfo, JobDetails, DeliveryLabor, Pricing } from '@/components/features/quotes/creation/QuoteCreatorWizard/types/wizardTypes';
+import { ContactInfo, JobDetails, DeliveryLabor, Pricing } from '@/_deprecated/components/quotes/creation/QuoteCreatorWizard/types/wizardTypes';
 import { WallDetails, WallSpecification, isOperableWall, isGlassWall, isAccordionPartition } from '@/lib/types';
 import { AccordionWallSpecification } from '@/lib/types/walls/accordion';
-import { validateWallDimensions } from '@/utils/wallValidation';
+import { validateWallDimensions } from '@/_deprecated/utils/wallValidation';
 
 export const useEditingValidation = (
   contactInfo: ContactInfo,

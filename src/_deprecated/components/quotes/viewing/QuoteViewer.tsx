@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { PageContainer } from '@/components/common/layout/PageContainer';
-import { generateQuoteText } from '@/components/features/quotes/generation/QuoteTextGenerator';
+import { generateQuoteText } from '@/_deprecated/components/quotes/generation/QuoteTextGenerator';
 import { DynamicPageBreakManager } from '@/utils/dynamicPageBreakManager';
 import '@/styles/pages.css';
 

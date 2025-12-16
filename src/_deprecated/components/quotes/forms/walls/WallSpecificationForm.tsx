@@ -7,10 +7,10 @@ import { Trash2, Edit, ChevronDown, ChevronUp } from "lucide-react";
 import { WallSpecification, WallDetails } from "@/lib/types";
 // import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import BaseCreationForm from "@/components/features/quotes/creationForms/BaseCreationForm";
-import GlassWallCreationForm from "@/components/features/quotes/creationForms/GlassWallCreationForm";
-import OperableWallCreationForm from "@/components/features/quotes/creationForms/OperableWallCreationForm";
-import { AccordionWallCreationForm } from "@/components/features/quotes/creationForms/AccordionWallCreationForm";
+import BaseCreationForm from "@/_deprecated/components/quotes/creationForms/BaseCreationForm";
+import GlassWallCreationForm from "@/_deprecated/components/quotes/creationForms/GlassWallCreationForm";
+import OperableWallCreationForm from "@/_deprecated/components/quotes/creationForms/OperableWallCreationForm";
+import { AccordionWallCreationForm } from "@/_deprecated/components/quotes/creationForms/AccordionWallCreationForm";
 
 interface WallSpecificationFormProps {
   walls: WallDetails;

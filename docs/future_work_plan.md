@@ -2,6 +2,8 @@
 Roadmap
 ## Update project board UI/UX and allow for manual task insertion or quote tracking [FINISHED]
 ## Finish adding and completing Stripe Payment (seat-based-pricing branch) [FINISHED]
+## Add ability to add files to a proposal for storage of information [FINISHED]
+## Fix form builder determining whether to have set pricing section (whether via form or not) [FINISHED]
 
 ## Add in Forms so we can convert to pure company agnostic, form based quotes -> Need to complete full scale design of forms [use images to help via the design] (form-builder-system) [IN-PROGRESS]
 
@@ -10,7 +12,7 @@ Roadmap
 ## Refactor Proposals table to support new generalized form-builder and template generator [IN-PROGRESS]
 ## Update Analytics to Support New Proposals Table [IN-PROGRESS]
 
-## Fix form builder determining whether to have set pricing section (whether via form or not) as well as product specifications & how that relates to products catalog
+## Product specifications & how that relates to products catalog 
 
 ## GENERAL UI/UX Updated Design
 
@@ -22,8 +24,6 @@ Roadmap
 ## Add notifications for each users
 
 ## Add an approval process for sending quotes, directly via the email and to customize the email…
-
-## Add ability to add files to a proposal for storage of information
 
 ## Add integrations for quickbooks and sending invoices
 

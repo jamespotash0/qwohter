@@ -1,6 +1,6 @@
 import React from 'react';
 import { WallSpecification } from '@/lib/types';
-import { GlassWallFormAdapter } from '@/components/features/quotes/shared/components/GlassWallFormAdapter';
+import { GlassWallFormAdapter } from '@/_deprecated/components/quotes/shared/components/GlassWallFormAdapter';
 
 interface GlassWallEditFormProps {
   wallName: string;

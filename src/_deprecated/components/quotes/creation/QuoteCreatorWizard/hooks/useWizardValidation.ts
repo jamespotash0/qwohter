@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { ContactInfo, JobDetails, DeliveryLabor, Pricing } from '../types/wizardTypes';
 import { WallDetails, WallSpecification, isOperableWall, isGlassWall, isAccordionPartition } from '@/lib/types';
 import { AccordionWallSpecification } from '@/lib/types/walls/accordion';
-import { validateWallDimensions } from '@/utils/wallValidation';
+import { validateWallDimensions } from '@/_deprecated/utils/wallValidation';
 
 interface OrganizationData {
   fax_number?: string | null;

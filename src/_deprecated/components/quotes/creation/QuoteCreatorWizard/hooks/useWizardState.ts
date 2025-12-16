@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ContactInfo, JobDetails, SupportStructure, DeliveryLabor, Pricing, PocketDoors } from '../types/wizardTypes';
 import { WallDetails, WallSpecification } from '@/lib/types';
-import { ProposalNumberGenerator } from '@/utils/proposalNumberGenerator';
-import { defaultEnhancedPricing } from '@/lib/types/pricing/enhancedPricing';
+import { ProposalNumberGenerator } from '@/_deprecated/utils/proposalNumberGenerator';
+import { defaultEnhancedPricing } from '@/_deprecated/lib/types/pricing/enhancedPricing';
 
 // Helper function to create empty wall details structure
 const createEmptyWallDetails = (): WallDetails => ({

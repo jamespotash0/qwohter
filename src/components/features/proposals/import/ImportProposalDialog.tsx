@@ -25,10 +25,10 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, ArrowRight, FileUp, Loader2 } from 'lucide-react';
-import { FileUploadStep } from '@/components/features/quotes/import/FileUploadStep';
-import { ProcessingStep } from '@/components/features/quotes/import/ProcessingStep';
-import { extractTextFromFile, parseQuoteWithAI } from '@/services/quoteImport';
-import { createProposal } from '@/services/proposalsService';
+import { FileUploadStep } from '@/_deprecated/components/features/quotes/import/FileUploadStep';
+import { ProcessingStep } from '@/_deprecated/components/features/quotes/import/ProcessingStep';
+import { extractTextFromFile, parseQuoteWithAI } from '@/services/proposalImport';
+import { createProposal, type CreateProposalData } from '@/services/proposalsService';
 import { useForms } from '@/hooks/queries';
 import { useFormDocumentTemplates } from '@/hooks/queries/useDocumentTemplates';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
@@ -37,11 +37,11 @@ import { invalidateQueries } from '@/lib/queryClient';
 import type {
   ImportFileType,
   ExtractedQuoteData,
-} from '@/lib/types/quoteImport';
-import { EMPTY_EXTRACTED_DATA } from '@/lib/types/quoteImport';
+} from '@/lib/types/proposalImport';
+import { EMPTY_EXTRACTED_DATA } from '@/lib/types/proposalImport';
 
 type ImportStep = 'upload' | 'processing' | 'review';
-type ImportProposalStatus = 'Incomplete' | 'Draft' | 'Submitted' | 'Won' | 'Rejected';
+type ImportProposalStatus = 'Draft' | 'Submitted' | 'Won' | 'Rejected';
 
 interface ImportProposalState {
   step: ImportStep;
@@ -284,14 +284,14 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
 
       // Build proposal data
       // Note: document_type is inherited from the form automatically
-      const proposalData: Record<string, any> = {
+      const proposalData: CreateProposalData = {
         form_id: manual.formId,
         project_name: manual.projectName.trim(),
         status: manual.status,
         client_name: extractedData.client.name || '',
         client_company: extractedData.client.company || '',
         job_location: extractedData.job.location || '',
-        total_value: extractedData.pricing.total || 0,
+        total_value: extractedData.pricing.total ?? 0,
         quote_source: 'Imported',
         form_data: {
           // Store all extracted data in form_data for flexibility
@@ -303,18 +303,11 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
           imported_from: state.file?.name,
           import_date: new Date().toISOString(),
         },
+        // Add optional proposal number if provided
+        ...(manual.proposalNumber.trim() && { proposal_number: manual.proposalNumber.trim() }),
+        // Add custom created_at if a date is specified
+        ...(manual.proposalDate && { created_at: new Date(manual.proposalDate + 'T00:00:00').toISOString() }),
       };
-
-      // Add optional proposal number if provided
-      if (manual.proposalNumber.trim()) {
-        proposalData.proposal_number = manual.proposalNumber.trim();
-      }
-
-      // Add custom created_at if a date is specified
-      if (manual.proposalDate) {
-        // Convert date string to ISO timestamp at start of day
-        proposalData.created_at = new Date(manual.proposalDate + 'T00:00:00').toISOString();
-      }
 
       const newProposal = await createProposal(proposalData);
 
@@ -551,7 +544,6 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Incomplete">Incomplete</SelectItem>
                     <SelectItem value="Draft">Draft</SelectItem>
                     <SelectItem value="Submitted">Submitted</SelectItem>
                     <SelectItem value="Won">Won</SelectItem>
@@ -582,10 +574,10 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
                       {state.extractedData.job.location}
                     </div>
                   )}
-                  {state.extractedData.pricing.total > 0 && (
+                  {(state.extractedData.pricing.total ?? 0) > 0 && (
                     <div>
                       <span className="text-muted-foreground">Total:</span>{' '}
-                      ${state.extractedData.pricing.total.toLocaleString()}
+                      ${(state.extractedData.pricing.total ?? 0).toLocaleString()}
                     </div>
                   )}
                   {state.extractedData.products.items.length > 0 && (

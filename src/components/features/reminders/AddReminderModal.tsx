@@ -9,11 +9,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Bell, Calendar as CalendarIcon, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn, parseLocalDate } from '@/lib/utils';
-import { useQuotes } from '@/hooks/queries/useQuotes';
+import { useProposals } from '@/hooks/queries/useProposals';
+import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
 import { reminderService, type ReminderType } from '@/services/reminderService';
 import { toast } from 'sonner';
 import { useUser } from '@/auth';
-import { supabase } from '@/integrations/supabase/client'
 
 interface AddReminderModalProps {
   open: boolean;
@@ -33,9 +33,10 @@ interface Reminder {
 }
 
 export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCreated }: AddReminderModalProps) => {
-  // Get user, organization, and quotes using hooks
+  // Get user, organization, and proposals using hooks
   const user = useUser();
-  const { data: quotes = [] } = useQuotes(user?.id);
+  const { organization } = useCurrentOrganization(user?.id);
+  const { data: proposals = [] } = useProposals(organization?.id);
 
   const [reminderType, setReminderType] = useState<string>('');
   const [alertName, setAlertName] = useState('');
@@ -45,10 +46,10 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
   const [time, setTime] = useState('09:00');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Get active (non-archived) quotes
-  const activeQuotes = useMemo(() => {
-    return quotes.filter(q => !q.archived);
-  }, [quotes]);
+  // Get active (non-archived) proposals
+  const activeProposals = useMemo(() => {
+    return proposals.filter(p => !p.archived);
+  }, [proposals]);
 
   // Reset form when modal opens or populate with editing data
   useEffect(() => {
@@ -259,20 +260,20 @@ export const AddReminderModal = ({ open, editingReminder, onClose, onReminderCre
               />
             </div>
 
-            {/* Optional Quote Reference */}
+            {/* Optional Proposal Reference */}
             <div className="space-y-2">
               <Label htmlFor="quoteReference" className="text-sm font-medium text-gray-700">
-                Quote Reference (Optional)
+                Proposal Reference (Optional)
               </Label>
               <Select value={quoteReference} onValueChange={setQuoteReference}>
                 <SelectTrigger className="h-11">
-                  <SelectValue placeholder="No quote linked" />
+                  <SelectValue placeholder="No proposal linked" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No quote linked</SelectItem>
-                  {activeQuotes.map((quote) => (
-                    <SelectItem key={quote.id} value={quote.id}>
-                      {quote.proposal_number} - {quote.project_name || 'Untitled'}
+                  <SelectItem value="none">No proposal linked</SelectItem>
+                  {activeProposals.map((proposal) => (
+                    <SelectItem key={proposal.id} value={proposal.id}>
+                      {proposal.proposal_number} - {proposal.project_name || 'Untitled'}
                     </SelectItem>
                   ))}
                 </SelectContent>

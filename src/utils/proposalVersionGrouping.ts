@@ -7,7 +7,7 @@
 
 import type { Proposal } from '@/services/proposalsService';
 
-export type ProposalStatus = 'Incomplete' | 'Draft' | 'Submitted' | 'Won' | 'Rejected';
+export type ProposalStatus = 'Draft' | 'Submitted' | 'Won' | 'Rejected';
 
 export interface ProposalVersionGroup {
   baseNumber: string;
@@ -20,7 +20,6 @@ export interface ProposalVersionGroup {
     rejected: number;
     submitted: number;
     draft: number;
-    incomplete: number;
   };
 }
 
@@ -113,7 +112,6 @@ export function groupProposalsByVersion(proposals: Proposal[]): ProposalVersionG
       rejected: versions.filter(v => v.status === 'Rejected').length,
       submitted: versions.filter(v => v.status === 'Submitted').length,
       draft: versions.filter(v => v.status === 'Draft').length,
-      incomplete: versions.filter(v => v.status === 'Incomplete').length,
     };
 
     return {
@@ -134,7 +132,7 @@ export function groupProposalsByVersion(proposals: Proposal[]): ProposalVersionG
 export function getVersionDisplayInfo(group: ProposalVersionGroup) {
   const { statusSummary } = group;
 
-  // Priority: Won/Rejected > Submitted > Draft > Incomplete
+  // Priority: Won/Rejected > Submitted > Draft
   if (statusSummary.won > 0) {
     return {
       status: 'Won' as ProposalStatus,
@@ -162,20 +160,12 @@ export function getVersionDisplayInfo(group: ProposalVersionGroup) {
     };
   }
 
-  if (statusSummary.draft > 0) {
-    return {
-      status: 'Draft' as ProposalStatus,
-      label: statusSummary.draft === 1 ? 'Draft' : `${statusSummary.draft} Draft`,
-      color: 'outline' as const,
-      icon: '◐'
-    };
-  }
-
+  // Default to Draft if no other status
   return {
-    status: 'Incomplete' as ProposalStatus,
-    label: statusSummary.incomplete === 1 ? 'Incomplete' : `${statusSummary.incomplete} Incomplete`,
+    status: 'Draft' as ProposalStatus,
+    label: statusSummary.draft === 1 ? 'Draft' : `${statusSummary.draft} Draft`,
     color: 'outline' as const,
-    icon: '...'
+    icon: '◐'
   };
 }
 
@@ -191,7 +181,7 @@ export function getVersionStatusBadges(group: ProposalVersionGroup) {
     color: string;
   }> = [];
 
-  // Priority order: Won/Rejected > Submitted > Draft > Incomplete
+  // Priority order: Won/Rejected > Submitted > Draft
   if (group.statusSummary.won > 0) {
     badges.push({
       status: 'Won',
@@ -224,15 +214,6 @@ export function getVersionStatusBadges(group: ProposalVersionGroup) {
       status: 'Draft',
       count: group.statusSummary.draft,
       label: `${group.statusSummary.draft} Draft`,
-      color: 'outline'
-    });
-  }
-
-  if (group.statusSummary.incomplete > 0) {
-    badges.push({
-      status: 'Incomplete',
-      count: group.statusSummary.incomplete,
-      label: `${group.statusSummary.incomplete} Incomplete`,
       color: 'outline'
     });
   }
