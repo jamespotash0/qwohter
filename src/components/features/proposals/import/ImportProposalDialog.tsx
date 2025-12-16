@@ -292,7 +292,7 @@ export function ImportProposalDialog({ open, onOpenChange }: ImportProposalDialo
         client_company: extractedData.client.company || '',
         job_location: extractedData.job.location || '',
         total_value: extractedData.pricing.total ?? 0,
-        quote_source: 'Imported',
+        proposal_source: 'Imported',
         form_data: {
           // Store all extracted data in form_data for flexibility
           client: extractedData.client,

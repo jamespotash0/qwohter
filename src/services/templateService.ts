@@ -146,7 +146,6 @@ export async function copyTemplateToOrganization(
     name: params.customName || template.name,
     description: params.customDescription || template.description,
     document_type: template.document_type,
-    tabs: template.tabs,
     metadata: template.metadata,
     is_archived: false,
     is_default: false,

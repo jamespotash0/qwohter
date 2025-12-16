@@ -34,9 +34,10 @@ export {
 // Base type from database schema
 type ProposalRow = Database['public']['Tables']['proposals']['Row'];
 
-// Extended proposal type with is_complete (added via migration)
+// Extended proposal type with additional fields (added via migrations)
 export type Proposal = ProposalRow & {
   is_complete?: boolean;
+  documents_count?: number;
 };
 
 export interface CreateProposalData {
@@ -56,7 +57,7 @@ export interface CreateProposalData {
   // Additional metadata columns
   is_on_board?: boolean; // Whether to show on kanban board
   is_complete?: boolean; // Whether the proposal is marked as finished or unfinished
-  quote_source?: string; // Lead source (e.g., 'Website', 'Referral')
+  proposal_source?: string; // Lead source (e.g., 'Website', 'Referral')
   document_type?: DocumentType; // Type of document (inherited from form)
 }
 
@@ -71,7 +72,7 @@ export interface UpdateProposalData {
   submitted_at?: string;
   won_at?: string;
   rejected_at?: string;
-  quote_source?: string;
+  proposal_source?: string;
 }
 
 export interface ProposalVersionInfo {
@@ -376,12 +377,13 @@ export async function fetchProposalById(proposalId: string): Promise<Proposal> {
 
   // Map created_by_name to creator_name for consistency with the UI
   // Cast to any to access created_by_name which may not be in the type definition yet
-  const proposalWithCreator = {
-    ...data,
-    creator_name: (data as any).created_by_name || null,
-  };
+  // const proposalWithCreator = {
+  //   ...data as Proposal,
+  //   creator_name: (data as any).created_by_name || null,
+  // };
 
-  return proposalWithCreator as any;
+  // return proposalWithCreator as any;
+  return data as Proposal;
 }
 
 /**
@@ -470,7 +472,7 @@ export async function createProposal(
     // Document type (inherited from form)
     document_type: documentType,
     is_on_board: proposalData.is_on_board ?? false,
-    quote_source: proposalData.quote_source || metadata?.quoteSource || null,
+    proposal_source: proposalData.proposal_source || metadata?.proposalSource || null,
   };
 
   // If a custom created_at is provided (for imports), use it

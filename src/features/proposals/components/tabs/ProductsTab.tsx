@@ -6,14 +6,13 @@
  * 2. AI Extract - Upload document and extract product data with AI
  *
  * Builder Mode: Disabled (no functionality)
- * Filler Mode: Full functionality
+ * Filler Mode: Full functionality - persisted via FormBuilderContext
  */
 
-import { useState, useCallback, useRef } from 'react';
-import { Plus, Trash, UploadSimple, Package, Sparkle, FileText } from '@phosphor-icons/react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { Plus, Trash, UploadSimple, Package, Sparkle } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -25,47 +24,11 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { EditorMode } from '../ProposalEditor';
 import { extractProductsFromFile } from '@/services/productExtraction';
+import { useFormBuilder, type Product } from '../../context/FormBuilderContext';
 
 interface ProductsTabProps {
   mode: EditorMode;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  quantity: number;
-  unit: string;
-  description?: string;
-  rawData?: {
-    manufacturer?: string | null;
-    productType?: string | null;
-    productCategory?: string | null;
-    series?: string | null;
-    model?: string | null;
-    dimensions?: {
-      height?: string | null;
-      width?: string | null;
-      length?: string | null;
-      thickness?: string | null;
-    };
-    performanceRatings?: {
-      stc?: number | null;
-      fireRating?: string | null;
-      acousticRating?: string | null;
-    };
-    appearance?: {
-      color?: string | null;
-      finish?: string | null;
-      trim?: string | null;
-    };
-    materials?: {
-      core?: string | null;
-      face?: string | null;
-      frame?: string | null;
-    };
-    certifications?: string[];
-    specifications?: Record<string, any>;
-  };
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 const UNITS = [
@@ -80,13 +43,15 @@ const UNITS = [
 
 type EntryMode = 'manual' | 'ai-extract';
 
-export function ProductsTab({ mode }: ProductsTabProps) {
+export function ProductsTab({ mode, onDirtyChange }: ProductsTabProps) {
   const isBuilderMode = mode === 'builder';
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Use context for products data persistence
+  const { data, setProductsData } = useFormBuilder();
+  const products = data.products.items;
+
   const [entryMode, setEntryMode] = useState<EntryMode>('manual');
-  // Start with empty products array
-  const [products, setProducts] = useState<Product[]>([]);
   const [extracting, setExtracting] = useState(false);
 
   // Helper function to determine if a product has rich metadata
@@ -103,22 +68,24 @@ export function ProductsTab({ mode }: ProductsTabProps) {
       unit: 'ea',
       description: '',
     };
-    setProducts(prev => [...prev, newProduct]);
-  }, []);
+    setProductsData({ items: [...products, newProduct] });
+    onDirtyChange?.(true);
+  }, [products, setProductsData, onDirtyChange]);
 
   // Update product
   const updateProduct = useCallback((id: string, updates: Partial<Product>) => {
-    setProducts(prev =>
-      prev.map(product =>
-        product.id === id ? { ...product, ...updates } : product
-      )
+    const updatedProducts = products.map(product =>
+      product.id === id ? { ...product, ...updates } : product
     );
-  }, []);
+    setProductsData({ items: updatedProducts });
+    onDirtyChange?.(true);
+  }, [products, setProductsData, onDirtyChange]);
 
   // Remove product
   const removeProduct = useCallback((id: string) => {
-    setProducts(prev => prev.filter(product => product.id !== id));
-  }, []);
+    setProductsData({ items: products.filter(product => product.id !== id) });
+    onDirtyChange?.(true);
+  }, [products, setProductsData, onDirtyChange]);
 
   // Handle file upload for AI extraction
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,7 +120,8 @@ export function ProductsTab({ mode }: ProductsTabProps) {
       if (extractedProducts.length === 0) {
         toast.warning(`No products found in ${file.name}`);
       } else {
-        setProducts(prev => [...prev, ...extractedProducts]);
+        setProductsData({ items: [...products, ...extractedProducts] });
+        onDirtyChange?.(true);
         toast.success(`Extracted ${extractedProducts.length} product${extractedProducts.length === 1 ? '' : 's'} from ${file.name}`);
       }
 
@@ -168,7 +136,7 @@ export function ProductsTab({ mode }: ProductsTabProps) {
     } finally {
       setExtracting(false);
     }
-  }, []);
+  }, [products, setProductsData, onDirtyChange]);
 
   // Input styling
   const inputClassName = cn(

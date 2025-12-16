@@ -169,7 +169,7 @@ export interface InfoTabData {
   proposalDate: string;
   contactName: string;
   contactEmail: string;
-  quoteSource: string;
+  proposalSource: string;
   categoryOfWork: string;
   laborType: string;
   projectType: string;
@@ -221,7 +221,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
   const [contactEmail, setContactEmail] = useState('');
 
   // Work Details
-  const [quoteSource, setQuoteSource] = useState('');
+  const [proposalSource, setProposalSource] = useState('');
   const [categoryOfWork, setCategoryOfWork] = useState('');
   const [laborType, setLaborType] = useState('');
   const [projectType, setProjectType] = useState('');
@@ -250,7 +250,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     proposalDate: '',
     contactName: '',
     contactEmail: '',
-    quoteSource: '',
+    proposalSource: '',
     categoryOfWork: '',
     laborType: '',
     projectType: '',
@@ -317,7 +317,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
         setProposalDate(info.proposalDate || '');
         setContactName(info.contactName || '');
         setContactEmail(info.contactEmail || '');
-        setQuoteSource(info.quoteSource || '');
+        setProposalSource(info.proposalSource || '');
         setCategoryOfWork(info.categoryOfWork || '');
         setLaborType(info.laborType || '');
         setProjectType(info.projectType || '');
@@ -346,7 +346,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
         if (proposalData.client_name) {
           setIsCustomClientName(true);
         }
-        setQuoteSource(proposalData.quote_source || '');
+        setProposalSource(proposalData.proposal_source || '');
         hasLoadedInitialData.current = true;
       }
     }
@@ -368,7 +368,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
           proposalDate,
           contactName,
           contactEmail,
-          quoteSource,
+          proposalSource,
           categoryOfWork,
           laborType,
           projectType,
@@ -395,7 +395,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     proposalDate,
     contactName,
     contactEmail,
-    quoteSource,
+    proposalSource,
     categoryOfWork,
     laborType,
     projectType,
@@ -421,7 +421,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       proposalDate !== initialValues.proposalDate ||
       contactName !== initialValues.contactName ||
       contactEmail !== initialValues.contactEmail ||
-      quoteSource !== initialValues.quoteSource ||
+      proposalSource !== initialValues.proposalSource ||
       categoryOfWork !== initialValues.categoryOfWork ||
       laborType !== initialValues.laborType ||
       projectType !== initialValues.projectType ||
@@ -445,7 +445,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     proposalDate,
     contactName,
     contactEmail,
-    quoteSource,
+    proposalSource,
     categoryOfWork,
     laborType,
     projectType,
@@ -470,7 +470,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
       proposalDate,
       contactName,
       contactEmail,
-      quoteSource,
+      proposalSource,
       categoryOfWork,
       laborType,
       projectType,
@@ -491,7 +491,7 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
     proposalDate,
     contactName,
     contactEmail,
-    quoteSource,
+    proposalSource,
     categoryOfWork,
     laborType,
     projectType,
@@ -717,12 +717,12 @@ export const InfoTab = forwardRef<InfoTabRef, InfoTabProps>(function InfoTab(
           title="Work Details"
           icon={<Tag className="w-5 h-5" />}
         >
-          {/* Row 1: Quote Source + Type of Work */}
+          {/* Row 1: Proposal Source + Type of Work */}
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Quote Source" tooltip="Where did this lead come from?">
+            <Field label="Proposal Source" tooltip="Where did this lead come from?">
               <Input
-                value={quoteSource}
-                onChange={(e) => setQuoteSource(e.target.value)}
+                value={proposalSource}
+                onChange={(e) => setProposalSource(e.target.value)}
                 placeholder="e.g., Referral, Website"
                 className={disabledInputClassName}
                 disabled={isBuilderMode}

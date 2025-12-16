@@ -86,12 +86,58 @@ export interface MiscellaneousData {
   notes: string;
 }
 
+// ============ Products Tab Data ============
+export interface ProductRawData {
+  manufacturer?: string | null;
+  productType?: string | null;
+  productCategory?: string | null;
+  series?: string | null;
+  model?: string | null;
+  dimensions?: {
+    height?: string | null;
+    width?: string | null;
+    length?: string | null;
+    thickness?: string | null;
+  };
+  performanceRatings?: {
+    stc?: number | null;
+    fireRating?: string | null;
+    acousticRating?: string | null;
+  };
+  appearance?: {
+    color?: string | null;
+    finish?: string | null;
+    trim?: string | null;
+  };
+  materials?: {
+    core?: string | null;
+    face?: string | null;
+    frame?: string | null;
+  };
+  certifications?: string[];
+  specifications?: Record<string, unknown>;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  description?: string;
+  rawData?: ProductRawData;
+}
+
+export interface ProductsData {
+  items: Product[];
+}
+
 // ============ Complete Form Structure ============
 export interface FormBuilderData {
   terms: TermsData;
   pricing: PricingData;
   leadTimes: LeadTimesData;
   miscellaneous: MiscellaneousData;
+  products: ProductsData;
 }
 
 // Default empty state for builder mode
@@ -111,6 +157,9 @@ const DEFAULT_BUILDER_DATA: FormBuilderData = {
     fields: [],
     notes: '',
   },
+  products: {
+    items: [],
+  },
 };
 
 // ============ Context Definition ============
@@ -129,6 +178,9 @@ interface FormBuilderContextType {
 
   // Miscellaneous
   setMiscellaneousData: (data: MiscellaneousData) => void;
+
+  // Products
+  setProductsData: (data: ProductsData) => void;
 
   // Load/reset
   loadData: (data: FormBuilderData) => void;
@@ -168,6 +220,11 @@ export function FormBuilderProvider({ children, initialData }: FormBuilderProvid
     setIsDirty(true);
   }, []);
 
+  const setProductsData = useCallback((productsData: ProductsData) => {
+    setData(prev => ({ ...prev, products: productsData }));
+    setIsDirty(true);
+  }, []);
+
   const loadData = useCallback((newData: FormBuilderData) => {
     setData(newData);
     setIsDirty(false);
@@ -191,6 +248,7 @@ export function FormBuilderProvider({ children, initialData }: FormBuilderProvid
         setPricingData,
         setLeadTimesData,
         setMiscellaneousData,
+        setProductsData,
         loadData,
         resetData,
         markClean,
@@ -220,6 +278,7 @@ export function serializeFormBuilderData(data: FormBuilderData): Record<string, 
     pricing: data.pricing,
     leadTimes: data.leadTimes,
     miscellaneous: data.miscellaneous,
+    products: data.products,
   };
 }
 
@@ -238,6 +297,7 @@ export function parseFormBuilderData(tabsData: unknown): FormBuilderData {
     pricing: (parsed.pricing as PricingData) || DEFAULT_BUILDER_DATA.pricing,
     leadTimes: (parsed.leadTimes as LeadTimesData) || DEFAULT_BUILDER_DATA.leadTimes,
     miscellaneous: (parsed.miscellaneous as MiscellaneousData) || DEFAULT_BUILDER_DATA.miscellaneous,
+    products: (parsed.products as ProductsData) || DEFAULT_BUILDER_DATA.products,
   };
 }
 

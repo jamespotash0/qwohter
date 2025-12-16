@@ -276,7 +276,6 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             created_by: user.id,
             name: trimmedName,
             description: '',
-            tabs: [],
             metadata: serializedData,
             is_archived: false,
             is_default: false,
@@ -315,7 +314,7 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
             client_name: infoData?.clientName || undefined,
             client_company: infoData?.clientCompany || undefined,
             job_location: infoData?.jobLocation || undefined,
-            quote_source: infoData?.quoteSource || undefined,
+            proposal_source: infoData?.proposalSource || undefined,
           },
         });
         toast.success('Proposal saved');
@@ -442,8 +441,8 @@ function ProposalEditorInner({ formId, proposalId, mode = 'filler', onClose }: P
                   {proposalData?.created_at && (
                     <div className="text-xs text-gray-500 dark:text-gray-400 space-x-2">
                       <span>Created: {new Date(proposalData.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                      {proposalData?.creator_name && (
-                        <span>• By: {proposalData.creator_name}</span>
+                      {proposalData?.created_by_name && (
+                        <span>• By: {proposalData.created_by_name}</span>
                       )}
                     </div>
                   )}

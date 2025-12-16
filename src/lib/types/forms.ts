@@ -76,15 +76,17 @@ export interface PresentationSection {
 // Form definition
 export interface Form {
   id: string;
-  organization_id: string;
+  organization_id: string | null; // Null for system templates
   name: string;
   description?: string;
-  tabs: FormTab[];
-  created_by: string;
+  metadata?: Record<string, unknown> | null; // Form builder data (terms, pricing, lead times, etc.)
+  created_by: string | null;
   created_at: string;
   updated_at: string;
   is_archived: boolean;
   is_default?: boolean; // Marks this as the default form for quote creation
-  document_type?: DocumentType; // Type of document this form creates (Proposal, Quote, Bid, Estimate, Service_Request)
+  is_template?: boolean; // True for system templates
+  copied_from_form_id?: string | null; // Template lineage tracking
+  document_type?: DocumentType; // Type of document this form creates (Proposal, Invoice, Service_Request)
   presentation_template?: PresentationTemplate | null; // Template for document generation with {{placeholder}} syntax
 }

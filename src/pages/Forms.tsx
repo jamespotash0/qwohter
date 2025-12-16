@@ -5,8 +5,8 @@ import { useCurrentOrganization, useForms, useDeleteForm, useCopyForm, useUpdate
 import { useUser } from '@/auth';
 import { useTemplates, useSearchTemplates, useCopyTemplate, usePrefetchTemplate } from '@/hooks/queries/useTemplates';
 import { Template } from '@/services/templateService';
-import { TemplateCard } from '@/features/form-builder/components/TemplateCard';
-import { TemplatePreview } from '@/features/form-builder/components/TemplatePreview';
+import { TemplateCard } from '@/components/features/forms/TemplateCard';
+import { TemplatePreview } from '@/components/features/forms/TemplatePreview';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Plus,
@@ -43,7 +43,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { CreateFormDialog } from '@/features/form-builder/components/CreateFormDialog';
+import { CreateFormDialog } from '@/components/features/forms/CreateFormDialog';
 
 export default function Forms() {
   const navigate = useNavigate();
@@ -129,7 +129,7 @@ export default function Forms() {
     }
 
     try {
-      // Create form with blank canvas (no default tabs)
+      // Create form with blank canvas
       createFormMutation.mutate({
         name: data.name,
         description: data.description || undefined,
@@ -137,7 +137,6 @@ export default function Forms() {
         created_by: user.id,
         is_archived: false,
         document_type: data.documentType as any,
-        tabs: [],
       }, {
         onSuccess: (newForm) => {
           setShowCreateDialog(false);

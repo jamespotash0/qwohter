@@ -224,7 +224,7 @@ export default function Proposals() {
         p.client_name || p.client_company || 'Untitled Client',
         formatCurrency(p.total_value || 0),
         p.status || 'Draft',
-        p.quote_source || '',
+        p.proposal_source || '',
         formatDateEST(p.created_at, { year: 'numeric', month: 'short', day: 'numeric' }),
       ].map(escapeCsvField).join(',');
     });
@@ -272,7 +272,7 @@ export default function Proposals() {
         p.client_name || p.client_company || 'Untitled Client',
         formatCurrency(p.total_value || 0),
         p.status || 'Draft',
-        p.quote_source || '',
+        p.proposal_source || '',
         formatDateEST(p.created_at, { year: 'numeric', month: 'short', day: 'numeric' }),
       ]);
 

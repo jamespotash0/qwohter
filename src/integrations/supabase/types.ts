@@ -553,48 +553,54 @@ export interface Database {
       };
       /**
        * Forms table - Form template definitions
-       * Stores form structure (tabs, fields) and presentation template
+       * Stores form structure in metadata JSONB field
        */
       forms: {
         Row: {
           id: string;
-          organization_id: string;
+          organization_id: string | null; // Null for system templates
           name: string;
           description: string | null;
-          tabs: Record<string, any>[]; // Array of FormTab objects
-          created_by: string;
+          metadata: Record<string, any> | null; // Form builder data (terms, pricing, etc.)
+          created_by: string | null;
           created_at: string;
           updated_at: string;
           is_archived: boolean;
           is_default: boolean | null;
-          document_type: string | null; // 'Proposal' | 'Quote' | 'Bid' | 'Estimate' | 'Service_Request'
+          is_template: boolean; // True for system templates
+          copied_from_form_id: string | null; // Template lineage tracking
+          document_type: string | null; // 'Proposal' | 'Invoice' | 'Service_Request'
           presentation_template: Record<string, any> | null; // PresentationTemplate JSONB
         };
         Insert: {
           id?: string;
-          organization_id: string;
+          organization_id?: string | null;
           name: string;
           description?: string | null;
-          tabs: Record<string, any>[];
+          metadata?: Record<string, any> | null;
           created_by: string;
           created_at?: string;
           updated_at?: string;
           is_archived?: boolean;
           is_default?: boolean | null;
+          is_template?: boolean;
+          copied_from_form_id?: string | null;
           document_type?: string | null;
           presentation_template?: Record<string, any> | null;
         };
         Update: {
           id?: string;
-          organization_id?: string;
+          organization_id?: string | null;
           name?: string;
           description?: string | null;
-          tabs?: Record<string, any>[];
+          metadata?: Record<string, any> | null;
           created_by?: string;
           created_at?: string;
           updated_at?: string;
           is_archived?: boolean;
           is_default?: boolean | null;
+          is_template?: boolean;
+          copied_from_form_id?: string | null;
           document_type?: string | null;
           presentation_template?: Record<string, any> | null;
         };
@@ -608,6 +614,7 @@ export interface Database {
           id: string;
           organization_id: string;
           created_by: string;
+          created_by_name: string | null;
           form_id: string;
           proposal_number: string | null;
           form_data: Record<string, any> | null;
@@ -624,7 +631,7 @@ export interface Database {
           template_type: string | null;
           // Board and workflow
           is_on_board: boolean | null;
-          quote_source: string | null;
+          proposal_source: string | null;
           // Versioning
           parent_proposal_id: string | null;
           is_main_version: boolean | null;
@@ -633,6 +640,8 @@ export interface Database {
           archived_at: string | null;
           // Completion tracking
           is_complete: boolean | null;
+          // Document count
+          documents_count: number | null;
           // Status timestamps
           submitted_at: string | null;
           won_at: string | null;
@@ -658,12 +667,13 @@ export interface Database {
           document_type?: string | null;
           template_type?: string | null;
           is_on_board?: boolean | null;
-          quote_source?: string | null;
+          proposal_source?: string | null;
           parent_proposal_id?: string | null;
           is_main_version?: boolean | null;
           archived?: boolean | null;
           archived_at?: string | null;
           is_complete?: boolean | null;
+          documents_count?: number | null;
           submitted_at?: string | null;
           won_at?: string | null;
           rejected_at?: string | null;
@@ -687,12 +697,13 @@ export interface Database {
           document_type?: string | null;
           template_type?: string | null;
           is_on_board?: boolean | null;
-          quote_source?: string | null;
+          proposal_source?: string | null;
           parent_proposal_id?: string | null;
           is_main_version?: boolean | null;
           archived?: boolean | null;
           archived_at?: string | null;
           is_complete?: boolean | null;
+          documents_count?: number | null;
           submitted_at?: string | null;
           won_at?: string | null;
           rejected_at?: string | null;
