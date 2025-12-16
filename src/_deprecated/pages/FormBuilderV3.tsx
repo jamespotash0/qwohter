@@ -44,11 +44,11 @@ import { useForm, useCreateForm, useUpdateForm } from '@/hooks/queries';
 import { useFormHasProposals } from '@/hooks/queries/useProposals';
 import { useCurrentOrganization } from '@/hooks/queries/useOrganization';
 import { getAllNumberingConfigs, type OrganizationNumberingConfig } from '@/services/numberingConfigService';
-import { FormComponents } from '@/features/form-builder/components/FormComponents';
-// import { DotGridCanvas } from '@/features/form-builder/components/DotGridCanvas';
-import { PropertiesPanel } from '@/features/form-builder/components/PropertiesPanel';
-import { FormDocumentTemplatesSection } from '@/features/form-builder/components/FormDocumentTemplatesSection';
-import type { EnhancedFormField, EnhancedFormTab, FormComponentsItem } from '@/features/form-builder/types/enhanced';
+import { FormComponents } from '@/_deprecated/features/form-builder/components/FormComponents';
+// import { DotGridCanvas } from '@/_deprecated/features/form-builder/components/DotGridCanvas';
+import { PropertiesPanel } from '@/_deprecated/features/form-builder/components/PropertiesPanel';
+import { FormDocumentTemplatesSection } from '@/_deprecated/features/form-builder/components/FormDocumentTemplatesSection';
+import type { EnhancedFormField, EnhancedFormTab, FormComponentsItem } from '@/_deprecated/features/form-builder/types/enhanced';
 
 // Droppable Page Content Component
 interface DroppablePageContentProps {
